@@ -1,26 +1,27 @@
 module ::= ([COMMENT] [SAD] stmt)*
 
 comma ::= ',' [COMMENT] [IND]
-operator ::= OP0 | OR | XOR | AND | OP3 | OP4 | OP5 | OP6 | OP7
+operator ::= OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
+           | 'or' | 'xor' | 'and'
            | 'is' | 'isnot' | 'in' | 'notin'
-           | 'div' | 'mod' | 'shl' | 'shr' | 'not'
+           | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 
-prefixOperator ::= OP0 | OP3 | OP4 | OP5 | OP6 | OP7 | 'not'
+prefixOperator ::= operator
 
 optInd ::= [COMMENT] [IND]
 optPar ::= [IND] | [SAD]
 
-lowestExpr ::= otherExpr ('..' optInd otherExpr)*
-otherExpr ::= orExpr (OP0 optInd orExpr)*
-orExpr ::= andExpr (OR | 'xor' optInd andExpr)*
-andExpr ::= cmpExpr ('and' optInd cmpExpr)*
-cmpExpr ::= ampExpr (OP3 | 'is' | 'isnot' | 'in' | 'notin' optInd ampExpr)*
-ampExpr ::= plusExpr (OP4 optInd plusExpr)*
-plusExpr ::= mulExpr (OP5 optInd mulExpr)*
-mulExpr ::= dollarExpr (OP6 | 'div' | 'mod' | 'shl' | 'shr' optInd dollarExpr)*
-dollarExpr ::= primary (OP7 optInd primary)*
+lowestExpr ::= orExpr (OP1 optInd orExpr)*
+orExpr ::= andExpr (OP2 optInd andExpr)*
+andExpr ::= cmpExpr (OP3 optInd cmpExpr)*
+cmpExpr ::= sliceExpr (OP4 optInd sliceExpr)*
+sliceExpr ::= ampExpr (OP5 optInd ampExpr)*
+ampExpr ::= plusExpr (OP6 optInd plusExpr)*
+plusExpr ::= mulExpr (OP7 optInd mulExpr)*
+mulExpr ::= dollarExpr (OP8 optInd dollarExpr)*
+dollarExpr ::= primary (OP9 optInd primary)*
 
-indexExpr ::= '..' [expr] | expr ['=' expr]
+indexExpr ::= expr ['=' expr]
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
@@ -120,7 +121,7 @@ caseStmt ::= 'case' expr [':'] ('of' exprList ':' stmt)*
                                ('elif' expr ':' stmt)*
                                ['else' ':' stmt]
 whileStmt ::= 'while' expr ':' stmt
-forStmt ::= 'for' symbol (comma symbol)* 'in' expr ['..' expr] ':' stmt
+forStmt ::= 'for' symbol (comma symbol)* 'in' expr ':' stmt
 exceptList ::= [qualifiedIdent (comma qualifiedIdent)*]
 
 tryStmt ::= 'try' ':' stmt

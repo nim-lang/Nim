@@ -347,28 +347,37 @@ notation:
 is approximately 1.72826e35 according to the IEEE floating point standard.
 
 
+Operators
+---------
+
+In Nimrod one can define his own operators. An `operator`:idx: is any
+combination of the following characters::
+
+       =     +     -     *     /     <     >
+       @     $     ~     &     %     |
+       !     ?     ^     .     :     \
+
+These keywords are also operators:
+``and or not xor shl shr div mod in notin is isnot``.
+
+`=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
+are used for other notational purposes. 
+
+``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
+(to support ``var v*: T``).
+
 
 Other tokens
 ------------
 
 The following strings denote other tokens::
 
-       (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
-       :     =     ^     ..    `
+    `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
 
-`..`:tok: takes precedence over other tokens that contain a dot: `{..}`:tok: are
-the three tokens `{`:tok:, `..`:tok:, `}`:tok: and not the two tokens
-`{.`:tok:, `.}`:tok:.
 
-In Nimrod one can define his own operators. An `operator`:idx: is any
-combination of the following characters that is not listed above::
-
-       +     -     *     /     <     >
-       =     @     $     ~     &     %
-       !     ?     ^     .     |     \
-
-These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot``.
+The `slice`:idx: operator `..`:tok: takes precedence over other tokens that 
+contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok: 
+and not the two tokens `{.`:tok:, `.}`:tok:.
 
 
 Syntax
@@ -378,7 +387,7 @@ This section lists Nimrod's standard syntax in ENBF. How the parser receives
 indentation tokens is already described in the `Lexical Analysis`_ section.
 
 Nimrod allows user-definable operators.
-Binary operators have 8 different levels of precedence. For user-defined
+Binary operators have 9 different levels of precedence. For user-defined
 operators, the precedence depends on the first character the operator consists
 of. All binary operators are left-associative, except binary operators starting
 with (or only consisting of) ``^``.
@@ -386,14 +395,15 @@ with (or only consisting of) ``^``.
 ================  ==============================================  ==================  ===============
 Precedence level    Operators                                     First characters    Terminal symbol
 ================  ==============================================  ==================  ===============
-  7 (highest)                                                     ``$  ^``            OP7
-  6               ``*    /    div   mod   shl  shr  %``           ``* % \  /``        OP6
-  5               ``+    -``                                      ``+  ~  |``         OP5
-  4               ``&``                                           ``&``               OP4
-  3               ``==  <= < >= > !=  in  not_in  is  isnot``     ``= <  > !``        OP3
-  2               ``and``                                                             OP2
-  1               ``or xor``                                                          OP1
-  0 (lowest)                                                      ``? @  ` : .``      OP0
+  9 (highest)                                                     ``$  ^``            OP9
+  8               ``*    /    div   mod   shl  shr  %``           ``* % \  /``        OP8
+  7               ``+    -``                                      ``+  ~  |``         OP7
+  6               ``&``                                           ``&``               OP6
+  5               ``..``                                          ``.``               OP5
+  4               ``==  <= < >= > !=  in not_in is isnot not``    ``= <  > !``        OP4
+  3               ``and``                                                             OP3
+  2               ``or xor``                                                          OP2
+  1 (lowest)                                                      `` @  : ? ``        OP1
 ================  ==============================================  ==================  ===============
 
 
@@ -2949,6 +2959,10 @@ string expressions in general:
 
 **Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
 strings, because they are precompiled.
+
+**Note**: Passing variables to the ``dynlib`` pragma will fail at runtime 
+because of order of initialization problems.
+
 
 Dynlib pragma for export
 ------------------------

@@ -42,7 +42,7 @@ elif defined(macosx):
     dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).dylib"
 else: 
   const 
-    dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).so.(1|0)"
+    dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).so(|.1|.0)"
 const 
   TCL_DESTROYED* = 0xDEADDEAD
   TCL_OK* = 0

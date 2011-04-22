@@ -139,8 +139,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/streams.c -o build/1_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/wordrecg.c -o build/1_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/wordrecg.c -o build/1_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/scanner.c -o build/1_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/scanner.c -o build/1_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lexer.c -o build/1_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/lexer.c -o build/1_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lexbase.c -o build/1_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/lexbase.c -o build/1_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/llstream.c -o build/1_1/llstream.o"
@@ -151,16 +151,16 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/syntaxes.c -o build/1_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/syntaxes.c -o build/1_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pnimsyn.c -o build/1_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/pnimsyn.c -o build/1_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parser.c -o build/1_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/parser.c -o build/1_1/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pbraces.c -o build/1_1/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/pbraces.c -o build/1_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ptmplsyn.c -o build/1_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/ptmplsyn.c -o build/1_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rnimsyn.c -o build/1_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/rnimsyn.c -o build/1_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/filters.c -o build/1_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/filters.c -o build/1_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/renderer.c -o build/1_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/renderer.c -o build/1_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/filter_tmpl.c -o build/1_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/filter_tmpl.c -o build/1_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o"
@@ -255,17 +255,17 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/streams.o \
 build/1_1/wordrecg.o \
-build/1_1/scanner.o \
+build/1_1/lexer.o \
 build/1_1/lexbase.o \
 build/1_1/llstream.o \
 build/1_1/nimconf.o \
 build/1_1/main.o \
 build/1_1/syntaxes.o \
-build/1_1/pnimsyn.o \
+build/1_1/parser.o \
 build/1_1/pbraces.o \
-build/1_1/ptmplsyn.o \
-build/1_1/rnimsyn.o \
 build/1_1/filters.o \
+build/1_1/renderer.o \
+build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
@@ -328,17 +328,17 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/streams.o \
 build/1_1/wordrecg.o \
-build/1_1/scanner.o \
+build/1_1/lexer.o \
 build/1_1/lexbase.o \
 build/1_1/llstream.o \
 build/1_1/nimconf.o \
 build/1_1/main.o \
 build/1_1/syntaxes.o \
-build/1_1/pnimsyn.o \
+build/1_1/parser.o \
 build/1_1/pbraces.o \
-build/1_1/ptmplsyn.o \
-build/1_1/rnimsyn.o \
 build/1_1/filters.o \
+build/1_1/renderer.o \
+build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
@@ -431,8 +431,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/streams.c -o build/1_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/wordrecg.c -o build/1_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/wordrecg.c -o build/1_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/scanner.c -o build/1_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/scanner.c -o build/1_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lexer.c -o build/1_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/lexer.c -o build/1_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lexbase.c -o build/1_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lexbase.c -o build/1_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/llstream.c -o build/1_2/llstream.o"
@@ -443,16 +443,16 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/main.c -o build/1_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/syntaxes.c -o build/1_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/syntaxes.c -o build/1_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parser.c -o build/1_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/parser.c -o build/1_2/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/renderer.c -o build/1_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/renderer.c -o build/1_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
@@ -547,17 +547,17 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/streams.o \
 build/1_2/wordrecg.o \
-build/1_2/scanner.o \
+build/1_2/lexer.o \
 build/1_2/lexbase.o \
 build/1_2/llstream.o \
 build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
-build/1_2/pnimsyn.o \
+build/1_2/parser.o \
 build/1_2/pbraces.o \
-build/1_2/ptmplsyn.o \
-build/1_2/rnimsyn.o \
 build/1_2/filters.o \
+build/1_2/renderer.o \
+build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -620,17 +620,17 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/streams.o \
 build/1_2/wordrecg.o \
-build/1_2/scanner.o \
+build/1_2/lexer.o \
 build/1_2/lexbase.o \
 build/1_2/llstream.o \
 build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
-build/1_2/pnimsyn.o \
+build/1_2/parser.o \
 build/1_2/pbraces.o \
-build/1_2/ptmplsyn.o \
-build/1_2/rnimsyn.o \
 build/1_2/filters.o \
+build/1_2/renderer.o \
+build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -723,8 +723,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/streams.c -o build/1_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/wordrecg.c -o build/1_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/wordrecg.c -o build/1_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/scanner.c -o build/1_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/scanner.c -o build/1_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lexer.c -o build/1_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/lexer.c -o build/1_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lexbase.c -o build/1_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lexbase.c -o build/1_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/llstream.c -o build/1_2/llstream.o"
@@ -735,16 +735,16 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/main.c -o build/1_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/syntaxes.c -o build/1_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/syntaxes.c -o build/1_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parser.c -o build/1_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/parser.c -o build/1_2/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/renderer.c -o build/1_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/renderer.c -o build/1_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
@@ -839,17 +839,17 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/streams.o \
 build/1_2/wordrecg.o \
-build/1_2/scanner.o \
+build/1_2/lexer.o \
 build/1_2/lexbase.o \
 build/1_2/llstream.o \
 build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
-build/1_2/pnimsyn.o \
+build/1_2/parser.o \
 build/1_2/pbraces.o \
-build/1_2/ptmplsyn.o \
-build/1_2/rnimsyn.o \
 build/1_2/filters.o \
+build/1_2/renderer.o \
+build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -912,17 +912,17 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/streams.o \
 build/1_2/wordrecg.o \
-build/1_2/scanner.o \
+build/1_2/lexer.o \
 build/1_2/lexbase.o \
 build/1_2/llstream.o \
 build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
-build/1_2/pnimsyn.o \
+build/1_2/parser.o \
 build/1_2/pbraces.o \
-build/1_2/ptmplsyn.o \
-build/1_2/rnimsyn.o \
 build/1_2/filters.o \
+build/1_2/renderer.o \
+build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -1023,8 +1023,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/scanner.c -o build/2_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/scanner.c -o build/2_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexer.c -o build/2_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/lexer.c -o build/2_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/llstream.c -o build/2_1/llstream.o"
@@ -1035,16 +1035,16 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/main.c -o build/2_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/syntaxes.c -o build/2_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/syntaxes.c -o build/2_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pnimsyn.c -o build/2_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/pnimsyn.c -o build/2_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parser.c -o build/2_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/parser.c -o build/2_1/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ptmplsyn.c -o build/2_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/ptmplsyn.c -o build/2_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rnimsyn.c -o build/2_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/rnimsyn.c -o build/2_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/filters.c -o build/2_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/filters.c -o build/2_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/renderer.c -o build/2_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/renderer.c -o build/2_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/filter_tmpl.c -o build/2_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/filter_tmpl.c -o build/2_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o"
@@ -1139,17 +1139,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/2_1/scanner.o \
+build/2_1/lexer.o \
 build/2_1/lexbase.o \
 build/2_1/llstream.o \
 build/2_1/nimconf.o \
 build/2_1/main.o \
 build/2_1/syntaxes.o \
-build/2_1/pnimsyn.o \
+build/2_1/parser.o \
 build/2_1/pbraces.o \
-build/2_1/ptmplsyn.o \
-build/2_1/rnimsyn.o \
 build/2_1/filters.o \
+build/2_1/renderer.o \
+build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
@@ -1212,17 +1212,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/2_1/scanner.o \
+build/2_1/lexer.o \
 build/2_1/lexbase.o \
 build/2_1/llstream.o \
 build/2_1/nimconf.o \
 build/2_1/main.o \
 build/2_1/syntaxes.o \
-build/2_1/pnimsyn.o \
+build/2_1/parser.o \
 build/2_1/pbraces.o \
-build/2_1/ptmplsyn.o \
-build/2_1/rnimsyn.o \
 build/2_1/filters.o \
+build/2_1/renderer.o \
+build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
@@ -1315,8 +1315,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/scanner.c -o build/2_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/scanner.c -o build/2_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexer.c -o build/2_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/lexer.c -o build/2_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/llstream.c -o build/2_2/llstream.o"
@@ -1327,16 +1327,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/main.c -o build/2_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/syntaxes.c -o build/2_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/syntaxes.c -o build/2_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parser.c -o build/2_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/parser.c -o build/2_2/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/renderer.c -o build/2_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/renderer.c -o build/2_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
@@ -1431,17 +1431,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/2_2/scanner.o \
+build/2_2/lexer.o \
 build/2_2/lexbase.o \
 build/2_2/llstream.o \
 build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
-build/2_2/pnimsyn.o \
+build/2_2/parser.o \
 build/2_2/pbraces.o \
-build/2_2/ptmplsyn.o \
-build/2_2/rnimsyn.o \
 build/2_2/filters.o \
+build/2_2/renderer.o \
+build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
@@ -1504,17 +1504,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/2_2/scanner.o \
+build/2_2/lexer.o \
 build/2_2/lexbase.o \
 build/2_2/llstream.o \
 build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
-build/2_2/pnimsyn.o \
+build/2_2/parser.o \
 build/2_2/pbraces.o \
-build/2_2/ptmplsyn.o \
-build/2_2/rnimsyn.o \
 build/2_2/filters.o \
+build/2_2/renderer.o \
+build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
@@ -1607,8 +1607,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/scanner.c -o build/2_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/scanner.c -o build/2_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexer.c -o build/2_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/lexer.c -o build/2_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/llstream.c -o build/2_2/llstream.o"
@@ -1619,16 +1619,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/main.c -o build/2_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/syntaxes.c -o build/2_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/syntaxes.c -o build/2_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parser.c -o build/2_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/parser.c -o build/2_2/parser.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/renderer.c -o build/2_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/renderer.c -o build/2_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
@@ -1723,17 +1723,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/2_2/scanner.o \
+build/2_2/lexer.o \
 build/2_2/lexbase.o \
 build/2_2/llstream.o \
 build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
-build/2_2/pnimsyn.o \
+build/2_2/parser.o \
 build/2_2/pbraces.o \
-build/2_2/ptmplsyn.o \
-build/2_2/rnimsyn.o \
 build/2_2/filters.o \
+build/2_2/renderer.o \
+build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
@@ -1796,17 +1796,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/2_2/scanner.o \
+build/2_2/lexer.o \
 build/2_2/lexbase.o \
 build/2_2/llstream.o \
 build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
-build/2_2/pnimsyn.o \
+build/2_2/parser.o \
 build/2_2/pbraces.o \
-build/2_2/ptmplsyn.o \
-build/2_2/rnimsyn.o \
 build/2_2/filters.o \
+build/2_2/renderer.o \
+build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
@@ -1907,8 +1907,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/scanner.c -o build/3_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/scanner.c -o build/3_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lexer.c -o build/3_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/lexer.c -o build/3_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/llstream.c -o build/3_1/llstream.o"
@@ -1919,16 +1919,16 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/main.c -o build/3_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parser.c -o build/3_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parser.c -o build/3_1/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/renderer.c -o build/3_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/renderer.c -o build/3_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filter_tmpl.c -o build/3_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/filter_tmpl.c -o build/3_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
@@ -2023,17 +2023,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/3_1/scanner.o \
+build/3_1/lexer.o \
 build/2_1/lexbase.o \
 build/3_1/llstream.o \
 build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
-build/3_1/pnimsyn.o \
-build/3_1/pbraces.o \
-build/3_1/ptmplsyn.o \
-build/3_1/rnimsyn.o \
+build/3_1/parser.o \
+build/2_1/pbraces.o \
 build/3_1/filters.o \
+build/3_1/renderer.o \
+build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
@@ -2096,17 +2096,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/3_1/scanner.o \
+build/3_1/lexer.o \
 build/2_1/lexbase.o \
 build/3_1/llstream.o \
 build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
-build/3_1/pnimsyn.o \
-build/3_1/pbraces.o \
-build/3_1/ptmplsyn.o \
-build/3_1/rnimsyn.o \
+build/3_1/parser.o \
+build/2_1/pbraces.o \
 build/3_1/filters.o \
+build/3_1/renderer.o \
+build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
@@ -2199,8 +2199,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/scanner.c -o build/3_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/scanner.c -o build/3_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lexer.c -o build/3_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/lexer.c -o build/3_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/llstream.c -o build/3_2/llstream.o"
@@ -2211,16 +2211,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/main.c -o build/3_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/renderer.c -o build/3_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/renderer.c -o build/3_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -2315,17 +2315,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/3_2/scanner.o \
+build/3_2/lexer.o \
 build/2_2/lexbase.o \
 build/3_2/llstream.o \
 build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
-build/3_2/pnimsyn.o \
-build/3_2/pbraces.o \
-build/3_2/ptmplsyn.o \
-build/3_2/rnimsyn.o \
+build/3_2/parser.o \
+build/2_2/pbraces.o \
 build/3_2/filters.o \
+build/3_2/renderer.o \
+build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
@@ -2388,17 +2388,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/3_2/scanner.o \
+build/3_2/lexer.o \
 build/2_2/lexbase.o \
 build/3_2/llstream.o \
 build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
-build/3_2/pnimsyn.o \
-build/3_2/pbraces.o \
-build/3_2/ptmplsyn.o \
-build/3_2/rnimsyn.o \
+build/3_2/parser.o \
+build/2_2/pbraces.o \
 build/3_2/filters.o \
+build/3_2/renderer.o \
+build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
@@ -2491,8 +2491,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/scanner.c -o build/3_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/scanner.c -o build/3_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lexer.c -o build/3_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/lexer.c -o build/3_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/llstream.c -o build/3_2/llstream.o"
@@ -2503,16 +2503,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/main.c -o build/3_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/renderer.c -o build/3_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/renderer.c -o build/3_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -2607,17 +2607,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/3_2/scanner.o \
+build/3_2/lexer.o \
 build/2_2/lexbase.o \
 build/3_2/llstream.o \
 build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
-build/3_2/pnimsyn.o \
-build/3_2/pbraces.o \
-build/3_2/ptmplsyn.o \
-build/3_2/rnimsyn.o \
+build/3_2/parser.o \
+build/2_2/pbraces.o \
 build/3_2/filters.o \
+build/3_2/renderer.o \
+build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
@@ -2680,17 +2680,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/3_2/scanner.o \
+build/3_2/lexer.o \
 build/2_2/lexbase.o \
 build/3_2/llstream.o \
 build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
-build/3_2/pnimsyn.o \
-build/3_2/pbraces.o \
-build/3_2/ptmplsyn.o \
-build/3_2/rnimsyn.o \
+build/3_2/parser.o \
+build/2_2/pbraces.o \
 build/3_2/filters.o \
+build/3_2/renderer.o \
+build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
@@ -2791,8 +2791,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/llstream.c -o build/4_1/llstream.o"
@@ -2803,16 +2803,16 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/main.c -o build/4_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
@@ -2907,17 +2907,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -2980,17 +2980,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -3083,8 +3083,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -3095,16 +3095,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -3199,17 +3199,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -3272,17 +3272,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -3375,8 +3375,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -3387,16 +3387,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -3491,17 +3491,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -3564,17 +3564,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -3675,8 +3675,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/llstream.c -o build/4_1/llstream.o"
@@ -3687,16 +3687,16 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/main.c -o build/4_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
@@ -3791,17 +3791,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -3864,17 +3864,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -3967,8 +3967,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -3979,16 +3979,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -4083,17 +4083,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -4156,17 +4156,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -4259,8 +4259,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -4271,16 +4271,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -4375,17 +4375,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -4448,17 +4448,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -4559,8 +4559,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/llstream.c -o build/4_1/llstream.o"
@@ -4571,16 +4571,16 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/main.c -o build/4_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
@@ -4675,17 +4675,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -4748,17 +4748,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -4851,8 +4851,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -4863,16 +4863,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -4967,17 +4967,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -5040,17 +5040,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -5143,8 +5143,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -5155,16 +5155,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -5259,17 +5259,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -5332,17 +5332,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -5443,8 +5443,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/streams.c -o build/2_1/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/scanner.c -o build/4_1/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/lexer.c -o build/4_1/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lexbase.c -o build/2_1/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/llstream.c -o build/4_1/llstream.o"
@@ -5455,16 +5455,16 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/main.c -o build/4_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/syntaxes.c -o build/4_1/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pnimsyn.c -o build/4_1/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/pbraces.c -o build/4_1/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/ptmplsyn.c -o build/4_1/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/rnimsyn.c -o build/4_1/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parser.c -o build/4_1/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filters.c -o build/4_1/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/renderer.c -o build/4_1/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
@@ -5559,17 +5559,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -5632,17 +5632,17 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/streams.o \
 build/2_1/wordrecg.o \
-build/4_1/scanner.o \
+build/4_1/lexer.o \
 build/2_1/lexbase.o \
 build/4_1/llstream.o \
 build/4_1/nimconf.o \
 build/4_1/main.o \
 build/4_1/syntaxes.o \
-build/4_1/pnimsyn.o \
-build/4_1/pbraces.o \
-build/4_1/ptmplsyn.o \
-build/4_1/rnimsyn.o \
+build/4_1/parser.o \
+build/2_1/pbraces.o \
 build/4_1/filters.o \
+build/4_1/renderer.o \
+build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
@@ -5735,8 +5735,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -5747,16 +5747,16 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -5851,17 +5851,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -5924,17 +5924,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -6027,8 +6027,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/streams.c -o build/2_2/streams.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/scanner.c -o build/4_2/scanner.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/lexer.c -o build/4_2/lexer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lexbase.c -o build/2_2/lexbase.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/llstream.c -o build/4_2/llstream.o"
@@ -6039,16 +6039,16 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/main.c -o build/4_2/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/syntaxes.c -o build/4_2/syntaxes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pnimsyn.c -o build/4_2/pnimsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/pbraces.c -o build/4_2/pbraces.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/ptmplsyn.c -o build/4_2/ptmplsyn.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/rnimsyn.c -o build/4_2/rnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parser.c -o build/4_2/parser.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filters.c -o build/4_2/filters.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/renderer.c -o build/4_2/renderer.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
@@ -6143,17 +6143,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
@@ -6216,17 +6216,17 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/streams.o \
 build/2_2/wordrecg.o \
-build/4_2/scanner.o \
+build/4_2/lexer.o \
 build/2_2/lexbase.o \
 build/4_2/llstream.o \
 build/4_2/nimconf.o \
 build/4_2/main.o \
 build/4_2/syntaxes.o \
-build/4_2/pnimsyn.o \
-build/4_2/pbraces.o \
-build/4_2/ptmplsyn.o \
-build/4_2/rnimsyn.o \
+build/4_2/parser.o \
+build/2_2/pbraces.o \
 build/4_2/filters.o \
+build/4_2/renderer.o \
+build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \

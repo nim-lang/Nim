@@ -339,11 +339,11 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
     var def = semAndEvalConstExpr(c, a.sons[2]) 
     # check type compability between def.typ and typ:
-    if (typ != nil): 
+    if typ != nil:
       def = fitRemoveHiddenConv(c, typ, def)
-    else: 
+    else:
       typ = def.typ
-    if not typeAllowed(typ, skConst): 
+    if not typeAllowed(typ, skConst):
       GlobalError(a.info, errXisNoType, typeToString(typ))
     v.typ = typ
     v.ast = def               # no need to copy
@@ -423,25 +423,12 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var b = newNodeI(nkBreakStmt, n.info)
   b.add(ast.emptyNode)
   stmts.add(b)
-  
-proc createCountupNode(c: PContext, rangeNode: PNode): PNode = 
-  # convert ``in 3..5`` to ``in countup(3, 5)``
-  checkSonsLen(rangeNode, 2)
-  result = newNodeI(nkCall, rangeNode.info)
-  var countUp = StrTableGet(magicsys.systemModule.Tab, getIdent"countup")
-  if countUp == nil: GlobalError(rangeNode.info, errSystemNeeds, "countup")
-  newSons(result, 3)
-  result.sons[0] = newSymNode(countup)
-  result.sons[1] = rangeNode.sons[0]
-  result.sons[2] = rangeNode.sons[1]
 
 proc semFor(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 3)
   var length = sonsLen(n)
   openScope(c.tab)
-  if n.sons[length-2].kind == nkRange:
-    n.sons[length-2] = createCountupNode(c, n.sons[length-2])
   n.sons[length-2] = semExprWithType(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
   if call.kind != nkCall or call.sons[0].kind != nkSym or

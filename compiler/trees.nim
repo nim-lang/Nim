@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,7 +10,7 @@
 # tree helper routines
 
 import 
-  ast, astalgo, lexer, msgs, strutils
+  ast, astalgo, lexer, msgs, strutils, wordrecg
 
 proc getMagic*(op: PNode): TMagic
 
@@ -106,7 +106,8 @@ proc getOpSym(op: PNode): PSym =
   
 proc getMagic(op: PNode): TMagic = 
   case op.kind
-  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit: 
+  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit, nkPrefix, nkPostfix,
+     nkInfix: 
     case op.sons[0].Kind
     of nkSym: result = op.sons[0].sym.magic
     else: result = mNone
@@ -138,3 +139,8 @@ proc SwapOperands(op: PNode) =
   var tmp = op.sons[1]
   op.sons[1] = op.sons[2]
   op.sons[2] = tmp
+
+proc IsRange*(n: PNode): bool {.inline.} = 
+  result = n.kind == nkInfix and n[0].kind == nkIdent and 
+    n[0].ident.id == ord(wDotDot)
+

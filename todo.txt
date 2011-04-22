@@ -1,4 +1,5 @@
 - clean up the tests!
+- fake-consts and semantic checking for table constructor
 
 
 High priority (version 0.9.0)
@@ -28,7 +29,6 @@ To implement
 
 * hash tables and sets; count tables; ordered dicts
 * distinct types for array/seq indexes
-* constant sequences
 
 * implement closures for the C code generator
 * GC: marker procs for native Nimrod GC and Boehm GC

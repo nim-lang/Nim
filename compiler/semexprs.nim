@@ -828,15 +828,20 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
     for i in countup(0, sonsLen(n) - 1): 
-      if n.sons[i].kind == nkRange: 
-        checkSonsLen(n.sons[i], 2)
-        n.sons[i].sons[0] = semExprWithType(c, n.sons[i].sons[0])
+      if isRange(n.sons[i]): 
+        checkSonsLen(n.sons[i], 3)
         n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1])
+        n.sons[i].sons[2] = semExprWithType(c, n.sons[i].sons[2])
         if typ == nil: 
+          typ = skipTypes(n.sons[i].sons[1].typ, 
+                          {tyGenericInst, tyVar, tyOrdinal})
+        n.sons[i].typ = n.sons[i].sons[2].typ # range node needs type too
+      elif n.sons[i].kind == nkRange:
+        # already semchecked
+        if typ == nil:
           typ = skipTypes(n.sons[i].sons[0].typ, 
                           {tyGenericInst, tyVar, tyOrdinal})
-        n.sons[i].typ = n.sons[i].sons[1].typ # range node needs type too
-      else: 
+      else:
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil: 
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyOrdinal})
@@ -848,11 +853,12 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     addSon(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1): 
       var m: PNode
-      if n.sons[i].kind == nkRange: 
+      if isRange(n.sons[i]):
         m = newNodeI(nkRange, n.sons[i].info)
-        addSon(m, fitNode(c, typ, n.sons[i].sons[0]))
         addSon(m, fitNode(c, typ, n.sons[i].sons[1]))
-      else: 
+        addSon(m, fitNode(c, typ, n.sons[i].sons[2]))
+      elif n.sons[i].kind == nkRange: m = n.sons[i] # already semchecked
+      else:
         m = fitNode(c, typ, n.sons[i])
       addSon(result, m)
 
@@ -1086,7 +1092,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 2)
   of nkSymChoice: 
     GlobalError(n.info, errExprXAmbiguous, renderTree(n, {renderNoComments}))
-  else: 
-    #InternalError(n.info, nodeKindToStr[n.kind]);
-    GlobalError(n.info, errInvalidExpressionX, renderTree(n, {renderNoComments}))
+  else:
+    GlobalError(n.info, errInvalidExpressionX, 
+                renderTree(n, {renderNoComments}))
   incl(result.flags, nfSem)

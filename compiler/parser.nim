@@ -123,7 +123,8 @@ proc newIntNodeP(kind: TNodeKind, intVal: BiggestInt, p: TParser): PNode =
   result = newNodeP(kind, p)
   result.intVal = intVal
 
-proc newFloatNodeP(kind: TNodeKind, floatVal: BiggestFloat, p: TParser): PNode = 
+proc newFloatNodeP(kind: TNodeKind, floatVal: BiggestFloat, 
+                   p: TParser): PNode =
   result = newNodeP(kind, p)
   result.floatVal = floatVal
 
@@ -147,16 +148,18 @@ proc getPrecedence(tok: PToken): int =
   case tok.tokType
   of tkOpr: 
     case tok.ident.s[0]
-    of '$', '^': result = 7
-    of '*', '%', '/', '\\': result = 6
-    of '+', '-', '~', '|': result = 5
-    of '&': result = 4
-    of '=', '<', '>', '!': result = 3
-    else: result = 0
-  of tkDiv, tkMod, tkShl, tkShr: result = 6
-  of tkIn, tkNotIn, tkIs, tkIsNot: result = 3
-  of tkAnd: result = 2
-  of tkOr, tkXor: result = 1
+    of '$', '^': result = 9
+    of '*', '%', '/', '\\': result = 8
+    of '+', '-', '~', '|': result = 7
+    of '&': result = 6
+    of '=', '<', '>', '!': result = 4
+    of '.': result = 5
+    else: result = 1
+  of tkDiv, tkMod, tkShl, tkShr: result = 8
+  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot: result = 4
+  of tkDotDot: result = 5
+  of tkAnd: result = 3
+  of tkOr, tkXor: result = 2
   else: result = - 10
   
 proc isOperator(tok: PToken): bool = 
@@ -202,7 +205,7 @@ proc parseSymbol(p: var TParser): PNode =
       addSon(result, newIdentNodeP(getIdent("()"), p))
       getTok(p)
       eat(p, tkParRi)
-    of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr: 
+    of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot: 
       var id = p.tok.ident
       getTok(p)
       if p.tok.tokType == tkEquals: 
@@ -494,7 +497,7 @@ proc identOrLiteral(p: var TParser): PNode =
 
 proc primary(p: var TParser): PNode = 
   # prefix operator?
-  if (p.tok.tokType == tkNot) or (p.tok.tokType == tkOpr): 
+  if isOperator(p.tok):
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     addSon(result, a)
@@ -553,18 +556,8 @@ proc lowestExprAux(p: var TParser, v: var PNode, limit: int): PToken =
     opPrec = getPrecedence(nextop)
   result = op                 # return first untreated operator
   
-proc otherExpr(p: var TParser): PNode = 
-  discard lowestExprAux(p, result, - 1)
-
 proc lowestExpr(p: var TParser): PNode = 
-  result = otherExpr(p)
-  while p.tok.tokType == tkDotDot:
-    getTok(p)
-    optInd(p, result)
-    var a = result
-    result = newNodeP(nkRange, p)
-    addSon(result, a)
-    addSon(result, otherExpr(p))
+  discard lowestExprAux(p, result, - 1)
 
 proc parseIfExpr(p: var TParser): PNode = 
   result = newNodeP(nkIfExpr, p)
