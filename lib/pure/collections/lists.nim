@@ -12,15 +12,24 @@
 ## be manipulated directly for efficiency.
 
 type
-  TDoublyLinkedNode[T] {.pure, final.} = object
+  TDoublyLinkedNode*[T] {.pure, 
+      final.} = object ## a node a doubly linked list consists of
     next*, prev*: ref TDoublyLinkedNode[T]
     value*: T
   PDoublyLinkedNode*[T] = ref TDoublyLinkedNode[T]
 
-  TSinglyLinkedNode[T] {.pure, final.} = object
+  TSinglyLinkedNode*[T] {.pure, 
+      final.} = object ## a node a singly linked list consists of
     next*: ref TSinglyLinkedNode[T]
     value*: T
   PSinglyLinkedNode*[T] = ref TSinglyLinkedNode[T]
+  
+  TRingNode[T] {.pure, 
+      final.} = object ## a node a ring list consists of
+    next*, prev*: ref TRingNode[T]
+    value*: T
+    
+  PRingNode*[T] = ref TRingNode[T]
 
 proc newDoublyLinkedNode*[T](value: T): PDoublyLinkedNode[T] =
   ## creates a new doubly linked node with the given `value`.

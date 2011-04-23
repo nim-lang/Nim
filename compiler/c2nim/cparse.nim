@@ -62,7 +62,7 @@ proc newParserOptions*(): PParserOptions =
   result.flags = {}
   result.dynlibSym = ""
   result.header = ""
-  result.toMangle = newStringTable()
+  result.toMangle = newStringTable(modeCaseSensitive)
 
 proc setOption*(parserOptions: PParserOptions, key: string, val=""): bool = 
   result = true
