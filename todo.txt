@@ -1,5 +1,5 @@
 - clean up the tests!
-- fake-consts and semantic checking for table constructor
+- fake-consts, implict ref/ptr->var conversion
 
 
 High priority (version 0.9.0)
@@ -10,7 +10,7 @@ High priority (version 0.9.0)
 - fix overloading resolution
 - wrong co-/contravariance
 - make ^ available as operator
-
+- iterators should not always be destructive
 
 Bugs
 ----
@@ -59,7 +59,6 @@ Low priority
 - 'nimrod def': does not always work
 - test branch coverage
 - checked exceptions
-- slicing
 
 
 Library

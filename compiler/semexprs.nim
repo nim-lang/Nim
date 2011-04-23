@@ -709,41 +709,11 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else: 
       GlobalError(n.Info, errUndeclaredFieldX, i.s)
 
-proc whichSliceOpr(n: PNode): string = 
-  if n.sons[0].kind == nkEmpty: 
-    if n.sons[1].kind == nkEmpty: result = "[..]"
-    else: result = "[..$]"
-  elif n.sons[1].kind == nkEmpty: 
-    result = "[$..]"
-  else: 
-    result = "[$..$]"
-
-proc addSliceOpr(result: var string, n: PNode) = 
-  if n[0].kind == nkEmpty: 
-    if n[1].kind == nkEmpty: result.add("..")
-    else: result.add("..$")
-  elif n[1].kind == nkEmpty: result.add("$..") 
-  else: result.add("$..$")
-
 proc buildOverloadedSubscripts(n: PNode, inAsgn: bool): PNode =
   result = newNodeI(nkCall, n.info)
-  add(result, ast.emptyNode) # fill with the correct node later
-  add(result, n[0])
-  var opr = "["
-  for i in 1..n.len-1:
-    if i > 1: add(opr, ",")
-    if n[i].kind == nkRange:
-      # we have a slice argument
-      checkSonsLen(n[i], 2)
-      addSliceOpr(opr, n[i])
-      addSon(result, n[i][0])
-      addSon(result, n[i][1])
-    else:
-      add(result, n[i])
-  if inAsgn: add(opr, "]=")
-  else: add(opr, "]")
-  # now we know the operator
-  result.sons[0] = newIdentNode(getIdent(opr), n.info)
+  result.add(newIdentNode(
+    if inAsgn: getIdent"[]=" else: getIdent"[]", n.info))
+  for i in 0 .. n.len-1: result.add(n[i])
   
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
@@ -773,10 +743,11 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.sons[i] = semExprWithType(c, n.sons[i], flags - {efAllowType})
     var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(tyInt)
     var arg = IndexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
-    if arg != nil: n.sons[1] = arg
-    else: GlobalError(n.info, errIndexTypesDoNotMatch)
-    result = n
-    result.typ = elemType(arr)
+    if arg != nil: 
+      n.sons[1] = arg
+      result = n
+      result.typ = elemType(arr)
+    #GlobalError(n.info, errIndexTypesDoNotMatch)
   of tyTuple: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
@@ -861,6 +832,21 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
       else:
         m = fitNode(c, typ, n.sons[i])
       addSon(result, m)
+
+proc semTableConstr(c: PContext, n: PNode): PNode = 
+  # we simply transform ``{key: value, key2: value}`` to 
+  # ``[(key, value), (key2, value2)]``
+  result = newNodeI(nkBracket, n.info)
+  for i in 0..n.len-1:
+    var x = n.sons[i]
+    if x.kind == nkExprColonExpr and sonsLen(x) == 2:
+      var pair = newNodeI(nkPar, x.info)
+      pair.add(x[0])
+      pair.add(x[1])
+      result.add(pair)
+    else:
+      illFormedAst(x)
+  result = semExpr(c, result)
 
 type 
   TParKind = enum 
@@ -967,7 +953,8 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
       result = semTemplateExpr(c, result, s, semCheck)
     else: GlobalError(n.info, errXisNoMacroOrTemplate, s.name.s)
   else: 
-    GlobalError(n.info, errInvalidExpressionX, renderTree(a, {renderNoComments}))
+    GlobalError(n.info, errInvalidExpressionX, 
+                renderTree(a, {renderNoComments}))
   
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
@@ -1090,7 +1077,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkSonsLen(n, 3)
   of nkCheckedFieldExpr: 
     checkMinSonsLen(n, 2)
-  of nkSymChoice: 
+  of nkTableConstr:
+    result = semTableConstr(c, n)
+  of nkSymChoice:
     GlobalError(n.info, errExprXAmbiguous, renderTree(n, {renderNoComments}))
   else:
     GlobalError(n.info, errInvalidExpressionX, 

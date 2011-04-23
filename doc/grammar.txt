@@ -21,12 +21,11 @@ plusExpr ::= mulExpr (OP7 optInd mulExpr)*
 mulExpr ::= dollarExpr (OP8 optInd dollarExpr)*
 dollarExpr ::= primary (OP9 optInd primary)*
 
-indexExpr ::= expr ['=' expr]
+indexExpr ::= expr
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
-symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
-               | '[' (',' | ['$'] '..' ['$'])* ']'
+symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')' | '[' ']'
                | '=' | literal)+ '`'
          | IDENT
          
