@@ -128,9 +128,7 @@ proc `..`*[T](a, b: T): TSlice[T] {.noSideEffect, inline.} =
   result.b = b
 
 proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
-  ## `slice`:idx: operator that constructs an interval ``[low(T), b]``
-  when int(low(b)) == low(int): result.a = 0
-  else: result.a = low(b)
+  ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
   result.b = b
 
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} = 
