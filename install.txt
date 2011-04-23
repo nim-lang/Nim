@@ -1,6 +1,23 @@
 Installation
 ============
 
+Bootstrapping from github
+-------------------------
+
+To get the source code you need either of these:
+
+* A working web browser + tar(or equivalent):
+  https://github.com/Araq/Nimrod/tarball/master
+* wget + tar:
+  ``wget --no-check-certificate "https://github.com/Araq/Nimrod/tarball/master"``
+* git: ``git clone git://github.com/Araq/Nimrod.git``
+
+After downloading the source (and extracting it), you need to extract build/csources.zip then you can bootstrap with:
+
+* ``./build.sh`` or ``build.bat`` (Windows)
+* ``nimrod c koch``
+* ``koch boot -d:release``
+
 
 Installation on Linux/UNIX
 --------------------------
