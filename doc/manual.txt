@@ -1817,6 +1817,34 @@ required. ``Elif`` parts are also allowed (but unlikely to be good
 style).
 
 
+Table constructor
+~~~~~~~~~~~~~~~~~
+
+A `table constructor`:idx: is syntactic sugar for an array constructor:
+
+.. code-block:: nimrod
+  {"key1": "value1", "key2": "value2"}
+  
+  # is the same as:
+  [("key1", "value1"), ("key2", "value2")]
+
+
+The empty table can be written ``{:}`` (in contrast to the empty set 
+which is ``{}``) which is thus another way to write as the empty array
+constructor ``[]``. This slightly unusal way of supporting tables 
+has lots of advantages:
+
+* The order of the (key,value)-pairs is preserved, thus it is easy to
+  support ordered dicts with for example ``{key: val}.newOrderedTable``.
+* A table literal can be put into a ``const`` section and the compiler
+  can easily put it into the executable's data section just like it can
+  for arrays and the generated data section requires a minimal amount
+  of memory.
+* Every table implementation is treated equal syntactically.
+* Apart from the minimal syntactic sugar the language core does not need to
+  know about tables.
+
+
 Type conversions
 ~~~~~~~~~~~~~~~~
 Syntactically a `type conversion` is like a procedure call, but a

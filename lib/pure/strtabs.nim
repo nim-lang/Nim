@@ -155,6 +155,16 @@ proc newStringTable*(keyValuePairs: openarray[string],
     result[keyValuePairs[i]] = keyValuePairs[i + 1]
     inc(i, 2)
 
+proc newStringTable*(keyValuePairs: openarray[tuple[key, val: string]],
+                     mode: TStringTableMode = modeCaseSensitive): PStringTable {.
+  rtl, extern: "nst$1WithTableConstr".} =
+  ## creates a new string table with given key value pairs.
+  ## Example::
+  ##   var mytab = newStringTable({"key1": "val1", "key2": "val2"},
+  ##                              modeCaseInsensitive)
+  result = newStringTable(mode)
+  for key, val in items(keyvaluePairs): result[key] = val
+
 proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
   rtl, extern: "nstFormat".} =
   ## The `%` operator for string tables.
@@ -197,4 +207,10 @@ proc `$`*(t: PStringTable): string {.rtl, extern: "nstDollar".} =
       result.add(": ")
       result.add(val)
     result.add("}")
+
+when isMainModule:
+  var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
+  assert x["k"] == "v"
+  assert x["11"] == "22"
+  assert x["565"] == "67"
 

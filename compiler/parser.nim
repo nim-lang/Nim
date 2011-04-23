@@ -173,49 +173,30 @@ proc parseSymbol(p: var TParser): PNode =
   of tkAccent: 
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
-    case p.tok.tokType
-    of tkBracketLe: 
-      var s = "["
-      getTok(p)
-      while true:
-        if p.tok.tokType == tkComma:
-          add(s, ",")
-          getTok(p)
-        elif (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-          add(s, "$..")
-          getTok(p)
-          eat(p, tkDotDot)
-          if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-            add(s, '$')
-            getTok(p)
-        elif p.tok.tokType == tkDotDot: 
-          add(s, "..")
-          getTok(p)
-          if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-            add(s, '$')
-            getTok(p)
-        else: break
-      eat(p, tkBracketRi)
-      add(s, ']')
-      if p.tok.tokType == tkEquals: 
-        add(s, '=')
+    var id = ""
+    while true:
+      case p.tok.tokType
+      of tkBracketLe: 
+        id.add("[]")
         getTok(p)
-      addSon(result, newIdentNodeP(getIdent(s), p))
-    of tkParLe: 
-      addSon(result, newIdentNodeP(getIdent("()"), p))
-      getTok(p)
-      eat(p, tkParRi)
-    of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot: 
-      var id = p.tok.ident
-      getTok(p)
-      if p.tok.tokType == tkEquals: 
-        addSon(result, newIdentNodeP(getIdent(id.s & '='), p))
+        eat(p, tkBracketRi)
+      of tkEquals:
+        id.add('=')
         getTok(p)
-      else: 
-        addSon(result, newIdentNodeP(id, p))
-    else: 
-      parMessage(p, errIdentifierExpected, tokToStr(p.tok))
-      result = ast.emptyNode
+      of tkParLe: 
+        id.add("()")
+        getTok(p)
+        eat(p, tkParRi)
+      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot:
+        id.add(p.tok.ident.s)
+        getTok(p)
+      of tkIntLit..tkCharLit:
+        id.add(tokToStr(p.tok))
+        getTok(p)
+      else:
+        if id.len == 0: parMessage(p, errIdentifierExpected, tokToStr(p.tok))
+        break
+    add(result, newIdentNodeP(getIdent(id), p))
     eat(p, tkAccent)
   else: 
     parMessage(p, errIdentifierExpected, tokToStr(p.tok))
@@ -247,15 +228,8 @@ proc accExpr(p: var TParser): PNode =
   eat(p, tkAccent)
 
 proc indexExpr(p: var TParser): PNode = 
-  # indexExpr ::= expr ['=' expr]
   result = parseExpr(p)
-  if p.tok.tokType == tkEquals: 
-    var a = result
-    result = newNodeP(nkExprEqExpr, p)
-    addSon(result, a)
-    getTok(p)
-    addSon(result, parseExpr(p))
-  
+
 proc indexExprList(p: var TParser, first: PNode): PNode = 
   result = newNodeP(nkBracketExpr, p)
   addSon(result, first)

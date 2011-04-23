@@ -129,7 +129,8 @@ proc `..`*[T](a, b: T): TSlice[T] {.noSideEffect, inline.} =
 
 proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
   ## `slice`:idx: operator that constructs an interval ``[low(T), b]``
-  result.a = low(b)
+  when int(low(b)) == low(int): result.a = 0
+  else: result.a = low(b)
   result.b = b
 
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} = 
@@ -1006,7 +1007,7 @@ proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
 
 proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
   ## The stingify operator for an enumeration argument. This works for
-  ## any enumeration type thanks to compiler magic. If a
+  ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
@@ -1268,7 +1269,11 @@ proc `<`*[T: tuple](x, y: T): bool =
 
 proc `$`*[T: tuple](x: T): string = 
   ## generic ``$`` operator for tuples that is lifted from the components
-  ## of `x`.
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   $(23, 45) == "(23, 45)"
+  ##   $() == "()"
   result = "("
   for name, value in fieldPairs(x):
     if result.len > 1: result.add(", ")
@@ -1276,6 +1281,19 @@ proc `$`*[T: tuple](x: T): string =
     result.add(": ")
     result.add($value)
   result.add(")")
+
+when false:
+  proc `$`*[T](a: openArray[T]): string = 
+    ## generic ``$`` operator for open arrays that is lifted from the elements
+    ## of `a`. Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   $[23, 45] == "[23, 45]"
+    result = "["
+    for x in items(a):
+      if result.len > 1: result.add(", ")
+      result.add($x)
+    result.add("]")
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -1751,3 +1769,74 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 
 {.pop.} # checks
 {.pop.} # hints
+
+template `-|`(b, s: expr): expr =
+  (if b >= 0: b else: s.len + b)
+
+proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
+  ## slice operation for strings. Negative indexes are supported.
+  result = s.copy(x.a-|s, x.b-|s)
+
+proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
+  ## slice assignment for strings. Negative indexes are supported.
+  var a = x.a-|s
+  var L = x.b-|s - a + 1
+  if L == b.len:
+    for i in 0 .. <L: s[i+a] = b[i]
+  else:
+    raise newException(EOutOfRange, "differing lengths for slice assignment")
+
+proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
+  ## slice operation for arrays. Negative indexes are NOT supported because
+  ## the array might have negative bounds.
+  var L = x.b - x.a + 1
+  newSeq(result, L)
+  for i in 0.. <L: result[i] = a[i + x.a]
+
+proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
+  ## slice assignment for arrays. Negative indexes are NOT supported because
+  ## the array might have negative bounds.
+  var L = x.b - x.a + 1
+  if L == b.len:
+    for i in 0 .. <L: a[i+x.a] = b[i]
+  else:
+    raise newException(EOutOfRange, "differing lengths for slice assignment")
+
+proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
+  ## slice operation for arrays. Negative indexes are NOT supported because
+  ## the array might have negative bounds.
+  var L = ord(x.b) - ord(x.a) + 1
+  newSeq(result, L)
+  var j = x.a
+  for i in 0.. <L: 
+    result[i] = a[j]
+    inc(j)
+
+proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
+  ## slice assignment for arrays. Negative indexes are NOT supported because
+  ## the array might have negative bounds.
+  var L = ord(x.b) - ord(x.a) + 1
+  if L == b.len:
+    var j = x.a
+    for i in 0 .. <L: 
+      a[j] = b[i]
+      inc(j)
+  else:
+    raise newException(EOutOfRange, "differing lengths for slice assignment")
+
+proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
+  ## slice operation for sequences. Negative indexes are supported.
+  var a = x.a-|s
+  var L = x.b-|s - a + 1
+  newSeq(result, L)
+  for i in 0.. <L: result[i] = s[i + a]
+
+proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) = 
+  ## slice assignment for sequences. Negative indexes are supported.
+  var a = x.a-|s
+  var L = x.b-|s - a + 1
+  if L == b.len:
+    for i in 0 .. <L: s[i+a] = b[i]
+  else:
+    raise newException(EOutOfRange, "differing lengths for slice assignment")
+
