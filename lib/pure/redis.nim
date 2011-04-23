@@ -107,10 +107,6 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var s = r.socket.recv(numBytes+2)
   result = stripNewline(s)
 
-proc parseBulkStr(r: TRedis, allowMBNil = False): TRedisString =
-  result = r.parseBulk(allowMBNil)
-  if result == RedisNil: result = redisNil
-
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = ""
   if not r.socket.recvLine(line):
@@ -168,7 +164,7 @@ proc persist*(r: TRedis, key: string): bool =
 proc randomKey*(r: TRedis): TRedisString =
   ## Return a random key from the keyspace
   r.socket.send("RANDOMKEY\c\L")
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc rename*(r: TRedis, key, newkey: string): TRedisStatus =
   ## Rename a key.
@@ -214,7 +210,7 @@ proc decrBy*(r: TRedis, key: string, decrement: int): TRedisInteger =
 proc get*(r: TRedis, key: string): TRedisString =
   ## Get the value of a key. Returns `nil` when `key` doesn't exist.
   r.socket.send("GET $1\c\L" % key)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc getBit*(r: TRedis, key: string, offset: int): TRedisInteger =
   ## Returns the bit value at offset in the string value stored at key
@@ -224,13 +220,13 @@ proc getBit*(r: TRedis, key: string, offset: int): TRedisInteger =
 proc getRange*(r: TRedis, key: string, start, stop: int): TRedisString =
   ## Get a substring of the string stored at a key
   r.socket.send("GETRANGE $1 $2 $3\c\L" % [key, $start, $stop])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc getSet*(r: TRedis, key: string, value: string): TRedisString =
   ## Set the string value of a key and return its old value. Returns `nil` when
   ## key doesn't exist.
   r.socket.send("GETSET $1 \"$2\"\c\L" % [key, value])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc incr*(r: TRedis, key: string): TRedisInteger =
   ## Increment the integer value of a key by one.
@@ -292,7 +288,7 @@ proc hExists*(r: TRedis, key, field: string): bool =
 proc hGet*(r: TRedis, key, field: string): TRedisString =
   ## Get the value of a hash field
   r.socket.send("HGET $1 $2\c\L" % [key, field])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc hGetAll*(r: TRedis, key: string): TRedisList =
   ## Get all the fields and values in a hash
@@ -364,12 +360,12 @@ proc bRPopLPush*(r: TRedis, source, destination: string,
   ##
   ## http://redis.io/commands/brpoplpush
   r.socket.send("BRPOPLPUSH $1 $2 $3\c\L" % [source, destination, $timeout])
-  return r.parseBulkStr(true) # Multi-Bulk nil allowed.
+  return r.parseBulk(true) # Multi-Bulk nil allowed.
 
 proc lIndex*(r: TRedis, key: string, index: int): TRedisString =
   ## Get an element from a list by its index
   r.socket.send("LINDEX $1 $2\c\L" % [key, $index])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc lInsert*(r: TRedis, key: string, before: bool, pivot, value: string):
               TRedisInteger =
@@ -386,7 +382,7 @@ proc lLen*(r: TRedis, key: string): TRedisInteger =
 proc lPop*(r: TRedis, key: string): TRedisString =
   ## Remove and get the first element in a list
   r.socket.send("LPOP $1\c\L" % key)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc lPush*(r: TRedis, key, value: string, create: bool = True): TRedisInteger =
   ## Prepend a value to a list. Returns the length of the list after the push.
@@ -424,12 +420,12 @@ proc lTrim*(r: TRedis, key: string, start, stop: int) =
 proc rPop*(r: TRedis, key: string): TRedisString =
   ## Remove and get the last element in a list
   r.socket.send("RPOP $1\c\L" % key)
-  return r.parseBulkStr()
+  return r.parseBulk()
   
 proc rPopLPush*(r: TRedis, source, destination: string): TRedisString =
   ## Remove the last element in a list, append it to another list and return it
   r.socket.send("RPOPLPUSH $1 $2\c\L" % [source, destination])
-  return r.parseBulkStr()
+  return r.parseBulk()
   
 proc rPush*(r: TRedis, key, value: string, create: bool = True): TRedisInteger =
   ## Append a value to a list. Returns the length of the list after the push.
@@ -495,12 +491,12 @@ proc smove*(r: TRedis, source: string, destination: string,
 proc spop*(r: TRedis, key: string): TRedisString =
   ## Remove and return a random member from a set
   r.socket.send("SPOP $#\c\L" % key)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc srandmember*(r: TRedis, key: string): TRedisString =
   ## Get a random member from a set
   r.socket.send("SRANDMEMBER $#\c\L" % key)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc srem*(r: TRedis, key: string, member: string): TRedisInteger =
   ## Remove a member from a set
@@ -539,7 +535,7 @@ proc zincrby*(r: TRedis, key: string, increment: string,
              member: string): TRedisString =
   ## Increment the score of a member in a sorted set
   r.socket.send("ZINCRBY $# $# \"$#\"\c\L" % [key, increment, member])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc zinterstore*(r: TRedis, destination: string, numkeys: string,
                  key: openarray[string], weights: openarray[string] = [],
@@ -580,7 +576,7 @@ proc zrangebyscore*(r: TRedis, key: string, min: string, max: string,
 proc zrank*(r: TRedis, key: string, member: string): TRedisString =
   ## Determine the index of a member in a sorted set
   r.socket.send("ZRANK $# \"$#\"\c\L" % [key, member])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc zrem*(r: TRedis, key: string, member: string): TRedisInteger =
   ## Remove a member from a sorted set
@@ -626,12 +622,12 @@ proc zrevrank*(r: TRedis, key: string, member: string): TRedisString =
   ## Determine the index of a member in a sorted set, with
   ## scores ordered from high to low
   r.socket.send("ZREVRANK $# \"$#\"\c\L" % [key, member])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc zscore*(r: TRedis, key: string, member: string): TRedisString =
   ## Get the score associated with the given member in a sorted set
   r.socket.send("ZSCORE $# \"$#\"\c\L" % [key, member])
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc zunionstore*(r: TRedis, destination: string, numkeys: string,
                  key: openarray[string], weights: openarray[string] = [],
@@ -717,7 +713,7 @@ proc auth*(r: TRedis, password: string) =
 proc echoServ*(r: TRedis, message: string): TRedisString =
   ## Echo the given string
   r.socket.send("ECHO $#\c\L" % message)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc ping*(r: TRedis): TRedisStatus =
   ## Ping the server
@@ -749,7 +745,7 @@ proc bgsave*(r: TRedis) =
 proc configGet*(r: TRedis, parameter: string): TRedisString =
   ## Get the value of a configuration parameter
   r.socket.send("CONFIG GET $#\c\L" % parameter)
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc configSet*(r: TRedis, parameter: string, value: string) =
   ## Set a configuration parameter to the given value
@@ -788,7 +784,7 @@ proc flushdb*(r: TRedis): TRedisStatus =
 proc info*(r: TRedis): TRedisString =
   ## Get information and statistics about the server
   r.socket.send("INFO\c\L")
-  return r.parseBulkStr()
+  return r.parseBulk()
 
 proc lastsave*(r: TRedis): TRedisInteger =
   ## Get the UNIX time stamp of the last successful save to disk
@@ -824,6 +820,7 @@ when isMainModule:
   r.setk("nim:utf8", "こんにちは")
   echo r.incr("nim:int")
   echo r.incr("nim:int")
+  echo r.get("nim:int")
   echo r.get("nim:utf8")
   echo repr(r.get("blahasha"))
   var p = r.lrange("mylist", 0, -1)
