@@ -126,7 +126,6 @@ proc `$`*[A, B](t: PHashTable[A, B]): string =
       result.add($val)
     result.add("}")
 
-
 # ------------------------------ count tables -------------------------------
 
 const
