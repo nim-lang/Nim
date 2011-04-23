@@ -10,7 +10,7 @@
 ## This module implements a redis client. It allows you to connect to a redis-server instance, send commands and receive replies.
 ##
 ## **Beware**: Most (if not all) functions that return a `TRedisString` may
-## return `nil`.
+## return `redisNil`.
 
 import sockets, os, strutils, parseutils
 
@@ -109,7 +109,7 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
 
 proc parseBulkStr(r: TRedis, allowMBNil = False): TRedisString =
   result = r.parseBulk(allowMBNil)
-  if result == RedisNil: result = nil
+  if result == RedisNil: result = redisNil
 
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = ""
@@ -820,8 +820,8 @@ proc slaveof*(r: TRedis, host: string, port: string) =
 
 when isMainModule:
   var r = open()
-  echo r.setk("nim:test", "WORKS!!!")
-  echo r.setk("nim:utf8", "こんにちは")
+  r.setk("nim:test", "WORKS!!!")
+  r.setk("nim:utf8", "こんにちは")
   echo r.incr("nim:int")
   echo r.incr("nim:int")
   echo r.get("nim:utf8")
