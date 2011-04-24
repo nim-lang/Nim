@@ -140,6 +140,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut1.txt
   cp doc/tut2.txt $docdir/tut2.txt || exit 1
   chmod 644 $docdir/tut2.txt
+  cp doc/manual.html $docdir/manual.html || exit 1
+  chmod 644 $docdir/manual.html
   cp doc/mytest.cfg $docdir/mytest.cfg || exit 1
   chmod 644 $docdir/mytest.cfg
   cp doc/c2nim.pdf $docdir/c2nim.pdf || exit 1
@@ -270,6 +272,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/parsexml.nim
   cp lib/pure/pegs.nim $libdir/pure/pegs.nim || exit 1
   chmod 644 $libdir/pure/pegs.nim
+  cp lib/pure/redis.nim $libdir/pure/redis.nim || exit 1
+  chmod 644 $libdir/pure/redis.nim
   cp lib/pure/regexprs.nim $libdir/pure/regexprs.nim || exit 1
   chmod 644 $libdir/pure/regexprs.nim
   cp lib/pure/ropes.nim $libdir/pure/ropes.nim || exit 1
