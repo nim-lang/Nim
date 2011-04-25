@@ -69,7 +69,7 @@ proc defaultFilename*(): string =
 proc substituteLog*(frmt: string): string = 
   ## converts $date to the current date
   ## converts $time to the current time
-  ## converts $app to getApplicationFilename()
+  ## converts $app to getAppFilename()
   ## converts 
   result = ""
   var i = 0
@@ -80,7 +80,7 @@ proc substituteLog*(frmt: string): string =
     else:
       inc(i)
       var v = ""
-      var app = getApplicationFilename()
+      var app = getAppFilename()
       while frmt[i] in IdentChars: 
         v.add(toLower(frmt[i]))
         inc(i)

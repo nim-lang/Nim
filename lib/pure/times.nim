@@ -295,8 +295,7 @@ when not defined(ECMAScript):
       when defined(posix):
         var a: Ttimeval
         posix_gettimeofday(a)
-        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.001
-        # why 0.001 instead of 0.00_0001? I don't know.
+        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
         var f: winlean.Filetime
         GetSystemTimeAsFileTime(f)
