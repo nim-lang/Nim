@@ -40,6 +40,15 @@ Core
 * `marshal <marshal.html>`_
   Contains procs for serialization and deseralization of arbitrary Nimrod 
   data structures.
+
+
+Collections and algorithms
+--------------------------
+
+* `hashtables <hashtables.html>`_
+  Nimrod hash table support.
+* `lists <lists.html>`_
+  Nimrod linked list support.
   
 
 String handling
