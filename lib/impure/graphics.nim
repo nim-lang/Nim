@@ -9,7 +9,8 @@
 
 ## This module implements graphical output for Nimrod; the current
 ## implementation uses SDL but the interface is meant to support multiple
-## backends some day. 
+## backends some day. There is no need to init SDL as this module does that 
+## implicitly.
 
 import colors, math
 from sdl import PSurface # Bug
@@ -20,9 +21,9 @@ type
   TPoint* = tuple[x, y: int]
 
   PSurface* = ref TSurface ## a surface to draw onto
-  TSurface {.pure, final.} = object
-    w, h: int
-    s: sdl.PSurface
+  TSurface* {.pure, final.} = object
+    w*, h*: int
+    s*: sdl.PSurface
   
   EGraphics* = object of EIO
 
@@ -31,12 +32,24 @@ type
     color: SDL.TColor
   PFont* = ref TFont ## represents a font
 
-proc toSdlColor(c: TColor): Sdl.TColor =
-  # Convert colors.TColor to SDL.TColor
+proc toSdlColor*(c: TColor): Sdl.TColor =
+  ## Convert colors.TColor to SDL.TColor
   var x = c.extractRGB  
   result.r = toU8(x.r)
   result.g = toU8(x.g)
   result.b = toU8(x.b)
+
+proc createSdlColor*(sur: PSurface, c: TColor, alpha: int = 0): int32 =
+  ## Creates a color using ``sdl.MapRGBA``.
+  var x = c.extractRGB
+  return sdl.MapRGBA(sur.s.format, toU8(x.r), toU8(x.g), toU8(x.b), toU8(alpha))
+
+proc toSdlRect*(r: TRect): sdl.TRect =
+  ## Convert ``graphics.TRect`` to ``sdl.TRect``.
+  result.x = int16(r.x)
+  result.y = int16(r.y)
+  result.w = int16(r.width)
+  result.h = int16(r.height)
 
 proc raiseEGraphics = 
   raise newException(EGraphics, $SDL.GetError())
@@ -50,7 +63,9 @@ proc newSurface*(width, height: int): PSurface =
   result.h = height
   result.s = SDL.CreateRGBSurface(SDL.SWSURFACE, width, height, 
       32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0)
-   
+  if result.s == nil:
+    raiseEGraphics()
+  
   assert(not sdl.MustLock(result.s))
 
 proc fontFinalizer(f: PFont) = closeFont(f.f)
@@ -71,12 +86,14 @@ proc initDefaultFont*(name = "VeraMono.ttf", size = 9, color = colBlack) =
   ## initializes the `defaultFont` var.
   defaultFont = newFont(name, size, color)
 
-proc newScreenSurface(width, height: int): PSurface =
+proc newScreenSurface*(width, height: int): PSurface =
   ## Creates a new screen surface
   new(result, surfaceFinalizer)
   result.w = width
   result.h = height
   result.s = SDL.SetVideoMode(width, height, 0, 0)
+  if result.s == nil:
+    raiseEGraphics()
 
 proc writeToBMP*(sur: PSurface, filename: string) =
   ## Saves the contents of the surface `sur` to the file `filename` as a 
@@ -113,15 +130,15 @@ proc `[]`*(sur: PSurface, p: TPoint): TColor =
   ## get pixel at position `p`. No range checking is done!
   result = getPixel(sur, p.x, p.y)
 
-proc `[,]`*(sur: PSurface, x, y: int): TColor = 
+proc `[]`*(sur: PSurface, x, y: int): TColor =
   ## get pixel at position ``(x, y)``. No range checking is done!
   result = getPixel(sur, x, y)
 
-proc `[]=`*(sur: PSurface, p: TPoint, col: TColor) = 
+proc `[]=`*(sur: PSurface, p: TPoint, col: TColor) =
   ## set the pixel at position `p`. No range checking is done!
   setPixel(sur, p.x, p.y, col)
 
-proc `[,]=`*(sur: PSurface, x, y: int, col: TColor) =
+proc `[]=`*(sur: PSurface, x, y: int, col: TColor) =
   ## set the pixel at position ``(x, y)``. No range checking is done!
   setPixel(sur, x, y, col)
 
@@ -159,8 +176,6 @@ proc drawText*(sur: PSurface, p: TPoint, text: string, font = defaultFont) =
   textSur.s = sdl_ttf.RenderTextBlended(font.f, text, font.color)
   # Merge the text surface with sur
   sur.blit((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
-  # Free the surface
-  SDL.FreeSurface(sur.s)
 
 proc drawText*(sur: PSurface, p: TPoint, text: string,
                bg: TColor, font = defaultFont) =
@@ -171,8 +186,6 @@ proc drawText*(sur: PSurface, p: TPoint, text: string,
   textSur.s = sdl_ttf.RenderTextShaded(font.f, text, font.color, toSdlColor(bg))
   # Merge the text surface with sur
   sur.blit((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
-  # Free the surface
-  SDL.FreeSurface(sur.s)
   
 proc drawCircle*(sur: PSurface, p: TPoint, r: Natural, color: TColor) =
   ## draws a circle with center `p` and radius `r` with the given color
@@ -323,14 +336,10 @@ proc drawRect*(sur: PSurface, r: TRect, color: TColor) =
       setPix(video, pitch, r.x + minW - 1, r.y + i, color) # Draw right side
     
 proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
-  ## draws and fills a rectangle.
-  var video = cast[PPixels](sur.s.pixels)
-  assert video != nil
-  var pitch = sur.s.pitch div ColSize
-
-  for i in r.y..min(sur.s.h, r.y+r.height-1)-1:
-    for j in r.x..min(sur.s.w, r.x+r.width-1)-1:
-      setPix(video, pitch, j, i, col)
+  ## Fills a rectangle using sdl's ``FillRect`` function.
+  var rect = toSdlRect(r)
+  if sdl.FillRect(sur.s, addr(rect), sur.createSdlColor(col)) == -1:
+    raiseEGraphics()
 
 proc Plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
   var video = cast[PPixels](sur.s.pixels)
@@ -450,7 +459,14 @@ proc drawLineAA*(sur: PSurface, p1, p2: TPoint, color: TColor) =
     sur.plotAA(x.toFloat(), ipart(intery) + 1.0, fpart(intery), color)
     intery = intery + gradient
 
-template withEvents(surf: PSurface, event: expr, actions: stmt): stmt =
+proc fillSurface*(sur: PSurface, color: TColor) =
+  ## Fills the entire surface with ``color``.
+  if sdl.FillRect(sur.s, nil, sur.createSdlColor(color)) == -1:
+    raiseEGraphics()
+
+template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt =
+  ## Simple template which creates an event loop. ``Event`` is the name of the
+  ## variable containing the TEvent object.
   while True:
     var event: SDL.TEvent
     if SDL.PollEvent(addr(event)) == 1:
@@ -461,10 +477,9 @@ if sdl_ttf.Init() < 0: raiseEGraphics()
 
 when isMainModule:
   var surf = newScreenSurface(800, 600)
-  var r: TRect = (0, 0, 900, 900)
-    
+  surf.fillSurface(colWhite)
+  
   # Draw the shapes
-  surf.fillRect(r, colWhite)
   surf.drawLineAA((100, 170), (400, 471), colTan)
   surf.drawLine((100, 170), (400, 471), colRed)
   
@@ -480,6 +495,8 @@ when isMainModule:
   surf.drawVerLine(5, 60, 800, colRed)
   surf.drawCircle((600, 500), 60, colRed)
   
+  surf.fillRect((50, 50, 100, 100), colFuchsia)
+  
   #surf.drawText((300, 300), "TEST", colMidnightBlue)
   #var textSize = textBounds("TEST")
   #surf.drawText((300, 300 + textSize.height), $textSize.width & ", " &
@@ -488,33 +505,38 @@ when isMainModule:
   var mouseStartX = 0
   var mouseStartY = 0
   withEvents(surf, event):
+    var eventp = addr(event)
     case event.kind:
     of SDL.QUITEV:
       break
     of SDL.KEYDOWN:
-      if event.sym == SDL.K_LEFT:
-        echo(event.sym)
-        surf.drawHorLine(395, 300, 5, colPaleGoldenRod)
+      var evk = sdl.EvKeyboard(eventp)
+      if evk.keysym.sym == SDL.K_LEFT:
+        surf.drawHorLine(395, 300, 50, colBlack)
         echo("Drawing")
       else:
-        echo(event.sym)
+        echo(evk.keysym.sym)
     of SDL.MOUSEBUTTONDOWN:
-      # button.x/y is F* UP!
-      echo("MOUSEDOWN ", event.x)
-      mouseStartX = event.x
-      mouseStartY = event.y
+      var mbd = sdl.EvMouseButton(eventp)
+      mouseStartX = mbd.x
+      mouseStartY = mbd.y
       
     of SDL.MOUSEBUTTONUP:
-      echo("MOUSEUP ", mouseStartX)
+      var mbu = sdl.EvMouseButton(eventp)
       if mouseStartX != 0 and mouseStartY != 0:
-        echo(mouseStartX, "->", int(event.x))
+        echo(mouseStartX, "x->", mbu.x)
+        echo(mouseStartY, "y->", mbu.y)
         surf.drawLineAA((mouseStartX, MouseStartY), 
-          (int(event.x), int(event.y)), colPaleGoldenRod)
+          (int(mbu.x), int(mbu.y)), colRed)
         mouseStartX = 0
         mouseStartY = 0
-      
+    
+    of SDL.MouseMotion:
+      var mm = sdl.EvMouseMotion(eventp)
+      echo(mm.x, " ", mm.y, " ", mm.yrel)
+    
     else:
-      #echo(event.theType)
+      #echo(event.kind)
       
     SDL.UpdateRect(surf.s, int32(0), int32(0), int32(800), int32(600))
     
