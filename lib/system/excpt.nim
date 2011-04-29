@@ -64,7 +64,7 @@ const
    nativeStackTraceSupported = (defined(macosx) or defined(linux)) and 
                                not nimrodStackTrace
 
-when nativeStacktrace and nativeStackTraceSupported:
+when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
     TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
                final, pure.} = object
@@ -165,7 +165,7 @@ proc rawWriteStackTrace(s: var string) =
       add(s, "Traceback (most recent call last)")
       add(s, stackTraceNewLine)
       auxWriteStackTrace(framePtr, s)
-  elif nativeStackTrace and nativeStackTraceSupported:
+  elif defined(nativeStackTrace) and nativeStackTraceSupported:
     add(s, "Traceback from system (most recent call last)")
     add(s, stackTraceNewLine)
     auxWriteStackTraceWithBacktrace(s)
