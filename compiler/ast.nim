@@ -226,6 +226,10 @@ type
 
   TSymFlags* = set[TSymFlag]
 
+const
+  sfFakeConst* = sfDeadCodeElim # const cannot be put into a data section
+
+type
   TTypeKind* = enum  # order is important!
                      # Don't forget to change hti.nim if you make a change here
                      # XXX put this into an include file to avoid this issue!

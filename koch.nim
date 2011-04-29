@@ -38,6 +38,7 @@ Boot options:
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
   -d:useGnuReadline        use the GNU readline library for interactive mode
                            (not needed on Windows)
+  -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)

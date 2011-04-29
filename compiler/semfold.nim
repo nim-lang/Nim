@@ -338,7 +338,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
       of mNegInf: result = newFloatNodeT(NegInf, n)
-      else: result = copyTree(s.ast)
+      else:
+        if sfFakeConst notin s.flags: result = copyTree(s.ast)
     elif s.kind in {skProc, skMethod}: # BUGFIX
       result = n
   of nkCharLit..nkNilLit: 

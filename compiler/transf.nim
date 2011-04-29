@@ -17,7 +17,7 @@
 # * introduces method dispatchers
 
 import 
-  strutils, lists, options, ast, astalgo, trees, treetab, evals, msgs, os, 
+  strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
   idents, renderer, types, passes, semfold, magicsys, cgmeth
 
 const 
@@ -178,10 +178,10 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   result = b
   case b.sym.kind
   of skConst, skEnumField: 
-    # BUGFIX: skEnumField was missing
-    if not (skipTypes(b.sym.typ, abstractInst).kind in ConstantDataTypes): 
-      result = getConstExpr(c.module, b)
-      if result == nil: InternalError(b.info, "transformSym: const")
+    if sfFakeConst notin b.sym.flags:
+      if skipTypes(b.sym.typ, abstractInst).kind notin ConstantDataTypes: 
+        result = getConstExpr(c.module, b)
+        if result == nil: InternalError(b.info, "transformSym: const")
   else: 
     nil
 
@@ -222,6 +222,26 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       assert(it.sons[L-2].kind == nkEmpty)
       defs[L-1] = transform(c, it.sons[L-1])
       result[i] = defs
+
+proc transformConstSection(c: PTransf, v: PNode): PTransNode =
+  result = newTransNode(v)
+  for i in countup(0, sonsLen(v)-1):
+    var it = v.sons[i]
+    if it.kind == nkCommentStmt:
+      result[i] = PTransNode(it)
+    else:
+      if it.kind != nkConstDef: InternalError(it.info, "transformConstSection")
+      if it.sons[0].kind != nkSym:
+        InternalError(it.info, "transformConstSection")
+      if sfFakeConst in it[0].sym.flags:
+        var b = newNodeI(nkConstDef, it.info)
+        addSon(b, it[0])
+        addSon(b, ast.emptyNode)            # no type description
+        addSon(b, transform(c, it[2]).pnode)
+        result[i] = PTransNode(b)
+      else:
+        result[i] = PTransNode(it)
+  
 
 proc hasContinue(n: PNode): bool = 
   case n.kind
@@ -532,7 +552,7 @@ proc addFormalParam(routine: PSym, param: PSym) =
   addSon(routine.ast.sons[paramsPos], newSymNode(param))
 
 proc indirectAccess(a, b: PSym): PNode = 
-  # returns a^ .b as a node
+  # returns a[].b as a node
   var x = newSymNode(a)
   var y = newSymNode(b)
   var deref = newNodeI(nkHiddenDeref, x.info)
@@ -698,9 +718,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = PTransNode(newNode(nkCommentStmt))
   of nkCommentStmt, nkTemplateDef: 
     return n.ptransNode
-  of nkConstSection: 
+  of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
-    return n.ptransNode                    
+    return transformConstSection(c, n)
   of nkVarSection: 
     if c.inlining > 0: 
       # we need to copy the variables for multiple yield statements:
@@ -722,6 +742,7 @@ proc processTransf(context: PPassContext, n: PNode): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
+  if passes.skipCodegen(n): return n
   var c = PTransf(context)
   pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = PNode(transform(c, n))
@@ -740,3 +761,7 @@ proc transfPass(): TPass =
   result.process = processTransf
   result.close = processTransf # we need to process generics too!
   
+proc transform*(module: PSym, n: PNode): PNode =
+  var c = openTransf(module, "")
+  result = processTransf(c, n)
+

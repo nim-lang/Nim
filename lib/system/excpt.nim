@@ -61,10 +61,10 @@ proc popCurrentException {.compilerRtl, inl.} =
 
 # some platforms have native support for stack traces:
 const
-  nativeStackTrace = (defined(macosx) or defined(linux)) and 
-                     not nimrodStackTrace
+   nativeStackTraceSupported = (defined(macosx) or defined(linux)) and 
+                               not nimrodStackTrace
 
-when nativeStacktrace:
+when nativeStacktrace and nativeStackTraceSupported:
   type
     TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
                final, pure.} = object
@@ -165,7 +165,7 @@ proc rawWriteStackTrace(s: var string) =
       add(s, "Traceback (most recent call last)")
       add(s, stackTraceNewLine)
       auxWriteStackTrace(framePtr, s)
-  elif nativeStackTrace:
+  elif nativeStackTrace and nativeStackTraceSupported:
     add(s, "Traceback from system (most recent call last)")
     add(s, stackTraceNewLine)
     auxWriteStackTraceWithBacktrace(s)

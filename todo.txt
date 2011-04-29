@@ -1,5 +1,7 @@
 - clean up the tests!
-- fake-consts, implicit ref/ptr->var conversion
+- implicit ref/ptr->var conversion
+- warning for implicit openArray -> varargs convention
+- implement explicit varargs
 
 
 High priority (version 0.9.0)

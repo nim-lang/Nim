@@ -12,7 +12,8 @@ To get the source code you need either of these:
   ``wget --no-check-certificate "https://github.com/Araq/Nimrod/tarball/master"``
 * git: ``git clone git://github.com/Araq/Nimrod.git``
 
-After downloading the source (and extracting it), you need to extract build/csources.zip then you can bootstrap with:
+After downloading the source (and extracting it), you need to 
+extract ``build/csources.zip`` and then you can bootstrap with:
 
 * ``./build.sh`` or ``build.bat`` (Windows)
 * ``nimrod c koch``

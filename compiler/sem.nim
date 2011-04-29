@@ -75,7 +75,7 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
   if result == nil: 
     #writeln(output, renderTree(n));
     result = evalConstExpr(c.module, e)
-    if (result == nil) or (result.kind == nkEmpty): 
+    if result == nil or result.kind == nkEmpty: 
       GlobalError(n.info, errConstExprExpected)
   
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 

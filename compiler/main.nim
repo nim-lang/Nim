@@ -141,11 +141,11 @@ proc CommandCompileToEcmaScript(filename: string) =
 proc CommandInteractive() = 
   msgs.gErrorMax = high(int)  # do not stop after first error
   incl(gGlobalOptions, optSafeCode)
-  setTarget(osNimrodVM, cpuNimrodVM)
+  #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
+  DefineSymbol("nimrodvm")
   registerPass(verbosePass())
   registerPass(sem.semPass())
-  registerPass(transf.transfPass())
   registerPass(evals.evalPass()) # load system module:
   discard CompileModule(JoinPath(options.libpath, addFileExt("system", nimExt)), 
                         false, true)

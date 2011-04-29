@@ -337,14 +337,23 @@ proc semConst(c: PContext, n: PNode): PNode =
     var v = semIdentDef(c, a.sons[0], skConst)
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
-    var def = semAndEvalConstExpr(c, a.sons[2]) 
-    # check type compability between def.typ and typ:
+
+    var e = semExprWithType(c, a.sons[2])
+    if e == nil: GlobalError(a.sons[2].info, errConstExprExpected)
+    var def = getConstExpr(c.module, e)
+    if def == nil: 
+      v.flags.incl(sfFakeConst)
+      def = evalConstExpr(c.module, e)
+      if def == nil or def.kind == nkEmpty: def = e
+    # check type compatibility between def.typ and typ:
     if typ != nil:
       def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
     if not typeAllowed(typ, skConst):
-      GlobalError(a.info, errXisNoType, typeToString(typ))
+      v.flags.incl(sfFakeConst)
+      if not typeAllowed(typ, skVar):
+        GlobalError(a.info, errXisNoType, typeToString(typ))
     v.typ = typ
     v.ast = def               # no need to copy
     if v.flags * {sfStar, sfMinus} != {}: incl(v.flags, sfInInterface)
