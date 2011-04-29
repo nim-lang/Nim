@@ -193,6 +193,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evals.c -o build/1_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/semfold.c -o build/1_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/semfold.c -o build/1_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pragmas.c -o build/1_1/pragmas.o"
@@ -213,16 +217,12 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgen.c -o build/1_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ccgutils.c -o build/1_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ccgutils.c -o build/1_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passaux.c -o build/1_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/passaux.c -o build/1_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -282,6 +282,8 @@ build/1_1/treetab.o \
 build/1_1/sem.o \
 build/1_1/evals.o \
 build/1_1/semfold.o \
+build/1_1/transf.o \
+build/1_1/cgmeth.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
@@ -292,11 +294,9 @@ build/1_1/rst.o \
 build/1_1/highlite.o \
 build/1_1/cgen.o \
 build/1_1/ccgutils.o \
-build/1_1/cgmeth.o \
 build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
-build/1_1/transf.o \
 build/1_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_1/nim__dat.o \
@@ -355,6 +355,8 @@ build/1_1/treetab.o \
 build/1_1/sem.o \
 build/1_1/evals.o \
 build/1_1/semfold.o \
+build/1_1/transf.o \
+build/1_1/cgmeth.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
@@ -365,11 +367,9 @@ build/1_1/rst.o \
 build/1_1/highlite.o \
 build/1_1/cgen.o \
 build/1_1/ccgutils.o \
-build/1_1/cgmeth.o \
 build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
-build/1_1/transf.o \
 build/1_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -485,6 +485,10 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
@@ -505,16 +509,12 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgen.c -o build/1_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -574,6 +574,8 @@ build/1_2/treetab.o \
 build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
+build/1_2/transf.o \
+build/1_2/cgmeth.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -584,11 +586,9 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
-build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
-build/1_2/transf.o \
 build/1_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_2/nim__dat.o \
@@ -647,6 +647,8 @@ build/1_2/treetab.o \
 build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
+build/1_2/transf.o \
+build/1_2/cgmeth.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -657,11 +659,9 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
-build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
-build/1_2/transf.o \
 build/1_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -777,6 +777,10 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
@@ -797,16 +801,12 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgen.c -o build/1_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -866,6 +866,8 @@ build/1_2/treetab.o \
 build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
+build/1_2/transf.o \
+build/1_2/cgmeth.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -876,11 +878,9 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
-build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
-build/1_2/transf.o \
 build/1_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_2/nim__dat.o \
@@ -939,6 +939,8 @@ build/1_2/treetab.o \
 build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
+build/1_2/transf.o \
+build/1_2/cgmeth.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -949,11 +951,9 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
-build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
-build/1_2/transf.o \
 build/1_2/parseopt.o || exit 1
     ;;
   *)
@@ -1077,6 +1077,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evals.c -o build/2_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/semfold.c -o build/2_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/semfold.c -o build/2_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pragmas.c -o build/2_1/pragmas.o"
@@ -1097,16 +1101,12 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgen.c -o build/2_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ccgutils.c -o build/2_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ccgutils.c -o build/2_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passaux.c -o build/2_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passaux.c -o build/2_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/depends.c -o build/2_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/depends.c -o build/2_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -1166,6 +1166,8 @@ build/2_1/treetab.o \
 build/2_1/sem.o \
 build/2_1/evals.o \
 build/2_1/semfold.o \
+build/2_1/transf.o \
+build/2_1/cgmeth.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
@@ -1176,11 +1178,9 @@ build/2_1/rst.o \
 build/2_1/highlite.o \
 build/2_1/cgen.o \
 build/2_1/ccgutils.o \
-build/2_1/cgmeth.o \
 build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
-build/2_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_1/nim__dat.o \
@@ -1239,6 +1239,8 @@ build/2_1/treetab.o \
 build/2_1/sem.o \
 build/2_1/evals.o \
 build/2_1/semfold.o \
+build/2_1/transf.o \
+build/2_1/cgmeth.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
@@ -1249,11 +1251,9 @@ build/2_1/rst.o \
 build/2_1/highlite.o \
 build/2_1/cgen.o \
 build/2_1/ccgutils.o \
-build/2_1/cgmeth.o \
 build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
-build/2_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -1369,6 +1369,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
@@ -1389,16 +1393,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgen.c -o build/2_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -1458,6 +1458,8 @@ build/2_2/treetab.o \
 build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
+build/2_2/transf.o \
+build/2_2/cgmeth.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1468,11 +1470,9 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
-build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
-build/2_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_2/nim__dat.o \
@@ -1531,6 +1531,8 @@ build/2_2/treetab.o \
 build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
+build/2_2/transf.o \
+build/2_2/cgmeth.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1541,11 +1543,9 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
-build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
-build/2_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -1661,6 +1661,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
@@ -1681,16 +1685,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgen.c -o build/2_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -1750,6 +1750,8 @@ build/2_2/treetab.o \
 build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
+build/2_2/transf.o \
+build/2_2/cgmeth.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1760,11 +1762,9 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
-build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
-build/2_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_2/nim__dat.o \
@@ -1823,6 +1823,8 @@ build/2_2/treetab.o \
 build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
+build/2_2/transf.o \
+build/2_2/cgmeth.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1833,11 +1835,9 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
-build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
-build/2_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
@@ -1961,6 +1961,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evals.c -o build/3_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semfold.c -o build/3_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/semfold.c -o build/3_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pragmas.c -o build/3_1/pragmas.o"
@@ -1981,16 +1985,12 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgen.c -o build/3_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/passaux.c -o build/3_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/passaux.c -o build/3_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/depends.c -o build/3_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/depends.c -o build/3_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2050,6 +2050,8 @@ build/2_1/treetab.o \
 build/3_1/sem.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
+build/3_1/transf.o \
+build/3_1/cgmeth.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
@@ -2060,11 +2062,9 @@ build/3_1/rst.o \
 build/3_1/highlite.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
-build/3_1/cgmeth.o \
 build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
-build/3_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
@@ -2123,6 +2123,8 @@ build/2_1/treetab.o \
 build/3_1/sem.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
+build/3_1/transf.o \
+build/3_1/cgmeth.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
@@ -2133,11 +2135,9 @@ build/3_1/rst.o \
 build/3_1/highlite.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
-build/3_1/cgmeth.o \
 build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
-build/3_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -2253,6 +2253,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
@@ -2273,16 +2277,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgen.c -o build/3_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2342,6 +2342,8 @@ build/2_2/treetab.o \
 build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
+build/3_2/transf.o \
+build/3_2/cgmeth.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2352,11 +2354,9 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
-build/3_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
@@ -2415,6 +2415,8 @@ build/2_2/treetab.o \
 build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
+build/3_2/transf.o \
+build/3_2/cgmeth.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2425,11 +2427,9 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
-build/3_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -2545,6 +2545,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
@@ -2565,16 +2569,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgen.c -o build/3_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2634,6 +2634,8 @@ build/2_2/treetab.o \
 build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
+build/3_2/transf.o \
+build/3_2/cgmeth.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2644,11 +2646,9 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
-build/3_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
@@ -2707,6 +2707,8 @@ build/2_2/treetab.o \
 build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
+build/3_2/transf.o \
+build/3_2/cgmeth.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2717,11 +2719,9 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
-build/3_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
@@ -2845,6 +2845,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -2865,16 +2869,12 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2934,6 +2934,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -2944,11 +2946,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/nim__dat.o \
@@ -3007,6 +3007,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3017,11 +3019,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -3137,6 +3137,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -3157,16 +3161,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3226,6 +3226,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3236,11 +3238,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -3299,6 +3299,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3309,11 +3311,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -3429,6 +3429,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -3449,16 +3453,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3518,6 +3518,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3528,11 +3530,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -3591,6 +3591,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3601,11 +3603,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
@@ -3729,6 +3729,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -3749,16 +3753,12 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3818,6 +3818,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3828,11 +3830,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/nim__dat.o \
@@ -3891,6 +3891,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3901,11 +3903,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -4021,6 +4021,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4041,16 +4045,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4110,6 +4110,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4120,11 +4122,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -4183,6 +4183,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4193,11 +4195,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -4313,6 +4313,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4333,16 +4337,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4402,6 +4402,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4412,11 +4414,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -4475,6 +4475,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4485,11 +4487,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
@@ -4613,6 +4613,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -4633,16 +4637,12 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4702,6 +4702,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -4712,11 +4714,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/nim__dat.o \
@@ -4775,6 +4775,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -4785,11 +4787,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -4905,6 +4905,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4925,16 +4929,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4994,6 +4994,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5004,11 +5006,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -5067,6 +5067,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5077,11 +5079,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -5197,6 +5197,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -5217,16 +5221,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5286,6 +5286,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5296,11 +5298,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -5359,6 +5359,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5369,11 +5371,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
@@ -5497,6 +5497,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -5517,16 +5521,12 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5586,6 +5586,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -5596,11 +5598,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/nim__dat.o \
@@ -5659,6 +5659,8 @@ build/2_1/treetab.o \
 build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
+build/4_1/transf.o \
+build/4_1/cgmeth.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -5669,11 +5671,9 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
-build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
-build/4_1/transf.o \
 build/2_1/parseopt.o || exit 1
     ;;
   amd64)
@@ -5789,6 +5789,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -5809,16 +5813,12 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5878,6 +5878,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5888,11 +5890,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -5951,6 +5951,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5961,11 +5963,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   powerpc64)
@@ -6081,6 +6081,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -6101,16 +6105,12 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o || exit 1
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -6170,6 +6170,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -6180,11 +6182,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/nim__dat.o \
@@ -6243,6 +6243,8 @@ build/2_2/treetab.o \
 build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
+build/4_2/transf.o \
+build/4_2/cgmeth.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -6253,11 +6255,9 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
-build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
-build/4_2/transf.o \
 build/2_2/parseopt.o || exit 1
     ;;
   *)
