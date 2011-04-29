@@ -139,6 +139,9 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     of skVar:
       if sfGlobal in n.sym.flags: result = OnHeap
       else: result = OnStack
+    of skConst: 
+      if sfGlobal in n.sym.flags: result = OnHeap
+      else: result = OnUnknown
     else: result = OnUnknown
   of nkDerefExpr, nkHiddenDeref:
     case n.sons[0].typ.kind
@@ -1638,7 +1641,10 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
         InternalError(e.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
-      if isSimpleConst(sym.typ):
+      if sfFakeConst in sym.flags:
+        if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
+        putLocIntoDest(p, d, sym.loc)
+      elif isSimpleConst(sym.typ):
         putIntoDest(p, d, e.typ, genLiteral(p, sym.ast, sym.typ))
       else:
         genComplexConst(p, sym, d)

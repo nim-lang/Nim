@@ -59,33 +59,37 @@ proc genVarTuple(p: BProc, n: PNode) =
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
 
+proc genSingleVar(p: BProc, a: PNode) =
+  var v = a.sons[0].sym
+  if sfGlobal in v.flags: 
+    assignGlobalVar(p, v)
+    genObjectInit(p, cpsInit, v.typ, v.loc, true)
+  else: 
+    assignLocalVar(p, v)
+    initVariable(p, v)
+  if a.sons[2].kind != nkEmpty: 
+    genLineDir(p, a)
+    expr(p, a.sons[2], v.loc)
+
 proc genVarStmt(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if a.kind == nkIdentDefs: 
       assert(a.sons[0].kind == nkSym)
-      var v = a.sons[0].sym
-      if sfGlobal in v.flags: 
-        assignGlobalVar(p, v)
-        genObjectInit(p, cpsInit, v.typ, v.loc, true)
-      else: 
-        assignLocalVar(p, v)
-        initVariable(p, v)
-      if a.sons[2].kind != nkEmpty: 
-        genLineDir(p, a)
-        expr(p, a.sons[2], v.loc)
-    else: 
+      genSingleVar(p, a)
+    else:
       genVarTuple(p, a)
-  
+
 proc genConstStmt(p: BProc, t: PNode) = 
   for i in countup(0, sonsLen(t) - 1): 
-    if t.sons[i].kind == nkCommentStmt: continue 
-    if t.sons[i].kind != nkConstDef: InternalError(t.info, "genConstStmt")
-    var c = t.sons[i].sons[0].sym 
-    assert c != nil
-    assert c.typ != nil
-    if c.typ.kind in ConstantDataTypes and not (lfNoDecl in c.loc.flags): 
+    var it = t.sons[i]
+    if it.kind == nkCommentStmt: continue 
+    if it.kind != nkConstDef: InternalError(t.info, "genConstStmt")
+    var c = it.sons[0].sym 
+    if sfFakeConst in c.flags:
+      genSingleVar(p, it)
+    elif c.typ.kind in ConstantDataTypes and not (lfNoDecl in c.loc.flags): 
       # generate the data:
       fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)
       if sfImportc in c.flags: 

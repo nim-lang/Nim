@@ -264,7 +264,7 @@ const
     errInvalidControlFlowX: "invalid control flow: $1",
     errATypeHasNoValue: "a type has no value", 
     errXisNoType: "invalid type: \'$1\'",
-    errCircumNeedsPointer: "\'^\' needs a pointer or reference type", 
+    errCircumNeedsPointer: "'[]' needs a pointer or reference type", 
     errInvalidExpression: "invalid expression",
     errInvalidExpressionX: "invalid expression: \'$1\'", 
     errEnumHasNoValueX: "enum has no value \'$1\'",

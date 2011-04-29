@@ -15,7 +15,7 @@
 
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
-  msgs, os, condsyms, idents, renderer, types, passes, semfold
+  msgs, os, condsyms, idents, renderer, types, passes, semfold, transf
 
 type 
   PStackFrame* = ref TStackFrame
@@ -37,11 +37,6 @@ type
   TEvalFlag = enum 
     efNone, efLValue
   TEvalFlags = set[TEvalFlag]
-
-proc eval*(c: PEvalContext, n: PNode): PNode
-  # eval never returns nil! This simplifies the code a lot and
-  # makes it faster too.
-proc evalConstExpr*(module: PSym, e: PNode): PNode
 
 const
   evalMaxIterations = 500_000 # max iterations of all loops
@@ -229,7 +224,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyFloat..tyFloat128: 
     result = newNodeIt(nkFloatLit, info, t)
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr, 
-     tyStmt, tyTypeDesc: 
+     tyStmt, tyTypeDesc, tyProc:
     result = newNodeIT(nkNilLit, info, t)
   of tyObject: 
     result = newNodeIT(nkPar, info, t)
@@ -249,7 +244,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, p)
   of tySet:
     result = newNodeIT(nkCurly, info, t)    
-  else: InternalError("getNullValue")
+  else: InternalError("getNullValue: " & $t.kind)
   
 proc evalVar(c: PEvalContext, n: PNode): PNode = 
   for i in countup(0, sonsLen(n) - 1): 
@@ -420,6 +415,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     # XXX what about LValue?
     result = c.tos.params[n.sym.position + 1]
   of skConst: result = n.sym.ast
+  of skEnumField: result = newIntNodeT(n.sym.position, n)
   else: 
     stackTrace(c, n, errCannotInterpretNodeX, $n.sym.kind)
     result = emptyNode
@@ -1033,9 +1029,15 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkPar: 
     var a = copyTree(n)
     for i in countup(0, sonsLen(n) - 1): 
-      result = evalAux(c, n.sons[i].sons[1], flags)
-      if isSpecial(result): return 
-      a.sons[i].sons[1] = result
+      var it = n.sons[i]
+      if it.kind == nkExprEqExpr:
+        result = evalAux(c, it.sons[1], flags)
+        if isSpecial(result): return 
+        a.sons[i].sons[1] = result
+      else:
+        result = evalAux(c, it, flags)
+        if isSpecial(result): return 
+        a.sons[i] = result
     result = a
   of nkBracketExpr: result = evalArrayAccess(c, n, flags)
   of nkDotExpr: result = evalFieldAccess(c, n, flags)
@@ -1078,14 +1080,17 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
   inc(gNestedEvals)
 
-proc eval(c: PEvalContext, n: PNode): PNode = 
+proc eval*(c: PEvalContext, n: PNode): PNode = 
+  ## eval never returns nil! This simplifies the code a lot and
+  ## makes it faster too.
+  var n = transform(c.module, n)
   gWhileCounter = evalMaxIterations
   gNestedEvals = evalMaxRecDepth
   result = evalAux(c, n, {})
   if (result.kind == nkExceptBranch) and (sonsLen(result) >= 1): 
     stackTrace(c, n, errUnhandledExceptionX, typeToString(result.typ))
-  
-proc evalConstExpr(module: PSym, e: PNode): PNode = 
+
+proc evalConstExpr*(module: PSym, e: PNode): PNode = 
   var p = newEvalContext(module, "", true)
   var s = newStackFrame()
   s.call = e
