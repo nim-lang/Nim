@@ -223,11 +223,21 @@ proc getSockName*(socket: TSocket): TPort =
   result = TPort(sockets.ntohs(name.sin_port))
 
 proc accept*(server: TSocket): TSocket =
-  ## waits for a client and returns its socket
+  ## waits for a client and returns its socket. ``InvalidSocket`` is returned
+  ## if an error occurs, or if ``server`` is non-blocking and there are no 
+  ## clients connecting.
   var client: Tsockaddr_in
   var clientLen: cint = sizeof(client)
   result = TSocket(accept(cint(server), cast[ptr TSockAddr](addr(client)),
                           addr(clientLen)))
+
+proc acceptAddr*(server: TSocket): tuple[sock: TSocket, address: string] =
+  ## waits for a client and returns its socket and IP address
+  var address: Tsockaddr_in
+  var addrLen: cint = sizeof(address)
+  var sock = TSocket(accept(cint(server), cast[ptr TSockAddr](addr(address)),
+                          addr(addrLen)))
+  return (sock, $inet_ntoa(address.sin_addr))
 
 proc close*(socket: TSocket) =
   ## closes a socket.
@@ -259,6 +269,35 @@ proc getServByPort*(port: TPort, proto: string): TServent =
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = TPort(s.s_port)
   result.proto = $s.s_proto
+
+proc getHostByAddr*(ip: string): THostEnt =
+  ## This function will lookup the hostname of an IP Address.
+  var myaddr: TInAddr
+  myaddr.s_addr = inet_addr(ip)
+  
+  when defined(windows):
+    var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr),
+                                  cint(sockets.AF_INET))
+    if s == nil: OSError()
+  else:
+    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr), 
+                                cint(posix.AF_INET))
+    if s == nil:
+      raise newException(EOS, $hStrError(h_errno))
+  
+  result.name = $s.h_name
+  result.aliases = cstringArrayToSeq(s.h_aliases)
+  when defined(windows): 
+    result.addrType = TDomain(s.h_addrtype)
+  else:
+    if s.h_addrtype == posix.AF_INET:
+      result.addrType = AF_INET
+    elif s.h_addrtype == posix.AF_INET6:
+      result.addrType = AF_INET6
+    else:
+      OSError("unknown h_addrtype")
+  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  result.length = int(s.h_length)
 
 proc getHostByName*(name: string): THostEnt = 
   ## well-known gethostbyname proc.
@@ -299,9 +338,10 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) =
 
 proc connect*(socket: TSocket, name: string, port = TPort(0), 
               af: TDomain = AF_INET) =
-  ## well-known connect operation. Already does ``htons`` on the port number,
-  ## so you shouldn't do it. `name` can be an IP address or a host name of the
-  ## form "force7.de". 
+  ## Connects socket to ``name``:``port``. ``Name`` can be an IP address or a
+  ## host name. If ``name`` is a host name, this function will try each IP
+  ## of that host name. ``htons`` is already performed on ``port`` so you must
+  ## not do it.
   var hints: TAddrInfo
   var aiList: ptr TAddrInfo = nil
   hints.ai_family = toInt(af)
@@ -316,6 +356,7 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
       success = true
       break
     it = it.ai_next
+
   freeaddrinfo(aiList)
   if not success: OSError()
   
@@ -333,6 +374,40 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
       else: nil
     if connect(cint(socket), cast[ptr TSockAddr](addr(s)), sizeof(s)) < 0'i32:
       OSError()
+
+proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
+                     af: TDomain = AF_INET) =
+  ## A variant of ``connect`` for non-blocking sockets.
+  var hints: TAddrInfo
+  var aiList: ptr TAddrInfo = nil
+  hints.ai_family = toInt(af)
+  hints.ai_socktype = toInt(SOCK_STREAM)
+  hints.ai_protocol = toInt(IPPROTO_TCP)
+  if getAddrInfo(name, $port, addr(hints), aiList) != 0'i32: OSError()
+  # try all possibilities:
+  var success = false
+  var it = aiList
+  while it != nil:
+    var ret = connect(cint(socket), it.ai_addr, it.ai_addrlen)
+    if ret == 0'i32:
+      success = true
+      break
+    else:
+      # TODO: Test on Windows.
+      when defined(windows):
+        var err = WSAGetLastError()
+        # Windows EINTR doesn't behave same as POSIX.
+        if err == WSAEWOULDBLOCK:
+          return
+      else:
+        if errno == EINTR or errno == EINPROGRESS:
+          return
+        
+    it = it.ai_next
+
+  freeaddrinfo(aiList)
+  if not success: OSError()
+
 
 #proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
 #               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
@@ -360,6 +435,7 @@ proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
 proc select*(readfds, writefds, exceptfds: var seq[TSocket], 
              timeout = 500): int = 
   ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -370,7 +446,10 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
   createFdSet((wr), writefds, m)
   createFdSet((ex), exceptfds, m)
   
-  result = int(select(cint(m), addr(rd), addr(wr), addr(ex), addr(tv)))
+  if timeout != -1:
+    result = int(select(cint(m+1), addr(rd), addr(wr), addr(ex), addr(tv)))
+  else:
+    result = int(select(cint(m+1), addr(rd), addr(wr), addr(ex), nil))
   
   pruneSocketSet(readfds, (rd))
   pruneSocketSet(writefds, (wr))
@@ -379,6 +458,7 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
 proc select*(readfds, writefds: var seq[TSocket], 
              timeout = 500): int = 
   ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -388,14 +468,37 @@ proc select*(readfds, writefds: var seq[TSocket],
   createFdSet((rd), readfds, m)
   createFdSet((wr), writefds, m)
   
-  result = int(select(cint(m), addr(rd), addr(wr), nil, addr(tv)))
+  if timeout != -1:
+    result = int(select(cint(m+1), addr(rd), addr(wr), nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), addr(rd), addr(wr), nil, nil))
   
   pruneSocketSet(readfds, (rd))
+  pruneSocketSet(writefds, (wr))
+
+proc selectWrite*(writefds: var seq[TSocket], 
+                  timeout = 500): int = 
+  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout.
+  var tv: TTimeVal
+  tv.tv_sec = 0
+  tv.tv_usec = timeout * 1000
+  
+  var wr: TFdSet
+  var m = 0
+  createFdSet((wr), writefds, m)
+  
+  if timeout != -1:
+    result = int(select(cint(m+1), nil, addr(wr), nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), nil, addr(wr), nil, nil))
+  
   pruneSocketSet(writefds, (wr))
 
 
 proc select*(readfds: var seq[TSocket], timeout = 500): int = 
   ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -404,14 +507,18 @@ proc select*(readfds: var seq[TSocket], timeout = 500): int =
   var m = 0
   createFdSet((rd), readfds, m)
   
-  result = int(select(cint(m), addr(rd), nil, nil, addr(tv)))
+  if timeout != -1:
+    result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), addr(rd), nil, nil, nil))
   
   pruneSocketSet(readfds, (rd))
 
 
 proc recvLine*(socket: TSocket, line: var string): bool =
-  ## returns false if no further data is available. `line` must be initalized
-  ## and not nil!
+  ## returns false if no further data is available. `Line` must be initialized
+  ## and not nil! This does not throw an EOS exception, therefore
+  ## it can be used in both blocking and non-blocking sockets.
   setLen(line, 0)
   while true:
     var c: char
@@ -431,16 +538,52 @@ proc recv*(socket: TSocket, data: pointer, size: int): int =
   result = recv(cint(socket), data, size, 0'i32)
 
 proc recv*(socket: TSocket): string =
-  ## receives all the data from the socket
+  ## receives all the data from the socket.
+  ## Socket errors will result in an ``EOS`` error.
+  ## If socket is not a connectionless socket and socket is not connected
+  ## ``""`` will be returned.
   const bufSize = 200
   var buf = newString(bufSize)
   result = ""
   while true:
     var bytesRead = recv(socket, cstring(buf), bufSize-1)
+    # Error
+    if bytesRead == -1: OSError()
+    
     buf[bytesRead] = '\0' # might not be necessary
     setLen(buf, bytesRead)
     add(result, buf)
     if bytesRead != bufSize-1: break
+
+proc recvAsync*(socket: TSocket, s: var string): bool =
+  ## receives all the data from a non-blocking socket. If socket is non-blocking 
+  ## and there are no messages available, `False` will be returned.
+  ## Other socket errors will result in an ``EOS`` error.
+  ## If socket is not a connectionless socket and socket is not connected
+  ## ``s`` will be set to ``""``.
+  const bufSize = 200
+  var buf = newString(bufSize)
+  s = ""
+  while true:
+    var bytesRead = recv(socket, cstring(buf), bufSize-1)
+    # Error
+    if bytesRead == -1:
+      when defined(windows):
+        # TODO: Test on Windows
+        var err = WSAGetLastError()
+        if err == WSAEWOULDBLOCK:
+          return False
+        else: OSError()
+      else:
+        if errno == EAGAIN or errno == EWOULDBLOCK:
+          return False
+        else: OSError()
+    
+    buf[bytesRead] = '\0' # might not be necessary
+    setLen(buf, bytesRead)
+    add(s, buf)
+    if bytesRead != bufSize-1: break
+  result = True
   
 proc skip*(socket: TSocket) =
   ## skips all the data that is pending for the socket
@@ -451,11 +594,29 @@ proc skip*(socket: TSocket) =
 
 proc send*(socket: TSocket, data: pointer, size: int): int =
   ## sends data to a socket.
-  result = send(cint(socket), data, size, 0'i32)
+  when defined(windows):
+    result = send(cint(socket), data, size, 0'i32)
+  else:
+    result = send(cint(socket), data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: TSocket, data: string) =
   ## sends data to a socket.
   if send(socket, cstring(data), data.len) != data.len: OSError()
+
+proc sendAsync*(socket: TSocket, data: string) =
+  ## sends data to a non-blocking socket.
+  var bytesSent = send(socket, cstring(data), data.len)
+  if bytesSent == -1:
+    when defined(windows):
+      var err = WSAGetLastError()
+      # TODO: Test on windows.
+      if err == WSAEINPROGRESS:
+        return
+      else: OSError()
+    else:
+      if errno == EAGAIN or errno == EWOULDBLOCK:
+        return
+      else: OSError()
 
 when defined(Windows):
   const 

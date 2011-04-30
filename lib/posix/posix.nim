@@ -454,7 +454,10 @@ type
   
   TInPort* = int16 ## unsigned!
   TInAddrScalar* = int32 ## unsigned!
-  
+
+  TInAddrT* {.importc: "in_addr_t", pure, final,
+             header: "<netinet/in.h>".} = int32 ## unsigned!
+
   TInAddr* {.importc: "struct in_addr", pure, final, 
              header: "<netinet/in.h>".} = object ## struct in_addr
     s_addr*: TInAddrScalar
@@ -544,6 +547,7 @@ type
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
+  h_errno* {.importc, header: "<netdb.h>".}: cint
   daylight* {.importc, header: "<time.h>".}: cint
   timezone* {.importc, header: "<time.h>".}: int
   
@@ -1558,6 +1562,8 @@ var
     ## Terminates a record (if supported by the protocol).
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
+  MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
+    ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
   MSG_PEEK* {.importc, header: "<sys/socket.h>".}: cint
     ## Leave received data in queue.
   MSG_TRUNC* {.importc, header: "<sys/socket.h>".}: cint
@@ -1733,8 +1739,8 @@ proc htons*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
 proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 
-proc inet_addr*(a1: cstring): int32 {.importc, header: "<arpa/inet.h>".}
-proc inet_ntoa*(a1: int32): cstring {.importc, header: "<arpa/inet.h>".}
+proc inet_addr*(a1: cstring): TInAddrT {.importc, header: "<arpa/inet.h>".}
+proc inet_ntoa*(a1: TInAddr): cstring {.importc, header: "<arpa/inet.h>".}
 proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
   importc, header: "<arpa/inet.h>".}
 proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
@@ -2315,6 +2321,7 @@ proc sched_setscheduler*(a1: tpid, a2: cint, a3: var tsched_param): cint {.
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
 proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
+proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var Tfd_set) {.importc, header: "<sys/select.h>".}
 proc FD_ISSET*(a1: cint, a2: var Tfd_set): cint {.

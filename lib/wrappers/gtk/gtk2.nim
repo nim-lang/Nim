@@ -7469,6 +7469,9 @@ proc iter_nth_child*(tree_model: PTreeModel, iter: PTreeIter,
 proc iter_parent*(tree_model: PTreeModel, iter: PTreeIter, 
                              child: PTreeIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_iter_parent".}
+proc get_string_from_iter*(tree_model: PTreeModel, iter: PTreeIter): 
+    cstring{.cdecl, dynlib: lib,
+             importc: "gtk_tree_model_get_string_from_iter".}
 proc ref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_ref_node".}
 proc unref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
