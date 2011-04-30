@@ -88,30 +88,35 @@ proc close*(s: var TScgiState) =
   ## closes the connection.
   s.server.close()
 
-proc next*(s: var TScgistate) = 
-  ## proceed to the first/next request.
-  s.client = accept(s.server)
-  var L = 0
-  while true:
-    var d = s.client.recvChar()
-    if d notin strutils.digits: 
-      if d != ':': scgiError("':' after length expected")
-      break
-    L = L * 10 + ord(d) - ord('0')  
-  recvBuffer(s, L+1)
-  s.headers = parseHeaders(s.input, L)
-  if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
-  L = parseInt(s.headers["CONTENT_LENGTH"])
-  recvBuffer(s, L)
+proc next*(s: var TScgistate, timeout: int = -1): bool = 
+  ## proceed to the first/next request. Waits ``timeout`` miliseconds for a
+  ## request, if ``timeout`` is `-1` then this function will never time out.
+  ## Returns `True` if a new request has been processed.
+  var rsocks = @[s.server]
+  if select(rsocks, timeout) == 1 and rsocks.len == 0:
+    s.client = accept(s.server)
+    var L = 0
+    while true:
+      var d = s.client.recvChar()
+      if d notin strutils.digits: 
+        if d != ':': scgiError("':' after length expected")
+        break
+      L = L * 10 + ord(d) - ord('0')  
+    recvBuffer(s, L+1)
+    s.headers = parseHeaders(s.input, L)
+    if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
+    L = parseInt(s.headers["CONTENT_LENGTH"])
+    recvBuffer(s, L)
+    return True
   
-proc writeStatusOkTextContent*(c: TSocket) = 
+proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") = 
   ## sends the following string to the socket `c`::
   ##
-  ##   Status: 200 OK\r\LContent-Type: text/plain\r\L\r\L
+  ##   Status: 200 OK\r\LContent-Type: text/html\r\L\r\L
   ##
   ## You should send this before sending your HTML page, for example.
   c.send("Status: 200 OK\r\L" &
-         "Content-Type: text/plain\r\L\r\L")
+         "Content-Type: $1\r\L\r\L" % contentType)
 
 proc run*(handleRequest: proc (client: TSocket, input: string, 
                                headers: PStringTable): bool,
@@ -121,9 +126,9 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
   s.open(port)
   var stop = false
   while not stop:
-    next(s)
-    stop = handleRequest(s.client, s.input, s.headers)
-    s.client.close()
+    if next(s):
+      stop = handleRequest(s.client, s.input, s.headers)
+      s.client.close()
   s.close()
 
 when isMainModule:
