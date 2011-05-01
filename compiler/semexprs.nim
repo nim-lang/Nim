@@ -501,14 +501,17 @@ proc semEcho(c: PContext, n: PNode): PNode =
     n.sons[i] = semExpr(c, buildStringify(c, arg))
   result = n
 
+proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
+  if onlyCurrentScope: 
+    result = SymtabLocalGet(c.tab, i)
+  else: 
+    result = SymtabGet(c.Tab, i) # no need for stub loading
+
 proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
   case n.kind
   of nkIdent: 
-    if onlyCurrentScope: 
-      result = SymtabLocalGet(c.tab, n.ident)
-    else: 
-      result = SymtabGet(c.Tab, n.ident) # no need for stub loading
-  of nkDotExpr: 
+    result = LookupForDefined(c, n.ident, onlyCurrentScope)
+  of nkDotExpr:
     result = nil
     if onlyCurrentScope: return 
     checkSonsLen(n, 2)
@@ -522,9 +525,8 @@ proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
           result = StrTableGet(m.tab, ident)
       else: 
         GlobalError(n.sons[1].info, errIdentifierExpected, "")
-  of nkAccQuoted: 
-    checkSonsLen(n, 1)
-    result = lookupForDefined(c, n.sons[0], onlyCurrentScope)
+  of nkAccQuoted:
+    result = lookupForDefined(c, considerAcc(n), onlyCurrentScope)
   else: 
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
@@ -955,17 +957,16 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
   else: 
     GlobalError(n.info, errInvalidExpressionX, 
                 renderTree(a, {renderNoComments}))
-  
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
-  if gCmd == cmdIdeTools: 
-    suggestExpr(c, n)
+  if gCmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return 
-  case n.kind                 # atoms:
-  of nkIdent: 
+  case n.kind
+  of nkIdent, nkAccQuoted:
     var s = lookUp(c, n)
     result = semSym(c, n, s, flags)
-  of nkSym: 
+  of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
@@ -1062,9 +1063,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkSonsLen(n, 1)
     n.sons[0] = semExpr(c, n.sons[0], flags)
   of nkCast: result = semCast(c, n)
-  of nkAccQuoted: 
-    checkSonsLen(n, 1)
-    result = semExpr(c, n.sons[0])
   of nkIfExpr: result = semIfExpr(c, n)
   of nkStmtListExpr: result = semStmtListExpr(c, n)
   of nkBlockExpr: result = semBlockExpr(c, n)

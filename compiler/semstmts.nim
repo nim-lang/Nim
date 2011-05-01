@@ -127,7 +127,7 @@ proc semWhile(c: PContext, n: PNode): PNode =
 
 proc toCover(t: PType): biggestInt = 
   var t2 = skipTypes(t, abstractVarRange)
-  if t2.kind == tyEnum and enumHasWholes(t2): 
+  if t2.kind == tyEnum and enumHasHoles(t2): 
     result = sonsLen(t2.n)
   else:
     result = lengthOrd(skipTypes(t, abstractVar))

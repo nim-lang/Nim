@@ -18,16 +18,6 @@ import
 proc semPass*(): TPass
 # implementation
 
-proc considerAcc(n: PNode): PIdent = 
-  var x = n
-  if x.kind == nkAccQuoted: x = x.sons[0]
-  case x.kind
-  of nkIdent: result = x.ident
-  of nkSym: result = x.sym.name
-  else: 
-    GlobalError(n.info, errIdentifierExpected, renderTree(n))
-    result = nil
-
 proc isTopLevel(c: PContext): bool {.inline.} = 
   result = c.tab.tos <= 2
 
@@ -35,7 +25,8 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerAcc(n), getCurrOwner())
   result.info = n.info
   
-proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSym
+proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
+                 allowed: TSymFlags): PSym
   # identifier with visability
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
                         allowed: TSymFlags): PSym
@@ -120,20 +111,13 @@ proc typeMismatch(n: PNode, formal, actual: PType) =
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
   result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil: 
+  if result == nil:
     #debug(arg)
     typeMismatch(arg, formal, arg.typ)
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)
   if result == nil: result = n
-  when false:
-    result = t
-    if (t.Typ == nil) or
-        (skipTypes(t.Typ, {tyGenericInst, tyVar, tyOrdinal}).kind != tyBool): 
-      var a = ConvertTo(c, getSysType(tyBool), t)
-      if a != nil: result = a
-      else: LocalError(t.Info, errExprMustBeBool)
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), semExprWithType(c, n))

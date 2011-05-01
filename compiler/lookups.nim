@@ -12,6 +12,24 @@
 import 
   ast, astalgo, idents, semdata, types, msgs, options, rodread, renderer
 
+proc considerAcc*(n: PNode): PIdent = 
+  case n.kind
+  of nkIdent: result = n.ident
+  of nkSym: result = n.sym.name
+  of nkAccQuoted:
+    case n.len
+    of 0: GlobalError(n.info, errIdentifierExpected, renderTree(n))
+    of 1: result = considerAcc(n.sons[0])
+    else:
+      var id = ""
+      for i in 0.. <n.len:
+        if n.sons[i].kind != nkIdent:
+          GlobalError(n.info, errIdentifierExpected, renderTree(n))
+        id.add(n.sons[i].ident.s)
+      result = getIdent(id)
+  else:
+    GlobalError(n.info, errIdentifierExpected, renderTree(n))
+
 type 
   TOverloadIterMode* = enum 
     oimDone, oimNoQualifier, oimSelfModule, oimOtherModule, oimSymChoice,
@@ -87,13 +105,15 @@ proc addInterfaceOverloadableSymAt*(c: PContext, sym: PSym, at: int) =
 proc lookUp*(c: PContext, n: PNode): PSym = 
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
-  of nkAccQuoted: 
-    result = lookup(c, n.sons[0])
-  of nkSym: 
-    result = n.sym
-  of nkIdent: 
+  of nkIdent:
     result = SymtabGet(c.Tab, n.ident)
     if result == nil: GlobalError(n.info, errUndeclaredIdentifier, n.ident.s)
+  of nkSym:
+    result = n.sym
+  of nkAccQuoted:
+    var ident = considerAcc(n)
+    result = SymtabGet(c.Tab, ident)
+    if result == nil: GlobalError(n.info, errUndeclaredIdentifier, ident.s)
   else: InternalError(n.info, "lookUp")
   if IntSetContains(c.AmbiguousSymbols, result.id): 
     LocalError(n.info, errUseQualifier, result.name.s)
@@ -102,16 +122,17 @@ proc lookUp*(c: PContext, n: PNode): PSym =
 type 
   TLookupFlag* = enum 
     checkAmbiguity, checkUndeclared
-  
+
 proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym = 
   case n.kind
-  of nkIdent: 
-    result = SymtabGet(c.Tab, n.ident)
+  of nkIdent, nkAccQuoted:
+    var ident = considerAcc(n)
+    result = SymtabGet(c.Tab, ident)
     if result == nil and checkUndeclared in flags: 
-      GlobalError(n.info, errUndeclaredIdentifier, n.ident.s)
+      GlobalError(n.info, errUndeclaredIdentifier, ident.s)
     elif checkAmbiguity in flags and result != nil and 
         IntSetContains(c.AmbiguousSymbols, result.id): 
-      LocalError(n.info, errUseQualifier, n.ident.s)
+      LocalError(n.info, errUseQualifier, ident.s)
   of nkSym: 
     result = n.sym
     if checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
@@ -122,11 +143,10 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
     var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})
     if (m != nil) and (m.kind == skModule): 
       var ident: PIdent = nil
-      if (n.sons[1].kind == nkIdent): 
+      if n.sons[1].kind == nkIdent: 
         ident = n.sons[1].ident
-      elif (n.sons[1].kind == nkAccQuoted) and
-          (n.sons[1].sons[0].kind == nkIdent): 
-        ident = n.sons[1].sons[0].ident
+      elif n.sons[1].kind == nkAccQuoted: 
+        ident = considerAcc(n.sons[1])
       if ident != nil: 
         if m == c.module: 
           result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
@@ -137,21 +157,20 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       elif checkUndeclared in flags: 
         GlobalError(n.sons[1].info, errIdentifierExpected, 
                     renderTree(n.sons[1]))
-  of nkAccQuoted: 
-    result = QualifiedLookup(c, n.sons[0], flags)
-  else: 
+  else:
     result = nil
-  if (result != nil) and (result.kind == skStub): loadStub(result)
+  if result != nil and result.kind == skStub: loadStub(result)
   
 proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
   case n.kind
-  of nkIdent: 
+  of nkIdent, nkAccQuoted:
+    var ident = considerAcc(n)
     o.stackPtr = c.tab.tos
     o.mode = oimNoQualifier
-    while result == nil: 
+    while result == nil:
       dec(o.stackPtr)
-      if o.stackPtr < 0: break 
-      result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident)
+      if o.stackPtr < 0: break
+      result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], ident)
   of nkSym: 
     result = n.sym
     o.mode = oimDone
@@ -162,9 +181,8 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       var ident: PIdent = nil
       if n.sons[1].kind == nkIdent: 
         ident = n.sons[1].ident
-      elif n.sons[1].kind == nkAccQuoted and
-          n.sons[1].sons[0].kind == nkIdent: 
-        ident = n.sons[1].sons[0].ident
+      elif n.sons[1].kind == nkAccQuoted:
+        ident = considerAcc(n.sons[1])
       if ident != nil: 
         if o.m == c.module: 
           # a module may access its private members:
@@ -175,8 +193,6 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       else: 
         GlobalError(n.sons[1].info, errIdentifierExpected, 
                     renderTree(n.sons[1]))
-  of nkAccQuoted: 
-    result = InitOverloadIter(o, c, n.sons[0])
   of nkSymChoice: 
     o.mode = oimSymChoice
     result = n.sons[0].sym
@@ -191,9 +207,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimDone: 
     result = nil
   of oimNoQualifier: 
-    if n.kind == nkAccQuoted: 
-      result = nextOverloadIter(o, c, n.sons[0])
-    elif o.stackPtr >= 0: 
+    if o.stackPtr >= 0: 
       result = nextIdentIter(o.it, c.tab.stack[o.stackPtr])
       while result == nil: 
         dec(o.stackPtr)

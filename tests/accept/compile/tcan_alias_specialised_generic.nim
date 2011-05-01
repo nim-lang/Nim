@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 ##
 ## can_alias_specialised_generic Nimrod Module
 ##

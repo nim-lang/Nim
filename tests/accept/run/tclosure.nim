@@ -1,6 +1,7 @@
 discard """
   file: "tclosure.nim"
   output: "2 4 6 8 10"
+  disabled: true
 """
 # Test the closure implementation
 

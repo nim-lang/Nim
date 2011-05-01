@@ -669,37 +669,34 @@ proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
          [expr, toRope(length)])
   appf(m.s[cfsTypeInit3], "$1->node = &$2;$n", [name, tmp])
 
-proc genEnumInfo(m: BModule, typ: PType, name: PRope) = 
-  var 
-    nodePtrs, elemNode, enumNames, enumArray, counter, specialCases: PRope
-    length, firstNimNode: int
-    field: PSym
+proc genEnumInfo(m: BModule, typ: PType, name: PRope) =
   # Type information for enumerations is quite heavy, so we do some
   # optimizations here: The ``typ`` field is never set, as it is redundant
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, name)
-  nodePtrs = getTempName()
-  length = sonsLen(typ.n)
+  var nodePtrs = getTempName()
+  var length = sonsLen(typ.n)
   appf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", 
        [nodePtrs, toRope(length)])
-  enumNames = nil
-  specialCases = nil
-  firstNimNode = m.typeNodes
+  var enumNames, specialCases: PRope
+  var firstNimNode = m.typeNodes
+  var hasHoles = false
   for i in countup(0, length - 1): 
     assert(typ.n.sons[i].kind == nkSym)
-    field = typ.n.sons[i].sym
-    elemNode = getNimNode(m)
+    var field = typ.n.sons[i].sym
+    var elemNode = getNimNode(m)
     if field.ast == nil:
       # no explicit string literal for the enum field, so use field.name:
       app(enumNames, makeCString(field.name.s))
     else:
       app(enumNames, makeCString(field.ast.strVal))
     if i < length - 1: app(enumNames, ", " & tnl)
-    if field.position != i: 
+    if field.position != i or tfEnumHasHoles in typ.flags:
       appf(specialCases, "$1.offset = $2;$n", [elemNode, toRope(field.position)])
-  enumArray = getTempName()
-  counter = getTempName()
+      hasHoles = true
+  var enumArray = getTempName()
+  var counter = getTempName()
   appf(m.s[cfsTypeInit1], "NI $1;$n", [counter])
   appf(m.s[cfsTypeInit1], "static char* NIM_CONST $1[$2] = {$n$3};$n", 
        [enumArray, toRope(length), enumNames])
@@ -711,6 +708,9 @@ proc genEnumInfo(m: BModule, typ: PType, name: PRope) =
   appf(m.s[cfsTypeInit3], 
        "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n$4->node = &$1;$n", 
        [getNimNode(m), toRope(length), nodePtrs, name])
+  if hasHoles:
+    # 1 << 2 is {ntfEnumHole}
+    appf(m.s[cfsTypeInit3], "$1->flags = 1<<2;$n", [name])
 
 proc genSetInfo(m: BModule, typ: PType, name: PRope) = 
   assert(typ.sons[0] != nil)

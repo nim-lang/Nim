@@ -1,4 +1,3 @@
-- clean up the tests!
 - implicit ref/ptr->var conversion
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
@@ -7,6 +6,8 @@
 High priority (version 0.9.0)
 =============================
 
+- tests: run modules that contain "when isMainModule", compile the other
+  modules; run the GC tests
 - fix implicit generic routines
 - fix the streams implementation so that it uses methods
 - fix overloading resolution
@@ -50,7 +51,6 @@ Low priority
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
 - floating point checks for EcmaScript
-- enhance `` notation for identifier concatenation: `concat` a `these`
 - prefer proc in current module over other procs with same overloading result?
 - real types for template results
 - generalized case statement (requires better transf)

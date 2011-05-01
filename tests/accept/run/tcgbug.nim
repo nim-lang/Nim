@@ -1,6 +1,6 @@
 discard """
   file: "tcgbug.nim"
-  output: ""
+  output: "success"
 """
 
 type
@@ -19,5 +19,5 @@ var
 new(a)
 q(a)
 
-
+echo "success"
 

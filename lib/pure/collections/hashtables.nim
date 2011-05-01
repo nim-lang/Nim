@@ -23,21 +23,21 @@ type
 
   PHashTable*[A, B] = ref THashTable[A, B] ## use this type to declare tables
 
-proc len*[A, B](t: PHashTable[A, B]): int =
+proc len*[A, B](t: THashTable[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A, B](t: PHashTable[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: THashTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: PHashTable[A, B]): A =
+iterator keys*[A, B](t: THashTable[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield t.data[h].key
 
-iterator values*[A, B](t: PHashTable[A, B]): B =
+iterator values*[A, B](t: THashTable[A, B]): B =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield t.data[h].val
@@ -52,7 +52,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
-proc RawGet[A, B](t: PHashTable[A, B], key: A): int =
+template rawGetImpl() =
   var h: THash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].slot != seEmpty:
     if t.data[h].key == key and t.data[h].slot == seFilled:
@@ -60,20 +60,7 @@ proc RawGet[A, B](t: PHashTable[A, B], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1
 
-proc `[]`*[A, B](t: PHashTable[A, B], key: A): B =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
-  var index = RawGet(t, key)
-  if index >= 0: result = t.data[index].val
-
-proc hasKey*[A, B](t: PHashTable[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
-  result = rawGet(t, key) >= 0
-
-proc RawInsert[A, B](t: PHashTable[A, B], data: var TKeyValuePairSeq[A, B],
-                     key: A, val: B) =
+template rawInsertImpl() =
   var h: THash = hash(key) and high(data)
   while data[h].slot == seFilled:
     h = nextTry(h, high(data))
@@ -81,15 +68,33 @@ proc RawInsert[A, B](t: PHashTable[A, B], data: var TKeyValuePairSeq[A, B],
   data[h].val = val
   data[h].slot = seFilled
 
-proc Enlarge[A, B](t: PHashTable[A, B]) =
+proc RawGet[A, B](t: THashTable[A, B], key: A): int =
+  rawGetImpl()
+
+proc `[]`*[A, B](t: THashTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
+  ## default empty value for the type `B` is returned
+  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## exists.
+  var index = RawGet(t, key)
+  if index >= 0: result = t.data[index].val
+
+proc hasKey*[A, B](t: THashTable[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = rawGet(t, key) >= 0
+
+proc RawInsert[A, B](t: var THashTable[A, B], data: var TKeyValuePairSeq[A, B],
+                     key: A, val: B) =
+  rawInsertImpl()
+
+proc Enlarge[A, B](t: var THashTable[A, B]) =
   var n: TKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*[A, B](t: PHashTable[A, B], key: A, val: B) =
-  ## puts a (key, value)-pair into `t`.
+template PutImpl() =
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].val = val
@@ -98,23 +103,25 @@ proc `[]=`*[A, B](t: PHashTable[A, B], key: A, val: B) =
     RawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc del*[A, B](t: PHashTable[A, B], key: A) =
+proc `[]=`*[A, B](t: var THashTable[A, B], key: A, val: B) =
+  ## puts a (key, value)-pair into `t`.
+  putImpl()
+
+proc del*[A, B](t: var THashTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].slot = seDeleted
     dec(t.counter)
 
-proc newHashTable*[A, B](initialSize = 64): PHashTable[A, B] =
+proc initHashTable*[A, B](initialSize = 64): THashTable[A, B] =
   ## creates a new string table that is empty. `initialSize` needs to be
   ## a power of two.
   assert isPowerOfTwo(initialSize)
-  new(result)
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc `$`*[A, B](t: PHashTable[A, B]): string =
-  ## The `$` operator for string tables.
+template dollarImpl(): stmt =
   if t.len == 0:
     result = "{:}"
   else:
@@ -125,6 +132,108 @@ proc `$`*[A, B](t: PHashTable[A, B]): string =
       result.add(": ")
       result.add($val)
     result.add("}")
+
+proc `$`*[A, B](t: THashTable[A, B]): string =
+  ## The `$` operator for string tables.
+  dollarImpl()
+
+# ------------------------------ ordered table ------------------------------
+
+type
+  TOrderedKeyValuePair[A, B] = tuple[
+    slot: TSlotEnum, next: int, key: A, val: B]
+  TOrderedKeyValuePairSeq[A, B] = seq[TOrderedKeyValuePair[A, B]]
+  TOrderedHashTable*[A, B] {.final.} = object
+    data: TOrderedKeyValuePairSeq[A, B]
+    counter, first, last: int
+
+proc len*[A, B](t: TOrderedHashTable[A, B]): int {.inline.} =
+  ## returns the number of keys in `t`.
+  result = t.counter
+
+template forAllOrderedPairs(yieldStmt: stmt) =
+  var i = t.first
+  while i >= 0:
+    var nxt = t.data[i].next
+    if t.data[h].slot == seFilled: yieldStmt
+    i = nxt
+
+iterator pairs*[A, B](t: TOrderedHashTable[A, B]): tuple[key: A, val: B] =
+  ## iterates over any (key, value) pair in the table `t` in insertion
+  ## order.
+  forAllOrderedPairs:
+    yield (t.data[h].key, t.data[h].val)
+
+iterator keys*[A, B](t: TOrderedHashTable[A, B]): A =
+  ## iterates over any key in the table `t` in insertion order.
+  forAllOrderedPairs:
+    yield t.data[h].key
+
+iterator values*[A, B](t: TOrderedHashTable[A, B]): B =
+  ## iterates over any value in the table `t` in insertion order.
+  forAllOrderedPairs:
+    yield t.data[h].val
+
+proc RawGet[A, B](t: TOrderedHashTable[A, B], key: A): int =
+  rawGetImpl()
+
+proc `[]`*[A, B](t: TOrderedHashTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
+  ## default empty value for the type `B` is returned
+  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## exists.
+  var index = RawGet(t, key)
+  if index >= 0: result = t.data[index].val
+
+proc hasKey*[A, B](t: TOrderedHashTable[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = rawGet(t, key) >= 0
+
+proc RawInsert[A, B](t: TOrderedHashTable[A, B], 
+                     data: var TOrderedKeyValuePairSeq[A, B],
+                     key: A, val: B) =
+  rawInsertImpl()
+  data[h].next = -1
+  if first < 0: first = h
+  if last >= 0: data[last].next = h
+  lastEntry = h
+
+proc Enlarge[A, B](t: TOrderedHashTable[A, B]) =
+  var n: TOrderedKeyValuePairSeq[A, B]
+  newSeq(n, len(t.data) * growthFactor)
+  forAllOrderedPairs:
+    RawInsert(t, n, t.data[h].key, t.data[h].val)
+  swap(t.data, n)
+
+proc `[]=`*[A, B](t: TOrderedHashTable[A, B], key: A, val: B) =
+  ## puts a (key, value)-pair into `t`.
+  var index = RawGet(t, key)
+  if index >= 0:
+    t.data[index].val = val
+  else:
+    if mustRehash(len(t.data), t.counter): Enlarge(t)
+    RawInsert(t, t.data, key, val)
+    inc(t.counter)
+
+proc del*[A, B](t: TOrderedHashTable[A, B], key: A) =
+  ## deletes `key` from hash table `t`.
+  var index = RawGet(t, key)
+  if index >= 0:
+    t.data[index].slot = seDeleted
+    dec(t.counter)
+
+proc initHashTable*[A, B](initialSize = 64): TOrderedHashTable[A, B] =
+  ## creates a new string table that is empty. `initialSize` needs to be
+  ## a power of two.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  result.first = -1
+  result.last = -1
+  newSeq(result.data, initialSize)
+
+proc `$`*[A, B](t: TOrderedHashTable[A, B]): string =
+  ## The `$` operator for hash tables.
+  dollarImpl()
 
 # ------------------------------ count tables -------------------------------
 

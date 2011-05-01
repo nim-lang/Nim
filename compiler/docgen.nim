@@ -297,8 +297,11 @@ proc getName(n: PNode, splitAfter: int = - 1): string =
   of nkPragmaExpr: result = getName(n.sons[0], splitAfter)
   of nkSym: result = esc(n.sym.name.s, splitAfter)
   of nkIdent: result = esc(n.ident.s, splitAfter)
-  of nkAccQuoted: result = esc("`") & getName(n.sons[0], splitAfter) & esc("`")
-  else: 
+  of nkAccQuoted: 
+    result = esc("`") 
+    for i in 0.. <n.len: result.add(getName(n[i], splitAfter))
+    result.add esc("`")
+  else:
     internalError(n.info, "getName()")
     result = ""
 
@@ -308,8 +311,10 @@ proc getRstName(n: PNode): PRstNode =
   of nkPragmaExpr: result = getRstName(n.sons[0])
   of nkSym: result = newRstNode(rnLeaf, n.sym.name.s)
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
-  of nkAccQuoted: result = getRstName(n.sons[0])
-  else: 
+  of nkAccQuoted: 
+    result = getRstName(n.sons[0])
+    for i in 1 .. <n.len: result.text.add(getRstName(n[i]).text)
+  else:
     internalError(n.info, "getRstName()")
     result = nil
 

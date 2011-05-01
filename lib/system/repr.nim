@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -53,10 +53,16 @@ proc reprChar(x: char): string {.compilerRtl.} =
   add result, "\'"
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  if e <% typ.node.len: # BUGFIX
-    result = $typ.node.sons[e].name
+  if ntfEnumHole notin typ.flags:
+    if e <% typ.node.len:
+      return $typ.node.sons[e].name
   else:
-    result = $e & " (invalid data!)"
+    # ugh we need a slow linear search:
+    var n = typ.node
+    var s = n.sons
+    for i in 0 .. n.len-1:
+      if s[i].offset == e: return $s[i].name
+  result = $e & " (invalid data!)"
 
 type
   pbyteArray = ptr array[0.. 0xffff, byte]

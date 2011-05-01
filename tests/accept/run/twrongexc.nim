@@ -1,6 +1,6 @@
 discard """
   file: "twrongexc.nim"
-  output: "Error: unhandled exception [EInvalidValue]"
+  outputsub: "Error: unhandled exception [EInvalidValue]"
 """
 try:
   raise newException(EInvalidValue, "")

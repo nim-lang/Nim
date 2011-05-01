@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 # Compiles:
 
 type 

@@ -48,7 +48,7 @@ type
 proc equalParams*(a, b: PNode): TParamsEquality
   # returns whether the parameter lists of the procs a, b are exactly the same
 proc isOrdinalType*(t: PType): bool
-proc enumHasWholes*(t: PType): bool
+proc enumHasHoles*(t: PType): bool
 const 
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal}
@@ -193,10 +193,10 @@ proc isOrdinalType(t: PType): bool =
   result = (t.Kind in {tyChar, tyInt..tyInt64, tyBool, tyEnum}) or
       (t.Kind in {tyRange, tyOrdinal}) and isOrdinalType(t.sons[0])
 
-proc enumHasWholes(t: PType): bool = 
+proc enumHasHoles(t: PType): bool = 
   var b = t
   while b.kind == tyRange: b = b.sons[0]
-  result = (b.Kind == tyEnum) and (tfEnumHasWholes in b.flags)
+  result = b.Kind == tyEnum and tfEnumHasHoles in b.flags
 
 proc iterOverTypeAux(marker: var TIntSet, t: PType, iter: TTypeIter, 
                      closure: PObject): bool

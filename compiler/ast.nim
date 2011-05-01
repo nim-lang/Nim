@@ -273,7 +273,7 @@ type
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfAcyclic,        # type is acyclic (for GC optimization)
-    tfEnumHasWholes,  # enum cannot be mapped into a range
+    tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow         # type can be shallow copied on assignment
 
   TTypeFlags* = set[TTypeFlag]

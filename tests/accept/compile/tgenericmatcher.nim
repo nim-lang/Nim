@@ -1,3 +1,6 @@
+discard """
+  disabled: true
+"""
 
 type
   TMatcherKind = enum

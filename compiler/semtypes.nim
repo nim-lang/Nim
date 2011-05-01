@@ -51,7 +51,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       else:
         x = getOrdValue(v)
       if i != 1: 
-        if (x != counter): incl(result.flags, tfEnumHasWholes)
+        if (x != counter): incl(result.flags, tfEnumHasHoles)
         if x < counter: 
           GlobalError(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
       e.ast = strVal # might be nil
@@ -128,7 +128,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not (a.typ.kind in
       {tyInt..tyInt64, tyEnum, tyBool, tyChar, tyFloat..tyFloat128}): 
     GlobalError(n.info, errOrdinalTypeExpected)
-  if enumHasWholes(a.typ): 
+  if enumHasHoles(a.typ): 
     GlobalError(n.info, errEnumXHasHoles, a.typ.sym.name.s)
   if not leValue(a, b): GlobalError(n.Info, errRangeIsEmpty)
   addSon(result.n, a)
@@ -155,7 +155,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     if indx.kind != tyGenericParam: 
       if not isOrdinalType(indx): 
         GlobalError(n.sons[1].info, errOrdinalTypeExpected)
-      if enumHasWholes(indx): 
+      if enumHasHoles(indx): 
         GlobalError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
     base = semTypeNode(c, n.sons[2], nil)
     addSon(result, base)

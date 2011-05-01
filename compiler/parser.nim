@@ -52,7 +52,6 @@ proc optInd*(p: var TParser, n: PNode)
 proc indAndComment*(p: var TParser, n: PNode)
 proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser): PNode
-proc accExpr*(p: var TParser): PNode
 # implementation
 
 proc initParser(p: var TParser) = 
@@ -173,59 +172,32 @@ proc parseSymbol(p: var TParser): PNode =
   of tkAccent: 
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
-    var id = ""
     while true:
       case p.tok.tokType
       of tkBracketLe: 
-        id.add("[]")
+        add(result, newIdentNodeP(getIdent"[]", p))
         getTok(p)
         eat(p, tkBracketRi)
       of tkEquals:
-        id.add('=')
+        add(result, newIdentNodeP(getIdent"=", p))
         getTok(p)
-      of tkParLe: 
-        id.add("()")
+      of tkParLe:
+        add(result, newIdentNodeP(getIdent"()", p))
         getTok(p)
         eat(p, tkParRi)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot:
-        id.add(p.tok.ident.s)
+        add(result, newIdentNodeP(p.tok.ident, p))
         getTok(p)
       of tkIntLit..tkCharLit:
-        id.add(tokToStr(p.tok))
+        add(result, newIdentNodeP(getIdent(tokToStr(p.tok)), p))
         getTok(p)
       else:
-        if id.len == 0: parMessage(p, errIdentifierExpected, tokToStr(p.tok))
+        if result.len == 0: parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break
-    add(result, newIdentNodeP(getIdent(id), p))
     eat(p, tkAccent)
   else: 
     parMessage(p, errIdentifierExpected, tokToStr(p.tok))
     result = ast.emptyNode
-
-proc accExpr(p: var TParser): PNode = 
-  result = newNodeP(nkAccQuoted, p)
-  getTok(p)                   # skip `
-  var x = ast.emptyNode
-  var y = ast.emptyNode
-  case p.tok.tokType
-  of tkSymbol, tkOpr, tokKeywordLow..tokKeywordHigh: 
-    x = newIdentNodeP(p.tok.ident, p)
-    getTok(p)
-  else: 
-    parMessage(p, errIdentifierExpected, tokToStr(p.tok))
-  if p.tok.tokType == tkDot: 
-    getTok(p)
-    case p.tok.tokType
-    of tkSymbol, tkOpr, tokKeywordLow..tokKeywordHigh: 
-      y = newNodeP(nkDotExpr, p)
-      addSon(y, x)
-      addSon(y, newIdentNodeP(p.tok.ident, p))
-      getTok(p)
-      x = y
-    else: 
-      parMessage(p, errIdentifierExpected, tokToStr(p.tok))
-  addSon(result, x)
-  eat(p, tkAccent)
 
 proc indexExpr(p: var TParser): PNode = 
   result = parseExpr(p)
@@ -379,7 +351,7 @@ proc identOrLiteral(p: var TParser): PNode =
     getTok(p)
     result = parseGStrLit(p, result)
   of tkAccent: 
-    result = accExpr(p)       # literals
+    result = parseSymbol(p)       # literals
   of tkIntLit: 
     result = newIntNodeP(nkIntLit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)

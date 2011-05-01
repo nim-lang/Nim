@@ -2248,7 +2248,7 @@ introduce type parameters or to instantiate a generic proc, iterator or type.
 
 
 Templates
-~~~~~~~~~
+---------
 
 A `template`:idx: is a simple form of a macro: It is a simple substitution
 mechanism that operates on Nimrod's abstract syntax trees. It is processed in
@@ -2371,6 +2371,24 @@ powerful programming construct that still suffices. So the "check list" is:
 (2) Else: Use a generic proc/iterator, if possible.
 (3) Else: Use a template, if possible.
 (4) Else: Use a macro.
+
+Identifier construction
+~~~~~~~~~~~~~~~~~~~~~~~
+
+In templates identifiers can be constructed with the backticks notation:
+
+.. code-block:: nimrod
+
+  template typedef(name: expr, typ: typeDesc) = 
+    type
+      `T name`* = typ
+      `P name`* = ref `T name`
+      
+  typedef(myint, int)
+  var x: PMyInt
+
+In the example ``name`` is instantiated with ``myint``, so \`T name\` becomes
+``Tmyint``.
 
 
 Macros
