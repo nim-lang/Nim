@@ -495,7 +495,7 @@ type
     JArray
     
   PJsonNode* = ref TJsonNode ## JSON node 
-  TJsonNode {.final, pure.} = object
+  TJsonNode* {.final, pure.} = object
     case kind*: TJsonNodeKind
     of JString:
       str*: String
