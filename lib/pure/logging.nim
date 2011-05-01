@@ -63,7 +63,7 @@ method log*(L: ref TFileLogger, level: TLevel,
 
 proc defaultFilename*(): string = 
   ## returns the default filename for a logger
-  var (path, name, ext) = splitFile(getApplicationFilename())
+  var (path, name, ext) = splitFile(getAppFilename())
   result = changeFileExt(path / name & "_" & getDateStr(), "log")
 
 proc substituteLog*(frmt: string): string = 
@@ -97,8 +97,7 @@ proc newFileLogger(filename = defaultFilename(),
                    levelThreshold = lvlNone): ref TFileLogger = 
   new(result)
   result.levelThreshold = levelThreshold
-  if not open(result.f, filename, mode): 
-    raiseException(EIO, "cannot open for writing: " & filename)
+  result.f = open(filename, mode)
 
 proc newRollingFileLogger(filename = defaultFilename(), 
                           mode: TFileMode = fmAppend,
@@ -107,8 +106,7 @@ proc newRollingFileLogger(filename = defaultFilename(),
   new(result)
   result.levelThreshold = levelThreshold
   result.maxLines = maxLines
-  if not open(result.f, filename, mode): 
-    raiseException(EIO, "cannot open for writing: " & filename)
+  result.f = open(filename, mode)
 
 var
   level* = lvlNone

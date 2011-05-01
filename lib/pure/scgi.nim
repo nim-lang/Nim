@@ -131,7 +131,7 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
       s.client.close()
   s.close()
 
-when isMainModule:
+when false:
   var counter = 0
   proc handleRequest(client: TSocket, input: string, 
                      headers: PStringTable): bool {.procvar.} =
