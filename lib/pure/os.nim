@@ -948,7 +948,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## This proc is only occassionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules
-  ## (see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx):
+  ## (see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx ):
   ##
   ## * Arguments are delimited by white space, which is either a space or a tab.
   ## * The caret character (^) is not recognized as an escape character or

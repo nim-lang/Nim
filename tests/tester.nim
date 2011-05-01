@@ -224,40 +224,47 @@ proc compile(r: var TResults, pattern, options: string) =
       var given = callCompiler(expected.cmd, test, options)
       r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
       if not given.err: inc(r.passed)
+
+proc compileSingleTest(r: var TResults, test, options: string) =
+  var t = extractFilename(test)
+  inc(r.total)
+  echo t
+  var given = callCompiler(cmdTemplate, test, options)
+  r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
+  if not given.err: inc(r.passed)
+
+proc runSingleTest(r: var TResults, test, options: string) =
+  var t = extractFilename(test)
+  echo t
+  inc(r.total)
+  var expected = parseSpec(test)
+  if expected.disabled:
+    r.addResult(t, "", "", reIgnored)
+    inc(r.skipped)
+  else:
+    var given = callCompiler(expected.cmd, test, options)
+    if given.err:
+      r.addResult(t, "", given.msg, reFailure)
+    else:
+      var exeFile = changeFileExt(test, ExeExt)
+      if existsFile(exeFile):
+        var buf = myExec(exeFile)
+        var success = strip(buf) == strip(expected.outp)
+        if expected.substr: success = expected.outp in buf
+        if success: inc(r.passed)
+        r.addResult(t, expected.outp, 
+            buf, if success: reSuccess else: reFailure)
+      else:
+        r.addResult(t, expected.outp, "executable not found", reFailure)
+
+proc run(r: var TResults, dir, options: string) = 
+  for test in os.walkFiles(dir / "t*.nim"): runSingleTest(r, test, options)
   
 proc compileExample(r: var TResults, pattern, options: string) = 
-  for test in os.walkFiles(pattern): 
-    var t = extractFilename(test)
-    inc(r.total)
-    echo t
-    var given = callCompiler(cmdTemplate, test, options)
-    r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
-    if not given.err: inc(r.passed)
-  
-proc run(r: var TResults, dir, options: string) = 
-  for test in os.walkFiles(dir / "t*.nim"): 
-    var t = extractFilename(test)
-    echo t
-    inc(r.total)
-    var expected = parseSpec(test)
-    if expected.disabled:
-      r.addResult(t, "", "", reIgnored)
-      inc(r.skipped)
-    else:
-      var given = callCompiler(expected.cmd, test, options)
-      if given.err:
-        r.addResult(t, "", given.msg, reFailure)
-      else:
-        var exeFile = changeFileExt(test, ExeExt)
-        if existsFile(exeFile):
-          var buf = myExec(exeFile)
-          var success = strip(buf) == strip(expected.outp)
-          if expected.substr: success = expected.outp in buf
-          if success: inc(r.passed)
-          r.addResult(t, expected.outp, 
-              buf, if success: reSuccess else: reFailure)
-        else:
-          r.addResult(t, expected.outp, "executable not found", reFailure)
+  for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
+
+proc testLib(r: var TResults, options: string) =
+  nil
 
 var options = ""
 var rejectRes = initResults()

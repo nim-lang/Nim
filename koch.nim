@@ -174,7 +174,9 @@ proc clean(args: string) =
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
-    if kind == pcDir: RemoveDir(path)
+    if kind == pcDir: 
+      echo "removing dir: ", path
+      RemoveDir(path)
 
 proc tests(args: string) =
   exec("nimrod cc tests/tester")

@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a redis client. It allows you to connect to a redis-server instance, send commands and receive replies.
+## This module implements a redis client. It allows you to connect to a
+## redis-server instance, send commands and receive replies.
 ##
 ## **Beware**: Most (if not all) functions that return a ``TRedisString`` may
 ## return ``redisNil``, and functions which return a ``TRedisList`` 
@@ -559,7 +560,8 @@ proc zincrby*(r: TRedis, key: string, increment: string,
 proc zinterstore*(r: TRedis, destination: string, numkeys: string,
                  keys: openarray[string], weights: openarray[string] = [],
                  aggregate: string = ""): TRedisInteger =
-  ## Intersect multiple sorted sets and store the resulting sorted set in a new key
+  ## Intersect multiple sorted sets and store the resulting sorted set in
+  ## a new key
   var args = @[destination, numkeys]
   for i in items(keys): args.add(i)
   
@@ -844,7 +846,8 @@ proc slaveof*(r: TRedis, host: string, port: string) =
   r.sendCommand("SLAVEOF", host, port)
   raiseNoOK(r.parseStatus())
 
-when isMainModule:
+when false:
+  # sorry, deactivated for the test suite
   var r = open()
   r.auth("pass")
 
