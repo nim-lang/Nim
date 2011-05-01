@@ -1,6 +1,6 @@
 discard """
   file: "tfloat1.nim"
-  output: "Error: unhandled exception: FPU operation caused an overflow [EFloatOverflow]"
+  outputsub: "Error: unhandled exception: FPU operation caused an overflow [EFloatOverflow]"
 """
 # Test new floating point exceptions
 

@@ -27,6 +27,7 @@ type
     msg: string
     err: bool
     disabled: bool
+    substr: bool
   TResults {.pure.} = object
     total, passed, skipped: int
     data: string
@@ -53,7 +54,7 @@ proc extractSpec(filename: string): string =
   if a >= 0 and b > a: 
     result = x.copy(a+3, b-1).replace("'''", tripleQuote)
   else:
-    echo "warning: file does not contain spec: " & filename
+    #echo "warning: file does not contain spec: " & filename
     result = ""
 
 template parseSpecAux(fillResult: stmt) = 
@@ -87,6 +88,9 @@ proc parseSpec(filename: string): TSpec =
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
     of "output": result.outp = e.value
+    of "outputsub":
+      result.outp = e.value
+      result.substr = true
     of "errormsg", "msg": result.msg = e.value
     of "disabled": result.disabled = parseCfgBool(e.value)
     of "cmd": result.cmd = e.value
@@ -184,9 +188,10 @@ proc listResults(reject, compile, run: TResults) =
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) = 
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reFailure)
-  elif extractFilename(expected.file) != extractFilename(given.file):
+  elif extractFilename(expected.file) != extractFilename(given.file) and
+      "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFailure)
-  elif expected.line != given.line: 
+  elif expected.line != given.line and expected.line != 0:
     r.addResult(test, $expected.line, $given.line, reFailure)
   else:
     r.addResult(test, expected.msg, given.msg, reSuccess)
@@ -206,7 +211,21 @@ proc reject(r: var TResults, dir, options: string) =
       var given = callCompiler(expected.cmd, test, options)
       cmpMsgs(r, expected, given, t)
   
-proc compile(r: var TResults, pattern, options: string) = 
+proc compile(r: var TResults, pattern, options: string) =
+  for test in os.walkFiles(pattern):
+    var t = extractFilename(test)
+    echo t
+    inc(r.total)
+    var expected = parseSpec(test)
+    if expected.disabled:
+      r.addResult(t, "", reIgnored)
+      inc(r.skipped)
+    else:
+      var given = callCompiler(expected.cmd, test, options)
+      r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
+      if not given.err: inc(r.passed)
+  
+proc compileExample(r: var TResults, pattern, options: string) = 
   for test in os.walkFiles(pattern): 
     var t = extractFilename(test)
     inc(r.total)
@@ -233,6 +252,7 @@ proc run(r: var TResults, dir, options: string) =
         if existsFile(exeFile):
           var buf = myExec(exeFile)
           var success = strip(buf) == strip(expected.outp)
+          if expected.substr: success = expected.outp in buf
           if success: inc(r.passed)
           r.addResult(t, expected.outp, 
               buf, if success: reSuccess else: reFailure)
@@ -250,8 +270,8 @@ for i in 1.. paramCount():
 
 reject(rejectRes, "tests/reject", options)
 compile(compileRes, "tests/accept/compile/t*.nim", options)
-compile(compileRes, "examples/*.nim", options)
-compile(compileRes, "examples/gtk/*.nim", options)
+compileExample(compileRes, "examples/*.nim", options)
+compileExample(compileRes, "examples/gtk/*.nim", options)
 run(runRes, "tests/accept/run", options)
 listResults(rejectRes, compileRes, runRes)
 openDefaultBrowser(resultsFile)

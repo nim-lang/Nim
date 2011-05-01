@@ -1,4 +1,6 @@
-
+discard """
+  disabled: true
+"""
 
 when defined(windows):
   import winlean

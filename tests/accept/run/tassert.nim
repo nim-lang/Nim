@@ -1,6 +1,6 @@
 discard """
   file: "tassert.nim"
-  output: "assertion failure!this shall be always written"
+  outputsub: "assertion failure!this shall be always written"
 """
 # test assert and exception handling
 

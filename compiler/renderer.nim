@@ -369,7 +369,7 @@ proc lsub(n: PNode): int =
   of nkPragmaExpr: result = lsub(n.sons[0]) + lcomma(n, 1)
   of nkRange: result = lsons(n) + 2
   of nkDerefExpr: result = lsub(n.sons[0]) + 2
-  of nkAccQuoted: result = lsub(n.sons[0]) + 2
+  of nkAccQuoted: result = lsons(n) + 2
   of nkIfExpr: 
     result = lsub(n.sons[0].sons[0]) + lsub(n.sons[0].sons[1]) + lsons(n, 1) +
         len("if_:_")
@@ -823,9 +823,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[0])
     putWithSpace(g, tkHat, "^") 
     # unfortunately this requires a space, because ^. would be only one operator
-  of nkAccQuoted: 
+  of nkAccQuoted:
     put(g, tkAccent, "`")
-    gsub(g, n.sons[0])
+    if n.len > 0: gsub(g, n.sons[0])
+    for i in 0 .. <n.len:
+      put(g, tkSpaces, Space)
+      gsub(g, n.sons[i])
     put(g, tkAccent, "`")
   of nkIfExpr: 
     putWithSpace(g, tkIf, "if")

@@ -19,30 +19,12 @@ proc createMatrix*(width, height: int): TMatrix =
 proc width*(m: TMatrix): int {.inline.} = return m.fWidth
 proc height*(m: TMatrix): int {.inline.} = return m.fHeight
 
-proc `[,]`*(m: TMatrix, x, y: int): float {.inline.} =
+proc `[]`*(m: TMatrix, x, y: int): float {.inline.} =
   result = m.data[x|y]
 
-proc `[,]=`*(m: var TMatrix, x, y: int, val: float) {.inline.} =
+proc `[]=`*(m: var TMatrix, x, y: int, val: float) {.inline.} =
   m.data[x|y] = val
   
-proc `[$ .. $, $ .. $]`*(m: TMatrix, a, b, c, d: int): TMatrix =
-  result = createMatrix(b-a+1, d-c+1)
-  for x in a..b:
-    for y in c..d:
-      result[x-a, y-c] = m[x, y]
-
-proc `[$ .. $, $ .. $]=`*(m: var TMatrix, a, b, c, d: int, val: float) =
-  for x in a..b:
-    for y in c..d:
-      m[x, y] = val
-
-proc `[$ .. $, $ .. $]=`*(m: var TMatrix, a, b, c, d: int, val: TMatrix) =
-  assert val.width == b-a+1
-  assert val.height == d-c+1
-  for x in a..b:
-    for y in c..d:
-      m[x, y] = val[x-a, y-c]
-
 proc `-|`*(m: TMatrix): TMatrix =
   ## transposes a matrix
   result = createMatrix(m.height, m.width)

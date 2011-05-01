@@ -1,6 +1,6 @@
 discard """
   file: "tfloat2.nim"
-  output: "Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]"
+  outputsub: "Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]"
 """
 # Test new floating point exceptions
 

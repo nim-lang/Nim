@@ -41,7 +41,7 @@ proc add*[T](heap: PBinHeap[T], priority: int, data: T) =
 
 proc print*[T](heap: PBinHeap[T]) =
   for i in countup(0, heap.last):
-    echo heap.heap[i].data
+    stdout.write($heap.heap[i].data, " ")
 
 var
   heap: PBinHeap[int]

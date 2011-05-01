@@ -142,19 +142,18 @@ proc newStringTable*(mode: TStringTableMode): PStringTable {.
   result.counter = 0
   newSeq(result.data, startSize)
 
-when false:
-  proc newStringTable(keyValuePairs: openarray[string],
-                       mode = modeCaseSensitive): PStringTable {.
-    rtl, extern: "nst$1WithPairs".} =
-    ## creates a new string table with given key value pairs.
-    ## Example::
-    ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
-    ##                              modeCaseInsensitive)
-    result = newStringTable(mode)
-    var i = 0
-    while i < high(keyValuePairs):
-      result[keyValuePairs[i]] = keyValuePairs[i + 1]
-      inc(i, 2)
+proc newStringTable*(keyValuePairs: openarray[string],
+                     mode: TStringTableMode): PStringTable {.
+  rtl, extern: "nst$1WithPairs".} =
+  ## creates a new string table with given key value pairs.
+  ## Example::
+  ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
+  ##                              modeCaseInsensitive)
+  result = newStringTable(mode)
+  var i = 0
+  while i < high(keyValuePairs):
+    result[keyValuePairs[i]] = keyValuePairs[i + 1]
+    inc(i, 2)
 
 proc newStringTable*(keyValuePairs: openarray[tuple[key, val: string]],
                      mode: TStringTableMode = modeCaseSensitive): PStringTable {.

@@ -45,7 +45,9 @@ type # This should be he same as ast.TTypeKind
 
   TNimTypeFlag = enum 
     ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString
-    ntfAcyclic = 1     # type cannot form a cycle
+    ntfAcyclic = 1,    # type cannot form a cycle
+    ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
+                       # version
   TNimType {.compilerproc, final.} = object
     size: int
     kind: TNimKind

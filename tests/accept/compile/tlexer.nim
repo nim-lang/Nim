@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 # We start with a comment
 # This is the same comment
 

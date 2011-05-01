@@ -1,6 +1,6 @@
 discard """
   file: "tunhandledexc.nim"
-  output: "Error: unhandled exception: bla [ESomeOtherErr]"
+  outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
 """
 type
   ESomething = object of E_Base

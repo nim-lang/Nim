@@ -32,7 +32,8 @@ Possible Commands:
   web                      generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
-  inno [options]           builds the Inno Setup installer
+  inno [options]           builds the Inno Setup installer (for Windows)
+  tests                    run the testsuite
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -52,11 +53,11 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc csource(args: string) = 
-  exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource compiler/nimrod $1" %
+  exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource compiler/nimrod.ini $1" %
        [args, NimrodVersion])
 
 proc zip(args: string) = 
-  exec("nimrod cc -r tools/niminst --var:version=$# zip compiler/nimrod" %
+  exec("nimrod cc -r tools/niminst --var:version=$# zip compiler/nimrod.ini" %
        NimrodVersion)
   
 proc buildTool(toolname, args: string) = 
@@ -172,6 +173,12 @@ proc clean(args: string) =
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
+  for kind, path in walkDir(getCurrentDir() / "build"):
+    if kind == pcDir: RemoveDir(path)
+
+proc tests(args: string) =
+  exec("nimrod cc tests/tester")
+  exec("tests/tester")
 
 proc showHelp() = 
   quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
@@ -190,6 +197,7 @@ of cmdArgument:
   of "zip": zip(op.cmdLineRest)
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
+  of "test", "tests": tests(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 

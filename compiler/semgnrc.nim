@@ -53,16 +53,11 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
 proc getIdentNode(n: PNode): PNode = 
   case n.kind
   of nkPostfix: result = getIdentNode(n.sons[1])
-  of nkPragmaExpr, nkAccQuoted: result = getIdentNode(n.sons[0])
-  of nkIdent: result = n
+  of nkPragmaExpr: result = getIdentNode(n.sons[0])
+  of nkIdent, nkAccQuoted: result = n
   else: 
     illFormedAst(n)
     result = n
-
-#  of nkAccQuoted: 
-#    s = lookUp(c, n)
-#    if withinBind in flags: result = symChoice(c, n, s)
-#    else: result = semGenericStmtSymbol(c, n, s)
 
 proc semGenericStmt(c: PContext, n: PNode, 
                     flags: TSemGenericFlags = {}): PNode = 

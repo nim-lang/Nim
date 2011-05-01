@@ -24,3 +24,19 @@ var
 ha = 1  
 echo(ha)
 
+
+# Test identifier generation:
+template prefix(name: expr): expr = `"hu" name`
+
+var `hu "XYZ"` = "yay"
+
+echo prefix(XYZ)
+
+template typedef(name: expr, typ: typeDesc) = 
+  type
+    `T name`* = typ
+    `P name`* = ref `T name`
+    
+typedef(myint, int)
+var x: PMyInt
+
