@@ -215,7 +215,12 @@ const
   INADDR_NONE* = -1
   
   ws2dll = "Ws2_32.dll"
-  
+
+  WSAEWOULDBLOCK* = 10035
+  WSAEINPROGRESS* = 10036
+
+proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
+
 type 
   TWSAData* {.pure, final.} = object 
     wVersion, wHighVersion: int16
@@ -297,6 +302,9 @@ proc getservbyname*(name, proto: cstring): ptr TServent {.
 proc getservbyport*(port: cint, proto: cstring): ptr TServent {.
   stdcall, importc: "getservbyport", dynlib: ws2dll.}
 
+proc gethostbyaddr*(ip: ptr TInAddr, len: cint, theType: cint): ptr THostEnt {.
+  stdcall, importc: "gethostbyaddr", dynlib: ws2dll.}
+
 proc gethostbyname*(name: cstring): ptr THostEnt {.
   stdcall, importc: "gethostbyname", dynlib: ws2dll.}
 
@@ -373,4 +381,5 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr TAddrInfo,
 proc freeaddrinfo*(ai: ptr TAddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
-
+proc inet_ntoa*(i: TInAddr): cstring {.
+  stdcall, importc, dynlib: ws2dll.}
