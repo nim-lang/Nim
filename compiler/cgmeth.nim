@@ -13,13 +13,10 @@ import
   options, ast, astalgo, msgs, idents, renderer, types, magicsys
 
 proc genConv(n: PNode, d: PType, downcast: bool): PNode = 
-  var 
-    dest, source: PType
-    diff: int
-  dest = skipTypes(d, abstractPtrs)
-  source = skipTypes(n.typ, abstractPtrs)
+  var dest = skipTypes(d, abstractPtrs)
+  var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject): 
-    diff = inheritanceDiff(dest, source)
+    var diff = inheritanceDiff(dest, source)
     if diff == high(int): InternalError(n.info, "cgmeth.genConv")
     if diff < 0: 
       result = newNodeIT(nkObjUpConv, n.info, d)
@@ -36,9 +33,8 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
     result = n
   
 proc methodCall*(n: PNode): PNode = 
-  var disp: PSym
   result = n
-  disp = lastSon(result.sons[0].sym.ast).sym
+  var disp = lastSon(result.sons[0].sym.ast).sym
   result.sons[0].sym = disp
   for i in countup(1, sonsLen(result) - 1): 
     result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
@@ -46,15 +42,14 @@ proc methodCall*(n: PNode): PNode =
 var gMethods: seq[TSymSeq]
 
 proc sameMethodBucket(a, b: PSym): bool = 
-  var aa, bb: PType
   result = false
   if a.name.id != b.name.id: return 
   if sonsLen(a.typ) != sonsLen(b.typ): 
     return                    # check for return type:
   if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return 
   for i in countup(1, sonsLen(a.typ) - 1): 
-    aa = a.typ.sons[i]
-    bb = b.typ.sons[i]
+    var aa = a.typ.sons[i]
+    var bb = b.typ.sons[i]
     while true: 
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
@@ -71,18 +66,15 @@ proc sameMethodBucket(a, b: PSym): bool =
       return 
   result = true
 
-proc methodDef*(s: PSym) = 
-  var 
-    L, q: int
-    disp: PSym
-  L = len(gMethods)
+proc methodDef*(s: PSym) =
+  var L = len(gMethods)
   for i in countup(0, L - 1): 
     if sameMethodBucket(gMethods[i][0], s): 
       add(gMethods[i], s)     # store a symbol to the dispatcher:
       addSon(s.ast, lastSon(gMethods[i][0].ast))
       return 
   add(gMethods, @[s])        # create a new dispatcher:
-  disp = copySym(s)
+  var disp = copySym(s)
   disp.typ = copyType(disp.typ, disp.typ.owner, false)
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
   disp.ast = copyTree(s.ast)
@@ -92,9 +84,8 @@ proc methodDef*(s: PSym) =
   addSon(s.ast, newSymNode(disp))
 
 proc relevantCol(methods: TSymSeq, col: int): bool = 
-  var t: PType
   # returns true iff the position is relevant
-  t = methods[0].typ.sons[col]
+  var t = methods[0].typ.sons[col]
   result = false
   if skipTypes(t, skipPtrs).kind == tyObject: 
     for i in countup(1, high(methods)): 
@@ -102,33 +93,27 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
         return true
   
 proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int = 
-  var 
-    d: int
-    aa, bb: PType
   result = 0
   for col in countup(1, sonsLen(a.typ) - 1): 
     if intSetContains(relevantCols, col): 
-      aa = skipTypes(a.typ.sons[col], skipPtrs)
-      bb = skipTypes(b.typ.sons[col], skipPtrs)
-      d = inheritanceDiff(aa, bb)
+      var aa = skipTypes(a.typ.sons[col], skipPtrs)
+      var bb = skipTypes(b.typ.sons[col], skipPtrs)
+      var d = inheritanceDiff(aa, bb)
       if (d != high(int)): 
         return d
   
 proc sortBucket(a: var TSymSeq, relevantCols: TIntSet) = 
   # we use shellsort here; fast and simple
-  var 
-    N, j, h: int
-    v: PSym
-  N = len(a)
-  h = 1
+  var N = len(a)
+  var h = 1
   while true: 
     h = 3 * h + 1
     if h > N: break 
   while true: 
     h = h div 3
     for i in countup(h, N - 1): 
-      v = a[i]
-      j = i
+      var v = a[i]
+      var j = i
       while cmpSignatures(a[j - h], v, relevantCols) >= 0: 
         a[j] = a[j - h]
         j = j - h
@@ -136,51 +121,51 @@ proc sortBucket(a: var TSymSeq, relevantCols: TIntSet) =
       a[j] = v
     if h == 1: break 
   
-proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym = 
-  var 
-    disp, cond, call, ret, a, isn: PNode
-    base, curr, ands, iss: PSym
-    paramLen: int
-  base = lastSon(methods[0].ast).sym
+proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
+  var base = lastSon(methods[0].ast).sym
   result = base
-  paramLen = sonsLen(base.typ)
-  disp = newNodeI(nkIfStmt, base.info)
-  ands = getSysSym("and")
-  iss = getSysSym("is")
-  for meth in countup(0, high(methods)): 
-    curr = methods[meth]      # generate condition:
-    cond = nil
-    for col in countup(1, paramLen - 1): 
-      if IntSetContains(relevantCols, col): 
-        isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
+  var paramLen = sonsLen(base.typ)
+  var disp = newNodeI(nkIfStmt, base.info)
+  var ands = getSysSym("and")
+  var iss = getSysSym("is")
+  for meth in countup(0, high(methods)):
+    var curr = methods[meth]      # generate condition:
+    var cond: PNode = nil
+    for col in countup(1, paramLen - 1):
+      if IntSetContains(relevantCols, col):
+        var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
         addSon(isn, newSymNode(iss))
         addSon(isn, newSymNode(base.typ.n.sons[col].sym))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil: 
-          a = newNodeIT(nkCall, base.info, getSysType(tyBool))
+          var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
           addSon(a, newSymNode(ands))
           addSon(a, cond)
           addSon(a, isn)
           cond = a
-        else: 
+        else:
           cond = isn
-    call = newNodeI(nkCall, base.info)
+    var call = newNodeI(nkCall, base.info)
     addSon(call, newSymNode(curr))
     for col in countup(1, paramLen - 1): 
       addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym), 
                            curr.typ.sons[col], false))
-    if base.typ.sons[0] != nil: 
-      a = newNodeI(nkAsgn, base.info)
+    var ret: PNode
+    if base.typ.sons[0] != nil:
+      var a = newNodeI(nkAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
       ret = newNodeI(nkReturnStmt, base.info)
       addSon(ret, a)
-    else: 
+    else:
       ret = call
-    a = newNodeI(nkElifBranch, base.info)
-    addSon(a, cond)
-    addSon(a, ret)
-    addSon(disp, a)
+    if cond != nil:
+      var a = newNodeI(nkElifBranch, base.info)
+      addSon(a, cond)
+      addSon(a, ret)
+      addSon(disp, a)
+    else:
+      disp = ret
   result.ast.sons[codePos] = disp
 
 proc generateMethodDispatchers*(): PNode = 
