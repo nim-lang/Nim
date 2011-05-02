@@ -6,7 +6,7 @@
 High priority (version 0.9.0)
 =============================
 
-- tests: run modules that contain "when isMainModule", compile the other
+- tests: run modules that contain "#RUN_ME", compile the other
   modules; run the GC tests
 - fix implicit generic routines
 - fix the streams implementation so that it uses methods
@@ -44,8 +44,6 @@ Low priority
 ------------
 - resizing of strings/sequences could take into account the memory that
   is allocated
-- implicit conversions from ``ptr/ref T`` to ``var T`` (from
-  ``ptr/ref T`` to ``T``)?
 - typeAllowed() for parameters...
 - find a way to reintroduce the cleanup() pass for C code generation: this
   is hard because of partial evaluation --> symbol files will fix this as
