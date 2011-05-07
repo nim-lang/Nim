@@ -360,6 +360,7 @@ type
     RASP_PppIp = 0x00008021, RASP_PppIpx = 0x0000802B, RASP_PppNbf = 0x0000803F,
     RASP_Amb = 0x00010000
   SECURITY_IMPERSONATION_LEVEL* = enum
+
     SecurityAnonymous, SecurityIdentification, SecurityImpersonation,
     SecurityDelegation
   SID_NAME_USE* = enum
@@ -3761,6 +3762,7 @@ const
   SMTO_NORMAL* = 0
   # SetBkMode
   OPAQUE* = 2
+
   TRANSPARENT* = 1
   # SetDebugErrorLevel
   SLE_ERROR* = 1
@@ -16215,6 +16217,7 @@ when defined(winUnicode):
   proc GetEnvironmentStrings*(): LPWSTR{.stdcall, dynlib: "kernel32",
       importc: "GetEnvironmentStringsW".}
   proc FreeEnvironmentStrings*(para1: LPWSTR): WINBOOL{.stdcall,
+
       dynlib: "kernel32", importc: "FreeEnvironmentStringsW".}
   proc FormatMessage*(dwFlags: DWORD, lpSource: LPCVOID, dwMessageId: DWORD,
                       dwLanguageId: DWORD, lpBuffer: LPWSTR, nSize: DWORD,
@@ -18715,9 +18718,7 @@ proc ReleaseMutex*(hMutex: HANDLE): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "ReleaseMutex".}
 proc WaitForSingleObject*(hHandle: HANDLE, dwMilliseconds: DWORD): DWORD{.
     stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
-proc WaitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
-                             bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
-    stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
+
 proc Sleep*(dwMilliseconds: DWORD){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 proc LoadResource*(hModule: HINST, hResInfo: HRSRC): HGLOBAL{.stdcall,
