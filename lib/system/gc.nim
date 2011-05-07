@@ -23,7 +23,7 @@
 const
   CycleIncrease = 2 # is a multiplicative increase
   InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
-  ZctThreshold = 256  # we collect garbage if the ZCT's size
+  ZctThreshold = 500  # we collect garbage if the ZCT's size
                       # reaches this threshold
                       # this seems to be a good value
 
@@ -294,31 +294,32 @@ proc initGC() =
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
   case n.kind
-  of nkNone: assert(false)
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
   of nkList:
     for i in 0..n.len-1: forAllSlotsAux(dest, n.sons[i], op)
   of nkCase:
     var m = selectBranch(dest, n)
     if m != nil: forAllSlotsAux(dest, m, op)
+  of nkNone: assert(false)
 
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
   var d = cast[TAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.Kind
-    of tyArray, tyArrayConstr, tyOpenArray:
-      for i in 0..(mt.size div mt.base.size)-1:
-        forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
     of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[ppointer](d)[], op)
     of tyObject, tyTuple, tyPureObject:
       forAllSlotsAux(dest, mt.node, op)
+    of tyArray, tyArrayConstr, tyOpenArray:
+      for i in 0..(mt.size div mt.base.size)-1:
+        forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
     else: nil
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   assert(cell != nil)
   assert(cell.typ != nil)
+  assert cell.typ.kind in {tyRef, tySequence, tyString}
   case cell.typ.Kind
   of tyRef: # common case
     forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
@@ -329,13 +330,56 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
       for i in 0..s.len-1:
         forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
           GenericSeqSize), cell.typ.base, op)
-  of tyString: nil
-  else: assert(false)
+  else: nil
 
 proc checkCollection {.inline.} =
   # checks if a collection should be done
   if recGcLock == 0:
     collectCT(gch)
+
+proc addNewObjToZCT(res: PCell) {.inline.} =
+  # we check the last 8 entries (cache line) for a slot that could be reused.
+  # In 63% of all cases we succeed here! But we have to optimize the heck
+  # out of this small linear search so that ``newObj`` is not slowed down.
+  # 
+  # Slots to try          cache hit
+  # 1                     32%
+  # 4                     59%
+  # 8                     63%
+  # 16                    66%
+  # all slots             68%
+  var L = gch.zct.len
+  var d = gch.zct.d
+  when true:
+    # loop unrolled for performance:
+    template replaceZctEntry(i: expr) =
+      c = d[i]
+      if c.refcount >=% rcIncrement:
+        c.refcount = c.refcount and not colorMask
+        d[i] = res
+        return
+    if L > 8:
+      var c: PCell
+      replaceZctEntry(L-1)
+      replaceZctEntry(L-2)
+      replaceZctEntry(L-3)
+      replaceZctEntry(L-4)
+      replaceZctEntry(L-5)
+      replaceZctEntry(L-6)
+      replaceZctEntry(L-7)
+      replaceZctEntry(L-8)
+      add(gch.zct, res)
+    else:
+      d[L] = res
+      inc(gch.zct.len)
+  else:
+    for i in countdown(L-1, max(0, L-8)):
+      var c = d[i]
+      if c.refcount >=% rcIncrement:
+        c.refcount = c.refcount and not colorMask
+        d[i] = res
+        return
+    add(gch.zct, res)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 0
@@ -354,18 +398,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   res.refcount = rcZct # refcount is zero, but mark it to be in the ZCT  
   assert(isAllocatedPtr(allocator, res))
   # its refcount is zero, so add it to the ZCT:
-  block addToZCT: 
-    # we check the last 8 entries (cache line) for a slot
-    # that could be reused
-    var L = gch.zct.len
-    var d = gch.zct.d
-    for i in countdown(L-1, max(0, L-8)):
-      var c = d[i]
-      if c.refcount >=% rcIncrement:
-        c.refcount = c.refcount and not colorMask
-        d[i] = res
-        break addToZCT
-    add(gch.zct, res)
+  addNewObjToZCT(res)
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)  
   release(gch)

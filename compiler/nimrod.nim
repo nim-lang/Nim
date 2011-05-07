@@ -50,7 +50,7 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
       rawMessage(errArgsNeedRunOption, [])
   
 proc HandleCmdLine() = 
-  var start = getTime()
+  var start = epochTime()
   if paramCount() == 0: 
     writeCommandLineUsage()
   else: 
@@ -73,7 +73,8 @@ proc HandleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run()
       if gCmd notin {cmdInterpret, cmdRun}: 
-        rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start)])
+        rawMessage(hintSuccessX, [$gLinesCompiled, 
+                   formatFloat(epochTime() - start, ffDecimal, 3)])
       if optRun in gGlobalOptions: 
         when defined(unix): 
           var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))
@@ -81,6 +82,7 @@ proc HandleCmdLine() =
           var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
         execExternalProgram(prog & ' ' & arguments)
 
+#GC_disableMarkAndSweep()
 cmdLineInfo = newLineInfo("command line", -1, -1)
 condsyms.InitDefines()
 HandleCmdLine()

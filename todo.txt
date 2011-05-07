@@ -1,11 +1,13 @@
+* thread support: threadvar on Windows seems broken; 
+  add --deadlock_prevention:on|off switch
 - implicit ref/ptr->var conversion
-- warning for implicit openArray -> varargs convention
-- implement explicit varargs
 
 
 High priority (version 0.9.0)
 =============================
 
+- warning for implicit openArray -> varargs convention
+- implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
   modules; run the GC tests
 - fix implicit generic routines
@@ -32,11 +34,8 @@ To implement
 
 * hash tables and sets; count tables; ordered dicts
 * distinct types for array/seq indexes
-
 * implement closures for the C code generator
 * GC: marker procs for native Nimrod GC and Boehm GC
-* thread support: threadvar on Windows seems broken; 
-  add --deadlock_prevention:on|off switch
 * built-in serialization
 
 
