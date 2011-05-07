@@ -13,6 +13,7 @@
 type
   THandle* = int
   WINBOOL* = int32
+  DWORD* = int32
 
   TSECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -52,7 +53,9 @@ const
   IDLE_PRIORITY_CLASS* = 64'i32
   NORMAL_PRIORITY_CLASS* = 32'i32
   REALTIME_PRIORITY_CLASS* = 256'i32
+  WAIT_OBJECT_0* = 0'i32
   WAIT_TIMEOUT* = 0x00000102'i32
+  WAIT_FAILED* = 0xFFFFFFFF'i32
   INFINITE* = -1'i32
 
   STD_INPUT_HANDLE* = -10'i32
@@ -383,3 +386,14 @@ proc freeaddrinfo*(ai: ptr TAddrInfo) {.
 
 proc inet_ntoa*(i: TInAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
+
+const
+  MAXIMUM_WAIT_OBJECTS* = 0x00000040
+
+type
+  TWOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, THANDLE]
+  PWOHandleArray* = ptr TWOHandleArray
+
+proc WaitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
+                             bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
+    stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}

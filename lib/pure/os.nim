@@ -147,6 +147,24 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
+proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
+  ## Retrieves the operating system's error flag, ``errno`` on Posix and 
+  ## ``GetLastError`` on Windows.
+  result = ""
+  when defined(Windows):
+    var err = GetLastError()
+    if err != 0'i32:
+      var msgbuf: cstring
+      if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+                        nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
+        var m = $msgbuf
+        if msgbuf != nil:
+          LocalFree(msgbuf)
+        result = m
+  else:
+    if errno != 0'i32:
+      result = $os.strerror(errno)
+
 proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
   ## raises an EOS exception with the given message ``msg``.
   ## If ``msg == ""``, the operating system's error flag
@@ -154,19 +172,9 @@ proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
   ## ``GetLastError`` is checked before ``errno``.
   ## If no error flag is set, the message ``unknown OS error`` is used.
   if len(msg) == 0:
-    when defined(Windows):
-      var err = GetLastError()
-      if err != 0'i32:
-        # sigh, why is this is so difficult?
-        var msgbuf: cstring
-        if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
-                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-          var m = $msgbuf
-          if msgbuf != nil:
-            LocalFree(msgbuf)
-          raise newException(EOS, m)
-    if errno != 0'i32:
-      raise newException(EOS, $os.strerror(errno))
+    var m = OSErrorMsg()
+    if m != "":
+      raise newException(EOS, m)
     else:
       raise newException(EOS, "unknown OS error")
   else:
@@ -941,6 +949,18 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1".} =
   for i in 1.. dir.len-1:
     if dir[i] in {dirsep, altsep}: rawCreateDir(copy(dir, 0, i-1))
   rawCreateDir(dir)
+
+proc copyDir*(source, dest: string) {.rtl, extern: "nos$1".} =
+  ## Copies a directory from `source` to `dest`. If this fails, `EOS` is raised.
+  createDir(dest)
+  for kind, path in walkDir(source):
+    var noSource = path.copy(source.len()+1)
+    case kind
+    of pcFile:
+      copyFile(path, dest / noSource)
+    of pcDir:
+      copyDir(path, dest / noSource)
+    else: nil
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =

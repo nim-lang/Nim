@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,7 +43,7 @@ proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
                                                   poUseShell}): string {.
                                                   rtl, extern: "nosp$1".}
-  ## A convience procedure that executes ``command`` with ``startProcess``
+  ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
 
 proc executeProcess*(command: string,
@@ -100,6 +100,9 @@ proc processID*(p: PProcess): int {.rtl, extern: "nosp$1".} =
 
 proc waitForExit*(p: PProcess): int {.rtl, extern: "nosp$1".}
   ## waits for the process to finish and returns `p`'s error code.
+
+proc peekExitCode*(p: PProcess): int
+  ## return -1 if the process is still running. Otherwise the process' exit code
 
 proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
   ## returns ``p``'s input stream for writing to
@@ -195,6 +198,12 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..high(cmds):
       var p = startProcessAux(cmds[i], options=options)
       result = max(waitForExit(p), result)
+
+proc select*(readfds: var seq[PProcess], timeout = 500): int
+  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout. Returns the number of file handles that are
+  ## ready. The processes that are ready to be read from are removed from 
+  ## `readfds`.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
@@ -366,6 +375,14 @@ when defined(Windows) and not defined(useNimRtl):
     result = res
     discard CloseHandle(p.FProcessHandle)
 
+  proc peekExitCode(p: PProcess): int =
+    var b = waitForSingleObject(p.FProcessHandle, 50) == WAIT_TIMEOUT
+    if b: result = -1
+    else: 
+      var res: int32
+      discard GetExitCodeProcess(p.FProcessHandle, res)
+      return res
+
   proc inputStream(p: PProcess): PStream =
     result = newFileHandleStream(p.inputHandle)
 
@@ -397,6 +414,24 @@ when defined(Windows) and not defined(useNimRtl):
       else:
         result = -1
       discard CloseHandle(Process)
+
+  proc select(readfds: var seq[PProcess], timeout = 500): int = 
+    assert readfds.len <= MAXIMUM_WAIT_OBJECTS
+    var rfds: TWOHandleArray
+    for i in 0..readfds.len()-1:
+      rfds[i] = readfds[i].FProcessHandle
+    
+    var ret = waitForMultipleObjects(readfds.len, 
+                                     addr(rfds), 0'i32, timeout)
+    case ret
+    of WAIT_TIMEOUT:
+      return 0
+    of WAIT_FAILED:
+      OSError()
+    else:
+      var i = ret - WAIT_OBJECT_0
+      readfds.del(i)
+      return 1
 
 elif not defined(useNimRtl):
   const
@@ -435,7 +470,7 @@ elif not defined(useNimRtl):
     var
       p_stdin, p_stdout, p_stderr: array [0..1, cint]
     new(result)
-    result.exitCode = 3 # for ``waitForExit``
+    result.exitCode = -3 # for ``waitForExit``
     if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32:
       OSError("failed to create a pipe")
     var Pid = fork()
@@ -504,12 +539,18 @@ elif not defined(useNimRtl):
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
     # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
-    # initialized with 3, wrong success exit codes are prevented.
+    # initialized with -3, wrong success exit codes are prevented.
     var oldExitCode = p.exitCode
     if waitPid(p.id, p.exitCode, 0) < 0:
       # failed, so restore old exitCode
       p.exitCode = oldExitCode
     result = int(p.exitCode)
+
+  proc peekExitCode(p: PProcess): int =
+    var b = waitPid(p.id, p.exitCode, WNOHANG) == int(p.id)
+    if b: result = -1
+    elif p.exitCode == -3: result = -1
+    else: result = p.exitCode
 
   proc inputStream(p: PProcess): PStream =
     var f: TFile
@@ -530,6 +571,39 @@ elif not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     result = csystem(command)
+
+  proc createFdSet(fd: var TFdSet, s: seq[PProcess], m: var int) = 
+    FD_ZERO(fd)
+    for i in items(s): 
+      m = max(m, int(i.outputHandle))
+      FD_SET(cint(i.outputHandle), fd)
+     
+  proc pruneProcessSet(s: var seq[PProcess], fd: var TFdSet) = 
+    var i = 0
+    var L = s.len
+    while i < L:
+      if FD_ISSET(cint(s[i].outputHandle), fd) != 0'i32:
+        s[i] = s[L-1]
+        dec(L)
+      else:
+        inc(i)
+    setLen(s, L)
+
+  proc select(readfds: var seq[PProcess], timeout = 500): int = 
+    var tv: TTimeVal
+    tv.tv_sec = 0
+    tv.tv_usec = timeout * 1000
+    
+    var rd: TFdSet
+    var m = 0
+    createFdSet((rd), readfds, m)
+    
+    if timeout != -1:
+      result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
+    else:
+      result = int(select(cint(m+1), addr(rd), nil, nil, nil))
+    
+    pruneProcessSet(readfds, (rd))
 
 when isMainModule:
   var x = execProcess("gcc -v")
