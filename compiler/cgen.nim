@@ -677,8 +677,8 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
       appf(generatedProc, 
-          "profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
-           [toRope(prc.loc.a)])
+        "profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
+        [toRope(prc.loc.a)])
     app(generatedProc, returnStmt)
     app(generatedProc, '}' & tnl)
   app(m.s[cfsProcs], generatedProc)

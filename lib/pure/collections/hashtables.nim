@@ -216,9 +216,16 @@ proc `[]=`*[A, B](t: TOrderedHashTable[A, B], key: A, val: B) =
     inc(t.counter)
 
 proc del*[A, B](t: TOrderedHashTable[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## deletes `key` from hash table `t`. Warning: It's inefficient for ordered
+  ## tables: O(n).
   var index = RawGet(t, key)
   if index >= 0:
+    var i = t.first
+    while i >= 0:
+      var nxt = t.data[i].next
+      if nxt == index: XXX
+      i = nxt
+    
     t.data[index].slot = seDeleted
     dec(t.counter)
 

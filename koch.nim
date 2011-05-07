@@ -157,10 +157,8 @@ proc cleanAux(dir: string) =
       of "nimcache": 
         echo "removing dir: ", path
         removeDir(path)
-      of "dist", ".git":
-        nil
-      else:
-        cleanAux(path)
+      of "dist", ".git": nil
+      else: cleanAux(path)
     else: nil
 
 proc removePattern(pattern: string) = 

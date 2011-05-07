@@ -100,19 +100,16 @@ proc crcFromBuf(buf: Pointer, length: int): TCrc32 =
   
 proc crcFromFile(filename: string): TCrc32 = 
   const 
-    bufSize = 8 * 1024
+    bufSize = 8000 # don't use 8K for the memory allocator!
   var 
     bin: tfile
-    buf: Pointer
-    readBytes: int
-    p: PByteArray
   result = InitCrc32
   if not open(bin, filename): 
     return                    # not equal if file does not exist
-  buf = alloc(BufSize)
-  p = cast[PByteArray](buf)
+  var buf = alloc(BufSize)
+  var p = cast[PByteArray](buf)
   while true: 
-    readBytes = readBuffer(bin, buf, bufSize)
+    var readBytes = readBuffer(bin, buf, bufSize)
     for i in countup(0, readBytes - 1): result = updateCrc32(p[i], result)
     if readBytes != bufSize: break 
   dealloc(buf)

@@ -100,7 +100,7 @@ when defined(Windows):
       stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
 
   proc WaitForSingleObject(hHandle: THANDLE, dwMilliseconds: int32): int32 {.
-      stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
 
   proc TerminateThread(hThread: THandle, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}

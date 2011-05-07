@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,8 +21,6 @@ proc rawWrite(f: TFile, s: string) =
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  #stdout.write("could not load: ")
-  #quit(path)
   stdout.rawWrite("could not load: ")
   stdout.rawWrite(path)
   stdout.rawWrite("\n")

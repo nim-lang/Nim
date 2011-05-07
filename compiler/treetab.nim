@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,13 +12,7 @@
 import 
   nhashes, ast, astalgo, types
 
-proc NodeTableGet*(t: TNodeTable, key: PNode): int
-proc NodeTablePut*(t: var TNodeTable, key: PNode, val: int)
-proc NodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int
-# implementation
-
 proc hashTree(n: PNode): THash = 
-  result = 0
   if n == nil: return 
   result = ord(n.kind)
   case n.kind
@@ -41,7 +35,6 @@ proc hashTree(n: PNode): THash =
       result = concHash(result, hashTree(n.sons[i]))
   
 proc TreesEquivalent(a, b: PNode): bool = 
-  result = false
   if a == b: 
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind): 
@@ -60,36 +53,31 @@ proc TreesEquivalent(a, b: PNode): bool =
     if result: result = sameTypeOrNil(a.typ, b.typ)
   
 proc NodeTableRawGet(t: TNodeTable, k: THash, key: PNode): int = 
-  var h: THash
-  h = k and high(t.data)
+  var h: THash = k and high(t.data)
   while t.data[h].key != nil: 
     if (t.data[h].h == k) and TreesEquivalent(t.data[h].key, key): 
       return h
     h = nextTry(h, high(t.data))
-  result = - 1
+  result = -1
 
-proc NodeTableGet(t: TNodeTable, key: PNode): int = 
-  var index: int
-  index = NodeTableRawGet(t, hashTree(key), key)
+proc NodeTableGet*(t: TNodeTable, key: PNode): int = 
+  var index = NodeTableRawGet(t, hashTree(key), key)
   if index >= 0: result = t.data[index].val
   else: result = low(int)
   
-proc NodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode, val: int) = 
-  var h: THash
-  h = k and high(data)
+proc NodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode, 
+                        val: int) = 
+  var h: THash = k and high(data)
   while data[h].key != nil: h = nextTry(h, high(data))
   assert(data[h].key == nil)
   data[h].h = k
   data[h].key = key
   data[h].val = val
 
-proc NodeTablePut(t: var TNodeTable, key: PNode, val: int) = 
-  var 
-    index: int
-    n: TNodePairSeq
-    k: THash
-  k = hashTree(key)
-  index = NodeTableRawGet(t, k, key)
+proc NodeTablePut*(t: var TNodeTable, key: PNode, val: int) = 
+  var n: TNodePairSeq
+  var k: THash = hashTree(key)
+  var index = NodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     t.data[index].val = val
@@ -103,13 +91,10 @@ proc NodeTablePut(t: var TNodeTable, key: PNode, val: int) =
     NodeTableRawInsert(t.data, k, key, val)
     inc(t.counter)
 
-proc NodeTableTestOrSet(t: var TNodeTable, key: PNode, val: int): int = 
-  var 
-    index: int
-    n: TNodePairSeq
-    k: THash
-  k = hashTree(key)
-  index = NodeTableRawGet(t, k, key)
+proc NodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int = 
+  var n: TNodePairSeq
+  var k: THash = hashTree(key)
+  var index = NodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     result = t.data[index].val
