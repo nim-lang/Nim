@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -148,8 +148,9 @@ const
     ## for example, the '.' in ``os.nim``.
 
 proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
-  ## Retrieves the operating system's error flag, ``errno`` on Posix and 
-  ## ``GetLastError`` on Windows.
+  ## Retrieves the operating system's error flag, ``errno``.
+  ## On Windows ``GetLastError`` is checked before ``errno``.
+  ## Returns "" if no error occured.
   result = ""
   when defined(Windows):
     var err = GetLastError()
@@ -161,9 +162,8 @@ proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
         if msgbuf != nil:
           LocalFree(msgbuf)
         result = m
-  else:
-    if errno != 0'i32:
-      result = $os.strerror(errno)
+  if errno != 0'i32:
+    result = $os.strerror(errno)
 
 proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
   ## raises an EOS exception with the given message ``msg``.
@@ -173,10 +173,7 @@ proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
   ## If no error flag is set, the message ``unknown OS error`` is used.
   if len(msg) == 0:
     var m = OSErrorMsg()
-    if m != "":
-      raise newException(EOS, m)
-    else:
-      raise newException(EOS, "unknown OS error")
+    raise newException(EOS, if m.len > 0: m else: "unknown OS error")
   else:
     raise newException(EOS, msg)
 

@@ -200,10 +200,10 @@ proc execProcesses*(cmds: openArray[string],
       result = max(waitForExit(p), result)
 
 proc select*(readfds: var seq[PProcess], timeout = 500): int
-  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
-  ## Specify -1 for no timeout. Returns the number of file handles that are
-  ## ready. The processes that are ready to be read from are removed from 
-  ## `readfds`.
+  ## `select` with a sensible Nimrod interface. `timeout` is in miliseconds.
+  ## Specify -1 for no timeout. Returns the number of processes that are
+  ## ready to read from. The processes that are ready to be read from are
+  ## removed from `readfds`.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
