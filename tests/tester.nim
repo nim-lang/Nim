@@ -10,11 +10,12 @@
 ## This program verifies Nimrod against the testcases.
 
 import
-  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers
+  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
   resultsFile = "testresults.html"
+  jsonFile = "testresults.json"
 
 type
   TTestAction = enum
@@ -180,10 +181,9 @@ proc listResults(reject, compile, run: TResults) =
   s.add($run)
   s.add(TableHeader4 & run.data & TableFooter)
   s.add("</html>")
-  var outp: TFile
-  if open(outp, resultsFile, fmWrite):
-    write(outp, s)
-    close(outp)
+  var outp = open(resultsFile, fmWrite)
+  write(outp, s)
+  close(outp)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) = 
   if strip(expected.msg) notin strip(given.msg):
@@ -266,6 +266,22 @@ proc compileExample(r: var TResults, pattern, options: string) =
 proc testLib(r: var TResults, options: string) =
   nil
 
+proc toJson(res: TResults): PJsonNode =
+  result = newJObject()
+  result["total"] = newJInt(res.total)
+  result["passed"] = newJInt(res.passed)
+  result["skipped"] = newJInt(res.skipped)
+
+proc outputJSON(reject, compile, run: TResults) =
+  var doc = newJObject()
+  doc["reject"] = toJson(reject)
+  doc["compile"] = toJson(compile)
+  doc["run"] = toJson(run)
+  var s = pretty(doc)
+  var outp = open(jsonFile, fmWrite)
+  write(outp, s)
+  close(outp)
+
 var options = ""
 var rejectRes = initResults()
 var compileRes = initResults()
@@ -281,5 +297,6 @@ compileExample(compileRes, "examples/*.nim", options)
 compileExample(compileRes, "examples/gtk/*.nim", options)
 run(runRes, "tests/accept/run", options)
 listResults(rejectRes, compileRes, runRes)
+outputJSON(rejectRes, compileRes, runRes)
 openDefaultBrowser(resultsFile)
 
