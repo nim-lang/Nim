@@ -32,6 +32,7 @@ get                     get, ``[]``    consider overloading ``[]`` for get;
                                        prefix: ``len`` instead of ``getLen``
 length                  len            also used for *number of elements*
 size                    size, len      size should refer to a byte size
+capacity                cap
 memory                  mem            implies a low-level operation
 items                   items          default iterator over a collection
 pairs                   pairs          iterator over (key, value) pairs

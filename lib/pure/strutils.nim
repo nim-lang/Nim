@@ -89,12 +89,16 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`. That means to convert it to lower case and
   ## remove any '_'. This is needed for Nimrod identifiers for example.
-  result = ""
+  result = newString(s.len)
+  var j = 0
   for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
-      add result, Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+      result[j] = Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+      inc j
     elif s[i] != '_':
-      add result, s[i]
+      result[j] = s[i]
+      inc j
+  if j != s.len: setLen(result, j)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreCase", procvar.} =
@@ -226,13 +230,14 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
-  result = ""
+  result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
 proc `%` *(formatstr, a: string): string {.noSideEffect, 
   rtl, extern: "nsuFormatSingleElem".} =
   ## This is the same as ``formatstr % [a]``.
-  return formatstr % [a]
+  result = newStringOfCap(formatstr.len + a.len)
+  addf(result, formatstr, [a])
 
 proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
   rtl, extern: "nsuStrip".} =
@@ -510,7 +515,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap".} = 
   ## word wraps `s`.
-  result = ""
+  result = newStringOfCap(s.len + s.len shr 6)
   var SpaceLeft = maxLineWidth
   for word, isSep in tokenize(s, seps):
     if len(word) > SpaceLeft:
@@ -804,7 +809,8 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
   ## `prefix` and suffixed with `suffix`. Both may be empty strings.
-  result = prefix
+  result = newStringOfCap(s.len + s.len shr 2)
+  result.add(prefix)
   for c in items(s):
     case c
     of '\0'..'\31', '\128'..'\255':

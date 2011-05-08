@@ -620,7 +620,8 @@ proc nl(s: var string, ml: bool) =
 
 proc escapeJson*(s: string): string = 
   ## Converts a string `s` to its JSON representation.
-  result = "\""
+  result = newStringOfCap(s.len + s.len shr 3)
+  result.add("\"")
   for x in runes(s):
     var r = int(x)
     if r >= 32 and r <= 127:
