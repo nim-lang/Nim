@@ -685,7 +685,13 @@ proc newString*(len: int): string {.
   ## content. One needs to fill the string character after character
   ## with the index operator ``s[i]``. This procedure exists only for
   ## optimization purposes; the same effect can be achieved with the
-  ## ``&`` operator.
+  ## ``&`` operator or with ``add``.
+
+proc newStringOfCap*(cap: int): string {.
+  magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
+  ## returns a new string of length ``0`` but with capacity `cap`.This
+  ## procedure exists only for optimization purposes; the same effect can 
+  ## be achieved with the ``&`` operator or with ``add``.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
