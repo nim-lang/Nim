@@ -1,6 +1,6 @@
 * thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
-- implicit ref/ptr->var conversion
+* implicit ref/ptr->var conversion
 
 
 High priority (version 0.9.0)

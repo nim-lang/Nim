@@ -779,6 +779,14 @@ proc compileOption*(option, arg: string): bool {.
 include "system/inclrtl"
 
 when not defined(ecmascript) and not defined(nimrodVm):
+
+  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
+    ## atomic increment of `memLoc`. Returns the value after the operation.
+  
+  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
+    ## atomic decrement of `memLoc`. Returns the value after the operation.
+
+  include "system/systhread"
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1436,12 +1444,6 @@ proc quit*(errorcode: int = QuitSuccess) {.
 
 when not defined(EcmaScript) and not defined(NimrodVM):
 
-  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
-    ## atomic increment of `memLoc`. Returns the value after the operation.
-  
-  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
-    ## atomic decrement of `memLoc`. Returns the value after the operation.
-
   proc initGC()
 
   proc initStackBottom() {.inline.} = 
@@ -1707,7 +1709,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  include "system/systhread"
+  #include "system/systhread"
   include "system/mmdisp"
   include "system/sysstr"
   include "system/assign"

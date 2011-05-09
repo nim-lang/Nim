@@ -37,9 +37,11 @@ when defined(windows):
   
   proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
     result = TlsAlloc()
-  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.compilerproc.} =
+  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
+                         compilerproc, inline.} =
     TlsSetValue(s, value)
-  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.compilerproc.} =
+  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.
+                         compilerproc, inline.} =
     result = TlsGetValue(s)
   
 else:
@@ -58,4 +60,12 @@ else:
 
   proc pthread_setspecific(a1: Tpthread_key, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: "<pthread.h>".}
+  
+  proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
+    discard pthread_key_create(addr(result), nil)
+  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
+                         compilerproc, inline.} =
+    discard pthread_setspecific(s, value)
+  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.compilerproc, inline.} =
+    result = pthread_getspecific(s)
 
