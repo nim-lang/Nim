@@ -44,6 +44,10 @@ type
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
 
+const
+  hasThreadSupport = false # deactivate for now: thread stack walking
+                           # is missing!
+
 proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -779,14 +783,6 @@ proc compileOption*(option, arg: string): bool {.
 include "system/inclrtl"
 
 when not defined(ecmascript) and not defined(nimrodVm):
-
-  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
-    ## atomic increment of `memLoc`. Returns the value after the operation.
-  
-  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
-    ## atomic decrement of `memLoc`. Returns the value after the operation.
-
-  include "system/systhread"
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1444,6 +1440,12 @@ proc quit*(errorcode: int = QuitSuccess) {.
 
 when not defined(EcmaScript) and not defined(NimrodVM):
 
+  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
+    ## atomic increment of `memLoc`. Returns the value after the operation.
+  
+  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
+    ## atomic decrement of `memLoc`. Returns the value after the operation.
+
   proc initGC()
 
   proc initStackBottom() {.inline.} = 
@@ -1709,7 +1711,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  #include "system/systhread"
+  include "system/systhread"
   include "system/mmdisp"
   include "system/sysstr"
   include "system/assign"

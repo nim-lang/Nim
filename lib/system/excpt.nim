@@ -39,7 +39,7 @@ type
     exc: ref E_Base  # XXX only needed for bootstrapping; unused
     context: C_JmpBuf
 
-when hasThreadSupport: nil
+#when hasThreadSupport: nil
 
 var
   excHandler {.threadvar, compilerproc.}: PSafePoint = nil

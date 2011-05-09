@@ -8,8 +8,6 @@
 #
 
 const
-  hasThreadSupport = false # deactivate for now: thread stack walking
-                           # is missing!
   maxThreads = 256
 
 when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
