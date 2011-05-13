@@ -33,7 +33,6 @@ type
   
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible, isIntConv, isSubtype, 
-    isLifted, # match, but do not change argument type to formal's type!
     isGeneric, 
     isEqual
 
@@ -185,9 +184,6 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         var x = f.n.sons[i].sym
         var y = a.n.sons[i].sym
         if x.name.id != y.name.id: return isNone
-  elif sonsLen(f) == 0:
-    idTablePut(mapping, f, a)
-    result = isLifted
 
 proc constraintRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   result = isNone
@@ -493,9 +489,6 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isSubtype: 
     inc(m.subtypeMatches)
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
-  of isLifted:
-    inc(m.genericMatches)
-    result = copyTree(arg)
   of isGeneric: 
     inc(m.genericMatches)
     result = copyTree(arg)

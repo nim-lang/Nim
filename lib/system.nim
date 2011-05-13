@@ -1229,21 +1229,21 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
 
-iterator fields*(x: tuple[]): expr {.magic: "Fields", noSideEffect.}
+iterator fields*[T: tuple](x: T): expr {.magic: "Fields", noSideEffect.}
   ## iterates over every field of `x`. Warning: This is really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*(x, y: tuple[]): tuple[a, b: expr] {.
+iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
-iterator fieldPairs*(x: tuple[]): expr {.magic: "FieldPairs", noSideEffect.}
+iterator fieldPairs*[T: tuple](x: T): expr {.magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x`. Warning: This is really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fieldPairs*(x, y: tuple[]): tuple[a, b: expr] {.
+iterator fieldPairs*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
