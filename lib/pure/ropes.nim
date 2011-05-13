@@ -287,7 +287,7 @@ when false:
         if frmt[i] != '$': inc(i)
         else: break 
       if i - 1 >= start: 
-        add(result, copy(frmt, start, i-1))
+        add(result, substr(frmt, start, i-1))
   
 proc `%`*(frmt: string, args: openarray[PRope]): PRope {. 
   rtl, extern: "nroFormat".} =
@@ -330,7 +330,7 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
       if frmt[i] != '$': inc(i)
       else: break 
     if i - 1 >= start: 
-      add(result, copy(frmt, start, i - 1))
+      add(result, substr(frmt, start, i - 1))
 
 proc addf*(c: var PRope, frmt: string, args: openarray[PRope]) {.
   rtl, extern: "nro$1".} =

@@ -1021,9 +1021,9 @@ proc splitData*(TextNode: PText, offset: int): PText =
   if offset > TextNode.data.len():
     raise newException(EIndexSizeErr, "Index out of bounds")
   
-  var left: string = TextNode.data.copy(0, offset)
+  var left: string = TextNode.data.substr(0, offset)
   TextNode.data = left
-  var right: string = TextNode.data.copy(offset, TextNode.data.len())
+  var right: string = TextNode.data.substr(offset, TextNode.data.len())
   
   if TextNode.FParentNode != nil:
     for i in low(TextNode.FParentNode.childNodes)..high(TextNode.FParentNode.childNodes):

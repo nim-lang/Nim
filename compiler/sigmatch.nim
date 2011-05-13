@@ -14,7 +14,7 @@ import
   ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
   magicsys
 
-type 
+type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
   TCandidate* {.final.} = object 
@@ -222,7 +222,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
   of tyVar: 
-    if (a.kind == f.kind): result = typeRel(mapping, base(f), base(a))
+    if a.kind == f.kind: result = typeRel(mapping, base(f), base(a))
     else: result = typeRel(mapping, base(f), a)
   of tyArray, tyArrayConstr: 
     # tyArrayConstr cannot happen really, but

@@ -109,7 +109,7 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
     if charAt(d, i, s) == '\L': inc(i)
     else: httpError("CR-LF after chunksize expected")
     
-    var x = copy(d, i, i+chunkSize-1)
+    var x = substr(d, i, i+chunkSize-1)
     var size = x.len
     result.add(x)
     inc(i, size)
@@ -133,7 +133,7 @@ proc parseBody(d: var string, start: int, s: TSocket,
   if headers["Transfer-Encoding"] == "chunked":
     result = parseChunks(d, start, s)
   else:
-    result = copy(d, start)
+    result = substr(d, start)
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
     var contentLengthHeader = headers["Content-Length"]
@@ -236,7 +236,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   var r = parseUrl(url)
   
-  var headers = copy($httpMethod, len("http"))
+  var headers = substr($httpMethod, len("http"))
   headers.add(" /" & r.path & r.query)
   headers.add(" HTTP/1.1\c\L")
   

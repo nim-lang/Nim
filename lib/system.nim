@@ -909,8 +909,19 @@ proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
 # not be called explicitly! The user may decide to do this manually though.
 
 proc copy*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect.}
+  magic: "CopyStr", importc: "copyStr", noSideEffect, deprecated.}
 proc copy*(s: string, first, last: int): string {.
+  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect, 
+  deprecated.}
+  ## copies a slice of `s` into a new string and returns this new
+  ## string. The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If ``last``
+  ## is omitted, it is treated as ``high(s)``.
+  ## **Deprecated since version 0.8.12**: Use ``substr`` instead.
+
+proc substr*(s: string, first = 0): string {.
+  magic: "CopyStr", importc: "copyStr", noSideEffect.}
+proc substr*(s: string, first, last: int): string {.
   magic: "CopyStrLast", importc: "copyStrLast", noSideEffect.}
   ## copies a slice of `s` into a new string and returns this new
   ## string. The bounds `first` and `last` denote the indices of
@@ -1783,7 +1794,7 @@ template `-|`(b, s: expr): expr =
 
 proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
   ## slice operation for strings. Negative indexes are supported.
-  result = s.copy(x.a-|s, x.b-|s)
+  result = s.substr(x.a-|s, x.b-|s)
 
 proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
   ## slice assignment for strings. Negative indexes are supported.

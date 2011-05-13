@@ -138,19 +138,19 @@ proc shortenDir(dir: string): string =
   # returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix))
+    return substr(dir, len(prefix))
   prefix = getCurrentDir() & dirSep
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix))
+    return substr(dir, len(prefix))
   prefix = projectPath & dirSep #writeln(output, prefix);
                                 #writeln(output, dir);
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix))
+    return substr(dir, len(prefix))
   result = dir
 
 proc removeTrailingDirSep*(path: string): string = 
   if (len(path) > 0) and (path[len(path) - 1] == dirSep): 
-    result = copy(path, 0, len(path) - 2)
+    result = substr(path, 0, len(path) - 2)
   else: 
     result = path
   

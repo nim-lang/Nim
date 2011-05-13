@@ -119,7 +119,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   # treat them as imported, instead of modifing a lot of working code
   # BUGFIX: magic does not imply ``lfNoDecl`` anymore!
   for m in countup(low(TMagic), high(TMagic)): 
-    if copy($m, 1) == v: 
+    if substr($m, 1) == v: 
       s.magic = m
       return 
   Message(n.info, warnUnknownMagic, v)
@@ -333,12 +333,12 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     var a = 0
     while true: 
       var b = strutils.find(str, marker, a)
-      var sub = if b < 0: copy(str, a) else: copy(str, a, b - 1)
+      var sub = if b < 0: substr(str, a) else: substr(str, a, b - 1)
       if sub != "": addSon(result, newStrNode(nkStrLit, sub))
       if b < 0: break 
       var c = strutils.find(str, marker, b + 1)
-      if c < 0: sub = copy(str, b + 1)
-      else: sub = copy(str, b + 1, c - 1)
+      if c < 0: sub = substr(str, b + 1)
+      else: sub = substr(str, b + 1, c - 1)
       if sub != "": 
         var e = SymtabGet(con.tab, getIdent(sub))
         if e != nil: 

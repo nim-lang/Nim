@@ -156,7 +156,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
     while i < L: 
       if (frmt[i] != '$'): inc(i)
       else: break 
-    if i - 1 >= start: app(result, copy(frmt, start, i - 1))
+    if i - 1 >= start: app(result, substr(frmt, start, i - 1))
   
 proc addXmlChar(dest: var string, c: Char) = 
   case c
@@ -581,10 +581,10 @@ proc renderCodeBlock(d: PDoc, n: PRstNode): PRope =
       case g.kind
       of gtEof: break 
       of gtNone, gtWhitespace: 
-        app(result, copy(m.text, g.start + 0, g.length + g.start - 1 + 0))
+        app(result, substr(m.text, g.start + 0, g.length + g.start - 1))
       else: 
         dispA(result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-            toRope(esc(copy(m.text, g.start + 0, g.length + g.start - 1 + 0))), 
+            toRope(esc(substr(m.text, g.start + 0, g.length + g.start - 1))), 
             toRope(tokenClassToStr[g.kind])])
     deinitGeneralTokenizer(g)
   if result != nil: 
