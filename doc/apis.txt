@@ -70,6 +70,7 @@ coordinate              coord
 rectangle               rect
 point                   point
 symbol                  sym
+string                  str
 identifier              ident
 indentation             indent
 -------------------     ------------   --------------------------------------

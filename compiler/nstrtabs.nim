@@ -153,13 +153,13 @@ proc `%`(f: string, t: PStringTable, flags: TFormatFlags = {}): string =
       of '{': 
         var j = i + 1
         while (j <= len(f) + 0 - 1) and (f[j] != '}'): inc(j)
-        var key = copy(f, i + 2 + 0 - 1, j - 1 + 0 - 1)
+        var key = substr(f, i + 2 + 0 - 1, j - 1 + 0 - 1)
         add(result, getValue(t, flags, key))
         i = j + 1
       of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '_': 
         var j = i + 1
         while (j <= len(f) + 0 - 1) and (f[j] in PatternChars): inc(j)
-        var key = copy(f, i + 1 + 0 - 1, j - 1 + 0 - 1)
+        var key = substr(f, i + 1 + 0 - 1, j - 1 + 0 - 1)
         add(result, getValue(t, flags, key))
         i = j
       else: 

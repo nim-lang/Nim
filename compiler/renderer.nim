@@ -1106,7 +1106,7 @@ proc getNextTok(r: var TSrcGen, kind: var TTokType, literal: var string) =
   if r.idx < len(r.tokens): 
     kind = r.tokens[r.idx].kind
     var length = r.tokens[r.idx].length
-    literal = copy(r.buf, r.pos + 0, r.pos + 0 + length - 1)
+    literal = substr(r.buf, r.pos + 0, r.pos + 0 + length - 1)
     inc(r.pos, length)
     inc(r.idx)
   else: 

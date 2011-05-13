@@ -31,6 +31,7 @@ Changes affecting backwards compatibility
   priority.
 - Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` instead.
 - Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` instead.
+- Deprecated ``system.copy``: Use ``substr`` or string slicing instead.
 - Changed and documented how generalized string literals work: The syntax
   ``module.re"abc"`` is now supported.
 - Changed the behaviour of ``strutils.%``, ``ropes.%`` 

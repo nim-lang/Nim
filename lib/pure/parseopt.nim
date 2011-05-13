@@ -126,7 +126,7 @@ proc next*(p: var TOptParser) {.
 proc cmdLineRest*(p: TOptParser): string {.
   rtl, extern: "npo$1".} = 
   ## retrieves the rest of the command line that has not been parsed yet.
-  result = strip(copy(p.cmd, p.pos, len(p.cmd) - 1)) 
+  result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)) 
 
 proc getRestOfCommandLine*(p: TOptParser): string {.deprecated.} = 
   ## **Deprecated since version 0.8.2**: Use `cmdLineRest` instead.

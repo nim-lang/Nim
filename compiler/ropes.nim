@@ -328,7 +328,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
       if (frmt[i] != '$'): inc(i)
       else: break 
     if i - 1 >= start: 
-      app(result, copy(frmt, start, i - 1))
+      app(result, substr(frmt, start, i - 1))
   assert(RopeInvariant(result))
 
 proc appf(c: var PRope, frmt: TFormatStr, args: openarray[PRope]) = 

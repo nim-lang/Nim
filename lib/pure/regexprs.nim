@@ -84,7 +84,7 @@ proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
     var
       a = rawMatches[i * 2]
       b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i] = copy(s, a, int(b)-1)
+    if a >= 0'i32: matches[i] = substr(s, a, int(b)-1)
     else: matches[i] = ""
   return res
 

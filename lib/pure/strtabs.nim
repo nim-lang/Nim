@@ -181,12 +181,12 @@ proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
       of '{':
         var j = i + 1
         while j < f.len and f[j] != '}': inc(j)
-        add(result, getValue(t, flags, copy(f, i+2, j-1)))
+        add(result, getValue(t, flags, substr(f, i+2, j-1)))
         i = j + 1
       of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '_':
         var j = i + 1
         while j < f.len and f[j] in PatternChars: inc(j)
-        add(result, getValue(t, flags, copy(f, i+1, j-1)))
+        add(result, getValue(t, flags, substr(f, i+1, j-1)))
         i = j
       else:
         add(result, f[i])

@@ -189,9 +189,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mBoolToStr: 
     if getOrdValue(a) == 0: result = newStrNodeT("false", n)
     else: result = newStrNodeT("true", n)
-  of mCopyStr: result = newStrNodeT(copy(getStr(a), int(getOrdValue(b))), n)
+  of mCopyStr: result = newStrNodeT(substr(getStr(a), int(getOrdValue(b))), n)
   of mCopyStrLast: 
-    result = newStrNodeT(copy(getStr(a), int(getOrdValue(b)), 
+    result = newStrNodeT(substr(getStr(a), int(getOrdValue(b)), 
                                          int(getOrdValue(c))), n)
   of mFloatToStr: result = newStrNodeT($(getFloat(a)), n)
   of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
