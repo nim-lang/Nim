@@ -111,7 +111,7 @@ type
   TReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
     marked: TCellSet
-    recdepth: int       # do not recurse endless
+    recdepth: int       # do not recurse endlessly
     indent: int         # indentation
 
 when not defined(useNimRtl):
