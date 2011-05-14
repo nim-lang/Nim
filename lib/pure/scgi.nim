@@ -73,7 +73,7 @@ proc recvBuffer(s: var TScgiState, L: int) =
     scgiError("could not read all data")
   setLen(s.input, L)
   
-proc open*(s: var TScgiState, port = TPort(4000)) = 
+proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1") = 
   ## opens a connection.
   s.bufLen = 4000
   s.input = newString(s.buflen) # will be reused
@@ -81,7 +81,7 @@ proc open*(s: var TScgiState, port = TPort(4000)) =
   s.server = socket()
   if s.server == InvalidSocket: scgiError("could not open socket")
   #s.server.connect(connectionName, port)
-  bindAddr(s.server, port)
+  bindAddr(s.server, port, address)
   listen(s.server)
   
 proc close*(s: var TScgiState) = 

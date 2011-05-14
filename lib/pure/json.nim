@@ -606,6 +606,35 @@ proc `[]=`*(obj: PJsonNode, key: String, val: PJsonNode) =
       return
   obj.fields.add((key, val))
 
+proc delete*(obj: PJsonNode, key: string) =
+  assert(obj.kind == JObject)
+  for i in 0..obj.fields.len-1:
+    if obj.fields[i].key == key:
+      obj.fields.delete(i)
+      return
+  raise newException(EInvalidIndex, "key not in object")
+
+proc copy*(p: PJsonNode): PJsonNode =
+  case p.kind
+  of JString:
+    result = newJString(p.str)
+  of JInt:
+    result = newJInt(p.num)
+  of JFloat:
+    result = newJFloat(p.fnum)
+  of JBool:
+    result = newJBool(p.bval)
+  of JNull:
+    result = newJNull()
+  of JObject:
+    result = newJObject()
+    for key, field in items(p.fields):
+      result.fields.add((key, copy(field)))
+  of JArray:
+    result = newJArray()
+    for i in items(p.elems):
+      result.elems.add(copy(i))
+
 # ------------- pretty printing ----------------------------------------------
 
 proc indent(s: var string, i: int) = 
