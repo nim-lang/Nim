@@ -124,11 +124,11 @@ when defined(boehmgc):
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
   
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
   proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
   proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
 
   include "system/cellsets"
 elif defined(nogc):
@@ -182,11 +182,11 @@ elif defined(nogc):
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
   
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
   proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
   proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-    dest^ = src
+    dest[] = src
 
   include "system/cellsets"
 
