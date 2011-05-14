@@ -83,18 +83,22 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuCapitalize".} =
   ## Converts the first character of `s` into upper case.
   ## This works only for the letters a-z.
-  result = toUpper(s[0]) & copy(s, 1)
+  result = toUpper(s[0]) & substr(s, 1)
 
 proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`. That means to convert it to lower case and
   ## remove any '_'. This is needed for Nimrod identifiers for example.
-  result = ""
+  result = newString(s.len)
+  var j = 0
   for i in 0..len(s) - 1:
     if s[i] in {'A'..'Z'}:
-      add result, Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+      result[j] = Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+      inc j
     elif s[i] != '_':
-      add result, s[i]
+      result[j] = s[i]
+      inc j
+  if j != s.len: setLen(result, j)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreCase", procvar.} =
@@ -171,14 +175,14 @@ proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
       of '{':
         var j = i+1
         while formatstr[j] notin {'\0', '}'}: inc(j)
-        var x = findNormalized(copy(formatstr, i+2, j-1), a)
+        var x = findNormalized(substr(formatstr, i+2, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
         else: raise newException(EInvalidValue, "invalid format string")
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while formatstr[j] in PatternChars: inc(j)
-        var x = findNormalized(copy(formatstr, i+1, j-1), a)
+        var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
         else: raise newException(EInvalidValue, "invalid format string")
         i = j
@@ -226,13 +230,14 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
-  result = ""
+  result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
 proc `%` *(formatstr, a: string): string {.noSideEffect, 
   rtl, extern: "nsuFormatSingleElem".} =
   ## This is the same as ``formatstr % [a]``.
-  return formatstr % [a]
+  result = newStringOfCap(formatstr.len + a.len)
+  addf(result, formatstr, [a])
 
 proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
   rtl, extern: "nsuStrip".} =
@@ -248,7 +253,7 @@ proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
     while s[first] in chars: inc(first)
   if trailing:
     while last >= 0 and s[last] in chars: dec(last)
-  result = copy(s, first, last)
+  result = substr(s, first, last)
 
 proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation. The resulting
@@ -288,7 +293,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
     var first = last
     while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
     if first <= last-1:
-      yield copy(s, first, last-1)
+      yield substr(s, first, last-1)
 
 iterator split*(s: string, sep: char): string =
   ## Splits the string `s` into substrings.
@@ -321,7 +326,7 @@ iterator split*(s: string, sep: char): string =
     while last <= len(s):
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
-      yield copy(s, first, last-1)
+      yield substr(s, first, last-1)
       inc(last)
 
 iterator splitLines*(s: string): string =
@@ -349,7 +354,7 @@ iterator splitLines*(s: string): string =
   var last = 0
   while true:
     while s[last] notin {'\0', '\c', '\l'}: inc(last)
-    yield copy(s, first, last-1)
+    yield substr(s, first, last-1)
     # skip newlines:
     if s[last] == '\l': inc(last)
     elif s[last] == '\c':
@@ -499,7 +504,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
     var isSep = s[j] in seps
     while j < s.len and (s[j] in seps) == isSep: inc(j)
     if j > i:
-      yield (copy(s, i, j-1), isSep)
+      yield (substr(s, i, j-1), isSep)
     else:
       break
     i = j
@@ -510,19 +515,19 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap".} = 
   ## word wraps `s`.
-  result = ""
+  result = newStringOfCap(s.len + s.len shr 6)
   var SpaceLeft = maxLineWidth
   for word, isSep in tokenize(s, seps):
     if len(word) > SpaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
-        result.add(copy(word, 0, spaceLeft-1))
+        result.add(substr(word, 0, spaceLeft-1))
         var w = spaceLeft+1
         var wordLeft = len(word) - spaceLeft
         while wordLeft > 0: 
           result.add(newLine)
           var L = min(maxLineWidth, wordLeft)
           SpaceLeft = maxLineWidth - L
-          result.add(copy(word, w, w+L-1))
+          result.add(substr(word, w, w+L-1))
           inc(w, L)
           dec(wordLeft, L)
       else:
@@ -700,11 +705,11 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   while true:
     var j = findAux(s, sub, i, a)
     if j < 0: break
-    add result, copy(s, i, j - 1)
+    add result, substr(s, i, j - 1)
     add result, by
     i = j + len(sub)
   # copy the rest:
-  add result, copy(s, i)
+  add result, substr(s, i)
 
 proc replace*(s: string, sub, by: char): string {.noSideEffect,
   rtl, extern: "nsuReplaceChar".} =
@@ -804,7 +809,8 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
   ## `prefix` and suffixed with `suffix`. Both may be empty strings.
-  result = prefix
+  result = newStringOfCap(s.len + s.len shr 2)
+  result.add(prefix)
   for c in items(s):
     case c
     of '\0'..'\31', '\128'..'\255':
@@ -837,7 +843,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
   while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
   if s[i] != '\0': return false
   
-  var x = copy(s, j+1)
+  var x = substr(s, j+1)
   if len(x) == 2 and x[0] in Letters and x[1] in Letters: return true
   case toLower(x)
   of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",

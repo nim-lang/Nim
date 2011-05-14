@@ -14,7 +14,7 @@ import
   ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
   magicsys
 
-type 
+type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
   TCandidate* {.final.} = object 
@@ -33,7 +33,6 @@ type
   
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible, isIntConv, isSubtype, 
-    isLifted, # match, but do not change argument type to formal's type!
     isGeneric, 
     isEqual
 
@@ -185,9 +184,6 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         var x = f.n.sons[i].sym
         var y = a.n.sons[i].sym
         if x.name.id != y.name.id: return isNone
-  elif sonsLen(f) == 0:
-    idTablePut(mapping, f, a)
-    result = isLifted
 
 proc constraintRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   result = isNone
@@ -226,7 +222,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
   of tyVar: 
-    if (a.kind == f.kind): result = typeRel(mapping, base(f), base(a))
+    if a.kind == f.kind: result = typeRel(mapping, base(f), base(a))
     else: result = typeRel(mapping, base(f), a)
   of tyArray, tyArrayConstr: 
     # tyArrayConstr cannot happen really, but
@@ -493,9 +489,6 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isSubtype: 
     inc(m.subtypeMatches)
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
-  of isLifted:
-    inc(m.genericMatches)
-    result = copyTree(arg)
   of isGeneric: 
     inc(m.genericMatches)
     result = copyTree(arg)

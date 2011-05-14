@@ -33,8 +33,8 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
       # we fix this here
       var bracketLe = strutils.find(p.key, '[')
       if bracketLe >= 0: 
-        var key = copy(p.key, 0, bracketLe - 1)
-        var val = copy(p.key, bracketLe + 1) & ':' & p.val
+        var key = substr(p.key, 0, bracketLe - 1)
+        var val = substr(p.key, bracketLe + 1) & ':' & p.val
         ProcessSwitch(key, val, pass, cmdLineInfo)
       else: 
         ProcessSwitch(p.key, p.val, pass, cmdLineInfo)

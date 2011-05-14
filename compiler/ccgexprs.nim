@@ -1457,7 +1457,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mNewString, mCopyStr, mCopyStrLast, mExit: genCall(p, e, d)
+  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit: 
+    genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e)
   of mArrToSeq: genArrToSeq(p, e, d)

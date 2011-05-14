@@ -210,7 +210,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
       inc(i)
       var j = i
       while frmt[j] in IdentChars: inc(j)
-      var ident = copy(frmt, i, j-1)
+      var ident = substr(frmt, i, j-1)
       i = j
       app(result, cgsym(m, ident))
     elif frmt[i] == '#' and frmt[i+1] == '$':
@@ -225,7 +225,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
       else: break 
     if i - 1 >= start: 
-      app(result, copy(frmt, start, i - 1))
+      app(result, substr(frmt, start, i - 1))
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
            args: openarray[PRope]) = 
@@ -489,9 +489,9 @@ proc libCandidates(s: string, dest: var TStringSeq) =
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
   if le >= 0 and ri > le: 
-    var prefix = copy(s, 0, le - 1)
-    var suffix = copy(s, ri + 1)
-    for middle in split(copy(s, le + 1, ri - 1), '|'):
+    var prefix = substr(s, 0, le - 1)
+    var suffix = substr(s, ri + 1)
+    for middle in split(substr(s, le + 1, ri - 1), '|'):
       libCandidates(prefix & middle & suffix, dest)
   else: 
     add(dest, s)

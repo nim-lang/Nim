@@ -216,7 +216,7 @@ proc LLStreamReadAll(s: PLLStream): string =
     result = ""
   of llsString: 
     if s.rd == 0: result = s.s
-    else: result = copy(s.s, s.rd + 0)
+    else: result = substr(s.s, s.rd)
     s.rd = len(s.s)
   of llsFile: 
     result = newString(bufSize)

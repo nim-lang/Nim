@@ -36,7 +36,7 @@ proc URLencode*(s: string): string =
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'+'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value. 
-  result = ""
+  result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   for i in 0..s.len-1:
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
@@ -57,8 +57,9 @@ proc URLdecode*(s: string): string =
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
   ## value) is converted to the character with ordinal number ``xx``, and  
   ## and every other character is carried over. 
-  result = ""
+  result = newString(s.len)
   var i = 0
+  var j = 0
   while i < s.len:
     case s[i]
     of '%': 
@@ -66,10 +67,12 @@ proc URLdecode*(s: string): string =
       handleHexChar(s[i+1], x)
       handleHexChar(s[i+2], x)
       inc(i, 2)
-      add(result, chr(x))
-    of '+': add(result, ' ')
-    else: add(result, s[i])
+      result[j] = chr(x)
+    of '+': result[j] = ' '
+    else: result[j] = s[i]
     inc(i)
+    inc(j)
+  setLen(result, j)
 
 proc addXmlChar(dest: var string, c: Char) {.inline.} = 
   case c
@@ -86,7 +89,7 @@ proc XMLencode*(s: string): string =
   ## * ``>`` is replaced by ``&gt;``
   ## * ``&`` is replaced by ``&amp;``
   ## * every other character is carried over.
-  result = ""
+  result = newStringOfCap(s.len + s.len shr 2)
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
@@ -367,4 +370,8 @@ proc existsCookie*(name: string): bool =
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
   result = hasKey(gcookies, name)
 
+when isMainModule:
+  const test1 = "abc\L+def xyz"
+  assert UrlEncode(test1) == "abc%0A%2Bdef+xyz"
+  assert UrlDecode(UrlEncode(test1)) == test1
 

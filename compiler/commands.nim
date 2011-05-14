@@ -172,7 +172,7 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
     else: break 
     inc(i)
   if i >= len(switch): arg = ""
-  elif switch[i] in {':', '=', '['}: arg = copy(switch, i + 1)
+  elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
   else: InvalidCmdLineOption(pass, switch, info)
   
 proc ProcessOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass, 
@@ -215,7 +215,7 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
     var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: InvalidCmdLineOption(pass, arg, info)
-  case whichKeyword(copy(arg, i))
+  case whichKeyword(substr(arg, i))
   of wOn: incl(gNotes, n)
   of wOff: excl(gNotes, n)
   else: LocalError(info, errOnOrOffExpectedButXFound, arg)

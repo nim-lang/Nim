@@ -73,7 +73,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
   if s[i] in IdentStartChars:
     inc(i)
     while s[i] in IdentChars: inc(i)
-    ident = copy(s, start, i-1)
+    ident = substr(s, start, i-1)
     result = i-start
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
@@ -86,7 +86,7 @@ proc parseToken*(s: string, token: var string, validChars: set[char],
   var i = start
   while s[i] in validChars: inc(i)
   result = i-start
-  token = copy(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## skips the whitespace starting at ``s[start]``. Returns the number of
@@ -120,7 +120,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   var i = start
   while s[i] notin until: inc(i)
   result = i-start
-  token = copy(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
@@ -130,7 +130,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   var i = start
   while s[i] in validChars: inc(i)
   result = i-start
-  token = copy(s, start, i-1)
+  token = substr(s, start, i-1)
 
 {.push overflowChecks: on.}
 # this must be compiled with overflow checking turned on:

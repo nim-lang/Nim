@@ -98,7 +98,7 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       inc(i, 2)
       while line[i] in WhiteSpace: inc(i)
       var q: TParser
-      OpenParser(q, filename, LLStreamOpen(copy(line, i)))
+      OpenParser(q, filename, LLStreamOpen(substr(line, i)))
       result = parser.parseAll(q)
       CloseParser(q)
     LLStreamClose(s)
