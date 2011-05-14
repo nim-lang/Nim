@@ -338,15 +338,15 @@ proc hMSet*(r: TRedis, key: string,
   r.sendCommand("HMSET", args)
   raiseNoOK(r.parseStatus())
 
-proc hSet*(r: TRedis, key, field, value: string) =
+proc hSet*(r: TRedis, key, field, value: string): TRedisInteger =
   ## Set the string value of a hash field
   r.sendCommand("HSET", key, field, value)
-  raiseNoOK(r.parseStatus())
+  return r.parseInteger()
   
-proc hSetNX*(r: TRedis, key, field, value: string) =
+proc hSetNX*(r: TRedis, key, field, value: string): TRedisInteger =
   ## Set the value of a hash field, only if the field does **not** exist
   r.sendCommand("HSETNX", key, field, value)
-  raiseNoOK(r.parseStatus())
+  return r.parseInteger()
 
 proc hVals*(r: TRedis, key: string): TRedisList =
   ## Get all the values in a hash

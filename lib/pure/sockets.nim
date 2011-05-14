@@ -179,19 +179,27 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
   ## binds an address/port number to a socket.
   ## Use address string in dotted decimal form like "a.b.c.d"
   ## or leave "" for any address.
-  var name: Tsockaddr_in
-  when defined(Windows):
-    name.sin_family = int16(ord(AF_INET))
-  else:
-    name.sin_family = posix.AF_INET
-  name.sin_port = sockets.htons(int16(port))
+
   if address == "":
+    var name: Tsockaddr_in
+    when defined(Windows):
+      name.sin_family = int16(ord(AF_INET))
+    else:
+      name.sin_family = posix.AF_INET
+    name.sin_port = sockets.htons(int16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
+    if bindSocket(cint(socket), cast[ptr TSockAddr](addr(name)),
+                  sizeof(name)) < 0'i32:
+      OSError()
   else:
-    name.sin_addr.s_addr = parseIp4(address)
-  if bindSocket(cint(socket), cast[ptr TSockAddr](addr(name)),
-                sizeof(name)) < 0'i32:
-    OSError()
+    var hints: TAddrInfo
+    var aiList: ptr TAddrInfo = nil
+    hints.ai_family = toInt(AF_INET)
+    hints.ai_socktype = toInt(SOCK_STREAM)
+    hints.ai_protocol = toInt(IPPROTO_TCP)
+    if getAddrInfo(address, $port, addr(hints), aiList) != 0'i32: OSError()
+    if bindSocket(cint(socket), aiList.ai_addr, aiList.ai_addrLen) < 0'i32:
+      OSError()
 
 when false:
   proc bindAddr*(socket: TSocket, port = TPort(0)) =
