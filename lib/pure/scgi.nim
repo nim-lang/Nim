@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -39,7 +39,7 @@ proc scgiError*(msg: string) {.noreturn.} =
 proc parseWord(inp: string, outp: var string, start: int): int = 
   result = start
   while inp[result] != '\0': inc(result)
-  outp = copy(inp, start, result-1)
+  outp = substr(inp, start, result-1)
 
 proc parseHeaders(s: string, L: int): PStringTable = 
   result = newStringTable()
