@@ -56,7 +56,7 @@ proc parseStatus(r: TRedis): TRedisStatus =
   if line[0] != '+':
     raiseInvalidReply('+', line[0])
   
-  return line.copy(1, line.len-3) # Strip '+' and \c\L.
+  return line.substr(1, line.len-3) # Strip '+' and \c\L.
   
 proc parseInteger(r: TRedis): TRedisInteger =
   var line = r.socket.recv()
@@ -92,7 +92,7 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   if line[0] != '$':
     raiseInvalidReply('$', line[0])
   
-  var numBytes = parseInt(line.copy(1))
+  var numBytes = parseInt(line.substr(1))
   if numBytes == -1:
     return RedisNil
 
@@ -107,7 +107,7 @@ proc parseMultiBulk(r: TRedis): TRedisList =
   if line[0] != '*':
     raiseInvalidReply('*', line[0])
   
-  var numElems = parseInt(line.copy(1))
+  var numElems = parseInt(line.substr(1))
   if numElems == -1: return nil
   result = @[]
   for i in 1..numElems:
