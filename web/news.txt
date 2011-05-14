@@ -31,6 +31,7 @@ Changes affecting backwards compatibility
   priority.
 - Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` instead.
 - Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` instead.
+- Deprecated ``system.copy``: Use ``substr`` or string slicing instead.
 - Changed and documented how generalized string literals work: The syntax
   ``module.re"abc"`` is now supported.
 - Changed the behaviour of ``strutils.%``, ``ropes.%`` 
@@ -74,10 +75,11 @@ Additions
 - Added the ``linearScanEnd``, ``unroll``, ``shallow`` pragmas.
 - Added ``system.reset`` and a version of ``system.open`` that 
   returns a ``TFile`` and raises an exception in case of an error.
-- The compiler now might use a hashing for string case statements depending
+- The compiler now might use hashing for string case statements depending
   on the number of string literals in the case statement.
 - Added a wrapper for ``redis``.
 - The compiler now supports array, sequence and string slicing.
+- Added ``system.newStringOfCap``.
 
 
 2010-10-20 Version 0.8.10 released

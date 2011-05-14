@@ -44,6 +44,10 @@ type
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
 
+const
+  hasThreadSupport = false # deactivate for now: thread stack walking
+                           # is missing!
+
 proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -685,7 +689,13 @@ proc newString*(len: int): string {.
   ## content. One needs to fill the string character after character
   ## with the index operator ``s[i]``. This procedure exists only for
   ## optimization purposes; the same effect can be achieved with the
-  ## ``&`` operator.
+  ## ``&`` operator or with ``add``.
+
+proc newStringOfCap*(cap: int): string {.
+  magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
+  ## returns a new string of length ``0`` but with capacity `cap`.This
+  ## procedure exists only for optimization purposes; the same effect can 
+  ## be achieved with the ``&`` operator or with ``add``.
 
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
@@ -899,8 +909,19 @@ proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
 # not be called explicitly! The user may decide to do this manually though.
 
 proc copy*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect.}
+  magic: "CopyStr", importc: "copyStr", noSideEffect, deprecated.}
 proc copy*(s: string, first, last: int): string {.
+  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect, 
+  deprecated.}
+  ## copies a slice of `s` into a new string and returns this new
+  ## string. The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If ``last``
+  ## is omitted, it is treated as ``high(s)``.
+  ## **Deprecated since version 0.8.12**: Use ``substr`` instead.
+
+proc substr*(s: string, first = 0): string {.
+  magic: "CopyStr", importc: "copyStr", noSideEffect.}
+proc substr*(s: string, first, last: int): string {.
   magic: "CopyStrLast", importc: "copyStrLast", noSideEffect.}
   ## copies a slice of `s` into a new string and returns this new
   ## string. The bounds `first` and `last` denote the indices of
@@ -1219,21 +1240,21 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
 
-iterator fields*(x: tuple[]): expr {.magic: "Fields", noSideEffect.}
+iterator fields*[T: tuple](x: T): expr {.magic: "Fields", noSideEffect.}
   ## iterates over every field of `x`. Warning: This is really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*(x, y: tuple[]): tuple[a, b: expr] {.
+iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
-iterator fieldPairs*(x: tuple[]): expr {.magic: "FieldPairs", noSideEffect.}
+iterator fieldPairs*[T: tuple](x: T): expr {.magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x`. Warning: This is really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fieldPairs*(x, y: tuple[]): tuple[a, b: expr] {.
+iterator fieldPairs*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
@@ -1773,7 +1794,7 @@ template `-|`(b, s: expr): expr =
 
 proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
   ## slice operation for strings. Negative indexes are supported.
-  result = s.copy(x.a-|s, x.b-|s)
+  result = s.substr(x.a-|s, x.b-|s)
 
 proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
   ## slice assignment for strings. Negative indexes are supported.

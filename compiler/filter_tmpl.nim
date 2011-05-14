@@ -93,14 +93,14 @@ proc parseLine(p: var TTmplParser) =
     of wIf, wWhen, wTry, wWhile, wFor, wBlock, wCase, wProc, wIterator, 
        wConverter, wMacro, wTemplate, wMethod: 
       LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, copy(p.x, d))
+      LLStreamWrite(p.outp, substr(p.x, d))
       inc(p.indent, 2)
     of wElif, wOf, wElse, wExcept, wFinally: 
       LLStreamWrite(p.outp, repeatChar(p.indent - 2))
-      LLStreamWrite(p.outp, copy(p.x, d))
+      LLStreamWrite(p.outp, substr(p.x, d))
     else: 
       LLStreamWrite(p.outp, repeatChar(p.indent))
-      LLStreamWrite(p.outp, copy(p.x, d))
+      LLStreamWrite(p.outp, substr(p.x, d))
     p.state = psDirective
   else: 
     # data line

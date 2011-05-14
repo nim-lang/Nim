@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -24,7 +24,7 @@ proc parseCookies*(s: string): PStringTable =
     inc(i) # skip '='
     var valstart = i
     while s[i] != ';' and s[i] != '\0': inc(i)
-    result[copy(s, keystart, keyend)] = copy(s, valstart, i-1)
+    result[substr(s, keystart, keyend)] = substr(s, valstart, i-1)
     if s[i] == '\0': break
     inc(i) # skip ';'
 

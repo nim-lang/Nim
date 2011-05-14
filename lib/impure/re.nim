@@ -88,7 +88,7 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
     else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
   
@@ -106,7 +106,7 @@ proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
     else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
   
@@ -186,7 +186,7 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
     else: matches[i-1] = ""
   return rawMatches[0]
 
@@ -277,10 +277,10 @@ proc replace*(s: string, sub: TRegEx, by = ""): string =
   while true:
     var match = findBounds(s, sub, prev)
     if match.first < 0: break
-    add(result, copy(s, prev, match.first-1))
+    add(result, substr(s, prev, match.first-1))
     add(result, by)
     prev = match.last + 1
-  add(result, copy(s, prev))
+  add(result, substr(s, prev))
   
 proc replacef*(s: string, sub: TRegEx, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
@@ -300,10 +300,10 @@ proc replacef*(s: string, sub: TRegEx, by: string): string =
   while true:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
-    add(result, copy(s, prev, match.first-1))
+    add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
     prev = match.last + 1
-  add(result, copy(s, prev))
+  add(result, substr(s, prev))
   when false:
     result = ""
     var i = 0
@@ -316,8 +316,8 @@ proc replacef*(s: string, sub: TRegEx, by: string): string =
       else:
         addf(result, by, caps)
         inc(i, x)
-    # copy the rest:
-    add(result, copy(s, i))
+    # substr the rest:
+    add(result, substr(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: TRegEx, repl: string]]): string = 
@@ -337,7 +337,7 @@ proc parallelReplace*(s: string, subs: openArray[
       add(result, s[i])
       inc(i)
   # copy the rest:
-  add(result, copy(s, i))  
+  add(result, substr(s, i))  
   
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: TRegEx, repl: string]]) =
@@ -385,7 +385,7 @@ iterator split*(s: string, sep: TRegEx): string =
       x = matchLen(s, sep, last)
       if x > 0: break
     if first < last:
-      yield copy(s, first, last-1)
+      yield substr(s, first, last-1)
 
 proc split*(s: string, sep: TRegEx): seq[string] =
   ## Splits the string `s` into substrings.

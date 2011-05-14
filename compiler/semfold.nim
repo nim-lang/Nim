@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -189,9 +189,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mBoolToStr: 
     if getOrdValue(a) == 0: result = newStrNodeT("false", n)
     else: result = newStrNodeT("true", n)
-  of mCopyStr: result = newStrNodeT(copy(getStr(a), int(getOrdValue(b))), n)
+  of mCopyStr: result = newStrNodeT(substr(getStr(a), int(getOrdValue(b))), n)
   of mCopyStrLast: 
-    result = newStrNodeT(copy(getStr(a), int(getOrdValue(b)), 
+    result = newStrNodeT(substr(getStr(a), int(getOrdValue(b)), 
                                          int(getOrdValue(c))), n)
   of mFloatToStr: result = newStrNodeT($(getFloat(a)), n)
   of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
@@ -205,7 +205,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mCompileOptionArg:
     result = newIntNodeT(Ord(
       testCompileOptionArg(getStr(a), getStr(b), n.info)), n)
-  of mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
+  of mNewString, mNewStringOfCap, 
+     mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mNLen..mNError, mEqRef: 
     nil

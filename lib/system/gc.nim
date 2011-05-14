@@ -626,10 +626,23 @@ else:
     # We use a jmp_buf buffer that is in the C stack.
     # Used to traverse the stack and registers assuming
     # that 'setjmp' will save registers in the C stack.
+    type PStackSlice = ptr array [0..7, pointer]
     var registers: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[TAddress](stackBottom)
       var sp = cast[TAddress](addr(registers))
+      # loop unrolled:
+      while sp <% max - 8*sizeof(pointer):
+        gcMark(cast[PStackSlice](sp)[0])
+        gcMark(cast[PStackSlice](sp)[1])
+        gcMark(cast[PStackSlice](sp)[2])
+        gcMark(cast[PStackSlice](sp)[3])
+        gcMark(cast[PStackSlice](sp)[4])
+        gcMark(cast[PStackSlice](sp)[5])
+        gcMark(cast[PStackSlice](sp)[6])
+        gcMark(cast[PStackSlice](sp)[7])
+        sp = sp +% sizeof(pointer)*8
+      # last few entries:
       while sp <=% max:
         gcMark(cast[ppointer](sp)[])
         sp = sp +% sizeof(pointer)

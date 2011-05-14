@@ -990,7 +990,13 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
     result.strVal = newString(int(getOrdValue(a)))
-  else: 
+  of mNewStringOfCap:
+    result = evalAux(c, n.sons[1], {})
+    if isSpecial(result): return 
+    var a = result
+    result = newNodeIT(nkStrLit, n.info, n.typ)
+    result.strVal = newString(0)
+  else:
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
     var a = result

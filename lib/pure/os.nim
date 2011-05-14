@@ -330,7 +330,7 @@ proc JoinPath*(head, tail: string): string {.
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
     if tail[0] in {DirSep, AltSep}:
-      result = head & copy(tail, 1)
+      result = head & substr(tail, 1)
     else:
       result = head & tail
   else:
@@ -362,8 +362,8 @@ proc SplitPath*(path: string, head, tail: var string) {.noSideEffect,
       sepPos = i
       break
   if sepPos >= 0:
-    head = copy(path, 0, sepPos-1)
-    tail = copy(path, sepPos+1)
+    head = substr(path, 0, sepPos-1)
+    tail = substr(path, sepPos+1)
   else:
     head = ""
     tail = path # make a string copy here
@@ -388,8 +388,8 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.
       sepPos = i
       break
   if sepPos >= 0:
-    result.head = copy(path, 0, sepPos-1)
-    result.tail = copy(path, sepPos+1)
+    result.head = substr(path, 0, sepPos-1)
+    result.tail = substr(path, sepPos+1)
   else:
     result.head = ""
     result.tail = path
@@ -412,7 +412,7 @@ proc parentDir*(path: string): string {.
       sepPos = i
       break
   if sepPos >= 0:
-    result = copy(path, 0, sepPos-1)
+    result = substr(path, 0, sepPos-1)
   else:
     result = path
 
@@ -462,9 +462,9 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
       elif path[i] in {dirsep, altsep}:
         sepPos = i
         break
-    result.dir = copy(path, 0, sepPos-1)
-    result.name = copy(path, sepPos+1, dotPos-1)
-    result.ext = copy(path, dotPos)
+    result.dir = substr(path, 0, sepPos-1)
+    result.name = substr(path, sepPos+1, dotPos-1)
+    result.ext = substr(path, dotPos)
 
 proc extractDir*(path: string): string {.noSideEffect, deprecated.} =
   ## Extracts the directory of a given path. This is almost the
@@ -507,8 +507,8 @@ proc SplitFilename*(filename: string, name, extension: var string) {.
   ## **Deprecated since version 0.8.2**: Use ``splitFile(filename)`` instead.
   var extPos = searchExtPos(filename)
   if extPos >= 0:
-    name = copy(filename, 0, extPos-1)
-    extension = copy(filename, extPos)
+    name = substr(filename, 0, extPos-1)
+    extension = substr(filename, extPos)
   else:
     name = filename # make a string copy here
     extension = ""
@@ -537,7 +537,7 @@ proc ChangeFileExt*(filename, ext: string): string {.
   ## of none such beast.)
   var extPos = searchExtPos(filename)
   if extPos < 0: result = filename & normExt(ext)
-  else: result = copy(filename, 0, extPos-1) & normExt(ext)
+  else: result = substr(filename, 0, extPos-1) & normExt(ext)
 
 proc addFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -748,7 +748,7 @@ proc getEnv*(key: string): string =
   ## `existsEnv(key)`.
   var i = findEnvVar(key)
   if i >= 0:
-    return copy(environment[i], find(environment[i], '=')+1)
+    return substr(environment[i], find(environment[i], '=')+1)
   else:
     var env = cgetenv(key)
     if env == nil: return ""
@@ -788,7 +788,7 @@ iterator iterOverEnvironment*(): tuple[key, value: string] {.deprecated.} =
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')
-    yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
+    yield (substr(environment[i], 0, p-1), substr(environment[i], p+1))
 
 iterator envPairs*(): tuple[key, value: string] =
   ## Iterate over all `environments variables`:idx:. In the first component 
@@ -797,7 +797,7 @@ iterator envPairs*(): tuple[key, value: string] =
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')
-    yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
+    yield (substr(environment[i], 0, p-1), substr(environment[i], p+1))
 
 iterator walkFiles*(pattern: string): string =
   ## Iterate over all the files that match the `pattern`. On POSIX this uses
@@ -944,14 +944,14 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1".} =
   ## fail if the path already exists because for most usages this does not 
   ## indicate an error.
   for i in 1.. dir.len-1:
-    if dir[i] in {dirsep, altsep}: rawCreateDir(copy(dir, 0, i-1))
+    if dir[i] in {dirsep, altsep}: rawCreateDir(substr(dir, 0, i-1))
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1".} =
   ## Copies a directory from `source` to `dest`. If this fails, `EOS` is raised.
   createDir(dest)
   for kind, path in walkDir(source):
-    var noSource = path.copy(source.len()+1)
+    var noSource = path.substr(source.len()+1)
     case kind
     of pcFile:
       copyFile(path, dest / noSource)
