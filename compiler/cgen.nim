@@ -84,6 +84,7 @@ type
     module*: PSym
     filename*: string
     s*: TCFileSections        # sections of the C file
+    PreventStackTrace: bool   # true if stack traces need to be prevented
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
@@ -99,7 +100,6 @@ type
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: PRope # used for type info generation
     labels*: natural          # for generating unique module-scope names
-  
 
 var 
   mainModProcs, mainModInit: PRope # parts of the main module
@@ -603,19 +603,12 @@ proc retIsNotVoid(s: PSym): bool =
 proc initFrame(p: BProc, procname, filename: PRope): PRope = 
   result = ropecg(p.module, 
     "F.procname = $1;$n" &
-    "F.prev = #framePtr;$n" &
     "F.filename = $2;$n" & 
     "F.line = 0;$n" & 
-    "framePtr = (TFrame*)&F;$n", [procname, filename])
+    "#pushFrame((TFrame*)&F);$n", [procname, filename])
 
-proc deinitFrame(p: BProc): PRope = 
-  inc(p.labels, 3)
-  result = ropeff("framePtr = framePtr->prev;$n", 
-      "%LOC$1 = load %TFrame* @framePtr$n" &
-      "%LOC$2 = getelementptr %TFrame* %LOC$1, %NI 0$n" &
-      "%LOC$3 = load %TFrame** %LOC$2$n" &
-      "store %TFrame* $LOC$3, %TFrame** @framePtr", [toRope(p.labels), 
-      toRope(p.labels - 1), toRope(p.labels - 2)])
+proc deinitFrame(p: BProc): PRope =
+  result = ropecg(p.module, "#popFrame();$n")
 
 proc genProcAux(m: BModule, prc: PSym) = 
   var 
@@ -628,7 +621,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     header = con("N_LIB_EXPORT ", header)
   returnStmt = nil
   assert(prc.ast != nil)
-  if not (sfPure in prc.flags) and (prc.typ.sons[0] != nil): 
+  if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]): 
       # declare the result symbol:
@@ -868,14 +861,17 @@ proc genInitCode(m: BModule) =
   if m.nimTypes > 0: 
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n", 
           [m.nimTypesName, toRope(m.nimTypes)])
-  if optStackTrace in m.initProc.options: 
+  if optStackTrace in m.initProc.options:
+    # BUT: the generated init code might depend on a current frame, so
+    # declare it nevertheless:
     getFrameDecl(m.initProc)
+  if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
     app(prc, m.initProc.s[cpsLocals])
     app(prc, m.s[cfsTypeInit1])
     procname = CStringLit(m.initProc, prc, m.module.name.s)
     filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
     app(prc, initFrame(m.initProc, procname, filename))
-  else: 
+  else:
     app(prc, m.initProc.s[cpsLocals])
     app(prc, m.s[cfsTypeInit1])
   app(prc, m.s[cfsTypeInit2])
@@ -884,7 +880,8 @@ proc genInitCode(m: BModule) =
   app(prc, m.s[cfsDynLibInit])
   app(prc, m.initProc.s[cpsInit])
   app(prc, m.initProc.s[cpsStmts])
-  if optStackTrace in m.initProc.options: app(prc, deinitFrame(m.initProc))
+  if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
+    app(prc, deinitFrame(m.initProc))
   app(prc, '}' & tnl & tnl)
   app(m.s[cfsProcs], prc)
 
@@ -911,6 +908,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName()
   result.nimTypesName = getTempName()
+  result.PreventStackTrace = sfSystemModule in module.flags
 
 proc newModule(module: PSym, filename: string): BModule = 
   result = rawNewModule(module, filename)
@@ -923,6 +921,7 @@ proc registerTypeInfoModule() =
   const moduleName = "nim__dat"
   var s = NewSym(skModule, getIdent(moduleName), nil)
   gNimDat = rawNewModule(s, joinPath(options.projectPath, moduleName) & ".nim")
+  gNimDat.PreventStackTrace = true
   addPendingModule(gNimDat)
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
         "declare void $1() noinline$n", [getInitName(s)])
@@ -935,7 +934,6 @@ proc myOpenCached(module: PSym, filename: string,
                   rd: PRodReader): PPassContext = 
   if gNimDat == nil: 
     registerTypeInfoModule()
-    #MessageOut('cgen.myOpenCached has been called ' + filename)
   var cfile = changeFileExt(completeCFilePath(filename), cExt)
   var cfilenoext = changeFileExt(cfile, "")
   addFileToLink(cfilenoext)

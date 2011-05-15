@@ -23,9 +23,6 @@ else:
     inc(p, val)
     result = p
 
-var
-  isMultiThreaded: bool # true when prog created at least 1 thread
-
 proc atomicInc(memLoc: var int, x: int): int =
   when hasThreadSupport:
     result = sync_add_and_fetch(memLoc, x)

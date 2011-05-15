@@ -12,6 +12,8 @@
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
 
+{.push stack_trace: off.}
+
 const
   NilLibHandle: TLibHandle = nil
 
@@ -135,3 +137,6 @@ elif defined(mac):
 
 else:
   {.error: "no implementation for dyncalls".}
+  
+{.pop.}
+

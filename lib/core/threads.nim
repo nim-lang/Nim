@@ -143,8 +143,6 @@ else:
     var c = cast[ptr TThreadProcClosure[TParam]](closure)
     c.fn(c.data)
 
-  {.passL: "-pthread".}
-  {.passC: "-pthread".}
 
 const
   noDeadlocks = true # compileOption("deadlockPrevention")
@@ -285,6 +283,7 @@ proc createThread*[TParam](t: var TThread[TParam],
   ## proc `tp`. `param` is passed to `tp`.
   t.c.data = param
   t.c.fn = tp
+  CreateThreadLocalStorage()
   when hostOS == "windows":
     var dummyThreadId: int32
     t.sys = CreateThread(nil, 0'i32, threadProcWrapper[TParam], 

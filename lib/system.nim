@@ -44,10 +44,6 @@ type
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
 
-const
-  hasThreadSupport = false # deactivate for now: thread stack walking
-                           # is missing!
-
 proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -779,7 +775,10 @@ proc compileOption*(option, arg: string): bool {.
   ## .. code-block:: nimrod
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"): 
   ##     echo "compiled with optimization for size and uses Boehm's GC"
-  
+
+const
+  hasThreadSupport = compileOption("threads")
+
 include "system/inclrtl"
 
 when not defined(ecmascript) and not defined(nimrodVm):
@@ -1391,19 +1390,20 @@ type
     filename: CString
     len: int  # length of slots (when not debugging always zero)
 
-var
-  framePtr {.threadvar, compilerproc.}: PFrame
+when defined(ecmaScript):
+  var
+    framePtr {.compilerproc.}: PFrame
 
 when not defined(ECMAScript):
-  {.push overflow_checks:off}
-  proc add* (x: var string, y: cstring) =
+  {.push stack_trace:off}
+  proc add*(x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
       inc(i)
   {.pop.}
 else:
-  proc add* (x: var string, y: cstring) {.pure.} =
+  proc add*(x: var string, y: cstring) {.pure.} =
     asm """
       var len = `x`[0].length-1;
       for (var i = 0; i < `y`.length; ++i) {
@@ -1412,10 +1412,6 @@ else:
       }
       `x`[0][len] = 0
     """
-
-proc `/`*(x, y: int): float {.inline, noSideEffect.} =
-  ## integer division that results in a float.
-  result = toFloat(x) / toFloat(y)
 
 proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
@@ -1450,6 +1446,7 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## unless a quit procedure calls ``GC_collect``.
 
 when not defined(EcmaScript) and not defined(NimrodVM):
+  {.push stack_trace: off.}
 
   proc atomicInc*(memLoc: var int, x: int): int {.inline.}
     ## atomic increment of `memLoc`. Returns the value after the operation.
@@ -1474,8 +1471,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   strDesc.flags = {ntfAcyclic}
   initStackBottom()
   initGC() # BUGFIX: need to be called here!
-
-  {.push stack_trace: off.}
 
   include "system/ansi_c"
 
@@ -1650,25 +1645,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## retrieves the current position of the file pointer that is used to
     ## read from the file `f`. The file's first byte has the index zero.
 
-  include "system/sysio"
-
-  iterator lines*(filename: string): string =
-    ## Iterate over any line in the file named `filename`.
-    ## If the file does not exist `EIO` is raised.
-    var f = open(filename)
-    var res = ""
-    while not endOfFile(f):
-      rawReadLine(f, res)
-      yield res
-    Close(f)
-
-  iterator lines*(f: TFile): string =
-    ## Iterate over any line in the file `f`.
-    var res = ""
-    while not endOfFile(f):
-      rawReadLine(f, res)
-      yield res
-
   proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
                                             header: "<stdio.h>"}
     ## returns the OS file handle of the file ``f``. This is only useful for
@@ -1694,6 +1670,26 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   # as it would recurse endlessly!
   include "system/arithm"
   {.pop.} # stack trace
+
+  include "system/sysio"
+
+  iterator lines*(filename: string): string =
+    ## Iterate over any line in the file named `filename`.
+    ## If the file does not exist `EIO` is raised.
+    var f = open(filename)
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
+    Close(f)
+
+  iterator lines*(f: TFile): string =
+    ## Iterate over any line in the file `f`.
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
+      
   include "system/dyncalls"
   include "system/sets"
 
@@ -1723,14 +1719,18 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       result = n.sons[n.len]
 
   include "system/systhread"
+  {.push stack_trace: off.}
   include "system/mmdisp"
+  {.pop.}
+
   include "system/sysstr"
   include "system/assign"
   include "system/repr"
 
   proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
     ## retrieves the current exception; if there is none, nil is returned.
-    result = currException
+    ThreadGlobals()
+    result = ||currException
 
   proc getCurrentExceptionMsg*(): string {.inline.} =
     ## retrieves the error message that was attached to the current
@@ -1788,6 +1788,10 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 
 {.pop.} # checks
 {.pop.} # hints
+
+proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+  ## integer division that results in a float.
+  result = toFloat(x) / toFloat(y)
 
 template `-|`(b, s: expr): expr =
   (if b >= 0: b else: s.len + b)

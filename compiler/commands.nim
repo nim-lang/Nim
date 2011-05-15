@@ -513,7 +513,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     else: InvalidCmdLineOption(pass, switch, info)
   
 proc ProcessCommand(switch: string, pass: TCmdLinePass) = 
-  var 
+  var
     cmd, arg: string
     info: TLineInfo
   info = newLineInfo("command line", 1, 1)

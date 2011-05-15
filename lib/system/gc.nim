@@ -391,7 +391,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   assert((cast[TAddress](res) and (MemAlign-1)) == 0)
   # now it is buffered in the ZCT
   res.typ = typ
-  when debugGC:
+  when debugGC and not hasThreadSupport:
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line

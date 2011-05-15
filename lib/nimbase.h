@@ -400,15 +400,6 @@ static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
 #    define INF (1.0 / 0.0)
 #  endif
 #endif
-/*
-typedef struct TSafePoint TSafePoint;
-struct TSafePoint {
-  NI exc;
-  NCSTRING excname;
-  NCSTRING msg;
-  TSafePoint* prev;
-  jmp_buf context;
-}; */
 
 typedef struct TFrame TFrame;
 struct TFrame {
@@ -419,24 +410,7 @@ struct TFrame {
   NI len;
 };
 
-/*
-extern TFrame* framePtr;
-extern TSafePoint* excHandler; */
-
-#if defined(__cplusplus)
-struct NimException {
-  TSafePoint sp;
-
-  NimException(NI aExc, NCSTRING aExcname, NCSTRING aMsg) {
-    sp.exc = aExc; sp.excname = aExcname; sp.msg = aMsg;
-    sp.prev = excHandler;
-    excHandler = &sp;
-  }
-};
-#endif
-
 #define NIM_POSIX_INIT  __attribute__((constructor)) 
-
 
 #if defined(_MSCVER) && defined(__i386__)
 __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {

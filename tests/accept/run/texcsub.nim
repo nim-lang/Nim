@@ -1,7 +1,6 @@
 discard """
   file: "texcsub.nim"
   output: "caught!"
-  disabled: true
 """
 # Test inheritance for exception matching:
 

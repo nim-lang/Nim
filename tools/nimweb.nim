@@ -76,7 +76,7 @@ proc parseCmdLine(c: var TConfigData) =
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
-        c.vars[copy(val, 0, idx-1)] = copy(val, idx+1)
+        c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
       else: quit(Usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(Usage)
