@@ -21,6 +21,7 @@ Bugfixes
   copied.
 - Bugfix: The compiler does not emit very inaccurate floating point literals
   anymore.
+- Bugfix: Subclasses are taken into account for ``try except`` matching.
 - Lots of other bugfixes: Too many to list them all.
 
 

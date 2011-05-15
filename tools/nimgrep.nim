@@ -142,7 +142,7 @@ proc processFile(filename: string) =
     if t.first <= 0: break
     inc(line, countLines(buffer, i, t.first-1))
     
-    var wholeMatch = buffer.copy(t.first, t.last)
+    var wholeMatch = buffer.substr(t.first, t.last)
     
     if optReplace notin options: 
       highlight(buffer, wholeMatch, "", t, line, showRepl=false)
@@ -168,15 +168,15 @@ proc processFile(filename: string) =
       else:
         highlight(buffer, wholeMatch, r, t, line, showRepl=reallyReplace)
       if reallyReplace:
-        result.add(buffer.copy(i, t.first-1))
+        result.add(buffer.substr(i, t.first-1))
         result.add(r)
       else:
-        result.add(buffer.copy(i, t.last))
+        result.add(buffer.substr(i, t.last))
 
     inc(line, countLines(buffer, t.first, t.last))
     i = t.last+1
   if optReplace in options:
-    result.add(copy(buffer, i))
+    result.add(substr(buffer, i))
     var f: TFile
     if open(f, filename, fmWrite):
       f.write(result)
@@ -185,7 +185,7 @@ proc processFile(filename: string) =
       quit "cannot open file for overwriting: " & filename
 
 proc hasRightExt(filename: string, exts: seq[string]): bool =
-  var y = splitFile(filename).ext.copy(1) # skip leading '.'
+  var y = splitFile(filename).ext.substr(1) # skip leading '.'
   for x in items(exts): 
     if os.cmpPaths(x, y) == 0: return true
 

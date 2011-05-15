@@ -1,5 +1,4 @@
-* thread support: threadvar on Windows seems broken; 
-  add --deadlock_prevention:on|off switch
+* add --deadlock_prevention:on|off switch; timeout for locks
 * implicit ref/ptr->var conversion
 
 
@@ -21,7 +20,6 @@ Bugs
 ----
 - proc (x: int) is passable to proc (x: var int)  !?
 - the parser allows empty object case branches
-- Exception matching needs to take subclasses into account
 - pegs: the anchor '^' does not work because many procs use a linear search
   and matchLen()
 - BUG: generic assign still buggy

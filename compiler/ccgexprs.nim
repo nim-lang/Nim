@@ -154,29 +154,25 @@ proc getStorageLoc(n: PNode): TStorageLoc =
   else: result = OnUnknown
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
-  if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
+  if dest.s == OnStack or optRefcGC notin gGlobalOptions:
     appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   elif dest.s == OnHeap:
     # location is on heap
     # now the writer barrier is inlined for performance:
     #
-    #    if afSrcIsNotNil in flags then begin
-    #      UseMagic(p.module, 'nimGCref');
-    #      appf(p.s[cpsStmts], 'nimGCref($1);$n', [rdLoc(src)]);
-    #    end
-    #    else if not (afSrcIsNil in flags) then begin
-    #      UseMagic(p.module, 'nimGCref');
-    #      appf(p.s[cpsStmts], 'if ($1) nimGCref($1);$n', [rdLoc(src)]);
-    #    end;
-    #    if afDestIsNotNil in flags then begin
-    #      UseMagic(p.module, 'nimGCunref');
-    #      appf(p.s[cpsStmts], 'nimGCunref($1);$n', [rdLoc(dest)]);
-    #    end
-    #    else if not (afDestIsNil in flags) then begin
-    #      UseMagic(p.module, 'nimGCunref');
-    #      appf(p.s[cpsStmts], 'if ($1) nimGCunref($1);$n', [rdLoc(dest)]);
-    #    end;
-    #    appf(p.s[cpsStmts], '$1 = $2;$n', [rdLoc(dest), rdLoc(src)]);
+    #    if afSrcIsNotNil in flags:
+    #      UseMagic(p.module, 'nimGCref')
+    #      appf(p.s[cpsStmts], 'nimGCref($1);$n', [rdLoc(src)])
+    #    elif afSrcIsNil notin flags:
+    #      UseMagic(p.module, 'nimGCref')
+    #      appf(p.s[cpsStmts], 'if ($1) nimGCref($1);$n', [rdLoc(src)])
+    #    if afDestIsNotNil in flags:
+    #      UseMagic(p.module, 'nimGCunref')
+    #      appf(p.s[cpsStmts], 'nimGCunref($1);$n', [rdLoc(dest)])
+    #    elif afDestIsNil notin flags:
+    #      UseMagic(p.module, 'nimGCunref')
+    #      appf(p.s[cpsStmts], 'if ($1) nimGCunref($1);$n', [rdLoc(dest)])
+    #    appf(p.s[cpsStmts], '$1 = $2;$n', [rdLoc(dest), rdLoc(src)])
     if canFormAcycle(dest.t):
       appcg(p.module, p.s[cpsStmts], "#asgnRef((void**) $1, $2);$n",
            [addrLoc(dest), rdLoc(src)])
@@ -196,7 +192,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if needToCopy notin flags or 
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
-    if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
+    if dest.s == OnStack or optRefcGC notin gGlobalOptions:
       appcg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            [addrLoc(dest), addrLoc(src), rdLoc(dest)])
@@ -224,7 +220,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
     else:
-      if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
+      if dest.s == OnStack or optRefcGC notin gGlobalOptions:
         appcg(p, cpsStmts, "$1 = #copyString($2);$n", [rdLoc(dest), rdLoc(src)])
       elif dest.s == OnHeap:
         appcg(p, cpsStmts, "#asgnRefNoCycle((void**) $1, #copyString($2));$n",
@@ -826,19 +822,7 @@ proc genCall(p: BProc, t: PNode, d: var TLoc) =
     app(pl, ")")
     app(p.s[cpsStmts], pl)
     app(p.s[cpsStmts], ';' & tnl)
-    
-  when false:
-    app(pl, ")")
-    if (typ.sons[0] != nil) and not invalidRetType:
-      if d.k == locNone: getTemp(p, typ.sons[0], d)
-      assert(d.t != nil)        # generate an assignment to d:
-      initLoc(list, locCall, nil, OnUnknown)
-      list.r = pl
-      genAssignment(p, d, list, {}) # no need for deep copying
-    else:
-      app(p.s[cpsStmts], pl)
-      app(p.s[cpsStmts], ';' & tnl)
-
+  
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nimrod code>
   #   s = 'Hello ' & name & ', how do you feel?' & 'z'

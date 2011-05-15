@@ -63,15 +63,6 @@ if [ $# -eq 1 ] ; then
   mkdir -p $libdir/wrappers/sdl || exit 1
   mkdir -p $libdir/wrappers/x11 || exit 1
   mkdir -p $libdir/wrappers/zip || exit 1
-  mkdir -p $libdir/oldwrappers || exit 1
-  mkdir -p $libdir/oldwrappers/cairo || exit 1
-  mkdir -p $libdir/oldwrappers/gtk || exit 1
-  mkdir -p $libdir/oldwrappers/lua || exit 1
-  mkdir -p $libdir/oldwrappers/opengl || exit 1
-  mkdir -p $libdir/oldwrappers/pcre || exit 1
-  mkdir -p $libdir/oldwrappers/sdl || exit 1
-  mkdir -p $libdir/oldwrappers/x11 || exit 1
-  mkdir -p $libdir/oldwrappers/zip || exit 1
   mkdir -p $libdir/windows || exit 1
   mkdir -p $libdir/posix || exit 1
   mkdir -p $libdir/ecmas || exit 1
@@ -140,8 +131,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut1.txt
   cp doc/tut2.txt $docdir/tut2.txt || exit 1
   chmod 644 $docdir/tut2.txt
-  cp doc/manual.html $docdir/manual.html || exit 1
-  chmod 644 $docdir/manual.html
   cp doc/mytest.cfg $docdir/mytest.cfg || exit 1
   chmod 644 $docdir/mytest.cfg
   cp doc/c2nim.pdf $docdir/c2nim.pdf || exit 1
@@ -470,136 +459,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/zip/zzip.nim
   cp lib/wrappers/zip/libzip_all.c $libdir/wrappers/zip/libzip_all.c || exit 1
   chmod 644 $libdir/wrappers/zip/libzip_all.c
-  cp lib/oldwrappers/iup.nim $libdir/oldwrappers/iup.nim || exit 1
-  chmod 644 $libdir/oldwrappers/iup.nim
-  cp lib/oldwrappers/libcurl.nim $libdir/oldwrappers/libcurl.nim || exit 1
-  chmod 644 $libdir/oldwrappers/libcurl.nim
-  cp lib/oldwrappers/mysql.nim $libdir/oldwrappers/mysql.nim || exit 1
-  chmod 644 $libdir/oldwrappers/mysql.nim
-  cp lib/oldwrappers/odbcsql.nim $libdir/oldwrappers/odbcsql.nim || exit 1
-  chmod 644 $libdir/oldwrappers/odbcsql.nim
-  cp lib/oldwrappers/postgres.nim $libdir/oldwrappers/postgres.nim || exit 1
-  chmod 644 $libdir/oldwrappers/postgres.nim
-  cp lib/oldwrappers/python.nim $libdir/oldwrappers/python.nim || exit 1
-  chmod 644 $libdir/oldwrappers/python.nim
-  cp lib/oldwrappers/sqlite3.nim $libdir/oldwrappers/sqlite3.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sqlite3.nim
-  cp lib/oldwrappers/tcl.nim $libdir/oldwrappers/tcl.nim || exit 1
-  chmod 644 $libdir/oldwrappers/tcl.nim
-  cp lib/oldwrappers/cairo/cairo.nim $libdir/oldwrappers/cairo/cairo.nim || exit 1
-  chmod 644 $libdir/oldwrappers/cairo/cairo.nim
-  cp lib/oldwrappers/cairo/cairoft.nim $libdir/oldwrappers/cairo/cairoft.nim || exit 1
-  chmod 644 $libdir/oldwrappers/cairo/cairoft.nim
-  cp lib/oldwrappers/cairo/cairowin32.nim $libdir/oldwrappers/cairo/cairowin32.nim || exit 1
-  chmod 644 $libdir/oldwrappers/cairo/cairowin32.nim
-  cp lib/oldwrappers/cairo/cairoxlib.nim $libdir/oldwrappers/cairo/cairoxlib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/cairo/cairoxlib.nim
-  cp lib/oldwrappers/gtk/atk.nim $libdir/oldwrappers/gtk/atk.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/atk.nim
-  cp lib/oldwrappers/gtk/gdk2.nim $libdir/oldwrappers/gtk/gdk2.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gdk2.nim
-  cp lib/oldwrappers/gtk/gdk2pixbuf.nim $libdir/oldwrappers/gtk/gdk2pixbuf.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gdk2pixbuf.nim
-  cp lib/oldwrappers/gtk/gdkglext.nim $libdir/oldwrappers/gtk/gdkglext.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gdkglext.nim
-  cp lib/oldwrappers/gtk/glib2.nim $libdir/oldwrappers/gtk/glib2.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/glib2.nim
-  cp lib/oldwrappers/gtk/gtk2.nim $libdir/oldwrappers/gtk/gtk2.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gtk2.nim
-  cp lib/oldwrappers/gtk/gtkglext.nim $libdir/oldwrappers/gtk/gtkglext.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gtkglext.nim
-  cp lib/oldwrappers/gtk/gtkhtml.nim $libdir/oldwrappers/gtk/gtkhtml.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/gtkhtml.nim
-  cp lib/oldwrappers/gtk/libglade2.nim $libdir/oldwrappers/gtk/libglade2.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/libglade2.nim
-  cp lib/oldwrappers/gtk/pango.nim $libdir/oldwrappers/gtk/pango.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/pango.nim
-  cp lib/oldwrappers/gtk/pangoutils.nim $libdir/oldwrappers/gtk/pangoutils.nim || exit 1
-  chmod 644 $libdir/oldwrappers/gtk/pangoutils.nim
-  cp lib/oldwrappers/lua/lauxlib.nim $libdir/oldwrappers/lua/lauxlib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/lua/lauxlib.nim
-  cp lib/oldwrappers/lua/lua.nim $libdir/oldwrappers/lua/lua.nim || exit 1
-  chmod 644 $libdir/oldwrappers/lua/lua.nim
-  cp lib/oldwrappers/lua/lualib.nim $libdir/oldwrappers/lua/lualib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/lua/lualib.nim
-  cp lib/oldwrappers/opengl/gl.nim $libdir/oldwrappers/opengl/gl.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/gl.nim
-  cp lib/oldwrappers/opengl/glext.nim $libdir/oldwrappers/opengl/glext.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/glext.nim
-  cp lib/oldwrappers/opengl/glu.nim $libdir/oldwrappers/opengl/glu.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/glu.nim
-  cp lib/oldwrappers/opengl/glut.nim $libdir/oldwrappers/opengl/glut.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/glut.nim
-  cp lib/oldwrappers/opengl/glx.nim $libdir/oldwrappers/opengl/glx.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/glx.nim
-  cp lib/oldwrappers/opengl/wingl.nim $libdir/oldwrappers/opengl/wingl.nim || exit 1
-  chmod 644 $libdir/oldwrappers/opengl/wingl.nim
-  cp lib/oldwrappers/pcre/pcre.nim $libdir/oldwrappers/pcre/pcre.nim || exit 1
-  chmod 644 $libdir/oldwrappers/pcre/pcre.nim
-  cp lib/oldwrappers/pcre/pcre_all.c $libdir/oldwrappers/pcre/pcre_all.c || exit 1
-  chmod 644 $libdir/oldwrappers/pcre/pcre_all.c
-  cp lib/oldwrappers/sdl/sdl.nim $libdir/oldwrappers/sdl/sdl.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl.nim
-  cp lib/oldwrappers/sdl/sdl_gfx.nim $libdir/oldwrappers/sdl/sdl_gfx.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_gfx.nim
-  cp lib/oldwrappers/sdl/sdl_image.nim $libdir/oldwrappers/sdl/sdl_image.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_image.nim
-  cp lib/oldwrappers/sdl/sdl_mixer.nim $libdir/oldwrappers/sdl/sdl_mixer.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_mixer.nim
-  cp lib/oldwrappers/sdl/sdl_mixer_nosmpeg.nim $libdir/oldwrappers/sdl/sdl_mixer_nosmpeg.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_mixer_nosmpeg.nim
-  cp lib/oldwrappers/sdl/sdl_net.nim $libdir/oldwrappers/sdl/sdl_net.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_net.nim
-  cp lib/oldwrappers/sdl/sdl_ttf.nim $libdir/oldwrappers/sdl/sdl_ttf.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/sdl_ttf.nim
-  cp lib/oldwrappers/sdl/smpeg.nim $libdir/oldwrappers/sdl/smpeg.nim || exit 1
-  chmod 644 $libdir/oldwrappers/sdl/smpeg.nim
-  cp lib/oldwrappers/x11/cursorfont.nim $libdir/oldwrappers/x11/cursorfont.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/cursorfont.nim
-  cp lib/oldwrappers/x11/keysym.nim $libdir/oldwrappers/x11/keysym.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/keysym.nim
-  cp lib/oldwrappers/x11/x.nim $libdir/oldwrappers/x11/x.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/x.nim
-  cp lib/oldwrappers/x11/xatom.nim $libdir/oldwrappers/x11/xatom.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xatom.nim
-  cp lib/oldwrappers/x11/xcms.nim $libdir/oldwrappers/x11/xcms.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xcms.nim
-  cp lib/oldwrappers/x11/xf86dga.nim $libdir/oldwrappers/x11/xf86dga.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xf86dga.nim
-  cp lib/oldwrappers/x11/xf86vmode.nim $libdir/oldwrappers/x11/xf86vmode.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xf86vmode.nim
-  cp lib/oldwrappers/x11/xi.nim $libdir/oldwrappers/x11/xi.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xi.nim
-  cp lib/oldwrappers/x11/xinerama.nim $libdir/oldwrappers/x11/xinerama.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xinerama.nim
-  cp lib/oldwrappers/x11/xkb.nim $libdir/oldwrappers/x11/xkb.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xkb.nim
-  cp lib/oldwrappers/x11/xkblib.nim $libdir/oldwrappers/x11/xkblib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xkblib.nim
-  cp lib/oldwrappers/x11/xlib.nim $libdir/oldwrappers/x11/xlib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xlib.nim
-  cp lib/oldwrappers/x11/xrandr.nim $libdir/oldwrappers/x11/xrandr.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xrandr.nim
-  cp lib/oldwrappers/x11/xrender.nim $libdir/oldwrappers/x11/xrender.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xrender.nim
-  cp lib/oldwrappers/x11/xresource.nim $libdir/oldwrappers/x11/xresource.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xresource.nim
-  cp lib/oldwrappers/x11/xshm.nim $libdir/oldwrappers/x11/xshm.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xshm.nim
-  cp lib/oldwrappers/x11/xutil.nim $libdir/oldwrappers/x11/xutil.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xutil.nim
-  cp lib/oldwrappers/x11/xv.nim $libdir/oldwrappers/x11/xv.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xv.nim
-  cp lib/oldwrappers/x11/xvlib.nim $libdir/oldwrappers/x11/xvlib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/x11/xvlib.nim
-  cp lib/oldwrappers/zip/libzip.nim $libdir/oldwrappers/zip/libzip.nim || exit 1
-  chmod 644 $libdir/oldwrappers/zip/libzip.nim
-  cp lib/oldwrappers/zip/zlib.nim $libdir/oldwrappers/zip/zlib.nim || exit 1
-  chmod 644 $libdir/oldwrappers/zip/zlib.nim
-  cp lib/oldwrappers/zip/zzip.nim $libdir/oldwrappers/zip/zzip.nim || exit 1
-  chmod 644 $libdir/oldwrappers/zip/zzip.nim
-  cp lib/oldwrappers/zip/libzip_all.c $libdir/oldwrappers/zip/libzip_all.c || exit 1
-  chmod 644 $libdir/oldwrappers/zip/libzip_all.c
   cp lib/windows/mmsystem.nim $libdir/windows/mmsystem.nim || exit 1
   chmod 644 $libdir/windows/mmsystem.nim
   cp lib/windows/nb30.nim $libdir/windows/nb30.nim || exit 1
