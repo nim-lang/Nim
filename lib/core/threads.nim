@@ -160,8 +160,8 @@ else:
 type
   TThread* {.pure, final.}[TParam] = object ## Nimrod thread.
     sys: TSysThread
+    globals: pointer # this allows the GC to track thread local storage!
     c: TThreadProcClosure[TParam]
-
 
 when nodeadlocks:
   var 
@@ -283,7 +283,7 @@ proc createThread*[TParam](t: var TThread[TParam],
   ## proc `tp`. `param` is passed to `tp`.
   t.c.data = param
   t.c.fn = tp
-  CreateThreadLocalStorage()
+  t.globals = CreateThreadLocalStorage()
   when hostOS == "windows":
     var dummyThreadId: int32
     t.sys = CreateThread(nil, 0'i32, threadProcWrapper[TParam], 

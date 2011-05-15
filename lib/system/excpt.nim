@@ -106,9 +106,10 @@ when hasThreadSupport:
     PGlobals = ptr TGlobals
 
   var globalsSlot = ThreadVarAlloc()
-  proc CreateThreadLocalStorage*() {.inl.} =
+  proc CreateThreadLocalStorage*(): pointer {.inl.} =
     isMultiThreaded = true
-    ThreadVarSetValue(globalsSlot, alloc0(sizeof(TGlobals)))
+    result = alloc0(sizeof(TGlobals))
+    ThreadVarSetValue(globalsSlot, result)
     
   proc GetGlobals(): PGlobals {.compilerRtl, inl.} =
     result = cast[PGlobals](ThreadVarGetValue(globalsSlot))
