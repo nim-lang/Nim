@@ -77,7 +77,8 @@ when defined(Windows):
 
 else:
   type
-    TSysLock {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
+    TSysLock {.importc: "pthread_mutex_t", pure, final,
+               header: "<sys/types.h>".} = object
 
   proc InitSysLock(L: var TSysLock, attr: pointer = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>".}

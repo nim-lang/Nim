@@ -80,15 +80,13 @@ var
 
 proc aquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
-    if isMultiThreaded: 
-      aquireSys(gch.zctLock)
-      aquireSys(gch.cycleRootsLock)
+    aquireSys(gch.zctLock)
+    aquireSys(gch.cycleRootsLock)
 
 proc release(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
-    if isMultiThreaded: 
-      releaseSys(gch.zctLock)
-      releaseSys(gch.cycleRootsLock)
+    releaseSys(gch.cycleRootsLock)
+    releaseSys(gch.zctLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -207,18 +205,18 @@ proc prepareDealloc(cell: PCell) =
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: AquireSys(gch.cycleRootsLock)
+    AquireSys(gch.cycleRootsLock)
   incl(gch.cycleRoots, c)
   when hasThreadSupport:  
-    if isMultiThreaded: ReleaseSys(gch.cycleRootsLock)
+    ReleaseSys(gch.cycleRootsLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: AquireSys(gch.zctLock)
+    AquireSys(gch.zctLock)
   addZCT(gch.zct, c)
   when hasThreadSupport:
-    if isMultiThreaded: ReleaseSys(gch.zctLock)
+    ReleaseSys(gch.zctLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -561,8 +559,9 @@ proc stackSize(): int {.noinline.} =
 when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
+    stackTop = addr(stackTop)
     var b = cast[TAddress](stackBottom)
-    var a = cast[TAddress](addr(stackTop))
+    var a = cast[TAddress](stackTop)
     var x = cast[TAddress](p)
     result = a <=% x and x <=% b
 
@@ -591,8 +590,9 @@ elif stackIncreases:
   # ---------------------------------------------------------------------------
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
+    stackTop = addr(stackTop)
     var a = cast[TAddress](stackBottom)
-    var b = cast[TAddress](addr(stackTop))
+    var b = cast[TAddress](stackTop)
     var x = cast[TAddress](p)
     result = a <=% x and x <=% b
 
@@ -618,8 +618,9 @@ else:
   # ---------------------------------------------------------------------------
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
+    stackTop = addr(stackTop)
     var b = cast[TAddress](stackBottom)
-    var a = cast[TAddress](addr(stackTop))
+    var a = cast[TAddress](stackTop)
     var x = cast[TAddress](p)
     result = a <=% x and x <=% b
 
