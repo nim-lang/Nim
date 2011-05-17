@@ -130,7 +130,6 @@ else:
 type
   TThread* {.pure, final.}[TParam] = object ## Nimrod thread.
     sys: TSysThread
-    globals: pointer # this allows the GC to track thread local storage!
     c: TThreadProcClosure[TParam]
 
 when nodeadlocks:
@@ -251,7 +250,7 @@ proc createThread*[TParam](t: var TThread[TParam],
                            param: TParam) = 
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`. `param` is passed to `tp`.
-  t.globals = AllocThreadLocalStorage()
+  t.c.threadLocalStorage = AllocThreadLocalStorage()
   t.c.data = param
   t.c.fn = tp
   when hostOS == "windows":
@@ -271,55 +270,52 @@ when isMainModule:
   
   proc doNothing() = nil
   
-  {.push stack_trace:off.}
   proc threadFunc(interval: tuple[a,b: int]) {.procvar.} = 
     doNothing()
-    when false:
-      for i in interval.a..interval.b: 
-        when nodeadlocks:
-          case i mod 6
-          of 0:
-            Aquire(L) # lock stdout
-            Aquire(M)
-            Aquire(N)
-          of 1:
-            Aquire(L)
-            Aquire(N) # lock stdout
-            Aquire(M)
-          of 2:
-            Aquire(M)
-            Aquire(L)
-            Aquire(N)
-          of 3:
-            Aquire(M)
-            Aquire(N)
-            Aquire(L)
-          of 4:
-            Aquire(N)
-            Aquire(M)
-            Aquire(L)
-          of 5:
-            Aquire(N)
-            Aquire(L)
-            Aquire(M)
-          else: assert false
-        else:
+    for i in interval.a..interval.b: 
+      when nodeadlocks:
+        case i mod 6
+        of 0:
           Aquire(L) # lock stdout
           Aquire(M)
           Aquire(N)
-          
-        #echo i
-        os.sleep(10)
-        stdout.write(i)
-        when nodeadlocks:
-          echo "deadlocks prevented: ", deadlocksPrevented
-        Release(L)
-        Release(M)
-        Release(N)
-  {.pop.}
-  #InitLock(L)
-  #InitLock(M)
-  #InitLock(N)
+        of 1:
+          Aquire(L)
+          Aquire(N) # lock stdout
+          Aquire(M)
+        of 2:
+          Aquire(M)
+          Aquire(L)
+          Aquire(N)
+        of 3:
+          Aquire(M)
+          Aquire(N)
+          Aquire(L)
+        of 4:
+          Aquire(N)
+          Aquire(M)
+          Aquire(L)
+        of 5:
+          Aquire(N)
+          Aquire(L)
+          Aquire(M)
+        else: assert false
+      else:
+        Aquire(L) # lock stdout
+        Aquire(M)
+        Aquire(N)
+        
+      echo i
+      os.sleep(10)
+      when nodeadlocks:
+        echo "deadlocks prevented: ", deadlocksPrevented
+      Release(L)
+      Release(M)
+      Release(N)
+
+  InitLock(L)
+  InitLock(M)
+  InitLock(N)
 
   proc main =
     for i in 0..high(thr):
