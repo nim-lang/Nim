@@ -11,4 +11,8 @@ var val = {a, b}
 stdout.write(repr(val))
 stdout.writeln(repr({'a'..'z', 'A'..'Z'}))
 
+#var testseq: seq[string] = @[
+#  "a", "b", "c", "d", "e"
+#]
+#echo(repr(testseq))
 
