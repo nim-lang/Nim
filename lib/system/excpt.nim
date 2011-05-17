@@ -67,7 +67,7 @@ when hasThreadSupport:
 
     type
       Tpthread_key {.importc: "pthread_key_t", 
-                     header: "<sys/types.h>".} = distinct int
+                     header: "<sys/types.h>".} = distinct int32
       TThreadVarSlot {.compilerproc.} = Tpthread_key
 
     proc pthread_getspecific(a1: Tpthread_key): pointer {.
@@ -111,9 +111,9 @@ when hasThreadSupport:
   
   # it's more efficient to not use a global variable for the thread storage 
   # slot, but to rely on the implementation to assign slot 0 for us... ;-)
-  var checkSlot = ThreadVarAlloc()
-  const globalsSlot = TThreadVarSlot(0)
-  assert checkSlot.int == globalsSlot.int
+  var globalsSlot = ThreadVarAlloc()
+  #const globalsSlot = TThreadVarSlot(0)
+  #assert checkSlot.int == globalsSlot.int
 
   proc AtomicAlloc0(size: int): pointer =
     #AquireSys(heapLock)
@@ -145,7 +145,6 @@ when hasThreadSupport:
     var globals = GetGlobals()
   template `||`(varname: expr): expr = globals.varname
   
-  #ThreadGlobals()
 else:
   template ThreadGlobals = nil # nothing
   template `||`(varname: expr): expr = varname
