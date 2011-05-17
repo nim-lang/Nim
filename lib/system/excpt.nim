@@ -81,8 +81,12 @@ when hasThreadSupport:
     proc pthread_setspecific(a1: Tpthread_key, a2: pointer): int32 {.
       importc: "pthread_setspecific", header: "<pthread.h>".}
     
-    proc specificDestroy(mem: pointer) {.noconv.} = dealloc(mem)
-    
+    proc specificDestroy(mem: pointer) {.noconv.} = 
+      #aquireSys(heapLock)
+      #dealloc(mem)
+      #releaseSys(heapLock)
+      #c_free(mem)
+
     proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
       discard pthread_key_create(addr(result), specificDestroy)
     proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
@@ -104,31 +108,50 @@ when hasThreadSupport:
       tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
       data: float # compiler should add thread local variables here!
     PGlobals = ptr TGlobals
+  
+  # it's more efficient to not use a global variable for the thread storage 
+  # slot, but to rely on the implementation to assign slot 0 for us... ;-)
+  var checkSlot = ThreadVarAlloc()
+  const globalsSlot = TThreadVarSlot(0)
+  assert checkSlot.int == globalsSlot.int
 
-  var globalsSlot = ThreadVarAlloc()
-  proc CreateThreadLocalStorage*(): pointer {.inl.} =
+  proc AtomicAlloc0(size: int): pointer =
+    #AquireSys(heapLock)
+    result = c_malloc(size)
+    zeroMem(result, size)
+    #ReleaseSys(heapLock)
+
+  proc NewGlobals(): PGlobals = 
+    result = cast[PGlobals](AtomicAlloc0(sizeof(TGlobals)))
+    new(result.gAssertionFailed)
+    result.buf = newStringOfCap(2000)
+    result.assertBuf = newStringOfCap(2000)
+
+  proc AllocThreadLocalStorage*(): pointer {.inl.} =
     isMultiThreaded = true
-    result = alloc0(sizeof(TGlobals))
-    ThreadVarSetValue(globalsSlot, result)
+    result = NewGlobals()
+    
+  proc SetThreadLocalStorage*(p: pointer) {.inl.} =
+    ThreadVarSetValue(globalsSlot, p)
     
   proc GetGlobals(): PGlobals {.compilerRtl, inl.} =
     result = cast[PGlobals](ThreadVarGetValue(globalsSlot))
 
   # create for the main thread:
-  ThreadVarSetValue(globalsSlot, alloc0(sizeof(TGlobals)))
+  ThreadVarSetValue(globalsSlot, NewGlobals())
 
 when hasThreadSupport:
-  template ThreadGlobals = 
+  template ThreadGlobals =
     var globals = GetGlobals()
   template `||`(varname: expr): expr = globals.varname
   
-  ThreadGlobals()
+  #ThreadGlobals()
 else:
   template ThreadGlobals = nil # nothing
   template `||`(varname: expr): expr = varname
 
   var
-    framePtr {.compilerproc.}: PFrame # XXX only temporarily a compilerproc
+    framePtr: PFrame
     excHandler: PSafePoint = nil
       # list of exception handlers
       # a global variable for the root of all try blocks
@@ -140,6 +163,11 @@ else:
                       # exception handler needs the buffer too
     tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
     gAssertionFailed: ref EAssertionFailed
+
+  new(||gAssertionFailed)
+  ||buf = newStringOfCap(2000)
+  ||assertBuf = newStringOfCap(2000)
+
 
 proc pushFrame(s: PFrame) {.compilerRtl, inl.} = 
   ThreadGlobals()
@@ -388,11 +416,6 @@ proc registerSignalHandler() =
 
 when not defined(noSignalHandler):
   registerSignalHandler() # call it in initialization section
-# for easier debugging of the GC, this memory is only allocated after the
-# signal handlers have been registered
-new(||gAssertionFailed)
-||buf = newStringOfCap(2000)
-||assertBuf = newStringOfCap(2000)
 
 proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn, noinline.} =
   raise newException(EOutOfRange, "value " & $val & " out of range")

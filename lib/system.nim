@@ -1369,7 +1369,7 @@ template accumulateResult*(iter: expr) =
 # we have to compute this here before turning it off in except.nim anyway ...
 const nimrodStackTrace = compileOption("stacktrace")
 
-{.push checks: off, line_dir: off, debugger: off.}
+{.push checks: off, debugger: off.}
 # obviously we cannot generate checking operations here :-)
 # because it would yield into an endless recursion
 # however, stack-traces are available for most parts
@@ -1665,6 +1665,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   # ----------------------------------------------------------------------------
 
+  include "system/systhread"
   include "system/excpt"
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
@@ -1718,12 +1719,11 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  include "system/systhread"
   {.push stack_trace: off.}
   include "system/mmdisp"
+  include "system/sysstr"
   {.pop.}
 
-  include "system/sysstr"
   include "system/assign"
   include "system/repr"
 

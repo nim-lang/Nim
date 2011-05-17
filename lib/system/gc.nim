@@ -81,14 +81,14 @@ var
 proc aquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
     if isMultiThreaded: 
-      aquire(gch.zctLock)
-      aquire(gch.cycleRootsLock)
+      aquireSys(gch.zctLock)
+      aquireSys(gch.cycleRootsLock)
 
 proc release(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
     if isMultiThreaded: 
-      release(gch.zctLock)
-      release(gch.cycleRootsLock)
+      releaseSys(gch.zctLock)
+      releaseSys(gch.cycleRootsLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -207,18 +207,18 @@ proc prepareDealloc(cell: PCell) =
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: Aquire(gch.cycleRootsLock)
+    if isMultiThreaded: AquireSys(gch.cycleRootsLock)
   incl(gch.cycleRoots, c)
   when hasThreadSupport:  
-    if isMultiThreaded: Release(gch.cycleRootsLock)
+    if isMultiThreaded: ReleaseSys(gch.cycleRootsLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: Aquire(gch.zctLock)
+    if isMultiThreaded: AquireSys(gch.zctLock)
   addZCT(gch.zct, c)
   when hasThreadSupport:
-    if isMultiThreaded: Release(gch.zctLock)
+    if isMultiThreaded: ReleaseSys(gch.zctLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -287,9 +287,10 @@ proc initGC() =
     Init(gch.cycleRoots)
     Init(gch.decStack)
     when hasThreadSupport:
-      InitLock(gch.cycleRootsLock)
-      InitLock(gch.zctLock)
+      InitSysLock(gch.cycleRootsLock)
+      InitSysLock(gch.zctLock)
     new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
+    
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)

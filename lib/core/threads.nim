@@ -32,7 +32,10 @@
 ##  for i in 0..high(thr):
 ##    joinThread(thr[i])
 
-when not defined(boehmgc) and not defined(nogc):
+when not compileOption("threads"):
+  {.error: "Thread support requires ``--threads:on`` commandline switch".}
+
+when not defined(boehmgc) and not defined(nogc) and false:
   {.error: "Thread support requires --gc:boehm or --gc:none".}
 
 # We jump through some hops here to ensure that Nimrod thread procs can have
@@ -46,39 +49,13 @@ type
   TThreadProcClosure {.pure, final.}[TParam] = object
     fn: proc (p: TParam)
     data: TParam
+    threadLocalStorage: pointer
   
-when defined(Windows):
-  type 
+when defined(windows):
+  type
     THandle = int
     TSysThread = THandle
-    TSysLock {.final, pure.} = object # CRITICAL_SECTION in WinApi
-      DebugInfo: pointer
-      LockCount: int32
-      RecursionCount: int32
-      OwningThread: int
-      LockSemaphore: int
-      Reserved: int32
-      
     TWinThreadProc = proc (x: pointer): int32 {.stdcall.}
-    
-  proc InitSysLock(L: var TSysLock) {.stdcall,
-    dynlib: "kernel32", importc: "InitializeCriticalSection".}
-    ## Initializes the lock `L`.
-
-  proc TryAquireSysAux(L: var TSysLock): int32 {.stdcall,
-    dynlib: "kernel32", importc: "TryEnterCriticalSection".}
-    ## Tries to aquire the lock `L`.
-    
-  proc TryAquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAquireSysAux(L) != 0'i32
-
-  proc AquireSys(L: var TSysLock) {.stdcall,
-    dynlib: "kernel32", importc: "EnterCriticalSection".}
-    ## Aquires the lock `L`.
-    
-  proc ReleaseSys(L: var TSysLock) {.stdcall,
-    dynlib: "kernel32", importc: "LeaveCriticalSection".}
-    ## Releases the lock `L`.
 
   proc CreateThread(lpThreadAttributes: Pointer, dwStackSize: int32,
                      lpStartAddress: TWinThreadProc, 
@@ -105,29 +82,17 @@ when defined(Windows):
   proc TerminateThread(hThread: THandle, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
+  {.push stack_trace:off.}
   proc threadProcWrapper[TParam](closure: pointer): int32 {.stdcall.} = 
     var c = cast[ptr TThreadProcClosure[TParam]](closure)
+    SetThreadLocalStorage(c.threadLocalStorage)
     c.fn(c.data)
     # implicitely return 0
+  {.pop.}
 
 else:
   type
-    TSysLock {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
     TSysThread {.importc: "pthread_t", header: "<sys/types.h>".} = int
-    
-  proc InitSysLock(L: var TSysLock, attr: pointer = nil) {.
-    importc: "pthread_mutex_init", header: "<pthread.h>".}
-
-  proc AquireSys(L: var TSysLock) {.
-    importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  proc TryAquireSysAux(L: var TSysLock): cint {.
-    importc: "pthread_mutex_trylock", header: "<pthread.h>".}
-
-  proc TryAquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAquireSysAux(L) == 0'i32
-
-  proc ReleaseSys(L: var TSysLock) {.
-    importc: "pthread_mutex_unlock", header: "<pthread.h>".}
 
   proc pthread_create(a1: var TSysThread, a2: ptr int,
             a3: proc (x: pointer) {.noconv.}, 
@@ -139,14 +104,19 @@ else:
   proc pthread_cancel(a1: TSysThread): cint {.
     importc: "pthread_cancel", header: "<pthread.h>".}
 
+  {.push stack_trace:off.}
   proc threadProcWrapper[TParam](closure: pointer) {.noconv.} = 
     var c = cast[ptr TThreadProcClosure[TParam]](closure)
+    SetThreadLocalStorage(c.threadLocalStorage)
     c.fn(c.data)
+  {.pop.}
 
 
 const
-  noDeadlocks = true # compileOption("deadlockPrevention")
+  noDeadlocks = false # compileOption("deadlockPrevention")
   
+include "lib/system/systhread"
+
 when noDeadLocks:
   type
     TLock* {.pure, final.} = object ## Standard Nimrod Lock type.
@@ -281,62 +251,81 @@ proc createThread*[TParam](t: var TThread[TParam],
                            param: TParam) = 
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`. `param` is passed to `tp`.
+  t.globals = AllocThreadLocalStorage()
   t.c.data = param
   t.c.fn = tp
-  t.globals = CreateThreadLocalStorage()
   when hostOS == "windows":
     var dummyThreadId: int32
     t.sys = CreateThread(nil, 0'i32, threadProcWrapper[TParam], 
                          addr(t.c), 0'i32, dummyThreadId)
   else: 
-    discard pthread_create(t.sys, nil, threadProcWrapper[TParam], addr(t.c))
+    if pthread_create(t.sys, nil, threadProcWrapper[TParam], addr(t.c)) != 0:
+      raise newException(EIO, "cannot create thread")
 
 when isMainModule:
+  import os
+  
   var
-    thr: array [0..4, TThread[tuple[a,b: int]]]
+    thr: array [0..1, TThread[tuple[a,b: int]]]
     L, M, N: TLock
   
+  proc doNothing() = nil
+  
+  {.push stack_trace:off.}
   proc threadFunc(interval: tuple[a,b: int]) {.procvar.} = 
-    for i in interval.a..interval.b: 
-      case i mod 6
-      of 0:
-        Aquire(L) # lock stdout
-        Aquire(M)
-        Aquire(N)
-      of 1:
-        Aquire(L)
-        Aquire(N) # lock stdout
-        Aquire(M)
-      of 2:
-        Aquire(M)
-        Aquire(L)
-        Aquire(N)
-      of 3:
-        Aquire(M)
-        Aquire(N)
-        Aquire(L)
-      of 4:
-        Aquire(N)
-        Aquire(M)
-        Aquire(L)
-      of 5:
-        Aquire(N)
-        Aquire(L)
-        Aquire(M)
-      else: assert false
-      echo i
-      echo "deadlocks prevented: ", deadlocksPrevented
-      Release(L)
-      Release(M)
-      Release(N)
+    doNothing()
+    when false:
+      for i in interval.a..interval.b: 
+        when nodeadlocks:
+          case i mod 6
+          of 0:
+            Aquire(L) # lock stdout
+            Aquire(M)
+            Aquire(N)
+          of 1:
+            Aquire(L)
+            Aquire(N) # lock stdout
+            Aquire(M)
+          of 2:
+            Aquire(M)
+            Aquire(L)
+            Aquire(N)
+          of 3:
+            Aquire(M)
+            Aquire(N)
+            Aquire(L)
+          of 4:
+            Aquire(N)
+            Aquire(M)
+            Aquire(L)
+          of 5:
+            Aquire(N)
+            Aquire(L)
+            Aquire(M)
+          else: assert false
+        else:
+          Aquire(L) # lock stdout
+          Aquire(M)
+          Aquire(N)
+          
+        #echo i
+        os.sleep(10)
+        stdout.write(i)
+        when nodeadlocks:
+          echo "deadlocks prevented: ", deadlocksPrevented
+        Release(L)
+        Release(M)
+        Release(N)
+  {.pop.}
+  #InitLock(L)
+  #InitLock(M)
+  #InitLock(N)
 
-  InitLock(L)
-  InitLock(M)
-  InitLock(N)
+  proc main =
+    for i in 0..high(thr):
+      createThread(thr[i], threadFunc, (i*100, i*100+50))
+    for i in 0..high(thr):
+      joinThread(thr[i])
 
-  for i in 0..high(thr):
-    createThread(thr[i], threadFunc, (i*100, i*100+50))
-  for i in 0..high(thr):
-    joinThread(thr[i])
-
+  main()
 
