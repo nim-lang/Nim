@@ -83,7 +83,6 @@ type
     base10,                   # base10 is listed as the first element,
                               # so that it is the correct default value
     base2, base8, base16
-  PToken* = ref TToken
   TToken* = object            # a Nimrod token
     tokType*: TTokType        # the type of the token
     indent*: int              # the indentation; only valid if tokType = tkIndent
@@ -94,9 +93,7 @@ type
                               # or float literals
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
-    next*: PToken             # next token; can be used for arbitrary look-ahead
   
-  PLexer* = ref TLexer
   TLexer* = object of TBaseLexer
     filename*: string
     indentStack*: seq[int]    # the indentation stack
@@ -118,13 +115,10 @@ proc rawGetTok*(L: var TLexer, tok: var TToken)
 proc getColumn*(L: TLexer): int
 proc getLineInfo*(L: TLexer): TLineInfo
 proc closeLexer*(lex: var TLexer)
-proc PrintTok*(tok: PToken)
-proc tokToStr*(tok: PToken): string
-  
+proc PrintTok*(tok: TToken)
+proc tokToStr*(tok: TToken): string
+
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "")
-  # the Pascal scanner uses this too:
-proc fillToken*(L: var TToken)
-# implementation
 
 proc isKeyword(kind: TTokType): bool = 
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
@@ -157,7 +151,7 @@ proc findIdent(L: TLexer, indent: int): bool =
     if L.indentStack[i] == indent: 
       return true
 
-proc tokToStr(tok: PToken): string = 
+proc tokToStr*(tok: TToken): string = 
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
@@ -171,21 +165,30 @@ proc tokToStr(tok: PToken): string =
       InternalError("tokToStr")
       result = ""
   
-proc PrintTok(tok: PToken) = 
+proc PrintTok*(tok: TToken) = 
   write(stdout, TokTypeToStr[tok.tokType])
   write(stdout, " ")
   writeln(stdout, tokToStr(tok))
 
 var dummyIdent: PIdent
 
-proc fillToken(L: var TToken) = 
+proc initToken*(L: var TToken) = 
   L.TokType = tkInvalid
   L.iNumber = 0
   L.Indent = 0
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
-  L.ident = dummyIdent        # this prevents many bugs!
+  L.ident = dummyIdent
+
+proc fillToken(L: var TToken) = 
+  L.TokType = tkInvalid
+  L.iNumber = 0
+  L.Indent = 0
+  setLen(L.literal, 0)
+  L.fNumber = 0.0
+  L.base = base10
+  L.ident = dummyIdent
   
 proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
