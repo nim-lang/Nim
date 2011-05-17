@@ -165,11 +165,11 @@ proc CommandScan(filename: string) =
   if stream != nil: 
     var 
       L: TLexer
-      tok: PToken
-    new(tok)
+      tok: TToken
+    initToken(tok)
     openLexer(L, f, stream)
     while true: 
-      rawGetTok(L, tok[])
+      rawGetTok(L, tok)
       PrintTok(tok)
       if tok.tokType == tkEof: break 
     CloseLexer(L)

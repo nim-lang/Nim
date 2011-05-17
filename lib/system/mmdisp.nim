@@ -65,6 +65,10 @@ proc raiseOutOfMem() {.noreturn.} =
 when defined(boehmgc):
   when defined(windows):
     const boehmLib = "boehmgc.dll"
+  elif defined(macosx):
+    const boehmLib = "libgc.dylib"
+    
+    proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
   else:
     const boehmLib = "/usr/lib/libgc.so.1"
 
@@ -93,7 +97,8 @@ when defined(boehmgc):
   proc dealloc(p: Pointer) =
     boehmDealloc(p)
 
-  proc initGC() = nil
+  proc initGC() = 
+    when defined(macosx): boehmGCinit()
   
   #boehmGCincremental()
 
