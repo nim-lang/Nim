@@ -116,12 +116,16 @@ type
 
 when not defined(useNimRtl):
   proc initReprClosure(cl: var TReprClosure) =
+    # Important: cellsets does not lock the heap when doing allocations! We
+    # have to do it here ...
+    when hasThreadSupport and defined(heapLock): AquireSys(HeapLock)
     Init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
   proc deinitReprClosure(cl: var TReprClosure) =
     Deinit(cl.marked)
+    when hasThreadSupport and defined(heapLock): ReleaseSys(HeapLock)
 
   proc reprBreak(result: var string, cl: TReprClosure) =
     add result, "\n"

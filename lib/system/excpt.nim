@@ -10,6 +10,9 @@
 # Exception handling code. This is difficult because it has
 # to work if there is no more memory (but it doesn't yet!).
 
+const
+  MaxLocksPerThread = 10
+
 var
   stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
                             ## for CGI applications
@@ -81,11 +84,9 @@ when hasThreadSupport:
     proc pthread_setspecific(a1: Tpthread_key, a2: pointer): int32 {.
       importc: "pthread_setspecific", header: "<pthread.h>".}
     
-    proc specificDestroy(mem: pointer) {.noconv.} = 
-      #aquireSys(heapLock)
-      #dealloc(mem)
-      #releaseSys(heapLock)
-      #c_free(mem)
+    proc specificDestroy(mem: pointer) {.noconv.} =
+      # we really need a thread-safe 'dealloc' here:
+      dealloc(mem)
 
     proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
       discard pthread_key_create(addr(result), specificDestroy)
@@ -96,10 +97,12 @@ when hasThreadSupport:
       result = pthread_getspecific(s)
       
   type
-    TGlobals {.final, pure.} = object
+    TGlobals* {.final, pure.} = object
       excHandler: PSafePoint
       currException: ref E_Base
       framePtr: PFrame
+      locksLen*: int
+      locks*: array [0..MaxLocksPerThread-1, pointer]
       buf: string       # cannot be allocated on the stack!
       assertBuf: string # we need a different buffer for
                         # assert, as it raises an exception and
@@ -107,22 +110,16 @@ when hasThreadSupport:
       gAssertionFailed: ref EAssertionFailed
       tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
       data: float # compiler should add thread local variables here!
-    PGlobals = ptr TGlobals
+    PGlobals* = ptr TGlobals
   
   # it's more efficient to not use a global variable for the thread storage 
   # slot, but to rely on the implementation to assign slot 0 for us... ;-)
-  var globalsSlot = ThreadVarAlloc()
-  #const globalsSlot = TThreadVarSlot(0)
-  #assert checkSlot.int == globalsSlot.int
-
-  proc AtomicAlloc0(size: int): pointer =
-    #AquireSys(heapLock)
-    result = c_malloc(size)
-    zeroMem(result, size)
-    #ReleaseSys(heapLock)
+  var checkSlot = ThreadVarAlloc()
+  const globalsSlot = TThreadVarSlot(0)
+  assert checkSlot.int == globalsSlot.int
 
   proc NewGlobals(): PGlobals = 
-    result = cast[PGlobals](AtomicAlloc0(sizeof(TGlobals)))
+    result = cast[PGlobals](alloc0(sizeof(TGlobals)))
     new(result.gAssertionFailed)
     result.buf = newStringOfCap(2000)
     result.assertBuf = newStringOfCap(2000)
@@ -134,7 +131,7 @@ when hasThreadSupport:
   proc SetThreadLocalStorage*(p: pointer) {.inl.} =
     ThreadVarSetValue(globalsSlot, p)
     
-  proc GetGlobals(): PGlobals {.compilerRtl, inl.} =
+  proc GetGlobals*(): PGlobals {.compilerRtl, inl.} =
     result = cast[PGlobals](ThreadVarGetValue(globalsSlot))
 
   # create for the main thread:

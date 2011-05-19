@@ -1461,7 +1461,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     # Linux 64bit system. Very strange, but we are at the will of GCC's 
     # optimizer...
     var locals {.volatile.}: pointer
-    setStackBottom(addr(locals))
+    locals = addr(locals)
+    setStackBottom(locals)
 
   var
     strDesc: TNimType

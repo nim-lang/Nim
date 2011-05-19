@@ -97,6 +97,10 @@ when defined(boehmgc):
   proc dealloc(p: Pointer) =
     boehmDealloc(p)
 
+  proc unlockedAlloc(size: int): pointer {.inline.} = result = alloc(size)
+  proc unlockedAlloc0(size: int): pointer {.inline.} = result = alloc0(size)
+  proc unlockedDealloc(p: pointer) {.inline.} = dealloc(p)
+
   proc initGC() = 
     when defined(macosx): boehmGCinit()
   
@@ -147,21 +151,6 @@ elif defined(nogc):
     {.warning: "nogc in a library context may not work".}
   
   include "system/alloc"
-
-  when false:
-    proc alloc(size: int): pointer =
-      result = c_malloc(size)
-      if result == nil: raiseOutOfMem()
-    proc alloc0(size: int): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
-    proc realloc(p: Pointer, newsize: int): pointer =
-      result = c_realloc(p, newsize)
-      if result == nil: raiseOutOfMem()
-    proc dealloc(p: Pointer) = c_free(p)
-    proc getOccupiedMem(): int = return -1
-    proc getFreeMem(): int = return -1
-    proc getTotalMem(): int = return -1
 
   proc initGC() = nil
   proc GC_disable() = nil

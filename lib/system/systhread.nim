@@ -15,6 +15,8 @@ when not SystemInclude:
   # ugly hack: this file is then included from core/threads, so we have
   # thread support:
   const hasThreadSupport = true
+  
+  include "lib/system/ansi_c"
 
 when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
   proc sync_add_and_fetch(p: var int, val: int): int {.
@@ -93,8 +95,4 @@ else:
 
   proc ReleaseSys(L: var TSysLock) {.
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
-
-when SystemInclude:
-  var heapLock: TSysLock
-  InitSysLock(HeapLock)
 

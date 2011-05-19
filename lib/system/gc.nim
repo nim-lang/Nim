@@ -61,9 +61,6 @@ type
     decStack: TCellSeq       # cells in the stack that are to decref again
     cycleRoots: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
-    when hasThreadSupport:
-      cycleRootsLock: TSysLock
-      zctLock: TSysLock
     stat: TGcStat
 
 var
@@ -80,13 +77,11 @@ var
 
 proc aquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
-    aquireSys(gch.zctLock)
-    aquireSys(gch.cycleRootsLock)
+    AquireSys(HeapLock)
 
 proc release(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
-    releaseSys(gch.cycleRootsLock)
-    releaseSys(gch.zctLock)
+    releaseSys(HeapLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -205,18 +200,18 @@ proc prepareDealloc(cell: PCell) =
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    AquireSys(gch.cycleRootsLock)
+    AquireSys(HeapLock)
   incl(gch.cycleRoots, c)
   when hasThreadSupport:  
-    ReleaseSys(gch.cycleRootsLock)
+    ReleaseSys(HeapLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    AquireSys(gch.zctLock)
+    AquireSys(HeapLock)
   addZCT(gch.zct, c)
   when hasThreadSupport:
-    ReleaseSys(gch.zctLock)
+    ReleaseSys(HeapLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -284,11 +279,7 @@ proc initGC() =
     init(gch.tempStack)
     Init(gch.cycleRoots)
     Init(gch.decStack)
-    when hasThreadSupport:
-      InitSysLock(gch.cycleRootsLock)
-      InitSysLock(gch.zctLock)
     new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
-    
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
@@ -690,10 +681,11 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
     assert isAllocatedPtr(allocator, d[i])
-    # decRef(d[i]) inlined: cannot create a cycle
+    # decRef(d[i]) inlined: cannot create a cycle and must not aquire lock
     var c = d[i]
+    # XXX no need for an atomic dec here:
     if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
-      rtlAddZCT(c)
+      addZCT(gch.zct, c)
     assert c.typ != nil
   gch.decStack.len = 0
 

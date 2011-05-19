@@ -525,21 +525,38 @@ proc isAllocatedPtr(a: TAllocator, p: pointer): bool =
 # ---------------------- interface to programs -------------------------------
 
 when not defined(useNimRtl):
-  proc alloc(size: int): pointer =
+  var heapLock: TSysLock
+  InitSysLock(HeapLock)
+
+  proc unlockedAlloc(size: int): pointer {.inline.} =
     result = rawAlloc(allocator, size+sizeof(TFreeCell))
     cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
     assert(not isAllocatedPtr(allocator, result))
     result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
+
+  proc unlockedAlloc0(size: int): pointer {.inline.} =
+    result = unlockedAlloc(size)
+    zeroMem(result, size)
+
+  proc unlockedDealloc(p: pointer) {.inline.} =
+    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+    assert(cast[ptr TFreeCell](x).zeroField == 1)
+    rawDealloc(allocator, x)
+    assert(not isAllocatedPtr(allocator, x))
+
+  proc alloc(size: int): pointer =
+    when hasThreadSupport: AquireSys(HeapLock)
+    result = unlockedAlloc(size)
+    when hasThreadSupport: ReleaseSys(HeapLock)
 
   proc alloc0(size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
 
   proc dealloc(p: pointer) =
-    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-    assert(cast[ptr TFreeCell](x).zeroField == 1)
-    rawDealloc(allocator, x)
-    assert(not isAllocatedPtr(allocator, x))
+    when hasThreadSupport: AquireSys(HeapLock)
+    unlockedDealloc(p)
+    when hasThreadSupport: ReleaseSys(HeapLock)
 
   proc ptrSize(p: pointer): int =
     var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
