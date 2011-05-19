@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -47,9 +47,9 @@ proc contains(s: TCellSeq, c: PCell): bool {.inline.} =
 proc add(s: var TCellSeq, c: PCell) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
-    var d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
+    var d = cast[PCellArray](unlockedAlloc(s.cap * sizeof(PCell)))
     copyMem(d, s.d, s.len * sizeof(PCell))
-    dealloc(s.d)
+    unlockedDealloc(s.d)
     s.d = d
     # XXX: realloc?
   s.d[s.len] = c
@@ -58,10 +58,10 @@ proc add(s: var TCellSeq, c: PCell) {.inline.} =
 proc init(s: var TCellSeq, cap: int = 1024) =
   s.len = 0
   s.cap = cap
-  s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
+  s.d = cast[PCellArray](unlockedAlloc0(cap * sizeof(PCell)))
 
 proc deinit(s: var TCellSeq) = 
-  dealloc(s.d)
+  unlockedDealloc(s.d)
   s.d = nil
   s.len = 0
   s.cap = 0
@@ -70,7 +70,7 @@ const
   InitCellSetSize = 1024 # must be a power of two!
 
 proc Init(s: var TCellSet) =
-  s.data = cast[PPageDescArray](alloc0(InitCellSetSize * sizeof(PPageDesc)))
+  s.data = cast[PPageDescArray](unlockedAlloc0(InitCellSetSize * sizeof(PPageDesc)))
   s.max = InitCellSetSize-1
   s.counter = 0
   s.head = nil
@@ -79,10 +79,10 @@ proc Deinit(s: var TCellSet) =
   var it = s.head
   while it != nil:
     var n = it.next
-    dealloc(it)
+    unlockedDealloc(it)
     it = n
   s.head = nil # play it safe here
-  dealloc(s.data)
+  unlockedDealloc(s.data)
   s.data = nil
   s.counter = 0
 
@@ -110,11 +110,11 @@ proc CellSetRawInsert(t: TCellSet, data: PPageDescArray, desc: PPageDesc) =
 proc CellSetEnlarge(t: var TCellSet) =
   var oldMax = t.max
   t.max = ((t.max+1)*2)-1
-  var n = cast[PPageDescArray](alloc0((t.max + 1) * sizeof(PPageDesc)))
+  var n = cast[PPageDescArray](unlockedAlloc0((t.max + 1) * sizeof(PPageDesc)))
   for i in 0 .. oldmax:
     if t.data[i] != nil:
       CellSetRawInsert(t, n, t.data[i])
-  dealloc(t.data)
+  unlockedDealloc(t.data)
   t.data = n
 
 proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
@@ -132,7 +132,7 @@ proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
   while t.data[h] != nil: h = nextTry(h, t.max)
   assert(t.data[h] == nil)
   # the new page descriptor goes into result
-  result = cast[PPageDesc](alloc0(sizeof(TPageDesc)))
+  result = cast[PPageDesc](unlockedAlloc0(sizeof(TPageDesc)))
   result.next = t.head
   result.key = key
   t.head = result

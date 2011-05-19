@@ -1,5 +1,14 @@
-* add --deadlock_prevention:on|off switch; timeout for locks
-* implicit ref/ptr->var conversion
+* add --deadlock_prevention:on|off switch? timeout for locks?
+* make GC fully thread-safe; needs:
+  - global list of threads
+  - thread must store its stack boundaries
+  - GC must traverse these stacks
+  - isOnStack() needs to take them into account (SLOW?)
+  - GC must stop the world
+  
+* implicit ref/ptr->var conversion; the compiler may store an object
+  implicitly on the heap for write barrier efficiency! (Especially
+  important for multi-threading!)
 
 
 High priority (version 0.9.0)
