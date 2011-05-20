@@ -2,7 +2,8 @@
 * make GC fully thread-safe; needs:
   - global list of threads
   - thread must store its stack boundaries
-  - GC must traverse these stacks
+  - GC must traverse these stacks: Even better each thread traverses its
+    stack! No need to stop if you can help the GC ;-)
   - isOnStack() needs to take them into account (SLOW?)
   - GC must stop the world
   

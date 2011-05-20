@@ -67,21 +67,19 @@ when hasThreadSupport:
   else:
     {.passL: "-pthread".}
     {.passC: "-pthread".}
-
     type
-      Tpthread_key {.importc: "pthread_key_t", 
-                     header: "<sys/types.h>".} = distinct int32
-      TThreadVarSlot {.compilerproc.} = Tpthread_key
+      TThreadVarSlot {.importc: "pthread_key_t", pure, final,
+                     header: "<sys/types.h>".} = object
 
-    proc pthread_getspecific(a1: Tpthread_key): pointer {.
+    proc pthread_getspecific(a1: TThreadVarSlot): pointer {.
       importc: "pthread_getspecific", header: "<pthread.h>".}
-    proc pthread_key_create(a1: ptr Tpthread_key, 
+    proc pthread_key_create(a1: ptr TThreadVarSlot, 
                             destruct: proc (x: pointer) {.noconv.}): int32 {.
       importc: "pthread_key_create", header: "<pthread.h>".}
-    proc pthread_key_delete(a1: Tpthread_key): int32 {.
+    proc pthread_key_delete(a1: TThreadVarSlot): int32 {.
       importc: "pthread_key_delete", header: "<pthread.h>".}
 
-    proc pthread_setspecific(a1: Tpthread_key, a2: pointer): int32 {.
+    proc pthread_setspecific(a1: TThreadVarSlot, a2: pointer): int32 {.
       importc: "pthread_setspecific", header: "<pthread.h>".}
     
     proc specificDestroy(mem: pointer) {.noconv.} =
@@ -112,11 +110,12 @@ when hasThreadSupport:
       data: float # compiler should add thread local variables here!
     PGlobals* = ptr TGlobals
   
-  # it's more efficient to not use a global variable for the thread storage 
-  # slot, but to rely on the implementation to assign slot 0 for us... ;-)
-  var checkSlot = ThreadVarAlloc()
-  const globalsSlot = TThreadVarSlot(0)
-  assert checkSlot.int == globalsSlot.int
+  # XXX it'd be more efficient to not use a global variable for the 
+  # thread storage slot, but to rely on the implementation to assign slot 0
+  # for us... ;-)
+  var globalsSlot = ThreadVarAlloc()
+  #const globalsSlot = TThreadVarSlot(0)
+  #assert checkSlot.int == globalsSlot.int
 
   proc NewGlobals(): PGlobals = 
     result = cast[PGlobals](alloc0(sizeof(TGlobals)))
