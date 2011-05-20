@@ -320,6 +320,7 @@ when isMainModule:
         else: assert false
       else:
         Aquire(L) # lock stdout
+        Aquire(M)
         
       echo i
       os.sleep(10)
@@ -327,7 +328,7 @@ when isMainModule:
         echo "deadlocks prevented: ", deadlocksPrevented
       when nodeadlocks:
         Release(N)
-        Release(M)
+      Release(M)
       Release(L)
 
   InitLock(L)
@@ -340,7 +341,7 @@ when isMainModule:
     for i in 0..high(thr):
       joinThread(thr[i])
 
-  GC_disable() 
+  #GC_disable() 
   main()
-  GC_enable()
+  #GC_enable()
 
