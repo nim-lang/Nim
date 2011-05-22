@@ -28,7 +28,7 @@
 ##
 ##  InitLock(L)
 ##
-##  GC_disable() # native GC does not support multiple thready yet :-(
+##  GC_disable() # native GC does not support multiple threads yet :-(
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  for i in 0..high(thr):
@@ -53,8 +53,9 @@ include "lib/system/systhread"
 type
   TThreadProcClosure {.pure, final.}[TParam] = object
     fn: proc (p: TParam)
-    data: TParam
     threadLocalStorage: pointer
+    stackBottom: pointer
+    data: TParam
   
 when defined(windows):
   type
@@ -133,7 +134,7 @@ else:
 
 
 const
-  noDeadlocks = false # compileOption("deadlockPrevention")
+  noDeadlocks = true # compileOption("deadlockPrevention")
 
 type
   TLock* = TSysLock
@@ -341,7 +342,7 @@ when isMainModule:
     for i in 0..high(thr):
       joinThread(thr[i])
 
-  #GC_disable() 
+  GC_disable() 
   main()
-  #GC_enable()
+  GC_enable()
 
