@@ -471,7 +471,8 @@ elif not defined(useNimRtl):
       p_stdin, p_stdout, p_stderr: array [0..1, cint]
     new(result)
     result.exitCode = -3 # for ``waitForExit``
-    if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32:
+    if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
+       pipe(p_stderr) != 0'i32:
       OSError("failed to create a pipe")
     var Pid = fork()
     if Pid < 0:
@@ -484,9 +485,9 @@ elif not defined(useNimRtl):
       discard close(p_stdout[readIdx])
       if dup2(p_stdout[writeIdx], writeIdx) < 0: OSError()
       if poStdErrToStdOut in options:
+        discard close(p_stderr[readIdx])
         if dup2(p_stdout[writeIdx], 2) < 0: OSError()
       else:
-        if pipe(p_stderr) != 0'i32: OSError("failed to create a pipe")
         discard close(p_stderr[readIdx])
         if dup2(p_stderr[writeIdx], 2) < 0: OSError()
 
