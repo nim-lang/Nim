@@ -514,6 +514,7 @@ elif not defined(useNimRtl):
     result.outputHandle = p_stdout[readIdx]
     if poStdErrToStdOut in options:
       result.errorHandle = result.outputHandle
+      discard close(p_stderr[readIdx])
     else:
       result.errorHandle = p_stderr[readIdx]
     discard close(p_stderr[writeIdx])
