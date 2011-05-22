@@ -846,6 +846,19 @@ proc slaveof*(r: TRedis, host: string, port: string) =
   r.sendCommand("SLAVEOF", host, port)
   raiseNoOK(r.parseStatus())
 
+iterator hPairs*(r: TRedis, key: string): tuple[key, value: string] =
+  ## Iterator for keys and values in a hash.
+  var 
+    contents = r.hGetAll(key)
+    k = ""
+  for i in items(contents):
+    if k == "":
+      k = i
+    else:
+      yield (k, i)
+      k = ""
+      
+
 when false:
   # sorry, deactivated for the test suite
   var r = open()
