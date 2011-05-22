@@ -475,8 +475,7 @@ elif not defined(useNimRtl):
        pipe(p_stderr) != 0'i32:
       OSError("failed to create a pipe")
     var Pid = fork()
-    if Pid < 0:
-      OSError("failed to fork process")
+    if Pid < 0: OSError("failed to fork process")
 
     if pid == 0:
       ## child process:
@@ -484,15 +483,13 @@ elif not defined(useNimRtl):
       if dup2(p_stdin[readIdx], readIdx) < 0: OSError()
       discard close(p_stdout[readIdx])
       if dup2(p_stdout[writeIdx], writeIdx) < 0: OSError()
+      discard close(p_stderr[readIdx])
       if poStdErrToStdOut in options:
-        discard close(p_stderr[readIdx])
         if dup2(p_stdout[writeIdx], 2) < 0: OSError()
       else:
-        discard close(p_stderr[readIdx])
         if dup2(p_stderr[writeIdx], 2) < 0: OSError()
 
-      if workingDir.len > 0:
-        os.setCurrentDir(workingDir)
+      if workingDir.len > 0: os.setCurrentDir(workingDir)
       if poUseShell notin options:
         var a = toCStringArray([extractFilename(command)], args)
         if env == nil:
@@ -519,7 +516,7 @@ elif not defined(useNimRtl):
       result.errorHandle = result.outputHandle
     else:
       result.errorHandle = p_stderr[readIdx]
-      discard close(p_stderr[writeIdx])
+    discard close(p_stderr[writeIdx])
     discard close(p_stdin[readIdx])
     discard close(p_stdout[writeIdx])
 
