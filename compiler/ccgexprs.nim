@@ -1105,8 +1105,8 @@ proc rdSetElemLoc(a: TLoc, setType: PType): PRope =
   # before the set operation
   result = rdCharLoc(a)
   assert(setType.kind == tySet)
-  if (firstOrd(setType) != 0):
-    result = ropef("($1-$2)", [result, toRope(firstOrd(setType))])
+  if firstOrd(setType) != 0:
+    result = ropef("($1- $2)", [result, toRope(firstOrd(setType))])
 
 proc fewCmps(s: PNode): bool =
   # this function estimates whether it is better to emit code

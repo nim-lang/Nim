@@ -41,7 +41,8 @@ Changes affecting backwards compatibility
   and ``replacef`` operations.
 - The pointer dereference operation ``p^`` is deprecated and might become
   ``^p`` in later versions or be dropped entirely since it is rarely used. 
-  Use the new notation ``p[]`` to dereference a pointer.
+  Use the new notation ``p[]`` in the rare cases where you need to 
+  dereference a pointer explicitely.
   
 
 Additions
@@ -79,6 +80,7 @@ Additions
 - The compiler now might use hashing for string case statements depending
   on the number of string literals in the case statement.
 - Added a wrapper for ``redis``.
+- Added a wrapper for ``0mq`` via the ``zmq`` module.
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
 

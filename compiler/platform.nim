@@ -27,7 +27,8 @@ type
   TInfoOSProp* = enum 
     ospNeedsPIC,              # OS needs PIC for libraries
     ospCaseInsensitive,       # OS filesystem is case insensitive
-    ospPosix                  # OS is posix-like
+    ospPosix,                 # OS is posix-like
+    ospLacksThreadVars        # OS lacks proper __threadvar support
   TInfoOSProps* = set[TInfoOSProp]
   TInfoOS* = tuple[name: string, parDir: string, dllFrmt: string, 
                    altDirSep: string, objExt: string, newLine: string, 
@@ -129,7 +130,7 @@ const
      (name: "MacOSX", parDir: "..", dllFrmt: "lib$1.dylib", altDirSep: ":", 
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
-      props: {ospNeedsPIC, ospPosix}), 
+      props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}), 
      (name: "EcmaScript", parDir: "..", 
       dllFrmt: "lib$1.so", altDirSep: "/", 
       objExt: ".o", newLine: "\x0A", 

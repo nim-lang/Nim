@@ -15,10 +15,6 @@
 # stack overflows when traversing deep datastructures. This is comparable to
 # an incremental and generational GC. It should be well-suited for soft real
 # time applications (like games).
-#
-# Future Improvements:
-# * Support for multi-threading. However, locks for the reference counting
-#   might turn out to be too slow.
 
 const
   CycleIncrease = 2 # is a multiplicative increase
@@ -64,10 +60,10 @@ type
     stat: TGcStat
 
 var
-  stackBottom: pointer
-  gch: TGcHeap
-  cycleThreshold: int = InitialCycleThreshold
-  recGcLock: int = 0
+  stackBottom {.rtlThreadVar.}: pointer
+  gch {.rtlThreadVar.}: TGcHeap
+  cycleThreshold {.rtlThreadVar.}: int = InitialCycleThreshold
+  recGcLock {.rtlThreadVar.}: int = 0
     # we use a lock to prevent the garbage collector to be triggered in a
     # finalizer; the collector should not call itself this way! Thus every
     # object allocated by a finalizer will not trigger a garbage collection.
@@ -186,6 +182,15 @@ proc doOperation(p: pointer, op: TWalkOp)
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
 # we need the prototype here for debugging purposes
 
+when hasThreadSupport and hasSharedHeap:
+  template `--`(x: expr): expr = atomicDec(x, rcIncrement) <% rcIncrement
+  template `++`(x: expr): stmt = discard atomicInc(x, rcIncrement)
+else:
+  template `--`(x: expr): expr = 
+    Dec(x, rcIncrement)
+    x <% rcIncrement
+  template `++`(x: expr): stmt = Inc(x, rcIncrement)
+
 proc prepareDealloc(cell: PCell) =
   if cell.typ.finalizer != nil:
     # the finalizer could invoke something that
@@ -219,13 +224,13 @@ proc decRef(c: PCell) {.inline.} =
       writeCell("broken cell", c)
   assert(c.refcount >=% rcIncrement)
   #if c.refcount <% rcIncrement: quit("leck mich")
-  if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
+  if --c.refcount:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
     rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
-  discard atomicInc(c.refcount, rcIncrement)
+  ++c.refcount
   if canBeCycleRoot(c):
     rtlAddCycleRoot(c)
 
@@ -245,10 +250,10 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # cycle is possible.
   if src != nil: 
     var c = usrToCell(src)
-    discard atomicInc(c.refcount, rcIncrement)
+    ++c.refcount
   if dest[] != nil: 
     var c = usrToCell(dest[])
-    if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
+    if --c.refcount:
       rtlAddZCT(c)
   dest[] = src
 
@@ -517,7 +522,17 @@ proc gcMark(p: pointer) {.inline.} =
 
 proc markThreadStacks(gch: var TGcHeap) = 
   when hasThreadSupport:
-    nil
+    var it = threadList
+    while it != nil:
+      # mark registers: 
+      for i in 0 .. high(it.registers): gcMark(it.registers[i])
+      var sp = cast[TAddress](it.stackBottom)
+      var max = cast[TAddress](it.stackTop)
+      # XXX unroll this loop:
+      while sp <=% max:
+        gcMark(cast[ppointer](sp)[])
+        sp = sp +% sizeof(pointer)
+      it = it.next
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
@@ -684,7 +699,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
     # decRef(d[i]) inlined: cannot create a cycle and must not aquire lock
     var c = d[i]
     # XXX no need for an atomic dec here:
-    if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
+    if --c.refcount:
       addZCT(gch.zct, c)
     assert c.typ != nil
   gch.decStack.len = 0

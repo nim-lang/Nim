@@ -10,9 +10,6 @@
 # Exception handling code. This is difficult because it has
 # to work if there is no more memory (but it doesn't yet!).
 
-const
-  MaxLocksPerThread = 10
-
 var
   stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
                             ## for CGI applications
@@ -35,111 +32,10 @@ proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
 proc chckNil(p: pointer) {.inline, compilerproc.}
 
-type
-  PSafePoint = ptr TSafePoint
-  TSafePoint {.compilerproc, final.} = object
-    prev: PSafePoint # points to next safe point ON THE STACK
-    status: int
-    context: C_JmpBuf
-
-when hasThreadSupport:
-  # Support for thread local storage:
-  when defined(windows):
-    type
-      TThreadVarSlot {.compilerproc.} = distinct int32
-
-    proc TlsAlloc(): TThreadVarSlot {.
-      importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-    proc TlsSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
-      importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-    proc TlsGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
-      importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
-    
-    proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
-      result = TlsAlloc()
-    proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
-                           compilerproc, inline.} =
-      TlsSetValue(s, value)
-    proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.
-                           compilerproc, inline.} =
-      result = TlsGetValue(s)
-    
-  else:
-    {.passL: "-pthread".}
-    {.passC: "-pthread".}
-    type
-      TThreadVarSlot {.importc: "pthread_key_t", pure, final,
-                     header: "<sys/types.h>".} = object
-
-    proc pthread_getspecific(a1: TThreadVarSlot): pointer {.
-      importc: "pthread_getspecific", header: "<pthread.h>".}
-    proc pthread_key_create(a1: ptr TThreadVarSlot, 
-                            destruct: proc (x: pointer) {.noconv.}): int32 {.
-      importc: "pthread_key_create", header: "<pthread.h>".}
-    proc pthread_key_delete(a1: TThreadVarSlot): int32 {.
-      importc: "pthread_key_delete", header: "<pthread.h>".}
-
-    proc pthread_setspecific(a1: TThreadVarSlot, a2: pointer): int32 {.
-      importc: "pthread_setspecific", header: "<pthread.h>".}
-    
-    proc specificDestroy(mem: pointer) {.noconv.} =
-      # we really need a thread-safe 'dealloc' here:
-      dealloc(mem)
-
-    proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
-      discard pthread_key_create(addr(result), specificDestroy)
-    proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
-                           compilerproc, inline.} =
-      discard pthread_setspecific(s, value)
-    proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.compilerproc, inline.} =
-      result = pthread_getspecific(s)
-      
-  type
-    TGlobals* {.final, pure.} = object
-      excHandler: PSafePoint
-      currException: ref E_Base
-      framePtr: PFrame
-      locksLen*: int
-      locks*: array [0..MaxLocksPerThread-1, pointer]
-      buf: string       # cannot be allocated on the stack!
-      assertBuf: string # we need a different buffer for
-                        # assert, as it raises an exception and
-                        # exception handler needs the buffer too
-      gAssertionFailed: ref EAssertionFailed
-      tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
-      data: float # compiler should add thread local variables here!
-    PGlobals* = ptr TGlobals
-  
-  # XXX it'd be more efficient to not use a global variable for the 
-  # thread storage slot, but to rely on the implementation to assign slot 0
-  # for us... ;-)
-  var globalsSlot = ThreadVarAlloc()
-  #const globalsSlot = TThreadVarSlot(0)
-  #assert checkSlot.int == globalsSlot.int
-
-  proc NewGlobals(): PGlobals = 
-    result = cast[PGlobals](alloc0(sizeof(TGlobals)))
-    new(result.gAssertionFailed)
-    result.buf = newStringOfCap(2000)
-    result.assertBuf = newStringOfCap(2000)
-
-  proc AllocThreadLocalStorage*(): pointer {.inl.} =
-    isMultiThreaded = true
-    result = NewGlobals()
-    
-  proc SetThreadLocalStorage*(p: pointer) {.inl.} =
-    ThreadVarSetValue(globalsSlot, p)
-    
-  proc GetGlobals*(): PGlobals {.compilerRtl, inl.} =
-    result = cast[PGlobals](ThreadVarGetValue(globalsSlot))
-
-  # create for the main thread:
-  ThreadVarSetValue(globalsSlot, NewGlobals())
-
 when hasThreadSupport:
   template ThreadGlobals =
-    var globals = GetGlobals()
-  template `||`(varname: expr): expr = globals.varname
+    var currentThread = ThisThread()
+  template `||`(varname: expr): expr = currentThread.g.varname
   
 else:
   template ThreadGlobals = nil # nothing
