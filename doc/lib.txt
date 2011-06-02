@@ -32,7 +32,8 @@ Core
   magic to work.
 
 * `threads <threads.html>`_
-  Nimrod thread support. 
+  Nimrod thread support. **Note**: This is part of the system module. Do not
+  import it directly.
 
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.
@@ -228,6 +229,14 @@ Multimedia support
   the ``graphics`` module.
 
 
+Database support
+----------------
+
+* `redis <redis.html>`_
+  This module implements a redis client. It allows you to connect to a
+  redis-server instance, send commands and receive replies.
+
+
 
 Impure libraries
 ================
@@ -283,6 +292,10 @@ Other
 * `rdstdin <rdstdin.html>`_
   This module contains code for reading from `stdin`:idx:. On UNIX the GNU
   readline library is wrapped and set up.
+
+* `zmq <zmq.html>`_
+  Nimrod 0mq wrapper. This file contains the low level C wrappers as well as
+  some higher level constructs.
 
 
 Wrappers

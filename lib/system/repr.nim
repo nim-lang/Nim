@@ -97,7 +97,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
-      if (u and (1 shl i)) != 0:
+      if (u and (1'i64 shl int64(i))) != 0'i64:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)

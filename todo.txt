@@ -1,6 +1,14 @@
+* improve ``echo`` code generation for multi-threading
+* two issues for thread local heaps:
+  - must prevent to construct a data structure that contains memory 
+    from different heaps:  n.next = otherHeapPtr
+  - must prevent that GC cleans up memory that other threads can still read...
+    this can be prevented if the shared heap is simply uncollected (at least
+    for now)
+
+
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * make GC fully thread-safe; needs:
-  - global list of threads
   - thread must store its stack boundaries
   - GC must traverse these stacks: Even better each thread traverses its
     stack! No need to stop if you can help the GC ;-)

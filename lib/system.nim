@@ -778,6 +778,12 @@ proc compileOption*(option, arg: string): bool {.
 
 const
   hasThreadSupport = compileOption("threads")
+  hasSharedHeap = false # don't share heaps, so every thread has its own heap
+
+when hasThreadSupport and not hasSharedHeap:
+  {.pragma: rtlThreadVar, threadvar.}
+else:
+  {.pragma: rtlThreadVar.}
 
 include "system/inclrtl"
 
@@ -1448,12 +1454,6 @@ proc quit*(errorcode: int = QuitSuccess) {.
 when not defined(EcmaScript) and not defined(NimrodVM):
   {.push stack_trace: off.}
 
-  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
-    ## atomic increment of `memLoc`. Returns the value after the operation.
-  
-  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
-    ## atomic decrement of `memLoc`. Returns the value after the operation.
-
   proc initGC()
 
   proc initStackBottom() {.inline.} = 
@@ -1666,7 +1666,23 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   # ----------------------------------------------------------------------------
 
-  include "system/systhread"
+  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
+    ## atomic increment of `memLoc`. Returns the value after the operation.
+  
+  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
+    ## atomic decrement of `memLoc`. Returns the value after the operation.
+
+  include "system/atomics"
+
+  type
+    PSafePoint = ptr TSafePoint
+    TSafePoint {.compilerproc, final.} = object
+      prev: PSafePoint # points to next safe point ON THE STACK
+      status: int
+      context: C_JmpBuf
+
+  when hasThreadSupport:
+    include "system/threads"
   include "system/excpt"
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
