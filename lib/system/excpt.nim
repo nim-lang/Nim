@@ -212,8 +212,10 @@ proc quitOrDebug() {.inline.} =
     endbStep() # call the debugger
 
 proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
-  GC_disable() # a bad thing is an error in the GC while raising an exception
   e.name = ename
+  if raiseHook != nil:
+    if not raiseHook(e): return
+  GC_disable() # a bad thing is an error in the GC while raising an exception
   ThreadGlobals()
   if ||excHandler != nil:
     pushCurrentException(e)

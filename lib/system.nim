@@ -778,7 +778,7 @@ proc compileOption*(option, arg: string): bool {.
 
 const
   hasThreadSupport = compileOption("threads")
-  hasSharedHeap = false # don't share heaps, so every thread has its own heap
+  hasSharedHeap = defined(boehmgc) # don't share heaps; every thread has its own
 
 when hasThreadSupport and not hasSharedHeap:
   {.pragma: rtlThreadVar, threadvar.}
@@ -1039,8 +1039,6 @@ proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependant.
-
-#proc writeStackTrace() {.export: "writeStackTrace".}
 
 # new constants:
 const
@@ -1386,6 +1384,12 @@ var
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
+  raiseHook*: proc (e: ref E_Base): bool
+    ## with this hook you can influence exception handling on a global level.
+    ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
+    ## application code should never set this hook! You better know what you
+    ## do when setting this. If ``raiseHook`` returns false, the exception
+    ## is caught and does not propagate further through the call stack.
 
 type
   PFrame = ptr TFrame
@@ -1420,8 +1424,13 @@ else:
     """
 
 proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
-  ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
-  ## available for the ECMAScript target too!
+  ## special built-in that takes a variable number of arguments. Each argument
+  ## is converted to a string via ``$``, so it works for user-defined
+  ## types that have an overloaded ``$`` operator.
+  ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
+  ## available for the ECMAScript target too.
+  ## Unlike other IO operations this is guaranteed to be thread-safe as
+  ## ``echo`` is very often used for debugging convenience.
 
 template newException*(exceptn, message: expr): expr = 
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field

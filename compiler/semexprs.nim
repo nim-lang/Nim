@@ -527,6 +527,8 @@ proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
         GlobalError(n.sons[1].info, errIdentifierExpected, "")
   of nkAccQuoted:
     result = lookupForDefined(c, considerAcc(n), onlyCurrentScope)
+  of nkSym:
+    result = n.sym
   else: 
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
     result = nil

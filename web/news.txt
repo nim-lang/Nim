@@ -83,6 +83,8 @@ Additions
 - Added a wrapper for ``0mq`` via the ``zmq`` module.
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
+- Added ``system.raiseHook``.
+- ``system.echo`` is guaranteed to be thread-safe.
 
 
 2010-10-20 Version 0.8.10 released
