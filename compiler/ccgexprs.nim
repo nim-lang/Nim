@@ -765,11 +765,15 @@ proc genIfExpr(p: BProc, n: PNode, d: var TLoc) =
     genAssignment(p, d, tmp, {}) # no need for deep copying
 
 proc genEcho(p: BProc, n: PNode) =
+  # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
+  # is threadsafe.
+  var args: PRope = nil
   var a: TLoc
-  for i in countup(1, sonsLen(n) - 1):
+  for i in countup(1, n.len-1):
     initLocExpr(p, n.sons[i], a)
-    appcg(p, cpsStmts, "#rawEcho($1);$n", [rdLoc(a)])
-  appcg(p, cpsStmts, "#rawEchoNL();$n")
+    appf(args, ", ($1)->data", [rdLoc(a)])
+  appcg(p, cpsStmts, "printf(\"" & repeatStr(n.len-1, "%s") &
+        "\\n\"$1);$n", [args])
 
 proc genCall(p: BProc, t: PNode, d: var TLoc) =
   var op, a: TLoc

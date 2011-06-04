@@ -91,7 +91,7 @@ type
     key: int             # start address at bit 0
     bits: array[0..IntsPerTrunk-1, int] # a bit vector
   
-  TTrunkBuckets = array[0..1023, PTrunk]
+  TTrunkBuckets = array[0..255, PTrunk]
   TIntSet {.final.} = object 
     data: TTrunkBuckets
   
@@ -119,8 +119,7 @@ type
     data: TAlignType     # start of usable memory
   
   TBigChunk = object of TBaseChunk # not necessarily > PageSize!
-    next: PBigChunk      # chunks of the same (or bigger) size
-    prev: PBigChunk
+    next, prev: PBigChunk    # chunks of the same (or bigger) size
     align: int
     data: TAlignType     # start of usable memory
 
@@ -148,6 +147,7 @@ type
   TLLChunk {.pure.} = object ## *low-level* chunk
     size: int                # remaining size
     acc: int                 # accumulator
+    next: PLLChunk           # next low-level chunk; only needed for dealloc
     
   TAllocator {.final, pure.} = object
     llmem: PLLChunk
@@ -172,17 +172,30 @@ proc getMaxMem(a: var TAllocator): int =
   
 proc llAlloc(a: var TAllocator, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
-  # is never done.
+  # is done at he end of the allocator's life time.
   if a.llmem == nil or size > a.llmem.size:
-    var request = roundup(size+sizeof(TLLChunk), PageSize)
-    a.llmem = cast[PLLChunk](osAllocPages(request))
-    incCurrMem(a, request)
-    a.llmem.size = request - sizeof(TLLChunk)
+    # the requested size is ``roundup(size+sizeof(TLLChunk), PageSize)``, but
+    # since we know ``size`` is a (small) constant, we know the requested size
+    # is one page:
+    assert roundup(size+sizeof(TLLChunk), PageSize) == PageSize
+    var old = a.llmem # can be nil and is correct with nil
+    a.llmem = cast[PLLChunk](osAllocPages(PageSize))
+    incCurrMem(a, PageSize)
+    a.llmem.size = PageSize - sizeof(TLLChunk)
     a.llmem.acc = sizeof(TLLChunk)
+    a.llmem.next = old
   result = cast[pointer](cast[TAddress](a.llmem) + a.llmem.acc)
   dec(a.llmem.size, size)
   inc(a.llmem.acc, size)
   zeroMem(result, size)
+  
+proc llDeallocAll(a: var TAllocator) =
+  var it = a.llmem
+  while it != nil:
+    # we know each block in the list has the size of 1 page:
+    var next = it.next
+    osDeallocPages(it, PageSize)
+    it = next
   
 proc IntSetGet(t: TIntSet, key: int): PTrunk = 
   var it = t.data[key and high(t.data)]
@@ -218,6 +231,24 @@ proc Excl(s: var TIntSet, key: int) =
     var u = key and TrunkMask
     t.bits[u shr IntShift] = t.bits[u shr IntShift] and not
         (1 shl (u and IntMask))
+
+iterator elements(t: TIntSet): int {.inline.} =
+  # while traversing it is forbidden to change the set!
+  for h in 0..high(t.data):
+    var r = t.data[h]
+    while r != nil:
+      var i = 0
+      while i <= high(r.bits):
+        var w = r.bits[i] # taking a copy of r.bits[i] here is correct, because
+        # modifying operations are not allowed during traversation
+        var j = 0
+        while w != 0:         # test all remaining bits for zero
+          if (w and 1) != 0:  # the bit is set!
+            yield (r.key shl TrunkShift) or (i shl IntShift +% j)
+          inc(j)
+          w = w shr 1
+        inc(i)
+      r = r.next
    
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} = 
@@ -508,8 +539,20 @@ proc isAllocatedPtr(a: TAllocator, p: pointer): bool =
         var c = cast[PBigChunk](c)
         result = p == addr(c.data) and cast[ptr TFreeCell](p).zeroField >% 1
 
+proc deallocOsPages(a: var TAllocator) =
+  # we free every 'ordinarily' allocated page by iterating over the page
+  # bits:
+  for p in elements(a.chunkStarts): 
+    var page = cast[PChunk](p shl pageShift)
+    var size = if page.size < PageSize: PageSize else: page.size
+    osDeallocPages(page, size)
+  # And then we free the pages that are in use for the page bits:
+  llDeallocAll(a)
+
 var
   allocator {.rtlThreadVar.}: TAllocator
+
+proc deallocOsPages = deallocOsPages(allocator)
 
 # ---------------------- interface to programs -------------------------------
 

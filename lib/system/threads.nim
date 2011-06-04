@@ -102,24 +102,15 @@ when defined(Windows):
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
     
   type
-    TThreadVarSlot {.compilerproc.} = distinct int32
+    TThreadVarSlot = distinct int32
 
-  proc TlsAlloc(): TThreadVarSlot {.
+  proc ThreadVarAlloc(): TThreadVarSlot {.
     importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
-  proc TlsSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
+  proc ThreadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
     importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
-  proc TlsGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+  proc ThreadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
     importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
-  proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
-    result = TlsAlloc()
-  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
-                         compilerproc, inline.} =
-    TlsSetValue(s, value)
-  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.
-                         compilerproc, inline.} =
-    result = TlsGetValue(s)
-
 else:
   {.passL: "-pthread".}
   {.passC: "-pthread".}
@@ -225,7 +216,7 @@ type
   TGcThread {.pure.} = object
     sys: TSysThread
     next, prev: PGcThread
-    stackBottom, stackTop: pointer
+    stackBottom, stackTop, threadLocalStorage: pointer
     stackSize: int
     g: TGlobals
     locksLen: int
@@ -241,6 +232,9 @@ var globalsSlot = ThreadVarAlloc()
   
 proc ThisThread(): PGcThread {.compilerRtl, inl.} =
   result = cast[PGcThread](ThreadVarGetValue(globalsSlot))
+
+proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
+  result = cast[PGcThread](ThreadVarGetValue(globalsSlot)).threadLocalStorage
 
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
@@ -295,11 +289,14 @@ type
   TThread* {.pure, final.}[TParam] = object of TGcThread ## Nimrod thread.
     fn: proc (p: TParam)
     data: TParam
+
+when not defined(boehmgc) and not hasSharedHeap:
+  proc deallocOsPages()
   
 template ThreadProcWrapperBody(closure: expr) =
   ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TParam]](closure)
-  when not hasSharedHeap:
+  when not defined(boehmgc) and not hasSharedHeap:
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
@@ -309,6 +306,7 @@ template ThreadProcWrapperBody(closure: expr) =
     t.fn(t.data)
   finally:
     unregisterThread(t)
+    when defined(deallocOsPages): deallocOsPages()
   
 {.push stack_trace:off.}
 when defined(windows):
