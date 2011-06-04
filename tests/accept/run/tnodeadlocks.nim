@@ -1,5 +1,6 @@
 discard """
   outputsub: "101"
+  cmd: "nimrod cc --hints:on --threads:on $# $#"
 """
 
 import os
@@ -19,33 +20,33 @@ proc threadFunc(interval: tuple[a, b: int]) {.procvar.} =
     when nodeadlocks:
       case i mod 6
       of 0:
-        Aquire(L) # lock stdout
-        Aquire(M)
-        Aquire(N)
+        Acquire(L) # lock stdout
+        Acquire(M)
+        Acquire(N)
       of 1:
-        Aquire(L)
-        Aquire(N) # lock stdout
-        Aquire(M)
+        Acquire(L)
+        Acquire(N) # lock stdout
+        Acquire(M)
       of 2:
-        Aquire(M)
-        Aquire(L)
-        Aquire(N)
+        Acquire(M)
+        Acquire(L)
+        Acquire(N)
       of 3:
-        Aquire(M)
-        Aquire(N)
-        Aquire(L)
+        Acquire(M)
+        Acquire(N)
+        Acquire(L)
       of 4:
-        Aquire(N)
-        Aquire(M)
-        Aquire(L)
+        Acquire(N)
+        Acquire(M)
+        Acquire(L)
       of 5:
-        Aquire(N)
-        Aquire(L)
-        Aquire(M)
+        Acquire(N)
+        Acquire(L)
+        Acquire(M)
       else: assert false
     else:
-      Aquire(L) # lock stdout
-      Aquire(M)
+      Acquire(L) # lock stdout
+      Acquire(M)
       
     echo i
     os.sleep(10)

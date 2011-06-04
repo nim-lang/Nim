@@ -462,6 +462,12 @@ proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
   result = newString(count)
   for i in 0..count-1: result[i] = c
 
+proc repeatStr*(count: int, s: string): string {.noSideEffect,
+  rtl, extern: "nsuRepeatStr".} =
+  ## Returns `s` concatenated `count` times.
+  result = newStringOfCap(count*s.len)
+  for i in 0..count-1: result.add(s)
+
 proc align*(s: string, count: int): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
   ## Aligns a string `s` with spaces, so that is of length `count`. Spaces are

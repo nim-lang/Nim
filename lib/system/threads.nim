@@ -27,7 +27,7 @@
 ##  
 ##  proc threadFunc(interval: tuple[a,b: int]) {.procvar.} = 
 ##    for i in interval.a..interval.b: 
-##      Aquire(L) # lock stdout
+##      Acquire(L) # lock stdout
 ##      echo i
 ##      Release(L)
 ##
@@ -56,16 +56,16 @@ when defined(Windows):
     dynlib: "kernel32", importc: "InitializeCriticalSection".}
     ## Initializes the lock `L`.
 
-  proc TryAquireSysAux(L: var TSysLock): int32 {.stdcall,
+  proc TryAcquireSysAux(L: var TSysLock): int32 {.stdcall,
     dynlib: "kernel32", importc: "TryEnterCriticalSection".}
-    ## Tries to aquire the lock `L`.
+    ## Tries to acquire the lock `L`.
     
-  proc TryAquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAquireSysAux(L) != 0'i32
+  proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
+    result = TryAcquireSysAux(L) != 0'i32
 
-  proc AquireSys(L: var TSysLock) {.stdcall,
+  proc AcquireSys(L: var TSysLock) {.stdcall,
     dynlib: "kernel32", importc: "EnterCriticalSection".}
-    ## Aquires the lock `L`.
+    ## Acquires the lock `L`.
     
   proc ReleaseSys(L: var TSysLock) {.stdcall,
     dynlib: "kernel32", importc: "LeaveCriticalSection".}
@@ -131,13 +131,13 @@ else:
   proc InitSysLock(L: var TSysLock, attr: pointer = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>".}
 
-  proc AquireSys(L: var TSysLock) {.
+  proc AcquireSys(L: var TSysLock) {.
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  proc TryAquireSysAux(L: var TSysLock): cint {.
+  proc TryAcquireSysAux(L: var TSysLock): cint {.
     importc: "pthread_mutex_trylock", header: "<pthread.h>".}
 
-  proc TryAquireSys(L: var TSysLock): bool {.inline.} = 
-    result = TryAquireSysAux(L) == 0'i32
+  proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
+    result = TryAcquireSysAux(L) == 0'i32
 
   proc ReleaseSys(L: var TSysLock) {.
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
@@ -168,14 +168,14 @@ else:
   proc pthread_cancel(a1: TSysThread): cint {.
     importc: "pthread_cancel", header: "<pthread.h>".}
 
-  proc AquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
+  proc AcquireSysTimeoutAux(L: var TSysLock, timeout: var Ttimespec): cint {.
     importc: "pthread_mutex_timedlock", header: "<time.h>".}
 
-  proc AquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
+  proc AcquireSysTimeout(L: var TSysLock, msTimeout: int) {.inline.} =
     var a: Ttimespec
     a.tv_sec = msTimeout div 1000
     a.tv_nsec = (msTimeout mod 1000) * 1000
-    var res = AquireSysTimeoutAux(L, a)
+    var res = AcquireSysTimeoutAux(L, a)
     if res != 0'i32: raise newException(EResourceExhausted, $strerror(res))
 
   type
@@ -257,7 +257,7 @@ when not defined(useNimRtl):
     
   proc registerThread(t: PGcThread) = 
     # we need to use the GC global lock here!
-    AquireSys(HeapLock)
+    AcquireSys(HeapLock)
     t.prev = nil
     t.next = threadList
     if threadList != nil: 
@@ -268,7 +268,7 @@ when not defined(useNimRtl):
         
   proc unregisterThread(t: PGcThread) =
     # we need to use the GC global lock here!
-    AquireSys(HeapLock)
+    AcquireSys(HeapLock)
     if t == threadList: threadList = t.next
     if t.next != nil: t.next.prev = t.prev
     if t.prev != nil: t.prev.next = t.next
@@ -297,10 +297,12 @@ type
     data: TParam
   
 template ThreadProcWrapperBody(closure: expr) =
-  when not hasSharedHeap: initGC() # init the GC for this thread
   ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TParam]](closure)
-  when not hasSharedHeap: stackBottom = addr(t)
+  when not hasSharedHeap:
+    # init the GC for this thread:
+    setStackBottom(addr(t))
+    initGC()
   t.stackBottom = addr(t)
   registerThread(t)
   try:
@@ -337,7 +339,7 @@ proc joinThreads*[TParam](t: openArray[TThread[TParam]]) =
 
 proc destroyThread*[TParam](t: var TThread[TParam]) {.inline.} =
   ## forces the thread `t` to terminate. This is potentially dangerous if
-  ## you don't have full control over `t` and its aquired resources.
+  ## you don't have full control over `t` and its acquired resources.
   when hostOS == "windows":
     discard TerminateThread(t.sys, 1'i32)
   else:
@@ -357,12 +359,14 @@ proc createThread*[TParam](t: var TThread[TParam],
     var dummyThreadId: int32
     t.sys = CreateThread(nil, stackSize, threadProcWrapper[TParam],
                          addr(t), 0'i32, dummyThreadId)
+    if t.sys <= 0:
+      raise newException(EResourceExhausted, "cannot create thread")
   else:
     var a: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, stackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TParam], addr(t)) != 0:
-      raise newException(EIO, "cannot create thread")
+      raise newException(EResourceExhausted, "cannot create thread")
 
 # --------------------------- lock handling ----------------------------------
 
@@ -386,17 +390,17 @@ proc OrderedLocks(g: PGcThread): bool =
     if g.locks[i] >= g.locks[i+1]: return false
   result = true
 
-proc TryAquire*(lock: var TLock): bool {.inline.} = 
-  ## Try to aquires the lock `lock`. Returns `true` on success.
+proc TryAcquire*(lock: var TLock): bool {.inline.} = 
+  ## Try to acquires the lock `lock`. Returns `true` on success.
+  result = TryAcquireSys(lock)
   when noDeadlocks:
-    result = TryAquireSys(lock)
     if not result: return
     # we have to add it to the ordered list. Oh, and we might fail if
     # there is no space in the array left ...
     var g = ThisThread()
     if g.locksLen >= len(g.locks):
       ReleaseSys(lock)
-      raise newException(EResourceExhausted, "cannot aquire additional lock")
+      raise newException(EResourceExhausted, "cannot acquire additional lock")
     # find the position to add:
     var p = addr(lock)
     var L = g.locksLen-1
@@ -418,11 +422,9 @@ proc TryAquire*(lock: var TLock): bool {.inline.} =
     g.locks[g.locksLen] = p
     inc(g.locksLen)
     assert OrderedLocks(g)
-  else:
-    result = TryAquireSys(lock)
 
-proc Aquire*(lock: var TLock) =
-  ## Aquires the lock `lock`.
+proc Acquire*(lock: var TLock) =
+  ## Acquires the lock `lock`.
   when nodeadlocks:
     var g = ThisThread()
     var p = addr(lock)
@@ -435,20 +437,21 @@ proc Aquire*(lock: var TLock) =
       else:
         # do the crazy stuff here:
         if g.locksLen >= len(g.locks):
-          raise newException(EResourceExhausted, "cannot aquire additional lock")
+          raise newException(EResourceExhausted, 
+              "cannot acquire additional lock")
         while L >= i:
           ReleaseSys(cast[ptr TSysLock](g.locks[L])[])
           g.locks[L+1] = g.locks[L]
           dec L
-        # aquire the current lock:
-        AquireSys(lock)
+        # acquire the current lock:
+        AcquireSys(lock)
         g.locks[i] = p
         inc(g.locksLen)
-        # aquire old locks in proper order again:
+        # acquire old locks in proper order again:
         L = g.locksLen-1
         inc i
         while i <= L:
-          AquireSys(cast[ptr TSysLock](g.locks[i])[])
+          AcquireSys(cast[ptr TSysLock](g.locks[i])[])
           inc(i)
         # DANGER: We can only modify this global var if we gained every lock!
         # NO! We need an atomic increment. Crap.
@@ -458,13 +461,13 @@ proc Aquire*(lock: var TLock) =
         
     # simply add to the end:
     if g.locksLen >= len(g.locks):
-      raise newException(EResourceExhausted, "cannot aquire additional lock")
-    AquireSys(lock)
+      raise newException(EResourceExhausted, "cannot acquire additional lock")
+    AcquireSys(lock)
     g.locks[g.locksLen] = p
     inc(g.locksLen)
     assert OrderedLocks(g)
   else:
-    AquireSys(lock)
+    AcquireSys(lock)
   
 proc Release*(lock: var TLock) =
   ## Releases the lock `lock`.
