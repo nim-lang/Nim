@@ -532,7 +532,7 @@ when not defined(useNimRtl):
     assert(not isAllocatedPtr(allocator, x))
 
   proc alloc(size: int): pointer =
-    when hasThreadSupport and hasSharedHeap: AquireSys(HeapLock)
+    when hasThreadSupport and hasSharedHeap: AcquireSys(HeapLock)
     result = unlockedAlloc(size)
     when hasThreadSupport and hasSharedHeap: ReleaseSys(HeapLock)
 
@@ -541,7 +541,7 @@ when not defined(useNimRtl):
     zeroMem(result, size)
 
   proc dealloc(p: pointer) =
-    when hasThreadSupport and hasSharedHeap: AquireSys(HeapLock)
+    when hasThreadSupport and hasSharedHeap: AcquireSys(HeapLock)
     unlockedDealloc(p)
     when hasThreadSupport and hasSharedHeap: ReleaseSys(HeapLock)
 

@@ -57,26 +57,20 @@ type
     decStack: TCellSeq       # cells in the stack that are to decref again
     cycleRoots: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
+    recGcLock: int           # prevent recursion via finalizers; no thread lock
     stat: TGcStat
 
 var
   stackBottom {.rtlThreadVar.}: pointer
   gch {.rtlThreadVar.}: TGcHeap
   cycleThreshold {.rtlThreadVar.}: int = InitialCycleThreshold
-  recGcLock {.rtlThreadVar.}: int = 0
-    # we use a lock to prevent the garbage collector to be triggered in a
-    # finalizer; the collector should not call itself this way! Thus every
-    # object allocated by a finalizer will not trigger a garbage collection.
-    # This is wasteful but safe and won't ever be a problem for sane
-    # finalizers. This is a lock against recursive garbage collection, not a
-    # lock for threads!
 
-proc aquire(gch: var TGcHeap) {.inline.} = 
-  when hasThreadSupport:
-    AquireSys(HeapLock)
+proc acquire(gch: var TGcHeap) {.inline.} = 
+  when hasThreadSupport and hasSharedHeap:
+    AcquireSys(HeapLock)
 
 proc release(gch: var TGcHeap) {.inline.} = 
-  when hasThreadSupport:
+  when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
@@ -198,14 +192,14 @@ proc prepareDealloc(cell: PCell) =
     # collection. Since we are already collecting we
     # prevend recursive entering here by a lock.
     # XXX: we should set the cell's children to nil!
-    inc(recGcLock)
+    inc(gch.recGcLock)
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
-    dec(recGcLock)
+    dec(gch.recGcLock)
 
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    AquireSys(HeapLock)
+    AcquireSys(HeapLock)
   incl(gch.cycleRoots, c)
   when hasThreadSupport:  
     ReleaseSys(HeapLock)
@@ -213,7 +207,7 @@ proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    AquireSys(HeapLock)
+    AcquireSys(HeapLock)
   addZCT(gch.zct, c)
   when hasThreadSupport:
     ReleaseSys(HeapLock)
@@ -329,7 +323,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
 
 proc checkCollection {.inline.} =
   # checks if a collection should be done
-  if recGcLock == 0:
+  if gch.recGcLock == 0:
     collectCT(gch)
 
 proc addNewObjToZCT(res: PCell) {.inline.} =
@@ -378,7 +372,7 @@ proc addNewObjToZCT(res: PCell) {.inline.} =
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 0
-  aquire(gch)
+  acquire(gch)
   assert(typ.kind in {tyRef, tyString, tySequence})
   checkCollection()
   var res = cast[PCell](rawAlloc(allocator, size + sizeof(TCell)))
@@ -406,7 +400,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).space = len
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
-  aquire(gch)
+  acquire(gch)
   checkCollection()
   var ol = usrToCell(old)
   assert(ol.typ != nil)
@@ -521,13 +515,15 @@ proc gcMark(p: pointer) {.inline.} =
       add(gch.decStack, cell)
 
 proc markThreadStacks(gch: var TGcHeap) = 
-  when hasThreadSupport:
+  when hasThreadSupport and hasSharedHeap:
+    {.error: "not fully implemented".}
     var it = threadList
     while it != nil:
       # mark registers: 
       for i in 0 .. high(it.registers): gcMark(it.registers[i])
       var sp = cast[TAddress](it.stackBottom)
       var max = cast[TAddress](it.stackTop)
+      # XXX stack direction?
       # XXX unroll this loop:
       while sp <=% max:
         gcMark(cast[ppointer](sp)[])
@@ -696,7 +692,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
     assert isAllocatedPtr(allocator, d[i])
-    # decRef(d[i]) inlined: cannot create a cycle and must not aquire lock
+    # decRef(d[i]) inlined: cannot create a cycle and must not acquire lock
     var c = d[i]
     # XXX no need for an atomic dec here:
     if --c.refcount:
@@ -725,9 +721,17 @@ proc collectCT(gch: var TGcHeap) =
     unmarkStackAndRegisters(gch)
 
 when not defined(useNimRtl):
-  proc GC_disable() = discard atomicInc(recGcLock, 1)
+  proc GC_disable() = 
+    when hasThreadSupport and hasSharedHeap:
+      discard atomicInc(gch.recGcLock, 1)
+    else:
+      inc(gch.recGcLock)
   proc GC_enable() =
-    if recGcLock > 0: discard atomicDec(recGcLock, 1)
+    if gch.recGcLock > 0: 
+      when hasThreadSupport and hasSharedHeap:
+        discard atomicDec(gch.recGcLock, 1)
+      else:
+        dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: TGC_Strategy) =
     case strategy
@@ -744,7 +748,7 @@ when not defined(useNimRtl):
     # set to the max value to suppress the cycle detector
 
   proc GC_fullCollect() =
-    aquire(gch)
+    acquire(gch)
     var oldThreshold = cycleThreshold
     cycleThreshold = 0 # forces cycle collection
     collectCT(gch)

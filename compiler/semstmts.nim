@@ -748,7 +748,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else: 
       if s.typ.sons[0] != nil and kind != skIterator: 
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
-      n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos])
+      n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], {})
     if sfImportc in s.flags: 
       # so we just ignore the body after semantic checking for importc:
       n.sons[codePos] = ast.emptyNode
