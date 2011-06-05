@@ -772,8 +772,8 @@ proc genEcho(p: BProc, n: PNode) =
   for i in countup(1, n.len-1):
     initLocExpr(p, n.sons[i], a)
     appf(args, ", ($1)->data", [rdLoc(a)])
-  appcg(p, cpsStmts, "printf(\"" & repeatStr(n.len-1, "%s") &
-        "\\n\"$1);$n", [args])
+  appcg(p, cpsStmts, "printf($1$2);$n", [
+    makeCString(repeatStr(n.len-1, "%s") & tnl), args])
 
 proc genCall(p: BProc, t: PNode, d: var TLoc) =
   var op, a: TLoc

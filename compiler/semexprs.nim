@@ -726,13 +726,15 @@ proc semDeref(c: PContext, n: PNode): PNode =
   var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar})
   case t.kind
   of tyRef, tyPtr: n.typ = t.sons[0]
-  else: GlobalError(n.sons[0].info, errCircumNeedsPointer)
-  result = n
+  else: result = nil
+  #GlobalError(n.sons[0].info, errCircumNeedsPointer) 
   
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  ## returns nil if not a built-in subscript operator;
+  ## returns nil if not a built-in subscript operator; also called for the
+  ## checking of assignments
   if sonsLen(n) == 1: 
     var x = semDeref(c, n)
+    if x == nil: return nil
     result = newNodeIT(nkDerefExpr, x.info, x.typ)
     result.add(x[0])
     return
