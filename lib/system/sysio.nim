@@ -107,6 +107,9 @@ proc writeln[Ty](f: TFile, x: openArray[Ty]) =
   for i in items(x): write(f, i)
   write(f, "\n")
 
+proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
+proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
+
 # interface to the C procs:
 proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}
 
