@@ -103,21 +103,16 @@ Roadmap to 1.0
 ==============
 
 Version 0.8.x
-  * general expressions as generic parameters
+  * threading
 
 Version 0.9.0
   * closures and anonymous procs
-  * provide an API for object serialization
-
-Version 1.0.0
-  * stress testing with a better test suite
-  * fix symbol files to make the compiler incremental
+  * recursive iterators/coroutines
 
 
 Planned features beyond 1.0
 ===========================
 
-* Threading with a transactional memory modell (the type system may be 
-  enhanced to support extensive compile-time checks for this).
-* Recursive iterators/coroutines.
 * Other code generators: LLVM, EcmaScript.
+* Symbol files to make the compiler incremental.
+

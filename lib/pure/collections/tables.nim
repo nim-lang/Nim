@@ -7,37 +7,45 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``hashtables`` module implements an efficient hash table that is
+## The ``tables`` module implements an efficient hash table that is
 ## a mapping from keys to values.
+##
+## Note: The data types declared here have *value semantics*: This means that
+## ``=`` performs a copy of the hash table. If you are overly concerned with
+## efficiency and don't need this behaviour, you can define the symbol
+## ``shallowADT`` to compile a version that uses shallow copies instead.
 
 import
   os, hashes, math
+
+when defined(shallowADT):
+  {.pragma: myShallow, shallow.}
+else:
+  {.pragma: myShallow.}
 
 type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
   TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  THashTable[A, B] = object of TObject
+  TTable* {.final, myShallow.}[A, B] = object
     data: TKeyValuePairSeq[A, B]
     counter: int
 
-  PHashTable*[A, B] = ref THashTable[A, B] ## use this type to declare tables
-
-proc len*[A, B](t: THashTable[A, B]): int =
+proc len*[A, B](t: TTable[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A, B](t: THashTable[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: TTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: THashTable[A, B]): A =
+iterator keys*[A, B](t: TTable[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield t.data[h].key
 
-iterator values*[A, B](t: THashTable[A, B]): B =
+iterator values*[A, B](t: TTable[A, B]): B =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield t.data[h].val
@@ -68,10 +76,10 @@ template rawInsertImpl() =
   data[h].val = val
   data[h].slot = seFilled
 
-proc RawGet[A, B](t: THashTable[A, B], key: A): int =
+proc RawGet[A, B](t: TTable[A, B], key: A): int =
   rawGetImpl()
 
-proc `[]`*[A, B](t: THashTable[A, B], key: A): B =
+proc `[]`*[A, B](t: TTable[A, B], key: A): B =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
@@ -79,15 +87,15 @@ proc `[]`*[A, B](t: THashTable[A, B], key: A): B =
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
 
-proc hasKey*[A, B](t: THashTable[A, B], key: A): bool =
+proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: var THashTable[A, B], data: var TKeyValuePairSeq[A, B],
+proc RawInsert[A, B](t: var TTable[A, B], data: var TKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
 
-proc Enlarge[A, B](t: var THashTable[A, B]) =
+proc Enlarge[A, B](t: var TTable[A, B]) =
   var n: TKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
@@ -103,23 +111,29 @@ template PutImpl() =
     RawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc `[]=`*[A, B](t: var THashTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var TTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   putImpl()
 
-proc del*[A, B](t: var THashTable[A, B], key: A) =
+proc del*[A, B](t: var TTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].slot = seDeleted
     dec(t.counter)
 
-proc initHashTable*[A, B](initialSize = 64): THashTable[A, B] =
-  ## creates a new string table that is empty. `initialSize` needs to be
+proc initTable*[A, B](initialSize=64): TTable[A, B] =
+  ## creates a new hash table table that is empty. `initialSize` needs to be
   ## a power of two.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
+
+proc toTable*[A, B](pairs: openarray[tuple[key: A, 
+                    val: B]]): TTable[A, B] =
+  ## creates a new hash table that contains the given `pairs`.
+  result = initTable[A](nextPowerOfTwo(pairs.len+10))
+  for key, val in items(pairs): result[key] = val
 
 template dollarImpl(): stmt =
   if t.len == 0:
@@ -133,7 +147,7 @@ template dollarImpl(): stmt =
       result.add($val)
     result.add("}")
 
-proc `$`*[A, B](t: THashTable[A, B]): string =
+proc `$`*[A, B](t: TTable[A, B]): string =
   ## The `$` operator for string tables.
   dollarImpl()
 
@@ -143,11 +157,12 @@ type
   TOrderedKeyValuePair[A, B] = tuple[
     slot: TSlotEnum, next: int, key: A, val: B]
   TOrderedKeyValuePairSeq[A, B] = seq[TOrderedKeyValuePair[A, B]]
-  TOrderedHashTable*[A, B] {.final.} = object
+  TOrderedTable* {.
+      final, myShallow.}[A, B] = object ## table that remembers insertion order
     data: TOrderedKeyValuePairSeq[A, B]
     counter, first, last: int
 
-proc len*[A, B](t: TOrderedHashTable[A, B]): int {.inline.} =
+proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -158,26 +173,26 @@ template forAllOrderedPairs(yieldStmt: stmt) =
     if t.data[h].slot == seFilled: yieldStmt
     i = nxt
 
-iterator pairs*[A, B](t: TOrderedHashTable[A, B]): tuple[key: A, val: B] =
+iterator pairs*[A, B](t: TOrderedTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: TOrderedHashTable[A, B]): A =
+iterator keys*[A, B](t: TOrderedTable[A, B]): A =
   ## iterates over any key in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].key
 
-iterator values*[A, B](t: TOrderedHashTable[A, B]): B =
+iterator values*[A, B](t: TOrderedTable[A, B]): B =
   ## iterates over any value in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc RawGet[A, B](t: TOrderedHashTable[A, B], key: A): int =
+proc RawGet[A, B](t: TOrderedTable[A, B], key: A): int =
   rawGetImpl()
 
-proc `[]`*[A, B](t: TOrderedHashTable[A, B], key: A): B =
+proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
@@ -185,11 +200,11 @@ proc `[]`*[A, B](t: TOrderedHashTable[A, B], key: A): B =
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
 
-proc hasKey*[A, B](t: TOrderedHashTable[A, B], key: A): bool =
+proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: TOrderedHashTable[A, B], 
+proc RawInsert[A, B](t: TOrderedTable[A, B], 
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
@@ -198,39 +213,19 @@ proc RawInsert[A, B](t: TOrderedHashTable[A, B],
   if last >= 0: data[last].next = h
   lastEntry = h
 
-proc Enlarge[A, B](t: TOrderedHashTable[A, B]) =
+proc Enlarge[A, B](t: TOrderedTable[A, B]) =
   var n: TOrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   forAllOrderedPairs:
     RawInsert(t, n, t.data[h].key, t.data[h].val)
   swap(t.data, n)
 
-proc `[]=`*[A, B](t: TOrderedHashTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: TOrderedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
-  var index = RawGet(t, key)
-  if index >= 0:
-    t.data[index].val = val
-  else:
-    if mustRehash(len(t.data), t.counter): Enlarge(t)
-    RawInsert(t, t.data, key, val)
-    inc(t.counter)
+  putImpl()
 
-proc del*[A, B](t: TOrderedHashTable[A, B], key: A) =
-  ## deletes `key` from hash table `t`. Warning: It's inefficient for ordered
-  ## tables: O(n).
-  var index = RawGet(t, key)
-  if index >= 0:
-    var i = t.first
-    while i >= 0:
-      var nxt = t.data[i].next
-      if nxt == index: XXX
-      i = nxt
-    
-    t.data[index].slot = seDeleted
-    dec(t.counter)
-
-proc initHashTable*[A, B](initialSize = 64): TOrderedHashTable[A, B] =
-  ## creates a new string table that is empty. `initialSize` needs to be
+proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
+  ## creates a new ordered hash table that is empty. `initialSize` needs to be
   ## a power of two.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
@@ -238,17 +233,21 @@ proc initHashTable*[A, B](initialSize = 64): TOrderedHashTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc `$`*[A, B](t: TOrderedHashTable[A, B]): string =
+proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A, 
+                           val: B]]): TOrderedTable[A, B] =
+  ## creates a new ordered hash table that contains the given `pairs`.
+  result = initOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
+  for key, val in items(pairs): result[key] = val
+
+proc `$`*[A, B](t: TOrderedTable[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
 
 # ------------------------------ count tables -------------------------------
 
-const
-  deletedCount = -1
-
 type
-  TCountTable*[A] {.final.} = object
+  TCountTable* {.final, myShallow.}[
+      A] = object ## table that counts the number of each key
     data: seq[tuple[key: A, val: int]]
     counter: int
 
@@ -259,30 +258,28 @@ proc len*[A](t: TCountTable[A]): int =
 iterator pairs*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
 iterator keys*[A](t: TCountTable[A]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].key
+    if t.data[h].val != 0: yield t.data[h].key
 
 iterator values*[A](t: TCountTable[A]): int =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield t.data[h].val
+    if t.data[h].val != 0: yield t.data[h].val
 
 proc RawGet[A](t: TCountTable[A], key: A): int =
   var h: THash = hash(key) and high(t.data) # start with real hash value
-  while t.data[h].slot != seEmpty:
-    if t.data[h].key == key and t.data[h].slot == seFilled:
-      return h
+  while t.data[h].val != 0:
+    if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
   result = -1
 
-proc `[]`*[A](t: TCountTable[A], key: A): B =
+proc `[]`*[A](t: TCountTable[A], key: A): int =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## 0 is returned. One can check with ``hasKey`` whether the key
   ## exists.
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
@@ -291,62 +288,92 @@ proc hasKey*[A](t: TCountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A](t: TCountTable[A], data: var TKeyValuePairSeq[A, B],
-                     key: A, val: int) =
+proc RawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],
+                  key: A, val: int) =
   var h: THash = hash(key) and high(data)
-  while data[h].slot == seFilled:
-    h = nextTry(h, high(data))
+  while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
-  data[h].slot = seFilled
 
 proc Enlarge[A](t: TCountTable[A]) =
-  var n: TKeyValuePairSeq[A, B]
+  var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*[A](t: TCountTable[A], key: A, val: int) =
-  ## puts a (key, value)-pair into `t`.
+  ## puts a (key, value)-pair into `t`. `val` has to be positive.
+  assert val > 0
+  PutImpl()
+
+proc initCountTable*[A](initialSize=64): TCountTable[A] =
+  ## creates a new count table that is empty. `initialSize` needs to be
+  ## a power of two.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  newSeq(result.data, initialSize)
+
+proc toCountTable*[A](keys: openArray[A]): TCountTable[A] =
+  ## creates a new count table with every key in `keys` having a count of 1.
+  result = initCountTable[A](nextPowerOfTwo(keys.len+10))
+  for key in items(keys): result[key] = 1
+
+proc `$`*[A](t: TCountTable[A]): string =
+  ## The `$` operator for count tables.
+  dollarImpl()
+
+proc inc*[A](t: TCountTable[A], key: A, val = 1) = 
+  ## increments `t[key]` by `val`.
   var index = RawGet(t, key)
   if index >= 0:
-    t.data[index].val = val
+    inc(t.data[index].val, val)
   else:
     if mustRehash(len(t.data), t.counter): Enlarge(t)
     RawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc del*[A](t: TCountTable[A], key: A) =
-  ## deletes `key` from hash table `t`.
-  var index = RawGet(t, key)
-  if index >= 0:
-    t.data[index].slot = seDeleted
+proc Smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
+  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  assert t.len > 0
+  var minIdx = 0
+  for h in 1..high(t.data):
+    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+  result.key = t.data[minIdx].key
+  result.val = t.data[minIdx].val
 
-proc newHashTable*[A, B](initialSize = 64): PHashTable[A, B] =
-  ## creates a new string table that is empty. `initialSize` needs to be
-  ## a power of two.
-  assert isPowerOfTwo(initialSize)
-  new(result)
-  result.counter = 0
-  newSeq(result.data, initialSize)
+proc Largest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
+  ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
+  assert t.len > 0
+  var maxIdx = 0
+  for h in 1..high(t.data):
+    if t.data[maxIdx].val < t.data[h].val: maxIdx = h
+  result.key = t.data[maxIdx].key
+  result.val = t.data[maxIdx].val
 
-proc `$`*[A](t: TCountTable[A]): string =
-  ## The `$` operator for string tables.
-  if t.len == 0:
-    result = "{:}"
-  else:
-    result = "{"
-    for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
-      result.add($key)
-      result.add(": ")
-      result.add($val)
-    result.add("}")
+proc sort*[A](t: var TCountTable[A]) = 
+  ## sorts the count table so that the entry with the highest counter comes 
+  ## first. This is destructive! You must not modify `t` afterwards!
+  ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
+  ## `t` in the sorted order.
 
+  # we use shellsort here; fast enough and simple
+  var h = 1
+  while true:
+    h = 3 * h + 1
+    if h >= t.data.high: break
+  while true: 
+    h = h div 3
+    for i in countup(h, t.data.high):
+      var j = i
+      while t.data[j-h].val < t.data[j].val:
+        swap(t.data[j], t.data[j-h])
+        j = j-h
+        if j < h: break
+    if h == 1: break
 
 when isMainModule:
-  var table = newHashTable[string, float]()
+  var table = initHashTable[string, float]()
   table["test"] = 1.2345
   table["111"] = 1.000043
   echo table

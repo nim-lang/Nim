@@ -25,13 +25,13 @@ type
   TSrcGen*{.final.} = object 
     indent*: int
     lineLen*: int
-    pos*: int                 # current position for iteration over the buffer
-    idx*: int                 # current token index for iteration over the buffer
+    pos*: int              # current position for iteration over the buffer
+    idx*: int              # current token index for iteration over the buffer
     tokens*: TRenderTokSeq
     buf*: string
-    pendingNL*: int           # negative if not active; else contains the
-                              # indentation value
-    comStack*: seq[PNode]     # comment stack
+    pendingNL*: int        # negative if not active; else contains the
+                           # indentation value
+    comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
 
 
@@ -123,13 +123,13 @@ proc toNimChar(c: Char): string =
   
 proc makeNimString(s: string): string = 
   result = "\""
-  for i in countup(0, len(s) + 0 - 1): add(result, toNimChar(s[i]))
+  for i in countup(0, len(s)-1): add(result, toNimChar(s[i]))
   add(result, '\"')
 
 proc putComment(g: var TSrcGen, s: string) = 
   var i = 0
   var comIndent = 1
-  var isCode = (len(s) >= 2) and (s[0 + 1] != ' ')
+  var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
   var com = ""
   while true: 
@@ -166,9 +166,8 @@ proc putComment(g: var TSrcGen, s: string) =
       while s[j] > ' ': inc(j)
       if not isCode and (g.lineLen + (j - i) > MaxLineLen): 
         put(g, tkComment, com)
-        com = ""
         optNL(g, ind)
-        com = com & '#' & repeatChar(comIndent)
+        com = '#' & repeatChar(comIndent)
       while s[i] > ' ': 
         add(com, s[i])
         inc(i)
@@ -198,7 +197,7 @@ proc maxLineLength(s: string): int =
 
 proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) = 
   var i = 0
-  var hi = len(s) + 0 - 1
+  var hi = len(s) - 1
   var str = ""
   while i <= hi: 
     case s[i]
@@ -219,7 +218,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   put(g, kind, str)
 
 proc containsNL(s: string): bool = 
-  for i in countup(0, len(s) + 0 - 1): 
+  for i in countup(0, len(s) - 1): 
     case s[i]
     of '\x0D', '\x0A': 
       return true
@@ -513,8 +512,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext) =
     if rfLongMode in c.flags: dedent(g)
   
 proc gif(g: var TSrcGen, n: PNode) = 
-  var 
-    c: TContext
+  var c: TContext
   gsub(g, n.sons[0].sons[0])
   initContext(c)
   putWithSpace(g, tkColon, ":")
@@ -826,7 +824,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n.sons[0])
-    for i in 0 .. <n.len:
+    for i in 1 .. <n.len:
       put(g, tkSpaces, Space)
       gsub(g, n.sons[i])
     put(g, tkAccent, "`")

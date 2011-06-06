@@ -264,7 +264,7 @@ proc renderIndexTerm(d: PDoc, n: PRstNode): PRope =
 
 proc genComment(d: PDoc, n: PNode): PRope = 
   var dummyHasToc: bool
-  if (n.comment != nil) and startsWith(n.comment, "##"): 
+  if n.comment != nil and startsWith(n.comment, "##"): 
     result = renderRstToOut(d, rstParse(n.comment, true, toFilename(n.info), 
                                         toLineNumber(n.info), toColumn(n.info), 
                                         dummyHasToc))
@@ -385,8 +385,9 @@ proc renderHeadline(d: PDoc, n: PRstNode): PRope =
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
     d.tocPart[length].header = result
-    result = dispF("<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
-                   "\\rsth$4{$3}\\label{$2}$n", [toRope(n.level), 
+    result = dispF(
+        "<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
+        "\\rsth$4{$3}\\label{$2}$n", [toRope(n.level), 
         d.tocPart[length].refname, result, 
         toRope(chr(n.level - 1 + ord('A')) & "")])
   else: 
@@ -405,7 +406,7 @@ proc renderOverline(d: PDoc, n: PRstNode): PRope =
   else: 
     result = dispF("<h$1 id=\"$2\"><center>$3</center></h$1>", 
                    "\\rstov$4{$3}\\label{$2}$n", [toRope(n.level), 
-        toRope(rstnodeToRefname(n)), t, toRope(chr(n.level - 1 + ord('A')) & "")])
+        toRope(rstnodeToRefname(n)), t, toRope($chr(n.level - 1 + ord('A')))])
   
 proc renderRstToRst(d: PDoc, n: PRstNode): PRope
 proc renderRstSons(d: PDoc, n: PRstNode): PRope = 

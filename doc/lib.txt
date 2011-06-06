@@ -46,10 +46,13 @@ Core
 Collections and algorithms
 --------------------------
 
-* `hashtables <hashtables.html>`_
-  Nimrod hash table support.
+* `tables <tables.html>`_
+  Nimrod hash table support. Contains tables, ordered tables and count tables.
+* `sets <sets.html>`_
+  Nimrod hash and bit set support.
 * `lists <lists.html>`_
-  Nimrod linked list support.
+  Nimrod linked list support. Contains singly and doubly linked lists and
+  circular lists ("rings").
   
 
 String handling
