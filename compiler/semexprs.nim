@@ -34,10 +34,11 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   else:
     GlobalError(n.info, errExprXHasNoType, 
                 renderTree(result, {renderNoComments}))
+
+proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
+  result = symChoice(c, n, s)
   
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
-  if s.kind == skType and efAllowType notin flags:
-    GlobalError(n.info, errATypeHasNoValue)
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
     if not (sfProcVar in s.flags) and (s.typ.callConv == ccDefault) and
@@ -56,25 +57,29 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # It is clear that ``[]`` means two totally different things. Thus, we
     # copy `x`'s AST into each context, so that the type fixup phase can
     # deal with two different ``[]``.
-    #      
+    #
     markUsed(n, s)
-    if s.typ.kind in ConstAbstractTypes: 
+    if s.typ.kind in ConstAbstractTypes:
       result = copyTree(s.ast)
       result.typ = s.typ
       result.info = n.info
-    else: 
+    else:
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
-  of skVar: 
+  of skVar:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags: incl(c.p.owner.flags, sfSideEffect)
     result = newSymNode(s, n.info)
-  of skGenericParam: 
+  of skGenericParam:
     if s.ast == nil: InternalError(n.info, "no default for")
     result = semExpr(c, s.ast)
-  else: 
+  of skType:
+    if efAllowType notin flags: GlobalError(n.info, errATypeHasNoValue)
+    markUsed(n, s)
+    result = newSymNode(s, n.info)
+  else:
     markUsed(n, s)
     result = newSymNode(s, n.info)
 
@@ -1037,7 +1042,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}: 
       # type parameters: partial generic specialization
-      n.sons[0] = semSym(c, n.sons[0], s, flags)
+      n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
       result = explicitGenericInstantiation(c, n, s)
     else: 
       result = semArrayAccess(c, n, flags)
