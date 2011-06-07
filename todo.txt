@@ -4,12 +4,13 @@
     from different heaps:  n.next = otherHeapPtr
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
-  
+* test the sort implementation again
 
 
 High priority (version 0.9.0)
 =============================
 
+- iterators should not always be destructive!
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
@@ -19,7 +20,6 @@ High priority (version 0.9.0)
 - fix overloading resolution
 - wrong co-/contravariance
 - make ^ available as operator
-- iterators should not always be destructive
 
 Bugs
 ----
@@ -30,12 +30,23 @@ Bugs
 - BUG: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
     should make use of this fact to generate better code...
+- sorting with leads to a strange memory corruption!
+  --> system.swap or genericAssign is broken! And indeed, if reference counts
+      are not modified and the GC is triggered in between a swap, bad things
+      may happen!
+  
+  proc sort*[A](t: var TCountTable[A]) =
+    for i in 0 .. high(t.data)-1:
+      var maxIdx = i
+      for j in i+1 .. high(t.data):
+        if t.data[j].val == 3: echo "touched! ", t.data[j].key
+        if t.data[j].val > t.data[maxIdx].val: maxIdx = j
+      swap(t.data[maxIdx], t.data[i])
 
 
 To implement
 ------------
 
-* hash tables and sets; count tables; ordered dicts
 * distinct types for array/seq indexes
 * implement closures for the C code generator
 * GC: marker procs for native Nimrod GC and Boehm GC
@@ -68,6 +79,7 @@ Low priority
 Library
 -------
 
+- specialized bit sets; specialized string sets
 - locale support
 - conversion between character sets
 - bignums

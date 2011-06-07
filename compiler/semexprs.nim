@@ -83,11 +83,11 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     markUsed(n, s)
     result = newSymNode(s, n.info)
 
-proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) = 
+proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
   var diff = inheritanceDiff(castDest, src)
-  if diff == high(int): 
-    GlobalError(info, errGenerated, `%`(MsgKindToString(errIllegalConvFromXtoY), [
-        typeToString(src), typeToString(castDest)]))
+  if diff == high(int):
+    GlobalError(info, errGenerated, MsgKindToString(errIllegalConvFromXtoY) % [
+        src.typeToString, castDest.typeToString])
   
 proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
   const 

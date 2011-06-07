@@ -48,6 +48,9 @@ Changes affecting backwards compatibility
 Additions
 ---------
 
+- Added ``lists`` module which contains generic linked lists.
+- Added ``sets`` module which contains generic hash sets.
+- Added ``tables`` module which contains generic hash tables.
 - Added ``scgi`` module.
 - Added ``smtp`` module.
 - Added ``re.findAll``, ``pegs.findAll``.

@@ -12,28 +12,28 @@
 ## be manipulated directly for efficiency.
 
 type
-  TDoublyLinkedNode*[T] {.pure, 
-      final.} = object ## a node a doubly linked list consists of
+  TDoublyLinkedNode* {.pure, 
+      final.}[T] = object ## a node a doubly linked list consists of
     next*, prev*: ref TDoublyLinkedNode[T]
     value*: T
   PDoublyLinkedNode*[T] = ref TDoublyLinkedNode[T]
 
-  TSinglyLinkedNode*[T] {.pure, 
-      final.} = object ## a node a singly linked list consists of
+  TSinglyLinkedNode* {.pure, 
+      final.}[T] = object ## a node a singly linked list consists of
     next*: ref TSinglyLinkedNode[T]
     value*: T
   PSinglyLinkedNode*[T] = ref TSinglyLinkedNode[T]
 
-  TSinglyLinkedList*[T] {.pure, final.} = object ## a singly linked list
+  TSinglyLinkedList* {.pure, final.}[T] = object ## a singly linked list
     head*, tail*: PSinglyLinkedNode[T]
   
-  TDoublyLinkedList*[T] {.pure, final.} = object ## a doubly linked list
+  TDoublyLinkedList* {.pure, final.}[T] = object ## a doubly linked list
     head*, tail*: PDoublyLinkedNode[T]
 
-  TSinglyLinkedRing*[T] {.pure, final.} = object ## a singly linked ring
+  TSinglyLinkedRing* {.pure, final.}[T] = object ## a singly linked ring
     head*: PSinglyLinkedNode[T]
   
-  TDoublyLinkedRing*[T] {.pure, final.} = object ## a doubly linked ring
+  TDoublyLinkedRing* {.pure, final.}[T] = object ## a doubly linked ring
     head*: PDoublyLinkedNode[T]
     
 proc newDoublyLinkedNode*[T](value: T): PDoublyLinkedNode[T] =
@@ -240,17 +240,15 @@ proc prepend*[T](L: var TSinglyLinkedRing[T], value: T) =
 
 proc append*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
   ## appends a node `n` to `L`. Efficiency: O(1).
-  if L.tail != nil: 
-    L.tail.next = n
-    n.prev = L.tail
+  if L.head != nil:
     n.next = L.head
+    n.prev = L.head.prev
+    L.head.prev.next = n
+    L.head.prev = n
   else:
-    # both head and tail are nil:
-    assert L.head == nil
-    L.head = n
     n.prev = n
     n.next = n
-  L.tail = n
+    L.head = n
 
 proc append*[T](L: var TDoublyLinkedRing[T], value: T) = 
   ## appends a value to `L`. Efficiency: O(1).
@@ -259,13 +257,11 @@ proc append*[T](L: var TDoublyLinkedRing[T], value: T) =
 proc prepend*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
   ## prepends a node `n` to `L`. Efficiency: O(1).
   if L.head != nil: 
-    L.head.prev = n
-    n.prev = L.tail
     n.next = L.head
+    n.prev = L.head.prev
+    L.head.prev.next = n
+    L.head.prev = n
   else:
-    # both head and tail are nil:
-    assert L.tail == nil
-    L.tail = n
     n.prev = n
     n.next = n
   L.head = n
@@ -276,19 +272,14 @@ proc prepend*[T](L: var TDoublyLinkedRing[T], value: T) =
   
 proc remove*[T](L: var TDoublyLinkedRing[T], n: PDoublyLinkedNode[T]) = 
   ## removes `n` from `L`. Efficiency: O(1).
-  if n == L.tail: 
-    if n == L.head:
-      # only element:
-      L.tail = nil
-      L.head = nil
-    else:
-      L.tail = n.prev
-  elif n == L.head: 
-    L.head = n.next
   n.next.prev = n.prev
   n.prev.next = n.next
-  # break cycles for the GC; not necessary, but might help:
-  n.next = nil
-  n.prev = nil
+  if n == L.head: 
+    var p = L.head.prev
+    if p == L.head: 
+      # only one element left:
+      L.head = nil
+    else:
+      L.head = L.head.prev
 
 
