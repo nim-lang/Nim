@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2011 Andreas Rumpf, Dominik Picheta
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,7 @@
 ##
 ## Note: The data types declared here have *value semantics*: This means that
 ## ``=`` performs a copy of the hash table. If you are overly concerned with
-## efficiency and don't need this behaviour, you can define the symbol
+## efficiency and know what you do (!), you can define the symbol
 ## ``shallowADT`` to compile a version that uses shallow copies instead.
 
 import
@@ -123,7 +123,7 @@ proc del*[A, B](t: var TTable[A, B], key: A) =
     dec(t.counter)
 
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
-  ## creates a new hash table table that is empty. `initialSize` needs to be
+  ## creates a new hash table that is empty. `initialSize` needs to be
   ## a power of two.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
@@ -132,7 +132,7 @@ proc initTable*[A, B](initialSize=64): TTable[A, B] =
 proc toTable*[A, B](pairs: openarray[tuple[key: A, 
                     val: B]]): TTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
-  result = initTable[A](nextPowerOfTwo(pairs.len+10))
+  result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
   for key, val in items(pairs): result[key] = val
 
 template dollarImpl(): stmt =
@@ -148,7 +148,7 @@ template dollarImpl(): stmt =
     result.add("}")
 
 proc `$`*[A, B](t: TTable[A, B]): string =
-  ## The `$` operator for string tables.
+  ## The `$` operator for hash tables.
   dollarImpl()
 
 # ------------------------------ ordered table ------------------------------
@@ -167,11 +167,11 @@ proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   result = t.counter
 
 template forAllOrderedPairs(yieldStmt: stmt) =
-  var i = t.first
-  while i >= 0:
-    var nxt = t.data[i].next
+  var h = t.first
+  while h >= 0:
+    var nxt = t.data[h].next
     if t.data[h].slot == seFilled: yieldStmt
-    i = nxt
+    h = nxt
 
 iterator pairs*[A, B](t: TOrderedTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t` in insertion
@@ -204,23 +204,29 @@ proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: TOrderedTable[A, B], 
+proc RawInsert[A, B](t: var TOrderedTable[A, B], 
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
   data[h].next = -1
-  if first < 0: first = h
-  if last >= 0: data[last].next = h
-  lastEntry = h
+  if t.first < 0: t.first = h
+  if t.last >= 0: data[t.last].next = h
+  t.last = h
 
-proc Enlarge[A, B](t: TOrderedTable[A, B]) =
+proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
   var n: TOrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
-  forAllOrderedPairs:
-    RawInsert(t, n, t.data[h].key, t.data[h].val)
+  var h = t.first
+  t.first = -1
+  t.last = -1
+  while h >= 0:
+    var nxt = t.data[h].next
+    if t.data[h].slot == seFilled: 
+      RawInsert(t, n, t.data[h].key, t.data[h].val)
+    h = nxt
   swap(t.data, n)
 
-proc `[]=`*[A, B](t: TOrderedTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   putImpl()
 
@@ -240,7 +246,7 @@ proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A,
   for key, val in items(pairs): result[key] = val
 
 proc `$`*[A, B](t: TOrderedTable[A, B]): string =
-  ## The `$` operator for hash tables.
+  ## The `$` operator for ordered hash tables.
   dollarImpl()
 
 # ------------------------------ count tables -------------------------------
@@ -295,14 +301,14 @@ proc RawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],
   data[h].key = key
   data[h].val = val
 
-proc Enlarge[A](t: TCountTable[A]) =
+proc Enlarge[A](t: var TCountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].val != 0: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*[A](t: TCountTable[A], key: A, val: int) =
+proc `[]=`*[A](t: var TCountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
   assert val > 0
   PutImpl()
@@ -323,7 +329,7 @@ proc `$`*[A](t: TCountTable[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: TCountTable[A], key: A, val = 1) = 
+proc inc*[A](t: var TCountTable[A], key: A, val = 1) = 
   ## increments `t[key]` by `val`.
   var index = RawGet(t, key)
   if index >= 0:
@@ -351,8 +357,8 @@ proc Largest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[maxIdx].key
   result.val = t.data[maxIdx].val
 
-proc sort*[A](t: var TCountTable[A]) = 
-  ## sorts the count table so that the entry with the highest counter comes 
+proc sort*[A](t: var TCountTable[A]) =
+  ## sorts the count table so that the entry with the highest counter comes
   ## first. This is destructive! You must not modify `t` afterwards!
   ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
   ## `t` in the sorted order.
@@ -361,35 +367,14 @@ proc sort*[A](t: var TCountTable[A]) =
   var h = 1
   while true:
     h = 3 * h + 1
-    if h >= t.data.high: break
-  while true: 
+    if h >= high(t.data): break
+  while true:
     h = h div 3
-    for i in countup(h, t.data.high):
+    for i in countup(h, high(t.data)):
       var j = i
-      while t.data[j-h].val < t.data[j].val:
+      while t.data[j-h].val <= t.data[j].val:
         swap(t.data[j], t.data[j-h])
         j = j-h
         if j < h: break
     if h == 1: break
-
-when isMainModule:
-  var table = initHashTable[string, float]()
-  table["test"] = 1.2345
-  table["111"] = 1.000043
-  echo table
-  table.del("111")
-  echo table
-  #echo repr(table["111"])
-  #echo(repr(table["1212"]))
-  table["111"] = 1.5
-  table["011"] = 67.9
-  echo table
-  table.del("test")
-  table.del("111")
-  echo table
-
-
-  echo hash("test")
-  echo hash("test")
-
 
