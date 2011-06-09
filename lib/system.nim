@@ -1889,3 +1889,4 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
   else:
     raise newException(EOutOfRange, "differing lengths for slice assignment")
 
+proc getTypeInfo*[T](x: T): pointer {.magic: "ToAny".}

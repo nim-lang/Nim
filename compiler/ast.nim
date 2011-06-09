@@ -352,7 +352,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, 
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, 
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
-    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError
+    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError, mGetTypeInfo
 
 type 
   PNode* = ref TNode
