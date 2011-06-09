@@ -7,6 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(NimString): 
+  # we are in system module:
+  {.pragma: codegenType, compilerproc.}
+else:
+  {.pragma: codegenType.}
+
 type # This should be he same as ast.TTypeKind
      # many enum fields are not used at runtime
   TNimKind = enum
@@ -35,7 +41,7 @@ type # This should be he same as ast.TTypeKind
     tyPureObject # signals that object has no `n_type` field
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.compilerproc, final.} = object
+  TNimNode {.codegenType, final.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
@@ -48,7 +54,7 @@ type # This should be he same as ast.TTypeKind
     ntfAcyclic = 1,    # type cannot form a cycle
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
-  TNimType {.compilerproc, final.} = object
+  TNimType {.codegenType, final.} = object
     size: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
