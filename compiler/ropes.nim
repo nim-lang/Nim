@@ -59,7 +59,7 @@
 #
 
 import 
-  msgs, strutils, platform, nhashes, crc
+  msgs, strutils, platform, hashes, crc
 
 const 
   CacheLeafs* = true

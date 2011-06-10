@@ -12,7 +12,7 @@
 # code!**
 
 import 
-  ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp,
+  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils
 

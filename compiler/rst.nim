@@ -11,7 +11,7 @@
 # subset is provided.
 
 import 
-  os, msgs, strutils, platform, nhashes, ropes, options
+  os, msgs, strutils, platform, hashes, ropes, options
 
 type 
   TRstNodeKind* = enum 

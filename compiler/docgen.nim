@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,7 @@
 # by knowing how the anchors are going to be named.
 
 import 
-  ast, astalgo, strutils, nhashes, options, nversion, msgs, os, ropes, idents, 
+  ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
   wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite
 
 proc CommandDoc*(filename: string)

@@ -12,7 +12,7 @@
 # The interface supports one language nested in another.
 
 import 
-  nhashes, options, msgs, strutils, platform, idents, lexbase, wordrecg, lexer
+  hashes, options, msgs, strutils, platform, idents, lexbase, wordrecg, lexer
 
 type 
   TTokenClass* = enum 

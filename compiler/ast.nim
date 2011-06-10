@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import 
-  msgs, nhashes, nversion, options, strutils, crc, ropes, idents, lists
+  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists
 
 const 
   ImportTablePos* = 0

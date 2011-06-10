@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import 
-  nhashes, strutils
+  hashes, strutils
 
 type 
   TIdObj* = object of TObject
@@ -80,7 +80,7 @@ proc cmpExact(a, b: cstring, blen: int): int =
   
 proc getIdent(identifier: string): PIdent = 
   result = getIdent(cstring(identifier), len(identifier), 
-                    getNormalizedHash(identifier))
+                    hashIgnoreStyle(identifier))
 
 proc getIdent(identifier: string, h: THash): PIdent = 
   result = getIdent(cstring(identifier), len(identifier), h)

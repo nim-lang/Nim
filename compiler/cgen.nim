@@ -11,7 +11,7 @@
 # than the old one. It also generates better code.
 
 import 
-  ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp,
+  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, 
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os, 
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,

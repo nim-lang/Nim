@@ -16,7 +16,7 @@
 # DOS or Macintosh text files, even when it is not the native format.
 
 import 
-  nhashes, options, msgs, strutils, platform, idents, lexbase, llstream, 
+  hashes, options, msgs, strutils, platform, idents, lexbase, llstream, 
   wordrecg
 
 const 
@@ -546,17 +546,17 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF': 
-      h = concHash(h, ord(c))
+      h = h !& ord(c)
     of 'A'..'Z': 
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = concHash(h, ord(c))
-    of '_': 
+      h = h !& ord(c)
+    of '_':
       if buf[pos+1] notin SymChars: 
         lexMessage(L, errInvalidToken, "_")
         break
     else: break 
     Inc(pos)
-  h = finishHash(h)
+  h = !$h
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
@@ -567,7 +567,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
                  hash: THash) {.inline.} = 
-  var h = finishHash(hash)
+  var h = !$hash
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TTokType(tok.ident.id - oprLow + ord(tkColon))
@@ -580,7 +580,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   while true: 
     var c = buf[pos]
     if c notin OpChars: break
-    h = concHash(h, Ord(c))
+    h = h !& Ord(c)
     Inc(pos)
   endOperator(L, tok, pos, h)
 
@@ -678,7 +678,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       # '*:' is unfortunately a special case, because it is two tokens in 
       # 'var v*: int'.
       if L.buf[L.bufpos+1] == ':' and L.buf[L.bufpos+2] notin OpChars:
-        var h = concHash(0, ord('*'))
+        var h = 0 !& ord('*')
         endOperator(L, tok, L.bufpos+1, h)
       else:
         getOperator(L, tok)
