@@ -1052,6 +1052,10 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprAny($1, $2)",
                                    [addrLoc(a), genTypeInfo(p.module, t)]))
 
+proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
+  var t = skipTypes(e.sons[1].typ, abstractVarRange)
+  putIntoDest(p, d, e.typ, genTypeInfo(p.module, t))
+
 proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   InitLocExpr(p, n.sons[1], a)
@@ -1378,6 +1382,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mAddi..mModi64: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)
+  of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
   of mUnaryLt: 
     if not (optOverflowCheck in p.Options): unaryExpr(p, e, d, "$1 - 1")
