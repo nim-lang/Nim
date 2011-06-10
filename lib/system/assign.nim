@@ -13,10 +13,9 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
   case n.kind
-  of nkNone: assert(false)
   of nkSlot:
-    genericAssignAux(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
-                     n.typ, shallow)
+    genericAssignAux(cast[pointer](d +% n.offset), 
+                     cast[pointer](s +% n.offset), n.typ, shallow)
   of nkList:
     for i in 0..n.len-1:
       genericAssignAux(dest, src, n.sons[i], shallow)
@@ -25,6 +24,10 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
             n.typ.size)
     var m = selectBranch(src, n)
     if m != nil: genericAssignAux(dest, src, m, shallow)
+  else: 
+    echo "ugh memory corruption! ", n.kind
+    quit 1
+  #of nkNone: assert(false)
 
 proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
   var
