@@ -10,7 +10,7 @@
 # Implements a table from trees to trees. Does structural equavilent checking.
 
 import 
-  nhashes, ast, astalgo, types
+  hashes, ast, astalgo, types
 
 proc hashTree(n: PNode): THash = 
   if n == nil: return 
@@ -19,20 +19,20 @@ proc hashTree(n: PNode): THash =
   of nkEmpty, nkNilLit, nkType: 
     nil
   of nkIdent: 
-    result = concHash(result, n.ident.h)
-  of nkSym: 
-    result = concHash(result, n.sym.name.h)
+    result = result !& n.ident.h
+  of nkSym:
+    result = result !& n.sym.name.h
   of nkCharLit..nkInt64Lit: 
     if (n.intVal >= low(int)) and (n.intVal <= high(int)): 
-      result = concHash(result, int(n.intVal))
-  of nkFloatLit..nkFloat64Lit: 
+      result = result !& int(n.intVal)
+  of nkFloatLit..nkFloat64Lit:
     if (n.floatVal >= - 1000000.0) and (n.floatVal <= 1000000.0): 
-      result = concHash(result, toInt(n.floatVal))
+      result = result !& toInt(n.floatVal)
   of nkStrLit..nkTripleStrLit: 
-    result = concHash(result, GetHashStr(n.strVal))
+    result = result !& hash(n.strVal)
   else: 
     for i in countup(0, sonsLen(n) - 1): 
-      result = concHash(result, hashTree(n.sons[i]))
+      result = result !& hashTree(n.sons[i])
   
 proc TreesEquivalent(a, b: PNode): bool = 
   if a == b: 

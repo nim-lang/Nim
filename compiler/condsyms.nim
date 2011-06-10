@@ -10,7 +10,7 @@
 # This module handles the conditional symbols.
 
 import 
-  ast, astalgo, msgs, nhashes, platform, strutils, idents
+  ast, astalgo, msgs, hashes, platform, strutils, idents
 
 var gSymbols*: TStrTable
 

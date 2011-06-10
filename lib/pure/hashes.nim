@@ -18,12 +18,16 @@ type
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
-proc concHash(h: THash, val: int): THash {.inline.} = 
+proc `!&`*(h: THash, val: int): THash {.inline.} = 
+  ## mixes a hash value `h` with `val` to produce a new hash value. This is
+  ## only needed if you need to implement a hash proc for a new datatype.
   result = h +% val
   result = result +% result shl 10
   result = result xor (result shr 6)
 
-proc finishHash(h: THash): THash {.inline.} = 
+proc `!$`*(h: THash): THash {.inline.} = 
+  ## finishes the computation of the hash value. This is
+  ## only needed if you need to implement a hash proc for a new datatype.
   result = h +% h shl 3
   result = result xor (result shr 11)
   result = result +% result shl 15
@@ -35,10 +39,10 @@ proc hashData*(Data: Pointer, Size: int): THash =
   var i = 0
   var s = size
   while s > 0: 
-    h = concHash(h, ord(p[i]))
+    h = h !& ord(p[i])
     Inc(i)
     Dec(s)
-  result = finishHash(h)
+  result = !$h
 
 proc hash*(x: Pointer): THash {.inline.} = 
   ## efficient hashing of pointers
@@ -60,8 +64,8 @@ proc hash*(x: string): THash =
   ## efficient hashing of strings
   var h: THash = 0
   for i in 0..x.len-1: 
-    h = concHash(h, ord(x[i]))
-  result = finishHash(h)
+    h = h !& ord(x[i])
+  result = !$h
   
 proc hashIgnoreStyle*(x: string): THash = 
   ## efficient hashing of strings; style is ignored
@@ -72,8 +76,8 @@ proc hashIgnoreStyle*(x: string): THash =
       continue                # skip _
     if c in {'A'..'Z'}: 
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = concHash(h, ord(c))
-  result = finishHash(h)
+    h = h !& ord(c)
+  result = !$h
 
 proc hashIgnoreCase*(x: string): THash = 
   ## efficient hashing of strings; case is ignored
@@ -82,12 +86,12 @@ proc hashIgnoreCase*(x: string): THash =
     var c = x[i]
     if c in {'A'..'Z'}: 
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = concHash(h, ord(c))
-  result = finishHash(h)
+    h = h !& ord(c)
+  result = !$h
   
 proc hash*[T: tuple](x: T): THash = 
   ## efficient hashing of tuples.
   for f in fields(x):
-    result = concHash(result, hash(f))
-  result = finishHash(result)
+    result = result !& hash(f)
+  result = !$result
 

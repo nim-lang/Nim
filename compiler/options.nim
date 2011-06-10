@@ -8,7 +8,7 @@
 #
 
 import 
-  os, lists, strutils, nstrtabs
+  os, lists, strutils, strtabs
   
 const
   hasTinyCBackend* = defined(tinyc)
@@ -117,10 +117,10 @@ proc existsConfigVar(key: string): bool =
   result = hasKey(gConfigVars, key)
 
 proc getConfigVar(key: string): string = 
-  result = nstrtabs.get(gConfigVars, key)
+  result = gConfigVars[key]
 
 proc setConfigVar(key, val: string) = 
-  nstrtabs.put(gConfigVars, key, val)
+  gConfigVars[key] = val
 
 proc getOutFile*(filename, ext: string): string = 
   if options.outFile != "": result = options.outFile
@@ -204,4 +204,4 @@ proc binaryStrSearch(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
-gConfigVars = newStringTable([], modeStyleInsensitive)
+gConfigVars = newStringTable(modeStyleInsensitive)

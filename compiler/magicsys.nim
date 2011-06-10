@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,7 +10,7 @@
 # Built-in types and compilerprocs are registered here.
 
 import 
-  ast, astalgo, nhashes, msgs, platform, nversion, times, idents, rodread
+  ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread
 
 var SystemModule*: PSym
 
@@ -69,7 +69,7 @@ proc getSysType(kind: TTypeKind): PType =
   if result == nil: InternalError("type not found: " & $kind)
   
 proc getCompilerProc(name: string): PSym = 
-  var ident = getIdent(name, getNormalizedHash(name))
+  var ident = getIdent(name, hashIgnoreStyle(name))
   result = StrTableGet(compilerprocs, ident)
   if result == nil: 
     result = StrTableGet(rodCompilerProcs, ident)

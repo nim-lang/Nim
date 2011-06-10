@@ -14,7 +14,7 @@
 # be slow and unreadable.
 
 import 
-  nhashes, strutils, idents
+  hashes, strutils, idents
 
 # Keywords must be kept sorted and within a range
 
@@ -124,6 +124,6 @@ proc whichKeyword*(id: String): TSpecialWord =
 proc initSpecials() = 
   # initialize the keywords:
   for s in countup(succ(low(specialWords)), high(specialWords)): 
-    getIdent(specialWords[s], getNormalizedHash(specialWords[s])).id = ord(s)
+    getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
   
 initSpecials()

@@ -12,7 +12,7 @@
 # the data structures here are used in various places of the compiler.
 
 import 
-  ast, nhashes, strutils, options, msgs, ropes, idents, rodutils
+  ast, hashes, strutils, options, msgs, ropes, idents, rodutils
 
 proc hashNode*(p: PObject): THash
 proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope
@@ -179,7 +179,7 @@ proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
   result = nil
 
 proc hashNode(p: PObject): THash = 
-  result = hashPtr(cast[pointer](p))
+  result = hash(cast[pointer](p))
 
 proc mustRehash(length, counter: int): bool = 
   assert(length > counter)

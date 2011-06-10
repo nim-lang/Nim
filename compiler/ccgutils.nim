@@ -10,7 +10,7 @@
 # This module declares some helpers for the C code generator.
 
 import 
-  ast, astalgo, ropes, lists, nhashes, strutils, types, msgs, wordrecg, 
+  ast, astalgo, ropes, lists, hashes, strutils, types, msgs, wordrecg, 
   platform
 
 proc whichPragma*(n: PNode): TSpecialWord = 
