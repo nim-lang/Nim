@@ -62,13 +62,10 @@ proc initTypeTables() =
   for i in countup(low(TTypeKind), high(TTypeKind)): InitIdTable(gTypeTable[i])
   
 proc GetUniqueType*(key: PType): PType = 
-  var 
-    t: PType
-    k: TTypeKind
   # this is a hotspot in the compiler!
   result = key
   if key == nil: return 
-  k = key.kind
+  var k = key.kind
   case k 
   of tyObject, tyEnum: 
     result = PType(IdTableGet(gTypeTable[k], key))
@@ -84,20 +81,19 @@ proc GetUniqueType*(key: PType): PType =
     # to be compared by their structure:
     if IdTableHasObjectAsKey(gTypeTable[k], key): return 
     for h in countup(0, high(gTypeTable[k].data)): 
-      t = PType(gTypeTable[k].data[h].key)
+      var t = PType(gTypeTable[k].data[h].key)
       if (t != nil) and sameType(t, key): 
         return t
     IdTablePut(gTypeTable[k], key, key)
 
 proc TableGetType*(tab: TIdTable, key: PType): PObject = 
-  var t: PType
   # returns nil if we need to declare this type
   result = IdTableGet(tab, key)
   if (result == nil) and (tab.counter > 0): 
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
     for h in countup(0, high(tab.data)): 
-      t = PType(tab.data[h].key)
+      var t = PType(tab.data[h].key)
       if t != nil: 
         if sameType(t, key): 
           return tab.data[h].val

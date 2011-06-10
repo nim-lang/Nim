@@ -17,7 +17,7 @@ proc genLineDir(p: BProc, t: PNode) =
   var line = toLinenumber(t.info) # BUGFIX
   if line < 0: 
     line = 0                  # negative numbers are not allowed in #line
-  if optLineDir in p.Options: 
+  if optLineDir in p.Options and line > 0: 
     appff(p.s[cpsStmts], "#line $2 \"$1\"$n", "; line $2 \"$1\"$n", 
           [toRope(toFilename(t.info)), toRope(line)])
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and

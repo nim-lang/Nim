@@ -16,7 +16,7 @@
 ## ``shallowADT`` to compile a version that uses shallow copies instead.
 
 import
-  os, hashes, math
+  hashes, math
 
 when defined(shallowADT):
   {.pragma: myShallow, shallow.}
