@@ -103,6 +103,15 @@ proc `[]=`*(x: TAny, i: int, y: TAny) =
     genericAssign(cast[pointer](cast[TAddress](s) + GenericSeqSize+i*bs),
                   y.value, y.rawType)
 
+proc len*(x: TAny): int =
+  assert getType(x) in {TNArray, TNSequence}
+  if x.getType == TNArray:
+    var bs = x.rawType.base.size
+    return (x.rawType.size div bs)
+  elif x.getType == TNSequence:
+    var s = cast[ppointer](x.value)[]
+    return cast[PGenSeq](s).len
+
 proc fieldsAux(p: pointer, n: ptr TNimNode,
                 ret: var seq[tuple[name: cstring, any: TAny]]) =
   case n.kind
@@ -142,17 +151,17 @@ proc `[]`*(x: TAny): TAny =
     result.value = p
     result.rawType = x.rawType.base
 
-proc readInt*(x: TAny): int = cast[ptr int](x.value)[]
-proc readInt8*(x: TAny): int8 = cast[ptr int8](x.value)[]
-proc readInt16*(x: TAny): int16 = cast[ptr int16](x.value)[]
-proc readInt32*(x: TAny): int32 = cast[ptr int32](x.value)[]
-proc readInt64*(x: TAny): int64 = cast[ptr int64](x.value)[]
+proc readInt*(x: TAny): int = return cast[ptr int](x.value)[]
+proc readInt8*(x: TAny): int8 = return cast[ptr int8](x.value)[]
+proc readInt16*(x: TAny): int16 = return cast[ptr int16](x.value)[]
+proc readInt32*(x: TAny): int32 = return cast[ptr int32](x.value)[]
+proc readInt64*(x: TAny): int64 = return cast[ptr int64](x.value)[]
 
-proc readFloat*(x: TAny): float = cast[ptr float](x.value)[]
-proc readFloat32*(x: TAny): float32 = cast[ptr float32](x.value)[]
-proc readFloat64*(x: TAny): float64 = cast[ptr float64](x.value)[]
+proc readFloat*(x: TAny): float = return cast[ptr float](x.value)[]
+proc readFloat32*(x: TAny): float32 = return cast[ptr float32](x.value)[]
+proc readFloat64*(x: TAny): float64 = return cast[ptr float64](x.value)[]
 
-proc readString*(x: TAny): string = cast[ptr string](x.value)[]
+proc readString*(x: TAny): string = return cast[ptr string](x.value)[]
 
 when isMainModule:
   type
