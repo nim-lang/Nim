@@ -29,20 +29,20 @@ type
     akPtr = 21,         ## any represents a ptr
     akRef = 22,         ## any represents a ref
     akSequence = 24,    ## any represents a sequence
-    akProc = 25,        ## any represens a proc
-    akPointer = 26,     ## any represens a pointer
-    akString = 28,      ## any represens a string
-    akCString = 29,     ## any represens a cstring
-    akInt = 31,         ## any represens an int
-    akInt8 = 32,        ## any represens an int8
-    akInt16 = 33,       ## any represens an int16
-    akInt32 = 34,       ## any represens an int32
-    akInt64 = 35,       ## any represens an int64
-    akFloat = 36,       ## any represens a float
-    akFloat32 = 37,     ## any represens a float32
-    akFloat64 = 38,     ## any represens a float64
-    akFloat128 = 39,    ## any represens a float128
-    akPureObject = 40   ## any represens an object has no `type` field
+    akProc = 25,        ## any represents a proc
+    akPointer = 26,     ## any represents a pointer
+    akString = 28,      ## any represents a string
+    akCString = 29,     ## any represents a cstring
+    akInt = 31,         ## any represents an int
+    akInt8 = 32,        ## any represents an int8
+    akInt16 = 33,       ## any represents an int16
+    akInt32 = 34,       ## any represents an int32
+    akInt64 = 35,       ## any represents an int64
+    akFloat = 36,       ## any represents a float
+    akFloat32 = 37,     ## any represents a float32
+    akFloat64 = 38,     ## any represents a float64
+    akFloat128 = 39,    ## any represents a float128
+    akPureObject = 40   ## any represents an object has no `type` field
 
   TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
