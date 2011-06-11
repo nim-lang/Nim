@@ -26,10 +26,11 @@ Bugs
 - the parser allows empty object case branches
 - pegs: the anchor '^' does not work because many procs use a linear search
   and matchLen()
-- BUG: generic assign still buggy
+- bug: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
     should make use of this fact to generate better code...
 - bug: invoking a generic iterator twice triggers a code gen bug
+- bug: forward proc for generic seems broken
 - sorting with leads to a strange memory corruption!
   --> system.swap or genericAssign is broken! And indeed, if reference counts
       are not modified and the GC is triggered in between a swap, bad things

@@ -342,23 +342,15 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       var x = copyTree(n)
       x.sons[0].sons[0] = m.sons[0]
       result = transform(c, x.sons[0])
-
-      #result = newTransNode(n.sons[0])
-      #result[0] = transform(c, m.sons[0])
     else: 
       result = transformSons(c, n)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     var m = n.sons[0].sons[1]
     if (m.kind == a) or (m.kind == b): 
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
-      
       var x = copyTree(n)
       x.sons[0].sons[1] = m.sons[0]
       result = transform(c, x.sons[0])
-      
-      #result = newTransNode(n.sons[0])
-      #result[1] = transform(c, m.sons[0])
-      
     else:
       result = transformSons(c, n)
   else: 

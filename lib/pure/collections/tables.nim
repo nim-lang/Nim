@@ -102,19 +102,37 @@ proc Enlarge[A, B](t: var TTable[A, B]) =
     if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
+template AddImpl() =
+  if mustRehash(len(t.data), t.counter): Enlarge(t)
+  RawInsert(t, t.data, key, val)
+  inc(t.counter)
+
 template PutImpl() =
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].val = val
   else:
+    AddImpl()
+
+template HasKeyOrPutImpl() =
+  var index = RawGet(t, key)
+  if index >= 0:
+    t.data[index].val = val
+    result = true
+  else:
     if mustRehash(len(t.data), t.counter): Enlarge(t)
     RawInsert(t, t.data, key, val)
     inc(t.counter)
+    result = false
 
 proc `[]=`*[A, B](t: var TTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   putImpl()
 
+proc add*[A, B](t: var TTable[A, B], key: A, val: B) =
+  ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  AddImpl()
+  
 proc del*[A, B](t: var TTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   var index = RawGet(t, key)
@@ -229,6 +247,10 @@ proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
 proc `[]=`*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   putImpl()
+
+proc add*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
+  ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  AddImpl()
 
 proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   ## creates a new ordered hash table that is empty. `initialSize` needs to be

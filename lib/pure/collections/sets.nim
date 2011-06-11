@@ -26,7 +26,7 @@ type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A] = tuple[slot: TSlotEnum, key: A]
   TKeyValuePairSeq[A] = seq[TKeyValuePair[A]]
-  TSet* {.final, myShallow.}[A] = object
+  TSet* {.final, myShallow.}[A] = object ## a generic hash set
     data: TKeyValuePairSeq[A]
     counter: int
 
@@ -141,7 +141,7 @@ proc `$`*[A](s: TSet[A]): string =
   ## The `$` operator for hash sets.
   dollarImpl()
 
-# ------------------------------ ordered table ------------------------------
+# ------------------------------ ordered set ------------------------------
 
 type
   TOrderedKeyValuePair[A] = tuple[
