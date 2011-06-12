@@ -566,6 +566,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s))
   of mEcho: result = semEcho(c, setMs(n, s))
+  of mCreateThread: 
+    result = semDirectOp(c, n, flags)
+    if optThreads in gGlobalOptions:
+      # XXX This analysis should be done as late as possible
+      # (forward references!)
+      semthreads.AnalyseThread(result)
   else: result = semDirectOp(c, n, flags)
   
 proc isTypeExpr(n: PNode): bool = 
