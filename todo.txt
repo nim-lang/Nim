@@ -1,7 +1,4 @@
 * codegen for threadvars
-* two issues for thread local heaps:
-  - must prevent to construct a data structure that contains memory 
-    from different heaps:  n.next = otherHeapPtr
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * test the sort implementation again

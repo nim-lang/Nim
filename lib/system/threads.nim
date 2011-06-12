@@ -347,7 +347,8 @@ proc destroyThread*[TParam](t: var TThread[TParam]) {.inline.} =
 proc createThread*[TParam](t: var TThread[TParam], 
                            tp: proc (param: TParam), 
                            param: TParam,
-                           stackSize = 1024*256*sizeof(int)) = 
+                           stackSize = 1024*256*sizeof(int)) {.
+                           magic: "CreateThread".} = 
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`. `param` is passed to `tp`.
   t.data = param
