@@ -104,7 +104,7 @@ Advanced options:
   --genMapping              generate a mapping file containing
                             (Nimrod, mangled) identifier pairs
   --lineDir:on|off          generation of #line directive on|off
-  --checkpoints:on|off      turn checkpoints on|off; for debugging Nimrod
+  --threadanalysis:on|off   turn thread analysis on|off
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
@@ -252,7 +252,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of wForceBuild, wF: result = contains(gGlobalOptions, optForceFullMake)
   of wWarnings, wW: result = contains(gOptions, optWarns)
   of wHints: result = contains(gOptions, optHints)
-  of wCheckpoints: result = contains(gOptions, optCheckpoints)
+  of wThreadAnalysis: result = contains(gGlobalOptions, optThreadAnalysis)
   of wStackTrace: result = contains(gOptions, optStackTrace)
   of wLineTrace: result = contains(gOptions, optLineTrace)
   of wDebugger: result = contains(gOptions, optEndb)
@@ -367,7 +367,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of wWarning: ProcessSpecificNote(arg, wWarning, pass, info)
   of wHint: ProcessSpecificNote(arg, wHint, pass, info)
   of wHints: ProcessOnOffSwitch({optHints}, arg, pass, info)
-  of wCheckpoints: ProcessOnOffSwitch({optCheckpoints}, arg, pass, info)
+  of wThreadAnalysis: ProcessOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of wStackTrace: ProcessOnOffSwitch({optStackTrace}, arg, pass, info)
   of wLineTrace: ProcessOnOffSwitch({optLineTrace}, arg, pass, info)
   of wDebugger: 

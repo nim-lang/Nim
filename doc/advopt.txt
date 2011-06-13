@@ -37,7 +37,7 @@ Advanced options:
   --genMapping              generate a mapping file containing
                             (Nimrod, mangled) identifier pairs
   --lineDir:on|off          generation of #line directive on|off
-  --checkpoints:on|off      turn checkpoints on|off; for debugging Nimrod
+  --threadanalysis:on|off   turn thread analysis on|off
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC

@@ -25,7 +25,6 @@ type                          # please make sure we have under 32 options
     optEndb,                  # embedded debugger
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
-    optCheckpoints,           # check for checkpoints (used for debugging)
     optProfiler               # profiler turned on
   TOptions* = set[TOption]
   TGlobalOption* = enum 
@@ -46,7 +45,9 @@ type                          # please make sure we have under 32 options
     optStdout,                # output to stdout
     optSuggest,               # ideTools: 'suggest'
     optContext,               # ideTools: 'context'
-    optDef                    # ideTools: 'def'
+    optDef,                   # ideTools: 'def'
+    optThreadAnalysis         # thread analysis pass
+
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
@@ -71,7 +72,7 @@ var
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck, 
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
                          optHints, optStackTrace, optLineTrace}
-  gGlobalOptions*: TGlobalOptions = {optRefcGC}
+  gGlobalOptions*: TGlobalOptions = {optRefcGC, optThreadAnalysis}
   gExitcode*: int8
   searchPaths*: TLinkedList
   outFile*: string = ""
