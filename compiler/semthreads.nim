@@ -171,6 +171,8 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
     result = analyse(newCtx, prc.ast.sons[codePos])
+    if prc.ast.sons[codePos].kind == nkEmpty:
+      Message(n.info, warnAnalysisLoophole, renderTree(n))
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
         result = newCtx.mapping[prc.ast.sons[resultPos].sym.id]
@@ -221,14 +223,17 @@ template aggregateOwner(result, ana: expr) =
     if result == toNil: result = a
     else: localError(n.info, errDifferentHeaps)
 
+proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
+  for i in start..n.len-1: discard analyse(c, n[i])
+
 proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   if n[0].kind != nkSym or n[0].sym.kind != skProc:
     Message(n.info, warnAnalysisLoophole, renderTree(n))
     result = toNil
   else:
     var prc = n[0].sym
-    # XXX create thread!?
     case prc.magic
+    of mNone: result = analyseCall(c, n)
     of mNew, mNewFinalize, mNewSeq, mSetLengthStr, mSetLengthSeq,
         mAppendSeqElem, mReset, mAppendStrCh, mAppendStrStr:
       writeAccess(c, n[1], toMine)
@@ -244,10 +249,14 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
         mConTArr, mConTT, mSlice, 
         mRepr, mArrToSeq, mCopyStr, mCopyStrLast, 
         mNewString, mNewStringOfCap:
-      # XXX no check for effects in the arguments?
+      analyseArgs(c, n)
       result = toMine
     else:
-      result = analyseCall(c, n)
+      # don't recurse, but check args; NOTE: This is essential that
+      # ``mCreateThread`` is handled here to avoid the recursion
+      analyseArgs(c, n)
+      if prc.typ.sons[0] == nil: result = toVoid
+      else: result = toNil
 
 proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   case n.kind
@@ -325,8 +334,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
       result = toVoid
   else: InternalError(n.info, "analysis not implemented for: " & $n.kind)
 
-proc AnalyseThread*(threadCreation: PNode) =
-  var n = threadCreation
+proc analyseThreadCreationCall(n: PNode) =
   # thread proc is second param of ``createThread``:
   if n[2].kind != nkSym or n[2].sym.kind != skProc:
     Message(n.info, warnAnalysisLoophole, renderTree(n))
@@ -336,4 +344,12 @@ proc AnalyseThread*(threadCreation: PNode) =
   var formal = skipTypes(prc.typ, abstractInst).n.sons[1].sym 
   c.mapping[formal.id] = toTheirs # thread receives foreign data!
   discard analyse(c, prc.ast.sons[codePos])
+
+proc needsGlobalAnalysis*: bool =
+  result = gGlobalOptions * {optThreads, optThreadAnalysis} == 
+                            {optThreads, optThreadAnalysis}
+
+proc AnalyseThread*(threadCreation: PNode) =
+  if needsGlobalAnalysis():
+    analyseThreadCreationCall(threadCreation)
 
