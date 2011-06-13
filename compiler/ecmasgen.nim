@@ -14,7 +14,8 @@
 import 
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
-  times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils
+  times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
+  intsets
 
 proc ecmasgenPass*(): TPass
 # implementation
@@ -67,7 +68,7 @@ type
 
 proc newGlobals(): PGlobals = 
   new(result)
-  IntSetInit(result.typeInfoGenerated)
+  result.typeInfoGenerated = initIntSet()
 
 proc initCompRes(r: var TCompRes) = 
   r.com = nil
@@ -228,7 +229,7 @@ proc genTypeInfo(p: var TProc, typ: PType): PRope =
   var t = typ
   if t.kind == tyGenericInst: t = lastSon(t)
   result = ropef("NTI$1", [toRope(t.id)])
-  if IntSetContainsOrIncl(p.globals.TypeInfoGenerated, t.id): return 
+  if ContainsOrIncl(p.globals.TypeInfoGenerated, t.id): return 
   case t.kind
   of tyDistinct: 
     result = genTypeInfo(p, typ.sons[0])

@@ -12,7 +12,7 @@
 
 import 
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
-  options, 
+  options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os, 
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   rodutils
@@ -690,12 +690,12 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   if lfNoDecl in sym.loc.Flags: return 
   if lfDynamicLib in sym.loc.Flags: 
     if sym.owner.id != m.module.id and
-        not intSetContainsOrIncl(m.declaredThings, sym.id): 
+        not ContainsOrIncl(m.declaredThings, sym.id): 
       appff(m.s[cfsVars], "extern $1 $2;$n", 
             "@$2 = linkonce global $1 zeroinitializer$n", 
             [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
-  elif not IntSetContainsOrIncl(m.declaredProtos, sym.id): 
+  elif not ContainsOrIncl(m.declaredProtos, sym.id): 
     appf(m.s[cfsProcHeaders], "$1;$n", [genProcHeader(m, sym)])
 
 proc genProcNoForward(m: BModule, prc: PSym) = 
@@ -707,12 +707,12 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``gGeneratedSyms`` is wrong, we need
     # a check for ``m.declaredThings``.
-    if not intSetContainsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
+    if not ContainsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
   elif lfDynamicLib in prc.loc.flags: 
-    if not IntSetContainsOrIncl(gGeneratedSyms, prc.id): 
+    if not ContainsOrIncl(gGeneratedSyms, prc.id): 
       SymInDynamicLib(findPendingModule(m, prc), prc)
   elif not (sfImportc in prc.flags): 
-    if not IntSetContainsOrIncl(gGeneratedSyms, prc.id): 
+    if not ContainsOrIncl(gGeneratedSyms, prc.id): 
       genProcAux(findPendingModule(m, prc), prc)
   
 proc genProc(m: BModule, prc: PSym) = 
@@ -726,7 +726,7 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
   if (lfNoDecl in sym.loc.Flags) or
-      intSetContainsOrIncl(m.declaredThings, sym.id): 
+      ContainsOrIncl(m.declaredThings, sym.id): 
     return 
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
@@ -748,7 +748,7 @@ proc genConstPrototype(m: BModule, sym: PSym) =
   if sym.loc.k == locNone: 
     fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown)
   if (lfNoDecl in sym.loc.Flags) or
-      intSetContainsOrIncl(m.declaredThings, sym.id): 
+      ContainsOrIncl(m.declaredThings, sym.id): 
     return 
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
@@ -903,14 +903,14 @@ proc genModule(m: BModule, cfilenoext: string): PRope =
 proc rawNewModule(module: PSym, filename: string): BModule = 
   new(result)
   InitLinkedList(result.headerFiles)
-  intSetInit(result.declaredThings)
-  intSetInit(result.declaredProtos)
+  result.declaredThings = initIntSet()
+  result.declaredProtos = initIntSet()
   result.cfilename = filename
   result.filename = filename
   initIdTable(result.typeCache)
   initIdTable(result.forwTypeCache)
   result.module = module
-  intSetInit(result.typeInfoMarker)
+  result.typeInfoMarker = initIntSet()
   result.initProc = newProc(nil, result)
   result.initProc.options = gOptions
   initNodeTable(result.dataCache)
@@ -1037,4 +1037,4 @@ proc cgenPass(): TPass =
   result.close = myClose
 
 InitIiTable(gToTypeInfoId)
-IntSetInit(gGeneratedSyms)
+gGeneratedSyms = initIntSet()

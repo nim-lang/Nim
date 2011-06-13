@@ -10,7 +10,8 @@
 # This module contains the data structures for the semantic checking phase.
 
 import 
-  strutils, lists, options, lexer, ast, astalgo, trees, treetab, wordrecg, 
+  strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
+  wordrecg, 
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
   magicsys, nversion, nimsets, parser, times, passes, rodread
 
@@ -118,7 +119,7 @@ proc newOptionEntry(): POptionEntry =
 proc newContext(module: PSym, nimfile: string): PContext = 
   new(result)
   InitSymTab(result.tab)
-  IntSetInit(result.AmbiguousSymbols)
+  result.AmbiguousSymbols = initIntset()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
@@ -127,7 +128,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   result.threadEntries = newNode(nkStmtList)
   result.converters = @[]
   result.filename = nimfile
-  IntSetInit(result.includedFiles)
+  result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
 
 proc addConverter(c: PContext, conv: PSym) = 

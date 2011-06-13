@@ -10,7 +10,8 @@
 # This module implements lookup helpers.
 
 import 
-  ast, astalgo, idents, semdata, types, msgs, options, rodread, renderer
+  intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread, 
+  renderer
 
 proc considerAcc*(n: PNode): PIdent = 
   case n.kind
@@ -115,7 +116,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = SymtabGet(c.Tab, ident)
     if result == nil: GlobalError(n.info, errUndeclaredIdentifier, ident.s)
   else: InternalError(n.info, "lookUp")
-  if IntSetContains(c.AmbiguousSymbols, result.id): 
+  if Contains(c.AmbiguousSymbols, result.id): 
     LocalError(n.info, errUseQualifier, result.name.s)
   if result.kind == skStub: loadStub(result)
   
@@ -131,12 +132,11 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
     if result == nil and checkUndeclared in flags: 
       GlobalError(n.info, errUndeclaredIdentifier, ident.s)
     elif checkAmbiguity in flags and result != nil and 
-        IntSetContains(c.AmbiguousSymbols, result.id): 
+        Contains(c.AmbiguousSymbols, result.id): 
       LocalError(n.info, errUseQualifier, ident.s)
   of nkSym: 
     result = n.sym
-    if checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
-                                                  result.id): 
+    if checkAmbiguity in flags and Contains(c.AmbiguousSymbols, result.id): 
       LocalError(n.info, errUseQualifier, n.sym.name.s)
   of nkDotExpr: 
     result = nil
@@ -197,8 +197,8 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimSymChoice
     result = n.sons[0].sym
     o.stackPtr = 1
-    IntSetInit(o.inSymChoice)
-    IntSetIncl(o.inSymChoice, result.id)
+    o.inSymChoice = initIntSet()
+    Incl(o.inSymChoice, result.id)
   else: nil
   if result != nil and result.kind == skStub: loadStub(result)
   
@@ -223,7 +223,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSymChoice: 
     if o.stackPtr < sonsLen(n): 
       result = n.sons[o.stackPtr].sym
-      IntSetIncl(o.inSymChoice, result.id)
+      Incl(o.inSymChoice, result.id)
       inc(o.stackPtr)
     else:
       # try 'local' symbols too for Koenig's lookup:

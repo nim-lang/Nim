@@ -709,7 +709,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t)
   var L = lengthOrd(field.typ)
-  if not IntSetContainsOrIncl(p.module.declaredThings, field.id):
+  if not ContainsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1", 
           discriminatorTableDecl(p.module, t, field))
   appcg(p, cpsStmts,

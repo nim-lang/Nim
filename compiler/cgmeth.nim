@@ -10,7 +10,7 @@
 ## This module implements code generation for multi methods.
 
 import 
-  options, ast, astalgo, msgs, idents, renderer, types, magicsys
+  intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys
 
 proc genConv(n: PNode, d: PType, downcast: bool): PNode = 
   var dest = skipTypes(d, abstractPtrs)
@@ -95,7 +95,7 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
 proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int = 
   result = 0
   for col in countup(1, sonsLen(a.typ) - 1): 
-    if intSetContains(relevantCols, col): 
+    if Contains(relevantCols, col): 
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
       var d = inheritanceDiff(aa, bb)
@@ -132,7 +132,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
     for col in countup(1, paramLen - 1):
-      if IntSetContains(relevantCols, col):
+      if Contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
         addSon(isn, newSymNode(iss))
         addSon(isn, newSymNode(base.typ.n.sons[col].sym))
@@ -169,12 +169,11 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
   result.ast.sons[codePos] = disp
 
 proc generateMethodDispatchers*(): PNode = 
-  var relevantCols: TIntSet
   result = newNode(nkStmtList)
   for bucket in countup(0, len(gMethods) - 1): 
-    IntSetInit(relevantCols)
+    var relevantCols = initIntSet()
     for col in countup(1, sonsLen(gMethods[bucket][0].typ) - 1): 
-      if relevantCol(gMethods[bucket], col): IntSetIncl(relevantCols, col)
+      if relevantCol(gMethods[bucket], col): Incl(relevantCols, col)
     sortBucket(gMethods[bucket], relevantCols)
     addSon(result, newSymNode(genDispatcher(gMethods[bucket], relevantCols)))
 

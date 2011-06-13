@@ -10,8 +10,8 @@
 # This module implements the symbol importing mechanism.
 
 import 
-  strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups, semdata, 
-  passes
+  intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
+  semdata, passes
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
@@ -45,8 +45,8 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   if (check != nil) and (check.id != copy.id): 
     if not (s.kind in OverloadableSyms): 
       # s and check need to be qualified:
-      IntSetIncl(c.AmbiguousSymbols, copy.id)
-      IntSetIncl(c.AmbiguousSymbols, check.id)
+      Incl(c.AmbiguousSymbols, copy.id)
+      Incl(c.AmbiguousSymbols, check.id)
   StrTableAdd(c.tab.stack[importTablePos], copy)
   if s.kind == skType: 
     var etyp = s.typ

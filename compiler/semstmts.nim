@@ -476,11 +476,10 @@ proc semRaise(c: PContext, n: PNode): PNode =
       localError(n.info, errExprCannotBeRaised)
   
 proc semTry(c: PContext, n: PNode): PNode = 
-  var check: TIntSet
   result = n
   checkMinSonsLen(n, 2)
   n.sons[0] = semStmtScope(c, n.sons[0])
-  IntSetInit(check)
+  var check = initIntSet()
   for i in countup(1, sonsLen(n) - 1): 
     var a = n.sons[i]
     checkMinSonsLen(a, 1)
@@ -493,7 +492,7 @@ proc semTry(c: PContext, n: PNode): PNode =
           GlobalError(a.sons[j].info, errExprCannotBeRaised)
         a.sons[j] = newNodeI(nkType, a.sons[j].info)
         a.sons[j].typ = typ
-        if IntSetContainsOrIncl(check, typ.id): 
+        if ContainsOrIncl(check, typ.id): 
           localError(a.sons[j].info, errExceptionAlreadyHandled)
     elif a.kind != nkFinally: 
       illFormedAst(n) 
@@ -820,10 +819,10 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1): 
     var f = getModuleFile(n.sons[i])
     var fileIndex = includeFilename(f)
-    if IntSetContainsOrIncl(c.includedFiles, fileIndex): 
+    if ContainsOrIncl(c.includedFiles, fileIndex): 
       GlobalError(n.info, errRecursiveDependencyX, f)
     addSon(result, semStmt(c, gIncludeFile(f)))
-    IntSetExcl(c.includedFiles, fileIndex)
+    Excl(c.includedFiles, fileIndex)
   
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:

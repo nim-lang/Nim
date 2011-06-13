@@ -192,10 +192,9 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
   var 
     typ: PType
-    check: TIntSet
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
-  IntSetInit(check)
+  var check = initIntSet()
   var counter = 0
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
@@ -212,7 +211,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       field.typ = typ
       field.position = counter
       inc(counter)
-      if IntSetContainsOrIncl(check, field.name.id): 
+      if ContainsOrIncl(check, field.name.id): 
         GlobalError(a.sons[j].info, errAttemptToRedefine, field.name.s)
       addSon(result.n, newSymNode(field))
       addSon(result, typ)
@@ -396,7 +395,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         f.loc.r = toRope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * rectype.flags)
       inc(pos)
-      if IntSetContainsOrIncl(check, f.name.id): 
+      if ContainsOrIncl(check, f.name.id): 
         localError(n.sons[i].info, errAttemptToRedefine, f.name.s)
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
@@ -419,7 +418,7 @@ proc addInheritedFieldsAux(c: PContext, check: var TIntSet, pos: var int,
     for i in countup(0, sonsLen(n) - 1): 
       addInheritedFieldsAux(c, check, pos, n.sons[i])
   of nkSym: 
-    IntSetIncl(check, n.sym.name.id)
+    Incl(check, n.sym.name.id)
     inc(pos)
   else: InternalError(n.info, "addInheritedFieldsAux()")
   
@@ -437,8 +436,7 @@ proc skipGenericInvokation(t: PType): PType {.inline.} =
     result = lastSon(result)
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType): PType = 
-  var check: TIntSet
-  IntSetInit(check)
+  var check = initIntSet()
   var pos = 0 
   var base: PType = nil
   # n.sons[0] contains the pragmas (if any). We process these later...
@@ -460,7 +458,7 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
                               cl: var TIntSet): PType = 
   result = t
   if t == nil: return 
-  if IntSetContainsOrIncl(cl, t.id): return 
+  if ContainsOrIncl(cl, t.id): return 
   case t.kind
   of tyGenericBody: 
     #debug(t)
@@ -470,7 +468,7 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
       if t.sons[i].kind != tyGenericParam: 
         InternalError("addTypeVarsOfGenericBody")
       # do not declare ``TKey`` twice:
-      #if not IntSetContainsOrIncl(cl, t.sons[i].sym.ident.id):
+      #if not ContainsOrIncl(cl, t.sons[i].sym.ident.id):
       var s = copySym(t.sons[i].sym)
       s.position = sonsLen(genericParams)
       if s.typ == nil or s.typ.kind != tyGenericParam: 
@@ -501,16 +499,17 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var 
     def, res: PNode
     typ: PType
-    check, cl: TIntSet
+    cl: TIntSet
   checkMinSonsLen(n, 1)
   result = newOrPrevType(tyProc, prev, c)
   result.callConv = lastOptionEntry(c).defaultCC
   result.n = newNodeI(nkFormalParams, n.info)
-  if (genericParams != nil) and (sonsLen(genericParams) == 0): IntSetInit(cl)
+  if (genericParams != nil) and (sonsLen(genericParams) == 0):
+    cl = initIntSet()
   addSon(result, nil) # return type
   res = newNodeI(nkType, n.info)
   addSon(result.n, res)
-  IntSetInit(check)
+  var check = initIntSet()
   var counter = 0
   for i in countup(1, sonsLen(n) - 1): 
     var a = n.sons[i]
@@ -539,7 +538,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       arg.position = counter
       inc(counter)
       if def.kind != nkEmpty: arg.ast = copyTree(def)
-      if IntSetContainsOrIncl(check, arg.name.id): 
+      if ContainsOrIncl(check, arg.name.id): 
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
       addSon(result, typ)

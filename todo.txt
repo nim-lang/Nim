@@ -78,7 +78,7 @@ Low priority
 Library
 -------
 
-- specialized bit sets; specialized string sets
+- radix tree for strings; maybe suffix tree
 - locale support
 - conversion between character sets
 - bignums

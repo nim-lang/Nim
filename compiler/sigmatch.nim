@@ -11,7 +11,7 @@
 # the call to overloaded procs, generic procs and operators.
 
 import 
-  ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
+  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
   magicsys
 
 type
@@ -608,7 +608,7 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
         # no error message!
         m.state = csNoMatch
         return 
-      if IntSetContainsOrIncl(marker, formal.position): 
+      if ContainsOrIncl(marker, formal.position): 
         # already in namedParams:
         LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
@@ -653,7 +653,7 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
         if m.callee.n.sons[f].kind != nkSym: 
           InternalError(n.sons[a].info, "matches")
         formal = m.callee.n.sons[f].sym
-        if IntSetContainsOrIncl(marker, formal.position): 
+        if ContainsOrIncl(marker, formal.position): 
           # already in namedParams:
           LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
@@ -677,20 +677,18 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
 
 proc partialMatch*(c: PContext, n: PNode, m: var TCandidate) = 
   # for 'suggest' support:
-  var marker: TIntSet
-  IntSetInit(marker)
+  var marker = initIntSet()
   matchesAux(c, n, m, marker)  
 
 proc matches*(c: PContext, n: PNode, m: var TCandidate) = 
-  var marker: TIntSet
-  IntSetInit(marker)
+  var marker = initIntSet()
   matchesAux(c, n, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   var f = 1
   while f < sonsLen(m.callee.n): 
     var formal = m.callee.n.sons[f].sym
-    if not IntSetContainsOrIncl(marker, formal.position): 
+    if not ContainsOrIncl(marker, formal.position): 
       if formal.ast == nil: 
         if formal.typ.kind == tyOpenArray:
           var container = newNodeI(nkBracket, n.info)

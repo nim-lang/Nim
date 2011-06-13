@@ -888,11 +888,10 @@ proc checkPar(n: PNode): TParKind =
           return paNone
 
 proc semTupleFieldsConstr(c: PContext, n: PNode): PNode = 
-  var ids: TIntSet
   result = newNodeI(nkPar, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
-  IntSetInit(ids)
+  var ids = initIntSet()
   for i in countup(0, sonsLen(n) - 1): 
     if (n.sons[i].kind != nkExprColonExpr) or
         not (n.sons[i].sons[0].kind in {nkSym, nkIdent}): 
@@ -900,7 +899,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode): PNode =
     var id: PIdent
     if n.sons[i].sons[0].kind == nkIdent: id = n.sons[i].sons[0].ident
     else: id = n.sons[i].sons[0].sym.name
-    if IntSetContainsOrIncl(ids, id.id): 
+    if ContainsOrIncl(ids, id.id): 
       localError(n.sons[i].info, errFieldInitTwice, id.s)
     n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1])
     var f = newSymS(skField, n.sons[i].sons[0], c)
