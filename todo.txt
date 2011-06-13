@@ -1,6 +1,4 @@
 * codegen for threadvars
-* clean up thread analysis: fix remaining XXX; thread analysis as a separate
-  pass
 * implement message passing built-ins
 
 * add --deadlock_prevention:on|off switch? timeout for locks?

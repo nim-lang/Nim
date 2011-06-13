@@ -199,6 +199,10 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       RecoverContext(c)
       result = ast.emptyNode
   
+proc checkThreads(c: PContext) =
+  for i in 0 .. c.threadEntries.len-1:
+    semthreads.AnalyseThread(c.threadEntries[i])
+  
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
   closeScope(c.tab)           # close module's scope
@@ -208,6 +212,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   else: 
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
+  checkThreads(c)
   popOwner()
   popProcCon(c)
 

@@ -1,7 +1,8 @@
 discard """
   file: "tthreadanalysis2.nim"
-  line: 44
+  line: 45
   errormsg: "possible inconsistency of thread local heaps"
+  cmd: "nimrod cc --hints:on --threads:on $# $#"
 """
 
 import os

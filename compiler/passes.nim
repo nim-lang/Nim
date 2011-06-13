@@ -13,9 +13,9 @@
 import 
   strutils, lists, options, ast, astalgo, llstream, msgs, platform, os, 
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion, 
-  nimsets, syntaxes, times, rodread
+  nimsets, syntaxes, times, rodread, semthreads
 
-type 
+type
   TPassContext* = object of TObject # the pass's context
   PPassContext* = ref TPassContext
   TPass* = tuple[
@@ -60,8 +60,8 @@ proc astNeeded*(s: PSym): bool =
       ({sfCompilerProc, sfCompileTime} * s.flags == {}) and
       (s.typ.callConv != ccInline) and 
       (s.ast.sons[genericParamsPos].kind == nkEmpty): 
-    result = false
-  else: 
+    result = semthreads.needsGlobalAnalysis()
+  else:
     result = true
   
 const 
