@@ -12,7 +12,7 @@
 # the data structures here are used in various places of the compiler.
 
 import 
-  ast, hashes, strutils, options, msgs, ropes, idents, rodutils
+  ast, hashes, intsets, strutils, options, msgs, ropes, idents, rodutils
 
 proc hashNode*(p: PObject): THash
 proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope
@@ -263,7 +263,7 @@ proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int,
                   maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
-  elif IntSetContainsOrIncl(marker, n.id): 
+  elif ContainsOrIncl(marker, n.id): 
     result = ropef("\"$1 @$2\"", [toRope(n.name.s), toRope(
         strutils.toHex(cast[TAddress](n), sizeof(n) * 2))])
   else: 
@@ -284,7 +284,7 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int,
                    maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
-  elif intSetContainsOrIncl(marker, n.id): 
+  elif ContainsOrIncl(marker, n.id): 
     result = ropef("\"$1 @$2\"", [toRope($n.kind), toRope(
         strutils.toHex(cast[TAddress](n), sizeof(n) * 2))])
   else: 
@@ -346,18 +346,15 @@ proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int,
     appf(result, "$n$1}", [spaces(indent)])
 
 proc treeToYaml(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker: TIntSet
-  IntSetInit(marker)
+  var marker = InitIntSet()
   result = treeToYamlAux(n, marker, indent, maxRecDepth)
 
 proc typeToYaml(n: PType, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker: TIntSet
-  IntSetInit(marker)
+  var marker = InitIntSet()
   result = typeToYamlAux(n, marker, indent, maxRecDepth)
 
 proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): PRope = 
-  var marker: TIntSet
-  IntSetInit(marker)
+  var marker = InitIntSet()
   result = symToYamlAux(n, marker, indent, maxRecDepth)
 
 proc debugType(n: PType): PRope = 
@@ -612,15 +609,15 @@ proc NextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   var start = h
   result = tab.data[h]
   while result != nil: 
-    if result.Name.id == ti.name.id and 
-        not IntSetContains(excluding, result.id): break
+    if result.Name.id == ti.name.id and not Contains(excluding, result.id): 
+      break
     h = nextTry(h, high(tab.data))
     if h == start: 
       result = nil
       break 
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
-  if result != nil and IntSetContains(excluding, result.id): result = nil
+  if result != nil and Contains(excluding, result.id): result = nil
 
 proc FirstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: TIntSet): PSym = 

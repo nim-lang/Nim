@@ -387,7 +387,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
   if t.sym != nil: useHeader(m, t.sym)
   result = getTypePre(m, t)
   if result != nil: return 
-  if IntSetContainsOrIncl(check, t.id): 
+  if ContainsOrIncl(check, t.id): 
     InternalError("cannot generate C type for: " & typeToString(typ)) 
     # XXX: this BUG is hard to fix -> we need to introduce helper structs,
     # but determining when this needs to be done is hard. We should split
@@ -490,8 +490,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     result = nil
 
 proc getTypeDesc(m: BModule, typ: PType): PRope = 
-  var check: TIntSet
-  IntSetInit(check)
+  var check = initIntSet()
   result = getTypeDescAux(m, typ, check)
 
 proc getTypeDesc(m: BModule, magic: string): PRope = 
@@ -511,10 +510,9 @@ proc finishTypeDescriptions(m: BModule) =
 proc genProcHeader(m: BModule, prc: PSym): PRope = 
   var 
     rettype, params: PRope
-    check: TIntSet
   # using static is needed for inline procs
   if (prc.typ.callConv == ccInline): result = toRope"static "
-  IntSetInit(check)
+  var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   appf(result, "$1($2, $3)$4", 
@@ -736,7 +734,7 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
   else: 
     dataGenerated = true
   result = ropef("NTI$1", [toRope(id)])
-  if not IntSetContainsOrIncl(m.typeInfoMarker, id): 
+  if not ContainsOrIncl(m.typeInfoMarker, id): 
     # declare type information structures:
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")

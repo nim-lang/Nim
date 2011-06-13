@@ -117,7 +117,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool,
   var s: PSym
   case n.kind
   of nkIdent: 
-    if not withinBind and not IntSetContains(toBind, n.ident.id): 
+    if not withinBind and not Contains(toBind, n.ident.id): 
       s = SymTabLocalGet(c.Tab, n.ident)
       if (s != nil): 
         result = newSymNode(s)
@@ -125,7 +125,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool,
       else: 
         result = n
     else: 
-      IntSetIncl(toBind, n.ident.id)
+      Incl(toBind, n.ident.id)
       result = symChoice(c, n, lookup(c, n))
   of nkEmpty, nkSym..nkNilLit:         # atom
     result = n
@@ -160,7 +160,6 @@ proc transformToExpr(n: PNode): PNode =
 proc semTemplateDef(c: PContext, n: PNode): PNode = 
   var 
     s: PSym
-    toBind: TIntSet
   if c.p.owner.kind == skModule: 
     s = semIdentVis(c, skTemplate, n.sons[0], {sfStar})
     incl(s.flags, sfGlobal)
@@ -189,7 +188,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
   addParams(c, s.typ.n)       # resolve parameters:
-  IntSetInit(toBind)
+  var toBind = initIntSet()
   n.sons[codePos] = resolveTemplateParams(c, n.sons[codePos], false, toBind)
   if not (s.typ.sons[0].kind in {tyStmt, tyTypeDesc}): 
     n.sons[codePos] = transformToExpr(n.sons[codePos]) 

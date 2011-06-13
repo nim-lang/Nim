@@ -12,8 +12,8 @@
 # writing of rod files is split into two different modules.
 
 import 
-  os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms, 
-  ropes, idents, crc, rodread, passes, importer
+  intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
+  condsyms, ropes, idents, crc, rodread, passes, importer
 
 proc rodwritePass*(): TPass
 # implementation
@@ -446,4 +446,4 @@ proc rodwritePass(): TPass =
     result.close = myClose
     result.process = process
 
-IntSetInit(debugWritten)
+debugWritten= initIntSet()

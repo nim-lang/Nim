@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import 
-  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists
+  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, intsets
 
 const 
   ImportTablePos* = 0
@@ -620,39 +620,6 @@ proc leValue*(a, b: PNode): bool
   # a <= b? a, b are literals
 proc ValueToString*(a: PNode): string
  
-# ------------- efficient integer sets -------------------------------------
-type 
-  TBitScalar* = int
-
-const 
-  InitIntSetSize* = 8         # must be a power of two!
-  TrunkShift* = 9
-  BitsPerTrunk* = 1 shl TrunkShift # needs to be a power of 2 and
-                                   # divisible by 64
-  TrunkMask* = BitsPerTrunk - 1
-  IntsPerTrunk* = BitsPerTrunk div (sizeof(TBitScalar) * 8)
-  IntShift* = 5 + ord(sizeof(TBitScalar) == 8) # 5 or 6, depending on int width
-  IntMask* = 1 shl IntShift - 1
-
-type 
-  PTrunk* = ref TTrunk
-  TTrunk*{.final.} = object 
-    next*: PTrunk             # all nodes are connected with this pointer
-    key*: int                 # start address at bit 0
-    bits*: array[0..IntsPerTrunk - 1, TBitScalar] # a bit vector
-  
-  TTrunkSeq* = seq[PTrunk]
-  TIntSet*{.final.} = object 
-    counter*, max*: int
-    head*: PTrunk
-    data*: TTrunkSeq
-
-
-proc IntSetContains*(s: TIntSet, key: int): bool
-proc IntSetIncl*(s: var TIntSet, key: int)
-proc IntSetExcl*(s: var TIntSet, key: int)
-proc IntSetInit*(s: var TIntSet)
-proc IntSetContainsOrIncl*(s: var TIntSet, key: int): bool
 const 
   debugIds* = false
 
@@ -663,7 +630,7 @@ var usedIds: TIntSet
 
 proc registerID(id: PIdObj) = 
   if debugIDs: 
-    if (id.id == - 1) or IntSetContainsOrIncl(usedIds, id.id): 
+    if (id.id == - 1) or ContainsOrIncl(usedIds, id.id): 
       InternalError("ID already used: " & $(id.id))
   
 proc getID(): int = 
@@ -1036,109 +1003,4 @@ proc getStrOrChar*(a: PNode): string =
     internalError(a.info, "getStrOrChar")
     result = ""
   
-proc mustRehash(length, counter: int): bool {.inline.} = 
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-proc nextTry(h, maxHash: THash): THash {.inline.} = 
-  result = ((5 * h) + 1) and maxHash 
-  # For any initial h in range(maxHash), repeating that maxHash times
-  # generates each int in range(maxHash) exactly once (see any text on
-  # random-number generation for proof).
-  
-proc IntSetInit(s: var TIntSet) = 
-  newSeq(s.data, InitIntSetSize)
-  s.max = InitIntSetSize - 1
-  s.counter = 0
-  s.head = nil
-
-proc IntSetGet(t: TIntSet, key: int): PTrunk = 
-  var h = key and t.max
-  while t.data[h] != nil: 
-    if t.data[h].key == key: 
-      return t.data[h]
-    h = nextTry(h, t.max)
-  result = nil
-
-proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
-  var h = desc.key and t.max
-  while data[h] != nil: 
-    assert(data[h] != desc)
-    h = nextTry(h, t.max)
-  assert(data[h] == nil)
-  data[h] = desc
-
-proc IntSetEnlarge(t: var TIntSet) = 
-  var 
-    n: TTrunkSeq
-    oldMax: int
-  oldMax = t.max
-  t.max = ((t.max + 1) * 2) - 1
-  newSeq(n, t.max + 1)
-  for i in countup(0, oldmax): 
-    if t.data[i] != nil: IntSetRawInsert(t, n, t.data[i])
-  swap(t.data, n)
-
-proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
-  var h = key and t.max
-  while t.data[h] != nil: 
-    if t.data[h].key == key: 
-      return t.data[h]
-    h = nextTry(h, t.max)
-  if mustRehash(t.max + 1, t.counter): IntSetEnlarge(t)
-  inc(t.counter)
-  h = key and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
-  assert(t.data[h] == nil)
-  new(result)
-  result.next = t.head
-  result.key = key
-  t.head = result
-  t.data[h] = result
-
-proc IntSetContains(s: TIntSet, key: int): bool = 
-  var 
-    u: TBitScalar
-    t: PTrunk
-  t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
-    u = key and TrunkMask
-    result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
-  else: 
-    result = false
-  
-proc IntSetIncl(s: var TIntSet, key: int) = 
-  var 
-    u: TBitScalar
-    t: PTrunk
-  t = IntSetPut(s, `shr`(key, TrunkShift))
-  u = key and TrunkMask
-  t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-      `shl`(1, u and IntMask)
-
-proc IntSetExcl(s: var TIntSet, key: int) = 
-  var 
-    u: TBitScalar
-    t: PTrunk
-  t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
-    u = key and TrunkMask
-    t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
-        not `shl`(1, u and IntMask)
-
-proc IntSetContainsOrIncl(s: var TIntSet, key: int): bool = 
-  var 
-    u: TBitScalar
-    t: PTrunk
-  t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
-    u = key and TrunkMask
-    result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
-    if not result: 
-      t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-          `shl`(1, u and IntMask)
-  else: 
-    IntSetIncl(s, key)
-    result = false
-
-if debugIDs: IntSetInit(usedIds)
+if debugIDs: usedIds = InitIntSet()

@@ -17,7 +17,7 @@
 # * introduces method dispatchers
 
 import 
-  strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
+  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
   idents, renderer, types, passes, semfold, magicsys, cgmeth
 
 const 
@@ -528,8 +528,7 @@ proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym,
     of skVar: found = not (sfGlobal in s.flags)
     of skTemp, skForVar, skParam: found = true
     else: nil
-    if found and (owner.id != s.owner.id) and
-        not IntSetContainsOrIncl(marked, s.id): 
+    if found and (owner.id != s.owner.id) and not ContainsOrIncl(marked, s.id): 
       incl(s.flags, sfInClosure)
       addSon(container, copyNode(n)) # DON'T make a copy of the symbol!
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
@@ -555,9 +554,8 @@ proc indirectAccess(a, b: PSym): PNode =
   result.typ = y.typ
 
 proc transformLambda(c: PTransf, n: PNode): PNode = 
-  var marked: TIntSet
+  var marked = initIntSet()
   result = n
-  IntSetInit(marked)
   if (n.sons[namePos].kind != nkSym): InternalError(n.info, "transformLambda")
   var s = n.sons[namePos].sym
   var closure = newNodeI(nkRecList, n.sons[codePos].info)
