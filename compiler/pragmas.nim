@@ -106,23 +106,23 @@ proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   else: result = defaultStr
   
 proc processMagic(c: PContext, n: PNode, s: PSym) = 
-  var v: string
-  #if not (sfSystemModule in c.module.flags) then
-  #  liMessage(n.info, errMagicOnlyInSystem);
+  #if sfSystemModule notin c.module.flags:
+  #  liMessage(n.info, errMagicOnlyInSystem)
   if n.kind != nkExprColonExpr: 
     LocalError(n.info, errStringLiteralExpected)
     return
+  var v: string
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
   else: v = expectStrLit(c, n)
-  incl(s.flags, sfImportc) 
-  # magics don't need an implementation, so we
-  # treat them as imported, instead of modifing a lot of working code
-  # BUGFIX: magic does not imply ``lfNoDecl`` anymore!
   for m in countup(low(TMagic), high(TMagic)): 
     if substr($m, 1) == v: 
       s.magic = m
-      return 
-  Message(n.info, warnUnknownMagic, v)
+      break
+  if s.magic == mNone: Message(n.info, warnUnknownMagic, v)
+  elif s.magic != mCreateThread: 
+    # magics don't need an implementation, so we
+    # treat them as imported, instead of modifing a lot of working code:
+    incl(s.flags, sfImportc)
 
 proc wordToCallConv(sw: TSpecialWord): TCallingConvention = 
   # this assumes that the order of special words and calling conventions is

@@ -170,12 +170,23 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       var formal = skipTypes(prc.typ, abstractInst).n.sons[i].sym 
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
-    computed[call] = analyse(newCtx, prc.ast.sons[codePos])
+    result = analyse(newCtx, prc.ast.sons[codePos])
+    if prc.typ.sons[0] != nil:
+      if prc.ast.len > resultPos:
+        result = newCtx.mapping[prc.ast.sons[resultPos].sym.id]
+      else:
+        result = toNil
+    else:
+      result = toVoid
+    computed[call] = result
     popInfoContext()
   else:
-    # ugh, cycle! We are already computing it but don't know the outcome yet...
-    if prc.typ.sons[0] == nil: result = toVoid
-    else: result = toNil
+    result = computed[call]
+    if result == toUndefined:
+      # ugh, cycle! We are already computing it but don't know the
+      # outcome yet...
+      if prc.typ.sons[0] == nil: result = toVoid
+      else: result = toNil
 
 proc analyseVarTuple(c: PProcCtx, n: PNode) =
   if n.kind != nkVarTuple: InternalError(n.info, "analyseVarTuple")
@@ -210,28 +221,39 @@ template aggregateOwner(result, ana: expr) =
     if result == toNil: result = a
     else: localError(n.info, errDifferentHeaps)
 
+proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
+  if n[0].kind != nkSym or n[0].sym.kind != skProc:
+    Message(n.info, warnAnalysisLoophole, renderTree(n))
+    result = toNil
+  else:
+    var prc = n[0].sym
+    # XXX create thread!?
+    case prc.magic
+    of mNew, mNewFinalize, mNewSeq, mSetLengthStr, mSetLengthSeq,
+        mAppendSeqElem, mReset, mAppendStrCh, mAppendStrStr:
+      writeAccess(c, n[1], toMine)
+      result = toVoid
+    of mSwap:
+      var a = analyse(c, n[2])
+      writeAccess(c, n[1], a)
+      writeAccess(c, n[2], a)
+      result = toVoid
+    of mIntToStr, mInt64ToStr, mFloatToStr, mBoolToStr, mCharToStr, 
+        mCStrToStr, mStrToStr, mEnumToStr,
+        mConStrStr, mConArrArr, mConArrT, 
+        mConTArr, mConTT, mSlice, 
+        mRepr, mArrToSeq, mCopyStr, mCopyStrLast, 
+        mNewString, mNewStringOfCap:
+      # XXX no check for effects in the arguments?
+      result = toMine
+    else:
+      result = analyseCall(c, n)
+
 proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   case n.kind
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
      nkCallStrLit, nkHiddenCallConv:
-    if n[0].kind != nkSym or n[0].sym.kind != skProc:
-      Message(n.info, warnAnalysisLoophole, renderTree(n))
-      result = toNil
-    else:
-      var prc = n[0].sym
-      # XXX create thread!?
-      case prc.magic
-      of mNew, mNewFinalize, mNewSeq, mSetLengthStr, mSetLengthSeq,
-          mAppendSeqElem, mReset, mAppendStrCh, mAppendStrStr:
-        writeAccess(c, n[1], toMine)
-        result = toVoid
-      of mSwap:
-        var a = analyse(c, n[2])
-        writeAccess(c, n[1], a)
-        writeAccess(c, n[2], a)
-        result = toVoid
-      else:
-        result = analyseCall(c, n)
+    result = analyseOp(c, n)    
   of nkAsgn, nkFastAsgn:
     analyseAssign(c, n)
     result = toVoid
@@ -290,7 +312,8 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkVarSection: result = analyseVarSection(c, n)
   of nkConstSection: result = analyseConstSection(c, n)
   of nkTypeSection, nkCommentStmt: result = toVoid
-  of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt:
+  of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt, 
+     nkElifBranch, nkElse, nkExceptBranch, nkOfBranch:
     for i in 0 .. <n.len: discard analyse(c, n[i])
     result = toVoid
   of nkBreakStmt, nkContinueStmt: result = toVoid

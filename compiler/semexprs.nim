@@ -568,7 +568,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mEcho: result = semEcho(c, setMs(n, s))
   of mCreateThread: 
     result = semDirectOp(c, n, flags)
-    if optThreads in gGlobalOptions:
+    if gGlobalOptions * {optThreads, optThreadAnalysis} == 
+                        {optThreads, optThreadAnalysis}:
       # XXX This analysis should be done as late as possible
       # (forward references!)
       semthreads.AnalyseThread(result)

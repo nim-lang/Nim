@@ -1,4 +1,7 @@
 * codegen for threadvars
+* clean up thread analysis: fix remaining XXX; thread analysis as a separate
+  pass
+* implement message passing built-ins
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * test the sort implementation again
@@ -37,7 +40,6 @@ Bugs
     for i in 0 .. high(t.data)-1:
       var maxIdx = i
       for j in i+1 .. high(t.data):
-        if t.data[j].val == 3: echo "touched! ", t.data[j].key
         if t.data[j].val > t.data[maxIdx].val: maxIdx = j
       swap(t.data[maxIdx], t.data[i])
 
