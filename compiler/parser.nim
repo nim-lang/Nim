@@ -197,6 +197,7 @@ proc parseSymbol(p: var TParser): PNode =
     eat(p, tkAccent)
   else: 
     parMessage(p, errIdentifierExpected, p.tok)
+    getTok(p) # BUGFIX: We must consume a token here to prevent endless loops!
     result = ast.emptyNode
 
 proc indexExpr(p: var TParser): PNode = 

@@ -569,7 +569,8 @@ caller, a ``var`` parameter can be used:
 
 In the example, ``res`` and ``remainder`` are `var parameters`.
 Var parameters can be modified by the procedure and the changes are
-visible to the caller.
+visible to the caller. Note that the above example would better make usage of
+a tuple as a return value instead of using var parameters.
 
 
 Discard statement

@@ -16,8 +16,8 @@
 ## Same as:
 ##
 ## .. code-block:: nimrod
-##   import os, strutils, times, parseutils, parseopt
+##   import os, strutils, times, parseutils, parseopt, hashes, tables, sets
 
-import os, strutils, times, parseutils, parseopt
+import os, strutils, times, parseutils, parseopt, hashes, tables, sets
 
 

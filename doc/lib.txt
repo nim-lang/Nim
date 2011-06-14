@@ -470,6 +470,8 @@ Database support
   Contains a wrapper for SQLite 3 API.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
+* `sphinx <sphinx.html>`_
+  Nimrod wrapper for ``shpinx``.
 
 
 XML Processing
