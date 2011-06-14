@@ -85,6 +85,7 @@ Additions
   on the number of string literals in the case statement.
 - Added a wrapper for ``redis``.
 - Added a wrapper for ``0mq`` via the ``zmq`` module.
+- Added a wrapper for ``sphinx``.
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
 - Added ``system.raiseHook``.
