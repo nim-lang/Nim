@@ -153,6 +153,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/cycle.h
   cp lib/nimrtl.nim $libdir/nimrtl.nim || exit 1
   chmod 644 $libdir/nimrtl.nim
+  cp lib/prelude.nim $libdir/prelude.nim || exit 1
+  chmod 644 $libdir/prelude.nim
   cp lib/system.nim $libdir/system.nim || exit 1
   chmod 644 $libdir/system.nim
   cp lib/nimrtl.cfg $libdir/nimrtl.cfg || exit 1
@@ -165,12 +167,12 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/arithm.nim
   cp lib/system/assign.nim $libdir/system/assign.nim || exit 1
   chmod 644 $libdir/system/assign.nim
+  cp lib/system/atomics.nim $libdir/system/atomics.nim || exit 1
+  chmod 644 $libdir/system/atomics.nim
   cp lib/system/cellsets.nim $libdir/system/cellsets.nim || exit 1
   chmod 644 $libdir/system/cellsets.nim
   cp lib/system/cgprocs.nim $libdir/system/cgprocs.nim || exit 1
   chmod 644 $libdir/system/cgprocs.nim
-  cp lib/system/cntbits.nim $libdir/system/cntbits.nim || exit 1
-  chmod 644 $libdir/system/cntbits.nim
   cp lib/system/debugger.nim $libdir/system/debugger.nim || exit 1
   chmod 644 $libdir/system/debugger.nim
   cp lib/system/dyncalls.nim $libdir/system/dyncalls.nim || exit 1
@@ -197,14 +199,14 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sysio.nim
   cp lib/system/sysstr.nim $libdir/system/sysstr.nim || exit 1
   chmod 644 $libdir/system/sysstr.nim
-  cp lib/system/systhread.nim $libdir/system/systhread.nim || exit 1
-  chmod 644 $libdir/system/systhread.nim
+  cp lib/system/threads.nim $libdir/system/threads.nim || exit 1
+  chmod 644 $libdir/system/threads.nim
   cp lib/core/macros.nim $libdir/core/macros.nim || exit 1
   chmod 644 $libdir/core/macros.nim
   cp lib/core/marshal.nim $libdir/core/marshal.nim || exit 1
   chmod 644 $libdir/core/marshal.nim
-  cp lib/core/threads.nim $libdir/core/threads.nim || exit 1
-  chmod 644 $libdir/core/threads.nim
+  cp lib/core/typeinfo.nim $libdir/core/typeinfo.nim || exit 1
+  chmod 644 $libdir/core/typeinfo.nim
   cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim || exit 1
   chmod 644 $libdir/pure/algorithm.nim
   cp lib/pure/base64.nim $libdir/pure/base64.nim || exit 1
@@ -305,6 +307,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/impure/db_sqlite.nim
   cp lib/impure/dialogs.nim $libdir/impure/dialogs.nim || exit 1
   chmod 644 $libdir/impure/dialogs.nim
+  cp lib/impure/encodings.nim $libdir/impure/encodings.nim || exit 1
+  chmod 644 $libdir/impure/encodings.nim
   cp lib/impure/graphics.nim $libdir/impure/graphics.nim || exit 1
   chmod 644 $libdir/impure/graphics.nim
   cp lib/impure/osinfo_posix.nim $libdir/impure/osinfo_posix.nim || exit 1
@@ -341,6 +345,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/postgres.nim
   cp lib/wrappers/python.nim $libdir/wrappers/python.nim || exit 1
   chmod 644 $libdir/wrappers/python.nim
+  cp lib/wrappers/sphinx.nim $libdir/wrappers/sphinx.nim || exit 1
+  chmod 644 $libdir/wrappers/sphinx.nim
   cp lib/wrappers/sqlite3.nim $libdir/wrappers/sqlite3.nim || exit 1
   chmod 644 $libdir/wrappers/sqlite3.nim
   cp lib/wrappers/tcl.nim $libdir/wrappers/tcl.nim || exit 1
@@ -349,6 +355,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/tinyc.nim
   cp lib/wrappers/tre.nim $libdir/wrappers/tre.nim || exit 1
   chmod 644 $libdir/wrappers/tre.nim
+  cp lib/wrappers/zmq.nim $libdir/wrappers/zmq.nim || exit 1
+  chmod 644 $libdir/wrappers/zmq.nim
   cp lib/wrappers/cairo/cairo.nim $libdir/wrappers/cairo/cairo.nim || exit 1
   chmod 644 $libdir/wrappers/cairo/cairo.nim
   cp lib/wrappers/cairo/cairoft.nim $libdir/wrappers/cairo/cairoft.nim || exit 1
