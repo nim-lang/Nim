@@ -69,6 +69,18 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty: 
       GlobalError(n.info, errConstExprExpected)
+
+include seminst, semcall
+  
+proc typeMismatch(n: PNode, formal, actual: PType) = 
+  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+      typeToString(actual) & ") " &
+      `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
+
+proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
+  result = IndexTypesMatch(c, formal, arg.typ, arg)
+  if result == nil:
+    typeMismatch(arg, formal, arg.typ)
   
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
@@ -76,10 +88,14 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
   of tyExpr: 
     # BUGFIX: we cannot expect a type here, because module aliases would not 
     # work then (see the ``tmodulealias`` test)
-    result = semExpr(c, result) # semExprWithType(c, result)
+    # semExprWithType(c, result)
+    result = semExpr(c, result) 
   of tyStmt: result = semStmt(c, result)
   of tyTypeDesc: result.typ = semTypeNode(c, result, nil)
-  else: GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+  else:
+    result = semExpr(c, result)
+    result = fitNode(c, s.typ.sons[0], result)
+    #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   
 include "semtempl.nim"
 
@@ -102,19 +118,6 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   if semCheck: result = semAfterMacroCall(c, result, sym)
   dec(evalTemplateCounter)
-
-include seminst, semcall
-  
-proc typeMismatch(n: PNode, formal, actual: PType) = 
-  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
-      typeToString(actual) & ") " &
-      `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
-
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
-  result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil:
-    #debug(arg)
-    typeMismatch(arg, formal, arg.typ)
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)

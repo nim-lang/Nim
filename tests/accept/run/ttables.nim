@@ -69,7 +69,9 @@ block countTableTest1:
   t.inc("12", 2)
   t.inc("34", 1)
   assert t.largest()[0] == "90"
-  
+
+  for k, v in t.pairs:
+    echo k, v  
   t.sort()
   var i = 0
   for k, v in t.pairs:
