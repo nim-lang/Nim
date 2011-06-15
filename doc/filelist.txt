@@ -31,11 +31,12 @@ semstmts        contains the semantic checking phase for statements
 semtypes        contains the semantic checking phase for types
 seminst         instantiation of generic procs and types
 semfold         contains code to deal with constant folding
+semthreads      deep program analysis for threads
 evals           contains an AST interpreter for compile time evaluation
 pragmas         semantic checking of pragmas
 
 idents          implements a general mapping from identifiers to an internal
-                representation (``PIdent``) that is used, so that a simple
+                representation (``PIdent``) that is used so that a simple
                 id-comparison suffices to say whether two Nimrod identifiers
                 are equivalent
 ropes           implements long strings represented as trees for
