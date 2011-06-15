@@ -86,14 +86,15 @@ type
     errCannotInterpretNodeX, errFieldXNotFound, errInvalidConversionFromTypeX, 
     errAssertionFailed, errCannotGenerateCodeForX, errXRequiresOneArgument, 
     errUnhandledExceptionX, errCyclicTree, errXisNoMacroOrTemplate, 
-    errXhasSideEffects, errIteratorExpected, errDifferentHeaps, 
-    errUser, 
+    errXhasSideEffects, errIteratorExpected,
+    errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
     warnCannotWriteMO2, warnCannotReadMO2, warnDeprecated, 
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnXisPassedToProcVar, warnDerefDeprecated, warnAnalysisLoophole,
+    warnDifferentHeaps,
     warnUser, 
     hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
@@ -310,7 +311,6 @@ const
     errXisNoMacroOrTemplate: "\'$1\' is no macro or template",
     errXhasSideEffects: "\'$1\' can have side effects", 
     errIteratorExpected: "iterator within for loop context expected",
-    errDifferentHeaps: "possible inconsistency of thread local heaps", 
     errUser: "$1", 
     warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
@@ -327,7 +327,8 @@ const
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnXisPassedToProcVar: "\'$1\' is passed to a procvar; deprecated [XisPassedToProcVar]", 
     warnDerefDeprecated: "p^ is deprecated; use p[] instead [DerefDeprecated]",
-    warnAnalysisLoophole: "thread analysis incomplete due to indirect call '$1' [AnalysisLoophole]",
+    warnAnalysisLoophole: "thread analysis incomplete due to unkown call '$1' [AnalysisLoophole]",
+    warnDifferentHeaps: "possible inconsistency of thread local heaps",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($1 lines compiled; $2 sec total) [SuccessX]", 
@@ -345,12 +346,12 @@ const
     hintUser: "$1 [User]"]
 
 const 
-  WarningsToStr*: array[0..16, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..17, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit", "CannotWriteMO2", "CannotReadMO2", 
     "Deprecated", "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "XisPassedToProcVar", "DerefDeprecated",
-    "AnalysisLoophole", "User"]
+    "AnalysisLoophole", "DifferentHeaps", "User"]
 
   HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 

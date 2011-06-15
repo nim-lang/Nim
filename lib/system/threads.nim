@@ -52,22 +52,22 @@ when defined(Windows):
       LockSemaphore: int
       Reserved: int32
           
-  proc InitSysLock(L: var TSysLock) {.stdcall,
+  proc InitSysLock(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "InitializeCriticalSection".}
     ## Initializes the lock `L`.
 
-  proc TryAcquireSysAux(L: var TSysLock): int32 {.stdcall,
+  proc TryAcquireSysAux(L: var TSysLock): int32 {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "TryEnterCriticalSection".}
     ## Tries to acquire the lock `L`.
     
   proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
     result = TryAcquireSysAux(L) != 0'i32
 
-  proc AcquireSys(L: var TSysLock) {.stdcall,
+  proc AcquireSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "EnterCriticalSection".}
     ## Acquires the lock `L`.
     
-  proc ReleaseSys(L: var TSysLock) {.stdcall,
+  proc ReleaseSys(L: var TSysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "LeaveCriticalSection".}
     ## Releases the lock `L`.
 
@@ -120,17 +120,17 @@ else:
                header: "<sys/types.h>".} = object
 
   proc InitSysLock(L: var TSysLock, attr: pointer = nil) {.
-    importc: "pthread_mutex_init", header: "<pthread.h>".}
+    importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
 
-  proc AcquireSys(L: var TSysLock) {.
+  proc AcquireSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  proc TryAcquireSysAux(L: var TSysLock): cint {.
+  proc TryAcquireSysAux(L: var TSysLock): cint {.noSideEffect,
     importc: "pthread_mutex_trylock", header: "<pthread.h>".}
 
   proc TryAcquireSys(L: var TSysLock): bool {.inline.} = 
     result = TryAcquireSysAux(L) == 0'i32
 
-  proc ReleaseSys(L: var TSysLock) {.
+  proc ReleaseSys(L: var TSysLock) {.noSideEffect,
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
 
   type
@@ -184,32 +184,25 @@ else:
   proc pthread_setspecific(a1: TThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: "<pthread.h>".}
   
-  proc ThreadVarAlloc(): TThreadVarSlot {.compilerproc, inline.} =
+  proc ThreadVarAlloc(): TThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
-  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.
-                         compilerproc, inline.} =
+  proc ThreadVarSetValue(s: TThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
-  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.compilerproc, inline.} =
+  proc ThreadVarGetValue(s: TThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
 
-type
-  TGlobals {.final, pure.} = object
-    excHandler: PSafePoint
-    currException: ref E_Base
-    framePtr: PFrame
-    buf: string       # cannot be allocated on the stack!
-    assertBuf: string # we need a different buffer for
-                      # assert, as it raises an exception and
-                      # exception handler needs the buffer too
-    gAssertionFailed: ref EAssertionFailed
-    tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
-    data: float # compiler should add thread local variables here!
+const emulatedThreadVars = defined(macosx)
 
-proc initGlobals(g: var TGlobals) = 
-  new(g.gAssertionFailed)
-  g.buf = newStringOfCap(2000)
-  g.assertBuf = newStringOfCap(2000)
+when emulatedThreadVars:
+  # the compiler generates this proc for us, so that we can get the size of
+  # the thread local var block:
+  proc NimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
+proc ThreadVarsAlloc(size: int): pointer =
+  result = c_malloc(size)
+  zeroMem(result, size)
+proc ThreadVarsDealloc(p: pointer) {.importc: "free", nodecl.}
+proc initGlobals()
 
 type
   PGcThread = ptr TGcThread
@@ -218,7 +211,6 @@ type
     next, prev: PGcThread
     stackBottom, stackTop, threadLocalStorage: pointer
     stackSize: int
-    g: TGlobals
     locksLen: int
     locks: array [0..MaxLocksPerThread-1, pointer]
     registers: array[0..maxRegisters-1, pointer] # register contents for GC
@@ -240,8 +232,14 @@ proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
   var mainThread: TGcThread
-  initGlobals(mainThread.g)
+  
   ThreadVarSetValue(globalsSlot, addr(mainThread))
+  when emulatedThreadVars:
+    mainThread.threadLocalStorage = ThreadVarsAlloc(NimThreadVarsSize())
+
+  initStackBottom()
+  initGC()
+  initGlobals()
 
   var heapLock: TSysLock
   InitSysLock(HeapLock)
@@ -296,15 +294,21 @@ when not defined(boehmgc) and not hasSharedHeap:
 template ThreadProcWrapperBody(closure: expr) =
   ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TParam]](closure)
+  when emulatedThreadVars:
+    t.threadLocalStorage = ThreadVarsAlloc(NimThreadVarsSize())
   when not defined(boehmgc) and not hasSharedHeap:
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
   t.stackBottom = addr(t)
+  initGlobals()
   registerThread(t)
   try:
     t.fn(t.data)
   finally:
+    # XXX shut-down is not executed when the thread is forced down!
+    when emulatedThreadVars:
+      ThreadVarsDealloc(t.threadLocalStorage)
     unregisterThread(t)
     when defined(deallocOsPages): deallocOsPages()
   

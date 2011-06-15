@@ -63,7 +63,7 @@ type
 var
   stackBottom {.rtlThreadVar.}: pointer
   gch {.rtlThreadVar.}: TGcHeap
-  cycleThreshold {.rtlThreadVar.}: int = InitialCycleThreshold
+  cycleThreshold {.rtlThreadVar.}: int
 
 proc acquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport and hasSharedHeap:
@@ -267,6 +267,7 @@ proc initGC() =
   when not defined(useNimRtl):
     when traceGC:
       for i in low(TCellState)..high(TCellState): Init(states[i])
+    cycleThreshold = InitialCycleThreshold
     gch.stat.stackScans = 0
     gch.stat.cycleCollections = 0
     gch.stat.maxThreshold = 0

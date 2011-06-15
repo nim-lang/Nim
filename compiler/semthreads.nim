@@ -138,7 +138,7 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
     of toTheirs, toMine:
       if lastOwner != owner and owner != toNil:
-        LocalError(n.info, errDifferentHeaps)
+        Message(n.info, warnDifferentHeaps)
   else:
     # we could not backtrack to a concrete symbol, but that's fine:
     var lastOwner = analyseSym(c, n)
@@ -147,7 +147,7 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
     of toTheirs, toMine:
       if lastOwner != owner and owner != toNil:
-        LocalError(n.info, errDifferentHeaps)
+        Message(n.info, warnDifferentHeaps)
 
 proc analyseAssign(c: PProcCtx, le, ri: PNode) =
   var y = analyse(c, ri) # read access; ok
@@ -171,7 +171,7 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
     result = analyse(newCtx, prc.ast.sons[codePos])
-    if prc.ast.sons[codePos].kind == nkEmpty:
+    if prc.ast.sons[codePos].kind == nkEmpty and sfNoSideEffect notin prc.flags:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
@@ -221,14 +221,15 @@ template aggregateOwner(result, ana: expr) =
   var a = ana # eval once
   if result != a:
     if result == toNil: result = a
-    else: localError(n.info, errDifferentHeaps)
+    else: Message(n.info, warnDifferentHeaps)
 
 proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
   for i in start..n.len-1: discard analyse(c, n[i])
 
 proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   if n[0].kind != nkSym or n[0].sym.kind != skProc:
-    Message(n.info, warnAnalysisLoophole, renderTree(n))
+    if tfNoSideEffect notin n[0].typ.flags:
+      Message(n.info, warnAnalysisLoophole, renderTree(n))
     result = toNil
   else:
     var prc = n[0].sym
@@ -316,7 +317,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     result = analyse(c, n.sons[0])
   of nkRaiseStmt:
     var a = analyse(c, n.sons[0])
-    if a != toMine: LocalError(n.info, errDifferentHeaps)
+    if a != toMine: Message(n.info, warnDifferentHeaps)
     result = toVoid
   of nkVarSection: result = analyseVarSection(c, n)
   of nkConstSection: result = analyseConstSection(c, n)
