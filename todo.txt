@@ -3,7 +3,6 @@ High priority (version 0.8.12)
 * implement message passing built-ins
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
-* iterators should not always be destructive!
 * real types for template results
 * built-in serialization
 

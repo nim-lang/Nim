@@ -83,6 +83,7 @@ Additions
   returns a ``TFile`` and raises an exception in case of an error.
 - The compiler now might use hashing for string case statements depending
   on the number of string literals in the case statement.
+- Tuple unpacking is not enforced in ``for`` loops anymore.
 - Added a wrapper for ``redis``.
 - Added a wrapper for ``0mq`` via the ``zmq`` module.
 - Added a wrapper for ``sphinx``.

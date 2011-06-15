@@ -305,7 +305,10 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
 proc transformYield(c: PTransf, n: PNode): PTransNode = 
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n.sons[0]
-  if skipTypes(e.typ, {tyGenericInst}).kind == tyTuple: 
+  # c.transCon.forStmt.len == 3 means that there is one for loop variable
+  # and thus no tuple unpacking:
+  if skipTypes(e.typ, {tyGenericInst}).kind == tyTuple and
+      c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind == nkPar: 
       for i in countup(0, sonsLen(e) - 1): 
