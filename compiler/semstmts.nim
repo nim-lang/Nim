@@ -447,14 +447,16 @@ proc semFor(c: PContext, n: PNode): PNode =
     result = semForFields(c, n, call.sons[0].sym.magic)
   else:
     var iter = skipTypes(n.sons[length-2].typ, {tyGenericInst})
-    if iter.kind != tyTuple: 
+    # length == 3 means that there is one for loop variable
+    # and thus no tuple unpacking:
+    if iter.kind != tyTuple or length == 3: 
       if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
       var v = newSymS(skForVar, n.sons[0], c)
       v.typ = iter
       n.sons[0] = newSymNode(v)
       addDecl(c, v)
     else: 
-      if length-2 != sonsLen(iter): 
+      if length-2 != sonsLen(iter):
         GlobalError(n.info, errWrongNumberOfVariables)
       for i in countup(0, length - 3): 
         var v = newSymS(skForVar, n.sons[i], c)
