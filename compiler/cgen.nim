@@ -66,6 +66,7 @@ type
     s: TCProcSections        # the procs sections; short name for readability
     prc: PSym                # the Nimrod proc that this C proc belongs to
     BeforeRetNeeded: bool    # true iff 'BeforeRet' label for proc is needed
+    ThreadVarAccessed: bool  # true if the proc already accessed some threadvar
     nestedTryStmts: seq[PNode] # in how many nested try statements we are
                                # (the vars must be volatile then)
     labels: Natural          # for generating unique labels in the C proc
@@ -85,6 +86,7 @@ type
     filename*: string
     s*: TCFileSections        # sections of the C file
     PreventStackTrace: bool   # true if stack traces need to be prevented
+    usesThreadVars: bool      # true if the module uses a thread var
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
@@ -386,29 +388,12 @@ proc localDebugInfo(p: BProc, s: PSym) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return 
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind == tyOpenArray: return
-  if gCmd == cmdCompileToLLVM: 
-    # "address" is the 0th field
-    # "typ" is the 1rst field
-    # "name" is the 2nd field
-    var name = cstringLit(p, p.s[cpsInit], normalize(s.name.s))
-    if (s.kind == skParam) and not ccgIntroducedPtr(s): allocParam(p, s)
-    inc(p.labels, 3)
-    appf(p.s[cpsInit], "%LOC$6 = getelementptr %TF* %F, %NI 0, $1, %NI 0$n" &
-        "%LOC$7 = getelementptr %TF* %F, %NI 0, $1, %NI 1$n" &
-        "%LOC$8 = getelementptr %TF* %F, %NI 0, $1, %NI 2$n" &
-        "store i8* $2, i8** %LOC$6$n" & "store $3* $4, $3** %LOC$7$n" &
-        "store i8* $5, i8** %LOC$8$n", [toRope(p.frameLen), s.loc.r, 
-                                        getTypeDesc(p.module, "TNimType"), 
-                                        genTypeInfo(p.module, s.loc.t), name, 
-                                        toRope(p.labels), toRope(p.labels - 1), 
-                                        toRope(p.labels - 2)])
-  else: 
-    var a = con("&", s.loc.r)
-    if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
-    appf(p.s[cpsInit], 
-         "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
-         [toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
-          genTypeInfo(p.module, s.loc.t)])
+  var a = con("&", s.loc.r)
+  if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
+  appf(p.s[cpsInit], 
+       "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
+       [toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
+        genTypeInfo(p.module, s.loc.t)])
   inc(p.frameLen)
 
 proc assignLocalVar(p: BProc, s: PSym) = 
@@ -417,55 +402,35 @@ proc assignLocalVar(p: BProc, s: PSym) =
   # for each module that uses them!
   if s.loc.k == locNone: 
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
-  if gCmd == cmdCompileToLLVM: 
-    appf(p.s[cpsLocals], "$1 = alloca $2$n", 
-         [s.loc.r, getTypeDesc(p.module, s.loc.t)])
-    incl(s.loc.flags, lfIndirect)
-  else: 
-    app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
-    if sfRegister in s.flags: app(p.s[cpsLocals], " register")
-    if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
-      app(p.s[cpsLocals], " volatile")
-    appf(p.s[cpsLocals], " $1;$n", [s.loc.r])
+  app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
+  if sfRegister in s.flags: app(p.s[cpsLocals], " register")
+  if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
+    app(p.s[cpsLocals], " volatile")
+  appf(p.s[cpsLocals], " $1;$n", [s.loc.r])
   localDebugInfo(p, s)
 
-proc declareThreadVar(m: BModule, s: PSym) =
-  if optThreads in gGlobalOptions:
-    if platform.OS[targetOS].props.contains(ospLacksThreadVars):
-      # we gather all thread locals var into a struct and put that into
-      # nim__dat.c; we need to allocate storage for that somehow, can't use
-      # the thread local storage allocator for it :-(
-      # XXX we need to adapt expr() too, every reference to a thread local var
-      # generates quite some code ...
-      InternalError("no workaround for lack of thread local vars implemented")
-    else:
-      app(m.s[cfsVars], "NIM_THREADVAR ")
-      app(m.s[cfsVars], getTypeDesc(m, s.loc.t))
-  else:
-    app(m.s[cfsVars], getTypeDesc(m, s.loc.t))
+include ccgthreadvars
 
 proc assignGlobalVar(p: BProc, s: PSym) = 
   if s.loc.k == locNone: 
     fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap)
   useHeader(p.module, s)
-  if lfNoDecl in s.loc.flags: return 
-  if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
-  if sfThreadVar in s.flags: declareThreadVar(p.module, s)
-  else: app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
-  if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
-  if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
-  appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
-  if {optStackTrace, optEndb} * p.module.module.options ==
-      {optStackTrace, optEndb}: 
+  if lfNoDecl in s.loc.flags: return
+  if sfThreadVar in s.flags: 
+    declareThreadVar(p.module, s, sfImportc in s.flags)
+  else: 
+    if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
+    app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
+    if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
+    if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
+    appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
+  if p.module.module.options * {optStackTrace, optEndb} ==
+                               {optStackTrace, optEndb}: 
     appcg(p.module, p.module.s[cfsDebugInit], 
           "#dbgRegisterGlobal($1, &$2, $3);$n", 
          [cstringLit(p, p.module.s[cfsDebugInit], 
           normalize(s.owner.name.s & '.' & s.name.s)), 
           s.loc.r, genTypeInfo(p.module, s.typ)])
-
-proc iff(cond: bool, the, els: PRope): PRope = 
-  if cond: result = the
-  else: result = els
   
 proc assignParam(p: BProc, s: PSym) = 
   assert(s.loc.r != nil)
@@ -691,9 +656,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   if lfDynamicLib in sym.loc.Flags: 
     if sym.owner.id != m.module.id and
         not ContainsOrIncl(m.declaredThings, sym.id): 
-      appff(m.s[cfsVars], "extern $1 $2;$n", 
-            "@$2 = linkonce global $1 zeroinitializer$n", 
-            [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
+      appf(m.s[cfsVars], "extern $1 $2;$n", 
+           [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
   elif not ContainsOrIncl(m.declaredProtos, sym.id): 
     appf(m.s[cfsProcHeaders], "$1;$n", [genProcHeader(m, sym)])
@@ -725,20 +689,16 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   assert(sfGlobal in sym.flags)
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
-  if (lfNoDecl in sym.loc.Flags) or
-      ContainsOrIncl(m.declaredThings, sym.id): 
+  if (lfNoDecl in sym.loc.Flags) or ContainsOrIncl(m.declaredThings, sym.id): 
     return 
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
     assert(sym.loc.r != nil)
-    if gCmd == cmdCompileToLLVM: 
-      incl(sym.loc.flags, lfIndirect)
-      appf(m.s[cfsVars], "$1 = linkonce global $2 zeroinitializer$n", 
-           [sym.loc.r, getTypeDesc(m, sym.loc.t)])
-    else: 
+    if sfThreadVar in sym.flags: 
+      declareThreadVar(m, sym, true)
+    else:
       app(m.s[cfsVars], "extern ")
-      if sfThreadVar in sym.flags: declareThreadVar(m, sym)
-      else: app(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
+      app(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
       if sfRegister in sym.flags: app(m.s[cfsVars], " register")
       if sfVolatile in sym.flags: app(m.s[cfsVars], " volatile")
       appf(m.s[cfsVars], " $1;$n", [sym.loc.r])
@@ -898,6 +858,7 @@ proc genInitCode(m: BModule) =
 proc genModule(m: BModule, cfilenoext: string): PRope = 
   result = getFileHeader(cfilenoext)
   generateHeaders(m)
+  generateThreadLocalStorage(m)
   for i in countup(low(TCFileSection), cfsProcs): app(result, m.s[i])
   
 proc rawNewModule(module: PSym, filename: string): BModule = 
@@ -990,6 +951,7 @@ proc writeModule(m: BModule) =
   if sfMainModule in m.module.flags: 
     # generate main file:
     app(m.s[cfsProcHeaders], mainModProcs)
+    GenerateThreadVarsSize(m)
   var code = genModule(m, cfilenoext)
   
   when hasTinyCBackend:

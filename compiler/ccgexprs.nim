@@ -1482,7 +1482,6 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
   var
     a, b, idx: TLoc
-    ts: string
   if nfAllConst in e.flags:
     putIntoDest(p, d, e.typ, genSetNode(p, e))
   else:
@@ -1504,7 +1503,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
-      ts = "NI" & $(getSize(e.typ) * 8)
+      var ts = "NI" & $(getSize(e.typ) * 8)
       appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
@@ -1645,10 +1644,17 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     of skEnumField:
       putIntoDest(p, d, e.typ, toRope(sym.position))
     of skVar:
-      if (sfGlobal in sym.flags): genVarPrototype(p.module, sym)
+      if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if ((sym.loc.r == nil) or (sym.loc.t == nil)):
         InternalError(e.info, "expr: var not init " & sym.name.s)
-      putLocIntoDest(p, d, sym.loc)
+      if sfThreadVar in sym.flags:
+        AccessThreadLocalVar(p, sym)
+        if emulatedThreadVars(): 
+          putIntoDest(p, d, sym.loc.t, con("NimTV->", sym.loc.r))
+        else:
+          putLocIntoDest(p, d, sym.loc)
+      else:
+        putLocIntoDest(p, d, sym.loc)
     of skForVar, skTemp:
       if ((sym.loc.r == nil) or (sym.loc.t == nil)):
         InternalError(e.info, "expr: temp not init " & sym.name.s)
@@ -1727,7 +1733,6 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     # XXX: tySequence!
     result = genConstSimpleList(p, n)
   else:
-    #  result := genLiteral(p, n)
     var d: TLoc
     initLocExpr(p, n, d)
     result = rdLoc(d)

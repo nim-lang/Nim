@@ -1,14 +1,17 @@
-* codegen for threadvars
+High priority (version 0.8.12)
+==============================
 * implement message passing built-ins
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
-* test the sort implementation again
+* iterators should not always be destructive!
+* real types for template results
+* built-in serialization
 
 
-High priority (version 0.9.0)
-=============================
+version 0.9.0
+=============
 
-- iterators should not always be destructive!
+- test the sort implementation again
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
@@ -17,6 +20,7 @@ High priority (version 0.9.0)
 - fix overloading resolution
 - wrong co-/contravariance
 - make ^ available as operator
+- implement closures for the C code generator
 
 Bugs
 ----
@@ -33,26 +37,13 @@ Bugs
   --> system.swap or genericAssign is broken! And indeed, if reference counts
       are not modified and the GC is triggered in between a swap, bad things
       may happen!
-  
-  proc sort*[A](t: var TCountTable[A]) =
-    for i in 0 .. high(t.data)-1:
-      var maxIdx = i
-      for j in i+1 .. high(t.data):
-        if t.data[j].val > t.data[maxIdx].val: maxIdx = j
-      swap(t.data[maxIdx], t.data[i])
 
 
-To implement
-------------
+version 0.9.XX
+==============
 
-* distinct types for array/seq indexes
-* implement closures for the C code generator
-* GC: marker procs for native Nimrod GC and Boehm GC
-* built-in serialization
-
-
-Low priority
-------------
+- distinct types for array/seq indexes
+- GC: marker procs for native Nimrod GC and Boehm GC
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency
 - resizing of strings/sequences could take into account the memory that
@@ -61,9 +52,8 @@ Low priority
 - find a way to reintroduce the cleanup() pass for C code generation: this
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
-- floating point checks for EcmaScript
+- EcmaScript needs a new and better code gen: simply adapt the C code gen to it
 - prefer proc in current module over other procs with same overloading result?
-- real types for template results
 - generalized case statement (requires better transf)
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
@@ -96,7 +86,7 @@ Library
 
 
 Version 2
----------
+=========
 
 - language change: inheritance should only work with reference types, so that
   the ``type`` field is not needed for objects! --> zero overhead aggregation
@@ -123,6 +113,8 @@ Version 2
     var x = myProc() # checks myProc() initializes every pointer explicitely
     
 - the two other parsers
+- rethink the syntax: distinction between expr and stmt is unfortunate; 
+  indentation handling is quite complex too
 
 
 Low priority
@@ -134,11 +126,4 @@ Low priority
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
-
-
-Other ideas
------------
-- startsWith `=^`
-- endsWith `=$`
-- ignore case `=?` --> `=$?` too?
 

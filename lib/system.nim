@@ -1479,8 +1479,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   strDesc.size = sizeof(string)
   strDesc.kind = tyString
   strDesc.flags = {ntfAcyclic}
-  initStackBottom()
-  initGC() # BUGFIX: need to be called here!
 
   include "system/ansi_c"
 
@@ -1692,6 +1690,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   when hasThreadSupport:
     include "system/threads"
+  else:
+    initStackBottom()
+    initGC()
+    
   include "system/excpt"
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
@@ -1755,8 +1757,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
     ## retrieves the current exception; if there is none, nil is returned.
-    ThreadGlobals()
-    result = ||currException
+    result = currException
 
   proc getCurrentExceptionMsg*(): string {.inline.} =
     ## retrieves the error message that was attached to the current
