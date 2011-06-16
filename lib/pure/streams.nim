@@ -104,28 +104,34 @@ type
     data*: string
     pos: int
     
-proc ssAtEnd(s: PStringStream): bool = 
+proc ssAtEnd(s: PStream): bool = 
+  var s = PStringStream(s)
   return s.pos >= s.data.len
     
-proc ssSetPosition(s: PStringStream, pos: int) = 
+proc ssSetPosition(s: PStream, pos: int) = 
+  var s = PStringStream(s)
   s.pos = min(pos, s.data.len-1)
 
-proc ssGetPosition(s: PStringStream): int =
+proc ssGetPosition(s: PStream): int =
+  var s = PStringStream(s)
   return s.pos
 
-proc ssReadData(s: PStringStream, buffer: pointer, bufLen: int): int =
+proc ssReadData(s: PStream, buffer: pointer, bufLen: int): int =
+  var s = PStringStream(s)
   result = min(bufLen, s.data.len - s.pos)
   if result > 0: 
     copyMem(buffer, addr(s.data[s.pos]), result)
     inc(s.pos, result)
 
-proc ssWriteData(s: PStringStream, buffer: pointer, bufLen: int) = 
+proc ssWriteData(s: PStream, buffer: pointer, bufLen: int) = 
+  var s = PStringStream(s)
   if bufLen > 0: 
     setLen(s.data, s.data.len + bufLen)
     copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
 
-proc ssClose(s: PStringStream) =
+proc ssClose(s: PStream) =
+  var s = PStringStream(s)
   s.data = nil
 
 proc newStringStream*(s: string = ""): PStringStream = 
@@ -145,16 +151,16 @@ type
   TFileStream* = object of TStream
     f: TFile
 
-proc fsClose(s: PFileStream) = close(s.f)
-proc fsAtEnd(s: PFileStream): bool = return EndOfFile(s.f)
-proc fsSetPosition(s: PFileStream, pos: int) = setFilePos(s.f, pos)
-proc fsGetPosition(s: PFileStream): int = return int(getFilePos(s.f))
+proc fsClose(s: PStream) = close(PFileStream(s).f)
+proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
+proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
+proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
 
-proc fsReadData(s: PFileStream, buffer: pointer, bufLen: int): int = 
-  result = readBuffer(s.f, buffer, bufLen)
+proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int = 
+  result = readBuffer(PFileStream(s).f, buffer, bufLen)
   
-proc fsWriteData(s: PFileStream, buffer: pointer, bufLen: int) = 
-  if writeBuffer(s.f, buffer, bufLen) != bufLen: 
+proc fsWriteData(s: PStream, buffer: pointer, bufLen: int) = 
+  if writeBuffer(PFileStream(s).f, buffer, bufLen) != bufLen: 
     raise newEIO("cannot write to stream")
 
 proc newFileStream*(f: TFile): PFileStream = 
