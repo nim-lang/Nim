@@ -189,6 +189,39 @@ proc constraintRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   result = isNone
   if f.kind == a.kind: result = isGeneric
 
+proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
+  proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
+    result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
+
+  case a.kind
+  of tyNil: result = isSubtype
+  of tyProc: 
+    if sonsLen(f) != sonsLen(a) or f.callconv != a.callconv: return
+    # Note: We have to do unification for the parameters before the
+    # return type!
+    result = isEqual      # start with maximum; also correct for no
+                          # params at all
+    for i in countup(1, sonsLen(f)-1):
+      var m = typeRel(mapping, f.sons[i], a.sons[i])
+      if m <= isSubtype or inconsistentVarTypes(f.sons[i], a.sons[i]):
+        return isNone
+      else: result = minRel(m, result)
+    if f.sons[0] != nil:
+      if a.sons[0] != nil:
+        var m = typeRel(mapping, f.sons[0], a.sons[0])
+        # Subtype is sufficient for return types!
+        if m < isSubtype or inconsistentVarTypes(f.sons[0], a.sons[0]):
+          result = isNone
+        elif m == isSubtype: result = isConvertible
+        else: result = minRel(m, result)
+      else:
+        result = isNone
+    elif a.sons[0] != nil:
+      result = isNone
+    if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+      result = isNone
+  else: nil
+
 proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   # is a subtype of f?
   result = isNone
@@ -316,39 +349,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     of tyNil: result = isSubtype
     else: nil
   of tyProc: 
-    case a.kind
-    of tyNil: result = isSubtype
-    of tyProc: 
-      if (sonsLen(f) == sonsLen(a)) and (f.callconv == a.callconv): 
-        # Note: We have to do unification for the parameters before the
-        # return type!
-        result = isEqual      # start with maximum; also correct for no
-                              # params at all
-        var m: TTypeRelation
-        for i in countup(1, sonsLen(f) - 1): 
-          m = typeRel(mapping, f.sons[i], a.sons[i])
-          if (m == isNone) and
-              (typeRel(mapping, a.sons[i], f.sons[i]) == isSubtype): 
-            # allow ``f.son`` as subtype of ``a.son``!
-            result = isConvertible
-          elif m < isSubtype: 
-            return isNone
-          else: 
-            result = minRel(m, result)
-        if f.sons[0] != nil: 
-          if a.sons[0] != nil: 
-            m = typeRel(mapping, f.sons[0], a.sons[0]) 
-            # Subtype is sufficient for return types!
-            if m < isSubtype: result = isNone
-            elif m == isSubtype: result = isConvertible
-            else: result = minRel(m, result)
-          else: 
-            result = isNone
-        elif a.sons[0] != nil: 
-          result = isNone
-        if (tfNoSideEffect in f.flags) and not (tfNoSideEffect in a.flags): 
-          result = isNone
-    else: nil
+    result = procTypeRel(mapping, f, a)
   of tyPointer: 
     case a.kind
     of tyPointer: result = isEqual

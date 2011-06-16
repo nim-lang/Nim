@@ -45,6 +45,7 @@ Changes affecting backwards compatibility
   dereference a pointer explicitely.
 - ``system.readFile`` does not return ``nil`` anymore but raises an ``EIO``
   exception instead.
+- Unsound co-/contravariance for procvars has been removed.
 
 
 Additions

@@ -232,10 +232,11 @@ when defined(Windows) and not defined(useNimRtl):
       handle: THandle
       atTheEnd: bool
 
-  proc hsClose(s: PFileHandleStream) = nil # nothing to do here
-  proc hsAtEnd(s: PFileHandleStream): bool = return s.atTheEnd
+  proc hsClose(s: PStream) = nil # nothing to do here
+  proc hsAtEnd(s: PStream): bool = return PFileHandleStream(s).atTheEnd
 
-  proc hsReadData(s: PFileHandleStream, buffer: pointer, bufLen: int): int =
+  proc hsReadData(s: PStream, buffer: pointer, bufLen: int): int =
+    var s = PFileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
     var a = winlean.ReadFile(s.handle, buffer, bufLen, br, nil)
@@ -246,7 +247,8 @@ when defined(Windows) and not defined(useNimRtl):
     s.atTheEnd = br < bufLen
     result = br
 
-  proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) =
+  proc hsWriteData(s: PStream, buffer: pointer, bufLen: int) =
+    var s = PFileHandleStream(s)
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
     if a == 0: OSError()
@@ -507,7 +509,7 @@ elif not defined(useNimRtl):
       quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      echo(command & " " & join(args, " "))
+      echo(command, " ", join(args, " "))
     result.id = pid
 
     result.inputHandle = p_stdin[writeIdx]

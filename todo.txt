@@ -5,7 +5,6 @@ High priority (version 0.8.12)
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * built-in serialization
 - bug: invoking a generic iterator twice triggers a code gen bug (titer2)
-- bug: forward proc for generic seems broken
 - sorting with leads to a strange memory corruption!
   --> system.swap or genericAssign is broken! And indeed, if reference counts
       are not modified and the GC is triggered in between a swap, bad things
@@ -15,20 +14,18 @@ High priority (version 0.8.12)
 version 0.9.0
 =============
 
+- bug: forward proc for generic seems broken
 - test the sort implementation again
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
   modules; run the GC tests
-- fix the streams implementation so that it uses methods
 - fix overloading resolution
-- wrong co-/contravariance
 - make ^ available as operator
 - implement closures; implement proper coroutines
 
 Bugs
 ----
-- proc (x: int) is passable to proc (x: var int)  !?
 - the parser allows empty object case branches
 - bug: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
