@@ -79,6 +79,10 @@ String handling
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
+  
+* `encodings <encodings.html>`_
+  Converts between different character encodings. On UNIX, this uses 
+  the ``iconv`` library, on Windows the Windows API.
 
 * `pegs <pegs.html>`_
   This module contains procedures and operators for handling PEGs.

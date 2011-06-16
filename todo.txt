@@ -4,10 +4,9 @@ High priority (version 0.8.12)
 
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * built-in serialization
-- bug: invoking a generic iterator twice triggers a code gen bug
+- bug: invoking a generic iterator twice triggers a code gen bug (titer2)
 - pegs: the anchor '^' does not work because many procs use a linear search
   and matchLen()
-- conversion between character sets
 
 
 version 0.9.0
@@ -43,6 +42,7 @@ version 0.9.XX
 
 - distinct types for array/seq indexes
 - GC: marker procs for native Nimrod GC and Boehm GC
+- code concerning 'assert' is wasteful and unnecessarily complex
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency
 - resizing of strings/sequences could take into account the memory that
@@ -52,7 +52,6 @@ version 0.9.XX
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
 - EcmaScript needs a new and better code gen: simply adapt the C code gen to it
-- prefer proc in current module over other procs with same overloading result?
 - generalized case statement (requires better transf)
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
