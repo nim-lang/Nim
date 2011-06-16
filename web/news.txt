@@ -54,6 +54,7 @@ Additions
 - Added ``intsets`` module which contains a specialized int set data type.
 - Added ``scgi`` module.
 - Added ``smtp`` module.
+- Added ``encodings`` module.
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
 - Added ``parseutils.parseUntil`` and ``parseutils.parseWhile``.
