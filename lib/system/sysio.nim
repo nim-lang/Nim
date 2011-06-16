@@ -78,20 +78,26 @@ proc write(f: TFile, a: openArray[string]) =
 
 #{.error: "for debugging.".}
 
+proc raiseEIO(msg: string) {.noinline, noreturn.} =
+  raise newException(EIO, msg)
+
 proc readFile(filename: string): string =
-  var f: TFile
+  var f = open(filename)
   try:
-    if open(f, filename):
-      var len = getFileSize(f)
-      if len < high(int):
-        result = newString(int(len))
-        if readBuffer(f, addr(result[0]), int(len)) != len:
-          result = nil
-      close(f)
+    var len = getFileSize(f)
+    if len < high(int):
+      result = newString(int(len))
+      if readBuffer(f, addr(result[0]), int(len)) != len:
+        raiseEIO("error while reading from file")
     else:
-      result = nil
+      raiseEIO("file too big to fit in memory")
   except EIO:
-    result = nil
+    close(f)
+
+proc writeFile(filename, content: string) =
+  var f = open(filename, fmWrite)
+  f.write(content)
+  close(f)
 
 proc EndOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
@@ -173,15 +179,15 @@ proc writeBuffer(f: TFile, buffer: pointer, len: int): int =
 
 proc write(f: TFile, s: string) =
   if writeBuffer(f, cstring(s), s.len) != s.len:
-    raise newException(EIO, "cannot write string to file")
+    raiseEIO("cannot write string to file")
 
 proc setFilePos(f: TFile, pos: int64) =
   if fseek(f, clong(pos), 0) != 0:
-    raise newException(EIO, "cannot set file position")
+    raiseEIO("cannot set file position")
 
 proc getFilePos(f: TFile): int64 =
   result = ftell(f)
-  if result < 0: raise newException(EIO, "cannot retrieve file position")
+  if result < 0: raiseEIO("cannot retrieve file position")
 
 proc getFileSize(f: TFile): int64 =
   var oldPos = getFilePos(f)

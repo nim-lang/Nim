@@ -1582,10 +1582,15 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## Flushes `f`'s buffer.
 
   proc readFile*(filename: string): string
-    ## Opens a file name `filename` for reading. Then reads the
+    ## Opens a file named `filename` for reading. Then reads the
     ## file's content completely into a string and
-    ## closes the file afterwards. Returns the string. Returns nil if there was
-    ## an error. Does not throw an IO exception.
+    ## closes the file afterwards. Returns the string. 
+    ## Raises an IO exception in case of an error.
+
+  proc writeFile*(filename, content: string)
+    ## Opens a file named `filename` for writing. Then writes the
+    ## `content` completely to the file and closes the file afterwards.
+    ## Raises an IO exception in case of an error.
 
   proc write*(f: TFile, r: float)
   proc write*(f: TFile, i: int)

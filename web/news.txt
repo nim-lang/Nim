@@ -43,7 +43,9 @@ Changes affecting backwards compatibility
   ``^p`` in later versions or be dropped entirely since it is rarely used. 
   Use the new notation ``p[]`` in the rare cases where you need to 
   dereference a pointer explicitely.
-  
+- ``system.readFile`` does not return ``nil`` anymore but raises an ``EIO``
+  exception instead.
+
 
 Additions
 ---------
@@ -91,6 +93,7 @@ Additions
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
 - Added ``system.raiseHook``.
+- Added ``system.writeFile ``.
 - ``system.echo`` is guaranteed to be thread-safe.
 
 
