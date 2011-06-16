@@ -743,6 +743,10 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     else: result = -1
   of pkRule, pkList: assert false
 
+template fillMatches(s, caps, c: expr) =
+  for k in 0..c.ml-1:
+    caps[k] = substr(s, c.matches[k][0], c.matches[k][1])
+
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
@@ -752,9 +756,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   var c: TCaptures
   c.origStart = start
   result = rawMatch(s, pattern, start, c) == len(s) - start
-  if result:
-    for i in 0..c.ml-1:
-      matches[i] = substr(s, c.matches[i][0], c.matches[i][1])
+  if result: fillMatches(s, matches, c)
 
 proc match*(s: string, pattern: TPeg, 
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
@@ -772,9 +774,7 @@ proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
   var c: TCaptures
   c.origStart = start
   result = rawMatch(s, pattern, start, c)
-  if result >= 0:
-    for i in 0..c.ml-1:
-      matches[i] = substr(s, c.matches[i][0], c.matches[i][1])
+  if result >= 0: fillMatches(s, matches, c)
 
 proc matchLen*(s: string, pattern: TPeg, 
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
@@ -791,8 +791,13 @@ proc find*(s: string, pattern: TPeg, matches: var openarray[string],
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
+  var c: TCaptures
+  c.origStart = start
   for i in start .. s.len-1:
-    if matchLen(s, pattern, matches, i) >= 0: return i
+    c.ml = 0
+    if rawMatch(s, pattern, i, c) >= 0:
+      fillMatches(s, matches, c)
+      return i
   return -1
   # could also use the pattern here: (!P .)* P
   
@@ -803,29 +808,36 @@ proc findBounds*(s: string, pattern: TPeg, matches: var openarray[string],
   ## and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and (-1,0) is returned.
+  var c: TCaptures
+  c.origStart = start
   for i in start .. s.len-1:
-    var L = matchLen(s, pattern, matches, i)
-    if L >= 0: return (i, i+L-1)
+    c.ml = 0
+    var L = rawMatch(s, pattern, i, c)
+    if L >= 0:
+      fillMatches(s, matches, c)
+      return (i, i+L-1)
   return (-1, 0)
   
 proc find*(s: string, pattern: TPeg, 
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
+  var c: TCaptures
+  c.origStart = start
   for i in start .. s.len-1:
-    if matchLen(s, pattern, i) >= 0: return i
+    if rawMatch(s, pattern, i, c) >= 0: return i
   return -1
   
 iterator findAll*(s: string, pattern: TPeg, start = 0): string = 
   ## yields all matching captures of pattern in `s`.
-  var matches: array[0..MaxSubpatterns-1, string]
+  var c: TCaptures
+  c.origStart = start
   var i = start
   while i < s.len:
-    var L = matchLen(s, pattern, matches, i)
+    c.ml = 0
+    var L = rawMatch(s, pattern, i, c)
     if L < 0: break
-    for k in 0..maxSubPatterns-1: 
-      if isNil(matches[k]): break
-      yield matches[k]
+    for k in 0..c.ml-1: yield substr(s, c.matches[k][0], c.matches[k][1])
     inc(i, L)
     
 proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
@@ -834,7 +846,7 @@ proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
   
-template `=~`*(s: string, pattern: TPeg): expr =
+template `=~`*(s: string, pattern: TPeg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
   ## 
@@ -876,8 +888,10 @@ proc startsWith*(s: string, prefix: TPeg, start = 0): bool {.
 proc endsWith*(s: string, suffix: TPeg, start = 0): bool {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `prefix`
+  var c: TCaptures
+  c.origStart = start
   for i in start .. s.len-1:
-    if matchLen(s, suffix, i) == s.len - i: return true
+    if rawMatch(s, suffix, i, c) == s.len - i: return true
 
 proc replacef*(s: string, sub: TPeg, by: string): string {.
   nosideEffect, rtl, extern: "npegs$1".} =
@@ -895,12 +909,15 @@ proc replacef*(s: string, sub: TPeg, by: string): string {.
   result = ""
   var i = 0
   var caps: array[0..maxSubpatterns-1, string]
+  var c: TCaptures
   while i < s.len:
-    var x = matchLen(s, sub, caps, i)
+    c.ml = 0
+    var x = rawMatch(s, sub, i, c)
     if x <= 0:
       add(result, s[i])
       inc(i)
     else:
+      fillMatches(s, caps, c)
       addf(result, by, caps)
       inc(i, x)
   add(result, substr(s, i))
@@ -911,14 +928,14 @@ proc replace*(s: string, sub: TPeg, by = ""): string {.
   ## in `by`.
   result = ""
   var i = 0
-  var caps: array[0..maxSubpatterns-1, string]
+  var c: TCaptures
   while i < s.len:
-    var x = matchLen(s, sub, caps, i)
+    var x = rawMatch(s, sub, i, c)
     if x <= 0:
       add(result, s[i])
       inc(i)
     else:
-      addf(result, by, caps)
+      add(result, by)
       inc(i, x)
   add(result, substr(s, i))
   
@@ -929,12 +946,15 @@ proc parallelReplace*(s: string, subs: openArray[
   ## applied in parallel.
   result = ""
   var i = 0
+  var c: TCaptures
   var caps: array[0..maxSubpatterns-1, string]
   while i < s.len:
     block searchSubs:
       for j in 0..high(subs):
-        var x = matchLen(s, subs[j][0], caps, i)
+        c.ml = 0
+        var x = rawMatch(s, subs[j][0], i, c)
         if x > 0:
+          fillMatches(s, caps, c)
           addf(result, subs[j][1], caps)
           inc(i, x)
           break searchSubs
@@ -970,16 +990,19 @@ iterator split*(s: string, sep: TPeg): string =
   ##   "an"
   ##   "example"
   ##
+  var c: TCaptures
   var
     first = 0
     last = 0
   while last < len(s):
-    var x = matchLen(s, sep, last)
+    c.ml = 0
+    var x = rawMatch(s, sep, last, c)
     if x > 0: inc(last, x)
     first = last
     while last < len(s):
       inc(last)
-      x = matchLen(s, sep, last)
+      c.ml = 0
+      x = rawMatch(s, sep, last, c)
       if x > 0: break
     if first < last:
       yield substr(s, first, last-1)
@@ -1706,6 +1729,8 @@ when isMainModule:
   assert match("cccccdddddd", g2)
   assert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
+  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+         "$1<-$2$2; $1<-$2$2")
   assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
   if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
@@ -1722,6 +1747,9 @@ when isMainModule:
 
   for x in findAll("abcdef", peg"{.}", 3):
     echo x
+
+  for x in findAll("abcdef", peg"^{.}", 3):
+    assert x == "d"
     
   if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
     assert matches[0] == "f"
