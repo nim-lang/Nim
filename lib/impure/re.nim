@@ -342,18 +342,10 @@ proc parallelReplace*(s: string, subs: openArray[
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: TRegEx, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Calls ``quit`` if an
+  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile)
-  if not isNil(x):
-    var f: TFile
-    if open(f, outfile, fmWrite):
-      write(f, x.parallelReplace(subs))
-      close(f)
-    else:
-      quit("cannot open for writing: " & outfile)
-  else:
-    quit("cannot open for reading: " & infile)
+  writeFile(outfile, x.parallelReplace(subs))
   
 iterator split*(s: string, sep: TRegEx): string =
   ## Splits the string `s` into substrings.

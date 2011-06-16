@@ -53,7 +53,7 @@ proc extractSpec(filename: string): string =
   var a = x.find(tripleQuote)
   var b = x.find(tripleQuote, a+3)
   if a >= 0 and b > a: 
-    result = x.copy(a+3, b-1).replace("'''", tripleQuote)
+    result = x.substr(a+3, b-1).replace("'''", tripleQuote)
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
@@ -181,9 +181,7 @@ proc listResults(reject, compile, run: TResults) =
   s.add($run)
   s.add(TableHeader4 & run.data & TableFooter)
   s.add("</html>")
-  var outp = open(resultsFile, fmWrite)
-  write(outp, s)
-  close(outp)
+  writeFile(resultsFile, s)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) = 
   if strip(expected.msg) notin strip(given.msg):
@@ -263,9 +261,6 @@ proc run(r: var TResults, dir, options: string) =
 proc compileExample(r: var TResults, pattern, options: string) = 
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
 
-proc testLib(r: var TResults, options: string) =
-  nil
-
 proc toJson(res: TResults): PJsonNode =
   result = newJObject()
   result["total"] = newJInt(res.total)
@@ -278,10 +273,8 @@ proc outputJSON(reject, compile, run: TResults) =
   doc["compile"] = toJson(compile)
   doc["run"] = toJson(run)
   var s = pretty(doc)
-  var outp = open(jsonFile, fmWrite)
-  write(outp, s)
-  close(outp)
-
+  writeFile(jsonFile, s)
+  
 var options = ""
 var rejectRes = initResults()
 var compileRes = initResults()
@@ -293,6 +286,7 @@ for i in 1.. paramCount():
 
 reject(rejectRes, "tests/reject", options)
 compile(compileRes, "tests/accept/compile/t*.nim", options)
+compileExample(compileRes, "lib/pure/*.nim", options)
 compileExample(compileRes, "examples/*.nim", options)
 compileExample(compileRes, "examples/gtk/*.nim", options)
 run(runRes, "tests/accept/run", options)
