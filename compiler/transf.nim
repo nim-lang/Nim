@@ -514,10 +514,10 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   popTransCon(c)
 
 proc getMagicOp(call: PNode): TMagic = 
-  if (call.sons[0].kind == nkSym) and
-      (call.sons[0].sym.kind in {skProc, skMethod, skConverter}): 
+  if call.sons[0].kind == nkSym and
+      call.sons[0].sym.kind in {skProc, skMethod, skConverter}: 
     result = call.sons[0].sym.magic
-  else: 
+  else:
     result = mNone
   
 proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym, 
@@ -528,10 +528,10 @@ proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym,
     var s = n.sym
     var found = false
     case s.kind
-    of skVar: found = not (sfGlobal in s.flags)
+    of skVar: found = sfGlobal notin s.flags
     of skTemp, skForVar, skParam: found = true
     else: nil
-    if found and (owner.id != s.owner.id) and not ContainsOrIncl(marked, s.id): 
+    if found and owner.id != s.owner.id and not ContainsOrIncl(marked, s.id): 
       incl(s.flags, sfInClosure)
       addSon(container, copyNode(n)) # DON'T make a copy of the symbol!
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
@@ -559,7 +559,7 @@ proc indirectAccess(a, b: PSym): PNode =
 proc transformLambda(c: PTransf, n: PNode): PNode = 
   var marked = initIntSet()
   result = n
-  if (n.sons[namePos].kind != nkSym): InternalError(n.info, "transformLambda")
+  if n.sons[namePos].kind != nkSym: InternalError(n.info, "transformLambda")
   var s = n.sons[namePos].sym
   var closure = newNodeI(nkRecList, n.sons[codePos].info)
   gatherVars(c, n.sons[codePos], marked, s, closure) 

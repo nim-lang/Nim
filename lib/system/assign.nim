@@ -7,6 +7,43 @@
 #    distribution, for details about the copyright.
 #
 
+proc checkTypeInfo*(dest: Pointer, src: int, mt: pointer)
+proc checkTypeInfo(dest: Pointer, src: int, n: ptr TNimNode) =
+  var
+    d = cast[TAddress](dest)
+    s = cast[TAddress](src)
+  case n.kind
+  of nkSlot: checkTypeInfo(cast[pointer](d +% n.offset), src, n.typ)
+  of nkList:
+    for i in 0..n.len-1: checkTypeInfo(dest, src, n.sons[i])
+  of nkCase:
+    var m = selectBranch(dest, n)
+    if m != nil: checkTypeInfo(dest, src, m)
+  else:
+    c_fprintf(cstdout, "ugh memory corruption! in check type info %ld\n", src)
+    quit 1
+  #of nkNone: assert(false)
+
+proc checkTypeInfo(dest: Pointer, src: int, mt: pointer) =
+  var mt = cast[PNimType](mt)
+  var
+    d = cast[TAddress](dest)
+    s = cast[TAddress](src)
+  assert(mt != nil)
+  case mt.Kind
+  of tyString: nil
+  of tySequence: nil
+  of tyObject, tyTuple, tyPureObject:
+    checkTypeInfo(dest, src, mt.node)
+  of tyArray, tyArrayConstr:
+    for i in 0..(mt.size div mt.base.size)-1:
+      checkTypeInfo(cast[pointer](d +% i*% mt.base.size),
+                    src, mt.base)
+  of tyRef: nil
+  else:
+    nil # copy raw bits
+
+
 proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool)
 proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
   var

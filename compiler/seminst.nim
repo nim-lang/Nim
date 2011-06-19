@@ -36,9 +36,8 @@ proc GenericCacheGet(c: PContext, genericSym, instSym: PSym): PSym =
     var a = c.generics.sons[i].sons[0].sym
     if genericSym.id == a.id: 
       var b = c.generics.sons[i].sons[1].sym
-      if equalParams(b.typ.n, instSym.typ.n) == paramsEqual: 
-        #if gVerbosity > 0 then 
-        #  MessageOut('found in cache: ' + getProcHeader(instSym));
+      if equalParams(b.typ.n, instSym.typ.n) == paramsEqual:
+        #echo "found in cache: ", getProcHeader(instSym)
         return b
 
 proc GenericCacheAdd(c: PContext, genericSym, instSym: PSym) = 
@@ -66,20 +65,17 @@ proc removeDefaultParamValues(n: PNode) =
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
                       info: TLineInfo): PSym = 
   # generates an instantiated proc
-  var 
-    oldPrc, oldMod: PSym
-    n: PNode
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)
   # NOTE: for access of private fields within generics from a different module
   # and other identifiers we fake the current module temporarily!
   # XXX bad hack!
-  oldMod = c.module
+  var oldMod = c.module
   c.module = getModule(fn)
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
   result.owner = getCurrOwner().owner
-  n = copyTree(fn.ast)
+  var n = copyTree(fn.ast)
   result.ast = n
   pushOwner(result)
   openScope(c.tab)
@@ -98,7 +94,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     addSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
-  oldPrc = GenericCacheGet(c, fn, result)
+  var oldPrc = GenericCacheGet(c, fn, result)
   if oldPrc == nil: 
     # add it here, so that recursive generic procs are possible:
     GenericCacheAdd(c, fn, result)
@@ -110,6 +106,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
         addResultNode(c, n)
       n.sons[codePos] = semStmtScope(c, n.sons[codePos])
       popProcCon(c)
+      #echo "code instantiated ", result.name.s
   else:
     result = oldPrc
   popInfoContext()
