@@ -105,6 +105,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
         addResult(c, result.typ.sons[0], n.info)
         addResultNode(c, n)
       n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+      if fn.kind == skIterator:
+        # XXX Bad hack for tests/titer2:
+        n.sons[codePos] = transform(c.module, n.sons[codePos])
       popProcCon(c)
       #echo "code instantiated ", result.name.s
   else:

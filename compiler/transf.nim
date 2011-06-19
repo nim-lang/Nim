@@ -472,6 +472,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
   if n.kind != nkForStmt: InternalError(n.info, "transformFor")
+  #echo "transforming: ", renderTree(n)
   result = newTransNode(nkStmtList, n.info, 0)
   var length = sonsLen(n)
   var loopBody = transformLoopBody(c, n.sons[length-1])
@@ -480,14 +481,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     addVar(v, copyTree(n.sons[i])) # declare new vars
   add(result, v.ptransNode)
   var call = n.sons[length - 2]
-  if (call.kind != nkCall) or (call.sons[0].kind != nkSym): 
+  if call.kind != nkCall or call.sons[0].kind != nkSym:
     InternalError(call.info, "transformFor")
   
   var newC = newTransCon(call.sons[0].sym)
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  if (newC.owner.kind != skIterator): 
-    InternalError(call.info, "transformFor") 
+  if newC.owner.kind != skIterator: InternalError(call.info, "transformFor") 
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
@@ -512,6 +512,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   dec(c.inlining)
   popInfoContext()
   popTransCon(c)
+  #echo "transformed: ", renderTree(n)
+  
 
 proc getMagicOp(call: PNode): TMagic = 
   if call.sons[0].kind == nkSym and
@@ -660,7 +662,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, transform(c, a))
     if len(result) == 2: result = result[1]
-  elif (n.sons[0].kind == nkSym) and (n.sons[0].sym.kind == skMethod): 
+  elif n.sons[0].kind == nkSym and n.sons[0].sym.kind == skMethod: 
     # use the dispatcher for the call:
     result = methodCall(transformSons(c, n).pnode).ptransNode
   else:

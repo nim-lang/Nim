@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math, 
   magicsys, parser, nversion, nimsets, semdata, evals, semfold, importer, 
   procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest,
-  semthreads, intsets
+  semthreads, intsets, transf
 
 proc semPass*(): TPass
 # implementation
@@ -138,8 +138,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
     var it = c.generics.sons[i].sons[1]
     if it.kind != nkSym: InternalError("addCodeForGenerics")
     var prc = it.sym
-    if (prc.kind in {skProc, skMethod, skConverter}) and (prc.magic == mNone): 
-      if (prc.ast == nil) or (prc.ast.sons[codePos] == nil): 
+    if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone: 
+      if prc.ast == nil or prc.ast.sons[codePos] == nil: 
         InternalError(prc.info, "no code for " & prc.name.s)
       addSon(n, prc.ast)
   c.lastGenericIdx = sonsLen(c.generics)
