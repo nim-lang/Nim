@@ -1,10 +1,10 @@
 High priority (version 0.8.12)
 ==============================
-- bug: invoking a generic iterator twice triggers a code gen bug (titer2)
+* implement write access to ``s[i]`` for macros
 * implement message passing built-ins
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * built-in serialization
-
+* test encodings.nim on windows
 
 
 version 0.9.0
@@ -43,7 +43,6 @@ version 0.9.XX
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
 - EcmaScript needs a new and better code gen: simply adapt the C code gen to it
-- generalized case statement (requires better transf)
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
 - 'nimrod def': does not always work?
@@ -99,6 +98,7 @@ Version 2
     var x = myProc() # checks myProc() initializes every pointer explicitely
     
 - the two other parsers
+- generalized case statement (requires better transf)
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is

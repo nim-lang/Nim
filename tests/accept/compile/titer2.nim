@@ -19,15 +19,15 @@ iterator mycountup(a, b: int): int =
     yield res
     inc(res)
 
-iterator pairs*[A, B](t: TTable[A, B]): tuple[key: A, val: B] =
-  ## iterates over any (key, value) pair in the table `t`.
-  var h = 0
-  while h <= high(t.data):
-    var k = t.data[h].key
-    if t.data[h].slot == seFilled: yield (k, t.data[h].val)
-    inc(h)
-  
-  when false:
+when true:
+  iterator pairs*[A, B](t: TTable[A, B]): tuple[key: A, val: B] =
+    ## iterates over any (key, value) pair in the table `t`.
+    for h in mycountup(0, high(t.data)):
+      var k = t.data[h].key
+      if t.data[h].slot == seFilled: yield (k, t.data[h].val)
+else:
+  iterator pairs*(t: TTable[int, string]): tuple[key: int, val: string] =
+    ## iterates over any (key, value) pair in the table `t`.
     for h in mycountup(0, high(t.data)):
       var k = t.data[h].key
       if t.data[h].slot == seFilled: yield (k, t.data[h].val)
