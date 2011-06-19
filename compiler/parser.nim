@@ -1177,7 +1177,11 @@ proc parseObjectCase(p: var TParser): PNode =
       eat(p, tkColon)
     else: break 
     skipComment(p, b)
-    addSon(b, parseObjectPart(p))
+    var fields = parseObjectPart(p)
+    if fields.kind == nkEmpty:
+      parMessage(p, errIdentifierExpected, p.tok)
+      fields = newNodeP(nkNilLit, p) # don't break further semantic checking
+    addSon(b, fields)
     addSon(result, b)
     if b.kind == nkElse: break 
   
