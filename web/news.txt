@@ -96,6 +96,8 @@ Additions
 - Added ``system.raiseHook``.
 - Added ``system.writeFile ``.
 - ``system.echo`` is guaranteed to be thread-safe.
+- Case statement branches support constant sets for programming convenience.
+
 
 
 2010-10-20 Version 0.8.10 released

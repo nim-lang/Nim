@@ -275,29 +275,67 @@ proc checkForOverlap(c: PContext, t, ex: PNode, branchIndex: int) =
       if overlap(t.sons[i].sons[j], ex): 
         LocalError(ex.info, errDuplicateCaseLabel)
   
-proc semBranchExpr(c: PContext, t, e: PNode): PNode = 
+proc semBranchExpr(c: PContext, t, e: PNode): PNode =
   result = semConstExpr(c, e)
   checkMinSonsLen(t, 1)
-  if cmpTypes(t.sons[0].typ, result.typ) <= isConvertible: 
-    typeMismatch(result, t.sons[0].typ, result.typ)
+  result = fitNode(c, t.sons[0].typ, result)
+  #if cmpTypes(t.sons[0].typ, result.typ) <= isConvertible: 
+  #  typeMismatch(result, t.sons[0].typ, result.typ)
 
-proc SemCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
+proc SemCaseBranchRange(c: PContext, t, b: PNode, 
+                        covered: var biggestInt): PNode = 
+  checkSonsLen(b, 3)
+  result = newNodeI(nkRange, b.info)
+  result.add(semBranchExpr(c, t, b.sons[1]))
+  result.add(semBranchExpr(c, t, b.sons[2]))
+  if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
+  covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+
+proc semCaseBranchSetElem(c: PContext, t, b: PNode, 
+                          covered: var biggestInt): PNode = 
+  if isRange(b):
+    checkSonsLen(b, 3)
+    result = newNodeI(nkRange, b.info)
+    result.add(semBranchExpr(c, t, b.sons[1]))
+    result.add(semBranchExpr(c, t, b.sons[2]))
+    if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
+    covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+  elif b.kind == nkRange:
+    checkSonsLen(b, 2)
+    result = newNodeI(nkRange, b.info)
+    result.add(semBranchExpr(c, t, b.sons[0]))
+    result.add(semBranchExpr(c, t, b.sons[1]))
+    if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
+    covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+  else:
+    result = fitNode(c, t.sons[0].typ, b)
+    inc(covered)
+
+proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
                    covered: var biggestInt) = 
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
-    if isRange(b): 
-      checkSonsLen(b, 3)
-      var r = newNodeI(nkRange, b.info)
-      r.add(semBranchExpr(c, t, b.sons[1]))
-      r.add(semBranchExpr(c, t, b.sons[2]))
-      if emptyRange(r[0], r[1]): GlobalError(b.info, errRangeIsEmpty)
-      covered = covered + getOrdValue(r[1]) - getOrdValue(r[0]) + 1
-      branch.sons[i] = r
+    if isRange(b):
+      branch.sons[i] = semCaseBranchRange(c, t, b, covered)
     else:
-      branch.sons[i] = semBranchExpr(c, t, b)
-      inc(covered)
+      var r = semConstExpr(c, b)
+      # for ``{}`` we want to trigger the type mismatch in ``fitNode``:
+      if r.kind != nkCurly or len(r) == 0:
+        checkMinSonsLen(t, 1)
+        branch.sons[i] = fitNode(c, t.sons[0].typ, r)
+        inc(covered)
+      else:
+        # constant sets have special rules
+        # first element is special and will overwrite: branch.sons[i]:
+        branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
+        # other elements have to be added to ``branch``
+        for j in 1 .. <r.len:
+          branch.add(semCaseBranchSetElem(c, t, r[j], covered))
+          # caution! last son of branch must be the actions to execute:
+          var L = branch.len
+          swap(branch.sons[L-2], branch.sons[L-1])
     checkForOverlap(c, t, branch.sons[i], branchIndex)
-
+     
 proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
                       father: PNode, rectype: PSym)
 proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
