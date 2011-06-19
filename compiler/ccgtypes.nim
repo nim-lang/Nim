@@ -641,20 +641,16 @@ proc genObjectInfo(m: BModule, typ: PType, name: PRope) =
   genObjectFields(m, typ, typ.n, tmp)
   appf(m.s[cfsTypeInit3], "$1->node = &$2;$n", [name, tmp])
 
-proc genTupleInfo(m: BModule, typ: PType, name: PRope) = 
-  var 
-    tmp, expr, tmp2: PRope
-    length: int
-    a: PType
+proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
   genTypeInfoAuxBase(m, typ, name, toRope("0"))
-  expr = getNimNode(m)
-  length = sonsLen(typ)
+  var expr = getNimNode(m)
+  var length = sonsLen(typ)
   if length > 0: 
-    tmp = getTempName()
+    var tmp = getTempName()
     appf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, toRope(length)])
     for i in countup(0, length - 1): 
-      a = typ.sons[i]
-      tmp2 = getNimNode(m)
+      var a = typ.sons[i]
+      var tmp2 = getNimNode(m)
       appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, toRope(i), tmp2])
       appf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
           "$1.offset = offsetof($2, Field$3);$n" & "$1.typ = $4;$n" &
@@ -665,7 +661,7 @@ proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
   else: 
     appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2;$n", 
          [expr, toRope(length)])
-  appf(m.s[cfsTypeInit3], "$1->node = &$2;$n", [name, tmp])
+  appf(m.s[cfsTypeInit3], "$1->node = &$2;$n", [name, expr])
 
 proc genEnumInfo(m: BModule, typ: PType, name: PRope) =
   # Type information for enumerations is quite heavy, so we do some

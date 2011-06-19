@@ -32,7 +32,7 @@ proc containsGenericType*(t: PType): bool =
 proc searchInstTypes(tab: TIdTable, key: PType): PType = 
   # returns nil if we need to declare this type
   result = PType(IdTableGet(tab, key))
-  if (result == nil) and (tab.counter > 0): 
+  if result == nil and tab.counter > 0: 
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
     for h in countup(0, high(tab.data)): 
@@ -127,13 +127,13 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericBody: 
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
     result = ReplaceTypeVarsT(cl, lastSon(t))
-  else: 
-    if containsGenericType(t): 
+  else:
+    if containsGenericType(t):
       result = copyType(t, t.owner, false)
-      for i in countup(0, sonsLen(result) - 1): 
+      for i in countup(0, sonsLen(result) - 1):
         result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
       result.n = ReplaceTypeVarsN(cl, result.n)
-      if result.Kind in GenericTypes: 
+      if result.Kind in GenericTypes:
         LocalError(cl.info, errCannotInstantiateX, TypeToString(t, preferName))
         #writeln(output, ropeToStr(Typetoyaml(result)))
         #checkConstructedType(cl.info, result)

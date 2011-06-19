@@ -13,13 +13,24 @@ type
     data: TKeyValuePairSeq[A, B]
     counter: int
 
-proc len*[A, B](t: TTable[A, B]): int = 
-  result = t.counter
+iterator mycountup(a, b: int): int =
+  var res = a
+  while res <= b:
+    yield res
+    inc(res)
 
 iterator pairs*[A, B](t: TTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
-  for h in 0..high(t.data):
-    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+  var h = 0
+  while h <= high(t.data):
+    var k = t.data[h].key
+    if t.data[h].slot == seFilled: yield (k, t.data[h].val)
+    inc(h)
+  
+  when false:
+    for h in mycountup(0, high(t.data)):
+      var k = t.data[h].key
+      if t.data[h].slot == seFilled: yield (k, t.data[h].val)
 
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
   ## creates a new hash table that is empty. `initialSize` needs to be

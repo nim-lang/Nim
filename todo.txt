@@ -1,14 +1,14 @@
 High priority (version 0.8.12)
 ==============================
-* implement message passing built-ins
-
-* add --deadlock_prevention:on|off switch? timeout for locks?
-* built-in serialization
-- bug: invoking a generic iterator twice triggers a code gen bug (titer2)
-- sorting with leads to a strange memory corruption!
+- sorting with leads to a strange memory corruption: tsimplesort
   --> system.swap or genericAssign is broken! And indeed, if reference counts
       are not modified and the GC is triggered in between a swap, bad things
       may happen!
+- bug: invoking a generic iterator twice triggers a code gen bug (titer2)
+* implement message passing built-ins
+* add --deadlock_prevention:on|off switch? timeout for locks?
+* built-in serialization
+
 
 
 version 0.9.0
