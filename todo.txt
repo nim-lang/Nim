@@ -1,9 +1,5 @@
 High priority (version 0.8.12)
 ==============================
-- sorting with leads to a strange memory corruption: tsimplesort
-  --> system.swap or genericAssign is broken! And indeed, if reference counts
-      are not modified and the GC is triggered in between a swap, bad things
-      may happen!
 - bug: invoking a generic iterator twice triggers a code gen bug (titer2)
 * implement message passing built-ins
 * add --deadlock_prevention:on|off switch? timeout for locks?
@@ -14,6 +10,7 @@ High priority (version 0.8.12)
 version 0.9.0
 =============
 
+- bug: tfFinal not passed to generic
 - bug: forward proc for generic seems broken
 - test the sort implementation again
 - warning for implicit openArray -> varargs convention
