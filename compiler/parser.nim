@@ -69,7 +69,7 @@ proc parMessage(p: TParser, msg: TMsgKind, arg: string = "") =
   lexMessage(p.lex, msg, arg)
 
 proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) = 
-  lexMessage(p.lex, msg, tokToStr(tok))
+  lexMessage(p.lex, msg, prettyTok(tok))
 
 proc skipComment(p: var TParser, node: PNode) = 
   if p.tok.tokType == tkComment: 
@@ -92,11 +92,11 @@ proc optInd(p: var TParser, n: PNode) =
 
 proc expectIdentOrKeyw(p: TParser) = 
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType): 
-    lexMessage(p.lex, errIdentifierExpected, tokToStr(p.tok))
+    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
   
 proc ExpectIdent(p: TParser) = 
   if p.tok.tokType != tkSymbol: 
-    lexMessage(p.lex, errIdentifierExpected, tokToStr(p.tok))
+    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
   
 proc Eat(p: var TParser, TokType: TTokType) = 
   if p.tok.TokType == TokType: getTok(p)
