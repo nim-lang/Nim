@@ -165,6 +165,10 @@ proc tokToStr*(tok: TToken): string =
       InternalError("tokToStr")
       result = ""
   
+proc prettyTok*(tok: TToken): string =
+  if IsKeyword(tok.tokType): result = "keyword " & tok.ident.s
+  else: result = tokToStr(tok)
+  
 proc PrintTok*(tok: TToken) = 
   write(stdout, TokTypeToStr[tok.tokType])
   write(stdout, " ")
