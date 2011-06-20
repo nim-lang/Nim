@@ -40,7 +40,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int, order: TSortOrder) =
   template `<-` (a, b: expr) = 
     when onlySafeCode:
-      a = b
+      shallowCopy(a, b)
     else:
       copyMem(addr(a), addr(b), sizeof(T))
   # optimization: If max(left) <= min(right) there is nothing to do!
@@ -54,7 +54,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   when onlySafeCode:
     var bb = 0
     while j <= m:
-      b[bb] = a[j]
+      b[bb] <- a[j]
       inc(bb)
       inc(j)
   else:
@@ -74,7 +74,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   # copy rest of b:
   when onlySafeCode:
     while k < j:
-      a[k] = b[i]
+      a[k] <- b[i]
       inc(k)
       inc(i)
   else:

@@ -1,6 +1,5 @@
 High priority (version 0.8.12)
 ==============================
-* implement write access to ``s[i]`` for macros
 * implement message passing built-ins
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * built-in serialization
@@ -20,6 +19,18 @@ version 0.9.0
 - fix overloading resolution
 - make ^ available as operator
 - implement closures; implement proper coroutines
+- rethink comment syntax; people want::
+
+  type
+    TConfig* = object
+      limit*: int
+      outFile*: string
+      # Regex patterns to ignore. TLogEntry field -> regex pattern
+      # If this matches, the request will NOT be shown.
+      ignoreRe*: TTable[string, string] 
+
+  I think a good compromise is to define positions for the docgen in the
+  grammar and ignore other comments everywhere.
 
 Bugs
 ----
