@@ -93,6 +93,17 @@ when defined(windows):
       (1256, "windows-1256"), # ANSI Arabic; Arabic (Windows) 
       (1257, "windows-1257"), # ANSI Baltic; Baltic (Windows) 
       (1258, "windows-1258"), # ANSI/OEM Vietnamese; Vietnamese (Windows) 
+
+      (1250, "cp-1250"), # ANSI Central European; Central European (Windows) 
+      (1251, "cp-1251"), # ANSI Cyrillic; Cyrillic (Windows) 
+      (1252, "cp-1252"), # ANSI Latin 1; Western European (Windows) 
+      (1253, "cp-1253"), # ANSI Greek; Greek (Windows) 
+      (1254, "cp-1254"), # ANSI Turkish; Turkish (Windows) 
+      (1255, "cp-1255"), # ANSI Hebrew; Hebrew (Windows) 
+      (1256, "cp-1256"), # ANSI Arabic; Arabic (Windows) 
+      (1257, "cp-1257"), # ANSI Baltic; Baltic (Windows) 
+      (1258, "cp-1258"), # ANSI/OEM Vietnamese; Vietnamese (Windows) 
+
       (1361, "Johab"), # Korean (Johab) 
       (10000, "macintosh"), # MAC Roman; Western European (Mac) 
       (10001, "x-mac-japanese"), # Japanese (Mac) 
@@ -440,6 +451,6 @@ proc convert*(s: string, destEncoding = "UTF-8",
 when IsMainModule:
   var orig = "öäüß"
   var crap = convert(orig, "CP1252", "UTF-8")
-  echo convert(crap)
-
+  echo convert(crap, "ibm850", "CP1252")
+  echo getCurrentEncoding()
 
