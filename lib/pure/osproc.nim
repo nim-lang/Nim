@@ -475,9 +475,9 @@ elif not defined(useNimRtl):
     result.exitCode = -3 # for ``waitForExit``
     if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
        pipe(p_stderr) != 0'i32:
-      OSError("failed to create a pipe")
+      OSError()
     var Pid = fork()
-    if Pid < 0: OSError("failed to fork process")
+    if Pid < 0: OSError()
 
     if pid == 0:
       ## child process:

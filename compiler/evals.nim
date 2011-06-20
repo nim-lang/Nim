@@ -355,25 +355,40 @@ proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   result = emptyNode
 
 proc evalAsgn(c: PEvalContext, n: PNode): PNode = 
-  result = evalAux(c, n.sons[0], {efLValue})
-  if isSpecial(result): return 
-  var x = result
-  result = evalAux(c, n.sons[1], {})
-  if isSpecial(result): return 
-  myreset(x)
-  x.kind = result.kind
-  x.typ = result.typ
-  case x.kind
-  of nkCharLit..nkInt64Lit: 
-    x.intVal = result.intVal
-  of nkFloatLit..nkFloat64Lit: 
-    x.floatVal = result.floatVal
-  of nkStrLit..nkTripleStrLit: 
-    x.strVal = result.strVal
-  else: 
-    if not (x.kind in {nkEmpty..nkNilLit}): 
-      discardSons(x)
-      for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
+  var a = n.sons[0]
+  if a.kind == nkBracketExpr and a.sons[0].typ.kind in {tyString, tyCString}: 
+    result = evalAux(c, a.sons[0], {efLValue})
+    if isSpecial(result): return 
+    var x = result
+    result = evalAux(c, a.sons[1], {})
+    if isSpecial(result): return 
+    var idx = getOrdValue(result)
+
+    result = evalAux(c, n.sons[1], {})
+    if isSpecial(result): return
+    if result.kind != nkCharLit: InternalError(n.info, "no character")
+
+    if (idx >= 0) and (idx < len(x.strVal)): 
+      x.strVal[int(idx)] = chr(int(result.intVal))
+    else: 
+      stackTrace(c, n, errIndexOutOfBounds)
+  else:
+    result = evalAux(c, n.sons[0], {efLValue})
+    if isSpecial(result): return 
+    var x = result
+    result = evalAux(c, n.sons[1], {})
+    if isSpecial(result): return 
+    myreset(x)
+    x.kind = result.kind
+    x.typ = result.typ
+    case x.kind
+    of nkCharLit..nkInt64Lit: x.intVal = result.intVal
+    of nkFloatLit..nkFloat64Lit: x.floatVal = result.floatVal
+    of nkStrLit..nkTripleStrLit: x.strVal = result.strVal
+    else:
+      if not (x.kind in {nkEmpty..nkNilLit}): 
+        discardSons(x)
+        for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
   result = emptyNode
   assert result.kind == nkEmpty
 
