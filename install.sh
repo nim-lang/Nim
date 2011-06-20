@@ -223,6 +223,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/cookies.nim
   cp lib/pure/dynlib.nim $libdir/pure/dynlib.nim || exit 1
   chmod 644 $libdir/pure/dynlib.nim
+  cp lib/pure/encodings.nim $libdir/pure/encodings.nim || exit 1
+  chmod 644 $libdir/pure/encodings.nim
   cp lib/pure/gentabs.nim $libdir/pure/gentabs.nim || exit 1
   chmod 644 $libdir/pure/gentabs.nim
   cp lib/pure/hashes.nim $libdir/pure/hashes.nim || exit 1
@@ -267,6 +269,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/redis.nim
   cp lib/pure/regexprs.nim $libdir/pure/regexprs.nim || exit 1
   chmod 644 $libdir/pure/regexprs.nim
+  cp lib/pure/romans.nim $libdir/pure/romans.nim || exit 1
+  chmod 644 $libdir/pure/romans.nim
   cp lib/pure/ropes.nim $libdir/pure/ropes.nim || exit 1
   chmod 644 $libdir/pure/ropes.nim
   cp lib/pure/scgi.nim $libdir/pure/scgi.nim || exit 1
@@ -307,8 +311,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/impure/db_sqlite.nim
   cp lib/impure/dialogs.nim $libdir/impure/dialogs.nim || exit 1
   chmod 644 $libdir/impure/dialogs.nim
-  cp lib/impure/encodings.nim $libdir/impure/encodings.nim || exit 1
-  chmod 644 $libdir/impure/encodings.nim
   cp lib/impure/graphics.nim $libdir/impure/graphics.nim || exit 1
   chmod 644 $libdir/impure/graphics.nim
   cp lib/impure/osinfo_posix.nim $libdir/impure/osinfo_posix.nim || exit 1

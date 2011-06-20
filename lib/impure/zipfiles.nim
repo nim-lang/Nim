@@ -113,9 +113,9 @@ type
   PZipFileStream* = 
     ref TZipFileStream ## a reader stream of a file within a zip archive 
 
-proc fsClose(s: PZipFileStream) = zip_fclose(s.f)
-proc fsReadData(s: PZipFileStream, buffer: pointer, bufLen: int): int = 
-  result = zip_fread(s.f, buffer, bufLen)
+proc fsClose(s: PStream) = zip_fclose(PZipFileStream(s).f)
+proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int = 
+  result = zip_fread(PZipFileStream(s).f, buffer, bufLen)
 
 proc newZipFileStream(f: PZipFile): PZipFileStream = 
   new(result)

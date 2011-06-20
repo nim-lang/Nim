@@ -8,25 +8,6 @@
 #
 
 ## this module does the semantic checking of statements
-  
-proc buildEchoStmt(c: PContext, n: PNode): PNode = 
-  # we MUST not check 'n' for semantics again here!
-  result = newNodeI(nkCall, n.info)
-  var e = StrTableGet(magicsys.systemModule.Tab, getIdent"echo")
-  if e == nil: GlobalError(n.info, errSystemNeeds, "echo")
-  addSon(result, newSymNode(e))
-  var arg = buildStringify(c, n)
-  # problem is: implicit '$' is not checked for semantics yet. So we give up
-  # and check 'arg' for semantics again:
-  addSon(result, semExpr(c, arg))
-
-proc semExprNoType(c: PContext, n: PNode): PNode =
-  result = semExpr(c, n)
-  if result.typ != nil and result.typ.kind != tyStmt:
-    if gCmd == cmdInteractive:
-      result = buildEchoStmt(c, result)
-    else:
-      localError(n.info, errDiscardValue)
 
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
@@ -169,54 +150,6 @@ proc semCase(c: PContext, n: PNode): PNode =
   if chckCovered and (covered != toCover(n.sons[0].typ)): 
     localError(n.info, errNotAllCasesCovered)
   closeScope(c.tab)
-
-proc propertyWriteAccess(c: PContext, n, a: PNode): PNode = 
-  var id = considerAcc(a[1])
-  result = newNodeI(nkCall, n.info)
-  addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
-  # a[0] is already checked for semantics, that does ``builtinFieldAccess``
-  # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
-  # nodes?
-  addSon(result, a[0])
-  addSon(result, semExpr(c, n[1]))
-  result = semDirectCallAnalyseEffects(c, result, {})
-  if result != nil:
-    fixAbstractType(c, result)
-    analyseIfAddressTakenInCall(c, result)
-  else:
-    globalError(n.Info, errUndeclaredFieldX, id.s)
-
-proc semAsgn(c: PContext, n: PNode): PNode = 
-  checkSonsLen(n, 2)
-  var a = n.sons[0]
-  case a.kind
-  of nkDotExpr: 
-    # r.f = x
-    # --> `f=` (r, x)
-    a = builtinFieldAccess(c, a, {efLValue})
-    if a == nil: 
-      return propertyWriteAccess(c, n, n[0])
-  of nkBracketExpr: 
-    # a[i..j] = x
-    # --> `[..]=`(a, i, j, x)
-    a = semSubscript(c, a, {efLValue})
-    if a == nil:
-      result = buildOverloadedSubscripts(n.sons[0], inAsgn=true)
-      add(result, n[1])
-      return semExprNoType(c, result)
-  else: 
-    a = semExprWithType(c, a, {efLValue})
-  n.sons[0] = a
-  n.sons[1] = semExprWithType(c, n.sons[1])
-  var le = a.typ
-  if skipTypes(le, {tyGenericInst}).kind != tyVar and IsAssignable(a) == arNone: 
-    # Direct assignment to a discriminant is allowed!
-    localError(a.info, errXCannotBeAssignedTo, 
-               renderTree(a, {renderNoComments}))
-  else: 
-    n.sons[1] = fitNode(c, le, n.sons[1])
-    fixAbstractType(c, n)
-  result = n
 
 proc SemReturn(c: PContext, n: PNode): PNode = 
   var 
