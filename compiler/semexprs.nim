@@ -850,11 +850,15 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if semthreads.needsGlobalAnalysis():
       c.threadEntries.add(result)
   of mShallowCopy:
-    checkSonsLen(n, 3)
-    result = newNodeI(nkFastAsgn, n.info)
-    result.add(n[1])
-    result.add(n[2])
-    result = semAsgn(c, result)
+    if sonsLen(n) == 3:
+      # XXX ugh this is really a hack: shallowCopy() can be overloaded only
+      # with procs that take not 2 parameters:
+      result = newNodeI(nkFastAsgn, n.info)
+      result.add(n[1])
+      result.add(n[2])
+      result = semAsgn(c, result)
+    else:
+      result = semDirectOp(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 

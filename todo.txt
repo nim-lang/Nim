@@ -3,7 +3,6 @@ High priority (version 0.8.12)
 * implement message passing built-ins
 * add --deadlock_prevention:on|off switch? timeout for locks?
 * built-in serialization
-* test encodings.nim on windows
 
 
 version 0.9.0
