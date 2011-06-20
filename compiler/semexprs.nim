@@ -397,7 +397,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   const 
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl, 
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap, 
-      mAppendSeqElem, mNewSeq, mReset}
+      mAppendSeqElem, mNewSeq, mReset, mShallowCopy}
   checkMinSonsLen(n, 1)
   var t = n.sons[0].typ
   if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic in FakeVarParams): 
@@ -505,72 +505,25 @@ proc semEcho(c: PContext, n: PNode): PNode =
     var arg = semExprWithType(c, n.sons[i])
     n.sons[i] = semExpr(c, buildStringify(c, arg))
   result = n
+  
+proc buildEchoStmt(c: PContext, n: PNode): PNode = 
+  # we MUST not check 'n' for semantics again here!
+  result = newNodeI(nkCall, n.info)
+  var e = StrTableGet(magicsys.systemModule.Tab, getIdent"echo")
+  if e == nil: GlobalError(n.info, errSystemNeeds, "echo")
+  addSon(result, newSymNode(e))
+  var arg = buildStringify(c, n)
+  # problem is: implicit '$' is not checked for semantics yet. So we give up
+  # and check 'arg' for semantics again:
+  addSon(result, semExpr(c, arg))
 
-proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
-  if onlyCurrentScope: 
-    result = SymtabLocalGet(c.tab, i)
-  else: 
-    result = SymtabGet(c.Tab, i) # no need for stub loading
-
-proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
-  case n.kind
-  of nkIdent: 
-    result = LookupForDefined(c, n.ident, onlyCurrentScope)
-  of nkDotExpr:
-    result = nil
-    if onlyCurrentScope: return 
-    checkSonsLen(n, 2)
-    var m = LookupForDefined(c, n.sons[0], onlyCurrentScope)
-    if (m != nil) and (m.kind == skModule): 
-      if (n.sons[1].kind == nkIdent): 
-        var ident = n.sons[1].ident
-        if m == c.module: 
-          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
-        else: 
-          result = StrTableGet(m.tab, ident)
-      else: 
-        GlobalError(n.sons[1].info, errIdentifierExpected, "")
-  of nkAccQuoted:
-    result = lookupForDefined(c, considerAcc(n), onlyCurrentScope)
-  of nkSym:
-    result = n.sym
-  else: 
-    GlobalError(n.info, errIdentifierExpected, renderTree(n))
-    result = nil
-
-proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode = 
-  checkSonsLen(n, 2)
-  # we replace this node by a 'true' or 'false' node:
-  result = newIntNode(nkIntLit, 0)
-  if LookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil: 
-    result.intVal = 1
-  elif not onlyCurrentScope and (n.sons[1].kind == nkIdent) and
-      condsyms.isDefined(n.sons[1].ident): 
-    result.intVal = 1
-  result.info = n.info
-  result.typ = getSysType(tyBool)
-
-proc setMs(n: PNode, s: PSym): PNode = 
-  result = n
-  n.sons[0] = newSymNode(s)
-  n.sons[0].info = n.info
-
-proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
-  # this is a hotspot in the compiler!
-  result = n
-  case s.magic # magics that need special treatment
-  of mDefined: result = semDefined(c, setMs(n, s), false)
-  of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
-  of mLow: result = semLowHigh(c, setMs(n, s), mLow)
-  of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
-  of mSizeOf: result = semSizeof(c, setMs(n, s))
-  of mIs: result = semIs(c, setMs(n, s))
-  of mEcho: result = semEcho(c, setMs(n, s))
-  of mCreateThread: 
-    result = semDirectOp(c, n, flags)
-    if semthreads.needsGlobalAnalysis():
-      c.threadEntries.add(result)
-  else: result = semDirectOp(c, n, flags)
+proc semExprNoType(c: PContext, n: PNode): PNode =
+  result = semExpr(c, n)
+  if result.typ != nil and result.typ.kind != tyStmt:
+    if gCmd == cmdInteractive:
+      result = buildEchoStmt(c, result)
+    else:
+      localError(n.info, errDiscardValue)
   
 proc isTypeExpr(n: PNode): bool = 
   case n.kind
@@ -783,6 +736,126 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if result == nil:
     # overloaded [] operator:
     result = semExpr(c, buildOverloadedSubscripts(n, inAsgn=false))
+
+proc propertyWriteAccess(c: PContext, n, a: PNode): PNode = 
+  var id = considerAcc(a[1])
+  result = newNodeI(nkCall, n.info)
+  addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
+  # a[0] is already checked for semantics, that does ``builtinFieldAccess``
+  # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
+  # nodes?
+  addSon(result, a[0])
+  addSon(result, semExpr(c, n[1]))
+  result = semDirectCallAnalyseEffects(c, result, {})
+  if result != nil:
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+  else:
+    globalError(n.Info, errUndeclaredFieldX, id.s)
+
+proc semAsgn(c: PContext, n: PNode): PNode = 
+  checkSonsLen(n, 2)
+  var a = n.sons[0]
+  case a.kind
+  of nkDotExpr: 
+    # r.f = x
+    # --> `f=` (r, x)
+    a = builtinFieldAccess(c, a, {efLValue})
+    if a == nil: 
+      return propertyWriteAccess(c, n, n[0])
+  of nkBracketExpr: 
+    # a[i..j] = x
+    # --> `[..]=`(a, i, j, x)
+    a = semSubscript(c, a, {efLValue})
+    if a == nil:
+      result = buildOverloadedSubscripts(n.sons[0], inAsgn=true)
+      add(result, n[1])
+      return semExprNoType(c, result)
+  else: 
+    a = semExprWithType(c, a, {efLValue})
+  n.sons[0] = a
+  n.sons[1] = semExprWithType(c, n.sons[1])
+  var le = a.typ
+  if skipTypes(le, {tyGenericInst}).kind != tyVar and IsAssignable(a) == arNone: 
+    # Direct assignment to a discriminant is allowed!
+    localError(a.info, errXCannotBeAssignedTo, 
+               renderTree(a, {renderNoComments}))
+  else: 
+    n.sons[1] = fitNode(c, le, n.sons[1])
+    fixAbstractType(c, n)
+  result = n
+
+proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
+  if onlyCurrentScope: 
+    result = SymtabLocalGet(c.tab, i)
+  else: 
+    result = SymtabGet(c.Tab, i) # no need for stub loading
+
+proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
+  case n.kind
+  of nkIdent: 
+    result = LookupForDefined(c, n.ident, onlyCurrentScope)
+  of nkDotExpr:
+    result = nil
+    if onlyCurrentScope: return 
+    checkSonsLen(n, 2)
+    var m = LookupForDefined(c, n.sons[0], onlyCurrentScope)
+    if (m != nil) and (m.kind == skModule): 
+      if (n.sons[1].kind == nkIdent): 
+        var ident = n.sons[1].ident
+        if m == c.module: 
+          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
+        else: 
+          result = StrTableGet(m.tab, ident)
+      else: 
+        GlobalError(n.sons[1].info, errIdentifierExpected, "")
+  of nkAccQuoted:
+    result = lookupForDefined(c, considerAcc(n), onlyCurrentScope)
+  of nkSym:
+    result = n.sym
+  else: 
+    GlobalError(n.info, errIdentifierExpected, renderTree(n))
+    result = nil
+
+proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode = 
+  checkSonsLen(n, 2)
+  # we replace this node by a 'true' or 'false' node:
+  result = newIntNode(nkIntLit, 0)
+  if LookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil: 
+    result.intVal = 1
+  elif not onlyCurrentScope and (n.sons[1].kind == nkIdent) and
+      condsyms.isDefined(n.sons[1].ident): 
+    result.intVal = 1
+  result.info = n.info
+  result.typ = getSysType(tyBool)
+
+proc setMs(n: PNode, s: PSym): PNode = 
+  result = n
+  n.sons[0] = newSymNode(s)
+  n.sons[0].info = n.info
+
+proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
+  # this is a hotspot in the compiler!
+  result = n
+  case s.magic # magics that need special treatment
+  of mDefined: result = semDefined(c, setMs(n, s), false)
+  of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
+  of mLow: result = semLowHigh(c, setMs(n, s), mLow)
+  of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
+  of mSizeOf: result = semSizeof(c, setMs(n, s))
+  of mIs: result = semIs(c, setMs(n, s))
+  of mEcho: result = semEcho(c, setMs(n, s))
+  of mCreateThread: 
+    result = semDirectOp(c, n, flags)
+    if semthreads.needsGlobalAnalysis():
+      c.threadEntries.add(result)
+  of mShallowCopy:
+    checkSonsLen(n, 3)
+    result = newNodeI(nkFastAsgn, n.info)
+    result.add(n[1])
+    result.add(n[2])
+    result = semAsgn(c, result)
+  else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
   result = n

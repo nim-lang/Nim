@@ -94,7 +94,8 @@ Additions
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
 - Added ``system.raiseHook``.
-- Added ``system.writeFile ``.
+- Added ``system.writeFile``.
+- Added ``system.shallowCopy``.
 - ``system.echo`` is guaranteed to be thread-safe.
 - Case statement branches support constant sets for programming convenience.
 

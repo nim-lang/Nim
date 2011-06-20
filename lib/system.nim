@@ -801,18 +801,25 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
+proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+  ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
+  ## only changes the semantics for sequences and strings (and types which
+  ## contain those). Be careful with the changed semantics though! There 
+  ## is a reason why the default assignment does a deep copy of sequences
+  ## and strings.
+
 proc del*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
   var xl = x.len
-  x[i] = x[xl-1]
+  shallowCopy(x[i], x[xl-1])
   setLen(x, xl-1)
   
 proc delete*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
   var xl = x.len
-  for j in i..xl-2: x[j] = x[j+1]
+  for j in i..xl-2: shallowCopy(x[j], x[j+1]) 
   setLen(x, xl-1)
   
 proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} = 
