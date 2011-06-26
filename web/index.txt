@@ -108,7 +108,8 @@ Version 0.8.x
 Version 0.9.0
   * closures and anonymous procs
   * recursive iterators/coroutines
-
+  * 2-phase type system for better interaction between macros, templates
+    and overloading
 
 Planned features beyond 1.0
 ===========================

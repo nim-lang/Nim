@@ -499,7 +499,10 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
-  if mapType(e.sons[0].typ) == ctArray:
+  if mapType(e.sons[0].typ) == ctArray and
+      skipTypes(e.sons[0].typ.sons[0], abstractInst).kind != tySet:
+    # XXX the amount of hacks for C's arrays is incredible, maybe we should
+    # simply wrap them in a struct? --> Losing auto vectorization then?
     expr(p, e.sons[0], d)
   else:
     initLocExpr(p, e.sons[0], a)
