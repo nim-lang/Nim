@@ -22,7 +22,7 @@ type
     jsonError,           ## an error ocurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
-    jsonInt,             ## a integer literal
+    jsonInt,             ## an integer literal
     jsonFloat,           ## a float literal
     jsonTrue,            ## the value ``true``
     jsonFalse,           ## the value ``false``
@@ -121,7 +121,7 @@ proc str*(my: TJsonParser): string {.inline.} =
 proc getInt*(my: TJsonParser): biggestInt {.inline.} = 
   ## returns the number for the event: ``jsonInt``
   assert(my.kind == jsonInt)
-  return parseInt(my.a)
+  return parseBiggestInt(my.a)
 
 proc getFloat*(my: TJsonParser): float {.inline.} = 
   ## returns the number for the event: ``jsonFloat``
@@ -512,9 +512,10 @@ type
     of JArray:
       elems*: seq[PJsonNode]
 
-  EJsonParsingError* = object of EInvalidValue
+  EJsonParsingError* = object of EInvalidValue ## is raised for a JSON error
 
-proc raiseParseErr(p: TJsonParser, msg: string) =
+proc raiseParseErr*(p: TJsonParser, msg: string) {.noinline, noreturn.} =
+  ## raises an `EJsonParsingError` exception.
   raise newException(EJsonParsingError, errorMsgExpected(p, msg))
 
 proc newJString*(s: String): PJsonNode =
@@ -607,6 +608,7 @@ proc `[]=`*(obj: PJsonNode, key: String, val: PJsonNode) =
   obj.fields.add((key, val))
 
 proc delete*(obj: PJsonNode, key: string) =
+  ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
     if obj.fields[i].key == key:
@@ -615,6 +617,7 @@ proc delete*(obj: PJsonNode, key: string) =
   raise newException(EInvalidIndex, "key not in object")
 
 proc copy*(p: PJsonNode): PJsonNode =
+  ## Performs a deep copy of `a`.
   case p.kind
   of JString:
     result = newJString(p.str)

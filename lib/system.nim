@@ -1612,8 +1612,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc readLine*(f: TFile): string
     ## reads a line of text from the file `f`. May throw an IO exception.
-    ## Reading from an empty file buffer, does not throw an exception, but
-    ## returns nil. A line of text may be delimited by ``CR``, ``LF`` or
+    ## A line of text may be delimited by ``CR``, ``LF`` or
     ## ``CRLF``. The newline character(s) are not part of the returned string.
 
   proc writeln*[Ty](f: TFile, x: Ty) {.inline.}

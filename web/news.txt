@@ -22,6 +22,8 @@ Bugfixes
 - Bugfix: The compiler does not emit very inaccurate floating point literals
   anymore.
 - Bugfix: Subclasses are taken into account for ``try except`` matching.
+- Bugfix: Generated type information for tuples was sometimes wrong, causing
+  random crashes.
 - Lots of other bugfixes: Too many to list them all.
 
 
@@ -61,7 +63,7 @@ Additions
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
 - Added ``parseutils.parseUntil`` and ``parseutils.parseWhile``.
-- Added ``strutils.align``, ``strutils.tokenize``, ``strutils.wordWrap``. 
+- Added ``strutils.align``, ``strutils.tokenize``, ``strutils.wordWrap``.
 - Pegs support a *captured search loop operator* ``{@}``.
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.
@@ -93,12 +95,14 @@ Additions
 - Added a wrapper for ``sphinx``.
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
-- Added ``system.raiseHook``.
+- Added ``system.raiseHook`` and ``system.outOfMemoryHook``.
 - Added ``system.writeFile``.
 - Added ``system.shallowCopy``.
 - ``system.echo`` is guaranteed to be thread-safe.
 - Case statement branches support constant sets for programming convenience.
-
+- Added ``prelude`` include file for scripting convenience.
+- Added ``typeinfo`` core module for access to runtime type information.
+- Added ``marshal`` module for JSON serialization.
 
 
 2010-10-20 Version 0.8.10 released

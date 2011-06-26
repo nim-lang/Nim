@@ -36,13 +36,16 @@ var
   IOFBF {.importc: "_IOFBF", nodecl.}: cint
   IONBF {.importc: "_IONBF", nodecl.}: cint
 
+proc raiseEIO(msg: string) {.noinline, noreturn.} =
+  raise newException(EIO, msg)
+
 proc rawReadLine(f: TFile, result: var string) =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
   setLen(result, 0) # reuse the buffer!
   while True:
     var c = fgetc(f)
-    if c < 0'i32: break # EOF
+    if c < 0'i32: raiseEIO("EOF reached")
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
       c = fgetc(f) # is the next char LF?
@@ -75,11 +78,6 @@ proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
 proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: openArray[string]) =
   for x in items(a): write(f, x)
-
-#{.error: "for debugging.".}
-
-proc raiseEIO(msg: string) {.noinline, noreturn.} =
-  raise newException(EIO, msg)
 
 proc readFile(filename: string): string =
   var f = open(filename)
