@@ -203,8 +203,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/threads.nim
   cp lib/core/macros.nim $libdir/core/macros.nim || exit 1
   chmod 644 $libdir/core/macros.nim
-  cp lib/core/marshal.nim $libdir/core/marshal.nim || exit 1
-  chmod 644 $libdir/core/marshal.nim
   cp lib/core/typeinfo.nim $libdir/core/typeinfo.nim || exit 1
   chmod 644 $libdir/core/typeinfo.nim
   cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim || exit 1
@@ -241,6 +239,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/lexbase.nim
   cp lib/pure/logging.nim $libdir/pure/logging.nim || exit 1
   chmod 644 $libdir/pure/logging.nim
+  cp lib/pure/marshal.nim $libdir/pure/marshal.nim || exit 1
+  chmod 644 $libdir/pure/marshal.nim
   cp lib/pure/math.nim $libdir/pure/math.nim || exit 1
   chmod 644 $libdir/pure/math.nim
   cp lib/pure/md5.nim $libdir/pure/md5.nim || exit 1

@@ -1387,7 +1387,7 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc = nil
+  dbgLineHook*: proc
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
@@ -1397,6 +1397,25 @@ var
     ## application code should never set this hook! You better know what you
     ## do when setting this. If ``raiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
+    
+  outOfMemHook*: proc
+    ## set this variable to provide a procedure that should be called 
+    ## in case of an `out of memory`:idx: event. The standard handler
+    ## writes an error message and terminates the program. `outOfMemHook` can
+    ## be used to raise an exception in case of OOM like so:
+    ## 
+    ## code-block:: nimrod
+    ##   var gOutOfMem: ref EOutOfMemory
+    ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
+    ##   gOutOfMem.msg = "out of memory"
+    ## 
+    ##   proc handleOOM() =
+    ##     raise gOutOfMem
+    ##
+    ##   system.outOfMemHook = handleOOM
+    ##
+    ## If the handler does not raise an exception, ordinary control flow
+    ## continues and the program is terminated.
 
 type
   PFrame = ptr TFrame
@@ -1710,25 +1729,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   # as it would recurse endlessly!
   include "system/arithm"
   {.pop.} # stack trace
-
-  include "system/sysio"
-
-  iterator lines*(filename: string): string =
-    ## Iterate over any line in the file named `filename`.
-    ## If the file does not exist `EIO` is raised.
-    var f = open(filename)
-    var res = ""
-    while not endOfFile(f):
-      rawReadLine(f, res)
-      yield res
-    Close(f)
-
-  iterator lines*(f: TFile): string =
-    ## Iterate over any line in the file `f`.
-    var res = ""
-    while not endOfFile(f):
-      rawReadLine(f, res)
-      yield res
       
   include "system/dyncalls"
   include "system/sets"
@@ -1762,6 +1762,25 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include "system/mmdisp"
   include "system/sysstr"
   {.pop.}
+
+  include "system/sysio"
+
+  iterator lines*(filename: string): string =
+    ## Iterate over any line in the file named `filename`.
+    ## If the file does not exist `EIO` is raised.
+    var f = open(filename)
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
+    Close(f)
+
+  iterator lines*(f: TFile): string =
+    ## Iterate over any line in the file `f`.
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
 
   include "system/assign"
   include "system/repr"

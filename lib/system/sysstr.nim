@@ -39,10 +39,23 @@ proc rawNewString(space: int): NimString {.compilerProc.} =
                            (s+1) * sizeof(char)))
   result.space = s
 
-proc mnewString(len: int): NimString {.exportc.} =
-  #c_fprintf(c_stdout, "[NEWSTRING] len: %ld\n", len)
+proc mnewString(len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
   result.len = len
+
+proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
+  var start = max(start, 0)
+  var len = min(last, s.len-1) - start + 1
+  if len > 0:
+    result = rawNewString(len)
+    result.len = len
+    c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
+    result.data[len] = '\0'
+  else:
+    result = mnewString(0)
+
+proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
+  result = copyStrLast(s, start, s.len-1)
 
 proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
@@ -71,20 +84,6 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h xor (h shr 11)
   h = h +% h shl 15
   result = h
-
-proc copyStrLast(s: NimString, start, last: int): NimString {.exportc.} =
-  var start = max(start, 0)
-  var len = min(last, s.len-1) - start + 1
-  if len > 0:
-    result = rawNewString(len)
-    result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
-    result.data[len] = '\0'
-  else:
-    result = mnewString(0)
-
-proc copyStr(s: NimString, start: int): NimString {.exportc.} =
-  result = copyStrLast(s, start, s.len-1)
 
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!

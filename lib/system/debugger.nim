@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -138,10 +138,8 @@ proc dbgShowCurrentProc(dbgFramePointer: PFrame) =
     write(stdout, "*** endb| (procedure name not available) ***\n")
 
 proc dbgShowExecutionPoint() =
-  ThreadGlobals()
-  write(stdout, "*** endb| " & $(||framePtr).filename & 
-                "(" & $(||framePtr).line & ") " & 
-                $(||framePtr).procname & " ***\n")
+  write(stdout, "*** endb| " & $framePtr.filename & 
+                "(" & $framePtr.line & ") " & $framePtr.procname & " ***\n")
 
 when defined(windows) or defined(dos) or defined(os2):
   {.define: FileSystemCaseInsensitive.}
@@ -172,10 +170,9 @@ proc fileMatches(c, bp: cstring): bool =
   return true
 
 proc dbgBreakpointReached(line: int): int =
-  ThreadGlobals()
   for i in 0..dbgBPlen-1:
     if line >= dbgBP[i].low and line <= dbgBP[i].high and
-        fileMatches((||framePtr).filename, dbgBP[i].filename): return i
+        fileMatches(framePtr.filename, dbgBP[i].filename): return i
   return -1
 
 proc scanAndAppendWord(src: string, a: var string, start: int): int =
@@ -257,7 +254,6 @@ proc hasExt(s: string): bool =
   return false
 
 proc setBreakPoint(s: string, start: int) =
-  ThreadGlobals()
   var dbgTemp: string
   var i = scanWord(s, dbgTemp, start)
   if i <= start:
@@ -272,7 +268,7 @@ proc setBreakPoint(s: string, start: int) =
   i = scanNumber(s, dbgBP[x].low, i)
   if dbgBP[x].low == 0:
     # set to current line:
-    dbgBP[x].low = (||framePtr).line
+    dbgBP[x].low = framePtr.line
   i = scanNumber(s, dbgBP[x].high, i)
   if dbgBP[x].high == 0: # set to low:
     dbgBP[x].high = dbgBP[x].low
@@ -281,7 +277,7 @@ proc setBreakPoint(s: string, start: int) =
     if not hasExt(dbgTemp): add(dbgTemp, ".nim")
     dbgBP[x].filename = dbgTemp
   else: # use current filename
-    dbgBP[x].filename = $(||framePtr).filename
+    dbgBP[x].filename = $framePtr.filename
   # skip whitespace:
   while s[i] in {' ', '\t'}: inc(i)
   if s[i] != '\0':
@@ -350,10 +346,9 @@ proc dbgStackFrame(s: string, start: int, currFrame: PExtendedFrame) =
 
 proc CommandPrompt() =
   # if we return from this routine, user code executes again
-  ThreadGlobals()
   var
     again = True
-    dbgFramePtr = ||framePtr # for going down and up the stack
+    dbgFramePtr = framePtr # for going down and up the stack
     dbgDown = 0 # how often we did go down
 
   while again:
@@ -370,11 +365,11 @@ proc CommandPrompt() =
       again = false
     of "n", "next":
       dbgState = dbStepOver
-      dbgSkipToFrame = ||framePtr
+      dbgSkipToFrame = framePtr
       again = false
     of "f", "skipcurrent":
       dbgState = dbSkipCurrent
-      dbgSkipToFrame = (||framePtr).prev
+      dbgSkipToFrame = framePtr.prev
       again = false
     of "c", "continue":
       dbgState = dbBreakpoints
@@ -405,7 +400,7 @@ proc CommandPrompt() =
       if dbgDown <= 0:
         debugOut("[Warning] cannot go up any further ")
       else:
-        dbgFramePtr = ||framePtr
+        dbgFramePtr = framePtr
         for j in 0 .. dbgDown-2: # BUGFIX
           dbgFramePtr = dbgFramePtr.prev
         dec(dbgDown)
@@ -446,17 +441,16 @@ proc endbStep() =
   CommandPrompt()
 
 proc checkForBreakpoint() =
-  ThreadGlobals()
-  var i = dbgBreakpointReached((||framePtr).line)
+  var i = dbgBreakpointReached(framePtr.line)
   if i >= 0:
     write(stdout, "*** endb| reached ")
     write(stdout, dbgBP[i].name)
     write(stdout, " in ")
-    write(stdout, (||framePtr).filename)
+    write(stdout, framePtr.filename)
     write(stdout, "(")
-    write(stdout, (||framePtr).line)
+    write(stdout, framePtr.line)
     write(stdout, ") ")
-    write(stdout, (||framePtr).procname)
+    write(stdout, framePtr.procname)
     write(stdout, " ***\n")
     CommandPrompt()
 
@@ -487,8 +481,7 @@ proc endb(line: int) {.compilerproc.} =
   # Thus, it must have as few parameters as possible to keep the
   # code size small!
   # Check if we are at an enabled breakpoint or "in the mood"
-  ThreadGlobals()
-  (||framePtr).line = line # this is done here for smaller code size!
+  framePtr.line = line # this is done here for smaller code size!
   if dbgLineHook != nil: dbgLineHook()
   case dbgState
   of dbStepInto:
@@ -496,7 +489,7 @@ proc endb(line: int) {.compilerproc.} =
     dbgShowExecutionPoint()
     CommandPrompt()
   of dbSkipCurrent, dbStepOver: # skip current routine
-    if ||framePtr == dbgSkipToFrame:
+    if framePtr == dbgSkipToFrame:
       dbgShowExecutionPoint()
       CommandPrompt()
     else: # breakpoints are wanted though (I guess)

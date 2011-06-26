@@ -202,7 +202,6 @@ proc ThreadVarsAlloc(size: int): pointer =
   result = c_malloc(size)
   zeroMem(result, size)
 proc ThreadVarsDealloc(p: pointer) {.importc: "free", nodecl.}
-proc initGlobals()
 
 type
   PGcThread = ptr TGcThread
@@ -239,8 +238,7 @@ when not defined(useNimRtl):
 
   initStackBottom()
   initGC()
-  initGlobals()
-
+  
   var heapLock: TSysLock
   InitSysLock(HeapLock)
 
@@ -301,7 +299,6 @@ template ThreadProcWrapperBody(closure: expr) =
     setStackBottom(addr(t))
     initGC()
   t.stackBottom = addr(t)
-  initGlobals()
   registerThread(t)
   try:
     t.fn(t.data)
