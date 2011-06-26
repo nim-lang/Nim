@@ -94,9 +94,6 @@ proc mapType(typ: PType): TCTypeKind =
     var base = skipTypes(typ.sons[0], abstractInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
-    of tySet:
-      result = mapSetType(base)
-      if result != ctArray: result = ctPtr
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
