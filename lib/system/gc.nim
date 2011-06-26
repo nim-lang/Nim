@@ -198,18 +198,18 @@ proc prepareDealloc(cell: PCell) =
 
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
-  when hasThreadSupport:
+  when hasThreadSupport and hasSharedHeap:
     AcquireSys(HeapLock)
   incl(gch.cycleRoots, c)
-  when hasThreadSupport:  
+  when hasThreadSupport and hasSharedHeap:
     ReleaseSys(HeapLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
-  when hasThreadSupport:
+  when hasThreadSupport and hasSharedHeap:
     AcquireSys(HeapLock)
   addZCT(gch.zct, c)
-  when hasThreadSupport:
+  when hasThreadSupport and hasSharedHeap:
     ReleaseSys(HeapLock)
 
 proc decRef(c: PCell) {.inline.} =

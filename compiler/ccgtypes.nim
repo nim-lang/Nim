@@ -61,18 +61,20 @@ proc getTypeName(typ: PType): PRope =
     result = typ.loc.r
   if result == nil: InternalError("getTypeName: " & $typ.kind)
   
+proc mapSetType(typ: PType): TCTypeKind =
+  case int(getSize(typ))
+  of 1: result = ctInt8
+  of 2: result = ctInt16
+  of 4: result = ctInt32
+  of 8: result = ctInt64
+  else: result = ctArray
+
 proc mapType(typ: PType): TCTypeKind = 
   case typ.kind
   of tyNone: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
-  of tySet: 
-    case int(getSize(typ))
-    of 1: result = ctInt8
-    of 2: result = ctInt16
-    of 4: result = ctInt32
-    of 8: result = ctInt64
-    else: result = ctArray
+  of tySet: result = mapSetType(typ)
   of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal: 
@@ -89,8 +91,12 @@ proc mapType(typ: PType): TCTypeKind =
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
   of tyPtr, tyVar, tyRef: 
-    case typ.sons[0].kind
+    var base = skipTypes(typ.sons[0], abstractInst)
+    case base.kind
     of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
+    of tySet:
+      result = mapSetType(base)
+      if result != ctArray: result = ctPtr
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -172,6 +178,14 @@ proc fillResult(param: PSym) =
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
+proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
+  if t.Kind in {tyRef, tyPtr, tyVar}:
+    var b = skipTypes(t.sons[0], abstractInst)
+    if b.kind == tySet and mapSetType(b) == ctArray:
+      return toRope("NU8*") 
+      # getTypeDescAux(m, b, check)
+  result = getTypeDescAux(m, t, check)
+
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
                    check: var TIntSet) = 
   params = nil
@@ -183,19 +197,20 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if t.n.sons[i].kind != nkSym: InternalError(t.n.info, "genProcParams")
     var param = t.n.sons[i].sym
     fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
-    app(params, getTypeDescAux(m, param.typ, check))
+    app(params, getParamTypeDesc(m, param.typ, check))
     if ccgIntroducedPtr(param): 
       app(params, "*")
       incl(param.loc.flags, lfIndirect)
       param.loc.s = OnUnknown
     app(params, " ")
-    app(params, param.loc.r)  # declare the len field for open arrays:
+    app(params, param.loc.r)
+    # declare the len field for open arrays:
     var arr = param.typ
     if arr.kind == tyVar: arr = arr.sons[0]
     var j = 0
     while arr.Kind == tyOpenArray: 
       # need to pass hidden parameter:
-      appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, toRope(j)])
+      appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, j.toRope])
       inc(j)
       arr = arr.sons[0]
     if i < sonsLen(t.n) - 1: app(params, ", ")
@@ -396,6 +411,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
   of tyRef, tyPtr, tyVar: 
     et = getUniqueType(t.sons[0])
     if et.kind in {tyArrayConstr, tyArray, tyOpenArray}: 
+      # this is correct! sets have no proper base type, so we treat
+      # ``var set[char]`` in `getParamTypeDesc`
       et = getUniqueType(elemType(et))
     case et.Kind
     of tyObject, tyTuple: 

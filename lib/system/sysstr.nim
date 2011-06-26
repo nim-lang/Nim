@@ -15,12 +15,10 @@
 # we don't use refcounts because that's a behaviour
 # the programmer may not want
 
-# implementation:
-
 proc resize(old: int): int {.inline.} =
-  if old <= 0: return 4
-  elif old < 65536: return old * 2
-  else: return old * 3 div 2 # for large arrays * 3/2 is better
+  if old <= 0: result = 4
+  elif old < 65536: result = old * 2
+  else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == b: return 0
@@ -53,13 +51,13 @@ proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   result.data[len] = '\0' # readline relies on this!
 
 proc cstrToNimstr(str: CString): NimString {.compilerProc.} =
-  return toNimstr(str, c_strlen(str))
+  result = toNimstr(str, c_strlen(str))
 
 proc copyString(src: NimString): NimString {.compilerProc.} =
-  if src == nil: return nil
-  result = rawNewString(src.space)
-  result.len = src.len
-  c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
+  if src != nil:
+    result = rawNewString(src.space)
+    result.len = src.len
+    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -86,7 +84,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.exportc.} =
     result = mnewString(0)
 
 proc copyStr(s: NimString, start: int): NimString {.exportc.} =
-  return copyStrLast(s, start, s.len-1)
+  result = copyStrLast(s, start, s.len-1)
 
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
@@ -135,7 +133,7 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerproc.} =
-  if dest.len + addLen + 1 <= dest.space: # BUGFIX: this is horrible!
+  if dest.len + addLen + 1 <= dest.space:
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addLen + 1)
@@ -279,12 +277,12 @@ proc binaryStrSearch(x: openarray[string], y: string): int {.compilerproc.} =
     a = 0
     b = len(x)
   while a < b:
-     var mid = (a + b) div 2
-     if x[mid] < y:
-       a = mid + 1
-     else:
-       b = mid
-  if (a < len(x)) and (x[a] == y):
-    return a
+    var mid = (a + b) div 2
+    if x[mid] < y:
+      a = mid + 1
+    else:
+      b = mid
+  if a < len(x) and x[a] == y:
+    result = a
   else:
-    return -1
+    result = -1

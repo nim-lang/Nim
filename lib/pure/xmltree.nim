@@ -145,8 +145,7 @@ proc escape*(s: string): string =
   ##  ``&``          ``&amp;``
   ##  ``"``          ``&quot;``
   ## ------------    -------------------
-  result = newString(s.len)
-  setLen(result, 0)
+  result = newStringOfCap(s.len)
   addEscaped(result, s)
   
 proc addIndent(result: var string, indent: int) = 

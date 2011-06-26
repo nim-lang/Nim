@@ -339,14 +339,16 @@ proc joinThreads*[TParam](t: openArray[TThread[TParam]]) =
   else:
     for i in 0..t.high: joinThread(t[i])
 
-proc destroyThread*[TParam](t: var TThread[TParam]) {.inline.} =
-  ## forces the thread `t` to terminate. This is potentially dangerous if
-  ## you don't have full control over `t` and its acquired resources.
-  when hostOS == "windows":
-    discard TerminateThread(t.sys, 1'i32)
-  else:
-    discard pthread_cancel(t.sys)
-  unregisterThread(addr(t.gcInfo))
+when false:
+  # XXX a thread should really release its heap here somehow:
+  proc destroyThread*[TParam](t: var TThread[TParam]) {.inline.} =
+    ## forces the thread `t` to terminate. This is potentially dangerous if
+    ## you don't have full control over `t` and its acquired resources.
+    when hostOS == "windows":
+      discard TerminateThread(t.sys, 1'i32)
+    else:
+      discard pthread_cancel(t.sys)
+    unregisterThread(addr(t))
 
 proc createThread*[TParam](t: var TThread[TParam], 
                            tp: proc (param: TParam), 

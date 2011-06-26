@@ -119,7 +119,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
       s.magic = m
       break
   if s.magic == mNone: Message(n.info, warnUnknownMagic, v)
-  elif s.magic != mCreateThread: 
+  if s.magic != mCreateThread: 
     # magics don't need an implementation, so we
     # treat them as imported, instead of modifing a lot of working code:
     incl(s.flags, sfImportc)

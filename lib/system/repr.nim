@@ -9,9 +9,6 @@
 
 # The generic ``repr`` procedure. It is an invaluable debugging tool.
 
-#proc cstrToNimStrDummy(s: cstring): string {.inline.} =
-#  result = cast[string](cstrToNimStr(s))
-
 proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 

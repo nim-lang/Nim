@@ -38,10 +38,6 @@ Core
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.
 
-* `marshal <marshal.html>`_
-  Contains procs for serialization and deseralization of arbitrary Nimrod 
-  data structures.
-
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nimrod's run time type information. 
   
@@ -120,6 +116,10 @@ Generic Operating System Services
   the `PFileStream` and the `PStringStream` which implement the stream
   interface for Nimrod file objects (`TFile`) and strings. Other modules
   may provide other implementations for this standard stream interface.
+
+* `marshal <marshal.html>`_
+  Contains procs for serialization and deseralization of arbitrary Nimrod 
+  data structures.
 
 * `terminal <terminal.html>`_
   This module contains a few procedures to control the *terminal*

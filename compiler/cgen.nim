@@ -253,7 +253,8 @@ proc rdLoc(a: TLoc): PRope =
 
 proc addrLoc(a: TLoc): PRope =
   result = a.r
-  if lfIndirect notin a.flags: result = con("&", result)
+  if lfIndirect notin a.flags and mapType(a.t) != ctArray: 
+    result = con("&", result)
 
 proc rdCharLoc(a: TLoc): PRope =
   # read a location that may need a char-cast:
@@ -333,7 +334,7 @@ proc initVariable(p: BProc, v: PSym) =
     zeroVar(p, v.loc, b)
     
 proc initTemp(p: BProc, tmp: var TLoc) = 
-  if containsGarbageCollectedRef(tmp.t):
+  if containsGarbageCollectedRef(tmp.t) or isInvalidReturnType(tmp.t):
     zeroTemp(p, tmp)
 
 proc getTemp(p: BProc, t: PType, result: var TLoc) = 

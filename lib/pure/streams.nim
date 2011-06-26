@@ -33,8 +33,9 @@ proc write*[T](s: PStream, x: T) =
   ## .. code-block:: Nimrod
   ##
   ##     s.writeData(s, addr(x), sizeof(x))
-  var x = x
-  s.writeData(s, addr(x), sizeof(x))
+  var y: T
+  shallowCopy(y, x)
+  s.writeData(s, addr(y), sizeof(y))
 
 proc write*(s: PStream, x: string) = 
   ## writes the string `x` to the the stream `s`. No length field or 
