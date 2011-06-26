@@ -196,7 +196,6 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   e.name = ename
   if raiseHook != nil:
     if not raiseHook(e): return
-  GC_disable() # a bad thing is an error in the GC while raising an exception
   if excHandler != nil:
     pushCurrentException(e)
     c_longjmp(excHandler.context, 1)
@@ -233,7 +232,6 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
       add(buf, "]\n")
       writeToStdErr(buf)
     quitOrDebug()
-  GC_enable()
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
