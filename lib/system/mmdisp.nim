@@ -52,15 +52,10 @@ const
   IntShift = 5 + ord(sizeof(int) == 8) # 5 or 6, depending on int width
   IntMask = 1 shl IntShift - 1
 
-var
-  gOutOfMem: ref EOutOfMemory
-
-proc raiseOutOfMem() {.noreturn.} =
-  if gOutOfMem == nil: 
-    echo("out of memory; cannot even throw an exception")
-    quit(1)
-  gOutOfMem.msg = "out of memory"
-  raise gOutOfMem
+proc raiseOutOfMem() {.noinline.} =
+  if outOfMemHook != nil: outOfMemHook()
+  echo("out of memory")
+  quit(1)
 
 when defined(boehmgc):
   when defined(windows):

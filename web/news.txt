@@ -95,7 +95,7 @@ Additions
 - Added a wrapper for ``sphinx``.
 - The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
-- Added ``system.raiseHook`` and ``system.outOfMemoryHook``.
+- Added ``system.raiseHook`` and ``system.outOfMemHook``.
 - Added ``system.writeFile``.
 - Added ``system.shallowCopy``.
 - ``system.echo`` is guaranteed to be thread-safe.

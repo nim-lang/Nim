@@ -1451,6 +1451,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
      mInSet:
     genSetOp(p, e, d, op)
   of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit, mCreateThread: 
+    var opr = e.sons[0].sym
+    if lfNoDecl notin opr.loc.flags:
+      discard cgsym(p.module, opr.loc.r.ropeToStr)
     genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e)

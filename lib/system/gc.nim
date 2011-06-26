@@ -279,7 +279,6 @@ proc initGC() =
     init(gch.tempStack)
     Init(gch.cycleRoots)
     Init(gch.decStack)
-    new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)

@@ -7,16 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-# Exception handling code. This is difficult because it has
-# to work if there is no more memory (but it doesn't yet!).
-
-# XXX assertions are unnecessarily complex; system should use their own
-# assertion mechanism instead!
+# Exception handling code. Carefully coded so that tiny programs which do not
+# use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
-                            ## for CGI applications
-  isMultiThreaded: bool # true when prog created at least 1 thread
+  stackTraceNewLine*: string ## undocumented feature; it is replaced by ``<br>``
+                             ## for CGI applications
+
+template stackTraceNL: expr =
+  (if IsNil(stackTraceNewLine): "\n" else: stackTraceNewLine)
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: CString) = write(stdout, msg)
@@ -41,21 +40,6 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.rtlThreadVar.}: ref E_Base
-
-  buf {.rtlThreadVar.}: string # cannot be allocated on the stack!
-  assertBuf {.rtlThreadVar.}: string 
-    # we need a different buffer for
-    # assert, as it raises an exception and
-    # exception handler needs the buffer too
-  gAssertionFailed {.rtlThreadVar.}: ref EAssertionFailed
-
-proc initGlobals() =
-  new(gAssertionFailed)
-  buf = newStringOfCap(2000)
-  assertBuf = newStringOfCap(2000)
-
-when not hasThreadSupport:
-  initGlobals()
 
 proc pushFrame(s: PFrame) {.compilerRtl, inl.} = 
   s.prev = framePtr
@@ -83,8 +67,10 @@ proc popCurrentException {.compilerRtl, inl.} =
 
 # some platforms have native support for stack traces:
 const
-   nativeStackTraceSupported = (defined(macosx) or defined(linux)) and 
-                               not nimrodStackTrace
+  nativeStackTraceSupported = (defined(macosx) or defined(linux)) and 
+                              not nimrodStackTrace
+  hasSomeStackTrace = nimrodStackTrace or 
+    defined(nativeStackTrace) and nativeStackTraceSupported
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -126,7 +112,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
             add(s, tempDlInfo.dli_sname)
         else:
           add(s, '?')
-        add(s, stackTraceNewLine)
+        add(s, stackTraceNL)
       else:
         if dlresult != 0 and tempDlInfo.dli_sname != nil and
             c_strcmp(tempDlInfo.dli_sname, "signalHandler") == 0'i32:
@@ -181,24 +167,24 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
         add(s, ')')
       for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
       add(s, tempFrames[j].procname)
-    add(s, stackTraceNewLine)
+    add(s, stackTraceNL)
 
-proc rawWriteStackTrace(s: var string) =
-  when nimrodStackTrace:
-    if framePtr == nil:
-      add(s, "No stack traceback available")
-      add(s, stackTraceNewLine)
+when hasSomeStackTrace:
+  proc rawWriteStackTrace(s: var string) =
+    when nimrodStackTrace:
+      if framePtr == nil:
+        add(s, "No stack traceback available")
+        add(s, stackTraceNL)
+      else:
+        add(s, "Traceback (most recent call last)")
+        add(s, stackTraceNL)
+        auxWriteStackTrace(framePtr, s)
+    elif defined(nativeStackTrace) and nativeStackTraceSupported:
+      add(s, "Traceback from system (most recent call last)")
+      add(s, stackTraceNL)
+      auxWriteStackTraceWithBacktrace(s)
     else:
-      add(s, "Traceback (most recent call last)")
-      add(s, stackTraceNewLine)
-      auxWriteStackTrace(framePtr, s)
-  elif defined(nativeStackTrace) and nativeStackTraceSupported:
-    add(s, "Traceback from system (most recent call last)")
-    add(s, stackTraceNewLine)
-    auxWriteStackTraceWithBacktrace(s)
-  else:
-    add(s, "No stack traceback available")
-    add(s, stackTraceNewLine)
+      add(s, "No stack traceback available\n")
 
 proc quitOrDebug() {.inline.} =
   when not defined(endb):
@@ -214,13 +200,16 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   if excHandler != nil:
     pushCurrentException(e)
     c_longjmp(excHandler.context, 1)
+  elif e[] is EOutOfMemory:
+    writeToStdErr(ename)
+    quitOrDebug()
   else:
-    if not isNil(buf):
-      setLen(buf, 0)
+    when hasSomeStackTrace:
+      var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
-      if e.msg != nil and e.msg[0] != '\0':
+      if not isNil(e.msg):
         add(buf, "Error: unhandled exception: ")
-        add(buf, $e.msg)
+        add(buf, e.msg)
       else:
         add(buf, "Error: unhandled exception")
       add(buf, " [")
@@ -228,7 +217,21 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
       add(buf, "]\n")
       writeToStdErr(buf)
     else:
-      writeToStdErr(ename)
+      # ugly, but avoids heap allocations :-)
+      template xadd(buf, s, slen: expr) =
+        if L + slen < high(buf):
+          copyMem(addr(buf[L]), cstring(s), slen)
+          inc L, slen
+      template add(buf, s: expr) =
+        xadd(buf, s, s.len)
+      var buf: array [0..2000, char]
+      var L = 0
+      add(buf, "Error: unhandled exception: ")
+      if not isNil(e.msg): add(buf, e.msg)
+      add(buf, " [")
+      xadd(buf, ename, c_strlen(ename))
+      add(buf, "]\n")
+      writeToStdErr(buf)
     quitOrDebug()
   GC_enable()
 
@@ -240,54 +243,57 @@ proc reraiseException() {.compilerRtl.} =
 
 proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
   if not cond:
-    #c_fprintf(c_stdout, "Assertion failure: file %s line %ld\n", file, line)
-    #quit(1)
-    GC_disable() # BUGFIX: `$` allocates a new string object!
-    if not isNil(assertBuf):
-      # BUGFIX: when debugging the GC, assertBuf may be nil
-      setLen(assertBuf, 0)
-      add(assertBuf, "[Assertion failure] file: ")
-      add(assertBuf, file)
-      add(assertBuf, " line: ")
-      add(assertBuf, $line)
-      add(assertBuf, "\n")
-      gAssertionFailed.msg = assertBuf
-    GC_enable()
-    if gAssertionFailed != nil:
-      raise gAssertionFailed
-    else:
-      c_fprintf(c_stdout, "Assertion failure: file %s line %ld\n", file, line)
-      quit(1)
+    var gAssertionFailed: ref EAssertionFailed
+    new(gAssertionFailed)
+    gAssertionFailed.msg = newStringOfCap(200)
+    add(gAssertionFailed.msg, "[Assertion failure] file: ")
+    add(gAssertionFailed.msg, file)
+    add(gAssertionFailed.msg, " line: ")
+    add(gAssertionFailed.msg, $line)
+    add(gAssertionFailed.msg, "\n")
+    raise gAssertionFailed
 
 proc WriteStackTrace() =
-  var s = ""
-  rawWriteStackTrace(s)
-  writeToStdErr(s)
+  when hasSomeStackTrace:
+    var s = ""
+    rawWriteStackTrace(s)
+    writeToStdErr(s)
+  else:
+    writeToStdErr("No stack traceback available\n")
 
-var
-  dbgAborting: bool # whether the debugger wants to abort
+when defined(endb):
+  var
+    dbgAborting: bool # whether the debugger wants to abort
 
 proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
-  # print stack trace and quit
-  var s = sig
-  GC_disable()
-  setLen(buf, 0)
-  rawWriteStackTrace(buf)
+  template processSignal(s, action: expr) =
+    if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
+    elif s == SIGSEGV: 
+      action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
+    elif s == SIGABRT:
+      when defined(endb):
+        if dbgAborting: return # the debugger wants to abort
+      action("SIGABRT: Abnormal termination.\n")
+    elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
+    elif s == SIGILL: action("SIGILL: Illegal operation.\n")
+    elif s == SIGBUS: 
+      action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
+    else: action("unknown signal\n")
 
-  if s == SIGINT: add(buf, "SIGINT: Interrupted by Ctrl-C.\n")
-  elif s == SIGSEGV: 
-    add(buf, "SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
-  elif s == SIGABRT:
-    if dbgAborting: return # the debugger wants to abort
-    add(buf, "SIGABRT: Abnormal termination.\n")
-  elif s == SIGFPE: add(buf, "SIGFPE: Arithmetic error.\n")
-  elif s == SIGILL: add(buf, "SIGILL: Illegal operation.\n")
-  elif s == SIGBUS: 
-    add(buf, "SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
-  else: add(buf, "unknown signal\n")
-  writeToStdErr(buf)
-  dbgAborting = True # play safe here...
-  GC_enable()
+  # print stack trace and quit
+  when hasSomeStackTrace:
+    GC_disable()
+    var buf = newStringOfCap(2000)
+    rawWriteStackTrace(buf)
+    processSignal(sig, buf.add) # nice hu? currying a la nimrod :-)
+    writeToStdErr(buf)
+    GC_enable()
+  else:
+    var msg: cstring
+    template asgn(y: expr) = msg = y
+    processSignal(sig, asgn)
+    writeToStdErr(msg)
+  when defined(endb): dbgAborting = True
   quit(1) # always quit when SIGABRT
 
 proc registerSignalHandler() =
