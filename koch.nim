@@ -178,7 +178,11 @@ proc clean(args: string) =
 
 proc tests(args: string) =
   exec("nimrod cc tests/tester")
-  exec("tests/tester")
+  exec("tests/tester reject")
+  exec("tests/tester compile")
+  exec("tests/tester examples")
+  exec("tests/tester run")
+  exec("tests/tester merge")
 
 proc showHelp() = 
   quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 

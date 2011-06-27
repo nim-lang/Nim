@@ -406,7 +406,8 @@ type
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
     lfExportLib,              # export symbol for dynamic library generation
-    lfHeader                  # include header file for symbol
+    lfHeader,                 # include header file for symbol
+    lfImportCompilerProc      # ``importc`` of a compilerproc
   TStorageLoc* = enum 
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStack,                  # location is on hardware stack

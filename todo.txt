@@ -3,6 +3,7 @@ High priority (version 0.8.12)
 * test threads on windows; thread analysis needs to be even more restrictive!
 * implement message passing built-ins: channels/queues
 * bug: {:}.toTable[int, string]()
+* test tester
 
 
 version 0.9.0

@@ -60,12 +60,13 @@ type
 const
   GenericSeqSize = (2 * sizeof(int))
 
-proc genericAssign(dest, src: Pointer, mt: PNimType) {.importc.}
-proc genericShallowAssign(dest, src: Pointer, mt: PNimType) {.importc.}
-proc incrSeq(seq: PGenSeq, elemSize: int): PGenSeq {.importc, nodecl.}
-proc newObj(typ: PNimType, size: int): pointer {.importc, nodecl.}
-proc newSeq(typ: PNimType, len: int): pointer {.importc.}
-proc objectInit(dest: Pointer, typ: PNimType) {.importc.}
+proc genericAssign(dest, src: Pointer, mt: PNimType) {.importCompilerProc.}
+proc genericShallowAssign(dest, src: Pointer, mt: PNimType) {.
+  importCompilerProc.}
+proc incrSeq(seq: PGenSeq, elemSize: int): PGenSeq {.importCompilerProc.}
+proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
+proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
+proc objectInit(dest: Pointer, typ: PNimType) {.importCompilerProc.}
 
 template `+!!`(a, b: expr): expr = cast[pointer](cast[TAddress](a) + b)
 
@@ -228,7 +229,9 @@ iterator fields*(x: TAny): tuple[name: string, any: TAny] =
   assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
   var p = x.value
   var t = x.rawType
-  if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
+  # XXX BUG: does not work yet, however is questionable anyway
+  when false:
+    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   var n = t.node
   var ret: seq[tuple[name: cstring, any: TAny]] = @[]
   fieldsAux(p, n, ret)
@@ -272,7 +275,9 @@ proc getFieldNode(p: pointer, n: ptr TNimNode,
 proc `[]=`*(x: TAny, fieldName: string, value: TAny) =
   ## sets a field of `x`; `x` represents an object or a tuple.
   var t = x.rawType
-  if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
+  # XXX BUG: does not work yet, however is questionable anyway
+  when false:
+    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
   var n = getFieldNode(x.value, t.node, fieldname)
   if n != nil:
@@ -284,7 +289,9 @@ proc `[]=`*(x: TAny, fieldName: string, value: TAny) =
 proc `[]`*(x: TAny, fieldName: string): TAny =
   ## gets a field of `x`; `x` represents an object or a tuple.
   var t = x.rawType
-  if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
+  # XXX BUG: does not work yet, however is questionable anyway
+  when false:
+    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
   var n = getFieldNode(x.value, t.node, fieldname)
   if n != nil:
