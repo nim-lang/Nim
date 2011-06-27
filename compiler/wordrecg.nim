@@ -33,8 +33,9 @@ type
     wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
-    wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks, wImportc, wExportc, 
-    wExtern,
+    wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks,
+    wImportCompilerProc,
+    wImportc, wExportc, wExtern,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
@@ -79,8 +80,8 @@ const
     "yield",
 
     ":", "::", "=", ".", "..", "^", "*", "-",
-    "magic", "typecheck", "final", "profiler", "objchecks", "importc", 
-    "exportc", "extern",
+    "magic", "typecheck", "final", "profiler", "objchecks", 
+    "importcompilerproc", "importc", "exportc", "extern",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 

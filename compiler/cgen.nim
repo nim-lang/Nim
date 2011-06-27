@@ -666,17 +666,21 @@ proc genProcPrototype(m: BModule, sym: PSym) =
 proc genProcNoForward(m: BModule, prc: PSym) = 
   fillProcLoc(prc)
   useHeader(m, prc)
+  if lfImportCompilerProc in prc.loc.flags:
+    # dependency to a compilerproc:
+    discard cgsym(m, prc.name.s)
+    return
   genProcPrototype(m, prc)
-  if lfNoDecl in prc.loc.Flags: return 
-  if prc.typ.callConv == ccInline: 
+  if lfNoDecl in prc.loc.Flags: nil
+  elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``gGeneratedSyms`` is wrong, we need
     # a check for ``m.declaredThings``.
     if not ContainsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
-  elif lfDynamicLib in prc.loc.flags: 
+  elif lfDynamicLib in prc.loc.flags:
     if not ContainsOrIncl(gGeneratedSyms, prc.id): 
       SymInDynamicLib(findPendingModule(m, prc), prc)
-  elif not (sfImportc in prc.flags): 
+  elif sfImportc notin prc.flags: 
     if not ContainsOrIncl(gGeneratedSyms, prc.id): 
       genProcAux(findPendingModule(m, prc), prc)
   

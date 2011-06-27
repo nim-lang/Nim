@@ -10,12 +10,14 @@
 ## This program verifies Nimrod against the testcases.
 
 import
-  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json
+  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
+  marshal
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
   resultsFile = "testresults.html"
   jsonFile = "testresults.json"
+  Usage = "usage: tester reject|compile|examples|run|merge [nimrod options]"
 
 type
   TTestAction = enum
@@ -140,6 +142,12 @@ proc initResults: TResults =
   result.passed = 0
   result.skipped = 0
   result.data = ""
+
+proc readResults(filename: string): TResults =
+  result = marshal.to[TResults](readFile(filename))
+
+proc writeResults(filename: string, r: TResults) =
+  writeFile(filename, $$r)
 
 proc `$`(x: TResults): string = 
   result = ("Tests passed: $1 / $3 <br />\n" &
@@ -275,22 +283,45 @@ proc outputJSON(reject, compile, run: TResults) =
   var s = pretty(doc)
   writeFile(jsonFile, s)
   
-var options = ""
-var rejectRes = initResults()
-var compileRes = initResults()
-var runRes = initResults()
+proc main(action: string) =
+  const 
+    compileJson = "compile.json"
+    runJson = "run.json"
+    rejectJson = "reject.json"
+  var options = ""
+  for i in 2.. paramCount():
+    add(options, " ")
+    add(options, paramStr(i))
   
-for i in 1.. paramCount():
-  add(options, " ")
-  add(options, paramStr(i))
+  case action
+  of "reject":
+    var rejectRes = initResults()
+    reject(rejectRes, "tests/reject", options)
+    writeResults(rejectJson, rejectRes)
+  of "compile":
+    var compileRes = initResults()
+    compile(compileRes, "tests/accept/compile/t*.nim", options)
+    writeResults(compileJson, compileRes)
+  of "examples":
+    var compileRes = readResults(compileJson)
+    compileExample(compileRes, "lib/pure/*.nim", options)
+    compileExample(compileRes, "examples/*.nim", options)
+    compileExample(compileRes, "examples/gtk/*.nim", options)
+    writeResults(compileJson, compileRes)
+  of "run":
+    var runRes = initResults()
+    run(runRes, "tests/accept/run", options)
+    writeResults(runJson, runRes)
+  of "merge":
+    var rejectRes = readResults(rejectJson)
+    var compileRes = readResults(compileJson)
+    var runRes = readResults(runJson)
+    listResults(rejectRes, compileRes, runRes)
+    outputJSON(rejectRes, compileRes, runRes)
+  else:
+    quit usage
 
-reject(rejectRes, "tests/reject", options)
-compile(compileRes, "tests/accept/compile/t*.nim", options)
-compileExample(compileRes, "lib/pure/*.nim", options)
-compileExample(compileRes, "examples/*.nim", options)
-compileExample(compileRes, "examples/gtk/*.nim", options)
-run(runRes, "tests/accept/run", options)
-listResults(rejectRes, compileRes, runRes)
-outputJSON(rejectRes, compileRes, runRes)
-openDefaultBrowser(resultsFile)
+if paramCount() == 0:
+  quit usage
+main(paramStr(1))
 
