@@ -251,8 +251,6 @@ proc sort*[A](t: var TCountTable[A]) =
   ## first. This is destructive! You must not modify `t` afterwards!
   ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
   ## `t` in the sorted order.
-  var w: type(t.data[0])
-  checkTypeInfo(addr(w), 10, GetTypeInfo(w))
 
   # we use shellsort here; fast enough and simple
   var h = 1
@@ -263,18 +261,11 @@ proc sort*[A](t: var TCountTable[A]) =
     h = h div 3
     for i in countup(h, high(t.data)):
       var j = i
-      checkTypeInfo(addr(w), 11, GetTypeInfo(w))
       while t.data[j-h].val <= t.data[j].val:
-        checkTypeInfo(addr(w), 12, GetTypeInfo(w))
         var xyz = t.data[j]
-        checkTypeInfo(addr(w), 13, GetTypeInfo(w))
-        t.data[j] = xyz
-        checkTypeInfo(addr(w), 14, GetTypeInfo(w))
-        t.data[j-h] = t.data[j]
-        #swap(t.data[j], t.data[j-h])
-        checkTypeInfo(addr(w), 15, GetTypeInfo(w))
+        t.data[j] = t.data[j-h]
+        t.data[j-h] = xyz
         j = j-h
-        checkTypeInfo(addr(w), 16, GetTypeInfo(w))
         if j < h: break
     if h == 1: break
 
@@ -293,43 +284,19 @@ const
     "50": 344490, "60": 344491, "70": 344492,
     "80": 344497}
 
-proc fake() =
-  #var s: TTable[string, int]
-  #var otherCountTable: TCountTable[string]
-  #var w: type(otherCountTable.data[0])
-  #checkTypeInfo(addr(w), nil, GetTypeInfo(w))
-
 proc countTableTest1 =
-  #fake()
   var s = initTable[string, int](64)
   for key, val in items(data): s[key] = val
   var w: tuple[key: string, val: int] #type(otherCountTable.data[0])
-  checkTypeInfo(addr(w), 0, GetTypeInfo(w))
-  
-  #var s = data.toTable
-  #var otherCountTable: TCountTable[string]
-  #var w: tuple[key: string, val: int] #type(otherCountTable.data[0])
-  checkTypeInfo(addr(w), 1, GetTypeInfo(w))
-  
+
   var t = initCountTable[string]()
-  checkTypeInfo(addr(w), 2, GetTypeInfo(w))
   for k, v in items(data): t.inc(k)
-  checkTypeInfo(addr(w), 3, GetTypeInfo(w))
   for k in t.keys: assert t[k] == 1
-  checkTypeInfo(addr(w), 4, GetTypeInfo(w))
   t.inc("90", 3)
-  checkTypeInfo(addr(w), 5, GetTypeInfo(w))
   t.inc("12", 2)
-  checkTypeInfo(addr(w), 6, GetTypeInfo(w))
   t.inc("34", 1)
-  checkTypeInfo(addr(w), 7, GetTypeInfo(w))
   assert t.largest()[0] == "90"
-  checkTypeInfo(addr(w), 8, GetTypeInfo(w))
   t.sort()
-  checkTypeInfo(addr(w), 9, GetTypeInfo(w))
-  when false:
-    for k, v in t.pairs:
-      echo k, ": ", v
 
   var i = 0
   for k, v in t.pairs:

@@ -63,7 +63,7 @@ proc find*(s, pattern: string, start: int = 0): bool
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: CString
-    offset: int
+    offset: cint
     com = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
   if com == nil:
     var e: ref EInvalidRegEx
@@ -76,7 +76,7 @@ proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
                  start: cint): cint =
   var
     rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = int(pcreExec(pattern, nil, s, len(s), start, 0,
+    res = int(pcre.Exec(pattern, nil, s, len(s), start, 0,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3))
   dealloc(pattern)
   if res < 0: return res
@@ -91,30 +91,30 @@ proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
 proc matchOrFind(s: string, pattern: PPcre, start: cint): cint =
   var
     rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = pcreExec(pattern, nil, s, len(s), start, 0,
+    res = pcre.Exec(pattern, nil, s, len(s), start, 0,
                    cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   dealloc(pattern)
   return res
 
 proc match(s, pattern: string, matches: var openarray[string],
            start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED),
+  return matchOrFind(s, rawCompile(pattern, PCRE.ANCHORED),
                      matches, start) >= 0'i32
 
 proc matchLen(s, pattern: string, matches: var openarray[string],
               start: int = 0): int =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), matches, start)
+  return matchOrFind(s, rawCompile(pattern, PCRE.ANCHORED), matches, start)
 
 proc find(s, pattern: string, matches: var openarray[string],
           start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE),
+  return matchOrFind(s, rawCompile(pattern, PCRE.MULTILINE),
                      matches, start) >= 0'i32
 
 proc match(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), start) >= 0'i32
+  return matchOrFind(s, rawCompile(pattern, PCRE.ANCHORED), start) >= 0'i32
 
 proc find(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE), start) >= 0'i32
+  return matchOrFind(s, rawCompile(pattern, PCRE.MULTILINE), start) >= 0'i32
 
 template `=~` *(s, pattern: expr): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 

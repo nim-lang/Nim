@@ -176,10 +176,11 @@ proc fillResult(param: PSym) =
     param.loc.s = OnUnknown
 
 proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
-  if t.Kind in {tyRef, tyPtr, tyVar}:
-    var b = skipTypes(t.sons[0], abstractInst)
-    if b.kind == tySet and mapSetType(b) == ctArray:
-      return getTypeDescAux(m, b, check)
+  when false:
+    if t.Kind in {tyRef, tyPtr, tyVar}:
+      var b = skipTypes(t.sons[0], abstractInst)
+      if b.kind == tySet and mapSetType(b) == ctArray:
+        return getTypeDescAux(m, b, check)
   result = getTypeDescAux(m, t, check)
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 

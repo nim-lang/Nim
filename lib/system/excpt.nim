@@ -206,11 +206,8 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
     when hasSomeStackTrace:
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
-      if not isNil(e.msg):
-        add(buf, "Error: unhandled exception: ")
-        add(buf, e.msg)
-      else:
-        add(buf, "Error: unhandled exception")
+      add(buf, "Error: unhandled exception: ")
+      if not isNil(e.msg): add(buf, e.msg)
       add(buf, " [")
       add(buf, $ename)
       add(buf, "]\n")

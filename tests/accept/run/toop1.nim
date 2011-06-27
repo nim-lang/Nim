@@ -21,7 +21,7 @@ proc drawCircle(my: var TCircle) = stdout.writeln("o " & $my.radius)
 proc init(my: var TCircle) = 
   init(TFigure(my)) # call base constructor
   my.radius = 5
-  my.draw = drawCircle
+  my.draw = cast[proc (my: var TFigure)](drawCircle)
 
 type
   TRectangle = object of TFigure
@@ -33,7 +33,7 @@ proc init(my: var TRectangle) =
   init(TFigure(my)) # call base constructor
   my.width = 5
   my.height = 10
-  my.draw = drawRectangle
+  my.draw = cast[proc (my: var TFigure)](drawRectangle)
 
 macro `!` (n: expr): stmt = 
   result = newNimNode(nnkCall, n)
