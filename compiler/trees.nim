@@ -141,6 +141,8 @@ proc SwapOperands(op: PNode) =
   op.sons[2] = tmp
 
 proc IsRange*(n: PNode): bool {.inline.} = 
-  result = n.kind == nkInfix and n[0].kind == nkIdent and 
-    n[0].ident.id == ord(wDotDot)
+  if n.kind == nkInfix:
+    if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
+        n[0].kind == nkSymChoice and n[0][1].sym.name.id == ord(wDotDot):
+      result = true
 
