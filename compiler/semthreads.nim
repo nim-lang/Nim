@@ -18,7 +18,7 @@
 ## The only crucial operation that can violate the heap invariants is the
 ## write access. The analysis needs to distinguish between 'unknown', 'mine',
 ## and 'theirs' memory and pointers. Assignments 'whatever <- unknown' are 
-## invalid, and so are 'theirs <- mine' but not 'mine <- theirs'. Since
+## invalid, and so are 'theirs <- whatever' but not 'mine <- theirs'. Since
 ## strings and sequences are heap allocated they are affected too:
 ##
 ## .. code-block:: nimrod
@@ -30,8 +30,9 @@
 ## If the type system would distinguish between 'ref' and '!ref' and threads
 ## could not have '!ref' as input parameters the analysis could simply need to
 ## reject any write access to a global variable which contains GC'ed data.
-## However, '!ref' is not implemented yet and this scheme would be too
-## restrictive anyway.
+## Thanks to the write barrier of the GC, this is exactly what needs to be
+## done! Every write access to a global that contains GC'ed data needs to
+## be prevented! Unfortunately '!ref' is not implemented yet...
 ##
 ## The assignment target is essential for the algorithm: only 
 ## write access to heap locations and global variables are critical and need
@@ -42,7 +43,8 @@
 ##  
 ##  var x = globalVar     # 'x' points to 'theirs'
 ##  while true:
-##    globalVar = x       # OK: 'theirs <- theirs'
+##    globalVar = x       # NOT OK: 'theirs <- theirs' invalid due to
+##                        # write barrier!
 ##    x = "new string"    # ugh: 'x is toUnknown'!
 ##
 ##  --> Solution: toUnknown is never allowed anywhere!
@@ -106,10 +108,12 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   if result != toUndefined: return
   case v.kind
   of skVar:
+    result = toNil
     if sfGlobal in v.flags:
-      result = if sfThreadVar in v.flags: toMine else: toTheirs
-    else:
-      result = toNil
+      if sfThreadVar in v.flags: 
+        result = toMine 
+      elif containsTyRef(v.typ):
+        result = toTheirs
   of skTemp, skForVar: result = toNil
   of skConst: result = toMine
   of skParam: 
@@ -136,7 +140,8 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     of toNil:
       c.mapping[v.id] = owner # fine, toNil can be overwritten
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
-    of toTheirs, toMine:
+    of toTheirs: Message(n.info, warnWriteToForeignHeap)
+    of toMine:
       if lastOwner != owner and owner != toNil:
         Message(n.info, warnDifferentHeaps)
   else:
@@ -145,7 +150,8 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     case lastOwner
     of toNil: nil # fine, toNil can be overwritten
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
-    of toTheirs, toMine:
+    of toTheirs: Message(n.info, warnWriteToForeignHeap)
+    of toMine:
       if lastOwner != owner and owner != toNil:
         Message(n.info, warnDifferentHeaps)
 
@@ -171,7 +177,8 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
     result = analyse(newCtx, prc.ast.sons[codePos])
-    if prc.ast.sons[codePos].kind == nkEmpty and sfNoSideEffect notin prc.flags:
+    if prc.ast.sons[codePos].kind == nkEmpty and 
+       {sfNoSideEffect, sfThread} * prc.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
@@ -228,7 +235,7 @@ proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
 
 proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   if n[0].kind != nkSym or n[0].sym.kind != skProc:
-    if tfNoSideEffect notin n[0].typ.flags:
+    if {tfNoSideEffect, tfThread} * n[0].typ.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
     result = toNil
   else:
@@ -335,22 +342,26 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
       result = toVoid
   else: InternalError(n.info, "analysis not implemented for: " & $n.kind)
 
-proc analyseThreadCreationCall(n: PNode) =
-  # thread proc is second param of ``createThread``:
-  if n[2].kind != nkSym or n[2].sym.kind != skProc:
-    Message(n.info, warnAnalysisLoophole, renderTree(n))
-    return
-  var prc = n[2].sym
+proc analyseThreadProc*(prc: PSym) =
   var c = newProcCtx(prc)
-  var formal = skipTypes(prc.typ, abstractInst).n.sons[1].sym 
-  c.mapping[formal.id] = toTheirs # thread receives foreign data!
+  var formals = skipTypes(prc.typ, abstractInst).n
+  for i in 1 .. formals.len-1:
+    var formal = formals.sons[i].sym 
+    c.mapping[formal.id] = toTheirs # thread receives foreign data!
   discard analyse(c, prc.ast.sons[codePos])
+
+when false:
+  proc analyseThreadCreationCall(n: PNode) =
+    # thread proc is second param of ``createThread``:
+    if n[2].kind != nkSym or n[2].sym.kind != skProc:
+      Message(n.info, warnAnalysisLoophole, renderTree(n))
+      return
+    analyseProc(n[2].sym)
+
+  proc AnalyseThread*(threadCreation: PNode) =
+    analyseThreadCreationCall(threadCreation)
 
 proc needsGlobalAnalysis*: bool =
   result = gGlobalOptions * {optThreads, optThreadAnalysis} == 
                             {optThreads, optThreadAnalysis}
-
-proc AnalyseThread*(threadCreation: PNode) =
-  if needsGlobalAnalysis():
-    analyseThreadCreationCall(threadCreation)
 

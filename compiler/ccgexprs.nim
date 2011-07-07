@@ -1452,7 +1452,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mCreateThread: genCall(p, e, d)
   of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit:
     var opr = e.sons[0].sym
     if lfNoDecl notin opr.loc.flags:

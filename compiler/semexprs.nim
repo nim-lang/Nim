@@ -41,8 +41,8 @@ proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
-    if not (sfProcVar in s.flags) and (s.typ.callConv == ccDefault) and
-        (getModule(s).id != c.module.id): 
+    if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
+        getModule(s).id != c.module.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
   of skConst: 
@@ -103,8 +103,8 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
     d = base(d)
     s = base(s)
   if d == nil: 
-    GlobalError(info, errGenerated, `%`(msgKindToString(errIllegalConvFromXtoY), [
-        typeToString(src), typeToString(castDest)]))
+    GlobalError(info, errGenerated, msgKindToString(errIllegalConvFromXtoY) % [
+        src.typeToString, castDest.typeToString])
   elif d.Kind == tyObject and s.Kind == tyObject: 
     checkConversionBetweenObjects(info, d, s)
   elif (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes) and
@@ -195,15 +195,13 @@ proc semIs(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 3: 
     n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
     n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
-    var a = n.sons[1].typ
-    var b = n.sons[2].typ
-    # a and b can be nil in case of an error:
-    if a != nil and b != nil:
-      if (b.kind != tyObject) or (a.kind != tyObject): 
-        GlobalError(n.info, errIsExpectsObjectTypes)
-      while (b != nil) and (b.id != a.id): b = b.sons[0]
-      if b == nil: 
-        GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+    var a = skipTypes(n.sons[1].typ, abstractPtrs)
+    var b = skipTypes(n.sons[2].typ, abstractPtrs)
+    if b.kind != tyObject or a.kind != tyObject: 
+      GlobalError(n.info, errIsExpectsObjectTypes)
+    while b != nil and b.id != a.id: b = b.sons[0]
+    if b == nil:
+      GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
     n.typ = getSysType(tyBool)
   else: 
     GlobalError(n.info, errIsExpectsTwoArguments)
@@ -338,13 +336,13 @@ proc isAssignable(n: PNode): TAssignableResult =
   result = arNone
   case n.kind
   of nkSym: 
-    if (n.sym.kind in {skVar, skTemp}): result = arLValue
+    if n.sym.kind in {skVar, skTemp}: result = arLValue
   of nkDotExpr: 
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
       result = arLValue
     else: 
       result = isAssignable(n.sons[0])
-    if (result == arLValue) and (sfDiscriminant in n.sons[1].sym.flags): 
+    if result == arLValue and sfDiscriminant in n.sons[1].sym.flags: 
       result = arDiscriminant
   of nkBracketExpr: 
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
@@ -400,7 +398,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       mAppendSeqElem, mNewSeq, mReset, mShallowCopy}
   checkMinSonsLen(n, 1)
   var t = n.sons[0].typ
-  if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic in FakeVarParams): 
+  if n.sons[0].kind == nkSym and n.sons[0].sym.magic in FakeVarParams: 
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     for i in countup(1, sonsLen(n) - 1): 
       if i < sonsLen(t) and t.sons[i] != nil and
@@ -409,8 +407,8 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
           LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
   for i in countup(1, sonsLen(n) - 1): 
-    if (i < sonsLen(t)) and
-        (skipTypes(t.sons[i], abstractInst).kind == tyVar): 
+    if i < sonsLen(t) and
+        skipTypes(t.sons[i], abstractInst).kind == tyVar:
       n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
@@ -466,7 +464,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = m.call
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
-    if not (tfNoSideEffect in t.flags): incl(c.p.owner.flags, sfSideEffect)
+    if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   else: 
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -845,10 +843,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s))
   of mEcho: result = semEcho(c, setMs(n, s))
-  of mCreateThread: 
-    result = semDirectOp(c, n, flags)
-    if semthreads.needsGlobalAnalysis():
-      c.threadEntries.add(result)
   of mShallowCopy:
     if sonsLen(n) == 3:
       # XXX ugh this is really a hack: shallowCopy() can be overloaded only
@@ -1103,12 +1097,17 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skTemplate: result = semTemplateExpr(c, n, s)
       of skType: 
         if n.kind != nkCall: GlobalError(n.info, errXisNotCallable, s.name.s)
-        # XXX does this check make any sense?
-        result = semConv(c, n, s)
+        # XXX think about this more (``set`` procs)
+        if n.len == 2:
+          result = semConv(c, n, s)
+        elif Contains(c.AmbiguousSymbols, s.id): 
+          LocalError(n.info, errUseQualifier, s.name.s)
+        elif s.magic == mNone: result = semDirectOp(c, n, flags)
+        else: result = semMagic(c, n, s, flags)
       of skProc, skMethod, skConverter, skIterator: 
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
-      else: 
+      else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
     elif n.sons[0].kind == nkSymChoice: 

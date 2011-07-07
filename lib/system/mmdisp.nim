@@ -62,11 +62,10 @@ when defined(boehmgc):
     const boehmLib = "boehmgc.dll"
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
-    
-    proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
   else:
     const boehmLib = "/usr/lib/libgc.so.1"
-
+    
+  proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
   proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.} 
   proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.} 
   proc boehmGCincremental {.
@@ -177,12 +176,20 @@ elif defined(nogc):
   proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
+  var allocator {.rtlThreadVar.}: TMemRegion
+  InstantiateForRegion(allocator)
+
   include "system/cellsets"
 
 else:
   include "system/alloc"
+
+  proc unlockedAlloc(size: int): pointer {.inline.} 
+  proc unlockedAlloc0(size: int): pointer {.inline.} 
+  proc unlockedDealloc(p: pointer) {.inline.} 
+  
   include "system/cellsets"
-  assert(sizeof(TCell) == sizeof(TFreeCell))
+  sysAssert(sizeof(TCell) == sizeof(TFreeCell))
   include "system/gc"
   
 {.pop.}

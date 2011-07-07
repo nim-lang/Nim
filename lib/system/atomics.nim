@@ -22,14 +22,14 @@ else:
     inc(p, val)
     result = p
 
-proc atomicInc(memLoc: var int, x: int): int =
+proc atomicInc(memLoc: var int, x: int = 1): int =
   when hasThreadSupport:
     result = sync_add_and_fetch(memLoc, x)
   else:
     inc(memLoc, x)
     result = memLoc
   
-proc atomicDec(memLoc: var int, x: int): int =
+proc atomicDec(memLoc: var int, x: int = 1): int =
   when hasThreadSupport:
     when defined(sync_sub_and_fetch):
       result = sync_sub_and_fetch(memLoc, x)

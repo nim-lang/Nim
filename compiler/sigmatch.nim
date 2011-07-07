@@ -220,6 +220,9 @@ proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       result = isNone
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       result = isNone
+    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
+      # noSideEffect implies ``tfThread``!
+      result = isNone
   else: nil
 
 proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 

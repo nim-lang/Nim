@@ -203,8 +203,9 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       result = ast.emptyNode
   
 proc checkThreads(c: PContext) =
+  if not needsGlobalAnalysis(): return
   for i in 0 .. c.threadEntries.len-1:
-    semthreads.AnalyseThread(c.threadEntries[i])
+    semthreads.AnalyseThreadProc(c.threadEntries[i])
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)

@@ -22,11 +22,11 @@ const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wPure, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
-    wBorrow, wExtern, wImportCompilerProc}
+    wBorrow, wExtern, wImportCompilerProc, wThread}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wTypeCheck, wExtern}
+    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
@@ -37,7 +37,7 @@ const
     wInfChecks, wNanChecks, wPragma, wEmit, wUnroll, wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
-    wDeprecated, wExtern}
+    wDeprecated, wExtern, wThread}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern}
@@ -45,7 +45,8 @@ const
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern}
-  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect}
+  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
+                      wThread}
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 proc pragmaAsm*(c: PContext, n: PNode): char
@@ -125,10 +126,9 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
       s.magic = m
       break
   if s.magic == mNone: Message(n.info, warnUnknownMagic, v)
-  if s.magic != mCreateThread: 
-    # magics don't need an implementation, so we
-    # treat them as imported, instead of modifing a lot of working code:
-    incl(s.flags, sfImportc)
+  # magics don't need an implementation, so we
+  # treat them as imported, instead of modifing a lot of working code:
+  incl(s.flags, sfImportc)
 
 proc wordToCallConv(sw: TSpecialWord): TCallingConvention = 
   # this assumes that the order of special words and calling conventions is
@@ -500,9 +500,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
             incl(sym.typ.flags, tfShallow)
-          of wTypeCheck: 
+          of wThread:
             noVal(it)
-            incl(sym.flags, sfTypeCheck)
+            incl(sym.flags, sfThread)
+            incl(sym.flags, sfProcVar)
+            if sym.typ != nil: incl(sym.typ.flags, tfThread)
           of wHint: Message(it.info, hintUser, expectStrLit(c, it))
           of wWarning: Message(it.info, warnUser, expectStrLit(c, it))
           of wError: LocalError(it.info, errUser, expectStrLit(c, it))

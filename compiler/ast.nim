@@ -57,7 +57,7 @@ type
     nkStrLit,             # a string literal ""
     nkRStrLit,            # a raw string literal r""
     nkTripleStrLit,       # a triple string literal """
-    nkMetaNode,           # difficult to explan; represents itself
+    nkMetaNode,           # difficult to explain; represents itself
                           # (used for macros)
     nkNilLit,             # the nil literal
                           # end of atoms
@@ -217,7 +217,7 @@ type
     sfDiscriminant,   # field is a discriminant in a record/object
     sfDeprecated,     # symbol is deprecated
     sfInClosure,      # variable is accessed by a closure
-    sfTypeCheck,      # wether macro parameters should be type checked
+    sfThread,         # proc will run as a thread
     sfCompileTime,    # proc can be evaluated at compile time
     sfThreadVar,      # variable is a thread variable
     sfMerge,          # proc can be merged with itself
@@ -274,7 +274,8 @@ type
     tfFinal,          # is the object final?
     tfAcyclic,        # type is acyclic (for GC optimization)
     tfEnumHasHoles,   # enum cannot be mapped into a range
-    tfShallow         # type can be shallow copied on assignment
+    tfShallow,        # type can be shallow copied on assignment
+    tfThread          # proc type is marked as ``thread``
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -310,7 +311,7 @@ type
 
   TMagic* = enum # symbols that require compiler magic:
     mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, 
-    mEcho, mCreateThread, mShallowCopy,
+    mEcho, mShallowCopy,
     mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
