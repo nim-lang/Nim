@@ -785,6 +785,10 @@ when hasThreadSupport and not hasSharedHeap:
 else:
   {.pragma: rtlThreadVar.}
 
+template sysAssert(cond: expr) =
+  # change this to activate system asserts
+  nil
+
 include "system/inclrtl"
 
 when not defined(ecmascript) and not defined(nimrodVm):
@@ -1251,7 +1255,7 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   for i in 0..data.len-1: op(data[i])
 
 iterator fields*[T: tuple](x: T): expr {.magic: "Fields", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This is really transforms
+  ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
 iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
@@ -1261,13 +1265,13 @@ iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
 iterator fieldPairs*[T: tuple](x: T): expr {.magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This is really transforms
+  ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
 iterator fieldPairs*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x` and `y`.
-  ## Warning: This is really transforms the 'for' and unrolls the loop. 
+  ## Warning: This really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
 
@@ -1703,10 +1707,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   # ----------------------------------------------------------------------------
 
-  proc atomicInc*(memLoc: var int, x: int): int {.inline.}
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline.}
     ## atomic increment of `memLoc`. Returns the value after the operation.
   
-  proc atomicDec*(memLoc: var int, x: int): int {.inline.}
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline.}
     ## atomic decrement of `memLoc`. Returns the value after the operation.
 
   include "system/atomics"
@@ -1719,6 +1723,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       context: C_JmpBuf
 
   when hasThreadSupport:
+    include "system/syslocks"
     include "system/threads"
   else:
     initStackBottom()
@@ -1739,14 +1744,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}
 
   proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
-    assert(n.kind == nkCase)
+    sysAssert(n.kind == nkCase)
     var d: int
     var a = cast[TAddress](aa)
     case n.typ.size
     of 1: d = ze(cast[ptr int8](a +% n.offset)[])
     of 2: d = ze(cast[ptr int16](a +% n.offset)[])
     of 4: d = int(cast[ptr int32](a +% n.offset)[])
-    else: assert(false)
+    else: sysAssert(false)
     return d
 
   proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
@@ -1764,6 +1769,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   {.pop.}
 
   include "system/sysio"
+  when hasThreadSupport:
+    include "system/inboxes"
 
   iterator lines*(filename: string): string =
     ## Iterate over any line in the file named `filename`.

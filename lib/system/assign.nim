@@ -24,7 +24,7 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
             n.typ.size)
     var m = selectBranch(src, n)
     if m != nil: genericAssignAux(dest, src, m, shallow)
-  of nkNone: assert(false)
+  of nkNone: sysAssert(false)
   #else:
   #  echo "ugh memory corruption! ", n.kind
   #  quit 1
@@ -33,7 +33,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
-  assert(mt != nil)
+  sysAssert(mt != nil)
   case mt.Kind
   of tyString:
     var x = cast[ppointer](dest)
@@ -50,7 +50,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
       # this can happen! nil sequences are allowed
       unsureAsgnRef(x, s2)
       return
-    assert(dest != nil)
+    sysAssert(dest != nil)
     unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
     var dst = cast[taddress](cast[ppointer](dest)[])
     for i in 0..seq.len-1:
@@ -101,7 +101,7 @@ proc objectInit(dest: Pointer, typ: PNimType) {.compilerProc.}
 proc objectInitAux(dest: Pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
   case n.kind
-  of nkNone: assert(false)
+  of nkNone: sysAssert(false)
   of nkSLot: objectInit(cast[pointer](d +% n.offset), n.typ)
   of nkList:
     for i in 0..n.len-1:
@@ -134,7 +134,7 @@ proc genericReset(dest: Pointer, mt: PNimType) {.compilerProc.}
 proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
   case n.kind
-  of nkNone: assert(false)
+  of nkNone: sysAssert(false)
   of nkSlot: genericReset(cast[pointer](d +% n.offset), n.typ)
   of nkList:
     for i in 0..n.len-1: genericResetAux(dest, n.sons[i])
@@ -145,7 +145,7 @@ proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
 
 proc genericReset(dest: Pointer, mt: PNimType) =
   var d = cast[TAddress](dest)
-  assert(mt != nil)
+  sysAssert(mt != nil)
   case mt.Kind
   of tyString, tyRef, tySequence:
     unsureAsgnRef(cast[ppointer](dest), nil)
@@ -173,4 +173,4 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
   if newBranch != oldBranch and oldDiscVal != 0:
     raise newException(EInvalidField, 
                        "assignment to discriminant changes object branch")
-  
+

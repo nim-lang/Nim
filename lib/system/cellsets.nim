@@ -102,9 +102,9 @@ proc CellSetGet(t: TCellSet, key: TAddress): PPageDesc =
 proc CellSetRawInsert(t: TCellSet, data: PPageDescArray, desc: PPageDesc) =
   var h = cast[int](desc.key) and t.max
   while data[h] != nil:
-    assert(data[h] != desc)
+    sysAssert(data[h] != desc)
     h = nextTry(h, t.max)
-  assert(data[h] == nil)
+  sysAssert(data[h] == nil)
   data[h] = desc
 
 proc CellSetEnlarge(t: var TCellSet) =
@@ -130,7 +130,7 @@ proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
   inc(t.counter)
   h = cast[int](key) and t.max
   while t.data[h] != nil: h = nextTry(h, t.max)
-  assert(t.data[h] == nil)
+  sysAssert(t.data[h] == nil)
   # the new page descriptor goes into result
   result = cast[PPageDesc](unlockedAlloc0(sizeof(TPageDesc)))
   result.next = t.head

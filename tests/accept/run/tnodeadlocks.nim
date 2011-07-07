@@ -14,7 +14,7 @@ var
 
 proc doNothing() = nil
 
-proc threadFunc(interval: tuple[a, b: int]) {.procvar.} = 
+proc threadFunc(interval: tuple[a, b: int]) {.thread.} = 
   doNothing()
   for i in interval.a..interval.b: 
     when nodeadlocks:

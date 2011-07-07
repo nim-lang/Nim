@@ -33,7 +33,7 @@ type
     wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
-    wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks,
+    wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImportCompilerProc,
     wImportc, wExportc, wExtern,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
@@ -80,7 +80,7 @@ const
     "yield",
 
     ":", "::", "=", ".", "..", "^", "*", "-",
-    "magic", "typecheck", "final", "profiler", "objchecks", 
+    "magic", "thread", "final", "profiler", "objchecks", 
     "importcompilerproc", "importc", "exportc", "extern",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 

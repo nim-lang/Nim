@@ -10,23 +10,22 @@
 ## Thread var support for crappy architectures that lack native support for 
 ## thread local storage.
 
+proc emulatedThreadVars(): bool {.inline.} =
+  result = optThreads in gGlobalOptions
+  # NOW: Use the work-around everywhere, because it should be faster anyway.
+  #platform.OS[targetOS].props.contains(ospLacksThreadVars)
+
 proc AccessThreadLocalVar(p: BProc, s: PSym) =
-  if optThreads in gGlobalOptions:
-    if platform.OS[targetOS].props.contains(ospLacksThreadVars):
-      if not p.ThreadVarAccessed:
-        p.ThreadVarAccessed = true
-        p.module.usesThreadVars = true
-        appf(p.s[cpsLocals], "NimThreadVars* NimTV;$n")
-        appcg(p, cpsInit, "NimTV=(NimThreadVars*)#GetThreadLocalVars();$n")
+  if emulatedThreadVars() and not p.ThreadVarAccessed:
+    p.ThreadVarAccessed = true
+    p.module.usesThreadVars = true
+    appf(p.s[cpsLocals], "NimThreadVars* NimTV;$n")
+    appcg(p, cpsInit, "NimTV=(NimThreadVars*)#GetThreadLocalVars();$n")
 
 var
   nimtv: PRope # nimrod thread vars
   nimtvDeps: seq[PType] = @[]
   nimtvDeclared = initIntSet()
-
-proc emulatedThreadVars(): bool {.inline.} =
-  result = optThreads in gGlobalOptions and
-    platform.OS[targetOS].props.contains(ospLacksThreadVars)
 
 proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
   if emulatedThreadVars():

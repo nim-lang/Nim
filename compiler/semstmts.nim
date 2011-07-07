@@ -549,10 +549,12 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
   if {sfNoSideEffect, sfSideEffect} * s.flags ==
       {sfNoSideEffect, sfSideEffect}: 
     LocalError(s.info, errXhasSideEffects, s.name.s)
+  elif sfThread in s.flags and semthreads.needsGlobalAnalysis():
+    c.threadEntries.add(s)
   
 proc addResult(c: PContext, t: PType, info: TLineInfo) = 
   if t != nil: 
-    var s = newSym(skVar, getIdent("result"), getCurrOwner())
+    var s = newSym(skVar, getIdent"result", getCurrOwner())
     s.info = info
     s.typ = t
     incl(s.flags, sfResult)
@@ -566,7 +568,7 @@ proc addResultNode(c: PContext, n: PNode) =
 proc semLambda(c: PContext, n: PNode): PNode = 
   result = n
   checkSonsLen(n, codePos + 1)
-  var s = newSym(skProc, getIdent(":anonymous"), getCurrOwner())
+  var s = newSym(skProc, getIdent":anonymous", getCurrOwner())
   s.info = n.info
   s.ast = n
   n.sons[namePos] = newSymNode(s)
@@ -594,10 +596,11 @@ proc semLambda(c: PContext, n: PNode): PNode =
     popProcCon(c)
   else: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
+  sideEffectsCheck(c, s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   result.typ = s.typ
-
+  
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
   var 

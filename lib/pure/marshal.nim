@@ -9,6 +9,25 @@
 
 ## This module contains procs for serialization and deseralization of 
 ## arbitrary Nimrod data structures. The serialization format uses JSON.
+##
+## **Restriction**: For objects their type is **not** serialized. This means
+## essentially that it does not work if the object has some other runtime
+## type than its compiletime type:
+##
+## .. code-block:: nimrod
+## 
+##   type 
+##     TA = object
+##     TB = object of TA
+##       f: int
+##
+##   var
+##     a: ref TA
+##     b: ref TB
+##
+##   new(b)
+##   a = b
+##   echo($$a[]) # produces "{}", not "{f: 0}"
 
 import streams, typeinfo, json, intsets, tables
 
@@ -285,4 +304,16 @@ when isMainModule:
   var test7 = buildList()
   echo($$test7)
   testit(test7)
+
+  type 
+    TA = object
+    TB = object of TA
+      f: int
+
+  var
+    a: ref TA
+    b: ref TB
+  new(b)
+  a = b
+  echo($$a[]) # produces "{}", not "{f: 0}"
 

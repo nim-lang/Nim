@@ -41,7 +41,7 @@ type
     generics*: PNode          # a list of the things to compile; list of
                               # nkExprEqExpr nodes which contain the
                               # generic symbol and the instantiated symbol
-    threadEntries*: PNode     # list of thread entries to check
+    threadEntries*: TSymSeq   # list of thread entries to check
     lastGenericIdx*: int      # used for the generics stack
     tab*: TSymTab             # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
@@ -125,7 +125,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   append(result.optionStack, newOptionEntry())
   result.module = module
   result.generics = newNode(nkStmtList)
-  result.threadEntries = newNode(nkStmtList)
+  result.threadEntries = @[]
   result.converters = @[]
   result.filename = nimfile
   result.includedFiles = initIntSet()

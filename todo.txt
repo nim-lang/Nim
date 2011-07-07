@@ -1,7 +1,15 @@
 High priority (version 0.8.12)
 ==============================
-* test threads on windows; thread analysis needs to be even more restrictive!
-* implement message passing built-ins: channels/queues
+* test threads on windows
+* test thread analysis: 
+  var x = globalString # ok, copied; `x` is mine!
+  vs
+  var x = globalRef # read access, `x` is theirs!
+
+* test message passing built-ins
+* make threadvar efficient again on linux after testing
+* document Nimrod's threads
+* document Nimrod's two phase symbol lookup for generics
 * bug: {:}.toTable[int, string]()
 
 
@@ -11,6 +19,7 @@ version 0.9.0
 - add --deadlock_prevention:on|off switch? timeout for locks?
 - bug: tfFinal not passed to generic
 - bug: forward proc for generic seems broken
+- ``var T`` as a return type; easy to prove that location is not on the stack
 - test the sort implementation again
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
@@ -74,7 +83,6 @@ Low priority
 
 - ``when T is int`` for generic code
 - ``when validCode( proc ()  )`` for generic code
-- macros: ``typecheck`` pragma; this allows transformations based on types!
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful

@@ -56,6 +56,7 @@ Additions
 - Added ``lists`` module which contains generic linked lists.
 - Added ``sets`` module which contains generic hash sets.
 - Added ``tables`` module which contains generic hash tables.
+- Added ``queues`` module which contains generic sequence based queues.
 - Added ``intsets`` module which contains a specialized int set data type.
 - Added ``scgi`` module.
 - Added ``smtp`` module.

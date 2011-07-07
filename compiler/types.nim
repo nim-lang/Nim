@@ -331,6 +331,13 @@ proc containsGarbageCollectedRef(typ: PType): bool =
   # that are garbage-collected)
   result = searchTypeFor(typ, isGBCRef)
 
+proc isTyRef(t: PType): bool =
+  result = t.kind == tyRef
+
+proc containsTyRef*(typ: PType): bool = 
+  # returns true if typ contains a 'ref'
+  result = searchTypeFor(typ, isTyRef)
+
 proc isHiddenPointer(t: PType): bool = 
   result = t.kind in {tyString, tySequence}
 
@@ -484,6 +491,9 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if tfNoSideEffect in t.flags: 
       addSep(prag)
       add(prag, "noSideEffect")
+    if tfThread in t.flags:
+      addSep(prag)
+      add(prag, "thread")
     if len(prag) != 0: add(result, "{." & prag & ".}")
   else: 
     result = typeToStr[t.kind]

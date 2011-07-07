@@ -77,10 +77,13 @@ proc startProcess*(command: string,
   ## If ``env == nil`` the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
   ## to `startProcess`. See the documentation of ``TProcessOption`` for the
-  ## meaning of these flags.
+  ## meaning of these flags. You need to `close` the process when done.
   ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
+
+proc close*(p: PProcess) {.rtl, extern: "nosp$1".}
+  ## When the process has finished executing, cleanup related handles
 
 proc suspend*(p: PProcess) {.rtl, extern: "nosp$1".}
   ## Suspends the process `p`.
@@ -179,6 +182,7 @@ proc execProcesses*(cmds: openArray[string],
             err.add("\n")
           echo(err)
         result = max(waitForExit(q[r]), result)
+        if q[r] != nil: close(q[r])
         q[r] = startProcessAux(cmds[i], options=options)
         r = (r + 1) mod n
     else:
@@ -189,15 +193,18 @@ proc execProcesses*(cmds: openArray[string],
           if not running(q[r]):
             #echo(outputStream(q[r]).readLine())
             result = max(waitForExit(q[r]), result)
+            if q[r] != nil: close(q[r])
             q[r] = startProcessAux(cmds[i], options=options)
             inc(i)
             if i > high(cmds): break
     for i in 0..m-1:
+      if q[i] != nil: close(q[i])
       result = max(waitForExit(q[i]), result)
   else:
     for i in 0..high(cmds):
       var p = startProcessAux(cmds[i], options=options)
       result = max(waitForExit(p), result)
+      close(p)
 
 proc select*(readfds: var seq[PProcess], timeout = 500): int
   ## `select` with a sensible Nimrod interface. `timeout` is in miliseconds.
@@ -215,6 +222,8 @@ when not defined(useNimRtl):
     while running(p) or not outp.atEnd(outp):
       result.add(outp.readLine())
       result.add("\n")
+    outp.close(outp)
+    close(p)
 
 when false:
   proc deallocCStringArray(a: cstringArray) =
@@ -355,6 +364,12 @@ when defined(Windows) and not defined(useNimRtl):
     discard closeHandle(procInfo.hThread)
     result.FProcessHandle = procInfo.hProcess
     result.id = procInfo.dwProcessID
+
+  proc close(p: PProcess) =
+    discard CloseHandle(p.inputHandle)
+    discard CloseHandle(p.outputHandle)
+    discard CloseHandle(p.errorHandle)
+    discard CloseHandle(p.FProcessHandle)
 
   proc suspend(p: PProcess) =
     discard SuspendThread(p.FProcessHandle)
@@ -522,6 +537,11 @@ elif not defined(useNimRtl):
     discard close(p_stderr[writeIdx])
     discard close(p_stdin[readIdx])
     discard close(p_stdout[writeIdx])
+
+  proc close(p: PProcess) =
+    discard close(p.inputHandle)
+    discard close(p.outputHandle)
+    discard close(p.errorHandle)
 
   proc suspend(p: PProcess) =
     discard kill(p.id, SIGSTOP)
