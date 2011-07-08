@@ -22,6 +22,8 @@ type
   PInbox = ptr TInbox
   TLoadStoreMode = enum mStore, mLoad
 
+const ThreadDeadMask = -2
+
 proc initInbox(p: pointer) =
   var inbox = cast[PInbox](p)
   initSysLock(inbox.lock)
@@ -30,6 +32,9 @@ proc initInbox(p: pointer) =
 
 proc freeInbox(p: pointer) =
   var inbox = cast[PInbox](p)
+  # we need to grab the lock to be save against sending threads!
+  acquireSys(inbox.lock)
+  inbox.mask = ThreadDeadMask
   deallocOsPages(inbox.region)
   deinitSys(inbox.lock)
   deinitSysCond(inbox.cond)
@@ -158,7 +163,6 @@ proc rawSend(q: PInbox, data: pointer, typ: PNimType) =
     q.mask = cap*2 - 1
     q.wr = q.count
     q.rd = 0
-    #echo "came here"
   storeAux(addr(q.data[q.wr * typ.size]), data, typ, q, mStore)
   inc q.count
   q.wr = (q.wr + 1) and q.mask
@@ -177,22 +181,33 @@ template lockInbox(q: expr, action: stmt) =
 proc send*[TMsg](receiver: var TThread[TMsg], msg: TMsg) =
   ## sends a message to a thread. `msg` is deeply copied.
   var q = cast[PInbox](getInBoxMem(receiver))
+  if q.mask == ThreadDeadMask:
+    raise newException(EDeadThread, "cannot send message; thread died")
   acquireSys(q.lock)
   var m: TMsg
   shallowCopy(m, msg)
-  rawSend(q, addr(m), cast[PNimType](getTypeInfo(msg)))
+  var typ = cast[PNimType](getTypeInfo(msg))
+  rawSend(q, addr(m), typ)
+  q.elemType = typ
   releaseSys(q.lock)
   SignalSysCond(q.cond)
 
-proc recv*[TMsg](): TMsg =
-  ## receives a message from its internal message queue. This blocks until
-  ## a message has arrived! You may use ``peek`` to avoid the blocking.
+proc llRecv(res: pointer, typ: PNimType) =
+  # to save space, the generic is as small as possible
   var q = cast[PInbox](getInBoxMem())
   acquireSys(q.lock)
   while q.count <= 0:
     WaitSysCond(q.cond, q.lock)
-  rawRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
+  if typ != q.elemType:
+    releaseSys(q.lock)
+    raise newException(EInvalidValue, "cannot receive message of wrong type")
+  rawRecv(q, res, typ)
   releaseSys(q.lock)
+
+proc recv*[TMsg](): TMsg =
+  ## receives a message from its internal message queue. This blocks until
+  ## a message has arrived! You may use ``peek`` to avoid the blocking.
+  llRecv(addr(result), cast[PNimType](getTypeInfo(result)))
 
 proc peek*(): int =
   ## returns the current number of messages in the inbox.

@@ -1,12 +1,12 @@
 High priority (version 0.8.12)
 ==============================
+* ``force_nosideEffect`` or some similar pragma is needed (``loophole``?)
 * test threads on windows
 * test thread analysis: 
   var x = globalString # ok, copied; `x` is mine!
   vs
   var x = globalRef # read access, `x` is theirs!
 
-* test message passing built-ins
 * make threadvar efficient again on linux after testing
 * document Nimrod's threads
 * document Nimrod's two phase symbol lookup for generics

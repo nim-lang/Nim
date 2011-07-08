@@ -249,7 +249,8 @@ when not defined(useNimRtl):
 
 type
   TThread* {.pure, final.}[TParam] = object of TGcThread ## Nimrod thread.
-    fn: proc (p: TParam)
+    emptyFn: proc ()
+    dataFn: proc (p: TParam)
     data: TParam
 
 proc initInbox(p: pointer)
@@ -268,14 +269,14 @@ template ThreadProcWrapperBody(closure: expr) =
     initGC()
   t.stackBottom = addr(t)
   registerThread(t)
-  initInbox(addr(t.inbox))
   try:
     when false:
       var a = addr(tls)
       var b = MaskStackPointer(1293920-372736-303104-36864)
       c_fprintf(c_stdout, "TLS:    %p\nmasked: %p\ndiff:   %ld\n",
                 a, b, cast[int](a) - cast[int](b))
-    t.fn(t.data)
+    if t.emptyFn == nil: t.dataFn(t.data)
+    else: t.emptyFn()
   finally:
     # XXX shut-down is not executed when the thread is forced down!
     freeInbox(addr(t.inbox))
@@ -326,8 +327,28 @@ proc createThread*[TParam](t: var TThread[TParam],
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`. `param` is passed to `tp`.
   t.data = param
-  t.fn = tp
+  t.dataFn = tp
   t.stackSize = ThreadStackSize
+  initInbox(addr(t.inbox))
+  when hostOS == "windows":
+    var dummyThreadId: int32
+    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TParam],
+                         addr(t), 0'i32, dummyThreadId)
+    if t.sys <= 0:
+      raise newException(EResourceExhausted, "cannot create thread")
+  else:
+    var a: Tpthread_attr
+    pthread_attr_init(a)
+    pthread_attr_setstacksize(a, ThreadStackSize)
+    if pthread_create(t.sys, a, threadProcWrapper[TParam], addr(t)) != 0:
+      raise newException(EResourceExhausted, "cannot create thread")
+
+proc createThread*[TParam](t: var TThread[TParam], tp: proc () {.thread.}) =
+  ## creates a new thread `t` and starts its execution. Entry point is the
+  ## proc `tp`.
+  t.emptyFn = tp
+  t.stackSize = ThreadStackSize
+  initInbox(addr(t.inbox))
   when hostOS == "windows":
     var dummyThreadId: int32
     t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TParam],
@@ -342,9 +363,9 @@ proc createThread*[TParam](t: var TThread[TParam],
       raise newException(EResourceExhausted, "cannot create thread")
 
 when useStackMaskHack:
-  proc runMain(tp: proc (dummy: pointer) {.thread.}) {.compilerproc.} =
+  proc runMain(tp: proc () {.thread.}) {.compilerproc.} =
     var mainThread: TThread[pointer]
-    createThread(mainThread, tp, nil)
+    createThread(mainThread, tp)
     joinThread(mainThread)
 
 # --------------------------- lock handling ----------------------------------
@@ -462,9 +483,9 @@ proc Release*(lock: var TLock) =
 
 # ------------------------ message passing support ---------------------------
 
-proc getInBoxMem*[TMsg](t: var TThread[TMsg]): pointer {.inline.} =
+proc getInBoxMem[TMsg](t: var TThread[TMsg]): pointer {.inline.} =
   result = addr(t.inbox)
 
-proc getInBoxMem*(): pointer {.inline.} =
+proc getInBoxMem(): pointer {.inline.} =
   result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).inbox)
 
