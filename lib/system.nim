@@ -236,7 +236,7 @@ type
 
   EInvalidObjectAssignment* =
     object of ESynch ## is raised if an object gets assigned to its
-                     ## farther's object.
+                     ## parent's object.
 
   EInvalidObjectConversion* =
     object of ESynch ## is raised if an object is converted to an incompatible
@@ -261,7 +261,10 @@ type
                              ## that cannot be represented with infinite
                              ## precision -- for example, 2.0 / 3.0, log(1.1) 
                              ## NOTE: Nimrod currently does not detect these!
-
+  EDeadThread* =
+    object of ESynch ## is raised if it is attempted to send a message to a
+                     ## dead thread.
+                     
   TResult* = enum Failure, Success
 
 proc sizeof*[T](x: T): natural {.magic: "SizeOf", noSideEffect.}
