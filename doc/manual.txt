@@ -3141,7 +3141,7 @@ violates the *no heap sharing restriction*:
   createThread(t, horrible)
   joinThread(t)
   
-For the above code the compiler procudes "Warning: write to foreign heap". This
+For the above code the compiler produces "Warning: write to foreign heap". This
 warning might become an error message in future versions of the compiler.
 
 Creating a thread is an expensive operation, because a new stack and heap needs
