@@ -393,7 +393,7 @@ type
 const
   noDeadlocks = false # compileOption("deadlockPrevention")
 
-when nodeadlocks:
+when false:
   var
     deadlocksPrevented*: int ## counts the number of times a 
                              ## deadlock has been prevented

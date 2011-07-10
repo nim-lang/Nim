@@ -1,7 +1,8 @@
 version 0.9.0
 =============
 
-- ``var T`` as a return type; easy to prove that location is not on the stack
+- ``var T`` as a return type; easy to prove that location does not escape its
+  stack frame
 - document Nimrod's two phase symbol lookup for generics
 - add --deadlock_prevention:on|off switch? timeout for locks?
 - bug: tfFinal not passed to generic
