@@ -522,6 +522,7 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
   of warnMin..warnMax: 
     if not (optWarns in gOptions): return 
     if not (msg in gNotes): return 
+    writeContext(unknownLineInfo())
     frmt = rawWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 
@@ -552,6 +553,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     lastError = info
   of warnMin..warnMax: 
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
+    if not ignoreMsg: writeContext(info)
     frmt = posWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 

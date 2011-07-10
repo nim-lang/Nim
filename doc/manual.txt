@@ -473,10 +473,9 @@ Pre-defined integer types
 These integer types are pre-defined:
 
 ``int``
-  the generic signed integer type; its size is platform dependent
-  (the compiler chooses the processor's fastest integer type).
-  This type should be used in general. An integer literal that has no type
-  suffix is of this type.
+  the generic signed integer type; its size is platform dependent and has the
+  same size as a pointer. This type should be used in general. An integer 
+  literal that has no type suffix is of this type.
 
 intXX
   additional signed integer types of XX bits use this naming scheme
@@ -581,7 +580,7 @@ the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
 
 Boolean type
 ~~~~~~~~~~~~
-The `boolean`:idx: type is named ``bool`` in Nimrod and can be one of the two
+The `boolean`:idx: type is named `bool`:idx: in Nimrod and can be one of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
 if, elif, when statements need to be of type bool.
 
@@ -670,7 +669,7 @@ use explicitely:
       valueD = (3, "abc")
 
 As can be seen from the example, it is possible to both specify a field's 
-ordinal value and its string value by using a tuple construction. It is also
+ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
 
@@ -930,7 +929,7 @@ Reference and pointer types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 References (similar to `pointers`:idx: in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
-point to and modify the same location in memory.
+point to and modify the same location in memory (also called `aliasing`:idx:).
 
 Nimrod distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
@@ -1002,7 +1001,7 @@ pointer) as if it would have the type ``ptr TData``. Casting should only be
 done if it is unavoidable: it breaks type safety and bugs can lead to
 mysterious crashes.
 
-**Note**: The example only works because the memory is initialized with zero
+**Note**: The example only works because the memory is initialized to zero
 (``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
 ``nil`` which the string assignment can handle. You need to know low level
 details like this when mixing garbage collected data with unmanaged memory.
@@ -1055,7 +1054,7 @@ each other:
 `inline`:idx:
     The inline convention means the the caller should not call the procedure,
     but inline its code directly. Note that Nimrod does not inline, but leaves
-    this to the C compiler. Thus it generates ``__inline`` procedures. This is
+    this to the C compiler; it generates ``__inline`` procedures. This is
     only a hint for the compiler: it may completely ignore it and
     it may inline procedures that are not marked as ``inline``.
 
@@ -1069,8 +1068,7 @@ each other:
 
 `closure`:idx:
     indicates that the procedure expects a context, a closure that needs
-    to be passed to the procedure. The calling convention ``nimcall`` is
-    compatible to ``closure``.
+    to be passed to the procedure.
 
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for
@@ -1311,7 +1309,8 @@ algorithm returns true:
     if b.kind == distinct and typeEquals(b.baseType, a): return true
     return false
     
-You can, however, define your own implicit converters:
+The convertible relation can be relaxed by a user-defined type 
+`converter`:idx:.
 
 .. code-block:: nimrod
   converter toInt(x: char): int = result = ord(x)
@@ -2036,7 +2035,7 @@ Overloading of the subscript operator
 The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
 Overloading support is only possible if the first parameter has no type that
 already supports the built-in ``[]`` notation. Currently the compiler 
-does not check this. XXX Multiple indexes
+does not check this restriction.
 
 
 Multi-methods
@@ -2612,8 +2611,8 @@ iterator in which case the overloading resolution takes place:
   write(stdout, x) # not ambiguous: uses the module C's x
 
 
-Messages
-========
+Compiler Messages
+=================
 
 The Nimrod compiler emits different kinds of messages: `hint`:idx:,
 `warning`:idx:, and `error`:idx: messages. An *error* message is emitted if
@@ -3044,4 +3043,117 @@ conjunction with the ``exportc`` pragma:
 This is only useful if the program is compiled as a dynamic library via the
 ``--app:lib`` command line option.
 
+
+Threads
+=======
+
+Even though Nimrod's `thread`:idx: support and semantics are preliminary, 
+they should be quite usable already. To enable thread support 
+the ``--threads:on`` command line switch needs to be used. The ``system``
+module then contains several threading primitives. 
+See the `threads <threads.html>`_ and `inboxes <inboxes.html>`_ modules 
+for the thread API.
+
+Nimrod's memory model for threads is quite different than that of other common
+programming languages (C, Pascal, Java): Each thread has its own (garbage 
+collected) heap and sharing of memory is restricted to global variables. This 
+helps to prevent race conditions. GC efficiency is improved quite a lot, 
+because the GC never has to stop other threads and see what they reference.
+Memory allocation requires no lock at all! This design easily scales to massive
+multicore processors that will become the norm in the future.
+
+
+Thread pragma
+-------------
+
+A proc that is executed as a new thread of execution should be marked by the
+`thread pragma`:idx:. The compiler checks procedures marked as ``thread`` for
+violations of the `no heap sharing restriction`:idx:\: This restriction implies
+that it is invalid to construct a data structure that consists of memory 
+allocated from different (thread local) heaps. 
+
+Since the semantic checking of threads requires a whole program analysis, 
+it is quite expensive and can be turned off with ``--threadanalysis:off`` to 
+improve compile times.
+
+A thread proc is passed to ``createThread`` and invoked indirectly; so the
+``thread`` pragma implies ``procvar``.
+
+
+Actor model
+-----------
+
+Nimrod supports the `actor model`:idx: of concurrency natively:
+
+.. code-block:: nimrod
+  type
+    TMsgKind = enum
+      mLine, mEof
+    TMsg = object {.pure, final.}
+      case k: TMsgKind
+      of mEof: nil
+      of mLine: data: string
+
+  var
+    thr: TThread[TMsg]
+    printedLines = 0
+    m: TMsg
+
+  proc print() {.thread.} =
+    while true:
+      var x = recv[TMsg]()
+      if x.k == mEof: break
+      echo x.data
+      discard atomicInc(printedLines)
+
+  createThread(thr, print)
+
+  var input = open("readme.txt")
+  while not endOfFile(input):
+    m.data = input.readLine()
+    thr.send(m)
+  close(input)
+  m.k = mEof
+  thr.send(m)
+  joinThread(thr)
+
+  echo printedLines
+
+In the actor model threads communicate only over sending messages (`send`:idx: 
+and `recv`:idx: built-ins), not by sharing memory. Every thread has 
+an `inbox`:idx: that keeps incoming messages until the thread requests a new
+message via the ``recv`` operation. The inbox is an unlimited FIFO queue.
+
+In the above example the ``print`` thread also communicates with its 
+parent thread over the ``printedLines`` global variable. In general, it is 
+highly advisable to only read from globals, but not to write to them. In fact
+a write to a global that contains GC'ed memory is always wrong, because it
+violates the *no heap sharing restriction*:
+
+.. code-block:: nimrod
+  var 
+    global: string
+    t: TThread[string]
+  
+  proc horrible() {.thread.} =
+    global = "string in thread local heap!"
+
+  createThread(t, horrible)
+  joinThread(t)
+  
+For the above code the compiler procudes "Warning: write to foreign heap". This
+warning might become an error message in future versions of the compiler.
+
+Creating a thread is an expensive operation, because a new stack and heap needs
+to be created for the thread. It is therefore highly advisable that a thread
+handles a large amount of work. Nimrod prefers *coarse grained* 
+over *fine grained* concurrency.
+
+
+Threads and exceptions
+----------------------
+
+The interaction between threads and exception is simple: A *handled* exception 
+in one thread cannot affect any other thread. However, an *unhandled* 
+exception in one thread terminates the whole *process*!
 

@@ -33,7 +33,11 @@ Core
 
 * `threads <threads.html>`_
   Nimrod thread support. **Note**: This is part of the system module. Do not
-  import it directly.
+  import it explicitely.
+
+* `inboxes <inboxes.html>`_
+  Nimrod message passing support for threads. **Note**: This is part of the 
+  system module. Do not import it explicitely.
 
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.

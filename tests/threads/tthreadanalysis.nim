@@ -1,7 +1,5 @@
 discard """
-  file: "tthreadanalysis2.nim"
-  line: 45
-  errormsg: "possible inconsistency of thread local heaps"
+  outputsub: "101"
   cmd: "nimrod cc --hints:on --threads:on $# $#"
 """
 
@@ -32,23 +30,24 @@ proc buildTree(depth: int): PNode =
   result.data = $depth
 
 proc echoLeTree(n: PNode) =
-  var it = n
+  var it: PNode
+  it = nil
+  it = n
   while it != nil:
     echo it.data
     it = it.le
 
-proc threadFunc(interval: tuple[a, b: int]) {.procvar.} = 
+proc threadFunc(interval: tuple[a, b: int]) {.thread.} = 
   doNothing()
   for i in interval.a..interval.b: 
     var r = buildTree(i)
     echoLeTree(r) # for local data
-  root = buildTree(2) # BAD!
   echoLeTree(root) # and the same for foreign data :-)
 
 proc main =
   root = buildTree(5)
   for i in 0..high(thr):
-    createThread(thr[i], threadFunc, (i*100, i*100+50))
+    createThread(thr[i], threadFunc, (i*3, i*3+2))
   joinThreads(thr)
 
 main()

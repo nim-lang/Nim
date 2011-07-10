@@ -27,7 +27,32 @@
 ## Nimrod 0mq wrapper. This file contains the low level C wrappers as well as
 ## some higher level constructs. The higher level constructs are easily
 ## recognizable because they are the only ones that have documentation.
-
+##
+## Example of a client:
+## 
+## .. code-block:: nimrod
+##   import zmq
+##   
+##   var connection = zmq.open("tcp://localhost:5555", server=false)
+##   echo("Connecting...")
+##   for i in 0..10:
+##     echo("Sending hello...", i)
+##     send(connection, "Hello")
+##     var reply = receive(connection)
+##     echo("Received ...", reply)
+##   close(connection)
+##
+## Example of a server:
+##
+## .. code-block:: nimrod
+##   
+##   import zmq
+##   var connection = zmq.open("tcp://*:5555", server=true)
+##   while True:
+##     var request = receive(connection)
+##     echo("Received: ", request)
+##     send(connection, "World")
+##   close(connection)
 
 {.deadCodeElim: on.}
 when defined(windows): 

@@ -366,10 +366,12 @@ when defined(Windows) and not defined(useNimRtl):
     result.id = procInfo.dwProcessID
 
   proc close(p: PProcess) =
-    discard CloseHandle(p.inputHandle)
-    discard CloseHandle(p.outputHandle)
-    discard CloseHandle(p.errorHandle)
-    discard CloseHandle(p.FProcessHandle)
+    when false:
+      # somehow this does not work on Windows:
+      discard CloseHandle(p.inputHandle)
+      discard CloseHandle(p.outputHandle)
+      discard CloseHandle(p.errorHandle)
+      discard CloseHandle(p.FProcessHandle)
 
   proc suspend(p: PProcess) =
     discard SuspendThread(p.FProcessHandle)

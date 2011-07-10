@@ -3,7 +3,7 @@ News
 ====
 
 
-2011-XX-XX Version 0.8.12 released
+2011-07-10 Version 0.8.12 released
 ==================================
 
 Version 0.8.12 has been released! Get it `here <download.html>`_. 
@@ -22,6 +22,8 @@ Bugfixes
 - Bugfix: The compiler does not emit very inaccurate floating point literals
   anymore.
 - Bugfix: Subclasses are taken into account for ``try except`` matching.
+- Bugfix: Generics and macros are more stable. There are still known bugs left
+  though.
 - Bugfix: Generated type information for tuples was sometimes wrong, causing
   random crashes.
 - Lots of other bugfixes: Too many to list them all.
@@ -38,7 +40,7 @@ Changes affecting backwards compatibility
 - Changed and documented how generalized string literals work: The syntax
   ``module.re"abc"`` is now supported.
 - Changed the behaviour of ``strutils.%``, ``ropes.%`` 
-  if both ``$#`` and ``$i`` are involved.
+  if both notations ``$#`` and ``$i`` are involved.
 - The ``pegs`` and ``re`` modules distinguish between ``replace`` 
   and ``replacef`` operations.
 - The pointer dereference operation ``p^`` is deprecated and might become
@@ -50,8 +52,42 @@ Changes affecting backwards compatibility
 - Unsound co-/contravariance for procvars has been removed.
 
 
-Additions
----------
+Language Additions
+------------------
+
+- Source code filters are now documented.
+- Added the ``linearScanEnd``, ``unroll``, ``shallow`` pragmas.
+- Added ``emit`` pragma for direct code generator control.
+- Case statement branches support constant sets for programming convenience.
+- Tuple unpacking is not enforced in ``for`` loops anymore.
+- The compiler now supports array, sequence and string slicing.
+- A field in an ``enum`` may be given an explicit string representation. 
+  This yields more maintainable code than using a constant 
+  ``array[TMyEnum, string]`` mapping.
+- Indices in array literals may be explicitly given, enhancing readability:
+  ``[enumValueA: "a", enumValueB: "b"]``.
+- Added thread support via the ``threads`` core module and 
+  the ``--threads:on`` command line switch.
+- The built-in iterators ``system.fields`` and ``system.fieldPairs`` can be
+  used to iterate over any field of a tuple. With this mechanism operations 
+  like ``==`` and ``hash`` are lifted to tuples.
+- The slice ``..`` is now a first-class operator, allowing code like:
+  ``x in 1000..100_000``.
+
+
+Compiler Additions
+------------------
+
+- The compiler supports IDEs via the new group of ``idetools`` command line
+  options. 
+- The *interactive mode* (REPL) has been improved and documented for the 
+  first time.
+- The compiler now might use hashing for string case statements depending
+  on the number of string literals in the case statement.
+  
+
+Library Additions
+-----------------
 
 - Added ``lists`` module which contains generic linked lists.
 - Added ``sets`` module which contains generic hash sets.
@@ -70,37 +106,20 @@ Additions
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
 - Pegs support the ``$`` and ``^`` anchors.
-- Source code filters are now documented.
-- Added ``emit`` pragma for direct code generator control.
 - Additional operations were added to the ``complex`` module. 
 - Added ``strutils.formatFloat``,  ``strutils.formatBiggestFloat``.
-- A field in an ``enum`` may be given an explicit string representation. 
-  This yields more maintainable code than using a constant 
-  ``array[TMyEnum, string]`` mapping.
-- Indices in array literals may be explicitly given, enhancing readability:
-  ``[enumValueA: "a", enumValueB: "b"]``.
-- Added basic thread support via the ``threads`` core module and 
-  the ``--threads:on`` command line switch.
 - Added unary ``<`` for nice looking excluding upper bounds in ranges.
 - Added ``math.floor``.
-- The *interactive mode* (REPL) has been improved and documented for the 
-  first time.
-- Added the ``linearScanEnd``, ``unroll``, ``shallow`` pragmas.
 - Added ``system.reset`` and a version of ``system.open`` that 
   returns a ``TFile`` and raises an exception in case of an error.
-- The compiler now might use hashing for string case statements depending
-  on the number of string literals in the case statement.
-- Tuple unpacking is not enforced in ``for`` loops anymore.
 - Added a wrapper for ``redis``.
 - Added a wrapper for ``0mq`` via the ``zmq`` module.
 - Added a wrapper for ``sphinx``.
-- The compiler now supports array, sequence and string slicing.
 - Added ``system.newStringOfCap``.
 - Added ``system.raiseHook`` and ``system.outOfMemHook``.
 - Added ``system.writeFile``.
 - Added ``system.shallowCopy``.
 - ``system.echo`` is guaranteed to be thread-safe.
-- Case statement branches support constant sets for programming convenience.
 - Added ``prelude`` include file for scripting convenience.
 - Added ``typeinfo`` core module for access to runtime type information.
 - Added ``marshal`` module for JSON serialization.

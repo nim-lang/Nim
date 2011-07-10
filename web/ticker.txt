@@ -1,6 +1,9 @@
+| `2011-07-10`:newsdate:
+| Nimrod version 0.8.12 has been released!
+  Get it `here <./download.html>`_.
+
 | `2010-10-20`:newsdate:
 | Nimrod version 0.8.10 has been released! 
-  Get it `here <./download.html>`_.
 
 | `2010-03-14`:newsdate:
 | Nimrod version 0.8.8 has been released! 

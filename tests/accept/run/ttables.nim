@@ -80,5 +80,8 @@ block countTableTest1:
     else: break
     inc i
 
+block SyntaxTest:
+  var x = toTable[int, string]({:})
+
 echo "true"
 

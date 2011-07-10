@@ -52,12 +52,12 @@ proc CloseScope*(tab: var TSymTab) =
   if (tab.tos > len(tab.stack)): InternalError("CloseScope")
   var it: TTabIter
   var s = InitTabIter(it, tab.stack[tab.tos-1])
-  while s != nil: 
+  while s != nil:
     if sfForward in s.flags: 
       LocalError(s.info, errImplOfXexpected, getSymRepr(s))
-    elif ({sfUsed, sfInInterface} * s.flags == {}) and
-        (optHints in s.options): # BUGFIX: check options in s!
-      if not (s.kind in {skForVar, skParam, skMethod, skUnknown}): 
+    elif {sfUsed, sfInInterface} * s.flags == {} and optHints in s.options: 
+      # BUGFIX: check options in s!
+      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = NextIter(it, tab.stack[tab.tos-1])
   astalgo.rawCloseScope(tab)

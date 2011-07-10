@@ -65,9 +65,12 @@ elif defined(windows):
                           PAGE_READWRITE)
     if result == nil: raiseOutOfMem()
 
-  proc osDeallocPages(p: pointer, size: int) {.inline.} = 
-    # according to Microsoft, 0 is the only correct value here:
-    when reallyOsDealloc: VirtualFree(p, 0, MEM_RELEASE)
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    # according to Microsoft, 0 is the only correct value for MEM_RELEASE:
+    # This means that the OS has some different view over how big the block is
+    # that we want to free! So, we cannot reliably release the memory back to
+    # Windows :-(. We have to live with MEM_DECOMMIT instead.
+    when reallyOsDealloc: VirtualFree(p, size, MEM_DECOMMIT)
 
 else: 
   {.error: "Port memory manager to your platform".}

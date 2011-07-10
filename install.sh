@@ -185,6 +185,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/gc.nim
   cp lib/system/hti.nim $libdir/system/hti.nim || exit 1
   chmod 644 $libdir/system/hti.nim
+  cp lib/system/inboxes.nim $libdir/system/inboxes.nim || exit 1
+  chmod 644 $libdir/system/inboxes.nim
   cp lib/system/inclrtl.nim $libdir/system/inclrtl.nim || exit 1
   chmod 644 $libdir/system/inclrtl.nim
   cp lib/system/mmdisp.nim $libdir/system/mmdisp.nim || exit 1
@@ -197,6 +199,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sets.nim
   cp lib/system/sysio.nim $libdir/system/sysio.nim || exit 1
   chmod 644 $libdir/system/sysio.nim
+  cp lib/system/syslocks.nim $libdir/system/syslocks.nim || exit 1
+  chmod 644 $libdir/system/syslocks.nim
   cp lib/system/sysstr.nim $libdir/system/sysstr.nim || exit 1
   chmod 644 $libdir/system/sysstr.nim
   cp lib/system/threads.nim $libdir/system/threads.nim || exit 1
@@ -237,8 +241,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/json.nim
   cp lib/pure/lexbase.nim $libdir/pure/lexbase.nim || exit 1
   chmod 644 $libdir/pure/lexbase.nim
-  cp lib/pure/logging.nim $libdir/pure/logging.nim || exit 1
-  chmod 644 $libdir/pure/logging.nim
   cp lib/pure/marshal.nim $libdir/pure/marshal.nim || exit 1
   chmod 644 $libdir/pure/marshal.nim
   cp lib/pure/math.nim $libdir/pure/math.nim || exit 1
@@ -301,8 +303,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/xmlparser.nim
   cp lib/pure/xmltree.nim $libdir/pure/xmltree.nim || exit 1
   chmod 644 $libdir/pure/xmltree.nim
-  cp lib/pure/yamllexer.nim $libdir/pure/yamllexer.nim || exit 1
-  chmod 644 $libdir/pure/yamllexer.nim
   cp lib/impure/db_mysql.nim $libdir/impure/db_mysql.nim || exit 1
   chmod 644 $libdir/impure/db_mysql.nim
   cp lib/impure/db_postgres.nim $libdir/impure/db_postgres.nim || exit 1

@@ -9,7 +9,8 @@
 
 ## Atomic operations for Nimrod.
 
-when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
+when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport and 
+    not defined(windows):
   proc sync_add_and_fetch(p: var int, val: int): int {.
     importc: "__sync_add_and_fetch", nodecl.}
   proc sync_sub_and_fetch(p: var int, val: int): int {.

@@ -47,7 +47,7 @@ when defined(Windows):
   proc CreateEvent(lpEventAttributes: pointer, 
                    bManualReset, bInitialState: int32,
                    lpName: cstring): TSysCond {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "CreateEvent".}
+    dynlib: "kernel32", importc: "CreateEventA".}
   
   proc CloseHandle(hObject: THandle) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CloseHandle".}

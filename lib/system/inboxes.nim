@@ -7,8 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-## Message passing for threads. The current implementation is slow and does
-## not work with cyclic data structures. But hey, it's better than nothing.
+## Message passing for threads. **Note**: This is part of the system module.
+## Do not import it directly. To activate thread support you need to compile
+## with the ``--threads:on`` command line switch.
+##
+## **Note:** The current implementation of message passing is slow and does
+## not work with cyclic data structures.
 
 type
   pbytes = ptr array[0.. 0xffff, byte]
@@ -18,6 +22,7 @@ type
     lock: TSysLock
     cond: TSysCond
     elemType: PNimType
+    ready: bool
     region: TMemRegion
   PInbox = ptr TInbox
   TLoadStoreMode = enum mStore, mLoad
@@ -178,9 +183,7 @@ template lockInbox(q: expr, action: stmt) =
   action
   releaseSys(q.lock)
 
-proc send*[TMsg](receiver: var TThread[TMsg], msg: TMsg) =
-  ## sends a message to a thread. `msg` is deeply copied.
-  var q = cast[PInbox](getInBoxMem(receiver))
+template sendImpl(q: expr) =  
   if q.mask == ThreadDeadMask:
     raise newException(EDeadThread, "cannot send message; thread died")
   acquireSys(q.lock)
@@ -192,12 +195,24 @@ proc send*[TMsg](receiver: var TThread[TMsg], msg: TMsg) =
   releaseSys(q.lock)
   SignalSysCond(q.cond)
 
+proc send*[TMsg](receiver: var TThread[TMsg], msg: TMsg) =
+  ## sends a message to a thread. `msg` is deeply copied.
+  var q = cast[PInbox](getInBoxMem(receiver))
+  sendImpl(q)
+
+proc send*[TMsg](receiver: TThreadId[TMsg], msg: TMsg) =
+  ## sends a message to a thread. `msg` is deeply copied.
+  var q = cast[PInbox](getInBoxMem(receiver[]))
+  sendImpl(q)
+
 proc llRecv(res: pointer, typ: PNimType) =
   # to save space, the generic is as small as possible
   var q = cast[PInbox](getInBoxMem())
   acquireSys(q.lock)
+  q.ready = true
   while q.count <= 0:
     WaitSysCond(q.cond, q.lock)
+  q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
     raise newException(EInvalidValue, "cannot receive message of wrong type")
@@ -215,4 +230,15 @@ proc peek*(): int =
   lockInbox(q):
     result = q.count
 
+proc peek*[TMsg](t: var TThread[TMsg]): int =
+  ## returns the current number of messages in the inbox of thread `t`.
+  var q = cast[PInbox](getInBoxMem(t))
+  if q.mask != ThreadDeadMask:
+    lockInbox(q):
+      result = q.count
+
+proc ready*[TMsg](t: var TThread[TMsg]): bool =
+  ## returns true iff the thread `t` is waiting on ``recv`` for new messages.
+  var q = cast[PInbox](getInBoxMem(t))
+  result = q.ready
 
