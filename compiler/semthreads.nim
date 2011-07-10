@@ -112,7 +112,7 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
     if sfGlobal in v.flags:
       if sfThreadVar in v.flags: 
         result = toMine 
-      elif containsTyRef(v.typ):
+      elif containsGarbageCollectedRef(v.typ):
         result = toTheirs
   of skTemp, skForVar: result = toNil
   of skConst: result = toMine
@@ -126,7 +126,8 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
 
 proc lvalueSym(n: PNode): PNode =
   result = n
-  while result.kind in {nkDotExpr, nkBracketExpr, nkDerefExpr, nkHiddenDeref}:
+  while result.kind in {nkDotExpr, nkCheckedFieldExpr,
+                        nkBracketExpr, nkDerefExpr, nkHiddenDeref}:
     result = result.sons[0]
 
 proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
@@ -138,7 +139,18 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
     var lastOwner = analyseSym(c, a)
     case lastOwner
     of toNil:
-      c.mapping[v.id] = owner # fine, toNil can be overwritten
+      # fine, toNil can be overwritten
+      var newOwner: TThreadOwner
+      if sfGlobal in v.flags:
+        newOwner = owner
+      elif containsTyRef(v.typ):
+        # ``var local = gNode`` --> ok, but ``local`` is theirs! 
+        newOwner = owner
+      else:
+        # ``var local = gString`` --> string copy: ``local`` is mine! 
+        newOwner = toMine
+        # XXX BUG what if the tuple contains both ``tyRef`` and ``tyString``?
+      c.mapping[v.id] = newOwner
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
     of toTheirs: Message(n.info, warnWriteToForeignHeap)
     of toMine:
@@ -146,7 +158,7 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
         Message(n.info, warnDifferentHeaps)
   else:
     # we could not backtrack to a concrete symbol, but that's fine:
-    var lastOwner = analyseSym(c, n)
+    var lastOwner = analyse(c, n)
     case lastOwner
     of toNil: nil # fine, toNil can be overwritten
     of toVoid, toUndefined: InternalError(n.info, "writeAccess")
@@ -178,7 +190,7 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
     pushInfoContext(n.info)
     result = analyse(newCtx, prc.ast.sons[codePos])
     if prc.ast.sons[codePos].kind == nkEmpty and 
-       {sfNoSideEffect, sfThread} * prc.flags == {}:
+       {sfNoSideEffect, sfThread, sfImportc} * prc.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
@@ -228,7 +240,7 @@ template aggregateOwner(result, ana: expr) =
   var a = ana # eval once
   if result != a:
     if result == toNil: result = a
-    else: Message(n.info, warnDifferentHeaps)
+    elif a != toNil: Message(n.info, warnDifferentHeaps)
 
 proc analyseArgs(c: PProcCtx, n: PNode, start = 1) =
   for i in start..n.len-1: discard analyse(c, n[i])
@@ -241,7 +253,14 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   else:
     var prc = n[0].sym
     case prc.magic
-    of mNone: result = analyseCall(c, n)
+    of mNone: 
+      if sfSystemModule in prc.owner.flags:
+        # System module proc does no harm :-)
+        analyseArgs(c, n)
+        if prc.typ.sons[0] == nil: result = toVoid
+        else: result = toNil
+      else:
+        result = analyseCall(c, n)
     of mNew, mNewFinalize, mNewSeq, mSetLengthStr, mSetLengthSeq,
         mAppendSeqElem, mReset, mAppendStrCh, mAppendStrStr:
       writeAccess(c, n[1], toMine)
@@ -260,8 +279,7 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
       analyseArgs(c, n)
       result = toMine
     else:
-      # don't recurse, but check args; NOTE: This is essential that
-      # ``mCreateThread`` is handled here to avoid the recursion
+      # don't recurse, but check args:
       analyseArgs(c, n)
       if prc.typ.sons[0] == nil: result = toVoid
       else: result = toNil

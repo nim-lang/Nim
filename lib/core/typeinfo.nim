@@ -45,8 +45,8 @@ type
   TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
                           ## that ``TAny`` keeps a non-traced pointer to its
-                          ## wrapped value and MUST not live longer than its
-                          ## wrapped value.
+                          ## wrapped value and **must not** live longer than
+                          ## its wrapped value.
     value: pointer
     rawType: PNimType
 
@@ -97,7 +97,7 @@ proc newAny(value: pointer, rawType: PNimType): TAny =
 proc toAny*[T](x: var T): TAny {.inline.} =
   ## constructs a ``TAny`` object from `x`. This captures `x`'s address, so
   ## `x` can be modified with its ``TAny`` wrapper! The client needs to ensure
-  ## that the wrapper DOES NOT live longer than `x`!
+  ## that the wrapper **does not** live longer than `x`!
   result.value = addr(x)
   result.rawType = cast[PNimType](getTypeInfo(x))
   
@@ -106,7 +106,7 @@ proc kind*(x: TAny): TAnyKind {.inline.} =
   result = TAnyKind(ord(x.rawType.kind))
   
 proc baseTypeKind*(x: TAny): TAnyKind {.inline.} = 
-  ## get the base type's kind; akNone is returned if `x` has no base type.
+  ## get the base type's kind; ``akNone`` is returned if `x` has no base type.
   if x.rawType.base != nil:
     result = TAnyKind(ord(x.rawType.base.kind))
 

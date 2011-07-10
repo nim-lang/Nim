@@ -1,25 +1,11 @@
-High priority (version 0.8.12)
-==============================
-* ``force_nosideEffect`` or some similar pragma is needed (``loophole``?)
-* test threads on windows
-* test thread analysis: 
-  var x = globalString # ok, copied; `x` is mine!
-  vs
-  var x = globalRef # read access, `x` is theirs!
-
-* make threadvar efficient again on linux after testing
-* document Nimrod's threads
-* document Nimrod's two phase symbol lookup for generics
-* bug: {:}.toTable[int, string]()
-
-
 version 0.9.0
 =============
 
+- ``var T`` as a return type; easy to prove that location is not on the stack
+- document Nimrod's two phase symbol lookup for generics
 - add --deadlock_prevention:on|off switch? timeout for locks?
 - bug: tfFinal not passed to generic
 - bug: forward proc for generic seems broken
-- ``var T`` as a return type; easy to prove that location is not on the stack
 - test the sort implementation again
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
@@ -28,6 +14,7 @@ version 0.9.0
 - fix overloading resolution
 - make ^ available as operator
 - implement closures; implement proper coroutines
+- make threadvar efficient again on linux after testing
 
 Bugs
 ----
@@ -57,7 +44,7 @@ version 0.9.XX
 - test branch coverage
 - checked exceptions
 - fix implicit generic routines
-
+- think about ``{:}.toTable[int, string]()``
 
 Library
 -------

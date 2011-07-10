@@ -28,7 +28,7 @@ Compiler Usage
 
 Command line switches
 ---------------------
-Basis command line switches are:
+Basic command line switches are:
 
 .. include:: basicopt.txt
 
@@ -101,6 +101,8 @@ To link against ``nimrtl.dll`` use the command::
 
   nimrod c -d:useNimRtl myprog.nim
 
+**Note**: Currently the creation of ``nimrtl.dll`` with thread support has 
+never been tested and is unlikely to work!
 
 
 Additional Features

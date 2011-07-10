@@ -8,7 +8,7 @@
 #
 
 ## Thread support for Nimrod. **Note**: This is part of the system module.
-## Do not import it directly. To active thread support you need to compile
+## Do not import it directly. To activate thread support you need to compile
 ## with the ``--threads:on`` command line switch.
 ##
 ## Nimrod's memory model for threads is quite different from other common 
@@ -39,8 +39,8 @@
   
 const
   maxRegisters = 256 # don't think there is an arch with more registers
-  maxLocksPerThread* = 10 ## max number of locks a thread can hold
-                          ## at the same time
+  maxLocksPerThread = 10 ## max number of locks a thread can hold
+                         ## at the same time
   useStackMaskHack = false ## use the stack mask hack for better performance
   StackGuardSize = 4096
   ThreadStackMask = 1024*256*sizeof(int)-1
@@ -167,12 +167,15 @@ type
   PGcThread = ptr TGcThread
   TGcThread {.pure.} = object
     sys: TSysThread
-    next, prev: PGcThread
-    stackBottom, stackTop: pointer
-    stackSize: int
     inbox: TThreadLocalStorage
     when emulatedThreadVars and not useStackMaskHack:
       tls: TThreadLocalStorage
+    else:
+      nil
+    when hasSharedHeap:
+      next, prev: PGcThread
+      stackBottom, stackTop: pointer
+      stackSize: int
     else:
       nil
 
@@ -201,44 +204,45 @@ when not defined(useNimRtl):
     ThreadVarSetValue(globalsSlot, addr(mainThread))
     initStackBottom()
     initGC()
-  
-  var heapLock: TSysLock
-  InitSysLock(HeapLock)
 
   when emulatedThreadVars:
     if NimThreadVarsSize() > sizeof(TThreadLocalStorage):
       echo "too large thread local storage size requested"
       quit 1
-
-  var
-    threadList: PGcThread
-    
-  proc registerThread(t: PGcThread) = 
-    # we need to use the GC global lock here!
-    AcquireSys(HeapLock)
-    t.prev = nil
-    t.next = threadList
-    if threadList != nil: 
-      sysAssert(threadList.prev == nil)
-      threadList.prev = t
-    threadList = t
-    ReleaseSys(HeapLock)
   
-  proc unregisterThread(t: PGcThread) =
-    # we need to use the GC global lock here!
-    AcquireSys(HeapLock)
-    if t == threadList: threadList = t.next
-    if t.next != nil: t.next.prev = t.prev
-    if t.prev != nil: t.prev.next = t.next
-    # so that a thread can be unregistered twice which might happen if the
-    # code executes `destroyThread`:
-    t.next = nil
-    t.prev = nil
-    ReleaseSys(HeapLock)
+  when hasSharedHeap:
+    var heapLock: TSysLock
+    InitSysLock(HeapLock)
+
+    var
+      threadList: PGcThread
+      
+    proc registerThread(t: PGcThread) = 
+      # we need to use the GC global lock here!
+      AcquireSys(HeapLock)
+      t.prev = nil
+      t.next = threadList
+      if threadList != nil: 
+        sysAssert(threadList.prev == nil)
+        threadList.prev = t
+      threadList = t
+      ReleaseSys(HeapLock)
     
-  # on UNIX, the GC uses ``SIGFREEZE`` to tell every thread to stop so that
-  # the GC can examine the stacks?
-  proc stopTheWord() = nil
+    proc unregisterThread(t: PGcThread) =
+      # we need to use the GC global lock here!
+      AcquireSys(HeapLock)
+      if t == threadList: threadList = t.next
+      if t.next != nil: t.next.prev = t.prev
+      if t.prev != nil: t.prev.next = t.next
+      # so that a thread can be unregistered twice which might happen if the
+      # code executes `destroyThread`:
+      t.next = nil
+      t.prev = nil
+      ReleaseSys(HeapLock)
+      
+    # on UNIX, the GC uses ``SIGFREEZE`` to tell every thread to stop so that
+    # the GC can examine the stacks?
+    proc stopTheWord() = nil
     
 # We jump through some hops here to ensure that Nimrod thread procs can have
 # the Nimrod calling convention. This is needed because thread procs are 
@@ -248,10 +252,15 @@ when not defined(useNimRtl):
 # GC'ed closures in Nimrod.
 
 type
-  TThread* {.pure, final.}[TParam] = object of TGcThread ## Nimrod thread.
+  TThread* {.pure, final.}[TMsg] =
+      object of TGcThread ## Nimrod thread. A thread is a heavy object (~14K)
+                          ## that should not be part of a message! Use
+                          ## a ``TThreadId`` for that.
     emptyFn: proc ()
-    dataFn: proc (p: TParam)
-    data: TParam
+    dataFn: proc (p: TMsg)
+    data: TMsg
+  TThreadId*[TMsg] = ptr TThread[TMsg] ## the current implementation uses
+                                       ## a pointer as a thread ID.
 
 proc initInbox(p: pointer)
 proc freeInbox(p: pointer)
@@ -260,47 +269,47 @@ when not defined(boehmgc) and not hasSharedHeap:
   
 template ThreadProcWrapperBody(closure: expr) =
   ThreadVarSetValue(globalsSlot, closure)
-  var t = cast[ptr TThread[TParam]](closure)
+  var t = cast[ptr TThread[TMsg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
   when not defined(boehmgc) and not hasSharedHeap:
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
-  t.stackBottom = addr(t)
-  registerThread(t)
-  try:
-    when false:
-      var a = addr(tls)
-      var b = MaskStackPointer(1293920-372736-303104-36864)
-      c_fprintf(c_stdout, "TLS:    %p\nmasked: %p\ndiff:   %ld\n",
-                a, b, cast[int](a) - cast[int](b))
-    if t.emptyFn == nil: t.dataFn(t.data)
-    else: t.emptyFn()
-  finally:
-    # XXX shut-down is not executed when the thread is forced down!
-    freeInbox(addr(t.inbox))
-    unregisterThread(t)
-    when defined(deallocOsPages): deallocOsPages()
+  when hasSharedHeap:
+    t.stackBottom = addr(t)
+    registerThread(t)
+  if t.emptyFn == nil: t.dataFn(t.data)
+  else: t.emptyFn()
+  #finally:
+  # XXX shut-down is not executed when the thread is forced down!
+  freeInbox(addr(t.inbox))
+  when hasSharedHeap: unregisterThread(t)
+  when defined(deallocOsPages): deallocOsPages()
+  # Since an unhandled exception terminates the whole process (!), there is
+  # no need for a ``try finally`` here, nor would it be correct: The current
+  # exception is tried to be re-raised by the code-gen after the ``finally``!
+  # However this is doomed to fail, because we already unmapped every heap
+  # page!
   
 {.push stack_trace:off.}
 when defined(windows):
-  proc threadProcWrapper[TParam](closure: pointer): int32 {.stdcall.} = 
+  proc threadProcWrapper[TMsg](closure: pointer): int32 {.stdcall.} = 
     ThreadProcWrapperBody(closure)
     # implicitely return 0
 else:
-  proc threadProcWrapper[TParam](closure: pointer) {.noconv.} = 
+  proc threadProcWrapper[TMsg](closure: pointer) {.noconv.} = 
     ThreadProcWrapperBody(closure)
 {.pop.}
 
-proc joinThread*[TParam](t: TThread[TParam]) {.inline.} = 
+proc joinThread*[TMsg](t: TThread[TMsg]) {.inline.} = 
   ## waits for the thread `t` to finish.
   when hostOS == "windows":
     discard WaitForSingleObject(t.sys, -1'i32)
   else:
     discard pthread_join(t.sys, nil)
 
-proc joinThreads*[TParam](t: openArray[TThread[TParam]]) = 
+proc joinThreads*[TMsg](t: openArray[TThread[TMsg]]) = 
   ## waits for every thread in `t` to finish.
   when hostOS == "windows":
     var a: array[0..255, TSysThread]
@@ -312,7 +321,7 @@ proc joinThreads*[TParam](t: openArray[TThread[TParam]]) =
 
 when false:
   # XXX a thread should really release its heap here somehow:
-  proc destroyThread*[TParam](t: var TThread[TParam]) =
+  proc destroyThread*[TMsg](t: var TThread[TMsg]) =
     ## forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
     when hostOS == "windows":
@@ -321,18 +330,18 @@ when false:
       discard pthread_cancel(t.sys)
     unregisterThread(addr(t))
 
-proc createThread*[TParam](t: var TThread[TParam], 
-                           tp: proc (param: TParam) {.thread.}, 
-                           param: TParam) =
+proc createThread*[TMsg](t: var TThread[TMsg], 
+                         tp: proc (msg: TMsg) {.thread.}, 
+                         param: TMsg) =
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`. `param` is passed to `tp`.
   t.data = param
   t.dataFn = tp
-  t.stackSize = ThreadStackSize
+  when hasSharedHeap: t.stackSize = ThreadStackSize
   initInbox(addr(t.inbox))
   when hostOS == "windows":
     var dummyThreadId: int32
-    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TParam],
+    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TMsg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(EResourceExhausted, "cannot create thread")
@@ -340,18 +349,18 @@ proc createThread*[TParam](t: var TThread[TParam],
     var a: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
-    if pthread_create(t.sys, a, threadProcWrapper[TParam], addr(t)) != 0:
+    if pthread_create(t.sys, a, threadProcWrapper[TMsg], addr(t)) != 0:
       raise newException(EResourceExhausted, "cannot create thread")
 
-proc createThread*[TParam](t: var TThread[TParam], tp: proc () {.thread.}) =
+proc createThread*[TMsg](t: var TThread[TMsg], tp: proc () {.thread.}) =
   ## creates a new thread `t` and starts its execution. Entry point is the
   ## proc `tp`.
   t.emptyFn = tp
-  t.stackSize = ThreadStackSize
+  when hasSharedHeap: t.stackSize = ThreadStackSize
   initInbox(addr(t.inbox))
   when hostOS == "windows":
     var dummyThreadId: int32
-    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TParam],
+    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TMsg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(EResourceExhausted, "cannot create thread")
@@ -359,8 +368,16 @@ proc createThread*[TParam](t: var TThread[TParam], tp: proc () {.thread.}) =
     var a: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
-    if pthread_create(t.sys, a, threadProcWrapper[TParam], addr(t)) != 0:
+    if pthread_create(t.sys, a, threadProcWrapper[TMsg], addr(t)) != 0:
       raise newException(EResourceExhausted, "cannot create thread")
+
+proc threadId*[TMsg](t: var TThread[TMsg]): TThreadId[TMsg] {.inline.} =
+  ## returns the thread ID of `t`.
+  result = addr(t)
+
+proc myThreadId*[TMsg](): TThreadId[TMsg] =
+  ## returns the thread ID of the thread that calls this proc.
+  result = cast[TThreadId[TMsg]](ThreadVarGetValue(globalsSlot))
 
 when useStackMaskHack:
   proc runMain(tp: proc () {.thread.}) {.compilerproc.} =
@@ -371,7 +388,7 @@ when useStackMaskHack:
 # --------------------------- lock handling ----------------------------------
 
 type
-  TLock* = TSysLock ## Nimrod lock
+  TLock* = TSysLock ## Nimrod lock; not re-entrant!
   
 const
   noDeadlocks = false # compileOption("deadlockPrevention")

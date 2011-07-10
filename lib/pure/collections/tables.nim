@@ -10,9 +10,9 @@
 ## The ``tables`` module implements an efficient hash table that is
 ## a mapping from keys to values.
 ##
-## Note: The data types declared here have *value semantics*: This means that
-## ``=`` performs a copy of the hash table. If you are overly concerned with
-## efficiency and know what you do (!), you can define the symbol
+## **Note:** The data types declared here have *value semantics*: This means
+## that ``=`` performs a copy of the hash table. If you are overly concerned
+## with efficiency and know what you do (!), you can define the symbol
 ## ``shallowADT`` to compile a version that uses shallow copies instead.
 
 import
@@ -27,7 +27,7 @@ type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
   TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  TTable* {.final, myShallow.}[A, B] = object
+  TTable* {.final, myShallow.}[A, B] = object ## generic hash table
     data: TKeyValuePairSeq[A, B]
     counter: int
 

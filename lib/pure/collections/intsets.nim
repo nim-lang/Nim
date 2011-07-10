@@ -9,8 +9,8 @@
 
 ## The ``intsets`` module implements an efficient int set implemented as a
 ## sparse bit set.
-## **Note**: Since Nimrod does not allow the assignment operator to be 
-## overloaded, ``=`` for int sets performs some rather meaningless shallow
+## **Note**: Since Nimrod currently does not allow the assignment operator to
+## be overloaded, ``=`` for int sets performs some rather meaningless shallow
 ## copy.
 
 import

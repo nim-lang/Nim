@@ -168,6 +168,7 @@ proc createMessage*(mSubject, mBody: string, mTo,
   result.msgOtherHeaders = newStringTable()
 
 proc `$`*(msg: TMessage): string =
+  ## stringify for ``TMessage``.
   result = ""
   if msg.msgTo.len() > 0:
     result = "TO: " & msg.msgTo.join(", ") & "\c\L"

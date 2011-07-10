@@ -287,7 +287,7 @@ proc replacef*(s: string, sub: TRegEx, by: string): string =
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nimrod
-  ## "var1=key; var2=key2".replace(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ## "var1=key; var2=key2".replacef(re"(\w+)'='(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##

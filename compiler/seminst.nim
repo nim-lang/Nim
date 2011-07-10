@@ -19,6 +19,8 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) =
     var q = a.sym
     if not (q.typ.kind in {tyTypeDesc, tyGenericParam}): continue 
     var s = newSym(skType, q.name, getCurrOwner())
+    s.info = q.info
+    incl(s.flags, sfUsed)
     var t = PType(IdTableGet(pt, q.typ))
     if t == nil: 
       LocalError(a.info, errCannotInstantiateX, s.name.s)

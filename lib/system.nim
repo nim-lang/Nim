@@ -1456,7 +1456,7 @@ else:
       `x`[0][len] = 0
     """
 
-proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
+proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo", noSideEffect.}
   ## special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.

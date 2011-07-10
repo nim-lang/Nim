@@ -205,7 +205,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else: 
     result = semIdentWithPragma(c, kind, n, {})
-  
+    
 proc semVar(c: PContext, n: PNode): PNode = 
   var b: PNode
   result = copyNode(n)
