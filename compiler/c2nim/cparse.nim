@@ -275,7 +275,7 @@ proc mangleRules(s: string, p: TParser): string =
     block prefixes:
       for prefix in items(p.options.prefixes): 
         if s.startsWith(prefix): 
-          result = s.copy(prefix.len)
+          result = s.substr(prefix.len)
           break prefixes
       result = s
     block suffixes:

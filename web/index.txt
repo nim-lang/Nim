@@ -102,9 +102,6 @@ Nimrod plays nice with others
 Roadmap to 1.0
 ==============
 
-Version 0.8.x
-  * threading
-
 Version 0.9.0
   * closures and anonymous procs
   * recursive iterators/coroutines

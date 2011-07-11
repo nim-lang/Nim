@@ -2,11 +2,30 @@
 News
 ====
 
+2011-XX-XX Version 0.X.XX released
+==================================
+
+Version 0.X.XX has been released! Get it `here <download.html>`_. 
+
+Bugfixes
+--------
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+Language Additions
+------------------
+
+Compiler Additions
+------------------
+
+Library Additions
+-----------------
+
 
 2011-07-10 Version 0.8.12 released
 ==================================
 
-Version 0.8.12 has been released! Get it `here <download.html>`_. 
 
 Bugfixes
 --------

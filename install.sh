@@ -54,6 +54,7 @@ if [ $# -eq 1 ] ; then
   mkdir -p $libdir/system || exit 1
   mkdir -p $libdir/core || exit 1
   mkdir -p $libdir/pure || exit 1
+  mkdir -p $libdir/pure/collections || exit 1
   mkdir -p $libdir/impure || exit 1
   mkdir -p $libdir/wrappers || exit 1
   mkdir -p $libdir/wrappers/cairo || exit 1
@@ -157,6 +158,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/encodings.html
   cp doc/endb.html $docdir/endb.html || exit 1
   chmod 644 $docdir/endb.html
+  cp doc/filters.html $docdir/filters.html || exit 1
+  chmod 644 $docdir/filters.html
   cp doc/graphics.html $docdir/graphics.html || exit 1
   chmod 644 $docdir/graphics.html
   cp doc/hashes.html $docdir/hashes.html || exit 1
@@ -217,6 +220,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/queues.html
   cp doc/rdstdin.html $docdir/rdstdin.html || exit 1
   chmod 644 $docdir/rdstdin.html
+  cp doc/re.html $docdir/re.html || exit 1
+  chmod 644 $docdir/re.html
   cp doc/redis.html $docdir/redis.html || exit 1
   chmod 644 $docdir/redis.html
   cp doc/ropes.html $docdir/ropes.html || exit 1
@@ -451,6 +456,16 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/xmlparser.nim
   cp lib/pure/xmltree.nim $libdir/pure/xmltree.nim || exit 1
   chmod 644 $libdir/pure/xmltree.nim
+  cp lib/pure/collections/intsets.nim $libdir/pure/collections/intsets.nim || exit 1
+  chmod 644 $libdir/pure/collections/intsets.nim
+  cp lib/pure/collections/lists.nim $libdir/pure/collections/lists.nim || exit 1
+  chmod 644 $libdir/pure/collections/lists.nim
+  cp lib/pure/collections/queues.nim $libdir/pure/collections/queues.nim || exit 1
+  chmod 644 $libdir/pure/collections/queues.nim
+  cp lib/pure/collections/sets.nim $libdir/pure/collections/sets.nim || exit 1
+  chmod 644 $libdir/pure/collections/sets.nim
+  cp lib/pure/collections/tables.nim $libdir/pure/collections/tables.nim || exit 1
+  chmod 644 $libdir/pure/collections/tables.nim
   cp lib/impure/db_mysql.nim $libdir/impure/db_mysql.nim || exit 1
   chmod 644 $libdir/impure/db_mysql.nim
   cp lib/impure/db_postgres.nim $libdir/impure/db_postgres.nim || exit 1
