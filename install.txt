@@ -13,11 +13,27 @@ To get the source code you need either of these:
 * git: ``git clone git://github.com/Araq/Nimrod.git``
 
 After downloading the source (and extracting it), you need to 
-extract ``build/csources.zip`` and then you can bootstrap with:
+extract ``build/csources.zip``:
 
-* ``./build.sh`` or ``build.bat`` (Windows)
-* ``nimrod c koch``
+* ``cd build``
+* ``unzip csources.zip``
+* ``cd ..``
+
+and then you can bootstrap with:
+
+On Windows
+~~~~~~~~~~
+
+* ``build.bat``
+* ``bin\nimrod c koch``
 * ``koch boot -d:release``
+
+On UNIX
+~~~~~~~
+
+* ``./build.sh``
+* ``bin/nimrod c koch``
+* ``./koch boot -d:release``
 
 
 Installation on Linux/UNIX

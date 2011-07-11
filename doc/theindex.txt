@@ -309,9 +309,7 @@ Index
      `pegs.html#114 <pegs.html#114>`_
 
    `[]`:idx:
-     * `typeinfo.html#111 <typeinfo.html#111>`_
-     * `typeinfo.html#119 <typeinfo.html#119>`_
-     * `typeinfo.html#120 <typeinfo.html#120>`_
+     `ropes.html#115 <ropes.html#115>`_
 
    `[]`:idx:
      * `tables.html#106 <tables.html#106>`_
@@ -319,7 +317,7 @@ Index
      * `tables.html#131 <tables.html#131>`_
 
    `[]`:idx:
-     `macros.html#112 <macros.html#112>`_
+     `xmltree.html#114 <xmltree.html#114>`_
 
    `[]`:idx:
      * `graphics.html#116 <graphics.html#116>`_
@@ -333,31 +331,36 @@ Index
      * `json.html#131 <json.html#131>`_
 
    `[]`:idx:
+     `macros.html#112 <macros.html#112>`_
+
+   `[]`:idx:
      * `system.html#579 <system.html#579>`_
      * `system.html#581 <system.html#581>`_
      * `system.html#583 <system.html#583>`_
      * `system.html#585 <system.html#585>`_
 
    `[]`:idx:
-     `xmltree.html#114 <xmltree.html#114>`_
-
-   `[]`:idx:
-     `ropes.html#115 <ropes.html#115>`_
+     * `typeinfo.html#111 <typeinfo.html#111>`_
+     * `typeinfo.html#119 <typeinfo.html#119>`_
+     * `typeinfo.html#120 <typeinfo.html#120>`_
 
    `[]=`:idx:
      `json.html#135 <json.html#135>`_
 
    `[]=`:idx:
-     `strtabs.html#109 <strtabs.html#109>`_
+     * `typeinfo.html#112 <typeinfo.html#112>`_
+     * `typeinfo.html#118 <typeinfo.html#118>`_
+     * `typeinfo.html#121 <typeinfo.html#121>`_
 
    `[]=`:idx:
      * `graphics.html#118 <graphics.html#118>`_
      * `graphics.html#119 <graphics.html#119>`_
 
    `[]=`:idx:
-     * `typeinfo.html#112 <typeinfo.html#112>`_
-     * `typeinfo.html#118 <typeinfo.html#118>`_
-     * `typeinfo.html#121 <typeinfo.html#121>`_
+     * `system.html#580 <system.html#580>`_
+     * `system.html#582 <system.html#582>`_
+     * `system.html#584 <system.html#584>`_
+     * `system.html#586 <system.html#586>`_
 
    `[]=`:idx:
      * `tables.html#108 <tables.html#108>`_
@@ -368,10 +371,7 @@ Index
      `macros.html#113 <macros.html#113>`_
 
    `[]=`:idx:
-     * `system.html#580 <system.html#580>`_
-     * `system.html#582 <system.html#582>`_
-     * `system.html#584 <system.html#584>`_
-     * `system.html#586 <system.html#586>`_
+     `strtabs.html#109 <strtabs.html#109>`_
 
    `[ESC]`:idx:
      `manual.html#134 <manual.html#134>`_
@@ -1428,11 +1428,11 @@ Index
      * `system.html#396 <system.html#396>`_
      * `system.html#397 <system.html#397>`_
 
-   `CompileTime`:idx:
-     `system.html#387 <system.html#387>`_
-
    `compileTime`:idx:
      `manual.html#244 <manual.html#244>`_
+
+   `CompileTime`:idx:
+     `system.html#387 <system.html#387>`_
 
    `complex statements`:idx:
      `manual.html#191 <manual.html#191>`_
