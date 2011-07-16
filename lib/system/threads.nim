@@ -266,7 +266,10 @@ proc initInbox(p: pointer)
 proc freeInbox(p: pointer)
 when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
-  
+
+when defined(mainThread):
+  initInbox(addr(mainThread.inbox))
+
 template ThreadProcWrapperBody(closure: expr) =
   ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TMsg]](closure)
@@ -379,6 +382,10 @@ proc myThreadId*[TMsg](): TThreadId[TMsg] =
   ## returns the thread ID of the thread that calls this proc.
   result = cast[TThreadId[TMsg]](ThreadVarGetValue(globalsSlot))
 
+proc mainThreadId*[TMsg](): TThreadId[TMsg] =
+  ## returns the thread ID of the main thread.
+  result = cast[TThreadId[TMsg]](addr(mainThread))
+
 when useStackMaskHack:
   proc runMain(tp: proc () {.thread.}) {.compilerproc.} =
     var mainThread: TThread[pointer]
@@ -388,7 +395,8 @@ when useStackMaskHack:
 # --------------------------- lock handling ----------------------------------
 
 type
-  TLock* = TSysLock ## Nimrod lock; not re-entrant!
+  TLock* = TSysLock ## Nimrod lock; whether this is re-entrant
+                    ## or not is unspecified!
   
 const
   noDeadlocks = false # compileOption("deadlockPrevention")

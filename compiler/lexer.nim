@@ -267,7 +267,7 @@ proc GetNumber(L: var TLexer): TToken =
         inc(L.bufpos)
       matchUnderscoreChars(L, result, {'0'..'9'})
   endpos = L.bufpos
-  if L.buf[endpos] == '\'': 
+  if L.buf[endpos] == '\'':
     #matchUnderscoreChars(L, result, ['''', 'f', 'F', 'i', 'I', '0'..'9']);
     inc(endpos)
     L.bufpos = pos            # restore position
@@ -281,7 +281,7 @@ proc GetNumber(L: var TLexer): TToken =
         result.tokType = tkFloat32Lit
         inc(endpos, 2)
       else: 
-        lexMessage(L, errInvalidNumber, result.literal)
+        lexMessage(L, errInvalidNumber, result.literal & "'f" & L.buf[endpos])
     of 'i', 'I': 
       inc(endpos)
       if (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'): 
@@ -297,9 +297,9 @@ proc GetNumber(L: var TLexer): TToken =
         result.tokType = tkInt8Lit
         inc(endpos)
       else: 
-        lexMessage(L, errInvalidNumber, result.literal)
-    else: lexMessage(L, errInvalidNumber, result.literal)
-  else: 
+        lexMessage(L, errInvalidNumber, result.literal & "'i" & L.buf[endpos])
+    else: lexMessage(L, errInvalidNumber, result.literal & "'" & L.buf[endpos])
+  else:
     L.bufpos = pos            # restore position
   try: 
     if (L.buf[pos] == '0') and

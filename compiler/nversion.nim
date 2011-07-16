@@ -15,6 +15,6 @@ const
   defaultAsmMarkerSymbol* = '!'
   VersionMajor* = 0
   VersionMinor* = 8
-  VersionPatch* = 12
+  VersionPatch* = 13
   VersionAsString* = $VersionMajor & "." & $VersionMinor & "." & $VersionPatch
 

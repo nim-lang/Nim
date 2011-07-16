@@ -200,7 +200,7 @@ for any type:
   echo("abc".len) # is the same as echo(len("abc"))
   echo("abc".toUpper())
   echo({'a', 'b', 'c'}.card)
-  stdout.writeln("Hallo") # the same as write(stdout, "Hallo")
+  stdout.writeln("Hallo") # the same as writeln(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
 postfix notation.)

@@ -133,6 +133,26 @@ when defined(boehmgc):
   proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
+  type
+    TMemRegion = object {.final, pure.}
+  
+  var
+    dummy {.rtlThreadVar.}: int
+  
+  proc rawAlloc(r: var TMemRegion, size: int): pointer =
+    result = boehmAlloc(size)
+    if result == nil: raiseOutOfMem()
+  proc rawAlloc0(r: var TMemRegion, size: int): pointer =
+    result = alloc(size)
+    zeroMem(result, size)
+  proc realloc(r: var TMemRegion, p: Pointer, newsize: int): pointer =
+    result = boehmRealloc(p, newsize)
+    if result == nil: raiseOutOfMem()
+  proc rawDealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)
+
+  proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
+  proc deallocOsPages() {.inline.} = nil
+
   include "system/cellsets"
 elif defined(nogc):
   # Even though we don't want the GC, we cannot simply use C's memory manager

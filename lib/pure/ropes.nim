@@ -145,16 +145,16 @@ proc rope*(i: BiggestInt): PRope {.rtl, extern: "nro$1BiggestInt".} =
 proc rope*(f: BiggestFloat): PRope {.rtl, extern: "nro$1BiggestFloat".} =
   ## Converts a float to a rope. 
   result = rope($f)
-
-proc disableCache*() {.rtl, extern: "nro$1".} =
-  ## the cache is discarded and disabled. The GC will reuse its used memory.
-  cache = nil
-  cacheEnabled = false
   
 proc enableCache*() {.rtl, extern: "nro$1".} =
   ## Enables the caching of leaves. This reduces the memory footprint at
   ## the cost of runtime efficiency.
   cacheEnabled = true
+
+proc disableCache*() {.rtl, extern: "nro$1".} =
+  ## the cache is discarded and disabled. The GC will reuse its used memory.
+  cache = nil
+  cacheEnabled = false
 
 proc `&`*(a, b: PRope): PRope {.rtl, extern: "nroConcRopeRope".} =
   ## the concatenation operator for ropes.

@@ -783,7 +783,7 @@ const
   hasThreadSupport = compileOption("threads")
   hasSharedHeap = defined(boehmgc) # don't share heaps; every thread has its own
 
-when hasThreadSupport and not hasSharedHeap:
+when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
 else:
   {.pragma: rtlThreadVar.}
@@ -835,7 +835,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
   setLen(x, xl+1)
   var j = xl-1
   while j >= i:
-    x[j+1] = x[j]
+    shallowCopy(x[j+1], x[j])
     dec(j)
   x[i] = item
 
@@ -1411,7 +1411,8 @@ var
     ## writes an error message and terminates the program. `outOfMemHook` can
     ## be used to raise an exception in case of OOM like so:
     ## 
-    ## code-block:: nimrod
+    ## .. code-block:: nimrod
+    ##
     ##   var gOutOfMem: ref EOutOfMemory
     ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
     ##   gOutOfMem.msg = "out of memory"

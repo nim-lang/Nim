@@ -25,7 +25,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) =
     if t == nil: 
       LocalError(a.info, errCannotInstantiateX, s.name.s)
       break
-    if (t.kind == tyGenericParam): 
+    if t.kind == tyGenericParam: 
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
     s.typ = t
     addDecl(c, s)
