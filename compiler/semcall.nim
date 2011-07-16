@@ -83,6 +83,13 @@ proc explicitGenericInstError(n: PNode): PNode =
   LocalError(n.info, errCannotInstantiateX, renderTree(n))
   result = n
 
+proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
+  var x: TCandidate
+  initCandidate(x, s, n)
+  var newInst = generateInstance(c, s, x.bindings, n.info)
+  markUsed(n, s)
+  result = newSymNode(newInst, n.info)
+
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode = 
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
@@ -94,27 +101,30 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
       return explicitGenericInstError(n)
+    result = explicitGenericSym(c, n, s)
   elif a.kind == nkSymChoice:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.ParamTypesMatch.
     # It's good enough for now.
-    var candidateCount = 0
+    result = newNodeI(nkSymChoice, n.info)
     for i in countup(0, len(a)-1): 
       var candidate = a.sons[i].sym
       if candidate.kind in {skProc, skMethod, skConverter, skIterator}: 
         # if suffices that the candidate has the proper number of generic 
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
-          s = candidate
-          inc(candidateCount)
-    if candidateCount != 1: return explicitGenericInstError(n)
+          result.add(explicitGenericSym(c, n, candidate))
+    # get rid of nkSymChoice if not ambigious:
+    if result.len == 1: result = result[0]
+    # candidateCount != 1: return explicitGenericInstError(n)
   else:
     assert false
   
-  var x: TCandidate
-  initCandidate(x, s, n)
-  var newInst = generateInstance(c, s, x.bindings, n.info)
-  
-  markUsed(n, s)
-  result = newSymNode(newInst, n.info)
+  when false:
+    var x: TCandidate
+    initCandidate(x, s, n)
+    var newInst = generateInstance(c, s, x.bindings, n.info)
+    
+    markUsed(n, s)
+    result = newSymNode(newInst, n.info)
 

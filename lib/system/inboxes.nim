@@ -205,9 +205,8 @@ proc send*[TMsg](receiver: TThreadId[TMsg], msg: TMsg) =
   var q = cast[PInbox](getInBoxMem(receiver[]))
   sendImpl(q)
 
-proc llRecv(res: pointer, typ: PNimType) =
+proc llRecv(q: PInbox, res: pointer, typ: PNimType) =
   # to save space, the generic is as small as possible
-  var q = cast[PInbox](getInBoxMem())
   acquireSys(q.lock)
   q.ready = true
   while q.count <= 0:
@@ -222,7 +221,8 @@ proc llRecv(res: pointer, typ: PNimType) =
 proc recv*[TMsg](): TMsg =
   ## receives a message from its internal message queue. This blocks until
   ## a message has arrived! You may use ``peek`` to avoid the blocking.
-  llRecv(addr(result), cast[PNimType](getTypeInfo(result)))
+  var q = cast[PInbox](getInBoxMem())
+  llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
 
 proc peek*(): int =
   ## returns the current number of messages in the inbox.
@@ -241,4 +241,57 @@ proc ready*[TMsg](t: var TThread[TMsg]): bool =
   ## returns true iff the thread `t` is waiting on ``recv`` for new messages.
   var q = cast[PInbox](getInBoxMem(t))
   result = q.ready
+
+# ---------------------- channel support -------------------------------------
+
+type
+  TChannel*[TMsg] = TInbox ## a channel for thread communication
+  TChannelId*[TMsg] = ptr TChannel[TMsg] ## the current implementation uses
+                                         ## a pointer as a channel ID.
+
+proc open*[TMsg](c: var TChannel[TMsg]) =
+  ## opens a channel `c` for inter thread communication.
+  initInbox(addr(c))
+
+proc close*[TMsg](c: var TChannel[TMsg]) =
+  ## closes a channel `c` and frees its associated resources.
+  freeInbox(addr(c))
+
+proc channelId*[TMsg](c: var TChannel[TMsg]): TChannelId[TMsg] {.inline.} =
+  ## returns the channel ID of `c`.
+  result = addr(c)
+  
+proc send*[TMsg](c: var TChannel[TMsg], msg: TMsg) =
+  ## sends a message to a channel. `msg` is deeply copied.
+  var q = cast[PInbox](addr(c))
+  sendImpl(q)
+
+proc send*[TMsg](c: TChannelId[TMsg], msg: TMsg) =
+  ## sends a message to a thread. `msg` is deeply copied.
+  var q = cast[PInbox](c)
+  sendImpl(q)
+
+proc peek*[TMsg](c: var TChannel[TMsg]): int =
+  ## returns the current number of messages in the channel `c`.
+  var q = cast[PInbox](addr(c))
+  lockInbox(q):
+    result = q.count
+
+proc peek*[TMsg](c: TChannelId[TMsg]): int =
+  ## returns the current number of messages in the channel `c`.
+  var q = cast[PInbox](c)
+  lockInbox(q):
+    result = q.count
+
+proc recv*[TMsg](c: TChannelId[TMsg]): TMsg =
+  ## receives a message from the channel `c`. This blocks until
+  ## a message has arrived! You may use ``peek`` to avoid the blocking.
+  var q = cast[PInbox](c)
+  llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
+
+proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
+  ## receives a message from the channel `c`. This blocks until
+  ## a message has arrived! You may use ``peek`` to avoid the blocking.
+  var q = cast[PInbox](addr(c))
+  llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
 

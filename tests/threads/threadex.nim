@@ -9,7 +9,6 @@ type
 
 var
   consumer: TThread[TMsg]
-  producer: TThread[int]
   printedLines = 0
 
 proc consume() {.thread.} =
@@ -21,7 +20,7 @@ proc consume() {.thread.} =
     echo x.data
     discard atomicInc(printedLines)
 
-proc produce() {.thread.} =
+proc produce() =
   var m: TMsg
   var input = open("readme.txt")
   while not endOfFile(input):
@@ -30,15 +29,14 @@ proc produce() {.thread.} =
       consumer.send(m)
   close(input)
   m.k = mEof
-  m.backTo = myThreadId[int]()
+  m.backTo = mainThreadId[int]()
   consumer.send(m)
   var result = recv[int]()
   echo result
   
 createThread(consumer, consume)
-createThread(producer, produce)
+produce()
 joinThread(consumer)
-joinThread(producer)
 
 echo printedLines
 

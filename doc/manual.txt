@@ -3153,7 +3153,7 @@ over *fine grained* concurrency.
 Threads and exceptions
 ----------------------
 
-The interaction between threads and exception is simple: A *handled* exception 
+The interaction between threads and exceptions is simple: A *handled* exception 
 in one thread cannot affect any other thread. However, an *unhandled* 
 exception in one thread terminates the whole *process*!
 

@@ -152,42 +152,32 @@ proc semCase(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
 
 proc SemReturn(c: PContext, n: PNode): PNode = 
-  var 
-    restype: PType
-    a: PNode                  # temporary assignment for code generator
   result = n
   checkSonsLen(n, 1)
-  if not (c.p.owner.kind in {skConverter, skMethod, skProc, skMacro}): 
+  if c.p.owner.kind notin {skConverter, skMethod, skProc, skMacro}:
     globalError(n.info, errXNotAllowedHere, "\'return\'")
-  if n.sons[0].kind != nkEmpty: 
-    n.sons[0] = SemExprWithType(c, n.sons[0]) # check for type compatibility:
-    restype = c.p.owner.typ.sons[0]
-    if restype != nil: 
-      a = newNodeI(nkAsgn, n.sons[0].info)
-      n.sons[0] = fitNode(c, restype, n.sons[0])
-      # optimize away ``return result``, because it would be transformed
-      # to ``result = result; return``:
-      if (n.sons[0].kind == nkSym) and (sfResult in n.sons[0].sym.flags): 
-        n.sons[0] = ast.emptyNode
-      else: 
-        if (c.p.resultSym == nil): InternalError(n.info, "semReturn")
-        addSon(a, semExprWithType(c, newSymNode(c.p.resultSym)))
-        addSon(a, n.sons[0])
-        n.sons[0] = a
-    else: 
-      localError(n.info, errCannotReturnExpr)
+  if n.sons[0].kind != nkEmpty:
+    # transform ``return expr`` to ``result = expr; return``
+    if c.p.resultSym == nil: InternalError(n.info, "semReturn")
+    var a = newNodeI(nkAsgn, n.sons[0].info)
+    addSon(a, newSymNode(c.p.resultSym))
+    addSon(a, n.sons[0])
+    n.sons[0] = semAsgn(c, a)
+    # optimize away ``result = result``:
+    if n[0][1].kind == nkSym and sfResult in n[0][1].sym.flags: 
+      n.sons[0] = ast.emptyNode
   
 proc SemYield(c: PContext, n: PNode): PNode = 
   result = n
   checkSonsLen(n, 1)
-  if (c.p.owner == nil) or (c.p.owner.kind != skIterator): 
+  if c.p.owner == nil or c.p.owner.kind != skIterator: 
     GlobalError(n.info, errYieldNotAllowedHere)
-  if n.sons[0].kind != nkEmpty: 
+  if n.sons[0].kind != nkEmpty:
     n.sons[0] = SemExprWithType(c, n.sons[0]) # check for type compatibility:
     var restype = c.p.owner.typ.sons[0]
     if restype != nil: 
       n.sons[0] = fitNode(c, restype, n.sons[0])
-      if (n.sons[0].typ == nil): InternalError(n.info, "semYield")
+      if n.sons[0].typ == nil: InternalError(n.info, "semYield")
     else: 
       localError(n.info, errCannotReturnExpr)
   

@@ -22,10 +22,12 @@ Compiler Additions
 Library Additions
 -----------------
 
+- Added ``system.mainThreadId``.
+- Added explicit channels for thread communication.
+
 
 2011-07-10 Version 0.8.12 released
 ==================================
-
 
 Bugfixes
 --------

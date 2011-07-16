@@ -31,7 +31,8 @@ version 0.9.XX
 - distinct types for array/seq indexes
 - GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking
 - implicit ref/ptr->var conversion; the compiler may store an object
-  implicitly on the heap for write barrier efficiency
+  implicitly on the heap for write barrier efficiency; better: 
+  proc specialization in the code gen
 - resizing of strings/sequences could take into account the memory that
   is allocated
 - typeAllowed() for parameters...
@@ -50,13 +51,14 @@ version 0.9.XX
 Library
 -------
 
+- proper URL-parser
+- wrappers for poppler; libharu
 - radix tree for strings; maybe suffix tree
 - locale support
 - bignums
 - ftp (and other internet protocols)
 
 - pdcurses bindings
-- queues additional to streams: have two positions (read/write) instead of one
 
 - for system:
   proc `@` [T](a: openArray[T]): seq[T] = 
@@ -70,7 +72,7 @@ Low priority
 ------------
 
 - ``when T is int`` for generic code
-- ``when validCode( proc ()  )`` for generic code
+- ``when validCode(proc())`` for generic code
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
