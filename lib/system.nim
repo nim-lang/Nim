@@ -977,23 +977,56 @@ proc alloc*(size: int): pointer {.noconv, rtl.}
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is not initialized, so reading
   ## from it before writing to it is undefined behaviour!
+  ## The allocated memory belongs to its allocating thread!
+  ## Use `allocShared` to allocate from a shared heap.
 proc alloc0*(size: int): pointer {.noconv, rtl.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is initialized with all bytes
   ## containing zero, so it is somewhat safer than ``alloc``.
+  ## The allocated memory belongs to its allocating thread!
+  ## Use `allocShared0` to allocate from a shared heap.
 proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
   ## grows or shrinks a given memory block. If p is **nil** then a new
   ## memory block is returned. In either way the block has at least
   ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
   ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
   ## be freed with ``dealloc``.
+  ## The allocated memory belongs to its allocating thread!
+  ## Use `reallocShared` to reallocate from a shared heap.
 proc dealloc*(p: Pointer) {.noconv, rtl.}
   ## frees the memory allocated with ``alloc``, ``alloc0`` or
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
   ## memory (or just freeing it twice!) a core dump may happen
   ## or other memory may be corrupted. 
+  ## The freed memory must belong to its allocating thread!
+  ## Use `deallocShared` to deallocate from a shared heap.
+
+proc allocShared*(size: int): pointer {.noconv, rtl.}
+  ## allocates a new memory block on the shared heap with at
+  ## least ``size`` bytes. The block has to be freed with
+  ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
+  ## is not initialized, so reading from it before writing to it is 
+  ## undefined behaviour!
+proc allocShared0*(size: int): pointer {.noconv, rtl.}
+  ## allocates a new memory block on the shared heap with at 
+  ## least ``size`` bytes. The block has to be freed with
+  ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
+  ## The block is initialized with all bytes
+  ## containing zero, so it is somewhat safer than ``allocShared``.
+proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+  ## grows or shrinks a given memory block on the heap. If p is **nil**
+  ## then a new memory block is returned. In either way the block has at least
+  ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+  ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
+  ## block has to be freed with ``deallocShared``.
+proc deallocShared*(p: Pointer) {.noconv, rtl.}
+  ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
+  ## ``reallocShared``. This procedure is dangerous! If one forgets to
+  ## free the memory a leak occurs; if one tries to access freed
+  ## memory (or just freeing it twice!) a core dump may happen
+  ## or other memory may be corrupted.
 
 proc assert*(cond: bool) {.magic: "Assert", noSideEffect.}
   ## provides a means to implement `programming by contracts`:idx: in Nimrod.

@@ -77,7 +77,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
         x[] = nil
       else:
         var ss = cast[NimString](s2)
-        var ns = cast[NimString](rawAlloc(t.region, ss.len+1 + GenericSeqSize))
+        var ns = cast[NimString](Alloc(t.region, ss.len+1 + GenericSeqSize))
         copyMem(ns, ss, ss.len+1 + GenericSeqSize)
         x[] = ns
     else:
@@ -87,7 +87,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
         unsureAsgnRef(x, s2)
       else:
         unsureAsgnRef(x, copyString(cast[NimString](s2)))
-        rawDealloc(t.region, s2)
+        Dealloc(t.region, s2)
   of tySequence:
     var s2 = cast[ppointer](src)[]
     var seq = cast[PGenericSeq](s2)
@@ -100,7 +100,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
     else:
       sysAssert(dest != nil)
       if mode == mStore:
-        x[] = rawAlloc(t.region, seq.len *% mt.base.size +% GenericSeqSize)
+        x[] = Alloc(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
         unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
       var dst = cast[taddress](cast[ppointer](dest)[])
@@ -113,7 +113,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
       var dstseq = cast[PGenericSeq](dst)
       dstseq.len = seq.len
       dstseq.space = seq.len
-      if mode != mStore: rawDealloc(t.region, s2)
+      if mode != mStore: Dealloc(t.region, s2)
   of tyObject:
     # copy type field:
     var pint = cast[ptr PNimType](dest)
@@ -136,7 +136,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
         unsureAsgnRef(x, nil)
     else:
       if mode == mStore:
-        x[] = rawAlloc(t.region, mt.base.size)
+        x[] = Alloc(t.region, mt.base.size)
       else:
         # XXX we should use the dynamic type here too, but that is not stored in
         # the inbox at all --> use source[]'s object type? but how? we need a
@@ -144,7 +144,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PInbox,
         var obj = newObj(mt.base, mt.base.size)
         unsureAsgnRef(x, obj)
       storeAux(x[], s, mt.base, t, mode)
-      if mode != mStore: rawDealloc(t.region, s)
+      if mode != mStore: Dealloc(t.region, s)
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
@@ -154,7 +154,7 @@ proc rawSend(q: PInbox, data: pointer, typ: PNimType) =
   if q.count >= cap:
     # start with capicity for 2 entries in the queue:
     if cap == 0: cap = 1
-    var n = cast[pbytes](rawAlloc0(q.region, cap*2*typ.size))
+    var n = cast[pbytes](Alloc0(q.region, cap*2*typ.size))
     var z = 0
     var i = q.rd
     var c = q.count
@@ -163,7 +163,7 @@ proc rawSend(q: PInbox, data: pointer, typ: PNimType) =
       copyMem(addr(n[z*typ.size]), addr(q.data[i*typ.size]), typ.size)
       i = (i + 1) and q.mask
       inc z
-    if q.data != nil: rawDealloc(q.region, q.data)
+    if q.data != nil: Dealloc(q.region, q.data)
     q.data = n
     q.mask = cap*2 - 1
     q.wr = q.count

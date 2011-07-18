@@ -88,12 +88,18 @@ when defined(boehmgc):
   proc realloc(p: Pointer, newsize: int): pointer =
     result = boehmRealloc(p, newsize)
     if result == nil: raiseOutOfMem()
-  proc dealloc(p: Pointer) =
-    boehmDealloc(p)
+  proc dealloc(p: Pointer) = boehmDealloc(p)
 
-  proc unlockedAlloc(size: int): pointer {.inline.} = result = alloc(size)
-  proc unlockedAlloc0(size: int): pointer {.inline.} = result = alloc0(size)
-  proc unlockedDealloc(p: pointer) {.inline.} = dealloc(p)
+  proc allocShared(size: int): pointer =
+    result = boehmAlloc(size)
+    if result == nil: raiseOutOfMem()
+  proc allocShared0(size: int): pointer =
+    result = alloc(size)
+    zeroMem(result, size)
+  proc reallocShared(p: Pointer, newsize: int): pointer =
+    result = boehmRealloc(p, newsize)
+    if result == nil: raiseOutOfMem()
+  proc deallocShared(p: Pointer) = boehmDealloc(p)
 
   proc initGC() = 
     when defined(macosx): boehmGCinit()
@@ -136,20 +142,13 @@ when defined(boehmgc):
   type
     TMemRegion = object {.final, pure.}
   
-  var
-    dummy {.rtlThreadVar.}: int
-  
-  proc rawAlloc(r: var TMemRegion, size: int): pointer =
+  proc Alloc(r: var TMemRegion, size: int): pointer =
     result = boehmAlloc(size)
     if result == nil: raiseOutOfMem()
-  proc rawAlloc0(r: var TMemRegion, size: int): pointer =
+  proc Alloc0(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
-  proc realloc(r: var TMemRegion, p: Pointer, newsize: int): pointer =
-    result = boehmRealloc(p, newsize)
-    if result == nil: raiseOutOfMem()
-  proc rawDealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)
-
+  proc Dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)  
   proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
   proc deallocOsPages() {.inline.} = nil
 
@@ -204,10 +203,6 @@ elif defined(nogc):
 else:
   include "system/alloc"
 
-  proc unlockedAlloc(size: int): pointer {.inline.} 
-  proc unlockedAlloc0(size: int): pointer {.inline.} 
-  proc unlockedDealloc(p: pointer) {.inline.} 
-  
   include "system/cellsets"
   sysAssert(sizeof(TCell) == sizeof(TFreeCell))
   include "system/gc"
