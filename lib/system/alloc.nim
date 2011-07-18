@@ -550,6 +550,35 @@ proc isAllocatedPtr(a: TMemRegion, p: pointer): bool =
         var c = cast[PBigChunk](c)
         result = p == addr(c.data) and cast[ptr TFreeCell](p).zeroField >% 1
 
+proc ptrSize(p: pointer): int =
+  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+  result = pageAddr(x).size - sizeof(TFreeCell)
+
+proc alloc(allocator: var TMemRegion, size: int): pointer =
+  result = rawAlloc(allocator, size+sizeof(TFreeCell))
+  cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
+  sysAssert(not isAllocatedPtr(allocator, result))
+  result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
+
+proc alloc0(allocator: var TMemRegion, size: int): pointer =
+  result = alloc(size)
+  zeroMem(result, size)
+
+proc dealloc(allocator: var TMemRegion, p: pointer) =
+  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+  sysAssert(cast[ptr TFreeCell](x).zeroField == 1)
+  rawDealloc(allocator, x)
+  sysAssert(not isAllocatedPtr(allocator, x))
+
+proc realloc(allocator: var TMemRegion, p: pointer, newsize: int): pointer =
+  if newsize > 0:
+    result = alloc(allocator, newsize)
+    if p != nil:
+      copyMem(result, p, ptrSize(p))
+      dealloc(allocator, p)
+  elif p != nil:
+    dealloc(allocator, p)
+
 proc deallocOsPages(a: var TMemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   for p in elements(a.chunkStarts):
@@ -569,48 +598,17 @@ proc getOccupiedMem(a: TMemRegion): int {.inline.} =
 template InstantiateForRegion(allocator: expr) =
   proc deallocOsPages = deallocOsPages(allocator)
 
-  proc unlockedAlloc(size: int): pointer =
-    result = rawAlloc(allocator, size+sizeof(TFreeCell))
-    cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
-    sysAssert(not isAllocatedPtr(allocator, result))
-    result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
-
-  proc unlockedAlloc0(size: int): pointer =
-    result = unlockedAlloc(size)
-    zeroMem(result, size)
-
-  proc unlockedDealloc(p: pointer) =
-    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-    sysAssert(cast[ptr TFreeCell](x).zeroField == 1)
-    rawDealloc(allocator, x)
-    sysAssert(not isAllocatedPtr(allocator, x))
-
   proc alloc(size: int): pointer =
-    when hasThreadSupport and hasSharedHeap: AcquireSys(HeapLock)
-    result = unlockedAlloc(size)
-    when hasThreadSupport and hasSharedHeap: ReleaseSys(HeapLock)
+    result = alloc(allocator, size)
 
   proc alloc0(size: int): pointer =
-    result = alloc(size)
-    zeroMem(result, size)
+    result = alloc0(allocator, size)
 
   proc dealloc(p: pointer) =
-    when hasThreadSupport and hasSharedHeap: AcquireSys(HeapLock)
-    unlockedDealloc(p)
-    when hasThreadSupport and hasSharedHeap: ReleaseSys(HeapLock)
-
-  proc ptrSize(p: pointer): int =
-    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-    result = pageAddr(x).size - sizeof(TFreeCell)
+    dealloc(allocator, p)
 
   proc realloc(p: pointer, newsize: int): pointer =
-    if newsize > 0:
-      result = alloc(newsize)
-      if p != nil:
-        copyMem(result, p, ptrSize(p))
-        dealloc(p)
-    elif p != nil:
-      dealloc(p)
+    result = realloc(allocator, p, newsize)
 
   when false:
     proc countFreeMem(): int =
@@ -626,4 +624,38 @@ template InstantiateForRegion(allocator: expr) =
 
   proc getTotalMem(): int = return allocator.currMem
   proc getOccupiedMem(): int = return getTotalMem() - getFreeMem()
+
+  # -------------------- shared heap region ----------------------------------
+  when hasThreadSupport:
+    var sharedHeap: TMemRegion
+    var heapLock: TSysLock
+    InitSysLock(HeapLock)
+
+  proc allocShared(size: int): pointer =
+    when hasThreadSupport:
+      AcquireSys(HeapLock)
+      result = alloc(sharedHeap, size)
+      ReleaseSys(HeapLock)
+    else:
+      result = alloc(size)
+
+  proc allocShared0(size: int): pointer =
+    result = allocShared(size)
+    zeroMem(result, size)
+
+  proc deallocShared(p: pointer) =
+    when hasThreadSupport: 
+      AcquireSys(HeapLock)
+      dealloc(sharedHeap, p)
+      ReleaseSys(HeapLock)
+    else:
+      dealloc(p)
+
+  proc reallocShared(p: pointer, newsize: int): pointer =
+    when hasThreadSupport: 
+      AcquireSys(HeapLock)
+      result = realloc(sharedHeap, p, newsize)
+      ReleaseSys(HeapLock)
+    else:
+      result = realloc(p, newsize)
 

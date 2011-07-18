@@ -1,21 +1,28 @@
-version 0.9.0
-=============
+Version 0.8.14
+==============
 
 - ``var T`` as a return type; easy to prove that location does not escape its
   stack frame
+- strutils.unindent
 - document Nimrod's two phase symbol lookup for generics
+- make ^ available as operator
+- make threadvar efficient again on linux after testing
+- test the sort implementation again
+- export re-entrant and non-reentrant locks and condition vars
+
+
+version 0.9.0
+=============
+
 - add --deadlock_prevention:on|off switch? timeout for locks?
 - bug: tfFinal not passed to generic
 - bug: forward proc for generic seems broken
-- test the sort implementation again
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
   modules; run the GC tests
-- fix overloading resolution
-- make ^ available as operator
+- change overloading resolution
 - implement closures; implement proper coroutines
-- make threadvar efficient again on linux after testing
 
 Bugs
 ----

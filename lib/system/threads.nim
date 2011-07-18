@@ -210,10 +210,7 @@ when not defined(useNimRtl):
       echo "too large thread local storage size requested"
       quit 1
   
-  when hasSharedHeap:
-    var heapLock: TSysLock
-    InitSysLock(HeapLock)
-
+  when hasSharedHeap and not defined(boehmgc) and not defined(nogc):
     var
       threadList: PGcThread
       
@@ -275,19 +272,17 @@ template ThreadProcWrapperBody(closure: expr) =
   var t = cast[ptr TThread[TMsg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
-  when not defined(boehmgc) and not hasSharedHeap:
+  when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap:
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
-  when hasSharedHeap:
+  when defined(registerThread):
     t.stackBottom = addr(t)
     registerThread(t)
   if t.emptyFn == nil: t.dataFn(t.data)
   else: t.emptyFn()
-  #finally:
-  # XXX shut-down is not executed when the thread is forced down!
   freeInbox(addr(t.inbox))
-  when hasSharedHeap: unregisterThread(t)
+  when defined(registerThread): unregisterThread(t)
   when defined(deallocOsPages): deallocOsPages()
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current
