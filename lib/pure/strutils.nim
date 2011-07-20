@@ -544,6 +544,33 @@ proc wordWrap*(s: string, maxLineWidth = 80,
       SpaceLeft = SpaceLeft - len(Word)
       result.add(word)
 
+proc unindent*(s: string, eatAllIndent = false): string {.
+               noSideEffect, rtl, extern: "nsuUnindent".} = 
+  ## unindents `s`.
+  result = newStringOfCap(s.len)
+  var i = 0
+  var pattern = true
+  var indent = 0
+  while s[i] == ' ': inc i
+  var level = if i == 0: -1 else: i
+  while i < s.len:
+    if s[i] == ' ':
+      if i > 0 and s[i-1] in {'\l', '\c'}:
+        pattern = true
+        indent = 0
+      if pattern:
+        inc(indent)
+        if indent > level and not eatAllIndent:
+          result.add(s[i])
+        if level < 0: level = indent
+      else:
+        # a space somewhere: do not delete
+        result.add(s[i])
+    else:
+      pattern = false
+      result.add(s[i])
+    inc i
+
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
   ## Returns true iff ``s`` starts with ``prefix``.
@@ -827,34 +854,6 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     of '\"': add(result, "\\\"")
     else: add(result, c)
   add(result, suffix)
-
-proc validEmailAddress*(s: string): bool {.noSideEffect,
-  rtl, extern: "nsuValidEmailAddress".} = 
-  ## returns true if `s` seems to be a valid e-mail address. 
-  ## The checking also uses a domain list.
-  ## Note: This will be moved to another module soon.
-  const
-    chars = Letters + Digits + {'!','#','$','%','&',
-      '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
-  var i = 0
-  if s[i] notin chars or s[i] == '.': return false
-  while s[i] in chars: 
-    if s[i] == '.' and s[i+1] == '.': return false
-    inc(i)
-  if s[i] != '@': return false
-  var j = len(s)-1
-  if s[j] notin letters: return false
-  while j >= i and s[j] in letters: dec(j)
-  inc(i) # skip '@'
-  while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
-  if s[i] != '\0': return false
-  
-  var x = substr(s, j+1)
-  if len(x) == 2 and x[0] in Letters and x[1] in Letters: return true
-  case toLower(x)
-  of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",
-     "aero", "jobs", "museum": return true
-  return false
   
 proc validIdentifier*(s: string): bool {.noSideEffect,
   rtl, extern: "nsuValidIdentifier".} = 

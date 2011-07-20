@@ -3,9 +3,9 @@ Version 0.8.14
 
 - ``var T`` as a return type; easy to prove that location does not escape its
   stack frame
-- strutils.unindent
 - document Nimrod's two phase symbol lookup for generics
 - make ^ available as operator
+- optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
 - export re-entrant and non-reentrant locks and condition vars

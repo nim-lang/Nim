@@ -33,16 +33,17 @@ type
     nestedBlockCounter*: int  # whether we are in a block or not
     next*: PProcCon           # used for stacking procedure contexts
   
+  TInstantiatedSymbol* {.final.} = object
+    genericSym*, instSym*: PSym
+    concreteTypes*: seq[PType]
+  
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym             # the module sym belonging to the context
     p*: PProcCon              # procedure context
     InstCounter*: int         # to prevent endless instantiations
-    generics*: PNode          # a list of the things to compile; list of
-                              # nkExprEqExpr nodes which contain the
-                              # generic symbol and the instantiated symbol
+   
     threadEntries*: TSymSeq   # list of thread entries to check
-    lastGenericIdx*: int      # used for the generics stack
     tab*: TSymTab             # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
@@ -58,6 +59,8 @@ type
   
 
 var gInstTypes*: TIdTable # map PType to PType
+var generics*: seq[TInstantiatedSymbol] = @[] # a list of the things to compile
+var lastGenericIdx*: int      # used for the generics stack
 
 proc newContext*(module: PSym, nimfile: string): PContext
 
@@ -124,7 +127,6 @@ proc newContext(module: PSym, nimfile: string): PContext =
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
   result.module = module
-  result.generics = newNode(nkStmtList)
   result.threadEntries = @[]
   result.converters = @[]
   result.filename = nimfile

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,10 +21,6 @@
 ##   
 ##   <h1><a href="http://force7.de/nimrod">Nimrod</a></h1>
 ##
-## **Deprecated since version 0.8.8.** Use the macro ``<>`` in xmltree 
-## instead.
-
-{.deprecated.}
 
 import
   macros, strutils
@@ -58,7 +54,6 @@ proc xmlCheckedTag*(e: PNimrodNode, tag: string,
   # will be modified, so that each attribute is only given one value
   var req = split(reqAttr)
   var opt = split(optAttr)
-  echo "##", optAttr, "##", opt.len
   result = newNimNode(nnkBracket, e)
   result.add(newStrLitNode("<"))
   result.add(newStrLitNode(tag))

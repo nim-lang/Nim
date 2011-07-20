@@ -119,12 +119,4 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # candidateCount != 1: return explicitGenericInstError(n)
   else:
     assert false
-  
-  when false:
-    var x: TCandidate
-    initCandidate(x, s, n)
-    var newInst = generateInstance(c, s, x.bindings, n.info)
-    
-    markUsed(n, s)
-    result = newSymNode(newInst, n.info)
 

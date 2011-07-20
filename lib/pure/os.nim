@@ -351,23 +351,6 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``joinPath(head, tail)``
   return joinPath(head, tail)
 
-proc SplitPath*(path: string, head, tail: var string) {.noSideEffect,
-                                                        deprecated.} =
-  ## **Deprecated since version 0.8.2**: use the version that returns a tuple
-  ## instead
-  var
-    sepPos = -1
-  for i in countdown(len(path)-1, 0):
-    if path[i] in {dirsep, altsep}:
-      sepPos = i
-      break
-  if sepPos >= 0:
-    head = substr(path, 0, sepPos-1)
-    tail = substr(path, sepPos+1)
-  else:
-    head = ""
-    tail = path # make a string copy here
-
 proc SplitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into (head, tail), so that
@@ -466,13 +449,6 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
-proc extractDir*(path: string): string {.noSideEffect, deprecated.} =
-  ## Extracts the directory of a given path. This is almost the
-  ## same as the `head` result of `splitPath`, except that
-  ## ``extractDir("/usr/lib/") == "/usr/lib/"``.
-  ## **Deprecated since version 0.8.2**: Use ``splitFile(path).dir`` instead.
-  result = splitFile(path).dir
-
 proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as 
@@ -495,37 +471,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
     if res == nil: OSError()
     result = $res
     c_free(res)
-
-proc SplitFilename*(filename: string, name, extension: var string) {.
-  noSideEffect, deprecated.} = 
-  ## Splits a filename into (name, extension), so that
-  ## ``name & extension == filename``.
-  ##
-  ## Example: After ``SplitFilename("usr/local/nimrodc.html", name, ext)``,
-  ## `name` is "usr/local/nimrodc" and `ext` is ".html".
-  ## If the file has no extension, extension is the empty string.
-  ## **Deprecated since version 0.8.2**: Use ``splitFile(filename)`` instead.
-  var extPos = searchExtPos(filename)
-  if extPos >= 0:
-    name = substr(filename, 0, extPos-1)
-    extension = substr(filename, extPos)
-  else:
-    name = filename # make a string copy here
-    extension = ""
-
-proc extractFileExt*(filename: string): string {.noSideEffect, deprecated.} =
-  ## Extracts the file extension of a given `filename`. This is the
-  ## same as the `extension` result of `splitFilename`.
-  ## **Deprecated since version 0.8.2**: Use ``splitFile(filename).ext``
-  ## instead.
-  result = splitFile(filename).ext
-
-proc extractFileTrunk*(filename: string): string {.noSideEffect, deprecated.} =
-  ## Extracts the file name of a given `filename`. This removes any
-  ## directory information and the file extension.
-  ## **Deprecated since version 0.8.2**: Use ``splitFile(path).name`` instead.
-  result = splitFile(filename).name
-  
+ 
 proc ChangeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Changes the file extension to `ext`.
@@ -550,11 +496,6 @@ proc addFileExt*(filename, ext: string): string {.
   var extPos = searchExtPos(filename)
   if extPos < 0: result = filename & normExt(ext)
   else: result = filename
-
-proc AppendFileExt*(filename, ext: string): string {.
-  noSideEffect, deprecated.} =
-  ## **Deprecated since version 0.8.2**: Use `addFileExt` instead.
-  result = addFileExt(filename, ext)
 
 proc cmpPaths*(pathA, pathB: string): int {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -660,10 +601,6 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1".} =
 proc removeFile*(file: string) {.rtl, extern: "nos$1".} =
   ## Removes the `file`. If this fails, `EOS` is raised.
   if cremove(file) != 0'i32: OSError()
-
-proc executeShellCommand*(command: string): int {.deprecated.} =
-  ## **Deprecated since version 0.8.2**: Use `execShellCmd` instead.
-  result = csystem(command)
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
   ## Executes a `shell command`:idx:.
@@ -781,15 +718,6 @@ proc putEnv*(key, val: string) =
     if SetEnvironmentVariableA(key, val) == 0'i32:
       OSError()
 
-iterator iterOverEnvironment*(): tuple[key, value: string] {.deprecated.} =
-  ## Iterate over all environments variables. In the first component of the
-  ## tuple is the name of the current variable stored, in the second its value.
-  ## **Deprecated since version 0.8.2**: Use `envPairs` instead.
-  getEnvVarsC()
-  for i in 0..high(environment):
-    var p = find(environment[i], '=')
-    yield (substr(environment[i], 0, p-1), substr(environment[i], p+1))
-
 iterator envPairs*(): tuple[key, value: string] =
   ## Iterate over all `environments variables`:idx:. In the first component 
   ## of the tuple is the name of the current variable stored, in the second
@@ -836,10 +764,6 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
-
-const
-  pcDirectory* {.deprecated.} = pcDir ## deprecated alias 
-  pcLinkToDirectory* {.deprecated.} = pcLinkToDir ## deprecated alias
 
 iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
   ## walks over the directory `dir` and yields for each directory or file in

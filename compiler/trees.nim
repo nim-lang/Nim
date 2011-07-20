@@ -12,19 +12,6 @@
 import 
   ast, astalgo, lexer, msgs, strutils, wordrecg
 
-proc getMagic*(op: PNode): TMagic
-
-proc isConstExpr*(n: PNode): bool
-proc flattenTree*(root: PNode, op: TMagic): PNode
-proc TreeToSym*(t: PNode): PSym
-proc SwapOperands*(op: PNode)
-proc getOpSym*(op: PNode): PSym
-proc getProcSym*(call: PNode): PSym
-proc ExprStructuralEquivalent*(a, b: PNode): bool
-proc sameTree*(a, b: PNode): bool
-proc cyclicTree*(n: PNode): bool
-# implementation
-
 proc hasSon(father, son: PNode): bool = 
   for i in countup(0, sonsLen(father) - 1): 
     if father.sons[i] == son: 
@@ -45,11 +32,11 @@ proc cyclicTreeAux(n, s: PNode): bool =
   result = false
   delSon(s, m)
 
-proc cyclicTree(n: PNode): bool = 
+proc cyclicTree*(n: PNode): bool = 
   var s = newNodeI(nkEmpty, n.info)
   result = cyclicTreeAux(n, s)
 
-proc ExprStructuralEquivalent(a, b: PNode): bool = 
+proc ExprStructuralEquivalent*(a, b: PNode): bool = 
   result = false
   if a == b: 
     result = true
@@ -69,7 +56,7 @@ proc ExprStructuralEquivalent(a, b: PNode): bool =
           if not ExprStructuralEquivalent(a.sons[i], b.sons[i]): return 
         result = true
   
-proc sameTree(a, b: PNode): bool = 
+proc sameTree*(a, b: PNode): bool = 
   result = false
   if a == b: 
     result = true
@@ -93,10 +80,10 @@ proc sameTree(a, b: PNode): bool =
           if not sameTree(a.sons[i], b.sons[i]): return 
         result = true
   
-proc getProcSym(call: PNode): PSym = 
+proc getProcSym*(call: PNode): PSym = 
   result = call.sons[0].sym
 
-proc getOpSym(op: PNode): PSym = 
+proc getOpSym*(op: PNode): PSym = 
   if not (op.kind in {nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit}): 
     result = nil
   else: 
@@ -104,7 +91,7 @@ proc getOpSym(op: PNode): PSym =
     if op.sons[0].Kind == nkSym: result = op.sons[0].sym
     else: result = nil
   
-proc getMagic(op: PNode): TMagic = 
+proc getMagic*(op: PNode): TMagic = 
   case op.kind
   of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit, nkPrefix, nkPostfix,
      nkInfix: 
@@ -113,10 +100,10 @@ proc getMagic(op: PNode): TMagic =
     else: result = mNone
   else: result = mNone
   
-proc TreeToSym(t: PNode): PSym = 
+proc TreeToSym*(t: PNode): PSym = 
   result = t.sym
 
-proc isConstExpr(n: PNode): bool = 
+proc isConstExpr*(n: PNode): bool = 
   result = (n.kind in
       {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, 
        nkFloatLit..nkFloat64Lit, nkNilLit}) or (nfAllConst in n.flags)
@@ -128,14 +115,14 @@ proc flattenTreeAux(d, a: PNode, op: TMagic) =
   else: 
     addSon(d, copyTree(a))
   
-proc flattenTree(root: PNode, op: TMagic): PNode = 
+proc flattenTree*(root: PNode, op: TMagic): PNode = 
   result = copyNode(root)
   if (getMagic(root) == op): 
     # BUGFIX: forget to copy prc
     addSon(result, copyNode(root.sons[0]))
     flattenTreeAux(result, root, op)
 
-proc SwapOperands(op: PNode) = 
+proc SwapOperands*(op: PNode) = 
   var tmp = op.sons[1]
   op.sons[1] = op.sons[2]
   op.sons[2] = tmp
