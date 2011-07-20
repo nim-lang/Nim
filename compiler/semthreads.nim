@@ -358,6 +358,8 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkAsmStmt, nkPragma, nkIteratorDef, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkTemplateDef: 
       result = toVoid
+  of nkExprColonExpr:
+    result = analyse(c, n.sons[1])
   else: InternalError(n.info, "analysis not implemented for: " & $n.kind)
 
 proc analyseThreadProc*(prc: PSym) =
@@ -367,17 +369,6 @@ proc analyseThreadProc*(prc: PSym) =
     var formal = formals.sons[i].sym 
     c.mapping[formal.id] = toTheirs # thread receives foreign data!
   discard analyse(c, prc.ast.sons[codePos])
-
-when false:
-  proc analyseThreadCreationCall(n: PNode) =
-    # thread proc is second param of ``createThread``:
-    if n[2].kind != nkSym or n[2].sym.kind != skProc:
-      Message(n.info, warnAnalysisLoophole, renderTree(n))
-      return
-    analyseProc(n[2].sym)
-
-  proc AnalyseThread*(threadCreation: PNode) =
-    analyseThreadCreationCall(threadCreation)
 
 proc needsGlobalAnalysis*: bool =
   result = gGlobalOptions * {optThreads, optThreadAnalysis} == 

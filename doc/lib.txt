@@ -99,6 +99,9 @@ String handling
   It finds the sequence of ASCII characters that is the closest approximation
   to the Unicode string.
 
+* `matchers <matchers.html>`_
+  This module contains various string matchers for email addresses, etc.
+
 
 Generic Operating System Services
 ---------------------------------

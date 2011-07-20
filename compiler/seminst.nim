@@ -9,15 +9,17 @@
 
 # This module implements the instantiation of generic procs.
 
-proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) = 
-  if (n.kind != nkGenericParams): 
+proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
+                                 entry: var TInstantiatedSymbol) = 
+  if n.kind != nkGenericParams: 
     InternalError(n.info, "instantiateGenericParamList; no generic params")
-  for i in countup(0, sonsLen(n) - 1): 
+  newSeq(entry.concreteTypes, n.len)
+  for i in countup(0, n.len - 1):
     var a = n.sons[i]
     if a.kind != nkSym: 
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
-    if not (q.typ.kind in {tyTypeDesc, tyGenericParam}): continue 
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam}: continue 
     var s = newSym(skType, q.name, getCurrOwner())
     s.info = q.info
     incl(s.flags, sfUsed)
@@ -29,24 +31,23 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) =
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
     s.typ = t
     addDecl(c, s)
+    entry.concreteTypes[i] = t
 
-proc GenericCacheGet(c: PContext, genericSym, instSym: PSym): PSym = 
-  result = nil
-  for i in countup(0, sonsLen(c.generics) - 1): 
-    if c.generics.sons[i].kind != nkExprEqExpr: 
-      InternalError(genericSym.info, "GenericCacheGet")
-    var a = c.generics.sons[i].sons[0].sym
-    if genericSym.id == a.id: 
-      var b = c.generics.sons[i].sons[1].sym
-      if equalParams(b.typ.n, instSym.typ.n) == paramsEqual:
-        #echo "found in cache: ", getProcHeader(instSym)
-        return b
+proc sameInstantiation(a, b: TInstantiatedSymbol): bool =
+  if a.genericSym.id == b.genericSym.id and 
+      a.concreteTypes.len == b.concreteTypes.len:
+    for i in 0 .. < a.concreteTypes.len:
+      if not sameType(a.concreteTypes[i], b.concreteTypes[i]): return
+    result = true
 
-proc GenericCacheAdd(c: PContext, genericSym, instSym: PSym) = 
-  var n = newNode(nkExprEqExpr)
-  addSon(n, newSymNode(genericSym))
-  addSon(n, newSymNode(instSym))
-  addSon(c.generics, n)
+proc GenericCacheGet(c: PContext, entry: var TInstantiatedSymbol): PSym = 
+  for i in countup(0, Len(generics) - 1):
+    if sameInstantiation(entry, generics[i]):
+      result = generics[i].instSym
+      # checking for the concrete parameter list is wrong and unnecessary!
+      #if equalParams(b.typ.n, instSym.typ.n) == paramsEqual:
+      #echo "found in cache: ", getProcHeader(result)
+      return
 
 proc removeDefaultParamValues(n: PNode) = 
   # we remove default params, because they cannot be instantiated properly
@@ -81,11 +82,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(result)
   openScope(c.tab)
-  if (n.sons[genericParamsPos].kind == nkEmpty): 
+  if n.sons[genericParamsPos].kind == nkEmpty: 
     InternalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
-  instantiateGenericParamList(c, n.sons[genericParamsPos], pt)
+  var entry: TInstantiatedSymbol
+  entry.instSym = result
+  entry.genericSym = fn
+  instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry)
   n.sons[genericParamsPos] = ast.emptyNode
   # semantic checking for the parameters:
   if n.sons[paramsPos].kind != nkEmpty: 
@@ -96,10 +100,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     addSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
-  var oldPrc = GenericCacheGet(c, fn, result)
-  if oldPrc == nil: 
+  var oldPrc = GenericCacheGet(c, entry)
+  if oldPrc == nil:
     # add it here, so that recursive generic procs are possible:
-    GenericCacheAdd(c, fn, result)
+    generics.add(entry)
     addDecl(c, result)
     if n.sons[codePos].kind != nkEmpty: 
       pushProcCon(c, result)

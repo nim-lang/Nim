@@ -2,16 +2,30 @@
 News
 ====
 
-2011-XX-XX Version 0.X.XX released
+2011-XX-XX Version 0.8.14 released
 ==================================
 
-Version 0.X.XX has been released! Get it `here <download.html>`_. 
+Version 0.8.14 has been released! Get it `here <download.html>`_. 
 
 Bugfixes
 --------
 
+- Boehm GC now works with ``--threads:on``.
+- Fixed a serious memory corruption concerning message passing.
+- Fixed a serious bug concerning different instantiations of a generic proc.
+
+
 Changes affecting backwards compatibility
 -----------------------------------------
+
+- Removed deprecated ``os.AppendFileExt``, ``os.executeShellCommand``, 
+  ``os.iterOverEnvironment``, ``os.pcDirectory``, ``os.pcLinkToDirectory``,
+  ``os.SplitPath``, ``os.extractDir``, ``os.SplitFilename``, 
+  ``os.extractFileTrunk``, ``os.extractFileExt``, ``osproc.executeProcess``,
+  ``osproc.executeCommand``. 
+- Removed deprecated ``parseopt.init``, ``parseopt.getRestOfCommandLine``.
+- Moved ``strutils.validEmailAddress`` to ``matchers.validEmailAddress``.
+
 
 Language Additions
 ------------------
@@ -23,7 +37,11 @@ Library Additions
 -----------------
 
 - Added ``system.mainThreadId``.
+- Added ``system.allocShared``, ``system.allocShared0``, 
+  ``system.deallocShared``, ``system.reallocShared``.
 - Added explicit channels for thread communication.
+- Added ``matchers`` module for email address etc. matching.
+- Added ``strutils.unindent``.
 
 
 2011-07-10 Version 0.8.12 released

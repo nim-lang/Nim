@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -52,10 +52,6 @@ when defined(os.ParamCount):
     result.kind = cmdEnd
     result.key = ""
     result.val = ""
-
-  proc init*(cmdline: string = ""): TOptParser {.deprecated.} = 
-    ## **Deprecated since version 0.8.2**: Use `initOptParser` instead.
-    result = initOptParser(cmdline)
 
 proc parseWord(s: string, i: int, w: var string, 
                delim: TCharSet = {'\x09', ' ', '\0'}): int = 
@@ -127,10 +123,6 @@ proc cmdLineRest*(p: TOptParser): string {.
   rtl, extern: "npo$1".} = 
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)) 
-
-proc getRestOfCommandLine*(p: TOptParser): string {.deprecated.} = 
-  ## **Deprecated since version 0.8.2**: Use `cmdLineRest` instead.
-  result = cmdLineRest(p) 
 
 when defined(initOptParser):
 

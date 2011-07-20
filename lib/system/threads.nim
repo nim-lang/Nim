@@ -254,7 +254,7 @@ type
                           ## that should not be part of a message! Use
                           ## a ``TThreadId`` for that.
     emptyFn: proc ()
-    dataFn: proc (p: TMsg)
+    dataFn: proc (m: TMsg)
     data: TMsg
   TThreadId*[TMsg] = ptr TThread[TMsg] ## the current implementation uses
                                        ## a pointer as a thread ID.

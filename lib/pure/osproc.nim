@@ -46,21 +46,9 @@ proc execProcess*(command: string,
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
 
-proc executeProcess*(command: string,
-                     options: set[TProcessOption] = {poStdErrToStdOut,
-                                                     poUseShell}): string {.
-                                                     deprecated.} =
-  ## **Deprecated since version 0.8.2**: Use `execProcess` instead.
-  result = execProcess(command, options)
-
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1".}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process.
-
-proc executeCommand*(command: string): int {.deprecated.} =
-  ## **Deprecated since version 0.8.2**: Use `execCmd` instead.
-  result = execCmd(command)
-
 
 proc startProcess*(command: string,
                    workingDir: string = "",
