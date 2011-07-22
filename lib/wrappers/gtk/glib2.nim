@@ -4501,3 +4501,7 @@ proc G_TYPE_VALUE_ARRAY*(): GType =
 
 proc G_TYPE_GSTRING*(): GType = 
   result = g_gstring_get_type()
+  
+proc g_thread_init*(vtable: pointer) {.
+  cdecl, dynlib: gobjectlib, importc: "g_thread_init".}
+

@@ -561,7 +561,7 @@ proc alloc(allocator: var TMemRegion, size: int): pointer =
   result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
 
 proc alloc0(allocator: var TMemRegion, size: int): pointer =
-  result = alloc(size)
+  result = alloc(allocator, size)
   zeroMem(result, size)
 
 proc dealloc(allocator: var TMemRegion, p: pointer) =

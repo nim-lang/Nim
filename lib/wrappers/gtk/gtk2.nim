@@ -16872,6 +16872,9 @@ proc set_do_overwrite_confirmation*(chooser: PFileChooser,
 proc get_realized*(w: PWidget): gboolean {.cdecl, dynlib: lib,
                                            importc: "gtk_widget_get_realized".}
 
+proc set_skip_taskbar_hint*(window: PWindow, setting: gboolean){.cdecl,
+  dynlib: lib, importc: "gtk_window_set_skip_taskbar_hint".}
+
 proc nimrod_init*() = 
   var 
     cmdLine{.importc: "cmdLine".}: array[0..255, cstring]
