@@ -7,7 +7,7 @@ proc main(filter: string) =
   for filename in walkFiles(filter):
     writeln(stdout, filename)
 
-  for key, val in iterOverEnvironment():
+  for key, val in envPairs():
     writeln(stdout, key & '=' & val)
 
 main("*.nim")
