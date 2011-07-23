@@ -25,6 +25,8 @@ Changes affecting backwards compatibility
   ``osproc.executeCommand``. 
 - Removed deprecated ``parseopt.init``, ``parseopt.getRestOfCommandLine``.
 - Moved ``strutils.validEmailAddress`` to ``matchers.validEmailAddress``.
+- The pointer dereference operator ``^`` has been removed, so that ``^``
+  can now be a user-defined operator.
 
 
 Language Additions

@@ -339,7 +339,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     of tokKeywordLow..tokKeywordHigh: 
       dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}", 
             [toRope(literal)])
-    of tkOpr, tkHat: 
+    of tkOpr: 
       dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}", 
             [toRope(esc(literal))])
     of tkStrLit..tkTripleStrLit: 

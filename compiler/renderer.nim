@@ -819,7 +819,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[1])
   of nkDerefExpr: 
     gsub(g, n.sons[0])
-    putWithSpace(g, tkHat, "^") 
+    putWithSpace(g, tkOpr, "^") 
     # unfortunately this requires a space, because ^. would be only one operator
   of nkAccQuoted:
     put(g, tkAccent, "`")
