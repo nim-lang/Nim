@@ -237,8 +237,8 @@ proc changeType(n: PNode, newType: PType) =
   of nkPar: 
     if newType.kind != tyTuple: 
       InternalError(n.info, "changeType: no tuple type for constructor")
-    if newType.n == nil: InternalError(n.info, "changeType: no tuple fields")
-    if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr): 
+    if newType.n == nil: nil
+    elif (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr): 
       for i in countup(0, sonsLen(n) - 1): 
         var m = n.sons[i].sons[0]
         if m.kind != nkSym: 

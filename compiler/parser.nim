@@ -450,11 +450,6 @@ proc primary(p: var TParser): PNode =
       optInd(p, result)
       addSon(result, parseSymbol(p))
       result = parseGStrLit(p, result)
-    of tkHat: 
-      var a = result
-      result = newNodeP(nkDerefExpr, p)
-      addSon(result, a)
-      getTok(p)
     of tkBracketLe: 
       result = indexExprList(p, result)
     else: break 

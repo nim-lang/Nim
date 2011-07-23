@@ -286,9 +286,9 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
 
 proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   case n.kind
-  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
+  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit, nkHiddenCallConv:
-    result = analyseOp(c, n)    
+    result = analyseOp(c, n)
   of nkAsgn, nkFastAsgn:
     analyseAssign(c, n)
     result = toVoid
@@ -299,9 +299,9 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkDotExpr, nkBracketExpr, nkDerefExpr, nkHiddenDeref:
     # field access:
     # pointer deref or array access:
-    result = analyse(c, n.sons[0])    
+    result = analyse(c, n.sons[0])
   of nkBind: result = analyse(c, n.sons[0])
-  of nkPar, nkCurly, nkBracket:
+  of nkPar, nkCurly, nkBracket, nkRange:
     # container construction:
     result = toNil # nothing until later
     for i in 0..n.len-1: aggregateOwner(result, analyse(c, n[i]))

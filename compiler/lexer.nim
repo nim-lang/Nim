@@ -49,7 +49,7 @@ type
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon, tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, 
-    tkHat, tkOpr, tkComment, tkAccent, tkInd, tkSad, 
+    tkOpr, tkComment, tkAccent, tkInd, tkSad, 
     tkDed, # pseudo token types used by the source renderers:
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
   TTokTypes* = set[TTokType]
@@ -74,7 +74,7 @@ const
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)", ",", ";", 
     ":", "::",
-    "=", ".", "..", "^", "tkOpr", "tkComment", "`", "[new indentation]", 
+    "=", ".", "..", "tkOpr", "tkComment", "`", "[new indentation]", 
     "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
     "tkPrefixOpr", "tkPostfixOpr"]
 

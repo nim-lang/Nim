@@ -33,7 +33,6 @@ primaryPrefix ::= (prefixOperator | 'bind') optInd
 primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '(' optInd namedExprList optPar ')'
                 | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
-                | '^'
                 | pragma
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 

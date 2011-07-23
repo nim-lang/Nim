@@ -32,7 +32,7 @@ type
     wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
     wWithout, wXor, wYield,
     
-    wColon, wColonColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
+    wColon, wColonColon, wEquals, wDot, wDotDot, wStar, wMinus, 
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImportCompilerProc,
     wImportc, wExportc, wExtern,
@@ -65,7 +65,7 @@ type
 
 const 
   oprLow* = ord(wColon)
-  oprHigh* = ord(wHat)
+  oprHigh* = ord(wDotDot)
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
     "addr", "and", "as", "asm", "atomic", 
@@ -79,7 +79,7 @@ const
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",
 
-    ":", "::", "=", ".", "..", "^", "*", "-",
+    ":", "::", "=", ".", "..", "*", "-",
     "magic", "thread", "final", "profiler", "objchecks", 
     "importcompilerproc", "importc", "exportc", "extern",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
