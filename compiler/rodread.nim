@@ -594,7 +594,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       L = 0
-      while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
+      while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
         setlen(r.files, L + 1)
         r.files[L] = decode(r)
         inc(r.pos)            # skip #10
@@ -604,7 +604,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "INCLUDES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
-      while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
+      while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
         w = r.files[decodeInt(r)]
         inc(r.pos)            # skip ' '
         inclCrc = decodeInt(r)
@@ -618,7 +618,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "DEPS": 
       inc(r.pos)              # skip ':'
       L = 0
-      while (r.s[r.pos] > '\x0A'): 
+      while r.s[r.pos] > '\x0A': 
         setlen(r.modDeps, L + 1)
         r.modDeps[L] = r.files[decodeInt(r)]
         inc(L)
@@ -672,7 +672,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
     initIITable(r.imports.tab) # looks like a ROD file
     inc(r.pos, 4)
     var version = ""
-    while not (r.s[r.pos] in {'\0', '\x0A'}): 
+    while r.s[r.pos] notin {'\0', '\x0A'}:
       add(version, r.s[r.pos])
       inc(r.pos)
     if r.s[r.pos] == '\x0A': inc(r.pos)
@@ -728,8 +728,8 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
       # find the reader with the correct moduleID:
       for i in countup(0, high(gMods)): 
         var rd = gMods[i].rd
-        if (rd != nil): 
-          if (rd.moduleID == moduleID): 
+        if rd != nil: 
+          if rd.moduleID == moduleID: 
             d = IITableGet(rd.index.tab, id)
             if d != invalidKey: 
               result = decodeSymSafePos(rd, d, info)
@@ -745,14 +745,14 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
     else: 
       # own symbol:
       result = decodeSymSafePos(r, d, info)
-  if (result != nil) and (result.kind == skStub): loadStub(result)
+  if result != nil and result.kind == skStub: loadStub(result)
   
 proc loadInitSection(r: PRodReader): PNode = 
-  if (r.initIdx == 0) or (r.dataIdx == 0): InternalError("loadInitSection")
+  if r.initIdx == 0 or r.dataIdx == 0: InternalError("loadInitSection")
   var oldPos = r.pos
   r.pos = r.initIdx
   result = newNode(nkStmtList)
-  while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
+  while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
     var d = decodeInt(r)
     inc(r.pos)                # #10
     var p = r.pos
@@ -763,7 +763,7 @@ proc loadInitSection(r: PRodReader): PNode =
 
 proc loadConverters(r: PRodReader) = 
   # We have to ensure that no exported converter is a stub anymore.
-  if (r.convertersIdx == 0) or (r.dataIdx == 0): 
+  if r.convertersIdx == 0 or r.dataIdx == 0: 
     InternalError("importConverters")
   r.pos = r.convertersIdx
   while (r.s[r.pos] > '\x0A'): 
@@ -809,9 +809,9 @@ proc checkDep(filename: string): TReasonForRecompile =
             # we cannot break here, because of side-effects of `checkDep`
   else: 
     result = rrRodDoesNotExist
-  if (result != rrNone) and (gVerbosity > 0): 
+  if result != rrNone and gVerbosity > 0: 
     MsgWriteln(`%`(reasonToFrmt[result], [filename]))
-  if (result != rrNone) or (optForceFullMake in gGlobalOptions): 
+  if result != rrNone or optForceFullMake in gGlobalOptions: 
     # recompilation is necessary:
     r = nil
   gMods[idx].rd = r

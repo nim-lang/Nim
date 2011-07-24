@@ -117,12 +117,12 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode): PRope =
   # we do not write comments for now
   # Line information takes easily 20% or more of the filesize! Therefore we
   # omit line information if it is the same as the father's line information:
-  if (finfo.fileIndex != n.info.fileIndex): 
+  if finfo.fileIndex != n.info.fileIndex: 
     appf(result, "?$1,$2,$3", [encodeInt(n.info.col), encodeInt(n.info.line), 
                                encodeInt(fileIdx(w, toFilename(n.info)))])
-  elif (finfo.line != n.info.line): 
+  elif finfo.line != n.info.line:
     appf(result, "?$1,$2", [encodeInt(n.info.col), encodeInt(n.info.line)])
-  elif (finfo.col != n.info.col): 
+  elif finfo.col != n.info.col:
     appf(result, "?$1", [encodeInt(n.info.col)]) 
   # No need to output the file index, as this is the serialization of one
   # file.
@@ -135,7 +135,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode): PRope =
   of nkCharLit..nkInt64Lit: 
     if n.intVal != 0: appf(result, "!$1", [encodeInt(n.intVal)])
   of nkFloatLit..nkFloat64Lit: 
-    if n.floatVal != 0.0: appf(result, "!$1", [encodeStr(w, $(n.floatVal))])
+    if n.floatVal != 0.0: appf(result, "!$1", [encodeStr(w, $n.floatVal)])
   of nkStrLit..nkTripleStrLit: 
     if n.strVal != "": appf(result, "!$1", [encodeStr(w, n.strVal)])
   of nkIdent: 
@@ -274,7 +274,7 @@ proc symStack(w: PRodWriter) =
           if w.converters != nil: app(w.converters, " ")
           app(w.converters, encodeInt(s.id))
       elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
-        addToIndex(w.imports, s.id, m.id) #if not IntSetContains(debugWritten, s.id) then begin 
+        addToIndex(w.imports, s.id, m.id) #if not Contains(debugWritten, s.id):
                                           #  MessageOut(w.filename);
                                           #  debug(s.owner);
                                           #  debug(s);
