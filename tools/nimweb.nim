@@ -70,8 +70,8 @@ proc parseCmdLine(c: var TConfigData) =
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": write(stdout, Usage)
-      of "version", "v": writeln(stdout, Version)
+      of "help", "h": quit(Usage)
+      of "version", "v": quit(Version)
       of "o", "output": c.outdir = val
       of "var":
         var idx = val.find('=')
@@ -186,7 +186,7 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
       removeFile(changeFileExt(d, "tex"))
-  
+
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
