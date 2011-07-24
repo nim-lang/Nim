@@ -587,7 +587,7 @@ Named arguments
 ---------------
 
 Often a procedure has many parameters and it is not clear in which order the
-parameters appeared. This is especially true for procedures that construct a
+parameters appear. This is especially true for procedures that construct a
 complex data type. Therefore the arguments to a procedure can be named, so
 that it is clear which argument belongs to which parameter:
 

@@ -96,13 +96,13 @@ proc peekExitCode*(p: PProcess): int
   ## return -1 if the process is still running. Otherwise the process' exit code
 
 proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
-  ## returns ``p``'s input stream for writing to
+  ## opens ``p``'s input stream for writing to
 
 proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
-  ## returns ``p``'s output stream for reading from
+  ## opens ``p``'s output stream for reading from
 
 proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
-  ## returns ``p``'s output stream for reading from
+  ## opens ``p``'s output stream for reading from
 
 when defined(macosx) or defined(bsd):
   const

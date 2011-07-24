@@ -1,41 +1,6 @@
 Installation
 ============
 
-Bootstrapping from github
--------------------------
-
-To get the source code you need either of these:
-
-* A working web browser + tar(or equivalent):
-  https://github.com/Araq/Nimrod/tarball/master
-* wget + tar:
-  ``wget --no-check-certificate "https://github.com/Araq/Nimrod/tarball/master"``
-* git: ``git clone git://github.com/Araq/Nimrod.git``
-
-After downloading the source (and extracting it), you need to 
-extract ``build/csources.zip``:
-
-* ``cd build``
-* ``unzip csources.zip``
-* ``cd ..``
-
-and then you can bootstrap with:
-
-On Windows
-~~~~~~~~~~
-
-* ``build.bat``
-* ``bin\nimrod c koch``
-* ``koch boot -d:release``
-
-On UNIX
-~~~~~~~
-
-* ``./build.sh``
-* ``bin/nimrod c koch``
-* ``./koch boot -d:release``
-
-
 Installation on Linux/UNIX
 --------------------------
 
@@ -97,3 +62,41 @@ Currently, the following C compilers are supported under Windows:
   | http://www.digitalmars.com/download/freecompiler.html
 
 However, most testing is done with GCC.
+
+
+
+Bootstrapping from github
+-------------------------
+
+To get the source code you need either of these:
+
+* A working web browser + tar(or equivalent):
+  https://github.com/Araq/Nimrod/tarball/master
+* wget + tar:
+  ``wget --no-check-certificate "https://github.com/Araq/Nimrod/tarball/master"``
+* git: ``git clone git://github.com/Araq/Nimrod.git``
+
+After downloading the source (and extracting it), you need to 
+extract ``build/csources.zip``:
+
+* ``cd build``
+* ``unzip csources.zip``
+* ``cd ..``
+
+and then you can bootstrap with:
+
+On Windows
+~~~~~~~~~~
+
+* ``build.bat``
+* ``bin\nimrod c koch``
+* ``koch boot -d:release``
+
+On UNIX
+~~~~~~~
+
+* ``./build.sh``
+* ``bin/nimrod c koch``
+* ``./koch boot -d:release``
+
+
