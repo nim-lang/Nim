@@ -31,7 +31,7 @@ type
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
     actionZip     # action: create zip file
-    
+
   TFileCategory = enum
     fcWinBin,     # binaries for Windows
     fcConfig,     # configuration files
@@ -83,11 +83,11 @@ proc initConfigData(c: var TConfigData) =
   c.uninstallScript = false
   c.vars = newStringTable(modeStyleInsensitive)
 
-proc skipRoot(f: string): string = 
+proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
   var i = 0
   result = ""
-  for component in split(f, {dirsep, altsep}): 
+  for component in split(f, {dirsep, altsep}):
     if i > 0: result = result / component
     inc i
   if result.len == 0: result = f
@@ -142,8 +142,8 @@ proc parseCmdLine(c: var TConfigData) =
         break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": write(stdout, Usage)
-      of "version", "v": writeln(stdout, Version)
+      of "help", "h": quit(Usage)
+      of "version", "v": quit(Version)
       of "o", "output": c.outdir = val
       of "var":
         var idx = val.find('=')
@@ -183,9 +183,9 @@ proc filesOnly(p: var TCfgParser, k, v: string, dest: var seq[string]) =
   of "files": addFiles(dest, split(v, {';'}))
   else: quit(errorStr(p, "unknown variable: " & k))
 
-proc yesno(p: var TCfgParser, v: string): bool = 
+proc yesno(p: var TCfgParser, v: string): bool =
   case normalize(v)
-  of "yes", "y", "on", "true": 
+  of "yes", "y", "on", "true":
     result = true
   of "no", "n", "off", "false":
     result = false
@@ -229,7 +229,7 @@ proc parseIniFile(c: var TConfigData) =
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
         of "config": filesOnly(p, k.key, v, c.cat[fcConfig])
         of "data": filesOnly(p, k.key, v, c.cat[fcData])
-        of "documentation": 
+        of "documentation":
           case normalize(k.key)
           of "files": addFiles(c.cat[fcDoc], split(v, {';'}))
           of "start": addFiles(c.cat[fcDocStart], split(v, {';'}))
@@ -242,7 +242,7 @@ proc parseIniFile(c: var TConfigData) =
           of "binpath": c.binPaths = split(v, {';'})
           of "innosetup": c.innoSetupFlag = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "unix": 
+        of "unix":
           case normalize(k.key)
           of "files": addFiles(c.cat[fcUnix], split(v, {';'}))
           of "installscript": c.installScript = yesno(p, v)
@@ -290,7 +290,7 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
 proc buildDir(os, cpu: int): string =
   return "build" / ($os & "_" & $cpu)
 
-proc writeFile(filename, content, newline: string) =  
+proc writeFile(filename, content, newline: string) =
   var f: TFile
   if open(f, filename, fmWrite):
     for x in splitLines(content):
@@ -327,7 +327,7 @@ proc srcdist(c: var TConfigData) =
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping " &
                  " --os:$# --cpu:$# $# $#") %
-                 [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs, 
+                 [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs,
                  changeFileExt(c.infile, "nim")]
       echo(cmd)
       if execShellCmd(cmd) != 0:
@@ -341,11 +341,11 @@ proc srcdist(c: var TConfigData) =
   removeDuplicateFiles(c)
   writeFile(buildShFile, GenerateBuildShellScript(c), "\10")
   writeFile(buildBatFile, GenerateBuildBatchScript(c), "\13\10")
-  if c.installScript: 
+  if c.installScript:
     writeFile(installShFile, GenerateInstallScript(c), "\10")
   if c.uninstallScript:
     writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
-  
+
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
   var scrpt = GenerateInnoSetup(c)
@@ -384,7 +384,7 @@ when haveZipLib:
           for k, f in walkDir(dir):
             if k == pcFile: addFile(z, proj / dir / extractFilename(f), f)
 
-      for cat in items({fcConfig..fcOther, fcUnix}): 
+      for cat in items({fcConfig..fcOther, fcUnix}):
         for f in items(c.cat[cat]): addFile(z, proj / f, f)
       close(z)
     else:
