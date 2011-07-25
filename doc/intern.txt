@@ -52,7 +52,7 @@ For a release version use::
   nimrod c koch.nim
   ./koch boot -d:release
 
-The ``koch`` program is Nimrod's maintainance script. It is a replacement for
+The ``koch`` program is Nimrod's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
 
 
@@ -125,7 +125,7 @@ parsing. Otherwise generics cannot work.
 
 The syntax tree
 ---------------
-The synax tree consists of nodes which may have an arbitrary number of
+The syntax tree consists of nodes which may have an arbitrary number of
 children. Types and symbols are represented by other nodes, because they
 may contain cycles. The AST changes its shape after semantic checking. This
 is needed to make life easier for the code generators. See the "ast" module
