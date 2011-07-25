@@ -10,30 +10,30 @@
 # This module implements a FreePascal scanner. This is an adaption from
 # the scanner module.
 
-import 
-  nhashes, options, msgs, strutils, platform, idents, lexbase, llstream
+import
+  hashes, options, msgs, strutils, platform, idents, lexbase, llstream
 
-const 
+const
   MaxLineLength* = 80         # lines longer than this lead to a warning
-  numChars*: TCharSet = {'0'..'9', 'a'..'z', 'A'..'Z'} 
+  numChars*: TCharSet = {'0'..'9', 'a'..'z', 'A'..'Z'}
   SymChars*: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: TCharSet = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
-  OpChars*: TCharSet = {'+', '-', '*', '/', '<', '>', '!', '?', '^', '.', '|', 
+  OpChars*: TCharSet = {'+', '-', '*', '/', '<', '>', '!', '?', '^', '.', '|',
     '=', ':', '%', '&', '$', '@', '~', '\x80'..'\xFF'}
 
 # keywords are sorted!
 
 type
-  TTokKind* = enum 
-    pxInvalid, pxEof,         
-    pxAnd, pxArray, pxAs, pxAsm, pxBegin, pxCase, pxClass, pxConst, 
-    pxConstructor, pxDestructor, pxDiv, pxDo, pxDownto, pxElse, pxEnd, pxExcept, 
-    pxExports, pxFinalization, pxFinally, pxFor, pxFunction, pxGoto, pxIf, 
-    pxImplementation, pxIn, pxInherited, pxInitialization, pxInline, 
-    pxInterface, pxIs, pxLabel, pxLibrary, pxMod, pxNil, pxNot, pxObject, pxOf, 
-    pxOr, pxOut, pxPacked, pxProcedure, pxProgram, pxProperty, pxRaise, 
-    pxRecord, pxRepeat, pxResourcestring, pxSet, pxShl, pxShr, pxThen, 
-    pxThreadvar, pxTo, pxTry, pxType, pxUnit, pxUntil, pxUses, pxVar, pxWhile, 
+  TTokKind* = enum
+    pxInvalid, pxEof,
+    pxAnd, pxArray, pxAs, pxAsm, pxBegin, pxCase, pxClass, pxConst,
+    pxConstructor, pxDestructor, pxDiv, pxDo, pxDownto, pxElse, pxEnd, pxExcept,
+    pxExports, pxFinalization, pxFinally, pxFor, pxFunction, pxGoto, pxIf,
+    pxImplementation, pxIn, pxInherited, pxInitialization, pxInline,
+    pxInterface, pxIs, pxLabel, pxLibrary, pxMod, pxNil, pxNot, pxObject, pxOf,
+    pxOr, pxOut, pxPacked, pxProcedure, pxProgram, pxProperty, pxRaise,
+    pxRecord, pxRepeat, pxResourcestring, pxSet, pxShl, pxShr, pxThen,
+    pxThreadvar, pxTo, pxTry, pxType, pxUnit, pxUntil, pxUses, pxVar, pxWhile,
     pxWith, pxXor,
     pxComment,                # ordinary comment
     pxCommand,                # {@}
@@ -41,22 +41,22 @@ type
     pxPer,                    # {%}
     pxStrLit, pxSymbol,       # a symbol
     pxIntLit, pxInt64Lit, # long constant like 0x70fffffff or out of int range
-    pxFloatLit, pxParLe, pxParRi, pxBracketLe, pxBracketRi, pxComma, 
+    pxFloatLit, pxParLe, pxParRi, pxBracketLe, pxBracketRi, pxComma,
     pxSemiColon, pxColon,     # operators
-    pxAsgn, pxEquals, pxDot, pxDotDot, pxHat, pxPlus, pxMinus, pxStar, pxSlash, 
-    pxLe, pxLt, pxGe, pxGt, pxNeq, pxAt, pxStarDirLe, pxStarDirRi, pxCurlyDirLe, 
+    pxAsgn, pxEquals, pxDot, pxDotDot, pxHat, pxPlus, pxMinus, pxStar, pxSlash,
+    pxLe, pxLt, pxGe, pxGt, pxNeq, pxAt, pxStarDirLe, pxStarDirRi, pxCurlyDirLe,
     pxCurlyDirRi
   TTokKinds* = set[TTokKind]
 
-const 
-  Keywords = ["and", "array", "as", "asm", "begin", "case", "class", "const", 
-    "constructor", "destructor", "div", "do", "downto", "else", "end", "except", 
-    "exports", "finalization", "finally", "for", "function", "goto", "if", 
-    "implementation", "in", "inherited", "initialization", "inline", 
-    "interface", "is", "label", "library", "mod", "nil", "not", "object", "of", 
-    "or", "out", "packed", "procedure", "program", "property", "raise", 
-    "record", "repeat", "resourcestring", "set", "shl", "shr", "then", 
-    "threadvar", "to", "try", "type", "unit", "until", "uses", "var", "while", 
+const
+  Keywords = ["and", "array", "as", "asm", "begin", "case", "class", "const",
+    "constructor", "destructor", "div", "do", "downto", "else", "end", "except",
+    "exports", "finalization", "finally", "for", "function", "goto", "if",
+    "implementation", "in", "inherited", "initialization", "inline",
+    "interface", "is", "label", "library", "mod", "nil", "not", "object", "of",
+    "or", "out", "packed", "procedure", "program", "property", "raise",
+    "record", "repeat", "resourcestring", "set", "shl", "shr", "then",
+    "threadvar", "to", "try", "type", "unit", "until", "uses", "var", "while",
     "with", "xor"]
 
   firstKeyword = pxAnd
@@ -72,10 +72,10 @@ type
     base*: TNumericalBase     # the numerical base; only valid for int
                               # or float literals
     literal*: string          # the parsed (string) literal
-  
+
   TLexer* = object of TBaseLexer
     filename*: string
-  
+
 
 proc getTok*(L: var TLexer, tok: var TToken)
 proc PrintTok*(tok: TToken)
@@ -86,32 +86,32 @@ var
   dummyIdent: PIdent
   gLinesCompiled: int
 
-proc fillToken(L: var TToken) = 
+proc fillToken(L: var TToken) =
   L.xkind = pxInvalid
   L.iNumber = 0
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
   L.ident = dummyIdent        # this prevents many bugs!
-  
-proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) = 
+
+proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
   openBaseLexer(lex, inputstream)
   lex.filename = filename
 
-proc closeLexer*(lex: var TLexer) = 
+proc closeLexer*(lex: var TLexer) =
   inc(gLinesCompiled, lex.LineNumber)
   closeBaseLexer(lex)
 
-proc getColumn(L: TLexer): int = 
+proc getColumn(L: TLexer): int =
   result = getColNumber(L, L.bufPos)
 
-proc getLineInfo*(L: TLexer): TLineInfo = 
+proc getLineInfo*(L: TLexer): TLineInfo =
   result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
 
-proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") = 
+proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
   msgs.GenericMessage(getLineInfo(L), msg, arg)
 
-proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
+proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
   msgs.GenericMessage(info, msg, arg)
 
@@ -154,196 +154,196 @@ proc TokKindToStr*(k: TTokKind): string =
   of pxCurlyDirLe: result = "{$"
   of pxCurlyDirRi: result = "}"
 
-proc `$`(tok: TToken): string = 
+proc `$`(tok: TToken): string =
   case tok.xkind
   of pxInvalid, pxComment, pxStrLit: result = tok.literal
   of pxSymbol: result = tok.ident.s
   of pxIntLit, pxInt64Lit: result = $tok.iNumber
   of pxFloatLit: result = $tok.fNumber
   else: result = TokKindToStr(tok.xkind)
-  
-proc PrintTok(tok: TToken) = 
+
+proc PrintTok(tok: TToken) =
   writeln(stdout, $tok)
 
-proc setKeyword(L: var TLexer, tok: var TToken) = 
+proc setKeyword(L: var TLexer, tok: var TToken) =
   var x = binaryStrSearch(keywords, toLower(tok.ident.s))
   if x < 0: tok.xkind = pxSymbol
   else: tok.xKind = TTokKind(x + ord(firstKeyword))
-  
-proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
+
+proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) =
   # matches ([chars]_)*
   var pos = L.bufpos              # use registers for pos, buf
   var buf = L.buf
-  while true: 
-    if buf[pos] in chars: 
+  while true:
+    if buf[pos] in chars:
       add(tok.literal, buf[pos])
       Inc(pos)
-    else: 
-      break 
-    if buf[pos] == '_': 
+    else:
+      break
+    if buf[pos] == '_':
       add(tok.literal, '_')
       Inc(pos)
   L.bufPos = pos
 
-proc isFloatLiteral(s: string): bool = 
-  for i in countup(0, len(s)-1): 
-    if s[i] in {'.', 'e', 'E'}: 
+proc isFloatLiteral(s: string): bool =
+  for i in countup(0, len(s)-1):
+    if s[i] in {'.', 'e', 'E'}:
       return true
 
-proc getNumber2(L: var TLexer, tok: var TToken) = 
+proc getNumber2(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos + 1 # skip %
-  if not (L.buf[pos] in {'0'..'1'}): 
+  if not (L.buf[pos] in {'0'..'1'}):
     # BUGFIX for %date%
     tok.xkind = pxInvalid
     add(tok.literal, '%')
     inc(L.bufpos)
-    return 
+    return
   tok.base = base2
   var xi: biggestInt = 0
   var bits = 0
-  while true: 
+  while true:
     case L.buf[pos]
-    of 'A'..'Z', 'a'..'z', '2'..'9', '.': 
+    of 'A'..'Z', 'a'..'z', '2'..'9', '.':
       lexMessage(L, errInvalidNumber)
       inc(pos)
-    of '_': 
+    of '_':
       inc(pos)
-    of '0', '1': 
+    of '0', '1':
       xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
       inc(pos)
       inc(bits)
-    else: break 
+    else: break
   tok.iNumber = xi
   if (bits > 32): tok.xkind = pxInt64Lit
   else: tok.xkind = pxIntLit
   L.bufpos = pos
 
-proc getNumber16(L: var TLexer, tok: var TToken) = 
+proc getNumber16(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos + 1          # skip $
   tok.base = base16
   var xi: biggestInt = 0
   var bits = 0
-  while true: 
+  while true:
     case L.buf[pos]
-    of 'G'..'Z', 'g'..'z', '.': 
+    of 'G'..'Z', 'g'..'z', '.':
       lexMessage(L, errInvalidNumber)
       inc(pos)
     of '_': inc(pos)
-    of '0'..'9': 
+    of '0'..'9':
       xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
       inc(pos)
       inc(bits, 4)
-    of 'a'..'f': 
+    of 'a'..'f':
       xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10)
       inc(pos)
       inc(bits, 4)
-    of 'A'..'F': 
+    of 'A'..'F':
       xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10)
       inc(pos)
       inc(bits, 4)
-    else: break 
+    else: break
   tok.iNumber = xi
-  if (bits > 32): 
+  if (bits > 32):
     tok.xkind = pxInt64Lit
-  else: 
+  else:
     tok.xkind = pxIntLit
   L.bufpos = pos
 
-proc getNumber10(L: var TLexer, tok: var TToken) = 
+proc getNumber10(L: var TLexer, tok: var TToken) =
   tok.base = base10
   matchUnderscoreChars(L, tok, {'0'..'9'})
-  if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
+  if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
     add(tok.literal, '.')
     inc(L.bufpos)
     matchUnderscoreChars(L, tok, {'e', 'E', '+', '-', '0'..'9'})
-  try: 
-    if isFloatLiteral(tok.literal): 
+  try:
+    if isFloatLiteral(tok.literal):
       tok.fnumber = parseFloat(tok.literal)
       tok.xkind = pxFloatLit
-    else: 
+    else:
       tok.iNumber = ParseInt(tok.literal)
-      if (tok.iNumber < low(int32)) or (tok.iNumber > high(int32)): 
+      if (tok.iNumber < low(int32)) or (tok.iNumber > high(int32)):
         tok.xkind = pxInt64Lit
-      else: 
+      else:
         tok.xkind = pxIntLit
-  except EInvalidValue: 
+  except EInvalidValue:
     lexMessage(L, errInvalidNumber, tok.literal)
-  except EOverflow: 
+  except EOverflow:
     lexMessage(L, errNumberOutOfRange, tok.literal)
-  
-proc HandleCRLF(L: var TLexer, pos: int): int = 
+
+proc HandleCRLF(L: var TLexer, pos: int): int =
   case L.buf[pos]
   of CR: result = lexbase.HandleCR(L, pos)
   of LF: result = lexbase.HandleLF(L, pos)
   else: result = pos
-  
-proc getString(L: var TLexer, tok: var TToken) = 
+
+proc getString(L: var TLexer, tok: var TToken) =
   var xi: int
   var pos = L.bufPos
   var buf = L.buf
-  while true: 
-    if buf[pos] == '\'': 
+  while true:
+    if buf[pos] == '\'':
       inc(pos)
-      while true: 
+      while true:
         case buf[pos]
-        of CR, LF, lexbase.EndOfFile: 
+        of CR, LF, lexbase.EndOfFile:
           lexMessage(L, errClosingQuoteExpected)
-          break 
-        of '\'': 
+          break
+        of '\'':
           inc(pos)
-          if buf[pos] == '\'': 
+          if buf[pos] == '\'':
             inc(pos)
             add(tok.literal, '\'')
-          else: 
-            break 
-        else: 
+          else:
+            break
+        else:
           add(tok.literal, buf[pos])
           inc(pos)
-    elif buf[pos] == '#': 
+    elif buf[pos] == '#':
       inc(pos)
       xi = 0
       case buf[pos]
-      of '$': 
+      of '$':
         inc(pos)
         xi = 0
-        while true: 
+        while true:
           case buf[pos]
           of '0'..'9': xi = (xi shl 4) or (ord(buf[pos]) - ord('0'))
           of 'a'..'f': xi = (xi shl 4) or (ord(buf[pos]) - ord('a') + 10)
           of 'A'..'F': xi = (xi shl 4) or (ord(buf[pos]) - ord('A') + 10)
-          else: break 
+          else: break
           inc(pos)
-      of '0'..'9': 
+      of '0'..'9':
         xi = 0
-        while buf[pos] in {'0'..'9'}: 
+        while buf[pos] in {'0'..'9'}:
           xi = (xi * 10) + (ord(buf[pos]) - ord('0'))
           inc(pos)
       else: lexMessage(L, errInvalidCharacterConstant)
       if (xi <= 255): add(tok.literal, Chr(xi))
       else: lexMessage(L, errInvalidCharacterConstant)
-    else: 
-      break 
+    else:
+      break
   tok.xkind = pxStrLit
   L.bufpos = pos
 
-proc getSymbol(L: var TLexer, tok: var TToken) = 
+proc getSymbol(L: var TLexer, tok: var TToken) =
   var h: THash = 0
   var pos = L.bufpos
   var buf = L.buf
-  while true: 
+  while true:
     var c = buf[pos]
     case c
-    of 'a'..'z', '0'..'9', '\x80'..'\xFF': 
+    of 'a'..'z', '0'..'9', '\x80'..'\xFF':
       h = h +% Ord(c)
       h = h +% h shl 10
       h = h xor (h shr 6)
-    of 'A'..'Z': 
+    of 'A'..'Z':
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h +% Ord(c)
       h = h +% h shl 10
       h = h xor (h shr 6)
     of '_': nil
-    else: break 
+    else: break
     Inc(pos)
   h = h +% h shl 3
   h = h xor (h shr 11)
@@ -352,218 +352,218 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   L.bufpos = pos
   setKeyword(L, tok)
 
-proc scanLineComment(L: var TLexer, tok: var TToken) = 
+proc scanLineComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
-  var buf = L.buf 
+  var buf = L.buf
   # a comment ends if the next line does not start with the // on the same
   # column after only whitespace
   tok.xkind = pxComment
   var col = getColNumber(L, pos)
-  while true: 
+  while true:
     inc(pos, 2)               # skip //
     add(tok.literal, '#')
-    while not (buf[pos] in {CR, LF, lexbase.EndOfFile}): 
+    while not (buf[pos] in {CR, LF, lexbase.EndOfFile}):
       add(tok.literal, buf[pos])
       inc(pos)
     pos = handleCRLF(L, pos)
     buf = L.buf
     var indent = 0
-    while buf[pos] == ' ': 
+    while buf[pos] == ' ':
       inc(pos)
       inc(indent)
-    if (col == indent) and (buf[pos] == '/') and (buf[pos + 1] == '/'): 
+    if (col == indent) and (buf[pos] == '/') and (buf[pos + 1] == '/'):
       tok.literal = tok.literal & "\n"
-    else: 
-      break 
+    else:
+      break
   L.bufpos = pos
 
-proc scanCurlyComment(L: var TLexer, tok: var TToken) = 
+proc scanCurlyComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
   tok.literal = "#"
   tok.xkind = pxComment
-  while true: 
+  while true:
     case buf[pos]
-    of CR, LF: 
+    of CR, LF:
       pos = HandleCRLF(L, pos)
       buf = L.buf
       add(tok.literal, "\n#")
-    of '}': 
+    of '}':
       inc(pos)
-      break 
+      break
     of lexbase.EndOfFile: lexMessage(L, errTokenExpected, "}")
-    else: 
+    else:
       add(tok.literal, buf[pos])
       inc(pos)
   L.bufpos = pos
 
-proc scanStarComment(L: var TLexer, tok: var TToken) = 
+proc scanStarComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
   tok.literal = "#"
   tok.xkind = pxComment
-  while true: 
+  while true:
     case buf[pos]
-    of CR, LF: 
+    of CR, LF:
       pos = HandleCRLF(L, pos)
       buf = L.buf
       add(tok.literal, "\n#")
-    of '*': 
+    of '*':
       inc(pos)
-      if buf[pos] == ')': 
+      if buf[pos] == ')':
         inc(pos)
-        break 
-      else: 
+        break
+      else:
         add(tok.literal, '*')
-    of lexbase.EndOfFile: 
+    of lexbase.EndOfFile:
       lexMessage(L, errTokenExpected, "*)")
-    else: 
+    else:
       add(tok.literal, buf[pos])
       inc(pos)
   L.bufpos = pos
 
-proc skip(L: var TLexer, tok: var TToken) = 
+proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  while true: 
+  while true:
     case buf[pos]
-    of ' ', Tabulator: 
+    of ' ', Tabulator:
       Inc(pos)                # newline is special:
-    of CR, LF: 
+    of CR, LF:
       pos = HandleCRLF(L, pos)
       buf = L.buf
-    else: 
+    else:
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
 
-proc getTok(L: var TLexer, tok: var TToken) = 
+proc getTok(L: var TLexer, tok: var TToken) =
   tok.xkind = pxInvalid
   fillToken(tok)
   skip(L, tok)
   var c = L.buf[L.bufpos]
-  if c in SymStartChars: 
+  if c in SymStartChars:
     getSymbol(L, tok)
-  elif c in {'0'..'9'}: 
+  elif c in {'0'..'9'}:
     getNumber10(L, tok)
-  else: 
+  else:
     case c
-    of ';': 
+    of ';':
       tok.xkind = pxSemicolon
       Inc(L.bufpos)
-    of '/': 
-      if L.buf[L.bufpos + 1] == '/': 
+    of '/':
+      if L.buf[L.bufpos + 1] == '/':
         scanLineComment(L, tok)
-      else: 
+      else:
         tok.xkind = pxSlash
         inc(L.bufpos)
-    of ',': 
+    of ',':
       tok.xkind = pxComma
       Inc(L.bufpos)
-    of '(': 
+    of '(':
       Inc(L.bufpos)
-      if (L.buf[L.bufPos] == '*'): 
-        if (L.buf[L.bufPos + 1] == '$'): 
+      if (L.buf[L.bufPos] == '*'):
+        if (L.buf[L.bufPos + 1] == '$'):
           Inc(L.bufpos, 2)
           skip(L, tok)
           getSymbol(L, tok)
           tok.xkind = pxStarDirLe
-        else: 
+        else:
           inc(L.bufpos)
           scanStarComment(L, tok)
-      else: 
+      else:
         tok.xkind = pxParLe
-    of '*': 
+    of '*':
       inc(L.bufpos)
-      if L.buf[L.bufpos] == ')': 
+      if L.buf[L.bufpos] == ')':
         inc(L.bufpos)
         tok.xkind = pxStarDirRi
-      else: 
+      else:
         tok.xkind = pxStar
-    of ')': 
+    of ')':
       tok.xkind = pxParRi
       Inc(L.bufpos)
-    of '[': 
+    of '[':
       Inc(L.bufpos)
       tok.xkind = pxBracketLe
-    of ']': 
+    of ']':
       Inc(L.bufpos)
       tok.xkind = pxBracketRi
-    of '.': 
+    of '.':
       inc(L.bufpos)
-      if L.buf[L.bufpos] == '.': 
+      if L.buf[L.bufpos] == '.':
         tok.xkind = pxDotDot
         inc(L.bufpos)
-      else: 
+      else:
         tok.xkind = pxDot
-    of '{': 
+    of '{':
       Inc(L.bufpos)
       case L.buf[L.bufpos]
-      of '$': 
+      of '$':
         Inc(L.bufpos)
         skip(L, tok)
         getSymbol(L, tok)
         tok.xkind = pxCurlyDirLe
-      of '&': 
+      of '&':
         Inc(L.bufpos)
         tok.xkind = pxAmp
-      of '%': 
+      of '%':
         Inc(L.bufpos)
         tok.xkind = pxPer
-      of '@': 
+      of '@':
         Inc(L.bufpos)
         tok.xkind = pxCommand
       else: scanCurlyComment(L, tok)
-    of '+': 
+    of '+':
       tok.xkind = pxPlus
       inc(L.bufpos)
-    of '-': 
+    of '-':
       tok.xkind = pxMinus
       inc(L.bufpos)
-    of ':': 
+    of ':':
       inc(L.bufpos)
-      if L.buf[L.bufpos] == '=': 
+      if L.buf[L.bufpos] == '=':
         inc(L.bufpos)
         tok.xkind = pxAsgn
-      else: 
+      else:
         tok.xkind = pxColon
-    of '<': 
+    of '<':
       inc(L.bufpos)
-      if L.buf[L.bufpos] == '>': 
+      if L.buf[L.bufpos] == '>':
         inc(L.bufpos)
         tok.xkind = pxNeq
-      elif L.buf[L.bufpos] == '=': 
+      elif L.buf[L.bufpos] == '=':
         inc(L.bufpos)
         tok.xkind = pxLe
-      else: 
+      else:
         tok.xkind = pxLt
-    of '>': 
+    of '>':
       inc(L.bufpos)
-      if L.buf[L.bufpos] == '=': 
+      if L.buf[L.bufpos] == '=':
         inc(L.bufpos)
         tok.xkind = pxGe
-      else: 
+      else:
         tok.xkind = pxGt
-    of '=': 
+    of '=':
       tok.xkind = pxEquals
       inc(L.bufpos)
-    of '@': 
+    of '@':
       tok.xkind = pxAt
       inc(L.bufpos)
-    of '^': 
+    of '^':
       tok.xkind = pxHat
       inc(L.bufpos)
-    of '}': 
+    of '}':
       tok.xkind = pxCurlyDirRi
       Inc(L.bufpos)
-    of '\'', '#': 
+    of '\'', '#':
       getString(L, tok)
-    of '$': 
+    of '$':
       getNumber16(L, tok)
-    of '%': 
+    of '%':
       getNumber2(L, tok)
-    of lexbase.EndOfFile: 
+    of lexbase.EndOfFile:
       tok.xkind = pxEof
-    else: 
+    else:
       tok.literal = c & ""
       tok.xkind = pxInvalid
       lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
