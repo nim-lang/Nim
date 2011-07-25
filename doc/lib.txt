@@ -60,6 +60,9 @@ Collections and algorithms
   Implementation of a queue. The underlying implementation uses a ``seq``.
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
+* `sequtils <sequtils.html>`_
+  This module implements operations for the built-in seq type
+  which were inspired by functional programming languages.
 
 
 String handling
@@ -248,6 +251,14 @@ Multimedia support
 * `colors <colors.html>`_
   This module implements color handling for Nimrod. It is used by
   the ``graphics`` module.
+
+
+Miscellaneous
+-------------
+
+* `events <events.html>`_
+  This module implements an event system that is not dependant on external
+  graphical toolkits.
 
 
 Database support

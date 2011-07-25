@@ -859,10 +859,12 @@ proc parseField(p: var TRstParser): PRstNode =
 
 proc parseFields(p: var TRstParser): PRstNode = 
   result = nil
-  if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx + 1].symbol == ":"): 
-    var col = p.tok[p.idx].ival   # BUGFIX!
+  var atStart = p.idx == 0 and p.tok[0].symbol == ":"
+  if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx + 1].symbol == ":") or
+      atStart:
+    var col = if atStart: p.tok[p.idx].col else: p.tok[p.idx].ival
     result = newRstNode(rnFieldList)
-    inc(p.idx)
+    if not atStart: inc(p.idx)
     while true: 
       addSon(result, parseField(p))
       if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col) and
@@ -1307,7 +1309,7 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
     of rnParagraph: nil
     of rnDefList: a = parseDefinitionList(p)
     of rnFieldList: 
-      dec(p.idx)
+      if p.idx > 0: dec(p.idx)
       a = parseFields(p)
     of rnTransition: a = parseTransition(p)
     of rnHeadline: a = parseHeadline(p)

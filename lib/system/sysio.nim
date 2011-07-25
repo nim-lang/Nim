@@ -45,7 +45,9 @@ proc rawReadLine(f: TFile, result: var string) =
   setLen(result, 0) # reuse the buffer!
   while True:
     var c = fgetc(f)
-    if c < 0'i32: raiseEIO("EOF reached")
+    if c < 0'i32:
+      if result.len > 0: break
+      else: raiseEIO("EOF reached")
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
       c = fgetc(f) # is the next char LF?
@@ -89,19 +91,21 @@ proc readFile(filename: string): string =
         raiseEIO("error while reading from file")
     else:
       raiseEIO("file too big to fit in memory")
-  except EIO:
+  finally:
     close(f)
 
 proc writeFile(filename, content: string) =
   var f = open(filename, fmWrite)
-  f.write(content)
-  close(f)
+  try:
+    f.write(content)
+  finally:
+    close(f)
 
 proc EndOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
   var c = fgetc(f)
   ungetc(c, f)
-  return c == -1'i32
+  return c < 0'i32
 
 proc writeln[Ty](f: TFile, x: Ty) =
   write(f, x)

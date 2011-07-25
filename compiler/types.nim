@@ -896,7 +896,7 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
     if typ.callConv == ccClosure: result = 2 * ptrSize
     else: result = ptrSize
     a = ptrSize
-  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyOpenArray: 
+  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray: 
     result = ptrSize
     a = result
   of tyArray, tyArrayConstr: 

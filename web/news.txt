@@ -13,6 +13,8 @@ Bugfixes
 - Boehm GC now works with ``--threads:on``.
 - Fixed a serious memory corruption concerning message passing.
 - Fixed a serious bug concerning different instantiations of a generic proc.
+- Fixed a newly introduced bug where a wrong ``EIO`` exception was raised for
+  the end of file for text files that do not end with a newline.
 
 
 Changes affecting backwards compatibility
