@@ -2,6 +2,7 @@ Comex
 Eric Doughty-Papassideris
 Philippe Lhoste
 Mario Ray Mahardhika
+Alex Mitchell
 Dominik Picheta
 Jonathan Plona
 Alexander Rødseth

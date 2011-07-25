@@ -107,8 +107,10 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
     stdout.write("\n")
 
 proc processFile(filename: string) = 
-  var buffer = system.readFile(filename)
-  if isNil(buffer): 
+  var buffer: string
+  try:
+    buffer = system.readFile(filename)
+  except EIO: 
     echo "cannot open file: ", filename
     return
   stdout.writeln(filename)
