@@ -4505,3 +4505,6 @@ proc G_TYPE_GSTRING*(): GType =
 proc g_thread_init*(vtable: pointer) {.
   cdecl, dynlib: gobjectlib, importc: "g_thread_init".}
 
+type
+    PGSourceFunc = pointer
+proc g_timeout_add*(interval: guint, function: PGSourceFunc, data: gpointer): guint {.cdecl, dynlib: gliblib, importc: "g_timeout_add".}
