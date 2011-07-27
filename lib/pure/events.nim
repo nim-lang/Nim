@@ -71,7 +71,7 @@ proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs)) =
   ## doesn't exist, it will be created.
   var i = getEventHandler(emitter, event)
   if i < 0:
-    var eh = newEventHandler(event)
+    var eh = initEventHandler(event)
     addHandler(eh, func)
     emitter.s.add(eh)
   else:
