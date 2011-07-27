@@ -810,7 +810,7 @@ proc generateDoc(d: PDoc, n: PNode) =
 
 proc genSection(d: PDoc, kind: TSymKind) = 
   const sectionNames: array[skModule..skTemplate, string] = [
-    "Imports", "Types", "Consts", "Vars", "Procs", "Methods", 
+    "Imports", "Types", "Consts", "Vars", "Vars", "Procs", "Methods", 
     "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return 

@@ -526,12 +526,12 @@ proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym,
                 container: PNode) = 
   # gather used vars for closure generation
   case n.kind
-  of nkSym: 
+  of nkSym:
     var s = n.sym
     var found = false
     case s.kind
     of skVar: found = sfGlobal notin s.flags
-    of skTemp, skForVar, skParam: found = true
+    of skTemp, skForVar, skParam, skResult: found = true
     else: nil
     if found and owner.id != s.owner.id and not ContainsOrIncl(marked, s.id): 
       incl(s.flags, sfInClosure)

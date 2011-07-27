@@ -136,7 +136,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     case n.sym.kind
     of skParam, skForVar, skTemp:
       result = OnStack
-    of skVar:
+    of skVar, skResult:
       if sfGlobal in n.sym.flags: result = OnHeap
       else: result = OnStack
     of skConst: 
@@ -206,6 +206,10 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
+  if src.t != nil and src.t.kind == tyPtr:
+    # little HACK to suppor the new 'var T' as return type:
+    appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    return
   var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
   of tyRef:
@@ -1648,7 +1652,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
         genComplexConst(p, sym, d)
     of skEnumField:
       putIntoDest(p, d, e.typ, toRope(sym.position))
-    of skVar:
+    of skVar, skResult:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if ((sym.loc.r == nil) or (sym.loc.t == nil)):
         InternalError(e.info, "expr: var not init " & sym.name.s)

@@ -100,6 +100,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     addSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
+  ParamsTypeCheck(c, result.typ)
   var oldPrc = GenericCacheGet(c, entry)
   if oldPrc == nil:
     # add it here, so that recursive generic procs are possible:

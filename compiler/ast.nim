@@ -186,8 +186,8 @@ type
     nkReturnToken         # token used for interpretation
   TNodeKinds* = set[TNodeKind]
 
-type 
-  TSymFlag* = enum    # already 30 flags! 
+type
+  TSymFlag* = enum    # already 29 flags! 
     sfUsed,           # read access of sym (for warnings) or simply used
     sfStar,           # symbol has * visibility
     sfMinus,          # symbol has - visibility
@@ -204,7 +204,6 @@ type
     sfRegister,       # variable should be placed in a register
     sfPure,           # object is "pure" that means it has no type-information
     
-    sfResult,         # variable is 'result' in proc
     sfNoSideEffect,   # proc has no side effects
     sfSideEffect,     # proc may have side effects; cannot prove it has none
     sfMainModule,     # module is the main module
@@ -293,6 +292,7 @@ type
     skType,               # a type
     skConst,              # a constant
     skVar,                # a variable
+    skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
     skIterator,           # an iterator

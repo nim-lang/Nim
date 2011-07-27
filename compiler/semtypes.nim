@@ -480,8 +480,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty: 
-    base = semTypeNode(c, n.sons[1].sons[0], nil)
-    var concreteBase = skipGenericInvokation(skipTypes(base, skipPtrs))
+    base = skipTypes(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
+    var concreteBase = skipGenericInvokation(base)
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
       addInheritedFields(c, check, pos, concreteBase)
     else:
@@ -528,10 +528,10 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
   
 proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType = 
   result = semTypeNode(c, n, nil)
-  if (genericParams != nil) and (sonsLen(genericParams) == 0): 
+  if genericParams != nil and sonsLen(genericParams) == 0: 
     result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
     #if result.kind == tyGenericInvokation: debug(result)
-  
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType): PType = 
   var 

@@ -37,7 +37,7 @@ proc mangleName(s: PSym): PRope =
       case s.kind
       of skProc, skMethod, skConverter, skConst: 
         result = toRope("@")
-      of skVar: 
+      of skVar, skResult: 
         if sfGlobal in s.flags: result = toRope("@")
         else: result = toRope("%")
       of skForVar, skTemp, skParam, skType, skEnumField, skModule: 
@@ -153,7 +153,7 @@ proc getGlobalTempName(): PRope =
 
 proc ccgIntroducedPtr(s: PSym): bool = 
   var pt = s.typ
-  assert(not (sfResult in s.flags))
+  assert skResult != s.kind
   case pt.Kind
   of tyObject: 
     # XXX quick hack floatSize*2 for the pegs module under 64bit

@@ -293,7 +293,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   # which can be modified.
   var x = c
   while x != nil: 
-    if sfResult in sym.flags: 
+    if sym.kind == skResult:
       result = x.params[0]
       if result == nil: result = emptyNode
       return
@@ -425,7 +425,8 @@ proc evalSwap(c: PEvalContext, n: PNode): PNode =
 proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   case n.sym.kind
   of skProc, skConverter, skMacro: result = n.sym.ast.sons[codePos]
-  of skVar, skForVar, skTemp: result = evalVariable(c.tos, n.sym, flags)
+  of skVar, skForVar, skTemp, skResult: 
+    result = evalVariable(c.tos, n.sym, flags)
   of skParam: 
     # XXX what about LValue?
     result = c.tos.params[n.sym.position + 1]
