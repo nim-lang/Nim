@@ -34,7 +34,7 @@ ee.emit("print", eventargs)
 
 type
   TSomeObject = object of TObject
-    PrintEvent: PEventHandler
+    PrintEvent: TEventHandler
 
 var obj: TSomeObject
 obj.PrintEvent = newEventHandler("print")
