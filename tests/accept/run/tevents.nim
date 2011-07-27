@@ -18,7 +18,7 @@ proc handleprintevent2*(e: TEventArgs) =
     var args: TPrintEventArgs = TPrintEventArgs(e)
     write(stdout, "HandlePrintEvent2: Output -> printing for " & args.user)
     
-var ee = newEventEmitter()
+var ee = initEventEmitter()
 
 var eventargs: TPrintEventArgs
 eventargs.user = "ME\n"
@@ -37,7 +37,7 @@ type
     PrintEvent: TEventHandler
 
 var obj: TSomeObject
-obj.PrintEvent = newEventHandler("print")
+obj.PrintEvent = initEventHandler("print")
 obj.PrintEvent.addHandler(handleprintevent2)
 
 ee.emit(obj.PrintEvent, eventargs)
