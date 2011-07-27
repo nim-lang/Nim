@@ -758,8 +758,8 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool =
           result = typeAllowedNode(marker, n.sons[i], kind)
           if not result: return 
   
-proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool = 
-  assert(kind in {skVar, skConst, skParam})
+proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
+  assert(kind in {skVar, skConst, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = true
@@ -773,13 +773,14 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     of tyVar: 
       result = false          # ``var var`` is always an invalid type:
     of tyOpenArray: 
-      result = (kind == skParam) and typeAllowedAux(marker, t2, kind)
-    else: result = (kind != skConst) and typeAllowedAux(marker, t2, kind)
+      result = kind == skParam and typeAllowedAux(marker, t2, kind)
+    else:
+      result = kind in {skParam, skResult} and typeAllowedAux(marker, t2, kind)
   of tyProc: 
     for i in countup(1, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], skParam)
       if not result: return 
-    if t.sons[0] != nil: result = typeAllowedAux(marker, t.sons[0], skVar)
+    if t.sons[0] != nil: result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
   of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation: 
@@ -799,10 +800,11 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
   of tySequence: 
     result = (kind != skConst) and typeAllowedAux(marker, t.sons[0], skVar) or
-        (t.sons[0].kind == tyEmpty)
-  of tyArray: 
-    result = typeAllowedAux(marker, t.sons[1], skVar)
-  of tyPtr, tyRef: 
+        t.sons[0].kind == tyEmpty
+  of tyArray:
+    result = typeAllowedAux(marker, t.sons[1], skVar) or
+        t.sons[1].kind == tyEmpty
+  of tyPtr, tyRef:
     result = typeAllowedAux(marker, t.sons[0], skVar)
   of tyArrayConstr, tyTuple, tySet: 
     for i in countup(0, sonsLen(t) - 1): 

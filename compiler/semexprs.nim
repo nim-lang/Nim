@@ -21,17 +21,28 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode =
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
+proc newDeref(n: PNode): PNode {.inline.} =  
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
+  addSon(result, n)
+
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
     raiseRecoverableError()
   if result.typ != nil: 
-    if result.typ.kind == tyVar: 
-      var d = newNodeIT(nkHiddenDeref, result.info, result.typ.sons[0])
-      addSon(d, result)
-      result = d
+    if result.typ.kind == tyVar: result = newDeref(result)
   else:
+    GlobalError(n.info, errExprXHasNoType, 
+                renderTree(result, {renderNoComments}))
+
+proc semExprWithTypeNoDeref(c: PContext, n: PNode, 
+                            flags: TExprFlags = {}): PNode = 
+  result = semExpr(c, n, flags)
+  if result.kind == nkEmpty: 
+    # do not produce another redundant error message:
+    raiseRecoverableError()
+  if result.typ == nil:
     GlobalError(n.info, errExprXHasNoType, 
                 renderTree(result, {renderNoComments}))
 
@@ -67,7 +78,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
-  of skVar:
+  of skVar, skResult:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags: incl(c.p.owner.flags, sfSideEffect)
@@ -330,33 +341,37 @@ type
   TAssignableResult = enum 
     arNone,                   # no l-value and no discriminant
     arLValue,                 # is an l-value
+    arLocalLValue,            # is an l-value, but local var; must not escape
+                              # its stack frame!
     arDiscriminant            # is a discriminant
 
-proc isAssignable(n: PNode): TAssignableResult = 
+proc isAssignable(c: PContext, n: PNode): TAssignableResult = 
   result = arNone
   case n.kind
-  of nkSym: 
-    if n.sym.kind in {skVar, skTemp}: result = arLValue
+  of nkSym:
+    if n.sym.kind in {skVar, skResult, skTemp}:
+      if c.p.owner.id == n.sym.owner.id: result = arLocalLValue
+      else: result = arLValue
   of nkDotExpr: 
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
       result = arLValue
     else: 
-      result = isAssignable(n.sons[0])
-    if result == arLValue and sfDiscriminant in n.sons[1].sym.flags: 
+      result = isAssignable(c, n.sons[0])
+    if result != arNone and sfDiscriminant in n.sons[1].sym.flags: 
       result = arDiscriminant
   of nkBracketExpr: 
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
       result = arLValue
-    else: 
-      result = isAssignable(n.sons[0])
+    else:
+      result = isAssignable(c, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     # Object and tuple conversions are still addressable, so we skip them
     if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
-      result = isAssignable(n.sons[1])
+      result = isAssignable(c, n.sons[1])
   of nkHiddenDeref, nkDerefExpr: 
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
-    result = isAssignable(n.sons[0])
+    result = isAssignable(c, n.sons[0])
   else: 
     nil
 
@@ -367,7 +382,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
   else: 
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
-    if isAssignable(n) != arLValue: 
+    if isAssignable(c, n) notin {arLValue, arLocalLValue}:
       localError(n.info, errVarForOutParamNeeded)
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode = 
@@ -403,7 +418,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     for i in countup(1, sonsLen(n) - 1): 
       if i < sonsLen(t) and t.sons[i] != nil and
           skipTypes(t.sons[i], abstractInst).kind == tyVar: 
-        if isAssignable(n.sons[i]) != arLValue: 
+        if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}: 
           LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
   for i in countup(1, sonsLen(n) - 1): 
@@ -751,7 +766,30 @@ proc propertyWriteAccess(c: PContext, n, a: PNode): PNode =
   else:
     globalError(n.Info, errUndeclaredFieldX, id.s)
 
-proc semAsgn(c: PContext, n: PNode): PNode = 
+proc takeImplicitAddr(c: PContext, n: PNode): PNode =
+  case n.kind
+  of nkHiddenAddr, nkAddr: return n
+  of nkHiddenDeref, nkDerefExpr: return n.sons[0]
+  of nkBracketExpr:
+    if len(n) == 1: return n.sons[0]
+  else: nil
+  var valid = isAssignable(c, n)
+  if valid != arLValue:
+    if valid == arLocalLValue:
+      GlobalError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))
+    else:
+      GlobalError(n.info, errExprHasNoAddress)
+  result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
+  result.add(n)
+  
+proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
+  if le.kind == nkHiddenDeref:
+    var x = le.sons[0]
+    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
+      n.sons[0] = x # 'result[]' --> 'result'
+      n.sons[1] = takeImplicitAddr(c, ri)
+
+proc semAsgn(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2)
   var a = n.sons[0]
   case a.kind
@@ -762,8 +800,8 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     if a == nil: 
       return propertyWriteAccess(c, n, n[0])
   of nkBracketExpr: 
-    # a[i..j] = x
-    # --> `[..]=`(a, i, j, x)
+    # a[i] = x
+    # --> `[]=`(a, i, x)
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], inAsgn=true)
@@ -772,15 +810,19 @@ proc semAsgn(c: PContext, n: PNode): PNode =
   else: 
     a = semExprWithType(c, a, {efLValue})
   n.sons[0] = a
-  n.sons[1] = semExprWithType(c, n.sons[1])
+  # a = b # both are vars, means: a[] = b[]
+  # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
-  if skipTypes(le, {tyGenericInst}).kind != tyVar and IsAssignable(a) == arNone: 
+  if skipTypes(le, {tyGenericInst}).kind != tyVar and 
+      IsAssignable(c, a) == arNone: 
     # Direct assignment to a discriminant is allowed!
     localError(a.info, errXCannotBeAssignedTo, 
                renderTree(a, {renderNoComments}))
-  else: 
+  else:
+    n.sons[1] = semExprWithType(c, n.sons[1])
     n.sons[1] = fitNode(c, le, n.sons[1])
     fixAbstractType(c, n)
+    asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
 
 proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
@@ -1144,7 +1186,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = n
     checkSonsLen(n, 1)
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isAssignable(n.sons[0]) != arLValue: 
+    if isAssignable(c, n.sons[0]) notin {arLValue, arLocalLValue}: 
       GlobalError(n.info, errExprHasNoAddress)
     n.typ = makePtrType(c, n.sons[0].typ)
   of nkHiddenAddr, nkHiddenDeref:

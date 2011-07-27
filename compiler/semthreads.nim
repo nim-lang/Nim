@@ -107,7 +107,7 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   result = c.mapping[v.id]
   if result != toUndefined: return
   case v.kind
-  of skVar:
+  of skVar, skResult:
     result = toNil
     if sfGlobal in v.flags:
       if sfThreadVar in v.flags: 
@@ -192,9 +192,13 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
     if prc.ast.sons[codePos].kind == nkEmpty and 
        {sfNoSideEffect, sfThread, sfImportc} * prc.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
+      if result == toUndefined: result = toNil
     if prc.typ.sons[0] != nil:
       if prc.ast.len > resultPos:
         result = newCtx.mapping[prc.ast.sons[resultPos].sym.id]
+        # if the proc body does not set 'result', nor 'return's something
+        # explicitely, it returns a binary zero, so 'toNil' is correct:
+        if result == toUndefined: result = toNil
       else:
         result = toNil
     else:

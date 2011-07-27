@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Dominik Picheta
+#        (c) Copyright 2011 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -87,7 +87,7 @@ proc checkReply(smtp: TSMTP, reply: string) =
 proc connect*(address: string, port = 25, 
               ssl = false, debug = false): TSMTP =
   ## Establishes a connection with a SMTP server.
-  ## May fail with EInvalidReply or with a socket errors.
+  ## May fail with EInvalidReply or with a socket error.
 
   if not ssl:
     result.sock = socket()
@@ -125,7 +125,6 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
   ## Sends `msg` from `fromaddr` to `toaddr`. 
   ## Messages may be formed using ``createMessage`` by converting the
   ## TMessage into a string.
-  ## This function sends the QUIT command when finished.
 
   smtp.debugSend("MAIL FROM:<" & fromaddr & ">\c\L")
   smtp.checkReply("250")
@@ -139,8 +138,9 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
   smtp.debugSend(msg & "\c\L")
   smtp.debugSend(".\c\L")
   smtp.checkReply("250")
-  
-  # quit
+
+proc close*(smtp: TSMTP) =
+  ## Disconnects from the SMTP server and closes the socket.
   smtp.debugSend("QUIT\c\L")
   if not smtp.ssl:
     smtp.sock.close()
@@ -201,6 +201,6 @@ when isMainModule:
   smtp.auth("someone", "password")
   smtp.sendmail("someone@gmail.com", 
                 @["someone@yahoo.com", "someone@gmail.com"], $msg)
-  
+  smtp.close()
   
 

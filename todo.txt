@@ -1,8 +1,11 @@
 Version 0.8.14
 ==============
 
-- ``var T`` as a return type; easy to prove that location does not escape its
-  stack frame
+- ``var T`` as a return type:
+  * for iterators
+  * add ``modGet`` for generics
+  * documentation
+  * provide ``mod`` as an alternative syntax for ``var``
 - document Nimrod's two phase symbol lookup for generics
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
@@ -41,7 +44,6 @@ version 0.9.XX
   proc specialization in the code gen
 - resizing of strings/sequences could take into account the memory that
   is allocated
-- typeAllowed() for parameters...
 - find a way to reintroduce the cleanup() pass for C code generation: this
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect

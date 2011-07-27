@@ -50,6 +50,10 @@ proc addResult(c: PContext, t: PType, info: TLineInfo)
 proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 
+proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
+  if not typeAllowed(typ, skConst):
+    GlobalError(typ.n.info, errXisNoType, typeToString(typ))
+
 proc semConstExpr(c: PContext, n: PNode): PNode = 
   result = semExprWithType(c, n)
   if result == nil: 

@@ -164,7 +164,7 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     addSon(a, n.sons[0])
     n.sons[0] = semAsgn(c, a)
     # optimize away ``result = result``:
-    if n[0][1].kind == nkSym and sfResult in n[0][1].sym.flags: 
+    if n[0][1].kind == nkSym and n[0][1].sym.kind == skResult: 
       n.sons[0] = ast.emptyNode
   
 proc SemYield(c: PContext, n: PNode): PNode = 
@@ -544,10 +544,9 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
   
 proc addResult(c: PContext, t: PType, info: TLineInfo) = 
   if t != nil: 
-    var s = newSym(skVar, getIdent"result", getCurrOwner())
+    var s = newSym(skResult, getIdent"result", getCurrOwner())
     s.info = info
     s.typ = t
-    incl(s.flags, sfResult)
     incl(s.flags, sfUsed)
     addDecl(c, s)
     c.p.resultSym = s
@@ -569,7 +568,8 @@ proc semLambda(c: PContext, n: PNode): PNode =
   if n.sons[paramsPos].kind != nkEmpty: 
     semParamList(c, n.sons[ParamsPos], nil, s)
     addParams(c, s.typ.n)
-  else: 
+    ParamsTypeCheck(c, s.typ)
+  else:
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)
   s.typ.callConv = ccClosure
@@ -664,6 +664,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfBorrow in s.flags: 
       LocalError(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
     if n.sons[genericParamsPos].kind == nkEmpty: 
+      ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
       if (s.typ.sons[0] != nil) and (kind != skIterator): 
         addResult(c, s.typ.sons[0], n.info)

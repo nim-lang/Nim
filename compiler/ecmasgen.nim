@@ -832,7 +832,7 @@ proc genAddr(p: var TProc, n: PNode, r: var TCompRes) =
     s = n.sons[0].sym
     if s.loc.r == nil: InternalError(n.info, "genAddr: 3")
     case s.kind
-    of skVar: 
+    of skVar, skResult: 
       if mapType(n.typ) == etyObject: 
         # make addr() a no-op:
         r.kind = etyNone
@@ -863,7 +863,7 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
   if s.loc.r == nil: 
     InternalError(n.info, "symbol has no generated name: " & s.name.s)
   case s.kind
-  of skVar, skParam, skTemp: 
+  of skVar, skParam, skTemp, skResult: 
     var k = mapType(s.typ)
     if k == etyBaseIndex: 
       r.kind = etyBaseIndex
