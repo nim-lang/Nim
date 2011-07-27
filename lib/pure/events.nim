@@ -14,8 +14,8 @@
 ## it was inspired by Python's PyEE module. There are two ways you can use events: one is a python-inspired way; the other is more of a C-style way.
 ## .. code-block:: Nimrod
 ##   var ee = initEventEmitter()
-##   var genericargs : TEventArgs
-##   proc handleevent(e : TEventArgs) =
+##   var genericargs: TEventArgs
+##   proc handleevent(e: TEventArgs) =
 ##       echo("Handled!")
 ##
 ##   # Python way
@@ -26,8 +26,8 @@
 ##   # Declare a type
 ##   type
 ##       TSomeObject = object of TObject
-##           SomeEvent : TEventHandler
-##   var myobj : TSomeObject
+##           SomeEvent: TEventHandler
+##   var myobj: TSomeObject
 ##   myobj.SomeEvent = initEventHandler("SomeEvent")
 ##   myobj.SomeEvent.addHandler(handleevent)
 ##   ee.emit(myobj.SomeEvent, genericargs)
