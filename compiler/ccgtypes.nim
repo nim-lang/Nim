@@ -152,10 +152,10 @@ proc getGlobalTempName(): PRope =
   inc(gId)
 
 proc ccgIntroducedPtr(s: PSym): bool = 
-  var pt = s.typ
+  var pt = skipTypes(s.typ, abstractInst)
   assert skResult != s.kind
   case pt.Kind
-  of tyObject: 
+  of tyObject:
     # XXX quick hack floatSize*2 for the pegs module under 64bit
     if (optByRef in s.options) or (getSize(pt) > platform.floatSize * 2): 
       result = true           # requested anyway
@@ -352,7 +352,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   var hasField = false
   if typ.kind == tyObject: 
     if typ.sons[0] == nil: 
-      if typ.sym != nil and sfPure in typ.sym.flags or tfFinal in typ.flags: 
+      if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags: 
         result = ropecg(m, "struct $1 {$n", [name])
       else: 
         result = ropecg(m, "struct $1 {$n#TNimType* m_type;$n", [name])

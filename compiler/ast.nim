@@ -625,13 +625,11 @@ proc ValueToString*(a: PNode): string
 const 
   debugIds* = false
 
-proc registerID*(id: PIdObj)
-# implementation
+when debugIds:
+  var usedIds: TIntSet
 
-var usedIds: TIntSet
-
-proc registerID(id: PIdObj) = 
-  if debugIDs: 
+proc registerID*(id: PIdObj) = 
+  when debugIDs: 
     if (id.id == - 1) or ContainsOrIncl(usedIds, id.id): 
       InternalError("ID already used: " & $(id.id))
   
@@ -761,7 +759,7 @@ proc NewType(kind: TTypeKind, owner: PSym): PType =
   result.size = - 1
   result.align = 2            # default alignment
   result.id = getID()
-  if debugIds: 
+  when debugIds: 
     RegisterId(result)        
   #if result.id < 2000 then
   #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
@@ -784,7 +782,7 @@ proc copyType(t: PType, owner: PSym, keepId: bool): PType =
     result.id = t.id
   else: 
     result.id = getID()
-    if debugIds: RegisterId(result)
+    when debugIds: RegisterId(result)
   result.sym = t.sym          # backend-info should not be copied
   
 proc copySym(s: PSym, keepId: bool = false): PSym = 
@@ -796,7 +794,7 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
     result.id = s.id
   else: 
     result.id = getID()
-    if debugIds: RegisterId(result)
+    when debugIds: RegisterId(result)
   result.flags = s.flags
   result.magic = s.magic
   copyStrTable(result.tab, s.tab)
@@ -816,7 +814,7 @@ proc NewSym(symKind: TSymKind, Name: PIdent, owner: PSym): PSym =
   result.owner = owner
   result.offset = - 1
   result.id = getID()
-  if debugIds: 
+  when debugIds: 
     RegisterId(result)
   #if result.id < 2000:
   #  MessageOut(name.s & " has id: " & toString(result.id))
@@ -1005,4 +1003,4 @@ proc getStrOrChar*(a: PNode): string =
     internalError(a.info, "getStrOrChar")
     result = ""
   
-if debugIDs: usedIds = InitIntSet()
+when debugIDs: usedIds = InitIntSet()

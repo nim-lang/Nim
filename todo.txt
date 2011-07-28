@@ -18,7 +18,6 @@ version 0.9.0
 =============
 
 - add --deadlock_prevention:on|off switch? timeout for locks?
-- bug: tfFinal not passed to generic
 - bug: forward proc for generic seems broken
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs

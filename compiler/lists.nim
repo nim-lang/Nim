@@ -24,23 +24,12 @@ type
 
   TCompareProc* = proc (entry: PListEntry, closure: Pointer): bool
 
-proc InitLinkedList*(list: var TLinkedList)
-proc Append*(list: var TLinkedList, entry: PListEntry)
-proc Prepend*(list: var TLinkedList, entry: PListEntry)
-proc Remove*(list: var TLinkedList, entry: PListEntry)
-proc InsertBefore*(list: var TLinkedList, pos, entry: PListEntry)
-proc Find*(list: TLinkedList, fn: TCompareProc, closure: Pointer): PListEntry
-proc AppendStr*(list: var TLinkedList, data: string)
-proc IncludeStr*(list: var TLinkedList, data: string): bool
-proc PrependStr*(list: var TLinkedList, data: string)
-# implementation
-
-proc InitLinkedList(list: var TLinkedList) = 
+proc InitLinkedList*(list: var TLinkedList) = 
   list.Counter = 0
   list.head = nil
   list.tail = nil
 
-proc Append(list: var TLinkedList, entry: PListEntry) = 
+proc Append*(list: var TLinkedList, entry: PListEntry) = 
   Inc(list.counter)
   entry.next = nil
   entry.prev = list.tail
@@ -50,28 +39,38 @@ proc Append(list: var TLinkedList, entry: PListEntry) =
   list.tail = entry
   if list.head == nil: list.head = entry
   
-proc newStrEntry(data: string): PStrEntry = 
-  new(result)
-  result.data = data
-
-proc AppendStr(list: var TLinkedList, data: string) = 
-  append(list, newStrEntry(data))
-
-proc PrependStr(list: var TLinkedList, data: string) = 
-  prepend(list, newStrEntry(data))
-
 proc Contains*(list: TLinkedList, data: string): bool = 
   var it = list.head
   while it != nil: 
     if PStrEntry(it).data == data: 
       return true
     it = it.next
+  
+proc newStrEntry(data: string): PStrEntry = 
+  new(result)
+  result.data = data
 
-proc IncludeStr(list: var TLinkedList, data: string): bool = 
+proc AppendStr*(list: var TLinkedList, data: string) = 
+  append(list, newStrEntry(data))
+
+proc IncludeStr*(list: var TLinkedList, data: string): bool = 
   if Contains(list, data): return true
   AppendStr(list, data)       # else: add to list
 
-proc InsertBefore(list: var TLinkedList, pos, entry: PListEntry) = 
+proc Prepend*(list: var TLinkedList, entry: PListEntry) = 
+  Inc(list.counter)
+  entry.prev = nil
+  entry.next = list.head
+  if list.head != nil: 
+    assert(list.head.prev == nil)
+    list.head.prev = entry
+  list.head = entry
+  if list.tail == nil: list.tail = entry
+
+proc PrependStr*(list: var TLinkedList, data: string) = 
+  prepend(list, newStrEntry(data))
+
+proc InsertBefore*(list: var TLinkedList, pos, entry: PListEntry) = 
   assert(pos != nil)
   if pos == list.head: 
     prepend(list, entry)
@@ -81,18 +80,8 @@ proc InsertBefore(list: var TLinkedList, pos, entry: PListEntry) =
     entry.prev = pos.prev
     if pos.prev != nil: pos.prev.next = entry
     pos.prev = entry
-
-proc Prepend(list: var TLinkedList, entry: PListEntry) = 
-  Inc(list.counter)
-  entry.prev = nil
-  entry.next = list.head
-  if list.head != nil: 
-    assert(list.head.prev == nil)
-    list.head.prev = entry
-  list.head = entry
-  if list.tail == nil: list.tail = entry
-  
-proc Remove(list: var TLinkedList, entry: PListEntry) = 
+ 
+proc Remove*(list: var TLinkedList, entry: PListEntry) = 
   Dec(list.counter)
   if entry == list.tail: 
     list.tail = entry.prev
@@ -101,7 +90,7 @@ proc Remove(list: var TLinkedList, entry: PListEntry) =
   if entry.next != nil: entry.next.prev = entry.prev
   if entry.prev != nil: entry.prev.next = entry.next
   
-proc Find(list: TLinkedList, fn: TCompareProc, closure: Pointer): PListEntry = 
+proc Find*(list: TLinkedList, fn: TCompareProc, closure: Pointer): PListEntry = 
   result = list.head
   while result != nil: 
     if fn(result, closure): return 

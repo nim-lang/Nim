@@ -15,7 +15,7 @@ type
   TA[T] = object
 
 
-# Cannot instanciate:
+# Cannot instantiate:
 type 
   TA[T] = object
     a: PA[T]

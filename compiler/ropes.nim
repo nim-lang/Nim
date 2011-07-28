@@ -49,8 +49,8 @@
 #  The 'con' operator is associative! This does not matter however for
 #  the algorithms we use for ropes.
 #
-#  Note that the left and right pointers are not needed for leafs.
-#  Leafs have relatively high memory overhead (~30 bytes on a 32
+#  Note that the left and right pointers are not needed for leaves.
+#  Leaves have relatively high memory overhead (~30 bytes on a 32
 #  bit machines) and we produce many of them. This is why we cache and
 #  share leaves accross different rope trees.
 #  To cache them they are inserted in another tree, a splay tree for best
