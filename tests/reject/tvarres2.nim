@@ -1,5 +1,5 @@
 discard """
-  file: "tvarres1.nim"
+  file: "tvarres2.nim"
   line: 11
   errormsg: "expression has no address"
 """

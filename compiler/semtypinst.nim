@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This module does the instantiation of generic procs and types.
+# This module does the instantiation of generic types.
 
 import ast, astalgo, msgs, types, semdata
 
@@ -92,24 +92,24 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
     InternalError(cl.info, "substitution with generic parameter")
   
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
-  var body, newbody, x, header: PType
   result = t
   if t == nil: return 
   case t.kind
   of tyGenericParam: 
     result = lookupTypeVar(cl, t)
   of tyGenericInvokation: 
-    body = t.sons[0]
+    var body = t.sons[0]
     if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
-    header = nil
-    for i in countup(1, sonsLen(t) - 1): 
+    var header: PType = nil
+    for i in countup(1, sonsLen(t) - 1):
+      var x: PType
       if t.sons[i].kind == tyGenericParam: 
         x = lookupTypeVar(cl, t.sons[i])
         if header == nil: header = copyType(t, t.owner, false)
         header.sons[i] = x
       else: 
         x = t.sons[i]
-      idTablePut(cl.typeMap, body.sons[i - 1], x)
+      idTablePut(cl.typeMap, body.sons[i-1], x)
     if header == nil: header = t
     result = searchInstTypes(gInstTypes, header)
     if result != nil: return 
@@ -119,7 +119,8 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       # but we already raised an error!
       addSon(result, header.sons[i])
     idTablePut(gInstTypes, header, result)
-    newbody = ReplaceTypeVarsT(cl, lastSon(body))
+    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
+    newbody.flags = newbody.flags + t.flags + body.flags
     newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
     addSon(result, newbody)   
     #writeln(output, ropeToStr(Typetoyaml(newbody)));
