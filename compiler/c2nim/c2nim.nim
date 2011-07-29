@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import 
+import
   strutils, os, times, parseopt, llstream, ast, renderer, options, msgs,
   clex, cparse
 
@@ -17,16 +17,16 @@ const
 c2nim - C to Nimrod source converter
   (c) 2011 Andreas Rumpf
 Usage: c2nim [options] inputfile [options]
-Options: 
+Options:
   -o, --out:FILE         set output filename
   --dynlib:SYMBOL        import from dynlib: SYMBOL will be used for the import
   --header:HEADER_FILE   import from a HEADER_FILE (discouraged!)
-  --cdecl                annotate procs with ``{.cdecl.}`` 
+  --cdecl                annotate procs with ``{.cdecl.}``
   --stdcall              annotate procs with ``{.stdcall.}``
   --ref                  convert typ* to ref typ (default: ptr typ)
-  --prefix:PREFIX        strip prefix for the generated Nimrod identifiers 
+  --prefix:PREFIX        strip prefix for the generated Nimrod identifiers
                          (multiple --prefix options are supported)
-  --suffix:SUFFIX        strip suffix for the generated Nimrod identifiers 
+  --suffix:SUFFIX        strip suffix for the generated Nimrod identifiers
                          (multiple --suffix options are supported)
   --skipinclude          do not convert ``#include`` to ``import``
   --typeprefixes         generate ``T`` and ``P`` type prefixes
@@ -35,7 +35,7 @@ Options:
   -h, --help             show this help
 """
 
-proc main(infile, outfile: string, options: PParserOptions) = 
+proc main(infile, outfile: string, options: PParserOptions) =
   var start = getTime()
   var stream = LLStreamOpen(infile, fmRead)
   if stream == nil: rawMessage(errCannotOpenFile, infile)
@@ -61,10 +61,10 @@ for kind, key, val in getopt():
     of "version", "v":
       stdout.write(Version & "\n")
       quit(0)
-    of "o", "out": outfile = key
+    of "o", "out": outfile = val
     else:
       if not parserOptions.setOption(key, val):
-        stdout.write("[Error] unknown option: " & key)
+        stdout.writeln("[Error] unknown option: " & key)
   of cmdEnd: assert(false)
 if infile.len == 0:
   # no filename has been given, so we show the help:
