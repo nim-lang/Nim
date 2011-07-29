@@ -64,7 +64,7 @@ for kind, key, val in getopt():
     of "o", "out": outfile = val
     else:
       if not parserOptions.setOption(key, val):
-        stdout.write("[Error] unknown option: " & key)
+        stdout.writeln("[Error] unknown option: " & key)
   of cmdEnd: assert(false)
 if infile.len == 0:
   # no filename has been given, so we show the help:
