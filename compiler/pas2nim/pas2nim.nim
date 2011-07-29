@@ -52,7 +52,7 @@ for kind, key, val in getopt():
     of "o", "out": outfile = val
     of "ref": incl(flags, pfRefs)
     of "boot": flags = flags + {pfRefs, pfMoreReplacements, pfImportBlackList}
-    else: stdout.write("[Error] unknown option: " & key)
+    else: stdout.writeln("[Error] unknown option: " & key)
   of cmdEnd: assert(false)
 if infile.len == 0:
   # no filename has been given, so we show the help:
