@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
-  marshal
+  marshal, cgi
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
@@ -34,33 +34,33 @@ type
   TResults {.pure.} = object
     total, passed, skipped: int
     data: string
-  
+
   TResultEnum = enum
     reFailure, reIgnored, reSuccess
 
 # ----------------------- Spec parser ----------------------------------------
 
-when not defined(parseCfgBool): 
+when not defined(parseCfgBool):
   # candidate for the stdlib:
-  proc parseCfgBool(s: string): bool = 
+  proc parseCfgBool(s: string): bool =
     case normalize(s)
-    of "y", "yes", "true", "1", "on": result = true 
+    of "y", "yes", "true", "1", "on": result = true
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
 
-proc extractSpec(filename: string): string = 
+proc extractSpec(filename: string): string =
   const tripleQuote = "\"\"\""
   var x = readFile(filename)
   if isNil(x): quit "cannot open file: " & filename
   var a = x.find(tripleQuote)
   var b = x.find(tripleQuote, a+3)
-  if a >= 0 and b > a: 
+  if a >= 0 and b > a:
     result = x.substr(a+3, b-1).replace("'''", tripleQuote)
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
 
-template parseSpecAux(fillResult: stmt) = 
+template parseSpecAux(fillResult: stmt) =
   var ss = newStringStream(extractSpec(filename))
   var p: TCfgParser
   open(p, ss, filename, 1)
@@ -73,8 +73,8 @@ template parseSpecAux(fillResult: stmt) =
     of cfgKeyValuePair:
       fillResult
   close(p)
-  
-proc parseSpec(filename: string): TSpec = 
+
+proc parseSpec(filename: string): TSpec =
   result.file = filename
   result.err = true
   result.msg = ""
@@ -82,7 +82,7 @@ proc parseSpec(filename: string): TSpec =
   result.cmd = cmdTemplate
   parseSpecAux:
     case normalize(e.key)
-    of "action": 
+    of "action":
       case e.value.normalize
       of "compile": result.action = actionCompile
       of "run": result.action = actionRun
@@ -126,7 +126,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   result.msg = ""
   result.file = ""
   result.outp = ""
-  result.err = true    
+  result.err = true
   result.line = -1
   if s =~ pegLineError:
     result.file = extractFilename(matches[0])
@@ -137,7 +137,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   elif s =~ pegSuccess:
     result.err = false
 
-proc initResults: TResults = 
+proc initResults: TResults =
   result.total = 0
   result.passed = 0
   result.skipped = 0
@@ -149,7 +149,7 @@ proc readResults(filename: string): TResults =
 proc writeResults(filename: string, r: TResults) =
   writeFile(filename, $$r)
 
-proc `$`(x: TResults): string = 
+proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
@@ -158,7 +158,7 @@ proc colorResult(r: TResultEnum): string =
   case r
   of reFailure: result = "<span style=\"color:red\">no</span>"
   of reIgnored: result = "<span style=\"color:fuchsia\">ignored</span>"
-  of reSuccess: result = "<span style=\"color:green\">yes</span>" 
+  of reSuccess: result = "<span style=\"color:green\">yes</span>"
 
 const
   TableHeader4 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
@@ -170,12 +170,12 @@ const
 proc addResult(r: var TResults, test, expected, given: string,
                success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    test, expected, given, success.colorResult])
+    XMLEncode(test), XMLEncode(expected), XMLEncode(given), success.colorResult])
 
 proc addResult(r: var TResults, test, given: string,
                success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    test, given, success.colorResult])
+    XMLEncode(test), XMLEncode(given), success.colorResult])
 
 proc listResults(reject, compile, run: TResults) =
   var s = "<html>"
@@ -191,7 +191,7 @@ proc listResults(reject, compile, run: TResults) =
   s.add("</html>")
   writeFile(resultsFile, s)
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) = 
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reFailure)
   elif extractFilename(expected.file) != extractFilename(given.file) and
@@ -203,20 +203,20 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
     r.addResult(test, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
-proc reject(r: var TResults, dir, options: string) =  
+proc reject(r: var TResults, dir, options: string) =
   ## handle all the tests that the compiler should reject
   for test in os.walkFiles(dir / "t*.nim"):
     var t = extractFilename(test)
     inc(r.total)
     echo t
     var expected = parseSpec(test)
-    if expected.disabled: 
+    if expected.disabled:
       r.addResult(t, "", "", reIgnored)
       inc(r.skipped)
     else:
       var given = callCompiler(expected.cmd, test, options)
       cmpMsgs(r, expected, given, t)
-  
+
 proc compile(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern):
     var t = extractFilename(test)
@@ -258,15 +258,15 @@ proc runSingleTest(r: var TResults, test, options: string) =
         var success = strip(buf) == strip(expected.outp)
         if expected.substr: success = expected.outp in buf
         if success: inc(r.passed)
-        r.addResult(t, expected.outp, 
+        r.addResult(t, expected.outp,
             buf, if success: reSuccess else: reFailure)
       else:
         r.addResult(t, expected.outp, "executable not found", reFailure)
 
-proc run(r: var TResults, dir, options: string) = 
+proc run(r: var TResults, dir, options: string) =
   for test in os.walkFiles(dir / "t*.nim"): runSingleTest(r, test, options)
-  
-proc compileExample(r: var TResults, pattern, options: string) = 
+
+proc compileExample(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
 
 proc toJson(res: TResults): PJsonNode =
@@ -282,9 +282,9 @@ proc outputJSON(reject, compile, run: TResults) =
   doc["run"] = toJson(run)
   var s = pretty(doc)
   writeFile(jsonFile, s)
-  
+
 proc main(action: string) =
-  const 
+  const
     compileJson = "compile.json"
     runJson = "run.json"
     rejectJson = "reject.json"
@@ -292,7 +292,7 @@ proc main(action: string) =
   for i in 2.. paramCount():
     add(options, " ")
     add(options, paramStr(i))
-  
+
   case action
   of "reject":
     var rejectRes = initResults()
