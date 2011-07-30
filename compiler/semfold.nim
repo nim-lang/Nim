@@ -348,14 +348,14 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkIfExpr: 
     result = getConstIfExpr(m, n)
   of nkCall, nkCommand, nkCallStrLit: 
-    if (n.sons[0].kind != nkSym): return 
+    if n.sons[0].kind != nkSym: return 
     var s = n.sons[0].sym
-    if (s.kind != skProc): return 
-    try: 
+    if s.kind != skProc: return 
+    try:
       case s.magic
-      of mNone: 
+      of mNone:
         return # XXX: if it has no sideEffect, it should be evaluated
-      of mSizeOf: 
+      of mSizeOf:
         var a = n.sons[1]
         if computeSize(a.typ) < 0: 
           LocalError(a.info, errCannotEvalXBecauseIncompletelyDefined, 

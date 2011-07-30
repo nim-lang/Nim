@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- ``when T is int`` for generic code
 - ``var T`` as a return type:
   * for iterators
   * add ``modGet`` for generics
