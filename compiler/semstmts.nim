@@ -397,7 +397,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
   if n.sons[0].kind != nkEmpty: 
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
-    if (typ.kind != tyRef) or (typ.sons[0].kind != tyObject): 
+    if typ.kind != tyRef or typ.sons[0].kind != tyObject: 
       localError(n.info, errExprCannotBeRaised)
   
 proc semTry(c: PContext, n: PNode): PNode = 
@@ -593,9 +593,6 @@ proc semLambda(c: PContext, n: PNode): PNode =
   
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
-  var 
-    proto: PSym
-    gp: PNode
   result = n
   checkSonsLen(n, codePos + 1)
   var s = semIdentDef(c, n.sons[0], kind)
@@ -604,6 +601,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   pushOwner(s)
   openScope(c.tab)
+  var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty: 
     n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
     gp = n.sons[genericParamsPos]
@@ -622,8 +620,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else: 
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)
-  proto = SearchForProc(c, s, c.tab.tos - 2) # -2 because we have a scope open
-                                             # for parameters
+  var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
+                                               # open for parameters
   if proto == nil: 
     if c.p.owner.kind != skModule: 
       s.typ.callConv = ccClosure
@@ -666,7 +664,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[genericParamsPos].kind == nkEmpty: 
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
-      if (s.typ.sons[0] != nil) and (kind != skIterator): 
+      if s.typ.sons[0] != nil and kind != skIterator: 
         addResult(c, s.typ.sons[0], n.info)
       if sfImportc notin s.flags: 
         # no semantic checking for importc:
@@ -677,6 +675,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.typ.sons[0] != nil and kind != skIterator: 
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], {})
+      fixupInstantiatedSymbols(c, s)
     if sfImportc in s.flags: 
       # so we just ignore the body after semantic checking for importc:
       n.sons[codePos] = ast.emptyNode
@@ -744,7 +743,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   
 proc evalInclude(c: PContext, n: PNode): PNode = 
   result = newNodeI(nkStmtList, n.info)
-  addSon(result, n)           # the rodwriter needs include information!
+  addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
     var f = getModuleFile(n.sons[i])
     var fileIndex = includeFilename(f)

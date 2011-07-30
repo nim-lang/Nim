@@ -15,6 +15,8 @@ Bugfixes
 - Fixed a serious bug concerning different instantiations of a generic proc.
 - Fixed a newly introduced bug where a wrong ``EIO`` exception was raised for
   the end of file for text files that do not end with a newline.
+- Bugfix c2nim, c2pas: the ``--out`` option has never worked properly.
+- Bugfix: forwarding of generic procs never worked.
 
 
 Changes affecting backwards compatibility
