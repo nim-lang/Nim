@@ -49,7 +49,7 @@ proc getSymRepr*(s: PSym): string =
   
 proc CloseScope*(tab: var TSymTab) = 
   # check if all symbols have been used and defined:
-  if (tab.tos > len(tab.stack)): InternalError("CloseScope")
+  if tab.tos > len(tab.stack): InternalError("CloseScope")
   var it: TTabIter
   var s = InitTabIter(it, tab.stack[tab.tos-1])
   while s != nil:

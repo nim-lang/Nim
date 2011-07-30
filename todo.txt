@@ -18,7 +18,6 @@ version 0.9.0
 =============
 
 - add --deadlock_prevention:on|off switch? timeout for locks?
-- bug: forward proc for generic seems broken
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run modules that contain "#RUN_ME", compile the other
@@ -31,6 +30,7 @@ Bugs
 - bug: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
     should make use of this fact to generate better code...
+  - bug: memset() without type field initialization?
   - special case the generic assign that needs to care about case objects
 
 

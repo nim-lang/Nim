@@ -585,19 +585,15 @@ proc initFrame(p: BProc, procname, filename: PRope): PRope =
 proc deinitFrame(p: BProc): PRope =
   result = ropecg(p.module, "#popFrame();$n")
 
-proc genProcAux(m: BModule, prc: PSym) = 
-  var 
-    p: BProc
-    generatedProc, header, returnStmt, procname, filename: PRope
-    res, param: PSym
-  p = newProc(prc, m)
-  header = genProcHeader(m, prc)
-  if (gCmd != cmdCompileToLLVM) and (lfExportLib in prc.loc.flags): 
+proc genProcAux(m: BModule, prc: PSym) =
+  var p = newProc(prc, m)
+  var header = genProcHeader(m, prc)
+  if gCmd != cmdCompileToLLVM and lfExportLib in prc.loc.flags: 
     header = con("N_LIB_EXPORT ", header)
-  returnStmt = nil
+  var returnStmt: PRope = nil
   assert(prc.ast != nil)
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
-    res = prc.ast.sons[resultPos].sym # get result symbol
+    var res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]): 
       # declare the result symbol:
       assignLocalVar(p, res)
@@ -611,9 +607,10 @@ proc genProcAux(m: BModule, prc: PSym) =
         incl(res.loc.flags, lfIndirect)
         res.loc.s = OnUnknown
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
-    param = prc.typ.n.sons[i].sym
+    var param = prc.typ.n.sons[i].sym
     assignParam(p, param)
   genStmts(p, prc.ast.sons[codePos]) # modifies p.locals, p.init, etc.
+  var generatedProc: PRope
   if sfPure in prc.flags: 
     generatedProc = ropeff("$1 {$n$2$3$4}$n", "define $1 {$n$2$3$4}$n",
         [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
@@ -622,8 +619,8 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optStackTrace in prc.options: 
       getFrameDecl(p)
       app(generatedProc, p.s[cpsLocals])
-      procname = CStringLit(p, generatedProc, prc.name.s)
-      filename = CStringLit(p, generatedProc, toFilename(prc.info))
+      var procname = CStringLit(p, generatedProc, prc.name.s)
+      var filename = CStringLit(p, generatedProc, toFilename(prc.info))
       app(generatedProc, initFrame(p, procname, filename))
     else: 
       app(generatedProc, p.s[cpsLocals])
@@ -821,15 +818,14 @@ proc registerModuleToMain(m: PSym) =
     appff(mainModInit, "$1();$n", "call void ()* $1$n", [initname])
   
 proc genInitCode(m: BModule) = 
-  var initname, prc, procname, filename: PRope
   if optProfiler in m.initProc.options: 
     # This does not really belong here, but there is no good place for this
     # code. I don't want to put this to the proc generation as the
     # ``IncludeStr`` call is quite slow.
     discard lists.IncludeStr(m.headerFiles, "<cycle.h>")
-  initname = getInitName(m.module)
-  prc = ropeff("N_NOINLINE(void, $1)(void) {$n", 
-               "define void $1() noinline {$n", [initname])
+  var initname = getInitName(m.module)
+  var prc = ropeff("N_NOINLINE(void, $1)(void) {$n", 
+                   "define void $1() noinline {$n", [initname])
   if m.typeNodes > 0: 
     appcg(m, m.s[cfsTypeInit1], "static #TNimNode $1[$2];$n", 
           [m.typeNodesName, toRope(m.typeNodes)])
@@ -843,8 +839,8 @@ proc genInitCode(m: BModule) =
   if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
     app(prc, m.initProc.s[cpsLocals])
     app(prc, m.s[cfsTypeInit1])
-    procname = CStringLit(m.initProc, prc, m.module.name.s)
-    filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
+    var procname = CStringLit(m.initProc, prc, m.module.name.s)
+    var filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
     app(prc, initFrame(m.initProc, procname, filename))
   else:
     app(prc, m.initProc.s[cpsLocals])
@@ -940,7 +936,8 @@ proc finishModule(m: BModule) =
     # Note: ``genProc`` may add to ``m.forwardedProcs``, so we cannot use
     # a ``for`` loop here
     var prc = m.forwardedProcs[i]
-    if sfForward in prc.flags: InternalError(prc.info, "still forwarded")
+    if sfForward in prc.flags: 
+      InternalError(prc.info, "still forwarded: " & prc.name.s)
     genProcNoForward(m, prc)
     inc(i)
   assert(gForwardedProcsCounter >= i)

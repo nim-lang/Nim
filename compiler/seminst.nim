@@ -65,6 +65,35 @@ proc removeDefaultParamValues(n: PNode) =
         # not possible... XXX We don't solve this issue here.
         a.sons[L-1] = ast.emptyNode
 
+proc instantiateBody(c: PContext, n: PNode, result: PSym) =
+  if n.sons[codePos].kind != nkEmpty:
+    # add it here, so that recursive generic procs are possible:
+    addDecl(c, result)
+    pushProcCon(c, result)
+    if result.kind in {skProc, skMethod, skConverter}: 
+      addResult(c, result.typ.sons[0], n.info)
+      addResultNode(c, n)
+    n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+    if result.kind == skIterator:
+      # XXX Bad hack for tests/titer2:
+      n.sons[codePos] = transform(c.module, n.sons[codePos])
+    #echo "code instantiated ", result.name.s
+    excl(result.flags, sfForward)
+    popProcCon(c)
+
+proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
+  for i in countup(0, Len(generics) - 1):
+    if generics[i].genericSym.id == s.id:
+      var oldPrc = generics[i].instSym
+      pushInfoContext(oldPrc.info)
+      openScope(c.tab)
+      var n = oldPrc.ast
+      n.sons[codePos] = copyTree(s.ast.sons[codePos])
+      if n.sons[paramsPos].kind != nkEmpty: addParams(c, oldPrc.typ.n)
+      instantiateBody(c, n, oldPrc)
+      closeScope(c.tab)
+      popInfoContext()
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
                       info: TLineInfo): PSym = 
   # generates an instantiated proc
@@ -103,20 +132,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   ParamsTypeCheck(c, result.typ)
   var oldPrc = GenericCacheGet(c, entry)
   if oldPrc == nil:
-    # add it here, so that recursive generic procs are possible:
     generics.add(entry)
-    addDecl(c, result)
-    if n.sons[codePos].kind != nkEmpty: 
-      pushProcCon(c, result)
-      if result.kind in {skProc, skMethod, skConverter}: 
-        addResult(c, result.typ.sons[0], n.info)
-        addResultNode(c, n)
-      n.sons[codePos] = semStmtScope(c, n.sons[codePos])
-      if fn.kind == skIterator:
-        # XXX Bad hack for tests/titer2:
-        n.sons[codePos] = transform(c.module, n.sons[codePos])
-      popProcCon(c)
-      #echo "code instantiated ", result.name.s
+    instantiateBody(c, n, result)
   else:
     result = oldPrc
   popInfoContext()
