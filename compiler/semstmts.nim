@@ -499,8 +499,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
-    if (a.sons[0].kind != nkSym): IllFormedAst(a)
-    var s = a.sons[0].sym         
+    if a.sons[0].kind != nkSym: IllFormedAst(a)
+    var s = a.sons[0].sym
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty: 
       if a.sons[2].kind in {nkSym, nkIdent, nkAccQuoted}:
@@ -563,7 +563,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
   n.sons[namePos] = newSymNode(s)
   pushOwner(s)
   openScope(c.tab)
-  if (n.sons[genericParamsPos].kind != nkEmpty): 
+  if n.sons[genericParamsPos].kind != nkEmpty:
     illFormedAst(n)           # process parameters:
   if n.sons[paramsPos].kind != nkEmpty: 
     semParamList(c, n.sons[ParamsPos], nil, s)
@@ -651,7 +651,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s = proto
     n.sons[genericParamsPos] = proto.ast.sons[genericParamsPos]
     n.sons[paramsPos] = proto.ast.sons[paramsPos]
-    if (n.sons[namePos].kind != nkSym): InternalError(n.info, "semProcAux")
+    if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
     proto.ast = n             # needed for code generation
     popOwner()

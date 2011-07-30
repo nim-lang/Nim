@@ -102,8 +102,12 @@ proc suggestOperations(c: PContext, n: PNode, typ: PType) =
   assert typ != nil
   wholeSymTab(filterSym(it) and typeFits(c, it, typ), sectionSuggest)
 
-proc suggestEverything(c: PContext, n: PNode) = 
-  wholeSymTab(filterSym(it), sectionSuggest)
+proc suggestEverything(c: PContext, n: PNode) =
+  # do not produce too many symbols:
+  for i in countdown(c.tab.tos-1, 1):
+    for it in items(c.tab.stack[i]):
+      if filterSym(it):
+        OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, sectionSuggest))
 
 proc suggestFieldAccess(c: PContext, n: PNode) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -144,8 +148,7 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
       suggestSymList(typ.n)
       suggestOperations(c, n, typ)
     else:
-      # fallback: 
-      suggestEverything(c, n)
+      suggestOperations(c, n, typ)
 
 proc findClosestDot(n: PNode): PNode = 
   if msgs.inCheckpoint(n.info) == cpExact: 
