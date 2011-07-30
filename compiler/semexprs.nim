@@ -204,7 +204,6 @@ proc semSizeof(c: PContext, n: PNode): PNode =
 
 proc semOf(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3: 
-    #LocalError(n.info, errXcanNeverBeOfThisSubtype, " CAME HERE")
     n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
     n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
     var a = skipTypes(n.sons[1].typ, abstractPtrs)
@@ -220,22 +219,14 @@ proc semOf(c: PContext, n: PNode): PNode =
   result = n
 
 proc semIs(c: PContext, n: PNode): PNode = 
-  GlobalError(n.info, errXExpectsTwoArguments, "is")
-  if sonsLen(n) == 3: 
-    #LocalError(n.info, errXcanNeverBeOfThisSubtype, " CAME HERE")
-    n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
-    n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
-    var a = skipTypes(n.sons[1].typ, abstractPtrs)
-    var b = skipTypes(n.sons[2].typ, abstractPtrs)
-    if b.kind != tyObject or a.kind != tyObject: 
-      GlobalError(n.info, errXExpectsObjectTypes, "is")
-    while b != nil and b.id != a.id: b = b.sons[0]
-    if b == nil:
-      GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
-    n.typ = getSysType(tyBool)
-  else: 
+  if sonsLen(n) == 3:
+    var a = semExprWithType(c, n.sons[1], {efAllowType})
+    var b = semExprWithType(c, n.sons[2], {efAllowType})
+    result = newIntNode(nkIntLit, ord(sameType(a.typ, b.typ)))
+    result.typ = getSysType(tyBool)
+    result.info = n.info
+  else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")
-  result = n
 
 proc semOpAux(c: PContext, n: PNode) = 
   for i in countup(1, sonsLen(n) - 1): 
