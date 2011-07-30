@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import 
+import
   strutils, os, parseopt, llstream, ast, renderer, options, msgs,
   paslex, pasparse
 
@@ -17,7 +17,7 @@ const
 pas2nim - Pascal to Nimrod source converter
   (c) 2010 Andreas Rumpf
 Usage: pas2nim [options] inputfile [options]
-Options: 
+Options:
   -o, --out:FILE         set output filename
   --ref                  convert ^typ to ref typ (default: ptr typ)
   --boot                 use special translation rules for the Nimrod compiler
@@ -25,7 +25,7 @@ Options:
   -h, --help             show this help
 """
 
-proc main(infile, outfile: string, flags: set[TParserFlag]) = 
+proc main(infile, outfile: string, flags: set[TParserFlag]) =
   var stream = LLStreamOpen(infile, fmRead)
   if stream == nil: rawMessage(errCannotOpenFile, infile)
   var p: TParser
@@ -49,10 +49,10 @@ for kind, key, val in getopt():
     of "version", "v":
       stdout.write(Version & "\n")
       quit(0)
-    of "o", "out": outfile = key
+    of "o", "out": outfile = val
     of "ref": incl(flags, pfRefs)
     of "boot": flags = flags + {pfRefs, pfMoreReplacements, pfImportBlackList}
-    else: stdout.write("[Error] unknown option: " & key)
+    else: stdout.writeln("[Error] unknown option: " & key)
   of cmdEnd: assert(false)
 if infile.len == 0:
   # no filename has been given, so we show the help:
