@@ -361,11 +361,10 @@ proc canFormAcycleNode(marker: var TIntSet, n: PNode, startId: int): bool =
           if result: return 
   
 proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool = 
-  var t: PType
   result = false
   if typ == nil: return 
   if tfAcyclic in typ.flags: return 
-  t = skipTypes(typ, abstractInst)
+  var t = skipTypes(typ, abstractInst)
   if tfAcyclic in t.flags: return 
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray: 

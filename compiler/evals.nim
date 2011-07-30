@@ -614,8 +614,8 @@ proc evalHigh(c: PEvalContext, n: PNode): PNode =
   of tyOpenArray, tySequence: result = newIntNodeT(sonsLen(result), n)
   of tyString: result = newIntNodeT(len(result.strVal) - 1, n)
   else: InternalError(n.info, "evalHigh")
-  
-proc evalIs(c: PEvalContext, n: PNode): PNode = 
+
+proc evalOf(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[1], {})
   if isSpecial(result): return 
   result = newIntNodeT(ord(inheritanceDiff(result.typ, n.sons[2].typ) >= 0), n)
@@ -755,7 +755,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   var m = getMagic(n)
   case m
   of mNone: result = evalCall(c, n)
-  of mIs: result = evalIs(c, n)
+  of mOf: result = evalOf(c, n)
   of mSizeOf: internalError(n.info, "sizeof() should have been evaluated")
   of mHigh: result = evalHigh(c, n)
   of mAssert: result = evalAssert(c, n)

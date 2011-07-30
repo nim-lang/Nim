@@ -1,5 +1,5 @@
 discard """
-  file: "tisopr.nim"
+  file: "tofopr.nim"
   output: "falsetrue"
 """
 # Test is operator
@@ -12,7 +12,7 @@ type
   TOtherType = object of TMyType
    
 proc p(x: TMyType): bool = 
-  return x is TOtherType
+  return x of TOtherType
     
 var
   m: TMyType

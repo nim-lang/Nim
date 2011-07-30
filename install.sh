@@ -132,158 +132,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut1.txt
   cp doc/tut2.txt $docdir/tut2.txt || exit 1
   chmod 644 $docdir/tut2.txt
-  cp doc/apis.html $docdir/apis.html || exit 1
-  chmod 644 $docdir/apis.html
-  cp doc/base64.html $docdir/base64.html || exit 1
-  chmod 644 $docdir/base64.html
-  cp doc/browsers.html $docdir/browsers.html || exit 1
-  chmod 644 $docdir/browsers.html
-  cp doc/c2nim.html $docdir/c2nim.html || exit 1
-  chmod 644 $docdir/c2nim.html
-  cp doc/cgi.html $docdir/cgi.html || exit 1
-  chmod 644 $docdir/cgi.html
-  cp doc/colors.html $docdir/colors.html || exit 1
-  chmod 644 $docdir/colors.html
-  cp doc/complex.html $docdir/complex.html || exit 1
-  chmod 644 $docdir/complex.html
-  cp doc/db_mysql.html $docdir/db_mysql.html || exit 1
-  chmod 644 $docdir/db_mysql.html
-  cp doc/db_postgres.html $docdir/db_postgres.html || exit 1
-  chmod 644 $docdir/db_postgres.html
-  cp doc/db_sqlite.html $docdir/db_sqlite.html || exit 1
-  chmod 644 $docdir/db_sqlite.html
-  cp doc/dynlib.html $docdir/dynlib.html || exit 1
-  chmod 644 $docdir/dynlib.html
-  cp doc/encodings.html $docdir/encodings.html || exit 1
-  chmod 644 $docdir/encodings.html
-  cp doc/endb.html $docdir/endb.html || exit 1
-  chmod 644 $docdir/endb.html
-  cp doc/filters.html $docdir/filters.html || exit 1
-  chmod 644 $docdir/filters.html
-  cp doc/graphics.html $docdir/graphics.html || exit 1
-  chmod 644 $docdir/graphics.html
-  cp doc/hashes.html $docdir/hashes.html || exit 1
-  chmod 644 $docdir/hashes.html
-  cp doc/htmlparser.html $docdir/htmlparser.html || exit 1
-  chmod 644 $docdir/htmlparser.html
-  cp doc/httpclient.html $docdir/httpclient.html || exit 1
-  chmod 644 $docdir/httpclient.html
-  cp doc/httpserver.html $docdir/httpserver.html || exit 1
-  chmod 644 $docdir/httpserver.html
-  cp doc/inboxes.html $docdir/inboxes.html || exit 1
-  chmod 644 $docdir/inboxes.html
-  cp doc/intern.html $docdir/intern.html || exit 1
-  chmod 644 $docdir/intern.html
-  cp doc/intsets.html $docdir/intsets.html || exit 1
-  chmod 644 $docdir/intsets.html
-  cp doc/json.html $docdir/json.html || exit 1
-  chmod 644 $docdir/json.html
-  cp doc/lexbase.html $docdir/lexbase.html || exit 1
-  chmod 644 $docdir/lexbase.html
-  cp doc/lib.html $docdir/lib.html || exit 1
-  chmod 644 $docdir/lib.html
-  cp doc/lists.html $docdir/lists.html || exit 1
-  chmod 644 $docdir/lists.html
-  cp doc/macros.html $docdir/macros.html || exit 1
-  chmod 644 $docdir/macros.html
-  cp doc/manual.html $docdir/manual.html || exit 1
-  chmod 644 $docdir/manual.html
-  cp doc/marshal.html $docdir/marshal.html || exit 1
-  chmod 644 $docdir/marshal.html
-  cp doc/math.html $docdir/math.html || exit 1
-  chmod 644 $docdir/math.html
-  cp doc/niminst.html $docdir/niminst.html || exit 1
-  chmod 644 $docdir/niminst.html
-  cp doc/nimrodc.html $docdir/nimrodc.html || exit 1
-  chmod 644 $docdir/nimrodc.html
-  cp doc/os.html $docdir/os.html || exit 1
-  chmod 644 $docdir/os.html
-  cp doc/osproc.html $docdir/osproc.html || exit 1
-  chmod 644 $docdir/osproc.html
-  cp doc/overview.html $docdir/overview.html || exit 1
-  chmod 644 $docdir/overview.html
-  cp doc/parsecfg.html $docdir/parsecfg.html || exit 1
-  chmod 644 $docdir/parsecfg.html
-  cp doc/parsecsv.html $docdir/parsecsv.html || exit 1
-  chmod 644 $docdir/parsecsv.html
-  cp doc/parseopt.html $docdir/parseopt.html || exit 1
-  chmod 644 $docdir/parseopt.html
-  cp doc/parsesql.html $docdir/parsesql.html || exit 1
-  chmod 644 $docdir/parsesql.html
-  cp doc/parseutils.html $docdir/parseutils.html || exit 1
-  chmod 644 $docdir/parseutils.html
-  cp doc/parsexml.html $docdir/parsexml.html || exit 1
-  chmod 644 $docdir/parsexml.html
-  cp doc/pegs.html $docdir/pegs.html || exit 1
-  chmod 644 $docdir/pegs.html
-  cp doc/queues.html $docdir/queues.html || exit 1
-  chmod 644 $docdir/queues.html
-  cp doc/rdstdin.html $docdir/rdstdin.html || exit 1
-  chmod 644 $docdir/rdstdin.html
-  cp doc/re.html $docdir/re.html || exit 1
-  chmod 644 $docdir/re.html
-  cp doc/redis.html $docdir/redis.html || exit 1
-  chmod 644 $docdir/redis.html
-  cp doc/ropes.html $docdir/ropes.html || exit 1
-  chmod 644 $docdir/ropes.html
-  cp doc/scgi.html $docdir/scgi.html || exit 1
-  chmod 644 $docdir/scgi.html
-  cp doc/sets.html $docdir/sets.html || exit 1
-  chmod 644 $docdir/sets.html
-  cp doc/smtp.html $docdir/smtp.html || exit 1
-  chmod 644 $docdir/smtp.html
-  cp doc/sockets.html $docdir/sockets.html || exit 1
-  chmod 644 $docdir/sockets.html
-  cp doc/sphinx.html $docdir/sphinx.html || exit 1
-  chmod 644 $docdir/sphinx.html
-  cp doc/ssl.html $docdir/ssl.html || exit 1
-  chmod 644 $docdir/ssl.html
-  cp doc/streams.html $docdir/streams.html || exit 1
-  chmod 644 $docdir/streams.html
-  cp doc/strtabs.html $docdir/strtabs.html || exit 1
-  chmod 644 $docdir/strtabs.html
-  cp doc/strutils.html $docdir/strutils.html || exit 1
-  chmod 644 $docdir/strutils.html
-  cp doc/system.html $docdir/system.html || exit 1
-  chmod 644 $docdir/system.html
-  cp doc/tables.html $docdir/tables.html || exit 1
-  chmod 644 $docdir/tables.html
-  cp doc/terminal.html $docdir/terminal.html || exit 1
-  chmod 644 $docdir/terminal.html
-  cp doc/theindex.html $docdir/theindex.html || exit 1
-  chmod 644 $docdir/theindex.html
-  cp doc/threads.html $docdir/threads.html || exit 1
-  chmod 644 $docdir/threads.html
-  cp doc/times.html $docdir/times.html || exit 1
-  chmod 644 $docdir/times.html
-  cp doc/tools.html $docdir/tools.html || exit 1
-  chmod 644 $docdir/tools.html
-  cp doc/tut1.html $docdir/tut1.html || exit 1
-  chmod 644 $docdir/tut1.html
-  cp doc/tut2.html $docdir/tut2.html || exit 1
-  chmod 644 $docdir/tut2.html
-  cp doc/typeinfo.html $docdir/typeinfo.html || exit 1
-  chmod 644 $docdir/typeinfo.html
-  cp doc/unicode.html $docdir/unicode.html || exit 1
-  chmod 644 $docdir/unicode.html
-  cp doc/unidecode.html $docdir/unidecode.html || exit 1
-  chmod 644 $docdir/unidecode.html
-  cp doc/web.html $docdir/web.html || exit 1
-  chmod 644 $docdir/web.html
-  cp doc/xmldom.html $docdir/xmldom.html || exit 1
-  chmod 644 $docdir/xmldom.html
-  cp doc/xmldomparser.html $docdir/xmldomparser.html || exit 1
-  chmod 644 $docdir/xmldomparser.html
-  cp doc/xmlgen.html $docdir/xmlgen.html || exit 1
-  chmod 644 $docdir/xmlgen.html
-  cp doc/xmlparser.html $docdir/xmlparser.html || exit 1
-  chmod 644 $docdir/xmlparser.html
-  cp doc/xmltree.html $docdir/xmltree.html || exit 1
-  chmod 644 $docdir/xmltree.html
-  cp doc/zipfiles.html $docdir/zipfiles.html || exit 1
-  chmod 644 $docdir/zipfiles.html
-  cp doc/zmq.html $docdir/zmq.html || exit 1
-  chmod 644 $docdir/zmq.html
   cp doc/mytest.cfg $docdir/mytest.cfg || exit 1
   chmod 644 $docdir/mytest.cfg
   cp doc/c2nim.pdf $docdir/c2nim.pdf || exit 1
@@ -380,10 +228,14 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/dynlib.nim
   cp lib/pure/encodings.nim $libdir/pure/encodings.nim || exit 1
   chmod 644 $libdir/pure/encodings.nim
+  cp lib/pure/events.nim $libdir/pure/events.nim || exit 1
+  chmod 644 $libdir/pure/events.nim
   cp lib/pure/gentabs.nim $libdir/pure/gentabs.nim || exit 1
   chmod 644 $libdir/pure/gentabs.nim
   cp lib/pure/hashes.nim $libdir/pure/hashes.nim || exit 1
   chmod 644 $libdir/pure/hashes.nim
+  cp lib/pure/htmlgen.nim $libdir/pure/htmlgen.nim || exit 1
+  chmod 644 $libdir/pure/htmlgen.nim
   cp lib/pure/htmlparser.nim $libdir/pure/htmlparser.nim || exit 1
   chmod 644 $libdir/pure/htmlparser.nim
   cp lib/pure/httpclient.nim $libdir/pure/httpclient.nim || exit 1
@@ -396,6 +248,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/lexbase.nim
   cp lib/pure/marshal.nim $libdir/pure/marshal.nim || exit 1
   chmod 644 $libdir/pure/marshal.nim
+  cp lib/pure/matchers.nim $libdir/pure/matchers.nim || exit 1
+  chmod 644 $libdir/pure/matchers.nim
   cp lib/pure/math.nim $libdir/pure/math.nim || exit 1
   chmod 644 $libdir/pure/math.nim
   cp lib/pure/md5.nim $libdir/pure/md5.nim || exit 1
@@ -422,8 +276,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/pegs.nim
   cp lib/pure/redis.nim $libdir/pure/redis.nim || exit 1
   chmod 644 $libdir/pure/redis.nim
-  cp lib/pure/regexprs.nim $libdir/pure/regexprs.nim || exit 1
-  chmod 644 $libdir/pure/regexprs.nim
   cp lib/pure/romans.nim $libdir/pure/romans.nim || exit 1
   chmod 644 $libdir/pure/romans.nim
   cp lib/pure/ropes.nim $libdir/pure/ropes.nim || exit 1
@@ -450,8 +302,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/xmldom.nim
   cp lib/pure/xmldomparser.nim $libdir/pure/xmldomparser.nim || exit 1
   chmod 644 $libdir/pure/xmldomparser.nim
-  cp lib/pure/xmlgen.nim $libdir/pure/xmlgen.nim || exit 1
-  chmod 644 $libdir/pure/xmlgen.nim
   cp lib/pure/xmlparser.nim $libdir/pure/xmlparser.nim || exit 1
   chmod 644 $libdir/pure/xmlparser.nim
   cp lib/pure/xmltree.nim $libdir/pure/xmltree.nim || exit 1
@@ -462,6 +312,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/collections/lists.nim
   cp lib/pure/collections/queues.nim $libdir/pure/collections/queues.nim || exit 1
   chmod 644 $libdir/pure/collections/queues.nim
+  cp lib/pure/collections/sequtils.nim $libdir/pure/collections/sequtils.nim || exit 1
+  chmod 644 $libdir/pure/collections/sequtils.nim
   cp lib/pure/collections/sets.nim $libdir/pure/collections/sets.nim || exit 1
   chmod 644 $libdir/pure/collections/sets.nim
   cp lib/pure/collections/tables.nim $libdir/pure/collections/tables.nim || exit 1
