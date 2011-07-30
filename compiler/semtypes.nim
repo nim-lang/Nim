@@ -581,8 +581,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addSon(result.n, newSymNode(arg))
       addSon(result, typ)
   if n.sons[0].kind != nkEmpty: 
-    result.sons[0] = paramType(c, n.sons[0], genericParams, cl)
-    res.typ = result.sons[0]
+    var r = paramType(c, n.sons[0], genericParams, cl)
+    # turn explicit 'void' return type into 'nil' because the rest of the 
+    # compiler only checks for 'nil':
+    if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
+      result.sons[0] = r
+      res.typ = result.sons[0]
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType = 
   checkMinSonsLen(n, 1)

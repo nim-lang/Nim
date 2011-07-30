@@ -36,16 +36,6 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     GlobalError(n.info, errExprXHasNoType, 
                 renderTree(result, {renderNoComments}))
 
-proc semExprWithTypeNoDeref(c: PContext, n: PNode, 
-                            flags: TExprFlags = {}): PNode = 
-  result = semExpr(c, n, flags)
-  if result.kind == nkEmpty: 
-    # do not produce another redundant error message:
-    raiseRecoverableError()
-  if result.typ == nil:
-    GlobalError(n.info, errExprXHasNoType, 
-                renderTree(result, {renderNoComments}))
-
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s)
   
