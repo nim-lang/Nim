@@ -49,7 +49,7 @@ programmer should provide a proc to initialize the object (this is called
 a *constructor*).
 
 Objects have access to their type at runtime. There is an
-``is`` operator that can be used to check the object's type:
+``of`` operator that can be used to check the object's type:
 
 .. code-block:: nimrod
 
@@ -64,7 +64,7 @@ Objects have access to their type at runtime. There is an
   var
     student: TStudent
     person: TPerson
-  assert(student is TStudent) # is true
+  assert(student of TStudent) # is true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are

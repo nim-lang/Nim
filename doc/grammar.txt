@@ -3,7 +3,7 @@ module ::= ([COMMENT] [SAD] stmt)*
 comma ::= ',' [COMMENT] [IND]
 operator ::= OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
            | 'or' | 'xor' | 'and'
-           | 'is' | 'isnot' | 'in' | 'notin'
+           | 'is' | 'isnot' | 'in' | 'notin' | 'of'
            | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 
 prefixOperator ::= operator

@@ -43,6 +43,7 @@ type
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
+  void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
 
 proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
@@ -648,6 +649,8 @@ template `not_in` * (x, y: expr): expr = not contains(y, x)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `is_not` *(x, y: expr): expr = not (x is y)
+
+proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y

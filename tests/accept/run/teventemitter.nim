@@ -4,7 +4,7 @@ type
   TEventArgs = object of TObject
 type
   TEventEmitter = object of TObject
-    events*: TTable[string, TDoublyLinkedList[proc(e : TEventArgs)]]
+    events*: TTable[string, TDoublyLinkedList[proc(e: TEventArgs)]]
 proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs)) =
   if not hasKey(emitter.events, event):
     var list: TDoublyLinkedList[proc(e: TEventArgs)]

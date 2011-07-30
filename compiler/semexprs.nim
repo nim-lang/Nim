@@ -202,20 +202,39 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyInt)
   result = n
 
-proc semIs(c: PContext, n: PNode): PNode = 
+proc semOf(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3: 
+    #LocalError(n.info, errXcanNeverBeOfThisSubtype, " CAME HERE")
     n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
     n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
     var a = skipTypes(n.sons[1].typ, abstractPtrs)
     var b = skipTypes(n.sons[2].typ, abstractPtrs)
     if b.kind != tyObject or a.kind != tyObject: 
-      GlobalError(n.info, errIsExpectsObjectTypes)
+      GlobalError(n.info, errXExpectsObjectTypes, "of")
     while b != nil and b.id != a.id: b = b.sons[0]
     if b == nil:
       GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
     n.typ = getSysType(tyBool)
   else: 
-    GlobalError(n.info, errIsExpectsTwoArguments)
+    GlobalError(n.info, errXExpectsTwoArguments, "of")
+  result = n
+
+proc semIs(c: PContext, n: PNode): PNode = 
+  GlobalError(n.info, errXExpectsTwoArguments, "is")
+  if sonsLen(n) == 3: 
+    #LocalError(n.info, errXcanNeverBeOfThisSubtype, " CAME HERE")
+    n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
+    n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
+    var a = skipTypes(n.sons[1].typ, abstractPtrs)
+    var b = skipTypes(n.sons[2].typ, abstractPtrs)
+    if b.kind != tyObject or a.kind != tyObject: 
+      GlobalError(n.info, errXExpectsObjectTypes, "is")
+    while b != nil and b.id != a.id: b = b.sons[0]
+    if b == nil:
+      GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+    n.typ = getSysType(tyBool)
+  else: 
+    GlobalError(n.info, errXExpectsTwoArguments, "is")
   result = n
 
 proc semOpAux(c: PContext, n: PNode) = 
@@ -884,6 +903,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
   of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s))
+  of mOf: result = semOf(c, setMs(n, s))
   of mEcho: result = semEcho(c, setMs(n, s))
   of mShallowCopy:
     if sonsLen(n) == 3:

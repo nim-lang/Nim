@@ -127,7 +127,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
   var paramLen = sonsLen(base.typ)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysSym("and")
-  var iss = getSysSym("is")
+  var iss = getSysSym("of")
   for meth in countup(0, high(methods)):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil

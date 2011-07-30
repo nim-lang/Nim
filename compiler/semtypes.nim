@@ -220,15 +220,15 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var 
     elem: PType
     isConcrete: bool
-  if (s.typ == nil) or (s.typ.kind != tyGenericBody): 
+  if s.typ == nil or s.typ.kind != tyGenericBody: 
     GlobalError(n.info, errCannotInstantiateX, s.name.s)
   result = newOrPrevType(tyGenericInvokation, prev, c)
-  if (s.typ.containerID == 0): InternalError(n.info, "semtypes.semGeneric")
+  if s.typ.containerID == 0: InternalError(n.info, "semtypes.semGeneric")
   if sonsLen(n) != sonsLen(s.typ): 
     GlobalError(n.info, errWrongNumberOfArguments)
   addSon(result, s.typ)
   isConcrete = true           # iterate over arguments:
-  for i in countup(1, sonsLen(n) - 1): 
+  for i in countup(1, sonsLen(n)-1): 
     elem = semTypeNode(c, n.sons[i], nil)
     if elem.kind == tyGenericParam: isConcrete = false
     addSon(result, elem)
@@ -704,6 +704,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mExpr: setMagicType(m, tyExpr, 0)
   of mStmt: setMagicType(m, tyStmt, 0)
   of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
+  of mVoidType: setMagicType(m, tyEmpty, 0)
   of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: nil 
   else: GlobalError(m.info, errTypeExpected)
   

@@ -358,7 +358,7 @@ combination of the following characters::
        !     ?     ^     .     :     \
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot``.
+``and or not xor shl shr div mod in notin is isnot of``.
 
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes. 
@@ -392,19 +392,19 @@ operators, the precedence depends on the first character the operator consists
 of. All binary operators are left-associative, except binary operators starting
 with (or only consisting of) ``^``.
 
-================  ==============================================  ==================  ===============
-Precedence level    Operators                                     First characters    Terminal symbol
-================  ==============================================  ==================  ===============
-  9 (highest)                                                     ``$  ^``            OP9
-  8               ``*    /    div   mod   shl  shr  %``           ``* % \  /``        OP8
-  7               ``+    -``                                      ``+  ~  |``         OP7
-  6               ``&``                                           ``&``               OP6
-  5               ``..``                                          ``.``               OP5
-  4               ``==  <= < >= > !=  in not_in is isnot not``    ``= <  > !``        OP4
-  3               ``and``                                                             OP3
-  2               ``or xor``                                                          OP2
-  1 (lowest)                                                      `` @  : ? ``        OP1
-================  ==============================================  ==================  ===============
+================  ===============================================  ==================  ===============
+Precedence level    Operators                                      First characters    Terminal symbol
+================  ===============================================  ==================  ===============
+  9 (highest)                                                      ``$  ^``            OP9
+  8               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP8
+  7               ``+    -``                                       ``+  ~  |``         OP7
+  6               ``&``                                            ``&``               OP6
+  5               ``..``                                           ``.``               OP5
+  4               ``==  <= < >= > !=  in not_in is isnot not of``  ``= <  > !``        OP4
+  3               ``and``                                                              OP3
+  2               ``or xor``                                                           OP2
+  1 (lowest)                                                       ``@  : ?``          OP1
+================  ===============================================  ==================  ===============
 
 
 The grammar's start symbol is ``module``.
@@ -824,7 +824,7 @@ is compatible with the way the C compiler does it.
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
-the ``is`` operator can be used to determine the object's type.
+the ``of`` operator can be used to determine the object's type.
 
 .. code-block:: nimrod
 
@@ -839,7 +839,7 @@ the ``is`` operator can be used to determine the object's type.
   var
     student: TStudent
     person: TPerson
-  assert(student is TStudent) # is true
+  assert(student of TStudent) # is true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are

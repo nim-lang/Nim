@@ -962,7 +962,7 @@ proc genNewSeq(p: BProc, e: PNode) =
                genTypeInfo(p.module, seqType), rdLoc(b)])
   genAssignment(p, a, c, {})
 
-proc genIs(p: BProc, x: PNode, typ: PType, d: var TLoc) =
+proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var
     a: TLoc
     dest, t: PType
@@ -987,8 +987,8 @@ proc genIs(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     r = ropecg(p.module, "#isObj($1.m_type, $2)", [r, genTypeInfo(p.module, dest)])
   putIntoDest(p, d, getSysType(tyBool), r)
 
-proc genIs(p: BProc, n: PNode, d: var TLoc) =
-  genIs(p, n.sons[1], n.sons[2].typ, d)
+proc genOf(p: BProc, n: PNode, d: var TLoc) =
+  genOf(p, n.sons[1], n.sons[2].typ, d)
 
 proc genNewFinalize(p: BProc, e: PNode) =
   var
@@ -1438,7 +1438,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       filen = makeCString(ToFilename(e.info))
       appcg(p, cpsStmts, "#internalAssert($1, $2, $3);$n",
            [filen, line, rdLoc(d)])
-  of mIs: genIs(p, e, d)
+  of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)

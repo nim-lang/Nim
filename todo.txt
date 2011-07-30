@@ -1,6 +1,7 @@
 Version 0.8.14
 ==============
 
+- ``when T is int`` for generic code
 - ``var T`` as a return type:
   * for iterators
   * add ``modGet`` for generics
@@ -78,7 +79,6 @@ Library
 Low priority
 ------------
 
-- ``when T is int`` for generic code
 - ``when validCode(proc())`` for generic code
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
@@ -90,7 +90,7 @@ Version 2
 
 - language change: inheritance should only work with reference types, so that
   the ``type`` field is not needed for objects! --> zero overhead aggregation
-  BETTER: ``is`` and safe object conversions only work with ref objects. Same
+  BETTER: ``of`` and safe object conversions only work with ref objects. Same
   for multi methods.
   
 - explicit nil types?

@@ -199,7 +199,7 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   if excHandler != nil:
     pushCurrentException(e)
     c_longjmp(excHandler.context, 1)
-  elif e[] is EOutOfMemory:
+  elif e[] of EOutOfMemory:
     writeToStdErr(ename)
     quitOrDebug()
   else:
