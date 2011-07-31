@@ -167,6 +167,26 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     if n[0][1].kind == nkSym and n[0][1].sym.kind == skResult: 
       n.sons[0] = ast.emptyNode
   
+proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
+  var t = skipTypes(restype, {tyGenericInst})
+  case t.kind
+  of tyVar:
+    n.sons[0] = takeImplicitAddr(c, n.sons[0])
+  of tyTuple:
+    for i in 0.. <t.sonsLen:
+      var e = skipTypes(t.sons[i], {tyGenericInst})
+      if e.kind == tyVar:
+        if n.sons[0].kind == nkPar:
+          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
+        elif n.sons[0].kind == nkHiddenSubConv and 
+             n.sons[0].sons[1].kind == nkPar:
+          var a = n.sons[0].sons[1]
+          a.sons[i] = takeImplicitAddr(c, a.sons[i])
+        else:
+          debug n.sons[0]
+          localError(n.sons[0].info, errXExpected, "tuple constructor")
+  else: nil
+  
 proc SemYield(c: PContext, n: PNode): PNode = 
   result = n
   checkSonsLen(n, 1)
@@ -178,7 +198,8 @@ proc SemYield(c: PContext, n: PNode): PNode =
     if restype != nil: 
       n.sons[0] = fitNode(c, restype, n.sons[0])
       if n.sons[0].typ == nil: InternalError(n.info, "semYield")
-    else: 
+      SemYieldVarResult(c, n, restype)
+    else:
       localError(n.info, errCannotReturnExpr)
   
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
@@ -361,7 +382,7 @@ proc semFor(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 3)
   var length = sonsLen(n)
   openScope(c.tab)
-  n.sons[length-2] = semExprWithType(c, n.sons[length-2], {efWantIterator})
+  n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
   if call.kind != nkCall or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator: 
