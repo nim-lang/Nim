@@ -2069,6 +2069,37 @@ One can use `tuple unpacking`:idx: to access the tuple's fields:
   assert y == 3
 
 
+Var return type
+~~~~~~~~~~~~~~~
+
+A proc, converter or iterator may return a ``var`` type which means that the
+returned value is an l-value and can be modified by the caller:
+
+.. code-block:: nimrod
+  var g = 0
+
+  proc WriteAccessToG(): var int =
+    result = g
+  
+  WriteAccessToG() = 6
+  assert g == 6
+
+It is a compile time error if the implicitely introduced pointer could be 
+used to access a location beyond its lifetime:
+
+.. code-block:: nimrod
+  proc WriteAccessToG(): var int =
+    var g = 0
+    result = g # Error!
+
+For iterators, a component of a tuple return type can have a ``var`` type too: 
+
+.. code-block:: nimrod
+  iterator modPairs(a: var seq[string]): tuple[key: int, val: var string] =
+    for i in 0..a.high:
+      yield (i, a[i])
+
+
 Overloading of the subscript operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2340,7 +2371,7 @@ Type constraints
 type parameter. Only the specified types are valid for instantiation:
 
 .. code-block:: nimrod
-  proc onlyIntOrString[T: int|string](x, y: T): T = ...
+  proc onlyIntOrString[T: int|string](x, y: T): T = nil
   
   onlyIntOrString(45, 66) # valid
   onlyIntOrString(56.0, 0.0) # type mismatch

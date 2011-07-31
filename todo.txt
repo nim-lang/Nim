@@ -2,9 +2,7 @@ Version 0.8.14
 ==============
 
 - fix serious bug that keeps teventemitter from compiling
-- ``var T`` as a return type:
-  * add ``modGet`` for generics
-  * documentation
+- ``var T`` as a return type: add ``modGet`` for generics
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
@@ -73,7 +71,7 @@ Library
 Low priority
 ------------
 
-- ``when validCode(proc())`` for generic code
+- ``with proc `+`(x, y: T): T`` for generic code
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
