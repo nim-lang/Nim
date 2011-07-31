@@ -570,6 +570,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         def = fitNode(c, typ, def)
     else: 
       def = ast.emptyNode
+    if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length - 3): 
       var arg = newSymS(skParam, a.sons[j], c)
       arg.typ = typ
