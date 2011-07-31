@@ -1189,6 +1189,45 @@ currency. This can be solved with templates_.
   DefineCurrency(TEuro, int)
 
 
+Void type
+~~~~~~~~~
+
+The `void`:idx: type denotes the absense of any type. Parameters of 
+type ``void`` are treated as non-existent, a result ``void`` type means that
+the procedure does not return a value:
+
+.. code-block:: nimrod
+  proc nothing(x, y: void): void =
+    echo "ha"
+  
+  nothing() # writes "ha" to stdout
+
+The ``void`` type is particularly useful for generic code:
+
+.. code-block:: nimrod
+  proc callProc[T](p: proc (x: T), x: T) =
+    when T is void: 
+      p()
+    else:
+      p(x)
+
+  proc intProc(x: int) = nil
+  proc emptyProc() = nil
+
+  callProc[int](intProc, 12)
+  callProc[void](emptyProc)
+  
+However, a ``void`` type cannot be inferred in generic code:
+
+.. code-block:: nimrod
+  callProc(emptyProc) 
+  # Error: type mismatch: got (proc ())
+  # but expected one of: 
+  # callProc(p: proc (T), x: T)
+
+The ``void`` type is only valid for parameters and return types; other symbols
+cannot have the type ``void``.
+
 
 Type relations
 --------------
@@ -1210,7 +1249,8 @@ algorithm (in pseudo-code) determines type equality:
     incl(s, (a,b))
     if a.kind == b.kind:
       case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer, bool, nil:
+      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+          bool, nil, void:
         # leaf type: kinds identical; nothing more to check
         result = true
       of ref, ptr, var, set, seq, openarray:
@@ -2210,7 +2250,7 @@ possible within a single ``type`` section.
 
 
 Generics
-~~~~~~~~
+--------
 
 Example:
 
@@ -2265,6 +2305,99 @@ Example:
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator or type.
+
+
+Is operator
+~~~~~~~~~~~
+
+The `is`:idx: operator checks for type equivalence at compile time. It is
+therefore very useful for type specialization within generic code: 
+
+.. code-block:: nimrod
+  type
+    TTable[TKey, TValue] = object
+      keys: seq[TKey]
+      values: seq[TValue]
+      when not (TKey is string): # nil value for strings used for optimization
+        deletedKeys: seq[bool]
+
+
+Type operator
+~~~~~~~~~~~~~
+
+The `type`:idx: (in many other languages called `typeof`:idx:) operator can
+be used to get the type of an expression: 
+
+.. code-block:: nimrod
+  var x = 0
+  var y: type(x) # y has type int
+
+
+Type constraints
+~~~~~~~~~~~~~~~~
+
+`Type constraints`:idx: can be used to restrict the instantiation of a generic
+type parameter. Only the specified types are valid for instantiation:
+
+.. code-block:: nimrod
+  proc onlyIntOrString[T: int|string](x, y: T): T = ...
+  
+  onlyIntOrString(45, 66) # valid
+  onlyIntOrString(56.0, 0.0) # type mismatch
+  
+  
+Apart from ordinary types, type constraints can also be of the
+following *type classes*:
+
+==================   ===================================================
+type class           matches
+==================   ===================================================
+``object``           any object type
+``tuple``            any tuple type
+``enum``             any enumeration
+``proc``             any proc type
+``ref``              any ``ref`` type
+``ptr``              any ``ptr`` type
+``var``              any ``var`` type
+``distinct``         any distinct type
+``array``            any array type
+``set``              any set type
+``seq``              any seq type
+==================   ===================================================
+
+The following example is taken directly from the system module:
+
+.. code-block:: nimrod
+  proc `==`*[T: tuple](x, y: T): bool = 
+    ## generic ``==`` operator for tuples that is lifted from the components
+    ## of `x` and `y`.
+    for a, b in fields(x, y):
+      if a != b: return false
+    return true
+
+
+Symbol lookup in generics
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Symbols in generics are looked up in two different contexts: Both the context
+at definition and the context at instantiation are considered for any symbol 
+occuring in a generic:
+
+.. code-block:: nimrod
+  type
+    TIndex = distinct int
+  
+  proc `==` (a, b: TIndex): bool {.borrow.}
+  
+  var a = (0, 0.TIndex)
+  var b = (0, 0.TIndex)
+  
+  echo a == b # works!
+
+In the example the generic ``==`` for tuples uses the ``==`` operators of the 
+tuple's components. However, the ``==`` for the ``TIndex`` type is 
+defined *after* the ``==`` for tuples; yet the example compiles as the
+instantiation takes the currently defined symbols into account too.
 
 
 Templates

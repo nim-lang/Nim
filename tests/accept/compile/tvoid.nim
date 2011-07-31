@@ -1,13 +1,33 @@
 discard """
-  output: "he, no return type; a string"
+  output: "he, no return type;abc a string"
 """
 
-proc ReturnT[T](): T =
+proc ReturnT[T](x: T): T =
   when T is void:
     echo "he, no return type;"
   else:
-    result = " a string"
+    result = x & " a string"
+
+proc nothing(x, y: void): void =
+  echo "ha"
+
+proc callProc[T](p: proc (x: T), x: T) =
+  when T is void: 
+    p()
+  else:
+    p(x)
+
+proc intProc(x: int) =
+  echo x
+  
+proc emptyProc() =
+  echo "empty"
+
+callProc[int](intProc, 12)
+callProc[void](emptyProc)
+
 
 ReturnT[void]()
-echo ReturnT[string]()
+echo ReturnT[string]("abc")
+nothing()
 

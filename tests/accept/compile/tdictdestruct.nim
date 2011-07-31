@@ -1,6 +1,3 @@
-discard """
-  disabled: true
-"""
 
 type
   TDict[TK, TV] = object
@@ -14,7 +11,7 @@ proc fakeNew[T](x: var ref T, destroy: proc (a: ref T)) =
 proc destroyDict[TK, TV](a: PDict[TK, TV]) =
     return
 proc newDict[TK, TV](a: TK, b: TV): PDict[TK, TV] =
-    Fakenew(result, destroyDict)
+    Fakenew(result, destroyDict[TK, TV])
 
 # Problem: destroyDict is not instantiated when newDict is instantiated!    
 

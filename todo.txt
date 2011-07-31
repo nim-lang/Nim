@@ -6,12 +6,6 @@ Version 0.8.14
   * add ``modGet`` for generics
   * documentation
   * provide ``mod`` as an alternative syntax for ``var``
-- document:
-  * Nimrod's two phase symbol lookup in generics
-  * type constraints for generics
-  * void type
-  * ``is`` operator for type equivalence
-  
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
