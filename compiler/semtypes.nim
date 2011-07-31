@@ -217,9 +217,6 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       addSon(result, typ)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
-  var 
-    elem: PType
-    isConcrete: bool
   if s.typ == nil or s.typ.kind != tyGenericBody: 
     GlobalError(n.info, errCannotInstantiateX, s.name.s)
   result = newOrPrevType(tyGenericInvokation, prev, c)
@@ -227,9 +224,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if sonsLen(n) != sonsLen(s.typ): 
     GlobalError(n.info, errWrongNumberOfArguments)
   addSon(result, s.typ)
-  isConcrete = true           # iterate over arguments:
+  var isConcrete = true # iterate over arguments:
   for i in countup(1, sonsLen(n)-1): 
-    elem = semTypeNode(c, n.sons[i], nil)
+    var elem = semTypeNode(c, n.sons[i], nil)
     if elem.kind == tyGenericParam: isConcrete = false
     addSon(result, elem)
   if isConcrete: 
@@ -542,26 +539,26 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   result = newOrPrevType(tyProc, prev, c)
   result.callConv = lastOptionEntry(c).defaultCC
   result.n = newNodeI(nkFormalParams, n.info)
-  if (genericParams != nil) and (sonsLen(genericParams) == 0):
+  if genericParams != nil and sonsLen(genericParams) == 0:
     cl = initIntSet()
   addSon(result, nil) # return type
   res = newNodeI(nkType, n.info)
   addSon(result.n, res)
   var check = initIntSet()
   var counter = 0
-  for i in countup(1, sonsLen(n) - 1): 
+  for i in countup(1, sonsLen(n)-1): 
     var a = n.sons[i]
     if a.kind != nkIdentDefs: IllFormedAst(a)
     checkMinSonsLen(a, 3)
     var length = sonsLen(a)
-    if a.sons[length - 2].kind != nkEmpty: 
-      typ = paramType(c, a.sons[length - 2], genericParams, cl)
+    if a.sons[length-2].kind != nkEmpty: 
+      typ = paramType(c, a.sons[length-2], genericParams, cl)
     else: 
       typ = nil
-    if a.sons[length - 1].kind != nkEmpty: 
-      def = semExprWithType(c, a.sons[length - 1]) 
+    if a.sons[length-1].kind != nkEmpty:
+      def = semExprWithType(c, a.sons[length-1]) 
       # check type compability between def.typ and typ:
-      if typ == nil: 
+      if typ == nil:
         typ = def.typ
       elif def != nil:
         # and def.typ != nil and def.typ.kind != tyNone:
@@ -571,7 +568,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     else: 
       def = ast.emptyNode
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
-    for j in countup(0, length - 3): 
+    for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
       arg.typ = typ
       arg.position = counter
@@ -647,7 +644,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       prev.id = s.typ.id
       result = prev
   of nkSym: 
-    if (n.sym.kind == skType) and (n.sym.typ != nil): 
+    if n.sym.kind == skType and n.sym.typ != nil:
       var t = n.sym.typ
       if prev == nil: 
         result = t
