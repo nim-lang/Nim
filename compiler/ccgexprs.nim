@@ -207,7 +207,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
   if src.t != nil and src.t.kind == tyPtr:
-    # little HACK to suppor the new 'var T' as return type:
+    # little HACK to support the new 'var T' as return type:
     appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     return
   var ty = skipTypes(dest.t, abstractVarRange)

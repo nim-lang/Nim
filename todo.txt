@@ -1,11 +1,10 @@
 Version 0.8.14
 ==============
 
+- fix serious bug that keeps teventemitter from compiling
 - ``var T`` as a return type:
-  * for iterators
   * add ``modGet`` for generics
   * documentation
-  * provide ``mod`` as an alternative syntax for ``var``
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
@@ -19,8 +18,7 @@ version 0.9.0
 - add --deadlock_prevention:on|off switch? timeout for locks?
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
-- tests: run modules that contain "#RUN_ME", compile the other
-  modules; run the GC tests
+- tests: run the GC tests
 - change overloading resolution
 - implement closures; implement proper coroutines
 
@@ -40,8 +38,6 @@ version 0.9.XX
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency; better: 
   proc specialization in the code gen
-- resizing of strings/sequences could take into account the memory that
-  is allocated
 - find a way to reintroduce the cleanup() pass for C code generation: this
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
@@ -81,6 +77,8 @@ Low priority
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
+- resizing of strings/sequences could take into account the memory that
+  is allocated
 
 
 Version 2

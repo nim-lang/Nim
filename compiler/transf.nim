@@ -502,9 +502,15 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       addVar(v, newSymNode(temp))
       add(result, newAsgnStmt(c, newSymNode(temp), arg.ptransNode))
       IdNodeTablePut(newC.mapping, formal, newSymNode(temp))
-    of paVarAsgn: 
+    of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
-      InternalError(arg.info, "not implemented: pass to var parameter")
+      # XXX why is this even necessary?
+      var b = newNodeIT(nkHiddenAddr, arg.info, formal.typ)
+      b.add(arg)
+      arg = b
+      IdNodeTablePut(newC.mapping, formal, arg)
+      # XXX BUG still not correct if the arg has a side effect!
+      #InternalError(arg.info, "not implemented: pass to var parameter")
   var body = newC.owner.ast.sons[codePos]
   pushInfoContext(n.info)
   inc(c.inlining)
