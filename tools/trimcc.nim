@@ -26,4 +26,4 @@ proc walker(dir: string) =
 if paramCount() == 1:
   walker(paramStr(1))
 else:
-  echo "Usage: trimcc c_compiler_directory"
+  quit "Usage: trimcc c_compiler_directory"

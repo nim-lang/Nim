@@ -1,7 +1,7 @@
 #
 #
 #           Nimrod Website Generator
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -44,7 +44,7 @@ const
   Version = "0.7"
   Usage = "nimweb - Nimrod Website Generator Version " & version & """
 
-  (c) 2009 Andreas Rumpf
+  (c) 2011 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:
@@ -70,8 +70,12 @@ proc parseCmdLine(c: var TConfigData) =
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": quit(Usage)
-      of "version", "v": quit(Version)
+      of "help", "h": 
+        stdout.write(Usage)
+        quit(0)
+      of "version", "v": 
+        stdout.write(Version & "\n")
+        quit(0)
       of "o", "output": c.outdir = val
       of "var":
         var idx = val.find('=')
@@ -206,8 +210,11 @@ proc main(c: var TConfigData) =
     var file = c.tabs[i].val
     Exec(cmd % [c.nimrodArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
-    var content = readFile(temp)
-    if isNil(content): quit("[Error] cannot open: " & temp)
+    var content: string
+    try:
+      content = readFile(temp)
+    except EIO:
+      quit("[Error] cannot open: " & temp)
     var f: TFile
     var outfile = "web/upload/$#.html" % file
     if open(f, outfile, fmWrite):
