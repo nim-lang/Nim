@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Installation Generator
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -142,8 +142,12 @@ proc parseCmdLine(c: var TConfigData) =
         break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": quit(Usage)
-      of "version", "v": quit(Version)
+      of "help", "h": 
+        stdout.write(Usage)
+        quit(0)
+      of "version", "v": 
+        stdout.write(Version & "\n")
+        quit(0)
       of "o", "output": c.outdir = val
       of "var":
         var idx = val.find('=')

@@ -237,8 +237,13 @@ proc walker(dir: string) =
     else: nil
   if existsFile(dir): processFile(dir)
 
-proc writeHelp() = quit(Usage)
-proc writeVersion() = quit(Version)
+proc writeHelp() = 
+  stdout.write(Usage)
+  quit(0)
+
+proc writeVersion() = 
+  stdout.write(Version & "\n")
+  quit(0)
 
 proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:

@@ -26,6 +26,6 @@ proc main(dir, outfile: string) =
     quit("Cannot open for writing: " & outfile)
 
 if ParamCount() != 2:
-  echo "Usage: cmerge directory outfile"
+  quit "Usage: cmerge directory outfile"
 else:
   main(ParamStr(1), addFileExt(ParamStr(2), "c"))

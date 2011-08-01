@@ -40,7 +40,7 @@ Language Additions
 
 - Added new ``is`` and ``of`` operators.
 - The built-in type ``void`` can be used to denote the absense of any type.
-  This is only needed in generic contexts.
+  This is useful in generic code.
 - Return types may be of the type ``var T`` to return an l-value.
 
 
