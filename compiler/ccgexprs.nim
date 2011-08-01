@@ -1716,6 +1716,12 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
   of nkStringToCString: convStrToCStr(p, e, d)
   of nkCStringToString: convCStrToStr(p, e, d)
   of nkPassAsOpenArray: passToOpenArray(p, e, d)
+  of nkLambda:
+    var sym = e.sons[namePos].sym
+    genProc(p.module, sym)
+    if sym.loc.r == nil or sym.loc.t == nil:
+      InternalError(e.info, "expr: proc not init " & sym.name.s)
+    putLocIntoDest(p, d, sym.loc)
   else: InternalError(e.info, "expr(" & $e.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): PRope =

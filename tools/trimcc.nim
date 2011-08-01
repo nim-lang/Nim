@@ -19,7 +19,7 @@ proc walker(dir: string) =
         echo "Required: ", path
         # copy back:
         moveFile(path, newName(path))
-    of pcDirectory:
+    of pcDir:
       walker(path)
     else: nil
 

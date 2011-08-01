@@ -684,6 +684,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkBracketExpr: 
     result = transformArrayAccess(c, n)
   of nkLambda: 
+    n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
+    result = PTransNode(n)
     when false: result = transformLambda(c, n)
   of nkForStmt: 
     result = transformFor(c, n)
