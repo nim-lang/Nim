@@ -593,7 +593,8 @@ proc semLambda(c: PContext, n: PNode): PNode =
   else:
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)
-  s.typ.callConv = ccClosure
+  # no! do a proper analysis to determine calling convention
+  when false: s.typ.callConv = ccClosure
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
@@ -644,10 +645,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
                                                # open for parameters
   if proto == nil: 
-    if c.p.owner.kind != skModule: 
-      s.typ.callConv = ccClosure
-    else: 
-      s.typ.callConv = lastOptionEntry(c).defaultCC 
+    s.typ.callConv = lastOptionEntry(c).defaultCC 
+    when false:
+      # do a proper analysis here:
+      if c.p.owner.kind != skModule: s.typ.callConv = ccClosure
     # add it here, so that recursive procs are possible:
     # -2 because we have a scope open for parameters
     if kind in OverloadableSyms: 
