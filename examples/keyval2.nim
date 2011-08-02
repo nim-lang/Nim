@@ -3,5 +3,5 @@ import pegs
 
 for x in lines("myfile.txt"):
   if x =~ peg"{\ident} \s* '=' \s* {.*}":
-    echo "Key: ", matches[1], 
-         " Value: ", matches[2]
+    echo "Key: ", matches[0],
+         " Value: ", matches[1]
