@@ -496,6 +496,9 @@ elif not defined(useNimRtl):
       else:
         if dup2(p_stderr[writeIdx], 2) < 0: OSError()
 
+      # Create a new process group
+      if setpgid(0, 0) == -1: quit("setpgid call failed: " & $strerror(errno))
+
       if workingDir.len > 0: os.setCurrentDir(workingDir)
       if poUseShell notin options:
         var a = toCStringArray([extractFilename(command)], args)
@@ -534,33 +537,39 @@ elif not defined(useNimRtl):
     discard close(p.errorHandle)
 
   proc suspend(p: PProcess) =
-    discard kill(p.id, SIGSTOP)
+    if kill(-p.id, SIGSTOP) != 0'i32: OSError()
 
   proc resume(p: PProcess) =
-    discard kill(p.id, SIGCONT)
+    if kill(-p.id, SIGCONT) != 0'i32: OSError()
 
   proc running(p: PProcess): bool =
-    result = waitPid(p.id, p.exitCode, WNOHANG) == int(p.id)
+    var ret = waitPid(p.id, p.exitCode, WNOHANG)
+    if ret == 0: return true # Can't establish status. Assume running.
+    result = ret == int(p.id)
 
   proc terminate(p: PProcess) =
-    if kill(p.id, SIGTERM) == 0'i32:
-      if running(p): discard kill(p.id, SIGKILL)
+    if kill(-p.id, SIGTERM) == 0'i32:
+      if p.running():
+        if kill(-p.id, SIGKILL) != 0'i32: OSError()
+    else: OSError()
 
   proc waitForExit(p: PProcess): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
     # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
     # initialized with -3, wrong success exit codes are prevented.
-    var oldExitCode = p.exitCode
+    if p.exitCode != -3: return p.exitCode
     if waitPid(p.id, p.exitCode, 0) < 0:
-      # failed, so restore old exitCode
-      p.exitCode = oldExitCode
+      p.exitCode = -3
+      OSError()
     result = int(p.exitCode)
 
   proc peekExitCode(p: PProcess): int =
-    var b = waitPid(p.id, p.exitCode, WNOHANG) == int(p.id)
+    if p.exitCode != -3: return p.exitCode
+    var ret = waitPid(p.id, p.exitCode, WNOHANG)
+    var b = ret == int(p.id)
     if b: result = -1
-    elif p.exitCode == -3: result = -1
+    if p.exitCode == -3: result = -1
     else: result = p.exitCode
 
   proc inputStream(p: PProcess): PStream =
