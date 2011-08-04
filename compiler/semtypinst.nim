@@ -14,10 +14,10 @@ import ast, astalgo, msgs, types, semdata
 proc checkConstructedType*(info: TLineInfo, t: PType) = 
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     LocalError(info, errInvalidPragmaX, "acyclic")
-  elif computeSize(t) < 0: 
-    LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
   elif t.kind == tyVar and t.sons[0].kind == tyVar: 
     LocalError(info, errVarVarTypeNotAllowed)
+  elif computeSize(t) < 0:
+    LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
@@ -91,17 +91,16 @@ proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
   elif result.kind == tyGenericParam: 
     InternalError(cl.info, "substitution with generic parameter")
   
-proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
-  result = t
-  if t == nil: return 
-  case t.kind
-  of tyGenericParam: 
-    result = lookupTypeVar(cl, t)
-  of tyGenericInvokation: 
-    var body = t.sons[0]
-    if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
-    var header: PType = nil
-    for i in countup(1, sonsLen(t) - 1):
+proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
+  var body = t.sons[0]
+  if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
+  var header: PType = nil
+  for i in countup(1, sonsLen(t) - 1):
+    var x = replaceTypeVarsT(cl, t.sons[i])
+    if t.sons[i].kind == tyGenericParam: 
+      if header == nil: header = copyType(t, t.owner, false)
+      header.sons[i] = x
+    when false:
       var x: PType
       if t.sons[i].kind == tyGenericParam: 
         x = lookupTypeVar(cl, t.sons[i])
@@ -109,22 +108,33 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
         header.sons[i] = x
       else: 
         x = t.sons[i]
-      idTablePut(cl.typeMap, body.sons[i-1], x)
-    if header == nil: header = t
-    result = searchInstTypes(gInstTypes, header)
-    if result != nil: return 
-    result = newType(tyGenericInst, t.sons[0].owner)
-    for i in countup(0, sonsLen(t) - 1): 
-      # if one of the params is not concrete, we cannot do anything
-      # but we already raised an error!
-      addSon(result, header.sons[i])
-    idTablePut(gInstTypes, header, result)
-    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
-    newbody.flags = newbody.flags + t.flags + body.flags
-    newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-    addSon(result, newbody)   
-    #writeln(output, ropeToStr(Typetoyaml(newbody)));
-    checkConstructedType(cl.info, newbody)
+    idTablePut(cl.typeMap, body.sons[i-1], x)
+  if header == nil: header = t
+  result = searchInstTypes(gInstTypes, header)
+  if result != nil: return 
+  result = newType(tyGenericInst, t.sons[0].owner)
+  for i in countup(0, sonsLen(t) - 1): 
+    # if one of the params is not concrete, we cannot do anything
+    # but we already raised an error!
+    addSon(result, header.sons[i])
+  idTablePut(gInstTypes, header, result)
+  var newbody = ReplaceTypeVarsT(cl, lastSon(body))
+  newbody.flags = newbody.flags + t.flags + body.flags
+  newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
+  addSon(result, newbody)   
+  #writeln(output, ropeToStr(Typetoyaml(newbody)));
+  checkConstructedType(cl.info, newbody)
+    
+proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
+  result = t
+  if t == nil: return 
+  case t.kind
+  of tyGenericParam: 
+    result = lookupTypeVar(cl, t)
+    if result.kind == tyGenericInvokation:
+      result = handleGenericInvokation(cl, result)
+  of tyGenericInvokation: 
+    result = handleGenericInvokation(cl, t)
   of tyGenericBody: 
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
     result = ReplaceTypeVarsT(cl, lastSon(t))

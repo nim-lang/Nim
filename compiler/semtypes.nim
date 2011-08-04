@@ -227,9 +227,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var isConcrete = true # iterate over arguments:
   for i in countup(1, sonsLen(n)-1): 
     var elem = semTypeNode(c, n.sons[i], nil)
-    if elem.kind == tyGenericParam: isConcrete = false
+    if elem.kind in {tyGenericParam, tyGenericInvokation}: isConcrete = false
     addSon(result, elem)
-  if isConcrete: 
+  if isConcrete:
     if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
     result = instGenericContainer(c, n, result)
 
