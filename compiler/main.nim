@@ -34,7 +34,7 @@ type
 
   TFileModuleMap = seq[TFileModuleRec]
 
-var compMods: TFileModuleMap = @ []
+var compMods: TFileModuleMap = @[]
 
 proc registerModule(filename: string, module: PSym) = 
   # all compiled modules

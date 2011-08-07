@@ -1470,10 +1470,6 @@ type
     filename: CString
     len: int  # length of slots (when not debugging always zero)
 
-when defined(ecmaScript):
-  var
-    framePtr {.compilerproc.}: PFrame
-
 when not defined(ECMAScript):
   {.push stack_trace:off}
   proc add*(x: var string, y: cstring) =
@@ -1876,6 +1872,11 @@ elif defined(ecmaScript) or defined(NimrodVM):
   proc alloc(size: int): pointer = nil
   proc alloc0(size: int): pointer = nil
   proc realloc(p: Pointer, newsize: int): pointer = nil
+
+  proc allocShared(size: int): pointer = nil
+  proc allocShared0(size: int): pointer = nil
+  proc deallocShared(p: pointer) = nil
+  proc reallocShared(p: pointer, newsize: int): pointer = nil
 
   when defined(ecmaScript):
     include "system/ecmasys"

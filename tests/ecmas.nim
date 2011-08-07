@@ -1,3 +1,7 @@
+discard """
+  cmd: "nimrod js --hints:on $# $#"
+"""
+
 # This file tests the ECMAScript generator
 
 import
@@ -9,11 +13,8 @@ var
   inputElement {.importc: "document.form1.input1", nodecl.}: ref TElement
 
 proc OnButtonClick() {.exportc.} =
-  #var x = parseInt($inputElement.value)
-  #echo($(x * x))
-  var input = $inputElement.value
-  echo "Test"
-  echo "Hi, ", input
+  var x = parseInt($inputElement.value)
+  echo x*x
 
 proc OnLoad() {.exportc.} = 
   echo "Welcome! Please take your time to fill in this formular!"

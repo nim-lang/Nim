@@ -940,8 +940,8 @@ proc createVar(p: var TProc, typ: PType, indirect: bool): PRope =
     result = putToSeq("0", indirect)
   of tyFloat..tyFloat128: 
     result = putToSeq("0.0", indirect)
-  of tyRange: 
-    result = createVar(p, typ.sons[0], indirect)
+  of tyRange, tyGenericInst: 
+    result = createVar(p, lastSon(typ), indirect)
   of tySet: 
     result = toRope("{}")
   of tyBool: 
@@ -979,7 +979,7 @@ proc createVar(p: var TProc, typ: PType, indirect: bool): PRope =
   of tyVar, tyPtr, tyRef: 
     if mapType(t) == etyBaseIndex: result = putToSeq("[null, 0]", indirect)
     else: result = putToSeq("null", indirect)
-  of tySequence, tyString, tyCString, tyPointer: 
+  of tySequence, tyString, tyCString, tyPointer, tyProc: 
     result = putToSeq("null", indirect)
   else: 
     internalError("createVar: " & $t.kind)
