@@ -265,7 +265,7 @@ proc symStack(w: PRodWriter) =
         addToIndex(w.index, s.id, L) #intSetIncl(debugWritten, s.id);
         app(w.data, encodeSym(w, s))
         app(w.data, rodNL)
-        if sfInInterface in s.flags: 
+        if sfExported in s.flags: 
           appf(w.interf, "$1 $2" & rodNL, [encode(s.name.s), encodeInt(s.id)])
         if sfCompilerProc in s.flags: 
           appf(w.compilerProcs, "$1 $2" & rodNL, 
@@ -305,7 +305,7 @@ proc rawAddInterfaceSym(w: PRodWriter, s: PSym) =
 
 proc addInterfaceSym(w: PRodWriter, s: PSym) = 
   if w == nil: return 
-  if {sfInInterface, sfCompilerProc} * s.flags != {}: 
+  if {sfExported, sfCompilerProc} * s.flags != {}: 
     rawAddInterfaceSym(w, s)
 
 proc addStmt(w: PRodWriter, n: PNode) = 

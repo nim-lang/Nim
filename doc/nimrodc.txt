@@ -192,6 +192,85 @@ Example:
   embedsC()
 
 
+ImportCpp pragma
+----------------
+The `importcpp`:idx: pragma can be used to import `C++`:idx: methods. The
+generated code then uses the C++ method calling syntax: ``obj->method(arg)``.
+In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
+interfacing with libraries written in C++:
+
+.. code-block:: Nimrod
+  # Horrible example of how to interface with a C++ engine ... ;-)
+
+  {.link: "/usr/lib/libIrrlicht.so".}
+
+  {.emit: """
+  using namespace irr;
+  using namespace core;
+  using namespace scene;
+  using namespace video;
+  using namespace io;
+  using namespace gui;
+  """.}
+
+  const
+    irr = "<irrlicht/irrlicht.h>"
+
+  type
+    TIrrlichtDevice {.final, header: irr, importc: "IrrlichtDevice".} = object
+    PIrrlichtDevice = ptr TIrrlichtDevice
+
+  proc createDevice(): PIrrlichtDevice {.
+    header: irr, importc: "createDevice".}
+  proc run(device: PIrrlichtDevice): bool {.
+    header: irr, importcpp: "run".}
+  
+
+ImportObjC pragma
+-----------------
+The `importobjc`:idx: pragma can be used to import `Objective C`:idx: methods. 
+The generated code then uses the Objective C method calling 
+syntax: ``[obj method param1: arg]``.
+In addition with the ``header`` and ``emit`` pragmas this allows *sloppy*
+interfacing with libraries written in Objective C:
+
+.. code-block:: Nimrod
+  # horrible example of how to interface with GNUStep ...
+
+  {.passL: "-lobjc".}
+  {.emit: """
+  #include <objc/Object.h>
+  @interface Greeter:Object
+  {
+  }
+
+  - (void)greet:(long)x y:(long)dummy;
+  @end
+
+  #include <stdio.h>
+  @implementation Greeter
+
+  - (void)greet:(long)x y:(long)dummy
+  {
+	  printf("Hello, World!\n");
+  }
+  @end
+
+  #include <stdlib.h>
+  """.}
+
+  type
+    TId {.importc: "id", header: "<objc/Object.h>", final.} = distinct int
+
+  proc newGreeter: TId {.importobjc: "Greeter new", nodecl.}
+  proc greet(self: TId, x, y: int) {.importobjc: "greet", nodecl.}
+  proc free(self: TId) {.importobjc: "free", nodecl.}
+
+  var g = newGreeter()
+  g.greet(12, 34)
+  g.free()
+
+
 LineDir option
 --------------
 The `lineDir`:idx: option can be turned on or off. If turned on the

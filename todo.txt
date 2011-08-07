@@ -19,6 +19,7 @@ version 0.9.0
 - tests: run the GC tests
 - change overloading resolution
 - implement closures; implement proper coroutines
+- make exceptions compatible with C++ exceptions
 
 Bugs
 ----

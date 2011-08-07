@@ -199,12 +199,12 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdCompileToC
     wantFile(filename)
     CommandCompileToC(filename)
-  of "compiletocpp": 
+  of "cpp", "compiletocpp": 
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     wantFile(filename)
     CommandCompileToC(filename)
-  of "oc", "compiletooc":
+  of "objc", "compiletooc":
     extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
     wantFile(filename)

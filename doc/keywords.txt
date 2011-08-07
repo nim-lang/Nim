@@ -4,7 +4,7 @@ case cast const continue converter
 discard distinct div
 elif else end enum except
 finally for from generic
-if implies import in include is isnot iterator
+if import in include is isnot iterator
 lambda let
 macro method mod
 nil not notin

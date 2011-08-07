@@ -68,7 +68,8 @@ Options:
   AdvancedUsage = """
 Advanced commands:
   compileToC, cc            compile project with C code generator
-  compileToOC, oc           compile project to Objective C code
+  compileToCpp, cpp         compile project to C++ code
+  compileToOC, objc         compile project to Objective C code
   rst2html                  convert a reStructuredText file to HTML
   rst2tex                   convert a reStructuredText file to TeX
   run                       run the project (with Tiny C backend; buggy!)

@@ -187,11 +187,9 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 29 flags! 
+  TSymFlag* = enum    # already 29 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
-    sfStar,           # symbol has * visibility
-    sfMinus,          # symbol has - visibility
-    sfInInterface,    # symbol is in interface section declared
+    sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed 
                       # for symbol file generation; such symbols should always
                       # be written into the ROD file
@@ -221,7 +219,11 @@ type
     sfThreadVar,      # variable is a thread variable
     sfMerge,          # proc can be merged with itself
     sfDeadCodeElim,   # dead code elimination for the module is turned on
-    sfBorrow          # proc is borrowed
+    sfBorrow,         # proc is borrowed
+    sfInfixCall,      # symbol needs infix call syntax in target language;
+                      # for interfacing with C++, JS
+    sfNamedParamCall  # symbol needs named parameter call syntax in target
+                      # language; for interfacing with Objective C
 
   TSymFlags* = set[TSymFlag]
 

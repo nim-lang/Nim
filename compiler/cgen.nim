@@ -271,9 +271,10 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     var r = rdLoc(a)
     if not takeAddr: r = ropef("(*$1)", [r])
     var s = skipTypes(t, abstractInst)
-    while (s.kind == tyObject) and (s.sons[0] != nil):
-      app(r, ".Sup")
-      s = skipTypes(s.sons[0], abstractInst)
+    if gCmd != cmdCompileToCpp:
+      while (s.kind == tyObject) and (s.sons[0] != nil):
+        app(r, ".Sup")
+        s = skipTypes(s.sons[0], abstractInst)
     appcg(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
   of frEmbedded:
     # worst case for performance:

@@ -1349,10 +1349,10 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkNilLit: 
     if mapType(n.typ) == etyBaseIndex: 
       r.kind = etyBaseIndex
-      r.com = toRope("null")
-      r.res = toRope("0")
+      r.com = toRope"null"
+      r.res = toRope"0"
     else: 
-      r.res = toRope("null")
+      r.res = toRope"null"
   of nkStrLit..nkTripleStrLit: 
     if skipTypes(n.typ, abstractVarRange).kind == tyString: 
       useMagic(p, "cstrToNimstr")
@@ -1361,11 +1361,11 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
       r.res = makeCString(n.strVal)
   of nkFloatLit..nkFloat64Lit: 
     f = n.floatVal
-    if f != f: r.res = toRope("NaN")
-    elif f == 0.0: r.res = toRope("0.0")
+    if f != f: r.res = toRope"NaN"
+    elif f == 0.0: r.res = toRope"0.0"
     elif f == 0.5 * f: 
-      if f > 0.0: r.res = toRope("Infinity")
-      else: r.res = toRope("-Infinity")
+      if f > 0.0: r.res = toRope"Infinity"
+      else: r.res = toRope"-Infinity"
     else: r.res = toRope(f.ToStrMaxPrecision)
   of nkBlockExpr: genBlock(p, n, r)
   of nkIfExpr: genIfExpr(p, n, r)

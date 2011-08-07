@@ -1,3 +1,7 @@
+discard """
+  cmd: "nimrod cc --hints:on --threads:on $# $#"
+"""
+
 type
   TThreadFuncArgs[T] = object of TObject
     a: proc(): T {.thread.}

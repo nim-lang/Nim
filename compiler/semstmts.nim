@@ -212,7 +212,7 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
   
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
-    result = semIdentWithPragma(c, kind, n, {sfStar, sfMinus})
+    result = semIdentWithPragma(c, kind, n, {sfExported})
     incl(result.flags, sfGlobal)
   else: 
     result = semIdentWithPragma(c, kind, n, {})
@@ -257,7 +257,6 @@ proc semVar(c: PContext, n: PNode): PNode =
       addSon(result, b)
     for j in countup(0, length-3): 
       var v = semIdentDef(c, a.sons[j], skVar)
-      if v.flags * {sfStar, sfMinus} != {}: incl(v.flags, sfInInterface)
       addInterfaceDecl(c, v)
       if a.kind != nkVarTuple: 
         v.typ = typ
@@ -300,7 +299,6 @@ proc semConst(c: PContext, n: PNode): PNode =
         GlobalError(a.info, errXisNoType, typeToString(typ))
     v.typ = typ
     v.ast = def               # no need to copy
-    if v.flags * {sfStar, sfMinus} != {}: incl(v.flags, sfInInterface)
     addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
     addSon(b, newSymNode(v))
@@ -463,7 +461,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if a.kind != nkTypeDef: IllFormedAst(a)
     checkSonsLen(a, 3)
     var s = semIdentDef(c, a.sons[0], skType)
-    if s.flags * {sfStar, sfMinus} != {}: incl(s.flags, sfInInterface)
     s.typ = newTypeS(tyForward, c)
     s.typ.sym = s             # process pragmas:
     if a.sons[0].kind == nkPragmaExpr:
@@ -619,7 +616,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   checkSonsLen(n, codePos + 1)
   var s = semIdentDef(c, n.sons[0], kind)
   n.sons[namePos] = newSymNode(s)
-  if sfStar in s.flags: incl(s.flags, sfInInterface)
   s.ast = n
   pushOwner(s)
   openScope(c.tab)

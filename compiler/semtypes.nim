@@ -50,8 +50,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         x = counter
       else:
         x = getOrdValue(v)
-      if i != 1: 
-        if (x != counter): incl(result.flags, tfEnumHasHoles)
+      if i != 1:
+        if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter: 
           GlobalError(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
       e.ast = strVal # might be nil
@@ -63,9 +63,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     else: illFormedAst(n)
     e.typ = result
     e.position = int(counter)
-    if (result.sym != nil) and (sfInInterface in result.sym.flags): 
+    if result.sym != nil and sfExported in result.sym.flags: 
       incl(e.flags, sfUsed)   # BUGFIX
-      incl(e.flags, sfInInterface) # BUGFIX
+      incl(e.flags, sfExported) # BUGFIX
       StrTableAdd(c.module.tab, e) # BUGFIX
     addSon(result.n, newSymNode(e))
     addDeclAt(c, e, c.tab.tos - 1)
@@ -240,15 +240,13 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
     if sonsLen(n) == 2 and n.sons[0].kind == nkIdent: 
       result = newSymS(kind, n.sons[1], c)
       var v = n.sons[0].ident
-      if (sfStar in allowed) and (v.id == ord(wStar)): 
-        incl(result.flags, sfStar)
-      elif (sfMinus in allowed) and (v.id == ord(wMinus)): 
-        incl(result.flags, sfMinus)
-      else: 
+      if sfExported in allowed and v.id == ord(wStar): 
+        incl(result.flags, sfExported)
+      else:
         LocalError(n.sons[0].info, errInvalidVisibilityX, v.s)
-    else: 
+    else:
       illFormedAst(n)
-  else: 
+  else:
     result = newSymS(kind, n, c)
   
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
@@ -422,7 +420,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       GlobalError(n.info, errTypeExpected)
     typ = semTypeNode(c, n.sons[length-2], nil)
     for i in countup(0, sonsLen(n) - 3): 
-      f = semIdentWithPragma(c, skField, n.sons[i], {sfStar, sfMinus})
+      f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
       f.typ = typ
       f.position = pos
       if (rectype != nil) and ({sfImportc, sfExportc} * rectype.flags != {}) and
