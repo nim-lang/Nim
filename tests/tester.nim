@@ -301,6 +301,7 @@ proc main(action: string) =
   of "compile":
     var compileRes = initResults()
     compile(compileRes, "tests/accept/compile/t*.nim", options)
+    compile(compileRes, "tests/ecmas.nim", options)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)
