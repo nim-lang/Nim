@@ -158,15 +158,13 @@ proc transformToExpr(n: PNode): PNode =
     nil
 
 proc semTemplateDef(c: PContext, n: PNode): PNode = 
-  var 
-    s: PSym
+  var s: PSym
   if c.p.owner.kind == skModule: 
-    s = semIdentVis(c, skTemplate, n.sons[0], {sfStar})
+    s = semIdentVis(c, skTemplate, n.sons[0], {sfExported})
     incl(s.flags, sfGlobal)
-  else: 
+  else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
-  if sfStar in s.flags: 
-    incl(s.flags, sfInInterface) # check parameter list:
+  # check parameter list:
   pushOwner(s)
   openScope(c.tab)
   n.sons[namePos] = newSymNode(s) # check that no pragmas exist:

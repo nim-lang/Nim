@@ -22,7 +22,7 @@ const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wPure, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
-    wBorrow, wExtern, wImportCompilerProc, wThread}
+    wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
@@ -86,6 +86,18 @@ proc processImportCompilerProc(s: PSym, extname: string) =
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
   incl(s.loc.flags, lfImportCompilerProc)
+
+proc processImportCpp(s: PSym, extname: string) =
+  setExternName(s, extname)
+  incl(s.flags, sfImportc)
+  incl(s.flags, sfInfixCall)
+  excl(s.flags, sfForward)
+
+proc processImportObjC(s: PSym, extname: string) =
+  setExternName(s, extname)
+  incl(s.flags, sfImportc)
+  incl(s.flags, sfNamedParamCall)
+  excl(s.flags, sfForward)
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr: 
@@ -410,7 +422,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wImportCompilerProc:
             processImportCompilerProc(sym, getOptionalStr(c, it, sym.name.s))
           of wExtern: setExternName(sym, expectStrLit(c, it))
-          of wAlign: 
+          of wImportCpp:
+            processImportCpp(sym, getOptionalStr(c, it, sym.name.s))
+          of wImportObjC:
+            processImportObjC(sym, getOptionalStr(c, it, sym.name.s))
+          of wAlign:
             if sym.typ == nil: invalidPragma(it)
             var align = expectIntLit(c, it)
             if not IsPowerOfTwo(align) and align != 0: 

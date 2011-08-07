@@ -218,10 +218,10 @@ proc genBreakStmt(p: BProc, t: PNode) =
   appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.blocks[idx].id)])
 
 proc getRaiseFrmt(p: BProc): string = 
-  if gCmd == cmdCompileToCpp: 
-    result = "throw #nimException($1, $2);$n"
-  else: 
-    result = "#raiseException((#E_Base*)$1, $2);$n"
+  #if gCmd == cmdCompileToCpp: 
+  #  result = "throw #nimException($1, $2);$n"
+  #else: 
+  result = "#raiseException((#E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) = 
   if t.sons[0].kind != nkEmpty: 
@@ -234,10 +234,10 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   else: 
     genLineDir(p, t)
     # reraise the last exception:
-    if gCmd == cmdCompileToCpp: 
-      appcg(p, cpsStmts, "throw;" & tnl)
-    else: 
-      appcg(p, cpsStmts, "#reraiseException();" & tnl)
+    #if gCmd == cmdCompileToCpp: 
+    #  appcg(p, cpsStmts, "throw;" & tnl)
+    #else: 
+    appcg(p, cpsStmts, "#reraiseException();" & tnl)
 
 proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc, 
                           rangeFormat, eqFormat: TFormatStr, labl: TLabel) = 
@@ -491,72 +491,6 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   if rethrowFlag != nil: 
     appf(p.s[cpsStmts], "if ($1) { throw; }$n", [rethrowFlag])
   
-proc genTryStmtCpp2(p: BProc, t: PNode) = 
-  # code to generate:
-  #
-  #  TSafePoint sp;
-  #  pushSafePoint(&sp);
-  #  sp.status = setjmp(sp.context);
-  #  if (sp.status == 0) {
-  #    myDiv(4, 9);
-  #    popSafePoint();
-  #  } else {
-  #    popSafePoint();
-  #    /* except DivisionByZero: */
-  #    if (sp.status == DivisionByZero) {
-  #      printf('Division by Zero\n');
-  #      clearException();
-  #    } else {
-  #      clearException();
-  #    }
-  #  }
-  #  /* finally: */
-  #  printf('fin!\n');
-  #  if (exception not cleared)
-  #    propagateCurrentException();
-  genLineDir(p, t)
-  var safePoint = getTempName()
-  discard cgsym(p.module, "E_Base")
-  appcg(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
-  appcg(p, cpsStmts, "#pushSafePoint(&$1);$n" &
-        "$1.status = setjmp($1.context);$n", [safePoint])
-  if optStackTrace in p.Options: 
-    appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
-  appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
-  var length = sonsLen(t)
-  add(p.nestedTryStmts, t)
-  genStmts(p, t.sons[0])
-  appcg(p, cpsStmts, "#popSafePoint();$n} else {$n#popSafePoint();$n")
-  var i = 1
-  while (i < length) and (t.sons[i].kind == nkExceptBranch): 
-    var blen = sonsLen(t.sons[i])
-    if blen == 1: 
-      # general except section:
-      if i > 1: app(p.s[cpsStmts], "else {" & tnl)
-      genStmts(p, t.sons[i].sons[0])
-      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();$n", [safePoint])
-      if i > 1: app(p.s[cpsStmts], '}' & tnl)
-    else: 
-      var orExpr: PRope = nil
-      for j in countup(0, blen - 2): 
-        assert(t.sons[i].sons[j].kind == nkType)
-        if orExpr != nil: app(orExpr, "||")
-        appcg(p.module, orExpr, 
-              "#isObj(#getCurrentException()->Sup.m_type, $1)", 
-              [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
-      if i > 1: app(p.s[cpsStmts], "else ")
-      appf(p.s[cpsStmts], "if ($1) {$n", [orExpr])
-      genStmts(p, t.sons[i].sons[blen-1]) 
-      # code to clear the exception:
-      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();}$n",
-           [safePoint])
-    inc(i)
-  app(p.s[cpsStmts], '}' & tnl) # end of if statement
-  discard pop(p.nestedTryStmts)
-  if i < length and t.sons[i].kind == nkFinally: 
-    genStmts(p, t.sons[i].sons[0])
-  appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
-  
 proc genTryStmt(p: BProc, t: PNode) = 
   # code to generate:
   #
@@ -655,7 +589,7 @@ proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t.sons[1])
   if p.prc == nil: 
     # top level emit pragma?
-    app(p.module.s[cfsProcs], s)
+    app(p.module.s[cfsProcHeaders], s)
   else:
     app(p.s[cpsStmts], s)
 
@@ -768,8 +702,9 @@ proc genStmts(p: BProc, t: PNode) =
     initLocExpr(p, t.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, t)
   of nkTryStmt: 
-    if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)
-    else: genTryStmt(p, t)
+    #if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)
+    #else: 
+    genTryStmt(p, t)
   of nkRaiseStmt: genRaiseStmt(p, t)
   of nkTypeSection: 
     # we have to emit the type information for object types here to support

@@ -55,7 +55,7 @@ proc CloseScope*(tab: var TSymTab) =
   while s != nil:
     if sfForward in s.flags: 
       LocalError(s.info, errImplOfXexpected, getSymRepr(s))
-    elif {sfUsed, sfInInterface} * s.flags == {} and optHints in s.options: 
+    elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options: 
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
@@ -74,7 +74,7 @@ proc addDeclAt*(c: PContext, sym: PSym, at: Natural) =
     LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
-  if (sfInInterface in sym.flags): 
+  if sfExported in sym.flags:
     # add to interface:
     if c.module == nil: InternalError(sym.info, "AddInterfaceDeclAux")
     StrTableAdd(c.module.tab, sym)

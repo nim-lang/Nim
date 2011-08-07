@@ -76,15 +76,15 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.baseTypeMatch = b.baseTypeMatch
   copyIdTable(a.bindings, b.bindings)
 
-proc cmpCandidates*(a, b: TCandidate): int = 
+proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
-  if result != 0: return 
+  if result != 0: return
   result = a.genericMatches - b.genericMatches
-  if result != 0: return 
+  if result != 0: return
   result = a.subtypeMatches - b.subtypeMatches
-  if result != 0: return 
+  if result != 0: return
   result = a.intConvMatches - b.intConvMatches
-  if result != 0: return 
+  if result != 0: return
   result = a.convMatches - b.convMatches
 
 proc writeMatches(c: TCandidate) = 
@@ -397,13 +397,13 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
             InternalError("wrong instantiated type!")
           if typeRel(mapping, f.sons[i], a.sons[i]) < isGeneric: return 
         result = isGeneric
-    else: 
+    else:
       result = typeRel(mapping, f.sons[0], a)
-      if result != isNone: 
+      if result != isNone:
         # we steal the generic parameters from the tyGenericBody:
-        for i in countup(1, sonsLen(f) - 1): 
+        for i in countup(1, sonsLen(f) - 1):
           var x = PType(idTableGet(mapping, f.sons[0].sons[i - 1]))
-          if (x == nil) or (x.kind == tyGenericParam): 
+          if x == nil or x.kind == tyGenericParam:
             InternalError("wrong instantiated type!")
           idTablePut(mapping, f.sons[i], x)
   of tyGenericParam: 
@@ -522,7 +522,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
                      arg: PNode): PNode = 
-  if (arg == nil) or (arg.kind != nkSymChoice): 
+  if arg == nil or arg.kind != nkSymChoice: 
     result = ParamTypesMatchAux(c, m, f, a, arg)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is
@@ -555,8 +555,6 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
               x = z
             elif cmp == 0: 
               y = z           # z is as good as x
-            else: 
-              nil
     if x.state == csEmpty: 
       result = nil
     elif (y.state == csMatch) and (cmpCandidates(x, y) == 0): 
@@ -620,7 +618,7 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
       m.baseTypeMatch = false
       var arg = ParamTypesMatch(c, m, formal.typ, 
                                       n.sons[a].typ, n.sons[a].sons[1])
-      if (arg == nil): 
+      if arg == nil: 
         m.state = csNoMatch
         return 
       if m.baseTypeMatch: 
