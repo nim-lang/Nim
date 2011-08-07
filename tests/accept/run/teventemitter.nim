@@ -17,10 +17,12 @@ proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs)) =
   #append(emitter.events[event], func)
   #adds the function to the event's list. I get a error here too.
 
-proc initEmitter(emitter: TEventEmitter) =
+proc initEmitter(emitter: var TEventEmitter) =
   emitter.events = initTable[string, TDoublyLinkedList[proc(e: TEventArgs)]]()
 
-var ee: TEventEmitter
+var 
+  ee: TEventEmitter
+  args: TEventArgs
 ee.on("print", proc(e: TEventArgs) = echo("pie"))
-ee.emit("print")
+ee.emit("print", args)
 

@@ -231,7 +231,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   assert(f != nil)
   assert(a != nil)
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar}).kind notin {tyGenericBody, tyGenericInvokation}: 
+      skipTypes(f, {tyVar}).kind notin {
+        tyGenericBody, tyGenericInvokation, tyGenericParam}: 
     return typeRel(mapping, f, lastSon(a))
   if a.kind == tyVar and f.kind != tyVar: 
     return typeRel(mapping, f, a.sons[0])
