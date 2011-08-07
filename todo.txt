@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- fix serious bug that keeps teventemitter from compiling
 - ``var T`` as a return type: add ``modGet`` for generics
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
