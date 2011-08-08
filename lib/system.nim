@@ -215,6 +215,8 @@ type
 
   EInvalidValue* = object of ESynch     ## is the exception class for string
                                         ## and object conversion errors.
+  EInvalidKey* = object of EInvalidValue ## is the exception class if a key
+                                         ## cannot be found in a table.
 
   EOutOfMemory* = object of ESystem     ## is the exception class for
                                         ## unsuccessful attempts to allocate

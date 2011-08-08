@@ -121,10 +121,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry)
   n.sons[genericParamsPos] = ast.emptyNode
   # semantic checking for the parameters:
-  if n.sons[paramsPos].kind != nkEmpty:
+  if n.sons[paramsPos].kind != nkEmpty: 
     removeDefaultParamValues(n.sons[ParamsPos])
     semParamList(c, n.sons[ParamsPos], nil, result)
-    #echo "generated this return type: ", renderTree(n.sons[ParamsPos])
     addParams(c, result.typ.n)
   else: 
     result.typ = newTypeS(tyProc, c)

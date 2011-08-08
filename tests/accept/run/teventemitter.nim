@@ -1,11 +1,14 @@
-import tables
-import lists
+discard """
+  output: "pie"
+"""
+
+import tables, lists
+
 type
   TEventArgs = object of TObject
-type
   TEventEmitter = object of TObject
     events*: TTable[string, TDoublyLinkedList[proc(e: TEventArgs)]]
-        
+
 proc emit*(emitter: TEventEmitter, event: string, args: TEventArgs) =
   for func in nodes(emitter.events[event]):
     func.value(args) #call function with args.
@@ -13,9 +16,8 @@ proc emit*(emitter: TEventEmitter, event: string, args: TEventArgs) =
 proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs)) =
   if not hasKey(emitter.events, event):
     var list: TDoublyLinkedList[proc(e: TEventArgs)]
-    add(emitter.events,event,list) #if not, add it.
-  #append(emitter.events[event], func)
-  #adds the function to the event's list. I get a error here too.
+    add(emitter.events, event, list) #if not, add it.
+  append(emitter.events.mget(event), func)
 
 proc initEmitter(emitter: var TEventEmitter) =
   emitter.events = initTable[string, TDoublyLinkedList[proc(e: TEventArgs)]]()
@@ -23,6 +25,7 @@ proc initEmitter(emitter: var TEventEmitter) =
 var 
   ee: TEventEmitter
   args: TEventArgs
+initEmitter(ee)
 ee.on("print", proc(e: TEventArgs) = echo("pie"))
 ee.emit("print", args)
 

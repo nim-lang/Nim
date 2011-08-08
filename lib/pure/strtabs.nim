@@ -92,13 +92,13 @@ proc `[]`*(t: PStringTable, key: string): string {.rtl, extern: "nstGet".} =
   if index >= 0: result = t.data[index].val
   else: result = ""
 
-proc modGet*(t: PStringTable, key: string): var string {.
+proc mget*(t: PStringTable, key: string): var string {.
              rtl, extern: "nstTake".} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
-  ## ``EInvalidValue`` exception is raised.
+  ## ``EInvalidKey`` exception is raised.
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: raise newException(EInvalidValue, "key does not exist: " & key)
+  else: raise newException(EInvalidKey, "key does not exist: " & key)
 
 proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
@@ -221,6 +221,6 @@ when isMainModule:
   assert x["k"] == "v"
   assert x["11"] == "22"
   assert x["565"] == "67"
-  x.modGet("11") = "23"
+  x.mget("11") = "23"
   assert x["11"] == "23"
 

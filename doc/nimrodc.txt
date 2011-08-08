@@ -225,6 +225,9 @@ interfacing with libraries written in C++:
   proc run(device: PIrrlichtDevice): bool {.
     header: irr, importcpp: "run".}
   
+The compiler needs to be told to generate C++ (command ``cpp``) for 
+this to work.
+
 
 ImportObjC pragma
 -----------------
@@ -269,6 +272,9 @@ interfacing with libraries written in Objective C:
   var g = newGreeter()
   g.greet(12, 34)
   g.free()
+
+The compiler needs to be told to generate Objective C (command ``objc``) for 
+this to work.
 
 
 LineDir option

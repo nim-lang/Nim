@@ -18,7 +18,7 @@ const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
 
-const 
+const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wPure, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
@@ -26,9 +26,11 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern}
+    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
+    wImportcpp, wImportobjc}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
-    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern}
+    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
+    wImportcpp, wImportobjc}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
@@ -37,14 +39,17 @@ const
     wInfChecks, wNanChecks, wPragma, wEmit, wUnroll, wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
-    wDeprecated, wExtern, wThread}
+    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow}
-  fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern}
+    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
+    wImportcpp, wImportobjc}
+  fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
+    wImportcpp, wImportobjc}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
-    wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern}
+    wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
+    wImportcpp, wImportobjc}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern}
+    wExtern, wImportcpp, wImportobjc}
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
                       wThread}
 
