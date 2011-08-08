@@ -1,18 +1,18 @@
 Version 0.8.14
 ==============
 
-- ``var T`` as a return type: add ``modGet`` for generics
+- test ``m*`` for generics; document 'm' convention
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
 - export re-entrant and non-reentrant locks and condition vars; threads should
   not have an inbox per default
-
+  - add --deadlock_prevention:on|off switch? timeout for locks?
 
 version 0.9.0
 =============
 
-- add --deadlock_prevention:on|off switch? timeout for locks?
+- unsigned ints and bignums
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run the GC tests

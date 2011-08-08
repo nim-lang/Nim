@@ -11,17 +11,12 @@
 ## a mapping from keys to values.
 ##
 ## **Note:** The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the hash table. If you are overly concerned
-## with efficiency and know what you do (!), you can define the symbol
-## ``shallowADT`` to compile a version that uses shallow copies instead.
+## that ``=`` performs a copy of the hash table.
 
 import
   hashes, math
 
-when defined(shallowADT):
-  {.pragma: myShallow, shallow.}
-else:
-  {.pragma: myShallow.}
+{.pragma: myShallow.}
 
 type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
@@ -40,6 +35,12 @@ iterator pairs*[A, B](t: TTable[A, B]): tuple[key: A, val: B] =
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
 
+iterator mpairs*[A, B](t: var TTable[A, B]): tuple[key: A, val: var B] =
+  ## iterates over any (key, value) pair in the table `t`. The values
+  ## can be modified.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+
 iterator keys*[A, B](t: TTable[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
@@ -47,6 +48,11 @@ iterator keys*[A, B](t: TTable[A, B]): A =
 
 iterator values*[A, B](t: TTable[A, B]): B =
   ## iterates over any value in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].val
+
+iterator mvalues*[A, B](t: var TTable[A, B]): var B =
+  ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if t.data[h].slot == seFilled: yield t.data[h].val
 
@@ -86,6 +92,13 @@ proc `[]`*[A, B](t: TTable[A, B], key: A): B =
   ## exists.
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
+
+proc mget*[A, B](t: var TTable[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  var index = RawGet(t, key)
+  if index >= 0: result = t.data[index].val
+  else: raise newException(EInvalidKey, "key not found: " & $key)
 
 proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -197,6 +210,12 @@ iterator pairs*[A, B](t: TOrderedTable[A, B]): tuple[key: A, val: B] =
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
+iterator mpairs*[A, B](t: var TOrderedTable[A, B]): tuple[key: A, val: var B] =
+  ## iterates over any (key, value) pair in the table `t` in insertion
+  ## order. The values can be modified.
+  forAllOrderedPairs:
+    yield (t.data[h].key, t.data[h].val)
+
 iterator keys*[A, B](t: TOrderedTable[A, B]): A =
   ## iterates over any key in the table `t` in insertion order.
   forAllOrderedPairs:
@@ -204,6 +223,12 @@ iterator keys*[A, B](t: TOrderedTable[A, B]): A =
 
 iterator values*[A, B](t: TOrderedTable[A, B]): B =
   ## iterates over any value in the table `t` in insertion order.
+  forAllOrderedPairs:
+    yield t.data[h].val
+
+iterator mvalues*[A, B](t: var TOrderedTable[A, B]): var B =
+  ## iterates over any value in the table `t` in insertion order. The values
+  ## can be modified.
   forAllOrderedPairs:
     yield t.data[h].val
 
@@ -217,6 +242,13 @@ proc `[]`*[A, B](t: TOrderedTable[A, B], key: A): B =
   ## exists.
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
+
+proc mget*[A, B](t: var TOrderedTable[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  var index = RawGet(t, key)
+  if index >= 0: result = t.data[index].val
+  else: raise newException(EInvalidKey, "key not found: " & $key)
 
 proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -288,6 +320,12 @@ iterator pairs*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
+iterator mpairs*[A](t: var TCountTable[A]): tuple[key: A, val: var int] =
+  ## iterates over any (key, value) pair in the table `t`. The values can
+  ## be modified.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+
 iterator keys*[A](t: TCountTable[A]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
@@ -295,6 +333,11 @@ iterator keys*[A](t: TCountTable[A]): A =
 
 iterator values*[A](t: TCountTable[A]): int =
   ## iterates over any value in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].val != 0: yield t.data[h].val
+
+iterator mvalues*[A](t: TCountTable[A]): var int =
+  ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
@@ -311,6 +354,13 @@ proc `[]`*[A](t: TCountTable[A], key: A): int =
   ## exists.
   var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
+
+proc mget*[A](t: var TCountTable[A], key: A): var int =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
+  var index = RawGet(t, key)
+  if index >= 0: result = t.data[index].val
+  else: raise newException(EInvalidKey, "key not found: " & $key)
 
 proc hasKey*[A](t: TCountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.

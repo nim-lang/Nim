@@ -10,17 +10,12 @@
 ## The ``sets`` module implements an efficient hash set and ordered hash set.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the hash table. If you are overly concerned
-## with efficiency and know what you do (!), you can define the symbol
-## ``shallowADT`` to compile a version that uses shallow copies instead.
+## that ``=`` performs a copy of the set.
 
 import
   os, hashes, math
 
-when defined(shallowADT):
-  {.pragma: myShallow, shallow.}
-else:
-  {.pragma: myShallow.}
+{.pragma: myShallow.}
 
 type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
