@@ -2095,9 +2095,12 @@ used to access a location beyond its lifetime:
 For iterators, a component of a tuple return type can have a ``var`` type too: 
 
 .. code-block:: nimrod
-  iterator modPairs(a: var seq[string]): tuple[key: int, val: var string] =
+  iterator mpairs(a: var seq[string]): tuple[key: int, val: var string] =
     for i in 0..a.high:
       yield (i, a[i])
+
+In the standard library every name of a routine that returns a ``var`` type
+starts with the prefix ``m`` per convention.
 
 
 Overloading of the subscript operator
@@ -2331,6 +2334,7 @@ Example:
   add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
   add(root, newNode("world")) # ``add``
   for str in inorder(root):
+
     writeln(stdout, str)
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types with

@@ -178,12 +178,11 @@ proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
       if e.kind == tyVar:
         if n.sons[0].kind == nkPar:
           n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
-        elif n.sons[0].kind == nkHiddenSubConv and 
+        elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and 
              n.sons[0].sons[1].kind == nkPar:
           var a = n.sons[0].sons[1]
           a.sons[i] = takeImplicitAddr(c, a.sons[i])
         else:
-          debug n.sons[0]
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: nil
   

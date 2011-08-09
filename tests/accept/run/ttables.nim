@@ -60,6 +60,9 @@ block orderedTableTest1:
     assert val == data[i][1]
     inc(i)
 
+  for key, val in mpairs(t): val = 99
+  for val in mvalues(t): assert val == 99
+
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
