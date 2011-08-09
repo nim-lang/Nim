@@ -182,12 +182,12 @@ proc CommandSuggest(filename: string) =
   compileProject(filename)
 
 proc WantFile(filename: string) = 
-  if filename == "": 
+  if filename.len == 0: 
     Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
   
 proc MainCommand(cmd, filename: string) = 
   appendStr(searchPaths, options.libpath)
-  if filename != "": 
+  if filename.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, splitFile(filename).dir)
   setID(100)
@@ -203,11 +203,13 @@ proc MainCommand(cmd, filename: string) =
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     wantFile(filename)
+    DefineSymbol("cpp")
     CommandCompileToC(filename)
   of "objc", "compiletooc":
     extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
     wantFile(filename)
+    DefineSymbol("objc")
     CommandCompileToC(filename)
   of "run":
     gCmd = cmdRun

@@ -14,16 +14,7 @@ import
 
 var gSymbols*: TStrTable
 
-proc InitDefines*()
-proc DeinitDefines*()
-proc DefineSymbol*(symbol: string)
-proc UndefSymbol*(symbol: string)
-proc isDefined*(symbol: PIdent): bool
-proc ListSymbols*()
-proc countDefinedSymbols*(): int
-# implementation
-
-proc DefineSymbol(symbol: string) = 
+proc DefineSymbol*(symbol: string) = 
   var i = getIdent(symbol)
   var sym = StrTableGet(gSymbols, i)
   if sym == nil: 
@@ -33,15 +24,15 @@ proc DefineSymbol(symbol: string) =
     StrTableAdd(gSymbols, sym)
   sym.position = 1
 
-proc UndefSymbol(symbol: string) = 
+proc UndefSymbol*(symbol: string) = 
   var sym = StrTableGet(gSymbols, getIdent(symbol))
   if sym != nil: sym.position = 0
   
-proc isDefined(symbol: PIdent): bool = 
+proc isDefined*(symbol: PIdent): bool = 
   var sym = StrTableGet(gSymbols, symbol)
-  result = (sym != nil) and (sym.position == 1)
+  result = sym != nil and sym.position == 1
 
-proc ListSymbols() = 
+proc ListSymbols*() = 
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)
   OutWriteln("-- List of currently defined symbols --")
@@ -50,7 +41,7 @@ proc ListSymbols() =
     s = nextIter(it, gSymbols)
   OutWriteln("-- End of list --")
 
-proc countDefinedSymbols(): int = 
+proc countDefinedSymbols*(): int = 
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)
   result = 0
@@ -58,7 +49,7 @@ proc countDefinedSymbols(): int =
     if s.position == 1: inc(result)
     s = nextIter(it, gSymbols)
 
-proc InitDefines() = 
+proc InitDefines*() = 
   initStrTable(gSymbols)
   DefineSymbol("nimrod") # 'nimrod' is always defined
   
@@ -98,5 +89,3 @@ proc InitDefines() =
   DefineSymbol(cpu[targetCPU].name)
   DefineSymbol(platform.os[targetOS].name)
 
-proc DeinitDefines() = 
-  nil
