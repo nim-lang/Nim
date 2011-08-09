@@ -1,7 +1,7 @@
 Version 0.8.14
 ==============
 
-- test ``m*`` for generics; document 'm' convention
+- test ``m*`` for generics
 - optional indentation for 'case' statement
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
