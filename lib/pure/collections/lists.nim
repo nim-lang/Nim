@@ -35,7 +35,23 @@ type
   
   TDoublyLinkedRing* {.pure, final.}[T] = object ## a doubly linked ring
     head*: PDoublyLinkedNode[T]
-    
+
+proc initSinglyLinkedList*[T](): TSinglyLinkedList[T] =
+  ## creates a new singly linked list that is empty.
+  nil
+
+proc initDoublyLinkedList*[T](): TDoublyLinkedList[T] =
+  ## creates a new doubly linked list that is empty.
+  nil
+
+proc initSinglyLinkedRing*[T](): TSinglyLinkedRing[T] =
+  ## creates a new singly linked ring that is empty.
+  nil
+
+proc initDoublyLinkedRing*[T](): TDoublyLinkedRing[T] =
+  ## creates a new doubly linked ring that is empty.
+  nil
+
 proc newDoublyLinkedNode*[T](value: T): PDoublyLinkedNode[T] =
   ## creates a new doubly linked node with the given `value`.
   new(result)

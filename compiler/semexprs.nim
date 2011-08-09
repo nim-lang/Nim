@@ -883,6 +883,21 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
+proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
+  if sonsLen(n) == 2:
+    var a = c.semConstExpr(c, n.sons[1])
+    if a.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
+      GlobalError(a.info, errStringLiteralExpected)
+    try:
+      var content = readFile(a.strVal)
+      result = newStrNode(nkStrLit, content)
+      result.typ = getSysType(tyString)
+      result.info = n.info
+    except EIO:
+      GlobalError(a.info, errCannotOpenFile, a.strVal)
+  else:
+    result = semDirectOp(c, n, flags)
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
   result = n
@@ -905,6 +920,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = semAsgn(c, result)
     else:
       result = semDirectOp(c, n, flags)
+  of mSlurp: result = semSlurp(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 

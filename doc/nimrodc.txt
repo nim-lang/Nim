@@ -226,7 +226,8 @@ interfacing with libraries written in C++:
     header: irr, importcpp: "run".}
   
 The compiler needs to be told to generate C++ (command ``cpp``) for 
-this to work.
+this to work. The conditional symbol ``cpp`` is defined when the compiler
+emits C++ code.
 
 
 ImportObjC pragma
@@ -274,7 +275,8 @@ interfacing with libraries written in Objective C:
   g.free()
 
 The compiler needs to be told to generate Objective C (command ``objc``) for 
-this to work.
+this to work. The conditional symbol ``objc`` is defined when the compiler
+emits Objective C code.
 
 
 LineDir option

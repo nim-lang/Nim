@@ -1974,4 +1974,10 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
   
+proc slurp*(filename: string): string {.magic: "Slurp".}
+  ## compiletime ``readFile`` proc for easy `resource`:idx: embedding:
+  ## .. code-block:: nimrod
+  ##
+  ##   const myResource = slurp"mydatafile.bin"
+  ##
 

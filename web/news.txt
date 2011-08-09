@@ -64,6 +64,7 @@ Library Additions
 - Added explicit channels for thread communication.
 - Added ``matchers`` module for email address etc. matching.
 - Added ``strutils.unindent``.
+- Added ``system.slurp`` for easy resource embedding.
 
 
 2011-07-10 Version 0.8.12 released
