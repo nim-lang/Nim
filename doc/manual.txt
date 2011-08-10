@@ -2511,7 +2511,7 @@ special ``:`` syntax:
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. 
 
-**Note:** Symbol binding rules for templates might change!
+**Note:** The symbol binding rules for templates might change!
 
 Symbol binding within templates happens after template instantation: 
 

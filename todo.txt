@@ -48,6 +48,17 @@ version 0.9.XX
 - checked exceptions
 - fix implicit generic routines
 - think about ``{:}.toTable[int, string]()``
+- nice idea: 
+
+  p(a, b): 
+    echo a
+    echo b
+  
+  is the same as:
+  
+  p(a, b, proc() =
+     echo a
+     echo b)
 
 Library
 -------
