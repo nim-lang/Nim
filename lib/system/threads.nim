@@ -306,7 +306,7 @@ else:
 
 proc running*[TMsg](t: TThread[TMsg]): bool {.inline.} = 
   ## returns true if `t` is running.
-  result = t.emptyFn == nil and t.dataFn == nil
+  result = t.emptyFn != nil or t.dataFn != nil
 
 proc joinThread*[TMsg](t: TThread[TMsg]) {.inline.} = 
   ## waits for the thread `t` to finish.
