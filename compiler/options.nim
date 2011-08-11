@@ -84,7 +84,7 @@ var
 proc FindFile*(f: string): string
 
 const 
-  genSubDir* = "nimcache"
+  defNimcacheDir* = "nimcache"
   NimExt* = "nim"
   RodExt* = "rod"
   HtmlExt* = "html"
@@ -104,6 +104,7 @@ var
   gConfigVars*: PStringTable
   libpath*: string = ""
   projectPath*: string = ""
+  nimcachePath*: string = ""
   gKeepComments*: bool = true # whether the parser needs to keep comments
   gImplicitMods*: TStringSeq = @[] # modules that are to be implicitly imported
 
@@ -154,16 +155,16 @@ proc removeTrailingDirSep*(path: string): string =
     result = substr(path, 0, len(path) - 2)
   else: 
     result = path
-  
+
 proc toGeneratedFile(path, ext: string): string = 
   var (head, tail) = splitPath(path)
   if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([projectPath, genSubDir, head, changeFileExt(tail, ext)])
+  result = joinPath([nimcachePath, head, changeFileExt(tail, ext)])
 
 proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string = 
   var (head, tail) = splitPath(f)
   if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = joinPath([projectPath, genSubDir, head])
+  var subdir = joinPath([nimcachePath, head])
   if createSubDir: 
     try: 
       createDir(subdir)

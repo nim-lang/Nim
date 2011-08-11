@@ -231,3 +231,12 @@ proc LoadConfig*(project: string) =
     var conffile = changeFileExt(project, "cfg")
     if existsFile(conffile): readConfigFile(conffile)
   
+  if existsConfigVar("nimrod.nimcachePath"):
+    var confNimcachePath = getConfigVar("nimrod.nimcachePath")
+    if isAbsolute(confNimcachePath):
+      nimcachePath = confNimcachePath.replace("%p", project)
+    else:
+      nimcachePath = joinPath([projectPath, confNimcachePath])
+  else:
+    nimcachePath = joinPath([projectPath, defNimcacheDir])
+
