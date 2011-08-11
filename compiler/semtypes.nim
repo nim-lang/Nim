@@ -335,27 +335,22 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
                       father: PNode, rectype: PSym)
 proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
                    father: PNode, rectype: PSym) = 
-  var 
-    covered: biggestint
-    chckCovered: bool
-    a, b: PNode
-    typ: PType
-  a = copyNode(n)
+  var a = copyNode(n)
   checkMinSonsLen(n, 2)
   semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
   if a.sons[0].kind != nkSym: 
     internalError("semRecordCase: dicriminant is no symbol")
   incl(a.sons[0].sym.flags, sfDiscriminant)
-  covered = 0
-  typ = skipTypes(a.sons[0].Typ, abstractVar)
+  var covered: biggestInt = 0
+  var typ = skipTypes(a.sons[0].Typ, abstractVar)
   if not isOrdinalType(typ): GlobalError(n.info, errSelectorMustBeOrdinal)
   if firstOrd(typ) < 0: 
     GlobalError(n.info, errOrdXMustNotBeNegative, a.sons[0].sym.name.s)
   if lengthOrd(typ) > 0x00007FFF: 
     GlobalError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
-  chckCovered = true
+  var chckCovered = true
   for i in countup(1, sonsLen(n) - 1): 
-    b = copyTree(n.sons[i])
+    var b = copyTree(n.sons[i])
     case n.sons[i].kind
     of nkOfBranch: 
       checkMinSonsLen(b, 2)
