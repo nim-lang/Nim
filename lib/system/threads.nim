@@ -290,6 +290,10 @@ template ThreadProcWrapperBody(closure: expr) =
   # However this is doomed to fail, because we already unmapped every heap
   # page!
   
+  # mark as not running anymore:
+  t.emptyFn = nil
+  t.dataFn = nil
+  
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TMsg](closure: pointer): int32 {.stdcall.} = 
@@ -299,6 +303,10 @@ else:
   proc threadProcWrapper[TMsg](closure: pointer) {.noconv.} = 
     ThreadProcWrapperBody(closure)
 {.pop.}
+
+proc running*[TMsg](t: TThread[TMsg]): bool {.inline.} = 
+  ## returns true if `t` is running.
+  result = t.emptyFn == nil and t.dataFn == nil
 
 proc joinThread*[TMsg](t: TThread[TMsg]) {.inline.} = 
   ## waits for the thread `t` to finish.
