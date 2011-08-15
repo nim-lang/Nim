@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains a few procedures to control the *terminal* 
-## (also called *console*). On UNIX, the implementation simply uses ANSI escape 
+## This module contains a few procedures to control the *terminal*
+## (also called *console*). On UNIX, the implementation simply uses ANSI escape
 ## sequences and does not depend on any other module, on Windows it uses the
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
@@ -16,37 +16,37 @@
 
 when defined(windows):
   import windows, os
-  
-  var 
+
+  var
     conHandle: THandle
   # = createFile("CONOUT$", GENERIC_WRITE, 0, nil, OPEN_ALWAYS, 0, 0)
-    
+
   block:
     var hTemp = GetStdHandle(STD_OUTPUT_HANDLE)
     if DuplicateHandle(GetCurrentProcess(), hTemp, GetCurrentProcess(),
                        addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
       OSError()
-    
-  proc getCursorPos(): tuple [x,y: int] = 
+
+  proc getCursorPos(): tuple [x,y: int] =
     var c: TCONSOLE_SCREEN_BUFFER_INFO
     if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: OSError()
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
-    
-  proc getAttributes(): int16 = 
+
+  proc getAttributes(): int16 =
     var c: TCONSOLE_SCREEN_BUFFER_INFO
     # workaround Windows bugs: try several times
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0: 
+    if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
       return c.wAttributes
     else:
       OSError()
     return 0x70'i16 # ERROR: return white background, black text
-    
+
   var
     oldAttr = getAttributes()
 
 proc setCursorPos*(x, y: int) =
-  ## sets the terminal's cursor to the (x,y) position. (0,0) is the 
-  ## upper left of the screen. 
+  ## sets the terminal's cursor to the (x,y) position. (0,0) is the
+  ## upper left of the screen.
   when defined(windows):
     var c: TCoord
     c.x = int16(x)
@@ -82,7 +82,7 @@ when defined(windows):
     else:
       nil
 
-proc CursorUp*(count=1) = 
+proc CursorUp*(count=1) =
   ## Moves the cursor up by `count` rows.
   when defined(windows):
     var p = getCursorPos()
@@ -91,7 +91,7 @@ proc CursorUp*(count=1) =
   else:
     stdout.write("\e[" & $count & 'A')
 
-proc CursorDown*(count=1) = 
+proc CursorDown*(count=1) =
   ## Moves the cursor down by `count` rows.
   when defined(windows):
     var p = getCursorPos()
@@ -100,7 +100,7 @@ proc CursorDown*(count=1) =
   else:
     stdout.write("\e[" & $count & 'B')
 
-proc CursorForward*(count=1) = 
+proc CursorForward*(count=1) =
   ## Moves the cursor forward by `count` columns.
   when defined(windows):
     var p = getCursorPos()
@@ -109,7 +109,7 @@ proc CursorForward*(count=1) =
   else:
     stdout.write("\e[" & $count & 'C')
 
-proc CursorBackward*(count=1) = 
+proc CursorBackward*(count=1) =
   ## Moves the cursor backward by `count` columns.
   when defined(windows):
     var p = getCursorPos()
@@ -117,7 +117,7 @@ proc CursorBackward*(count=1) =
     setCursorPos(p.x, p.y)
   else:
     stdout.write("\e[" & $count & 'D')
-  
+
 when true:
   nil
 else:
@@ -127,28 +127,28 @@ else:
       nil
     else:
       stdout.write("\e[K")
-  
+
   proc EraseLineStart* =
     ## Erases from the current cursor position to the start of the current line.
     when defined(windows):
       nil
     else:
       stdout.write("\e[1K")
-  
+
   proc EraseDown* =
     ## Erases the screen from the current line down to the bottom of the screen.
     when defined(windows):
       nil
     else:
       stdout.write("\e[J")
-  
+
   proc EraseUp* =
     ## Erases the screen from the current line up to the top of the screen.
     when defined(windows):
       nil
     else:
       stdout.write("\e[1J")
-  
+
 proc EraseLine* =
   ## Erases the entire current line.
   when defined(windows):
@@ -161,7 +161,7 @@ proc EraseLine* =
     if SetConsoleCursorPosition(conHandle, origin) == 0: OSError()
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
-    if FillConsoleOutputCharacter(hStdout,' ', ht*wt, 
+    if FillConsoleOutputCharacter(hStdout,' ', ht*wt,
                                   origin, addr(numwrote)) == 0:
       OSError()
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, ht * wt,
@@ -176,23 +176,23 @@ proc EraseScreen* =
   when defined(windows):
     var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
     var numwrote: DWORD
-    var origin: TCoord # is inititalized to 0, 0 
+    var origin: TCoord # is inititalized to 0, 0
     var hStdout = conHandle
     if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError()
     if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
       OSError()
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes,
-                                  scrbuf.dwSize.X * scrbuf.dwSize.Y, 
+                                  scrbuf.dwSize.X * scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
       OSError()
     setCursorXPos(0)
   else:
     stdout.write("\e[2J")
 
-proc ResetAttributes* {.noconv.} = 
+proc ResetAttributes* {.noconv.} =
   ## resets all attributes; it is advisable to register this as a quit proc
-  ## with ``system.addQuitProc(resetAttributes)``. 
+  ## with ``system.addQuitProc(resetAttributes)``.
   when defined(windows):
     discard SetConsoleTextAttribute(conHandle, oldAttr)
   else:
@@ -205,7 +205,7 @@ type
     styleUnknown,        ## unknown
     styleUnderscore = 4, ## underscored text
     styleBlink,          ## blinking/bold text
-    styleReverse,        ## unknown
+    styleReverse = 7,    ## unknown
     styleHidden          ## hidden text
 
 when not defined(windows):
@@ -213,7 +213,7 @@ when not defined(windows):
     gFG = 0
     gBG = 0
 
-proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) = 
+proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) =
   ## writes the text `txt` in a given `style`.
   when defined(windows):
     var a = 0'i16
@@ -230,8 +230,8 @@ proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) =
       stdout.write("\e[" & $ord(s) & 'm')
     stdout.write(txt)
     resetAttributes()
-    if gFG != 0: 
-      stdout.write("\e[" & $ord(gFG) & 'm')  
+    if gFG != 0:
+      stdout.write("\e[" & $ord(gFG) & 'm')
     if gBG != 0:
       stdout.write("\e[" & $ord(gBG) & 'm')
 
@@ -255,12 +255,12 @@ type
     bgMagenta,             ## magenta
     bgCyan,                ## cyan
     bgWhite                ## white
-  
-proc setForegroundColor*(fg: TForegroundColor, bright=false) = 
+
+proc setForegroundColor*(fg: TForegroundColor, bright=false) =
   ## sets the terminal's foreground color
   when defined(windows):
-    var old = getAttributes() and not 0x0007 
-    if bright: 
+    var old = getAttributes() and not 0x0007
+    if bright:
       old = old or FOREGROUND_INTENSITY
     const lookup: array [TForegroundColor, int] = [
       0,
@@ -277,11 +277,11 @@ proc setForegroundColor*(fg: TForegroundColor, bright=false) =
     if bright: inc(gFG, 60)
     stdout.write("\e[" & $gFG & 'm')
 
-proc setBackgroundColor*(bg: TBackgroundColor, bright=false) = 
+proc setBackgroundColor*(bg: TBackgroundColor, bright=false) =
   ## sets the terminal's background color
   when defined(windows):
     var old = getAttributes() and not 0x0070
-    if bright: 
+    if bright:
       old = old or BACKGROUND_INTENSITY
     const lookup: array [TBackgroundColor, int] = [
       0,
