@@ -11,6 +11,12 @@
 
 import ast, astalgo, msgs, types, semdata
 
+proc checkPartialConstructedType(info: TLineInfo, t: PType) =
+  if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
+    LocalError(info, errInvalidPragmaX, "acyclic")
+  elif t.kind == tyVar and t.sons[0].kind == tyVar:
+    LocalError(info, errVarVarTypeNotAllowed)
+
 proc checkConstructedType*(info: TLineInfo, t: PType) = 
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     LocalError(info, errInvalidPragmaX, "acyclic")
@@ -22,7 +28,7 @@ proc checkConstructedType*(info: TLineInfo, t: PType) =
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
         localError(info, errInheritanceOnlyWithNonFinalObjects)
-    
+  
 proc containsGenericTypeIter(t: PType, closure: PObject): bool = 
   result = t.kind in GenericTypes
 
@@ -121,10 +127,10 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   var newbody = ReplaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + t.flags + body.flags
   newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-  addSon(result, newbody)   
+  addSon(result, newbody)
   #writeln(output, ropeToStr(Typetoyaml(newbody)));
-  checkConstructedType(cl.info, newbody)
-    
+  checkPartialConstructedType(cl.info, newbody)
+  
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t
   if t == nil: return 
@@ -139,6 +145,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   else:
     if containsGenericType(t):
       result = copyType(t, t.owner, false)
+      result.size = -1 # needs to be recomputed
       for i in countup(0, sonsLen(result) - 1):
         result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
       result.n = ReplaceTypeVarsN(cl, result.n)

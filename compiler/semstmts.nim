@@ -489,13 +489,16 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         InternalError(a.info, "semTypeSection: containerID")
       s.typ.containerID = getID()
       a.sons[1] = semGenericParamList(c, a.sons[1], s.typ)
+      s.typ.size = -1 # could not be computed properly
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
       # like: mydata.seq
       addSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
       var body = semTypeNode(c, a.sons[2], nil)
-      if body != nil: body.sym = s
+      if body != nil: 
+        body.sym = s
+        body.size = -1 # could not be computed properly
       s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c.tab)
