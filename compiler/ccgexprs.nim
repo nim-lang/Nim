@@ -1058,8 +1058,7 @@ proc genNew(p: BProc, e: PNode) =
 proc genNewSeq(p: BProc, e: PNode) =
   var
     a, b, c: TLoc
-    seqtype: PType
-  seqType = skipTypes(e.sons[1].typ, abstractVarRange)
+  var seqType = skipTypes(e.sons[1].typ, abstractVarRange)
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
   initLoc(c, locExpr, a.t, OnHeap)
@@ -1069,15 +1068,12 @@ proc genNewSeq(p: BProc, e: PNode) =
   genAssignment(p, a, c, {})
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
-  var
-    a: TLoc
-    dest, t: PType
-    r, nilcheck: PRope
+  var a: TLoc
   initLocExpr(p, x, a)
-  dest = skipTypes(typ, abstractPtrs)
-  r = rdLoc(a)
-  nilCheck = nil
-  t = skipTypes(a.t, abstractInst)
+  var dest = skipTypes(typ, abstractPtrs)
+  var r = rdLoc(a)
+  var nilCheck: PRope = nil
+  var t = skipTypes(a.t, abstractInst)
   while t.kind in {tyVar, tyPtr, tyRef}:
     if t.kind != tyVar: nilCheck = r
     r = ropef("(*$1)", [r])
@@ -1546,7 +1542,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mStrToStr: expr(p, e.sons[1], d)
   of mEnumToStr: genRepr(p, e, d)
   of mAssert:
-    if (optAssert in p.Options):
+    if optAssert in p.Options:
       expr(p, e.sons[1], d)
       line = toRope(toLinenumber(e.info))
       filen = makeCString(ToFilename(e.info))
@@ -1689,22 +1685,19 @@ proc genStmtListExpr(p: BProc, n: PNode, d: var TLoc) =
   if length > 0: expr(p, n.sons[length - 1], d)
 
 proc upConv(p: BProc, n: PNode, d: var TLoc) =
-  var
-    a: TLoc
-    dest, t: PType
-    r, nilCheck: PRope
+  var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  dest = skipTypes(n.typ, abstractPtrs)
-  if (optObjCheck in p.options) and not (isPureObject(dest)):
-    r = rdLoc(a)
-    nilCheck = nil
-    t = skipTypes(a.t, abstractInst)
+  var dest = skipTypes(n.typ, abstractPtrs)
+  if optObjCheck in p.options and not isPureObject(dest):
+    var r = rdLoc(a)
+    var nilCheck: PRope = nil
+    var t = skipTypes(a.t, abstractInst)
     while t.kind in {tyVar, tyPtr, tyRef}:
       if t.kind != tyVar: nilCheck = r
       r = ropef("(*$1)", [r])
       t = skipTypes(t.sons[0], abstractInst)
     if gCmd != cmdCompileToCpp:
-      while (t.kind == tyObject) and (t.sons[0] != nil):
+      while t.kind == tyObject and t.sons[0] != nil:
         app(r, ".Sup")
         t = skipTypes(t.sons[0], abstractInst)
     if nilCheck != nil:
@@ -1753,7 +1746,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skProc, skConverter:
       genProc(p.module, sym)
-      if ((sym.loc.r == nil) or (sym.loc.t == nil)):
+      if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
@@ -1768,7 +1761,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, d, e.typ, toRope(sym.position))
     of skVar, skResult:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
-      if ((sym.loc.r == nil) or (sym.loc.t == nil)):
+      if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: var not init " & sym.name.s)
       if sfThreadVar in sym.flags:
         AccessThreadLocalVar(p, sym)
@@ -1803,7 +1796,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       genCall(p, e, d)
   of nkCurly: genSetConstr(p, e, d)
   of nkBracket:
-    if (skipTypes(e.typ, abstractVarRange).kind == tySequence):
+    if skipTypes(e.typ, abstractVarRange).kind == tySequence:
       genSeqConstr(p, e, d)
     else:
       genArrayConstr(p, e, d)

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -70,6 +70,15 @@ proc text*(n: PXmlNode): string {.inline.} =
   ## comment, or entity node.
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
+
+proc innerText*(n: PXmlNode): string =
+  ## gets the inner text of `n`. `n` has to be an ``xnElement`` node. Only
+  ## ``xnText`` and ``xnEntity`` nodes are considered part of `n`'s inner text,
+  ## other child nodes are silently ignored.
+  result = ""
+  assert n.k == xnElement
+  for i in 0 .. n.s.len-1:
+    if n.s[i].k in {xnText, xnEntity}: result.add(n.fText)
 
 proc tag*(n: PXmlNode): string {.inline.} = 
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
