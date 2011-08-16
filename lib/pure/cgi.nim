@@ -8,17 +8,17 @@
 #
 
 ## This module implements helper procs for CGI applications. Example:
-## 
+##
 ## .. code-block:: Nimrod
 ##
 ##    import strtabs, cgi
 ##
 ##    # Fill the values when debugging:
-##    when debug: 
+##    when debug:
 ##      setTestData("name", "Klaus", "password", "123456")
 ##    # read the data into `myData`
 ##    var myData = readData()
-##    # check that the data's variable names are "name" or "passwort" 
+##    # check that the data's variable names are "name" or "password"
 ##    validateData(myData, "name", "password")
 ##    # start generating content:
 ##    writeContentType()
@@ -35,34 +35,34 @@ proc URLencode*(s: string): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'+'`` and every other character is encoded as
-  ## ``'%xx'`` where ``xx`` denotes its hexadecimal value. 
+  ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   for i in 0..s.len-1:
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
     of ' ': add(result, '+')
-    else: 
+    else:
       add(result, '%')
       add(result, toHex(ord(s[i]), 2))
 
-proc handleHexChar(c: char, x: var int) {.inline.} = 
+proc handleHexChar(c: char, x: var int) {.inline.} =
   case c
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: assert(false)
 
-proc URLdecode*(s: string): string = 
-  ## Decodes a value from its HTTP representation: This means that a ``'+'`` 
+proc URLdecode*(s: string): string =
+  ## Decodes a value from its HTTP representation: This means that a ``'+'``
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
-  ## value) is converted to the character with ordinal number ``xx``, and  
-  ## and every other character is carried over. 
+  ## value) is converted to the character with ordinal number ``xx``, and
+  ## and every other character is carried over.
   result = newString(s.len)
   var i = 0
   var j = 0
   while i < s.len:
     case s[i]
-    of '%': 
+    of '%':
       var x = 0
       handleHexChar(s[i+1], x)
       handleHexChar(s[i+2], x)
@@ -74,15 +74,15 @@ proc URLdecode*(s: string): string =
     inc(j)
   setLen(result, j)
 
-proc addXmlChar(dest: var string, c: Char) {.inline.} = 
+proc addXmlChar(dest: var string, c: Char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
   of '>': add(dest, "&gt;")
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
-  
-proc XMLencode*(s: string): string = 
+
+proc XMLencode*(s: string): string =
   ## Encodes a value to be XML safe:
   ## * ``"`` is replaced by ``&quot;``
   ## * ``<`` is replaced by ``&lt;``
@@ -99,31 +99,31 @@ type
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-proc cgiError*(msg: string) {.noreturn.} = 
+proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
   var e: ref ECgi
   new(e)
   e.msg = msg
   raise e
 
-proc getEncodedData(allowedMethods: set[TRequestMethod]): string = 
-  case getenv("REQUEST_METHOD") 
-  of "POST": 
-    if methodPost notin allowedMethods: 
+proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
+  case getenv("REQUEST_METHOD")
+  of "POST":
+    if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
     var L = parseInt(getenv("CONTENT_LENGTH"))
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")
   of "GET":
-    if methodGet notin allowedMethods: 
+    if methodGet notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
     result = getenv("QUERY_STRING")
-  else: 
+  else:
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: string] = 
+iterator decodeData*(data: string): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   var i = 0
@@ -135,7 +135,7 @@ iterator decodeData*(data: string): tuple[key, value: string] =
     while true:
       case data[i]
       of '\0': break
-      of '%': 
+      of '%':
         var x = 0
         handleHexChar(data[i+1], x)
         handleHexChar(data[i+2], x)
@@ -150,7 +150,7 @@ iterator decodeData*(data: string): tuple[key, value: string] =
     setLen(value, 0) # reuse memory
     while true:
       case data[i]
-      of '%': 
+      of '%':
         var x = 0
         handleHexChar(data[i+1], x)
         handleHexChar(data[i+2], x)
@@ -164,30 +164,30 @@ iterator decodeData*(data: string): tuple[key, value: string] =
     if data[i] == '&': inc(i)
     elif data[i] == '\0': break
     else: cgiError("'&' expected")
- 
-iterator decodeData*(allowedMethods: set[TRequestMethod] = 
-       {methodNone, methodPost, methodGet}): tuple[key, value: string] = 
+
+iterator decodeData*(allowedMethods: set[TRequestMethod] =
+       {methodNone, methodPost, methodGet}): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
   var data = getEncodedData(allowedMethods)
-  if not isNil(data): 
+  if not isNil(data):
     for key, value in decodeData(data):
       yield (key, value)
 
-proc readData*(allowedMethods: set[TRequestMethod] = 
-               {methodNone, methodPost, methodGet}): PStringTable = 
+proc readData*(allowedMethods: set[TRequestMethod] =
+               {methodNone, methodPost, methodGet}): PStringTable =
   ## Read CGI data. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
-  for name, value in decodeData(allowedMethods): 
+  for name, value in decodeData(allowedMethods):
     result[name] = value
-  
-proc validateData*(data: PStringTable, validKeys: openarray[string]) = 
+
+proc validateData*(data: PStringTable, validKeys: openarray[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
   for key, val in pairs(data):
-    if find(validKeys, key) < 0: 
+    if find(validKeys, key) < 0:
       cgiError("unknown variable name: " & key)
 
 proc getContentLength*(): string =
@@ -318,7 +318,7 @@ proc getServerSoftware*(): string =
   ## returns contents of the ``SERVER_SOFTWARE`` environment variable
   return getenv("SERVER_SOFTWARE")
 
-proc setTestData*(keysvalues: openarray[string]) = 
+proc setTestData*(keysvalues: openarray[string]) =
   ## fills the appropriate environment variables to test your CGI application.
   ## This can only simulate the 'GET' request method. `keysvalues` should
   ## provide embedded (name, value)-pairs. Example:
@@ -336,36 +336,36 @@ proc setTestData*(keysvalues: openarray[string]) =
     inc(i, 2)
   putenv("QUERY_STRING", query)
 
-proc writeContentType*() = 
+proc writeContentType*() =
   ## call this before starting to send your HTML data to `stdout`. This
-  ## implements this part of the CGI protocol: 
+  ## implements this part of the CGI protocol:
   ##
   ## .. code-block:: Nimrod
   ##     write(stdout, "Content-type: text/html\n\n")
-  ## 
+  ##
   ## It also modifies the debug stack traces so that they contain
-  ## ``<br />`` and are easily readable in a browser.  
+  ## ``<br />`` and are easily readable in a browser.
   write(stdout, "Content-type: text/html\n\n")
   system.stackTraceNewLine = "<br />\n"
-  
-proc setStackTraceNewLine*() = 
+
+proc setStackTraceNewLine*() =
   ## Modifies the debug stack traces so that they contain
   ## ``<br />`` and are easily readable in a browser.
   system.stackTraceNewLine = "<br />\n"
-  
-proc setCookie*(name, value: string) = 
+
+proc setCookie*(name, value: string) =
   ## Sets a cookie.
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")
 
 var
   gcookies: PStringTable = nil
-    
-proc getCookie*(name: string): string = 
+
+proc getCookie*(name: string): string =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
   result = gcookies[name]
 
-proc existsCookie*(name: string): bool = 
+proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
   result = hasKey(gcookies, name)
