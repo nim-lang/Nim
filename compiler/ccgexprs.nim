@@ -1151,7 +1151,8 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   of tyOpenArray:
     var b: TLoc
     case a.t.kind
-    of tyOpenArray: putIntoDest(p, b, e.typ, rdLoc(a))
+    of tyOpenArray:
+      putIntoDest(p, b, e.typ, ropef("$1, $1Len0", [rdLoc(a)]))
     of tyString, tySequence:
       putIntoDest(p, b, e.typ, 
                   ropef("$1->data, $1->$2", [rdLoc(a), lenField()]))
