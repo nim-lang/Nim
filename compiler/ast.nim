@@ -112,7 +112,6 @@ type
     nkChckRange,          # range check for ints
     nkStringToCString,    # string to cstring
     nkCStringToString,    # cstring to string
-    nkPassAsOpenArray,    # thing is passed as an open array
                           # end of expressions
 
     nkAsgn,               # a = b

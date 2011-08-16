@@ -355,8 +355,7 @@ proc lsub(n: PNode): int =
   of nkChckRangeF: result = len("chckRangeF") + 2 + lcomma(n)
   of nkChckRange64: result = len("chckRange64") + 2 + lcomma(n)
   of nkChckRange: result = len("chckRange") + 2 + lcomma(n)
-  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString, 
-     nkPassAsOpenArray: 
+  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString: 
     result = 2
     if sonsLen(n) >= 1: result = result + lsub(n.sons[0])
     result = result + lcomma(n, 1)
@@ -730,8 +729,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gcomma(g, n)
     put(g, tkParRi, ")")
-  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString, 
-     nkPassAsOpenArray: 
+  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString: 
     if sonsLen(n) >= 1: gsub(g, n.sons[0])
     put(g, tkParLe, "(")
     gcomma(g, n, 1)

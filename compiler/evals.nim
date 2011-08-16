@@ -1083,7 +1083,6 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkChckRangeF, nkChckRange64, nkChckRange: result = evalRangeChck(c, n)
   of nkStringToCString: result = evalConvStrToCStr(c, n)
   of nkCStringToString: result = evalConvCStrToStr(c, n)
-  of nkPassAsOpenArray: result = evalAux(c, n.sons[0], flags)
   of nkStmtListExpr, nkStmtList, nkModule: 
     for i in countup(0, sonsLen(n) - 1): 
       result = evalAux(c, n.sons[i], flags)

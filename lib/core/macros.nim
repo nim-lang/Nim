@@ -30,7 +30,7 @@ type
     nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, 
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
-    nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, nnkAsgn, 
+    nnkStringToCString, nnkCStringToString, nnkAsgn, 
     nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, 
     nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef, 
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 

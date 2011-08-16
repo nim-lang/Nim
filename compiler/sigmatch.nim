@@ -499,13 +499,13 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     result = copyTree(arg)
     result.typ = getInstantiatedType(c, arg, m, f) 
     # BUG: f may not be the right key!
-    if (skipTypes(result.typ, abstractVar).kind in {tyTuple, tyOpenArray}): 
+    if (skipTypes(result.typ, abstractVar).kind in {tyTuple}): 
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
       # BUGFIX: use ``result.typ`` and not `f` here
   of isEqual: 
     inc(m.exactMatches)
     result = copyTree(arg)
-    if (skipTypes(f, abstractVar).kind in {tyTuple, tyOpenArray}): 
+    if (skipTypes(f, abstractVar).kind in {tyTuple}): 
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isNone: 
     result = userConvMatch(c, m, f, a, arg) 
