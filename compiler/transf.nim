@@ -268,10 +268,9 @@ proc transformLoopBody(c: PTransf, n: PNode): PTransNode =
 
 proc skipConv(n: PNode): PNode = 
   case n.kind
-  of nkObjUpConv, nkObjDownConv, nkPassAsOpenArray, nkChckRange, nkChckRangeF, 
-     nkChckRange64: 
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     result = n.sons[0]
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = n.sons[1]
   else: result = n
   
@@ -337,11 +336,10 @@ proc addVar(father, v: PNode) =
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode = 
   case n.sons[0].kind
-  of nkObjUpConv, nkObjDownConv, nkPassAsOpenArray, nkChckRange, nkChckRangeF, 
-     nkChckRange64: 
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64: 
     var m = n.sons[0].sons[0]
     if (m.kind == a) or (m.kind == b): 
-      # addr ( nkPassAsOpenArray ( deref ( x ) ) ) --> nkPassAsOpenArray(x)
+      # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       var x = copyTree(n)
       x.sons[0].sons[0] = m.sons[0]
       result = transform(c, x.sons[0])
@@ -362,7 +360,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = transform(c, n.sons[0].sons[0])
     else:
       result = transformSons(c, n)
-
+  
 proc transformConv(c: PTransf, n: PNode): PTransNode = 
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
@@ -397,8 +395,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of tyOpenArray: 
-    result = newTransNode(nkPassAsOpenArray, n, 1)
-    result[0] = transform(c, n.sons[1])
+    result = transform(c, n.sons[1])
   of tyCString: 
     if source.kind == tyString: 
       result = newTransNode(nkStringToCString, n, 1)
@@ -441,10 +438,6 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
     # happens sometimes for generated assignments, etc.
   else: 
     result = transformSons(c, n)
-
-proc skipPassAsOpenArray(n: PNode): PNode = 
-  result = n
-  while result.kind == nkPassAsOpenArray: result = result.sons[0]
   
 type 
   TPutArgInto = enum 
@@ -491,7 +484,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
-    var arg = skipPassAsOpenArray(transform(c, call.sons[i]).pnode)
+    var arg = transform(c, call.sons[i]).pnode
     var formal = skipTypes(newC.owner.typ, abstractInst).n.sons[i].sym 
     case putArgInto(arg, formal.typ)
     of paDirectMapping: 

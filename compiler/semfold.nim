@@ -375,7 +375,6 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
                                n)
       of mLengthOpenArray:
         var a = n.sons[1]
-        if a.kind == nkPassAsOpenArray: a = a.sons[0]
         if a.kind == nkBracket: 
           # we can optimize it away! This fixes the bug ``len(134)``. 
           result = newIntNodeT(sonsLen(a), n)

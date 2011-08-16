@@ -819,6 +819,29 @@ proc fixupCall(p: BProc, t: PNode, d: var TLoc, pl: PRope) =
     app(p.s[cpsStmts], pl)
     app(p.s[cpsStmts], ';' & tnl)
 
+proc openArrayLoc(a: TLoc): PRope =
+  case skipTypes(a.t, abstractVar).kind
+  of tyOpenArray:
+    result = ropef("$1, $1Len0", [rdLoc(a)])
+  of tyString, tySequence:
+    result = ropef("$1->data, $1->$2", [rdLoc(a), lenField()])
+  of tyArray, tyArrayConstr:
+    result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
+  else: InternalError("openArrayLoc: " & typeToString(a.t))
+
+proc genArg(p: BProc, n: PNode, param: PSym): PRope =
+  var a: TLoc
+  if skipTypes(param.typ, abstractVar).kind == tyOpenArray:
+    var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
+    initLocExpr(p, n, a)
+    result = openArrayLoc(a)
+  elif ccgIntroducedPtr(param): 
+    initLocExpr(p, n, a)
+    result = addrLoc(a)
+  else:
+    initLocExpr(p, n, a)
+    result = rdLoc(a)
+
 proc genCall(p: BProc, t: PNode, d: var TLoc) =
   var op, a: TLoc
   # this is a hotspot in the compiler
@@ -828,14 +851,12 @@ proc genCall(p: BProc, t: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(t)
   for i in countup(1, length - 1):
-    initLocExpr(p, t.sons[i], a) # generate expression for param
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      var param = typ.n.sons[i].sym
-      if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-      else: app(pl, rdLoc(a))
+      app(pl, genArg(p, t.sons[i], typ.n.sons[i].sym))
     else:
+      initLocExpr(p, t.sons[i], a) # generate expression for param
       app(pl, rdLoc(a))
     if i < length - 1: app(pl, ", ")
   fixupCall(p, t, d, pl)
@@ -847,26 +868,22 @@ proc genInfixCall(p: BProc, t: PNode, d: var TLoc) =
   var typ = t.sons[0].typ # getUniqueType() is too expensive here!
   assert(typ.kind == tyProc)
   var length = sonsLen(t)
-  initLocExpr(p, t.sons[1], a) # generate expression for first param
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   var param = typ.n.sons[1].sym
-  if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-  else: app(pl, rdLoc(a))
+  app(pl, genArg(p, t.sons[1], param))
   
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, "->")
   else: app(pl, ".")
   app(pl, op.r)
   app(pl, "(")
   for i in countup(2, length - 1):
-    initLocExpr(p, t.sons[i], a) # generate expression for param
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      var param = typ.n.sons[i].sym
-      if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-      else: app(pl, rdLoc(a))
+      app(pl, genArg(p, t.sons[i], typ.n.sons[i].sym))
     else:
+      initLocExpr(p, t.sons[i], a) # generate expression for param      
       app(pl, rdLoc(a))
     if i < length - 1: app(pl, ", ")
   fixupCall(p, t, d, pl)
@@ -882,30 +899,22 @@ proc genNamedParamCall(p: BProc, t: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   if length > 1:
-    initLocExpr(p, t.sons[1], a)
-    var param = typ.n.sons[1].sym
-    if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-    else: app(pl, rdLoc(a))
+    app(pl, genArg(p, t.sons[1], typ.n.sons[1].sym))
     app(pl, " ")
   app(pl, op.r)
   if length > 2:
-    initLocExpr(p, t.sons[2], a)
     app(pl, ": ")
-    var param = typ.n.sons[2].sym
-    if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-    else: app(pl, rdLoc(a))
+    app(pl, genArg(p, t.sons[2], typ.n.sons[2].sym))
   for i in countup(3, length-1):
-    initLocExpr(p, t.sons[i], a) # generate expression for param
     assert(sonsLen(typ) == sonsLen(typ.n))
-    if i >= sonsLen(typ): 
+    if i >= sonsLen(typ):
       InternalError(t.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     app(pl, " ")
     app(pl, param.name.s)
     app(pl, ": ")
-    if ccgIntroducedPtr(param): app(pl, addrLoc(a))
-    else: app(pl, rdLoc(a))
+    app(pl, genArg(p, t.sons[i], param))
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
       if sonsLen(t) > 1: app(pl, " ")
@@ -1174,10 +1183,11 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   genAssignment(p, d, a, {})
 
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
-  var typ = skipTypes(e.sons[1].Typ, abstractPtrs)
+  var a = e.sons[1]
+  if a.kind == nkHiddenAddr: a = a.sons[0]
+  var typ = skipTypes(a.Typ, abstractVar)
   case typ.kind
   of tyOpenArray:
-    while e.sons[1].kind == nkPassAsOpenArray: e.sons[1] = e.sons[1].sons[0]
     if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
     else: unaryExpr(p, e, d, "$1Len0")
   of tyCstring:
@@ -1385,23 +1395,6 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   genCast(p, e, d)
-
-proc passToOpenArray(p: BProc, n: PNode, d: var TLoc) =
-  var a: TLoc
-  while n.sons[0].kind == nkPassAsOpenArray:
-    n.sons[0] = n.sons[0].sons[0] # BUGFIX
-  var dest = skipTypes(n.typ, abstractVar)
-  case skipTypes(n.sons[0].typ, abstractVar).kind
-  of tyOpenArray:
-    initLocExpr(p, n.sons[0], a)
-    putIntoDest(p, d, dest, ropef("$1, $1Len0", [rdLoc(a)]))
-  of tyString, tySequence:
-    initLocExpr(p, n.sons[0], a)
-    putIntoDest(p, d, dest, ropef("$1->data, $1->$2", [rdLoc(a), lenField()]))
-  of tyArray, tyArrayConstr:
-    initLocExpr(p, n.sons[0], a)
-    putIntoDest(p, d, dest, ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))]))
-  else: InternalError(n.sons[0].info, "passToOpenArray: " & typeToString(a.t))
 
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
@@ -1827,7 +1820,6 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
   of nkChckRange: genRangeChck(p, e, d, "chckRange")
   of nkStringToCString: convStrToCStr(p, e, d)
   of nkCStringToString: convCStrToStr(p, e, d)
-  of nkPassAsOpenArray: passToOpenArray(p, e, d)
   of nkLambda:
     var sym = e.sons[namePos].sym
     genProc(p.module, sym)

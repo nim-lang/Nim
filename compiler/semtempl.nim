@@ -12,7 +12,7 @@ proc isExpr(n: PNode): bool =
   case n.kind
   of nkIdent..nkNilLit: 
     result = true
-  of nkCall..nkPassAsOpenArray: 
+  of nkCall..pred(nkAsgn): 
     for i in countup(0, sonsLen(n) - 1): 
       if not isExpr(n.sons[i]): 
         return false

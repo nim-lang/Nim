@@ -341,7 +341,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
     result = analyse(c, n.sons[1])
   of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64,
-     nkChckRange, nkCheckedFieldExpr, nkPassAsOpenArray, nkObjDownConv, 
+     nkChckRange, nkCheckedFieldExpr, nkObjDownConv, 
      nkObjUpConv:
     result = analyse(c, n.sons[0])
   of nkRaiseStmt:

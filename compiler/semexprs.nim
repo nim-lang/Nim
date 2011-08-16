@@ -1224,8 +1224,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBlockExpr: result = semBlockExpr(c, n)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv: 
     checkSonsLen(n, 2)
-  of nkStringToCString, nkCStringToString, nkPassAsOpenArray, nkObjDownConv, 
-     nkObjUpConv: 
+  of nkStringToCString, nkCStringToString, nkObjDownConv, nkObjUpConv: 
     checkSonsLen(n, 1)
   of nkChckRangeF, nkChckRange64, nkChckRange: 
     checkSonsLen(n, 3)

@@ -1390,7 +1390,6 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkChckRange: genRangeChck(p, n, r, "chckRange")
   of nkStringToCString: convStrToCStr(p, n, r)
   of nkCStringToString: convCStrToStr(p, n, r)
-  of nkPassAsOpenArray: gen(p, n.sons[0], r)
   of nkStmtListExpr: genStmtListExpr(p, n, r)
   of nkEmpty: nil
   else: InternalError(n.info, "gen: unknown node type: " & $n.kind)
