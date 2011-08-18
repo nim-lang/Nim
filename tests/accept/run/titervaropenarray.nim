@@ -1,6 +1,6 @@
 discard """
   file: "titer2.nim"
-  msg: "internal error: not implemented: pass to var parameter"
+  output: "123"
 """
 # Try to break the transformation pass:
 iterator iterAndZero(a: var openArray[int]): int =
