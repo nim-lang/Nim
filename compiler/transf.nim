@@ -290,7 +290,7 @@ proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
 proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 
-    return transformSym(c, n)
+    result = transformSym(c, n)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
     # nothing to be done for leaves:
     result = PTransNode(n)
@@ -334,32 +334,54 @@ proc addVar(father, v: PNode) =
   addSon(vpart, ast.emptyNode)
   addSon(father, vpart)
 
-proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode = 
+when false:
+  proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
+    case n.sons[0].kind
+    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+      var m = n.sons[0].sons[0]
+      if m.kind == a or m.kind == b:
+        # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+        var x = copyTree(n)
+        x.sons[0].sons[0] = m.sons[0]
+        result = transform(c, x.sons[0])
+      else:
+        result = transformSons(c, n)
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      var m = n.sons[0].sons[1]
+      if m.kind == a or m.kind == b:
+        # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+        var x = copyTree(n)
+        x.sons[0].sons[1] = m.sons[0]
+        result = transform(c, x.sons[0])
+      else:
+        result = transformSons(c, n)
+    else:
+      if n.sons[0].kind == a or n.sons[0].kind == b:
+        # addr ( deref ( x )) --> x
+        result = transform(c, n.sons[0].sons[0])
+      else:
+        result = transformSons(c, n)
+
+proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
+  result = transformSons(c, n)
+  var n = result.pnode
   case n.sons[0].kind
-  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64: 
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n.sons[0].sons[0]
-    if (m.kind == a) or (m.kind == b): 
+    if m.kind == a or m.kind == b:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
-      var x = copyTree(n)
-      x.sons[0].sons[0] = m.sons[0]
-      result = transform(c, x.sons[0])
-    else: 
-      result = transformSons(c, n)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
+      n.sons[0].sons[0] = m.sons[0]
+      result = PTransNode(n.sons[0])
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
-    if (m.kind == a) or (m.kind == b): 
+    if m.kind == a or m.kind == b:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
-      var x = copyTree(n)
-      x.sons[0].sons[1] = m.sons[0]
-      result = transform(c, x.sons[0])
-    else:
-      result = transformSons(c, n)
-  else: 
-    if (n.sons[0].kind == a) or (n.sons[0].kind == b): 
+      n.sons[0].sons[1] = m.sons[0]
+      result = PTransNode(n.sons[0])
+  else:
+    if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
-      result = transform(c, n.sons[0].sons[0])
-    else:
-      result = transformSons(c, n)
+      result = PTransNode(n.sons[0].sons[0])
   
 proc transformConv(c: PTransf, n: PNode): PTransNode = 
   # numeric types need range checks:
@@ -498,9 +520,10 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       # XXX why is this even necessary?
-      var b = newNodeIT(nkHiddenAddr, arg.info, formal.typ)
-      b.add(arg)
-      arg = b
+      when false:
+        var b = newNodeIT(nkHiddenAddr, arg.info, formal.typ)
+        b.add(arg)
+        arg = b
       IdNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
       #InternalError(arg.info, "not implemented: pass to var parameter")

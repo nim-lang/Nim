@@ -668,7 +668,7 @@ proc genOpenArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, e.sons[0], a)
   initLocExpr(p, e.sons[1], b) # emit range check:
-  if (optBoundsCheck in p.options):
+  if optBoundsCheck in p.options:
     appcg(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len0)) #raiseIndexError();$n",
          [rdLoc(b), rdLoc(a)]) # BUGFIX: ``>=`` and not ``>``!
   if d.k == locNone: d.s = a.s
