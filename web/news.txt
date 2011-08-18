@@ -66,7 +66,8 @@ Library Additions
 - Added ``strutils.unindent``.
 - Added ``system.slurp`` for easy resource embedding.
 - Added ``system.running`` for threads.
-- Added proc ``xmltree.innerText``.
+- Added ``xmltree.innerText``.
+- Added ``os.isAbsolute``.
 
 
 2011-07-10 Version 0.8.12 released

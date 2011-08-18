@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- fix ``m*`` for generics
 - optional indentation for 'case' statement
 - test the sort implementation again
 - export re-entrant and non-reentrant locks and condition vars; threads should

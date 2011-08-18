@@ -104,6 +104,8 @@ var
   gConfigVars*: PStringTable
   libpath*: string = ""
   projectPath*: string = ""
+  projectName* = ""
+  nimcacheDir* = ""
   gKeepComments*: bool = true # whether the parser needs to keep comments
   gImplicitMods*: TStringSeq = @[] # modules that are to be implicitly imported
 
@@ -155,16 +157,19 @@ proc removeTrailingDirSep*(path: string): string =
   else: 
     result = path
   
+proc getGeneratedPath: string =
+  result = if nimcacheDir.len > 0: nimcacheDir else: projectPath / genSubDir
+  
 proc toGeneratedFile(path, ext: string): string = 
   var (head, tail) = splitPath(path)
   if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([projectPath, genSubDir, head, changeFileExt(tail, ext)])
+  result = joinPath([getGeneratedPath(), head, changeFileExt(tail, ext)])
 
 proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string = 
   var (head, tail) = splitPath(f)
   if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = joinPath([projectPath, genSubDir, head])
-  if createSubDir: 
+  var subdir = getGeneratedPath() / head
+  if createSubDir:
     try: 
       createDir(subdir)
     except EOS: 

@@ -334,34 +334,6 @@ proc addVar(father, v: PNode) =
   addSon(vpart, ast.emptyNode)
   addSon(father, vpart)
 
-when false:
-  proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
-    case n.sons[0].kind
-    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
-      var m = n.sons[0].sons[0]
-      if m.kind == a or m.kind == b:
-        # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
-        var x = copyTree(n)
-        x.sons[0].sons[0] = m.sons[0]
-        result = transform(c, x.sons[0])
-      else:
-        result = transformSons(c, n)
-    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-      var m = n.sons[0].sons[1]
-      if m.kind == a or m.kind == b:
-        # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
-        var x = copyTree(n)
-        x.sons[0].sons[1] = m.sons[0]
-        result = transform(c, x.sons[0])
-      else:
-        result = transformSons(c, n)
-    else:
-      if n.sons[0].kind == a or n.sons[0].kind == b:
-        # addr ( deref ( x )) --> x
-        result = transform(c, n.sons[0].sons[0])
-      else:
-        result = transformSons(c, n)
-
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
   var n = result.pnode
@@ -519,14 +491,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       IdNodeTablePut(newC.mapping, formal, newSymNode(temp))
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
-      # XXX why is this even necessary?
-      when false:
-        var b = newNodeIT(nkHiddenAddr, arg.info, formal.typ)
-        b.add(arg)
-        arg = b
       IdNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
-      #InternalError(arg.info, "not implemented: pass to var parameter")
   var body = newC.owner.ast.sons[codePos]
   pushInfoContext(n.info)
   inc(c.inlining)

@@ -229,57 +229,59 @@ proc processCompile(filename: string) =
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool = 
-  case whichKeyword(switch)
-  of wGC: 
-    case whichKeyword(arg)
-    of wBoehm: result = contains(gGlobalOptions, optBoehmGC)
-    of wRefc:  result = contains(gGlobalOptions, optRefcGC)
-    of wNone:  result = gGlobalOptions * {optBoehmGC, optRefcGC} == {}
+  case switch.normalize
+  of "gc": 
+    case arg.normalize
+    of "boehm": result = contains(gGlobalOptions, optBoehmGC)
+    of "refc":  result = contains(gGlobalOptions, optRefcGC)
+    of "none":  result = gGlobalOptions * {optBoehmGC, optRefcGC} == {}
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of wOpt: 
-    case whichKeyword(arg)
-    of wSpeed: result = contains(gOptions, optOptimizeSpeed)
-    of wSize: result = contains(gOptions, optOptimizeSize)
-    of wNone: result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
+  of "opt": 
+    case arg.normalize
+    of "speed": result = contains(gOptions, optOptimizeSpeed)
+    of "size": result = contains(gOptions, optOptimizeSize)
+    of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   else: InvalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool = 
-  case whichKeyword(switch)
-  of wDebuginfo: result = contains(gGlobalOptions, optCDebug)
-  of wCompileOnly, wC: result = contains(gGlobalOptions, optCompileOnly)
-  of wNoLinking: result = contains(gGlobalOptions, optNoLinking)
-  of wNoMain: result = contains(gGlobalOptions, optNoMain)
-  of wForceBuild, wF: result = contains(gGlobalOptions, optForceFullMake)
-  of wWarnings, wW: result = contains(gOptions, optWarns)
-  of wHints: result = contains(gOptions, optHints)
-  of wThreadAnalysis: result = contains(gGlobalOptions, optThreadAnalysis)
-  of wStackTrace: result = contains(gOptions, optStackTrace)
-  of wLineTrace: result = contains(gOptions, optLineTrace)
-  of wDebugger: result = contains(gOptions, optEndb)
-  of wProfiler: result = contains(gOptions, optProfiler)
-  of wChecks, wX: result = gOptions * checksOptions == checksOptions
-  of wFloatChecks:
+  case switch.normalize
+  of "debuginfo": result = contains(gGlobalOptions, optCDebug)
+  of "compileonly", "c": result = contains(gGlobalOptions, optCompileOnly)
+  of "nolinking": result = contains(gGlobalOptions, optNoLinking)
+  of "nomain": result = contains(gGlobalOptions, optNoMain)
+  of "forcebuild", "f": result = contains(gGlobalOptions, optForceFullMake)
+  of "warnings", "w": result = contains(gOptions, optWarns)
+  of "hints": result = contains(gOptions, optHints)
+  of "threadanalysis": result = contains(gGlobalOptions, optThreadAnalysis)
+  of "stacktrace": result = contains(gOptions, optStackTrace)
+  of "linetrace": result = contains(gOptions, optLineTrace)
+  of "debugger": result = contains(gOptions, optEndb)
+  of "profiler": result = contains(gOptions, optProfiler)
+  of "checks", "x": result = gOptions * checksOptions == checksOptions
+  of "floatchecks":
     result = gOptions * {optNanCheck, optInfCheck} == {optNanCheck, optInfCheck}
-  of wInfChecks: result = contains(gOptions, optInfCheck)
-  of wNanChecks: result = contains(gOptions, optNanCheck)
-  of wObjChecks: result = contains(gOptions, optObjCheck)
-  of wFieldChecks: result = contains(gOptions, optFieldCheck)
-  of wRangeChecks: result = contains(gOptions, optRangeCheck)
-  of wBoundChecks: result = contains(gOptions, optBoundsCheck)
-  of wOverflowChecks: result = contains(gOptions, optOverflowCheck)
-  of wLineDir: result = contains(gOptions, optLineDir)
-  of wAssertions, wA: result = contains(gOptions, optAssert)
-  of wDeadCodeElim: result = contains(gGlobalOptions, optDeadCodeElim)
-  of wRun, wR: result = contains(gGlobalOptions, optRun)
-  of wSymbolFiles: result = contains(gGlobalOptions, optSymbolFiles)
-  of wGenScript: result = contains(gGlobalOptions, optGenScript)
-  of wThreads: result = contains(gGlobalOptions, optThreads)
+  of "infchecks": result = contains(gOptions, optInfCheck)
+  of "nanchecks": result = contains(gOptions, optNanCheck)
+  of "objchecks": result = contains(gOptions, optObjCheck)
+  of "fieldchecks": result = contains(gOptions, optFieldCheck)
+  of "rangechecks": result = contains(gOptions, optRangeCheck)
+  of "boundchecks": result = contains(gOptions, optBoundsCheck)
+  of "overflowchecks": result = contains(gOptions, optOverflowCheck)
+  of "linedir": result = contains(gOptions, optLineDir)
+  of "assertions", "a": result = contains(gOptions, optAssert)
+  of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
+  of "run", "r": result = contains(gGlobalOptions, optRun)
+  of "symbolfiles": result = contains(gGlobalOptions, optSymbolFiles)
+  of "genscript": result = contains(gGlobalOptions, optGenScript)
+  of "threads": result = contains(gGlobalOptions, optThreads)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string): string = 
   result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
-    "home", removeTrailingDirSep(os.getHomeDir())])
+    "home", removeTrailingDirSep(os.getHomeDir()),
+    "projectname", options.projectName,
+    "projectpath", options.projectPath])
 
 proc addPath(path: string, info: TLineInfo) = 
   if not contains(options.searchPaths, path): 
@@ -310,134 +312,137 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     theOS: TSystemOS
     cpu: TSystemCPU
     key, val: string
-  case whichKeyword(switch)
-  of wPath, wP: 
+  case switch.normalize
+  of "path", "p": 
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
-  of wRecursivePath:
+  of "recursivepath":
     expectArg(switch, arg, pass, info)
     var path = processPath(arg)
     addPathRec(path, info)
     addPath(path, info)
-  of wOut, wO: 
+  of "nimcache":
+    expectArg(switch, arg, pass, info)
+    options.nimcacheDir = processPath(arg)
+  of "out", "o": 
     expectArg(switch, arg, pass, info)
     options.outFile = arg
-  of wDefine, wD: 
+  of "define", "d": 
     expectArg(switch, arg, pass, info)
     DefineSymbol(arg)
-  of wUndef, wU: 
+  of "undef", "u": 
     expectArg(switch, arg, pass, info)
     UndefSymbol(arg)
-  of wCompile: 
+  of "compile": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: processCompile(arg)
-  of wLink: 
+  of "link": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: addFileToLink(arg)
-  of wDebuginfo: 
+  of "debuginfo": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCDebug)
-  of wCompileOnly, wC: 
+  of "compileonly", "c": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCompileOnly)
-  of wNoLinking: 
+  of "nolinking": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoLinking)
-  of wNoMain: 
+  of "nomain": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoMain)
-  of wForceBuild, wF: 
+  of "forcebuild", "f": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optForceFullMake)
-  of wGC: 
+  of "gc": 
     expectArg(switch, arg, pass, info)
-    case whichKeyword(arg)
-    of wBoehm: 
+    case arg.normalize
+    of "boehm": 
       incl(gGlobalOptions, optBoehmGC)
       excl(gGlobalOptions, optRefcGC)
       DefineSymbol("boehmgc")
-    of wRefc: 
+    of "refc": 
       excl(gGlobalOptions, optBoehmGC)
       incl(gGlobalOptions, optRefcGC)
-    of wNone: 
+    of "none": 
       excl(gGlobalOptions, optRefcGC)
       excl(gGlobalOptions, optBoehmGC)
       defineSymbol("nogc")
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of wWarnings, wW: ProcessOnOffSwitch({optWarns}, arg, pass, info)
-  of wWarning: ProcessSpecificNote(arg, wWarning, pass, info)
-  of wHint: ProcessSpecificNote(arg, wHint, pass, info)
-  of wHints: ProcessOnOffSwitch({optHints}, arg, pass, info)
-  of wThreadAnalysis: ProcessOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
-  of wStackTrace: ProcessOnOffSwitch({optStackTrace}, arg, pass, info)
-  of wLineTrace: ProcessOnOffSwitch({optLineTrace}, arg, pass, info)
-  of wDebugger: 
+  of "warnings", "w": ProcessOnOffSwitch({optWarns}, arg, pass, info)
+  of "warning": ProcessSpecificNote(arg, wWarning, pass, info)
+  of "hint": ProcessSpecificNote(arg, wHint, pass, info)
+  of "hints": ProcessOnOffSwitch({optHints}, arg, pass, info)
+  of "threadanalysis": ProcessOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
+  of "stacktrace": ProcessOnOffSwitch({optStackTrace}, arg, pass, info)
+  of "linetrace": ProcessOnOffSwitch({optLineTrace}, arg, pass, info)
+  of "debugger": 
     ProcessOnOffSwitch({optEndb}, arg, pass, info)
     if optEndb in gOptions: DefineSymbol("endb")
     else: UndefSymbol("endb")
-  of wProfiler: 
+  of "profiler": 
     ProcessOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: DefineSymbol("profiler")
     else: UndefSymbol("profiler")
-  of wChecks, wX: ProcessOnOffSwitch(checksOptions, arg, pass, info)
-  of wFloatChecks:
+  of "checks", "x": ProcessOnOffSwitch(checksOptions, arg, pass, info)
+  of "floatchecks":
     ProcessOnOffSwitch({optNanCheck, optInfCheck}, arg, pass, info)
-  of wInfChecks: ProcessOnOffSwitch({optInfCheck}, arg, pass, info)
-  of wNanChecks: ProcessOnOffSwitch({optNanCheck}, arg, pass, info)
-  of wObjChecks: ProcessOnOffSwitch({optObjCheck}, arg, pass, info)
-  of wFieldChecks: ProcessOnOffSwitch({optFieldCheck}, arg, pass, info)
-  of wRangeChecks: ProcessOnOffSwitch({optRangeCheck}, arg, pass, info)
-  of wBoundChecks: ProcessOnOffSwitch({optBoundsCheck}, arg, pass, info)
-  of wOverflowChecks: ProcessOnOffSwitch({optOverflowCheck}, arg, pass, info)
-  of wLineDir: ProcessOnOffSwitch({optLineDir}, arg, pass, info)
-  of wAssertions, wA: ProcessOnOffSwitch({optAssert}, arg, pass, info)
-  of wDeadCodeElim: ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
-  of wThreads: ProcessOnOffSwitchG({optThreads}, arg, pass, info)
-  of wOpt: 
+  of "infchecks": ProcessOnOffSwitch({optInfCheck}, arg, pass, info)
+  of "nanchecks": ProcessOnOffSwitch({optNanCheck}, arg, pass, info)
+  of "objchecks": ProcessOnOffSwitch({optObjCheck}, arg, pass, info)
+  of "fieldchecks": ProcessOnOffSwitch({optFieldCheck}, arg, pass, info)
+  of "rangechecks": ProcessOnOffSwitch({optRangeCheck}, arg, pass, info)
+  of "boundchecks": ProcessOnOffSwitch({optBoundsCheck}, arg, pass, info)
+  of "overflowchecks": ProcessOnOffSwitch({optOverflowCheck}, arg, pass, info)
+  of "linedir": ProcessOnOffSwitch({optLineDir}, arg, pass, info)
+  of "assertions", "a": ProcessOnOffSwitch({optAssert}, arg, pass, info)
+  of "deadcodeelim": ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of "threads": ProcessOnOffSwitchG({optThreads}, arg, pass, info)
+  of "opt":
     expectArg(switch, arg, pass, info)
-    case whichKeyword(arg)
-    of wSpeed: 
+    case arg.normalize
+    of "speed": 
       incl(gOptions, optOptimizeSpeed)
       excl(gOptions, optOptimizeSize)
-    of wSize: 
+    of "size": 
       excl(gOptions, optOptimizeSpeed)
       incl(gOptions, optOptimizeSize)
-    of wNone: 
+    of "none":
       excl(gOptions, optOptimizeSpeed)
       excl(gOptions, optOptimizeSize)
     else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
-  of wApp: 
+  of "app": 
     expectArg(switch, arg, pass, info)
-    case whichKeyword(arg)
-    of wGui: 
+    case arg.normalize
+    of "gui": 
       incl(gGlobalOptions, optGenGuiApp)
       defineSymbol("guiapp")
-    of wConsole: 
+    of "console": 
       excl(gGlobalOptions, optGenGuiApp)
-    of wLib: 
+    of "lib": 
       incl(gGlobalOptions, optGenDynLib)
       excl(gGlobalOptions, optGenGuiApp)
       defineSymbol("library")
     else: LocalError(info, errGuiConsoleOrLibExpectedButXFound, arg)
-  of wPassC, wT: 
+  of "passc", "t": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
-  of wPassL, wL: 
+  of "passl", "l": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
-  of wIndex: 
+  of "index": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: gIndexFile = arg
-  of wImport: 
+  of "import": 
     expectArg(switch, arg, pass, info)
     options.addImplicitMod(arg)
-  of wListCmd: 
+  of "listcmd": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optListCmd)
-  of wGenMapping: 
+  of "genmapping": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenMapping)
-  of wOS: 
+  of "os": 
     expectArg(switch, arg, pass, info)
     if (pass == passCmd1): 
       theOS = platform.NameToOS(arg)
@@ -446,7 +451,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
         setTarget(theOS, targetCPU)
         incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()
-  of wCPU: 
+  of "cpu": 
     expectArg(switch, arg, pass, info)
     if (pass == passCmd1): 
       cpu = platform.NameToCPU(arg)
@@ -455,61 +460,61 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
         setTarget(targetOS, cpu)
         incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()
-  of wRun, wR: 
+  of "run", "r": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optRun)
-  of wVerbosity: 
+  of "verbosity": 
     expectArg(switch, arg, pass, info)
     gVerbosity = parseInt(arg)
-  of wParallelBuild: 
+  of "parallelbuild": 
     expectArg(switch, arg, pass, info)
     gNumberOfProcessors = parseInt(arg)
-  of wVersion, wV: 
+  of "version", "v": 
     expectNoArg(switch, arg, pass, info)
     writeVersionInfo(pass)
-  of wAdvanced: 
+  of "advanced": 
     expectNoArg(switch, arg, pass, info)
     writeAdvancedUsage(pass)
-  of wHelp, wH: 
+  of "help", "h": 
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
-  of wSymbolFiles: 
+  of "symbolfiles": 
     ProcessOnOffSwitchG({optSymbolFiles}, arg, pass, info)
-  of wSkipCfg: 
+  of "skipcfg": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipConfigFile)
-  of wSkipProjCfg: 
+  of "skipprojcfg": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipProjConfigFile)
-  of wGenScript: 
+  of "genscript": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
-  of wLib: 
+  of "lib": 
     expectArg(switch, arg, pass, info)
     libpath = processPath(arg)
-  of wPutEnv: 
+  of "putenv": 
     expectArg(switch, arg, pass, info)
     splitSwitch(arg, key, val, pass, info)
     os.putEnv(key, val)
-  of wCC: 
+  of "cc": 
     expectArg(switch, arg, pass, info)
     setCC(arg)
-  of wTrack:
+  of "track":
     expectArg(switch, arg, pass, info)
     track(arg, info)
-  of wSuggest: 
+  of "suggest": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSuggest)
-  of wDef:
+  of "def":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optDef)
-  of wContext:
+  of "context":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optContext)
-  of wStdout: 
+  of "stdout": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optStdout)
-  else: 
+  else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)
   
