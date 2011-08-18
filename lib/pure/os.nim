@@ -512,6 +512,21 @@ proc cmpPaths*(pathA, pathB: string): int {.
   else:
     result = cmpIgnoreCase(pathA, pathB)
 
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect.} =
+  ## Checks whether a given path is absolute.
+  ##
+  ## on Windows, network paths are considered absolute too.
+  var len = len(path)
+  when defined(doslike):
+    return  (len > 1 and (path[0] == '/' or path[0] == '\\')) or
+            (len > 2 and path[1] == ':')
+  elif defined(macos):
+    return len > 0 and path[0] != ':'
+  elif defined(RISCOS):
+    return len > 0 and path[0] == '$'
+  elif defined(posix):
+    return len > 0 and path[0] == '/'
+
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
   ## Returns True if both pathname arguments refer to the same file or
   ## directory (as indicated by device number and i-node number).
