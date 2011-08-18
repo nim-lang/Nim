@@ -53,6 +53,8 @@ Compiler Additions
   Objective C.
 - The new pragmas ``importcpp`` and ``importobjc`` make interfacing with C++
   and Objective C somewhat easier.
+- Added a ``--nimcache:PATH`` configuration option for control over the output
+  directory for generated code.
 
 
 Library Additions

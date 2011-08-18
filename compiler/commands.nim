@@ -91,6 +91,7 @@ Advanced options:
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
   --lib:PATH                set the system library path
+  --nimcache:PATH           set the path used for generated files
   -c, --compileOnly         compile only; do not assemble or link
   --noLinking               compile but do not link
   --noMain                  do not generate a main procedure
