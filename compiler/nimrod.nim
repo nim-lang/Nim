@@ -58,7 +58,10 @@ proc HandleCmdLine() =
     var command = ""
     var filename = ""
     ProcessCmdLine(passCmd1, command, filename)
-    if filename != "": options.projectPath = splitFile(filename).dir
+    if filename != "": 
+      var p = splitFile(filename)
+      options.projectPath = p.dir
+      options.projectName = p.name
     nimconf.LoadConfig(filename) # load the right config file
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
