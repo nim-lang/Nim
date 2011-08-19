@@ -39,6 +39,9 @@ Core
   Nimrod message passing support for threads. **Note**: This is part of the 
   system module. Do not import it explicitely.
 
+* `locks <locks.html>`_
+  Locks and condition variables for Nimrod.
+
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.
 

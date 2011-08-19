@@ -21,6 +21,8 @@
 ##
 ## .. code-block:: nimrod
 ##
+##  import locks
+##
 ##  var
 ##    thr: array [0..4, TThread[tuple[a,b: int]]]
 ##    L: TLock
@@ -39,8 +41,6 @@
   
 const
   maxRegisters = 256 # don't think there is an arch with more registers
-  maxLocksPerThread = 10 ## max number of locks a thread can hold
-                         ## at the same time
   useStackMaskHack = false ## use the stack mask hack for better performance
   StackGuardSize = 4096
   ThreadStackMask = 1024*256*sizeof(int)-1
@@ -251,7 +251,7 @@ when not defined(useNimRtl):
 type
   TThread* {.pure, final.}[TMsg] =
       object of TGcThread ## Nimrod thread. A thread is a heavy object (~14K)
-                          ## that should not be part of a message! Use
+                          ## that **must not** be part of a message! Use
                           ## a ``TThreadId`` for that.
     emptyFn: proc ()
     dataFn: proc (m: TMsg)
@@ -394,120 +394,6 @@ when useStackMaskHack:
     var mainThread: TThread[pointer]
     createThread(mainThread, tp)
     joinThread(mainThread)
-
-# --------------------------- lock handling ----------------------------------
-
-type
-  TLock* = TSysLock ## Nimrod lock; whether this is re-entrant
-                    ## or not is unspecified!
-  
-const
-  noDeadlocks = false # compileOption("deadlockPrevention")
-
-when false:
-  var
-    deadlocksPrevented*: int ## counts the number of times a 
-                             ## deadlock has been prevented
-    locksLen {.threadvar.}: int
-    locks {.threadvar.}: array [0..MaxLocksPerThread-1, pointer]
-
-  proc OrderedLocks(): bool = 
-    for i in 0 .. locksLen-2:
-      if locks[i] >= locks[i+1]: return false
-    result = true
-
-proc InitLock*(lock: var TLock) {.inline.} =
-  ## Initializes the lock `lock`.
-  InitSysLock(lock)
-
-proc TryAcquire*(lock: var TLock): bool {.inline.} = 
-  ## Try to acquires the lock `lock`. Returns `true` on success.
-  result = TryAcquireSys(lock)
-  when noDeadlocks:
-    if not result: return
-    # we have to add it to the ordered list. Oh, and we might fail if
-    # there is no space in the array left ...
-    if locksLen >= len(locks):
-      ReleaseSys(lock)
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
-    # find the position to add:
-    var p = addr(lock)
-    var L = locksLen-1
-    var i = 0
-    while i <= L:
-      sysAssert locks[i] != nil
-      if locks[i] < p: inc(i) # in correct order
-      elif locks[i] == p: return # thread already holds lock
-      else:
-        # do the crazy stuff here:
-        while L >= i:
-          locks[L+1] = locks[L]
-          dec L
-        locks[i] = p
-        inc(locksLen)
-        sysAssert OrderedLocks()
-        return
-    # simply add to the end:
-    locks[locksLen] = p
-    inc(locksLen)
-    sysAssert OrderedLocks(g)
-
-proc Acquire*(lock: var TLock) =
-  ## Acquires the lock `lock`.
-  when nodeadlocks:
-    var p = addr(lock)
-    var L = locksLen-1
-    var i = 0
-    while i <= L:
-      sysAssert locks[i] != nil
-      if locks[i] < p: inc(i) # in correct order
-      elif locks[i] == p: return # thread already holds lock
-      else:
-        # do the crazy stuff here:
-        if locksLen >= len(locks):
-          raise newException(EResourceExhausted, 
-              "cannot acquire additional lock")
-        while L >= i:
-          ReleaseSys(cast[ptr TSysLock](locks[L])[])
-          locks[L+1] = locks[L]
-          dec L
-        # acquire the current lock:
-        AcquireSys(lock)
-        locks[i] = p
-        inc(locksLen)
-        # acquire old locks in proper order again:
-        L = locksLen-1
-        inc i
-        while i <= L:
-          AcquireSys(cast[ptr TSysLock](locks[i])[])
-          inc(i)
-        # DANGER: We can only modify this global var if we gained every lock!
-        # NO! We need an atomic increment. Crap.
-        discard system.atomicInc(deadlocksPrevented, 1)
-        sysAssert OrderedLocks(g)
-        return
-        
-    # simply add to the end:
-    if locksLen >= len(locks):
-      raise newException(EResourceExhausted, "cannot acquire additional lock")
-    AcquireSys(lock)
-    locks[locksLen] = p
-    inc(locksLen)
-    sysAssert OrderedLocks(g)
-  else:
-    AcquireSys(lock)
-  
-proc Release*(lock: var TLock) =
-  ## Releases the lock `lock`.
-  when nodeadlocks:
-    var p = addr(lock)
-    var L = locksLen
-    for i in countdown(L-1, 0):
-      if locks[i] == p: 
-        for j in i..L-2: locks[j] = locks[j+1]
-        dec locksLen
-        break
-  ReleaseSys(lock)
 
 # ------------------------ message passing support ---------------------------
 

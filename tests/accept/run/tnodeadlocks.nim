@@ -3,10 +3,10 @@ discard """
   cmd: "nimrod cc --hints:on --threads:on $# $#"
 """
 
-import os
+import os, locks
 
 const
-  noDeadlocks = defined(system.deadlocksPrevented)
+  noDeadlocks = defined(preventDeadlocks)
 
 var
   thr: array [0..5, TThread[tuple[a, b: int]]]

@@ -35,6 +35,7 @@ Changes affecting backwards compatibility
 - The ``is`` operator is now the ``of`` operator.
 - The ``is`` operator is now used to check type equivalence in generic code.
 - The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
+- The threading API has been completely redesigned.
 
 
 Language Additions
@@ -71,6 +72,7 @@ Library Additions
 - Added ``system.running`` for threads.
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``.
+- Added ``locks`` core module for more flexible locking support.
 
 
 2011-07-10 Version 0.8.12 released

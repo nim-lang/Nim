@@ -5,9 +5,6 @@ discard """
 
 import os
 
-const
-  noDeadlocks = defined(system.deadlocksPrevented)
-
 var
   thr: array [0..5, TThread[tuple[a, b: int]]]
 

@@ -516,12 +516,12 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Checks whether a given path is absolute.
   ##
   ## on Windows, network paths are considered absolute too.
-  var len = len(path)
   when doslike:
+    var len = len(path)
     result = (len > 1 and path[0] in {'/', '\\'}) or
              (len > 2 and path[0] in Letters and path[1] == ':')
   elif defined(macos):
-    result = len > 0 and path[0] != ':'
+    result = path.len > 0 and path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
   elif defined(posix):
