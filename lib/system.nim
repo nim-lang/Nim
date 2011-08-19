@@ -1248,7 +1248,7 @@ when not defined(NimrodVM):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.pure, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.noStackFrame, nosideeffect.} =
       asm """return `x`"""
   
   proc `==` *[T: typeDesc](x, y: seq[T]): bool {.noSideEffect.} =
@@ -1481,7 +1481,7 @@ when not defined(ECMAScript):
       inc(i)
   {.pop.}
 else:
-  proc add*(x: var string, y: cstring) {.pure.} =
+  proc add*(x: var string, y: cstring) {.noStackFrame.} =
     asm """
       var len = `x`[0].length-1;
       for (var i = 0; i < `y`.length; ++i) {

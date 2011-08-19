@@ -78,7 +78,8 @@ proc rawWriteStackTrace(): string =
     result = "Traceback (most recent call last)\n"& auxWriteStackTrace(framePtr)
     framePtr = nil
 
-proc raiseException(e: ref E_Base, ename: cstring) {.compilerproc, pure.} =
+proc raiseException(e: ref E_Base, ename: cstring) {.
+    compilerproc, noStackFrame.} =
   e.name = ename
   if excHandler != nil:
     excHandler.exc = e
@@ -116,7 +117,7 @@ proc raiseIndexError() {.compilerproc, noreturn.} =
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(EInvalidField, f & " is not accessible")
 
-proc SetConstr() {.varargs, pure, compilerproc.} =
+proc SetConstr() {.varargs, noStackFrame, compilerproc.} =
   asm """
     var result = {};
     for (var i = 0; i < arguments.length; ++i) {
@@ -132,7 +133,7 @@ proc SetConstr() {.varargs, pure, compilerproc.} =
     return result;
   """
 
-proc cstrToNimstr(c: cstring): string {.pure, compilerproc.} =
+proc cstrToNimstr(c: cstring): string {.noStackFrame, compilerproc.} =
   asm """
     var result = [];
     for (var i = 0; i < `c`.length; ++i) {
@@ -142,7 +143,7 @@ proc cstrToNimstr(c: cstring): string {.pure, compilerproc.} =
     return result;
   """
 
-proc toEcmaStr(s: string): cstring {.pure, compilerproc.} =
+proc toEcmaStr(s: string): cstring {.noStackFrame, compilerproc.} =
   asm """
     var len = `s`.length-1;
     var result = new Array(len);
@@ -153,7 +154,7 @@ proc toEcmaStr(s: string): cstring {.pure, compilerproc.} =
     return result.join("");
   """
 
-proc mnewString(len: int): string {.pure, compilerproc.} =
+proc mnewString(len: int): string {.noStackFrame, compilerproc.} =
   asm """
     var result = new Array(`len`+1);
     result[0] = 0;
@@ -161,7 +162,7 @@ proc mnewString(len: int): string {.pure, compilerproc.} =
     return result;
   """
 
-proc SetCard(a: int): int {.compilerproc, pure.} =
+proc SetCard(a: int): int {.compilerproc, noStackFrame.} =
   # argument type is a fake
   asm """
     var result = 0;
@@ -169,14 +170,14 @@ proc SetCard(a: int): int {.compilerproc, pure.} =
     return result;
   """
 
-proc SetEq(a, b: int): bool {.compilerproc, pure.} =
+proc SetEq(a, b: int): bool {.compilerproc, noStackFrame.} =
   asm """
     for (var elem in `a`) { if (!`b`[elem]) return false; }
     for (var elem in `b`) { if (!`a`[elem]) return false; }
     return true;
   """
 
-proc SetLe(a, b: int): bool {.compilerproc, pure.} =
+proc SetLe(a, b: int): bool {.compilerproc, noStackFrame.} =
   asm """
     for (var elem in `a`) { if (!`b`[elem]) return false; }
     return true;
@@ -185,7 +186,7 @@ proc SetLe(a, b: int): bool {.compilerproc, pure.} =
 proc SetLt(a, b: int): bool {.compilerproc.} =
   result = SetLe(a, b) and not SetEq(a, b)
 
-proc SetMul(a, b: int): int {.compilerproc, pure.} =
+proc SetMul(a, b: int): int {.compilerproc, noStackFrame.} =
   asm """
     var result = {};
     for (var elem in `a`) {
@@ -194,7 +195,7 @@ proc SetMul(a, b: int): int {.compilerproc, pure.} =
     return result;
   """
 
-proc SetPlus(a, b: int): int {.compilerproc, pure.} =
+proc SetPlus(a, b: int): int {.compilerproc, noStackFrame.} =
   asm """
     var result = {};
     for (var elem in `a`) { result[elem] = true; }
@@ -202,7 +203,7 @@ proc SetPlus(a, b: int): int {.compilerproc, pure.} =
     return result;
   """
 
-proc SetMinus(a, b: int): int {.compilerproc, pure.} =
+proc SetMinus(a, b: int): int {.compilerproc, noStackFrame.} =
   asm """
     var result = {};
     for (var elem in `a`) {
@@ -211,7 +212,7 @@ proc SetMinus(a, b: int): int {.compilerproc, pure.} =
     return result;
   """
 
-proc cmpStrings(a, b: string): int {.pure, compilerProc.} =
+proc cmpStrings(a, b: string): int {.noStackFrame, compilerProc.} =
   asm """
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
@@ -225,7 +226,7 @@ proc cmpStrings(a, b: string): int {.pure, compilerProc.} =
 
 proc cmp(x, y: string): int = return cmpStrings(x, y)
 
-proc eqStrings(a, b: string): bool {.pure, compilerProc.} =
+proc eqStrings(a, b: string): bool {.noStackFrame, compilerProc.} =
   asm """
     if (`a == `b`) return true;
     if ((!`a`) || (!`b`)) return false;
@@ -313,42 +314,42 @@ proc rawEcho {.compilerproc.} =
   node.appendChild(document.createElement("br"))
 
 # Arithmetic:
-proc addInt(a, b: int): int {.pure, compilerproc.} =
+proc addInt(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
     if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
-proc subInt(a, b: int): int {.pure, compilerproc.} =
+proc subInt(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
     if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
-proc mulInt(a, b: int): int {.pure, compilerproc.} =
+proc mulInt(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
     if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
-proc divInt(a, b: int): int {.pure, compilerproc.} =
+proc divInt(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     if (`b` == 0) `raiseDivByZero`();
     if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
     return Math.floor(`a` / `b`);
   """
 
-proc modInt(a, b: int): int {.pure, compilerproc.} =
+proc modInt(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     if (`b` == 0) `raiseDivByZero`();
     if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
     return Math.floor(`a` % `b`);
   """
 
-proc addInt64(a, b: int): int {.pure, compilerproc.} =
+proc addInt64(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
     if (result > 9223372036854775807
@@ -356,7 +357,7 @@ proc addInt64(a, b: int): int {.pure, compilerproc.} =
     return result;
   """
 
-proc subInt64(a, b: int): int {.pure, compilerproc.} =
+proc subInt64(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
     if (result > 9223372036854775807
@@ -364,7 +365,7 @@ proc subInt64(a, b: int): int {.pure, compilerproc.} =
     return result;
   """
 
-proc mulInt64(a, b: int): int {.pure, compilerproc.} =
+proc mulInt64(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
     if (result > 9223372036854775807
@@ -372,14 +373,14 @@ proc mulInt64(a, b: int): int {.pure, compilerproc.} =
     return result;
   """
 
-proc divInt64(a, b: int): int {.pure, compilerproc.} =
+proc divInt64(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     if (`b` == 0) `raiseDivByZero`();
     if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
     return Math.floor(`a` / `b`);
   """
 
-proc modInt64(a, b: int): int {.pure, compilerproc.} =
+proc modInt64(a, b: int): int {.noStackFrame, compilerproc.} =
   asm """
     if (`b` == 0) `raiseDivByZero`();
     if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
@@ -389,7 +390,7 @@ proc modInt64(a, b: int): int {.pure, compilerproc.} =
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
-proc internalAssert(file: cstring, line: int) {.pure, compilerproc.} =
+proc internalAssert(file: cstring, line: int) {.noStackFrame, compilerproc.} =
   var
     e: ref EAssertionFailed
   new(e)
@@ -459,7 +460,7 @@ proc NimCopy(x: pointer, ti: PNimType): pointer =
 
 
 proc ArrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
-                 pure, compilerproc.} =
+                 noStackFrame, compilerproc.} =
   # types are fake
   asm """
     var result = new Array(`len`);

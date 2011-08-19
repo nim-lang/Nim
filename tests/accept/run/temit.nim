@@ -9,7 +9,7 @@ static int cvariable = 420;
 
 """.}
 
-proc embedsC() {.pure.} = 
+proc embedsC() {.noStackFrame.} = 
   var nimrodVar = 89
   {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
 
