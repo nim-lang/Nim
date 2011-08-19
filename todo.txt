@@ -3,9 +3,8 @@ Version 0.8.14
 
 - optional indentation for 'case' statement
 - test the sort implementation again
-- export re-entrant and non-reentrant locks and condition vars; threads should
-  not have an inbox per default
-  - add --deadlock_prevention:on|off switch? timeout for locks?
+- fix the 'const' issues
+- threads should not have an inbox per default
 - make threadvar efficient again on linux after testing
 
 
@@ -89,6 +88,7 @@ Low priority
 - code generated for type information is wasteful
 - resizing of strings/sequences could take into account the memory that
   is allocated
+- timeout for locks
 
 
 Version 2

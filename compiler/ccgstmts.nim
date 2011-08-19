@@ -30,18 +30,14 @@ proc genLineDir(p: BProc, t: PNode) =
         [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
 proc genVarTuple(p: BProc, n: PNode) = 
-  var 
-    L: int
-    v: PSym
-    tup, field: TLoc
-    t: PType
+  var tup, field: TLoc
   if n.kind != nkVarTuple: InternalError(n.info, "genVarTuple")
-  L = sonsLen(n)
+  var L = sonsLen(n)
   genLineDir(p, n)
   initLocExpr(p, n.sons[L - 1], tup)
-  t = tup.t
+  var t = tup.t
   for i in countup(0, L - 3): 
-    v = n.sons[i].sym
+    var v = n.sons[i].sym
     if sfGlobal in v.flags: 
       assignGlobalVar(p, v)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
