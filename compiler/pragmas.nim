@@ -21,8 +21,9 @@ const
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
-    wCompilerProc, wPure, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
-    wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC}
+    wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
+    wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
+    wNoStackFrame}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
@@ -38,8 +39,8 @@ const
     wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
     wInfChecks, wNanChecks, wPragma, wEmit, wUnroll, wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
-    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc}
+    wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
+    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
     wImportcpp, wImportobjc}
@@ -448,7 +449,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wNodecl: 
             noVal(it)
             incl(sym.loc.Flags, lfNoDecl)
-          of wPure: 
+          of wPure, wNoStackFrame:
             noVal(it)
             if sym != nil: incl(sym.flags, sfPure)
           of wVolatile: 

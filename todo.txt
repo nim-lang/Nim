@@ -7,7 +7,6 @@ Version 0.8.14
   not have an inbox per default
   - add --deadlock_prevention:on|off switch? timeout for locks?
 - make threadvar efficient again on linux after testing
-- ``pure`` --> ``noStackFrame``, ``noRtti``
 
 
 version 0.9.0

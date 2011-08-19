@@ -1853,7 +1853,7 @@ Nimrod identifiers shall be enclosed in a special character which can be
 specified in the statement's pragmas. The default special character is ``'`'``:
 
 .. code-block:: nimrod
-  proc addInt(a, b: int): int {.pure.} =
+  proc addInt(a, b: int): int {.noStackFrame.} =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -2900,12 +2900,17 @@ structure:
 
 Pure pragma
 -----------
-The `pure`:idx: pragma serves two completely different purposes:
-1. To mark a procedure that Nimrod should not generate any exit statements like
-   ``return result;`` in the generated code. This is useful for procs that only
-   consist of an assembler statement.
-2. To mark an object type so that its type field should be omitted. This is
-   necessary for binary compatibility with other compiled languages.
+An object type can be marked with the `pure`:idx: pragma so that its type 
+field which is used for runtime type identification is omitted. This is
+necessary for binary compatibility with other compiled languages.
+
+
+NoStackFrame pragma
+-------------------
+A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
+it should not generate a stack frame for the proc. There are also no exit
+statements like ``return result;`` generated. This is useful for procs that 
+only consist of an assembler statement.
 
 
 error pragma
