@@ -219,7 +219,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   var t = skipTypes(typ, abstractRange)
   result = emptyNode
   case t.kind
-  of tyBool, tyChar, tyInt..tyInt64: 
+  of tyBool, tyEnum, tyChar, tyInt..tyInt64: 
     result = newNodeIT(nkIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIt(nkFloatLit, info, t)
