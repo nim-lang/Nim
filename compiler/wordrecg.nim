@@ -55,7 +55,7 @@ type
     wFieldChecks, 
     wCheckPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
-    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit
+    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -99,7 +99,8 @@ const
     "passc", "passl", "borrow", "fieldchecks",
     "checkpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
-    "write", "putenv", "prependenv", "appendenv", "threadvar", "emit"]
+    "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
+    "nostackframe"]
 
 proc findStr*(a: openarray[string], s: string): int = 
   for i in countup(low(a), high(a)): 

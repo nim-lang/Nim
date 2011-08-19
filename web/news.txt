@@ -34,6 +34,7 @@ Changes affecting backwards compatibility
 - ``implies`` is no keyword anymore.
 - The ``is`` operator is now the ``of`` operator.
 - The ``is`` operator is now used to check type equivalence in generic code.
+- The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
 
 
 Language Additions
