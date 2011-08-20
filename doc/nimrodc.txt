@@ -315,7 +315,8 @@ ENDB. See the documentation of `endb <endb.html>`_ for further information.
 Volatile pragma
 ---------------
 The `volatile`:idx: pragma is for variables only. It declares the variable as
-``volatile``, whatever that means in C/C++.
+``volatile``, whatever that means in C/C++ (its semantics are not well defined
+in C/C++).
 
 **Note**: This pragma will not exist for the LLVM backend.
 
@@ -330,7 +331,8 @@ input management. To start Nimrod in interactive mode use the command
 ``nimrod i``. To quit use the ``quit()`` command. To determine whether an input
 line is an incomplete statement to be continued these rules are used:
 
-1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$``.
+1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol 
+   followed by optional whitespace).
 2. The line starts with a space (indentation).
 3. The line is within a triple quoted string literal. However, the detection 
    does not work if the line contains more than one ``"""``.
