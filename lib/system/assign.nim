@@ -139,10 +139,10 @@ proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
   of nkList:
     for i in 0..n.len-1: genericResetAux(dest, n.sons[i])
   of nkCase:
-    zeroMem(cast[pointer](d +% n.offset), n.typ.size)
     var m = selectBranch(dest, n)
     if m != nil: genericResetAux(dest, m)
-
+    zeroMem(cast[pointer](d +% n.offset), n.typ.size)
+  
 proc genericReset(dest: Pointer, mt: PNimType) =
   var d = cast[TAddress](dest)
   sysAssert(mt != nil)
