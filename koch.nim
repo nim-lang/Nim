@@ -1,13 +1,13 @@
 #
 #
-#         Maintenance program for Nimrod  
+#         Maintenance program for Nimrod
 #        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) and defined(windows): 
+when defined(gcc) and defined(windows):
   {.link: "icons/koch.res".}
 
 import
@@ -33,7 +33,8 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
-  tests                    run the testsuite
+  install                  execute the script 'build.sh' in the current directory
+  test, tests              run the testsuite
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -48,19 +49,19 @@ proc exec(cmd: string) =
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE")
 
-proc tryExec(cmd: string): bool = 
+proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
-proc csource(args: string) = 
+proc csource(args: string) =
   exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource compiler/nimrod.ini $1" %
        [args, NimrodVersion])
 
-proc zip(args: string) = 
+proc zip(args: string) =
   exec("nimrod cc -r tools/niminst --var:version=$# zip compiler/nimrod.ini" %
        NimrodVersion)
-  
-proc buildTool(toolname, args: string) = 
+
+proc buildTool(toolname, args: string) =
   exec("nimrod cc $# $#" % [args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
@@ -68,10 +69,10 @@ proc inno(args: string) =
   # make sure we have generated the c2nim and niminst executables:
   buildTool("tools/niminst", args)
   buildTool("compiler/c2nim/c2nim", args)
-  exec("tools" / "niminst --var:version=$# inno compiler/nimrod" % 
+  exec("tools" / "niminst --var:version=$# inno compiler/nimrod" %
        NimrodVersion)
 
-proc install(args: string) = 
+proc install(args: string) =
   exec("sh ./build.sh")
 
 proc web(args: string) =
@@ -83,7 +84,7 @@ proc web(args: string) =
 const
   bootOptions = "" # options to pass to the bootstrap process
 
-proc findStartNimrod: string = 
+proc findStartNimrod: string =
   # we try several things before giving up:
   # * bin/nimrod
   # * $PATH/nimrod
@@ -95,31 +96,31 @@ proc findStartNimrod: string =
     if ExistsFile(dir / nimrod): return nimrod
   when defined(Posix):
     const buildScript = "build.sh"
-    if ExistsFile(buildScript): 
+    if ExistsFile(buildScript):
       if tryExec("./" & buildScript): return "bin" / nimrod
   else:
     const buildScript = "build.bat"
-    if ExistsFile(buildScript): 
+    if ExistsFile(buildScript):
       if tryExec(buildScript): return "bin" / nimrod
-  
+
   echo("Found no nimrod compiler and every attempt to build one failed!")
   quit("FAILURE")
 
-proc safeRemove(filename: string) = 
+proc safeRemove(filename: string) =
   if existsFile(filename): removeFile(filename)
 
-proc thVersion(i: int): string = 
+proc thVersion(i: int): string =
   result = ("compiler" / "nimrod" & $i).exe
 
 proc copyExe(source, dest: string) =
   safeRemove(dest)
   copyFile(dest=dest, source=source)
   inclFilePermissions(dest, {fpUserExec})
-  
+
 proc boot(args: string) =
   var output = "compiler" / "nimrod".exe
   var finalDest = "bin" / "nimrod".exe
-  
+
   copyExe(findStartNimrod(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
@@ -143,7 +144,7 @@ const
     ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe"
   ]
 
-proc cleanAux(dir: string) = 
+proc cleanAux(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
@@ -154,25 +155,25 @@ proc cleanAux(dir: string) =
           removeFile(path)
     of pcDir:
       case splitPath(path).tail
-      of "nimcache": 
+      of "nimcache":
         echo "removing dir: ", path
         removeDir(path)
       of "dist", ".git": nil
       else: cleanAux(path)
     else: nil
 
-proc removePattern(pattern: string) = 
-  for f in WalkFiles(pattern): 
+proc removePattern(pattern: string) =
+  for f in WalkFiles(pattern):
     echo "removing: ", f
     removeFile(f)
 
-proc clean(args: string) = 
+proc clean(args: string) =
   if ExistsFile("koch.dat"): removeFile("koch.dat")
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
-    if kind == pcDir: 
+    if kind == pcDir:
       echo "removing dir: ", path
       RemoveDir(path)
 
@@ -184,8 +185,8 @@ proc tests(args: string) =
   exec("tests/tester run")
   exec("tests/tester merge")
 
-proc showHelp() = 
-  quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
+proc showHelp() =
+  quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)),
                    CompileDate, CompileTime])
 
 var op = initOptParser()
@@ -193,7 +194,7 @@ op.next()
 case op.kind
 of cmdLongOption, cmdShortOption: showHelp()
 of cmdArgument:
-  case normalize(op.key) 
+  case normalize(op.key)
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
