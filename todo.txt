@@ -1,12 +1,11 @@
 Version 0.8.14
 ==============
 
-- optional indentation for 'case' statement
-- test the sort implementation again
-- fix the 'const' issues
 - threads should not have an inbox per default
 - make threadvar efficient again on linux after testing
-
+- fix the 'const' issues
+- test the sort implementation again
+- optional indentation for 'case' statement
 
 version 0.9.0
 =============
@@ -47,7 +46,9 @@ version 0.9.XX
 - checked exceptions
 - fix implicit generic routines
 - think about ``{:}.toTable[int, string]()``
-- nice idea: 
+- mocking support with ``tyProxy`` that does:
+  o.p(x) --> p(o, x) -->  myMacro(o, p, x)
+- nice idea:
 
   p(a, b): 
     echo a
