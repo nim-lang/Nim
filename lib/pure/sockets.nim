@@ -406,9 +406,11 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
         var err = WSAGetLastError()
         # Windows EINTR doesn't behave same as POSIX.
         if err == WSAEWOULDBLOCK:
+          freeaddrinfo(aiList)
           return
       else:
         if errno == EINTR or errno == EINPROGRESS:
+          freeaddrinfo(aiList)
           return
         
     it = it.ai_next

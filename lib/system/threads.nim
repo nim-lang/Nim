@@ -167,7 +167,6 @@ type
   PGcThread = ptr TGcThread
   TGcThread {.pure.} = object
     sys: TSysThread
-    inbox: TThreadLocalStorage
     when emulatedThreadVars and not useStackMaskHack:
       tls: TThreadLocalStorage
     else:
@@ -249,27 +248,22 @@ when not defined(useNimRtl):
 # GC'ed closures in Nimrod.
 
 type
-  TThread* {.pure, final.}[TMsg] =
+  TThread* {.pure, final.}[TArg] =
       object of TGcThread ## Nimrod thread. A thread is a heavy object (~14K)
                           ## that **must not** be part of a message! Use
                           ## a ``TThreadId`` for that.
-    emptyFn: proc ()
-    dataFn: proc (m: TMsg)
-    data: TMsg
-  TThreadId*[TMsg] = ptr TThread[TMsg] ## the current implementation uses
+    dataFn: proc (m: TArg)
+    when TArg isnot void:
+      data: TArg
+  TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
                                        ## a pointer as a thread ID.
 
-proc initInbox(p: pointer)
-proc freeInbox(p: pointer)
 when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
-when defined(mainThread):
-  initInbox(addr(mainThread.inbox))
-
 template ThreadProcWrapperBody(closure: expr) =
   ThreadVarSetValue(globalsSlot, closure)
-  var t = cast[ptr TThread[TMsg]](closure)
+  var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
   when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap:
@@ -279,9 +273,8 @@ template ThreadProcWrapperBody(closure: expr) =
   when defined(registerThread):
     t.stackBottom = addr(t)
     registerThread(t)
-  if t.emptyFn == nil: t.dataFn(t.data)
-  else: t.emptyFn()
-  freeInbox(addr(t.inbox))
+  if TArg is void: t.dataFn()
+  else: t.dataFn(t.data)
   when defined(registerThread): unregisterThread(t)
   when defined(deallocOsPages): deallocOsPages()
   # Since an unhandled exception terminates the whole process (!), there is
@@ -291,31 +284,30 @@ template ThreadProcWrapperBody(closure: expr) =
   # page!
   
   # mark as not running anymore:
-  t.emptyFn = nil
   t.dataFn = nil
   
 {.push stack_trace:off.}
 when defined(windows):
-  proc threadProcWrapper[TMsg](closure: pointer): int32 {.stdcall.} = 
+  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} = 
     ThreadProcWrapperBody(closure)
     # implicitely return 0
 else:
-  proc threadProcWrapper[TMsg](closure: pointer) {.noconv.} = 
+  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} = 
     ThreadProcWrapperBody(closure)
 {.pop.}
 
-proc running*[TMsg](t: TThread[TMsg]): bool {.inline.} = 
+proc running*[TArg](t: TThread[TArg]): bool {.inline.} = 
   ## returns true if `t` is running.
-  result = t.emptyFn != nil or t.dataFn != nil
+  result = t.dataFn != nil
 
-proc joinThread*[TMsg](t: TThread[TMsg]) {.inline.} = 
+proc joinThread*[TArg](t: TThread[TArg]) {.inline.} = 
   ## waits for the thread `t` to finish.
   when hostOS == "windows":
     discard WaitForSingleObject(t.sys, -1'i32)
   else:
     discard pthread_join(t.sys, nil)
 
-proc joinThreads*[TMsg](t: openArray[TThread[TMsg]]) = 
+proc joinThreads*[TArg](t: openArray[TThread[TArg]]) = 
   ## waits for every thread in `t` to finish.
   when hostOS == "windows":
     var a: array[0..255, TSysThread]
@@ -327,27 +319,28 @@ proc joinThreads*[TMsg](t: openArray[TThread[TMsg]]) =
 
 when false:
   # XXX a thread should really release its heap here somehow:
-  proc destroyThread*[TMsg](t: var TThread[TMsg]) =
+  proc destroyThread*[TArg](t: var TThread[TArg]) =
     ## forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
     when hostOS == "windows":
       discard TerminateThread(t.sys, 1'i32)
     else:
       discard pthread_cancel(t.sys)
-    unregisterThread(addr(t))
+    when defined(registerThread): unregisterThread(addr(t))
+    t.dataFn = nil
 
-proc createThread*[TMsg](t: var TThread[TMsg], 
-                         tp: proc (msg: TMsg) {.thread.}, 
-                         param: TMsg) =
+proc createThread*[TArg](t: var TThread[TArg], 
+                         tp: proc (arg: TArg) {.thread.}, 
+                         param: TArg) =
   ## creates a new thread `t` and starts its execution. Entry point is the
-  ## proc `tp`. `param` is passed to `tp`.
-  t.data = param
+  ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
+  ## don't need to pass any data to the thread.
+  when TArg isnot void: t.data = param
   t.dataFn = tp
   when hasSharedHeap: t.stackSize = ThreadStackSize
-  initInbox(addr(t.inbox))
   when hostOS == "windows":
     var dummyThreadId: int32
-    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TMsg],
+    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(EResourceExhausted, "cannot create thread")
@@ -355,51 +348,24 @@ proc createThread*[TMsg](t: var TThread[TMsg],
     var a: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
-    if pthread_create(t.sys, a, threadProcWrapper[TMsg], addr(t)) != 0:
+    if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(EResourceExhausted, "cannot create thread")
 
-proc createThread*[TMsg](t: var TThread[TMsg], tp: proc () {.thread.}) =
-  ## creates a new thread `t` and starts its execution. Entry point is the
-  ## proc `tp`.
-  t.emptyFn = tp
-  when hasSharedHeap: t.stackSize = ThreadStackSize
-  initInbox(addr(t.inbox))
-  when hostOS == "windows":
-    var dummyThreadId: int32
-    t.sys = CreateThread(nil, ThreadStackSize, threadProcWrapper[TMsg],
-                         addr(t), 0'i32, dummyThreadId)
-    if t.sys <= 0:
-      raise newException(EResourceExhausted, "cannot create thread")
-  else:
-    var a: Tpthread_attr
-    pthread_attr_init(a)
-    pthread_attr_setstacksize(a, ThreadStackSize)
-    if pthread_create(t.sys, a, threadProcWrapper[TMsg], addr(t)) != 0:
-      raise newException(EResourceExhausted, "cannot create thread")
-
-proc threadId*[TMsg](t: var TThread[TMsg]): TThreadId[TMsg] {.inline.} =
+proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)
 
-proc myThreadId*[TMsg](): TThreadId[TMsg] =
+proc myThreadId*[TArg](): TThreadId[TArg] =
   ## returns the thread ID of the thread that calls this proc.
-  result = cast[TThreadId[TMsg]](ThreadVarGetValue(globalsSlot))
+  result = cast[TThreadId[TArg]](ThreadVarGetValue(globalsSlot))
 
-proc mainThreadId*[TMsg](): TThreadId[TMsg] =
+proc mainThreadId*[TArg](): TThreadId[TArg] =
   ## returns the thread ID of the main thread.
-  result = cast[TThreadId[TMsg]](addr(mainThread))
+  result = cast[TThreadId[TArg]](addr(mainThread))
 
 when useStackMaskHack:
   proc runMain(tp: proc () {.thread.}) {.compilerproc.} =
     var mainThread: TThread[pointer]
     createThread(mainThread, tp)
     joinThread(mainThread)
-
-# ------------------------ message passing support ---------------------------
-
-proc getInBoxMem[TMsg](t: var TThread[TMsg]): pointer {.inline.} =
-  result = addr(t.inbox)
-
-proc getInBoxMem(): pointer {.inline.} =
-  result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).inbox)
 

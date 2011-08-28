@@ -19,7 +19,8 @@ include "lib/system/syslocks"
 
 type
   TLock* = TSysLock ## Nimrod lock; whether this is re-entrant
-                    ## or not is unspecified!
+                    ## or not is unspecified! However, compilation
+                    ## in preventDeadlocks-mode guarantees re-entrancy.
   TCond* = TSysCond ## Nimrod condition variable
   
 const
@@ -50,7 +51,7 @@ proc DeinitLock*(lock: var TLock) {.inline.} =
   ## Frees the resources associated with the lock.
   DeinitSys(lock)
 
-proc TryAcquire*(lock: var TLock): bool {.inline.} = 
+proc TryAcquire*(lock: var TLock): bool = 
   ## Tries to acquire the given lock. Returns `true` on success.
   result = TryAcquireSys(lock)
   when noDeadlocks:

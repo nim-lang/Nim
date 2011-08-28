@@ -1808,7 +1808,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   include "system/sysio"
   when hasThreadSupport:
-    include "system/inboxes"
+    include "system/channels"
 
   iterator lines*(filename: string): string =
     ## Iterate over any line in the file named `filename`.
