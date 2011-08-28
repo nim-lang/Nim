@@ -26,19 +26,19 @@ type
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace.
-    
+
   Letters* = {'A'..'Z', 'a'..'z'}
     ## the set of letters
-  
+
   Digits* = {'0'..'9'}
     ## the set of digits
-  
+
   HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
     ## the set of hexadecimal digits
 
   IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
     ## the set of characters an identifier can consist of
-  
+
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
@@ -192,7 +192,7 @@ proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
       inc(i)
 
 proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
-  rtl, extern: "nsuFormatOpenArray".} = 
+  rtl, extern: "nsuFormatOpenArray".} =
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called
   ## `string interpolation`:idx:.
@@ -233,7 +233,7 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
-proc `%` *(formatstr, a: string): string {.noSideEffect, 
+proc `%` *(formatstr, a: string): string {.noSideEffect,
   rtl, extern: "nsuFormatSingleElem".} =
   ## This is the same as ``formatstr % [a]``.
   result = newStringOfCap(formatstr.len + a.len)
@@ -249,7 +249,7 @@ proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
   var
     first = 0
     last = len(s)-1
-  if leading: 
+  if leading:
     while s[first] in chars: inc(first)
   if trailing:
     while last >= 0 and s[last] in chars: dec(last)
@@ -337,7 +337,7 @@ iterator splitLines*(s: string): string =
   ## Example:
   ##
   ## .. code-block:: nimrod
-  ##   for line in lines("\nthis\nis\nan\n\nexample\n"):
+  ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
   ##     writeln(stdout, line)
   ##
   ## Results in:
@@ -365,7 +365,7 @@ iterator splitLines*(s: string): string =
 
 proc splitLines*(s: string): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =
-  ## The same as the `splitLines` iterator, but is a proc that returns a 
+  ## The same as the `splitLines` iterator, but is a proc that returns a
   ## sequence of substrings.
   accumulateResult(splitLines(s))
 
@@ -435,21 +435,21 @@ proc ParseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
-  ## following optional prefixes: ``0x``, ``0X``, ``#``. 
+  ## following optional prefixes: ``0x``, ``0X``, ``#``.
   ## Underscores within `s` are ignored.
   var i = 0
   if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
   elif s[i] == '#': inc(i)
-  while true: 
+  while true:
     case s[i]
     of '_': inc(i)
-    of '0'..'9': 
+    of '0'..'9':
       result = result shl 4 or (ord(s[i]) - ord('0'))
       inc(i)
-    of 'a'..'f': 
+    of 'a'..'f':
       result = result shl 4 or (ord(s[i]) - ord('a') + 10)
       inc(i)
-    of 'A'..'F': 
+    of 'A'..'F':
       result = result shl 4 or (ord(s[i]) - ord('A') + 10)
       inc(i)
     of '\0': break
@@ -473,7 +473,7 @@ proc align*(s: string, count: int): string {.
   ## Aligns a string `s` with spaces, so that is of length `count`. Spaces are
   ## added before `s` resulting in right alignment. If ``s.len >= count``, no
   ## spaces are added and `s` is returned unchanged.
-  if s.len < count: 
+  if s.len < count:
     result = newString(count)
     var spaces = count - s.len
     for i in 0..spaces-1: result[i] = ' '
@@ -515,11 +515,11 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
       break
     i = j
 
-proc wordWrap*(s: string, maxLineWidth = 80, 
+proc wordWrap*(s: string, maxLineWidth = 80,
                splitLongWords = true,
                seps: set[char] = whitespace,
                newLine = "\n"): string {.
-               noSideEffect, rtl, extern: "nsuWordWrap".} = 
+               noSideEffect, rtl, extern: "nsuWordWrap".} =
   ## word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var SpaceLeft = maxLineWidth
@@ -529,7 +529,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
         result.add(substr(word, 0, spaceLeft-1))
         var w = spaceLeft+1
         var wordLeft = len(word) - spaceLeft
-        while wordLeft > 0: 
+        while wordLeft > 0:
           result.add(newLine)
           var L = min(maxLineWidth, wordLeft)
           SpaceLeft = maxLineWidth - L
@@ -545,7 +545,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
       result.add(word)
 
 proc unindent*(s: string, eatAllIndent = false): string {.
-               noSideEffect, rtl, extern: "nsuUnindent".} = 
+               noSideEffect, rtl, extern: "nsuUnindent".} =
   ## unindents `s`.
   result = newStringOfCap(s.len)
   var i = 0
@@ -593,17 +593,17 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
   if suffix[i] == '\0': return true
 
 proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
-                                                           inline.} = 
-  ## A shorthand for: 
-  ## 
+                                                           inline.} =
+  ## A shorthand for:
+  ##
   ## .. code-block:: nimrod
   ##   if dest.len > startLen: add(dest, sep)
-  ## 
+  ##
   ## This is often useful for generating some code where the items need to
   ## be *separated* by `sep`. `sep` is only added if `dest` is longer than
   ## `startLen`. The following example creates a string describing
-  ## an array of integers:  
-  ## 
+  ## an array of integers:
+  ##
   ## .. code-block:: nimrod
   ##   var arr = "["
   ##   for x in items([2, 3, 5, 7, 11]):
@@ -622,13 +622,13 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
 #    345
 
 when false:
-  proc abbrev(s: string, possibilities: openarray[string]): int = 
+  proc abbrev(s: string, possibilities: openarray[string]): int =
     ## returns the index of the first item in `possibilities` if not
     ## ambiguous; -1 if no item has been found; -2 if multiple items
     ## match.
     result = -1 # none found
-    for i in 0..possibilities.len-1: 
-      if possibilities[i].startsWith(s): 
+    for i in 0..possibilities.len-1:
+      if possibilities[i].startsWith(s):
         if result >= 0: return -2 # ambiguous
         result = i
 
@@ -648,7 +648,7 @@ proc join*(a: openArray[string], sep: string): string {.
       add(result, a[i])
   else:
     result = ""
-  
+
 proc join*(a: openArray[string]): string {.
   noSideEffect, rtl, extern: "nsuJoin".} =
   ## concatenates all strings in `a`.
@@ -706,7 +706,7 @@ proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect,
   ## none of the characters in `chars`, -1 is returned.
   for i in start..s.len-1:
     if s[i] in chars: return i
-  return -1 
+  return -1
 
 proc quoteIfContainsWhite*(s: string): string =
   ## returns ``'"' & s & '"'`` if `s` contains a space and does not
@@ -775,10 +775,10 @@ proc ParseOctInt*(s: string): int {.noSideEffect,
   ## Underscores within `s` are ignored.
   var i = 0
   if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while true: 
+  while true:
     case s[i]
     of '_': inc(i)
-    of '0'..'7': 
+    of '0'..'7':
       result = result shl 3 or (ord(s[i]) - ord('0'))
       inc(i)
     of '\0': break
@@ -813,17 +813,17 @@ proc toBin*(x: BiggestInt, len: int): string {.noSideEffect,
     mask = mask shl 1
 
 proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
-  rtl, extern: "nsuInsertSep".} = 
+  rtl, extern: "nsuInsertSep".} =
   ## inserts the separator `sep` after `digits` digits from right to left.
-  ## Even though the algorithm works with any string `s`, it is only useful 
+  ## Even though the algorithm works with any string `s`, it is only useful
   ## if `s` contains a number.
-  ## Example: ``insertSep("1000000") == "1_000_000"`` 
+  ## Example: ``insertSep("1000000") == "1_000_000"``
   var L = (s.len-1) div digits + s.len
   result = newString(L)
   var j = 0
   dec(L)
-  for i in countdown(len(s)-1, 0): 
-    if j == digits: 
+  for i in countdown(len(s)-1, 0):
+    if j == digits:
       result[L] = sep
       dec(L)
       j = 0
@@ -854,9 +854,9 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     of '\"': add(result, "\\\"")
     else: add(result, c)
   add(result, suffix)
-  
+
 proc validIdentifier*(s: string): bool {.noSideEffect,
-  rtl, extern: "nsuValidIdentifier".} = 
+  rtl, extern: "nsuValidIdentifier".} =
   ## returns true if `s` is a valid identifier. A valid identifier starts
   ## with a character of the set `IdentStartChars` and is followed by any
   ## number of characters of the set `IdentChars`.
@@ -864,7 +864,7 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false
     return true
-  
+
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuEditDistance".} =
   ## returns the edit distance between `a` and `b`. This uses the Levenshtein
@@ -967,17 +967,17 @@ type
 
 proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
                          precision = 16): string {.noSideEffect,
-                                                  rtl, extern: "nsu$1".} = 
-  ## converts a floating point value `f` to a string. 
+                                                  rtl, extern: "nsu$1".} =
+  ## converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to 
+  ## If ``format == ffDecimal`` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number 
+  ## If ``format == ffScientific`` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nimrod's ``biggestFloat`` type. 
+  ## after the decimal point for Nimrod's ``biggestFloat`` type.
   const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
-  var 
+  var
     frmtstr: array[0..5, char]
     buf: array[0..80, char]
   frmtstr[0] = '%'
@@ -988,7 +988,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
     frmtstr[4] = floatFormatToChar[format]
     frmtstr[5] = '\0'
     c_sprintf(buf, frmtstr, precision, f)
-  else: 
+  else:
     frmtstr[2] = floatFormatToChar[format]
     frmtstr[3] = '\0'
     c_sprintf(buf, frmtstr, f)
@@ -996,15 +996,15 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
 
 proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
                   precision = 16): string {.noSideEffect,
-                                           rtl, extern: "nsu$1".} = 
-  ## converts a floating point value `f` to a string. 
+                                           rtl, extern: "nsu$1".} =
+  ## converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to 
+  ## If ``format == ffDecimal`` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number 
+  ## If ``format == ffScientific`` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nimrod's ``float`` type. 
+  ## after the decimal point for Nimrod's ``float`` type.
   result = formatBiggestFloat(f, format, precision)
 
 {.pop.}
@@ -1017,6 +1017,6 @@ when isMainModule:
                    it goes""", 10, false)
   assert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   assert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
-  
+
   assert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
 
