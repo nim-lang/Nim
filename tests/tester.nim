@@ -123,6 +123,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
     if x =~ pegOfInterest:
       # `s` should contain the last error message
       s = x
+  close(p)
   result.msg = ""
   result.file = ""
   result.outp = ""
