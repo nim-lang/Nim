@@ -159,22 +159,6 @@ proc parseMessage(msg: string): TIRCEvent =
   if msg[i] == ':':
     inc(i) # Skip `:`.
     result.params.add(msg[i..msg.len-1])
-  
-proc irc*(address: string, port: TPort = 6667.TPort,
-         nick = "NimrodBot",
-         user = "NimrodBot",
-         realname = "NimrodBot", serverPass = "",
-         joinChans: seq[string] = @[]): TIRC =
-  result.address = address
-  result.port = port
-  result.nick = nick
-  result.user = user
-  result.realname = realname
-  result.serverPass = serverPass
-  result.lastPing = epochTime()
-  result.lastPong = -1.0
-  result.lag = -1.0
-  result.channelsToJoin = joinChans
 
 proc connect*(irc: var TIRC) =
   ## Connects to an IRC server as specified by ``irc``.
@@ -188,6 +172,25 @@ proc connect*(irc: var TIRC) =
   if irc.serverPass != "": irc.send("PASS " & irc.serverPass)
   irc.send("NICK " & irc.nick)
   irc.send("USER $1 * 0 :$2" % [irc.user, irc.realname])
+
+proc irc*(address: string, port: TPort = 6667.TPort,
+         nick = "NimrodBot",
+         user = "NimrodBot",
+         realname = "NimrodBot", serverPass = "",
+         joinChans: seq[string] = @[]): TIRC =
+  ## This function calls `connect`, so you don't need to.
+  result.address = address
+  result.port = port
+  result.nick = nick
+  result.user = user
+  result.realname = realname
+  result.serverPass = serverPass
+  result.lastPing = epochTime()
+  result.lastPong = -1.0
+  result.lag = -1.0
+  result.channelsToJoin = joinChans
+
+  result.connect()
   
 proc poll*(irc: var TIRC, ev: var TIRCEvent,
            timeout: int = 500): bool =
@@ -236,8 +239,7 @@ proc getLastPong*(irc: var TIRC): float =
   return irc.lastPong
  
 when isMainModule:
-  var client = irc("irc.freenode.net",joinChans = @["#nimrod"])
-  client.connect()
+  var client = irc("irc.freenode.net", nick="TestBot", joinChans = @["#nimrod"])
   while True:
     var event: TIRCEvent
     if client.poll(event):

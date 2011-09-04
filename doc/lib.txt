@@ -177,7 +177,9 @@ Internet Protocols and Support
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client. 
-  
+
+* `irc <irc.html>`_
+  This module implements an asynchronous IRC client.  
 
 Parsers
 -------
