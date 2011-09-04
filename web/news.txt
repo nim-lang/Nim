@@ -73,6 +73,7 @@ Library Additions
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``.
 - Added ``locks`` core module for more flexible locking support.
+- Added ``irc`` module.
 
 
 2011-07-10 Version 0.8.12 released
