@@ -8,6 +8,7 @@
 #
 
 # this module does the semantic checking for expressions
+
 const 
   ConstAbstractTypes = {tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
     tyArrayConstr, tyTuple, tySet}
@@ -883,6 +884,11 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
+proc semAstToYaml(c: PContext, n: PNode): PNode =
+  result = newStrNode(nkStrLit, n.treeToYaml.ropeToStr)
+  result.typ = getSysType(tyString)
+  result.info = n.info
+
 proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   if sonsLen(n) == 2:
     var a = c.semConstExpr(c, n.sons[1])
@@ -921,6 +927,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
+  of mAstToYaml: result = semAstToYaml(c, n)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
