@@ -19,7 +19,7 @@ proc semWhen(c: PContext, n: PNode): PNode =
     case it.kind
     of nkElifBranch: 
       checkSonsLen(it, 2)
-      var e = semConstBoolExpr(c, it.sons[0])
+      var e = semAndEvalConstExpr(c, it.sons[0])
       if (e.kind != nkIntLit): InternalError(n.info, "semWhen")
       if (e.intVal != 0) and (result == nil): 
         result = semStmt(c, it.sons[1]) # do not open a new scope!
