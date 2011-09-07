@@ -30,6 +30,11 @@ proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
   # implements an iterator. Returns the next top-level statement or
   # emtyNode if end of stream.
+
+proc parseString*(s: string, filename: string = "", line: int = 0): PNode
+  # filename and line could be set optionally, when the string originates 
+  # from a certain source file. This way, the compiler could generate
+  # correct error messages referring to the original source.
   
 # helpers for the other parsers
 proc getPrecedence*(tok: TToken): int
@@ -1369,3 +1374,13 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       result = complexOrSimpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
+
+proc parseString(s: string, filename: string = "", line: int = 0): PNode =
+  var stream = LLStreamOpen(s)
+  stream.lineOffset = line
+
+  var parser : TParser
+  OpenParser(parser, filename, stream)
+  
+  result = parser.parseAll
+  

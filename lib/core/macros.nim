@@ -19,7 +19,7 @@ type
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
     nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
-    nnkTripleStrLit, nnkMetaNode, nnkNilLit, nnkDotCall, 
+    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall, 
     nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
     nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 
     nnkPrefix, nnkPostfix, nnkPar, nnkCurly, 
@@ -211,12 +211,26 @@ proc prettyPrint*(n: PNimrodNode): string {.compileTime.} =
 
   add(result, ")")
 
-proc toYaml*(n: PNimrodNode) {.magic: "AstToYaml".}
+proc toYaml*(n: PNimrodNode): string {.magic: "AstToYaml".}
   ## Converts the AST `n` to an YAML string
   ##
   ## Provides more detailed, potentially harder to digest information
   ## than `prettyPrint`
 
+proc parseExpr*(s: string) : expr {.magic: "ParseExprToAst".}
+  ## Compiles the passed string to its AST representation
+  ## Expects a single expression
+
+proc parseStmt*(s: string) : stmt {.magic: "ParseStmtToAst".}
+  ## Compiles the passed string to its AST representation
+  ## Expects one or more statements
+
+proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandMacroToAst".}
+  ## Obtains the AST nodes returned from a macro or template invocation
+  ## example:
+  ## macro FooMacro() = 
+  ##   var ast = getAst(BarTemplate())
+  
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing

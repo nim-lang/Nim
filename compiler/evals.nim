@@ -15,7 +15,8 @@
 
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
-  msgs, os, condsyms, idents, renderer, types, passes, semfold, transf
+  msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
+  ropes
 
 type 
   PStackFrame* = ref TStackFrame
@@ -981,6 +982,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     if (a == b) or
         (b.kind in {nkNilLit, nkEmpty}) and (a.kind in {nkNilLit, nkEmpty}): 
       result.intVal = 1
+  of mAstToYaml:
+    var ast = evalAux(c, n.sons[1], {efLValue})
+    result = newStrNode(nkStrLit, ast.treeToYaml.ropeToStr)
   of mNHint: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1034,6 +1038,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
   case n.kind                 # atoms:
+  of nkMetaNode:
+    result = copyTree(n.sons[0])
+    result.typ = n.typ
   of nkEmpty: result = n
   of nkSym: result = evalSym(c, n, flags)
   of nkType..nkNilLit: result = copyNode(n) # end of atoms
