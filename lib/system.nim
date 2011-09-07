@@ -710,7 +710,7 @@ proc `&` * (x, y: string): string {.
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## is the `concatenation operator`. It concatenates `x` and `y`.
-  
+
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly. 
 
@@ -895,7 +895,12 @@ type # these work for most platforms:
   PFloat64* = ptr Float64 ## an alias for ``ptr float64``
   PInt64* = ptr Int64 ## an alias for ``ptr int64``
   PInt32* = ptr Int32 ## an alias for ``ptr int32``
-  
+
+type TOptional*[T] = object
+  case hasValue* : bool
+  of true: value*: T
+  of false: nil
+ 
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion

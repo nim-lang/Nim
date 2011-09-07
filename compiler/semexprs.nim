@@ -889,44 +889,16 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0].info = n.info
 
 proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
-  result = c.semConstExpr(c, n.sons[i+1])
+  result = c.semAndEvalConstExpr(n.sons[i+1])
 
   if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-     GlobalError(result.info, errStringLiteralExpected)
-
-# The lexer marks multi-line strings as residing at the line where they are closed
-# This function returns the line where the string begins
-# Maybe the lexer should mark both the beginning and the end of expressions, then
-# this function could be removed
-proc stringStartingLine(s: PNode): int =
-  var totalLines = 0
-  for ln in splitLines(s.strVal): inc totalLines
-
-  result = s.info.line - totalLines
-
-proc semParseExprToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if sonsLen(n) == 2:
-    var code = expectStringArg(c, n, 0)
-    var ast = parseString(code.strVal, code.info.toFilename, code.stringStartingLine)
-
-    if sonsLen(ast) != 1:
-      GlobalError(code.info, errExprExpected, "multiple statements")
-
-    result = newMetaNodeIT(ast.sons[0], code.info, newTypeS(tyExpr, c))
-  else:
-    result = semDirectOp(c, n, flags)
-
-proc semParseStmtToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if sonsLen(n) == 2:
-    var code = expectStringArg(c, n, 0)
-    var ast = parseString(code.strVal, code.info.toFilename, code.stringStartingLine)
-
-    result = newMetaNodeIT(ast, code.info, newTypeS(tyStmt, c))
-  else:
-    result = semDirectOp(c, n, flags)
+    GlobalError(result.info, errStringLiteralExpected)
 
 proc semExpandMacroToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if sonsLen(n) == 2 and isCallExpr(n.sons[1]):
+  if sonsLen(n) == 2:
+    if not isCallExpr(n.sons[1]):
+      GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+
     var macroCall = n.sons[1]
 
     var s = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
@@ -943,7 +915,7 @@ proc semExpandMacroToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
     var macroRetType = newTypeS(s.typ.sons[0].kind, c)
     result = newMetaNodeIT(expanded, n.info, macroRetType)
   else:
-    GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+    result = semDirectOp(c, n, flags)
 
 proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   if sonsLen(n) == 2:
@@ -981,8 +953,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
-  of mParseExprToAst: result = semParseExprToAst(c, n, flags)
-  of mParseStmtToAst: result = semParseStmtToAst(c, n, flags)
   of mExpandMacroToAst: result = semExpandMacroToAst(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
