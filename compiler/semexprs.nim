@@ -747,7 +747,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     # [] operator for tuples requires constant expression:
-    n.sons[1] = semConstExpr(c, n.sons[1])
+    n.sons[1] = semAndEvalConstExpr(c, n.sons[1])
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal}).kind in
         {tyInt..tyInt64}: 
       var idx = getOrdValue(n.sons[1])
