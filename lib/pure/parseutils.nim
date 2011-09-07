@@ -76,6 +76,19 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     ident = substr(s, start, i-1)
     result = i-start
 
+proc parseIdent*(s: string, start = 0): TOptional[string] =
+  ## parses an identifier and stores it in ``ident``. Returns
+  ## the number of the parsed characters or 0 in case of an error.
+  result.hasValue = false
+  var i = start
+
+  if s[i] in IdentStartChars:
+    inc(i)
+    while s[i] in IdentChars: inc(i)
+    
+    result.hasValue = true
+    result.value = substr(s, start, i-1)
+
 proc parseToken*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline, deprecated.} =
   ## parses a token and stores it in ``token``. Returns
@@ -254,4 +267,82 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   result = parseBiggestFloat(s, bf, start)
   number = bf
   
+proc isEscaped*(s: string, pos: int) : bool =
+  assert pos >= 0 and pos < s.len
+
+  var
+    backslashes = 0
+    j = pos - 1
+
+  while j >= 0:
+    if s[j] == '\\':
+      inc backslashes
+      dec j
+    else:
+      break
+
+  return backslashes mod 2 != 0
+
+type
+  TInterpStrFragment* = tuple[interpStart, interpEnd, exprStart, exprEnd: int]
+
+iterator interpolatedFragments*(s: string): TInterpStrFragment =
+  var i = 0
+  while i < s.len:
+    # The $ sign marks the start of an interpolation.
+    #
+    # It's followed either by a varialbe name or an opening bracket 
+    # (so it should be before the end of the string)
+    # if the dollar sign is escaped, don't trigger interpolation
+    if s[i] == '$' and i < (s.len - 1) and not isEscaped(s, i):
+      var next = s[i+1]
+      
+      if next == '{':
+        inc i
+
+        var
+          brackets = {'{', '}'}
+          nestingCount = 1
+          start = i + 1
+
+        # find closing braket, while respecting any nested brackets
+        while i < s.len:
+          inc i, skipUntil(s, brackets, i+1) + 1
+          
+          if not isEscaped(s, i):
+            if s[i] == '}':
+              dec nestingCount
+              if nestingCount == 0: break
+            else:
+              inc nestingCount
+
+        var t : TInterpStrFragment
+        t.interpStart = start - 2
+        t.interpEnd = i
+        t.exprStart = start
+        t.exprEnd = i - 1
+
+        yield t
+        
+      else:
+        var 
+          start = i + 1
+          identifier = parseIdent(s, i+1)
+        
+        if identifier.hasValue:
+          inc i, identifier.value.len
+
+          var t : TInterpStrFragment
+          t.interpStart = start - 1
+          t.interpEnd = i
+          t.exprStart = start
+          t.exprEnd = i
+
+          yield t
+
+        else:
+          raise newException(EInvalidValue, "Unable to parse a varible name at " & s[i..s.len])
+       
+    inc i
+
 {.pop.}
