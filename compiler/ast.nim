@@ -57,10 +57,10 @@ type
     nkStrLit,             # a string literal ""
     nkRStrLit,            # a raw string literal r""
     nkTripleStrLit,       # a triple string literal """
-    nkMetaNode,           # difficult to explain; represents itself
-                          # (used for macros)
     nkNilLit,             # the nil literal
                           # end of atoms
+    nkMetaNode,           # difficult to explain; represents itself
+                          # (used for macros)
     nkDotCall,            # used to temporarily flag a nkCall node; 
                           # this is used
                           # for transforming ``s.len`` to ``len(s)``
@@ -312,7 +312,8 @@ type
 
   TMagic* = enum # symbols that require compiler magic:
     mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, mOf,
-    mEcho, mAstToYaml, mShallowCopy, mSlurp,
+    mEcho, mShallowCopy, mSlurp,
+    mAstToYaml, mParseExprToAst, mParseStmtToAst, mExpandMacroToAst,
     mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
@@ -610,6 +611,23 @@ proc copyTree*(src: PNode): PNode
 
 proc discardSons*(father: PNode)
 
+proc len*(n: PNode): int {.inline.} =
+  if isNil(n.sons): result = 0
+  else: result = len(n.sons)
+  
+proc safeLen*(n: PNode): int {.inline.} =
+  ## works even for leaves.
+  if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
+  else: result = len(n.sons)
+  
+proc add*(father, son: PNode) =
+  assert son != nil
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)
+  
+proc `[]`*(n: PNode, i: int): PNode {.inline.} =
+  result = n.sons[i]
+
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
@@ -754,6 +772,10 @@ proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
+proc newMetaNodeIT*(tree: PNode, info: TLineInfo, typ: PType): PNode =
+  result = newNodeIT(nkMetaNode, info, typ)
+  result.add(tree)
+
 proc NewType(kind: TTypeKind, owner: PSym): PType = 
   new(result)
   result.kind = kind
@@ -865,23 +887,6 @@ proc addSon(father, son: PType) =
 proc sonsLen(n: PNode): int = 
   if isNil(n.sons): result = 0
   else: result = len(n.sons)
-  
-proc len*(n: PNode): int {.inline.} =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-  
-proc safeLen*(n: PNode): int {.inline.} =
-  ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
-  else: result = len(n.sons)
-  
-proc add*(father, son: PNode) =
-  assert son != nil
-  if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)  
-  
-proc `[]`*(n: PNode, i: int): PNode {.inline.} =
-  result = n.sons[i]
   
 proc newSons(father: PNode, length: int) = 
   if isNil(father.sons): father.sons = @[]

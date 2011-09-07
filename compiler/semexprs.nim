@@ -385,6 +385,10 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   else: 
     nil
 
+proc isCallExpr(n: PNode): bool = 
+  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
+                      nkCallStrLit}
+
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode = 
   if n.kind == nkHiddenDeref: 
     checkSonsLen(n, 1)
@@ -884,16 +888,66 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
-proc semAstToYaml(c: PContext, n: PNode): PNode =
-  result = newStrNode(nkStrLit, n.treeToYaml.ropeToStr)
-  result.typ = getSysType(tyString)
-  result.info = n.info
+proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
+  result = c.semConstExpr(c, n.sons[i+1])
+
+  if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+     GlobalError(result.info, errStringLiteralExpected)
+
+# The lexer marks multi-line strings as residing at the line where they are closed
+# This function returns the line where the string begins
+# Maybe the lexer should mark both the beginning and the end of expressions, then
+# this function could be removed
+proc stringStartingLine(s: PNode): int =
+  var totalLines = 0
+  for ln in splitLines(s.strVal): inc totalLines
+
+  result = s.info.line - totalLines
+
+proc semParseExprToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) == 2:
+    var code = expectStringArg(c, n, 0)
+    var ast = parseString(code.strVal, code.info.toFilename, code.stringStartingLine)
+
+    if sonsLen(ast) != 1:
+      GlobalError(code.info, errExprExpected, "multiple statements")
+
+    result = newMetaNodeIT(ast.sons[0], code.info, newTypeS(tyExpr, c))
+  else:
+    result = semDirectOp(c, n, flags)
+
+proc semParseStmtToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) == 2:
+    var code = expectStringArg(c, n, 0)
+    var ast = parseString(code.strVal, code.info.toFilename, code.stringStartingLine)
+
+    result = newMetaNodeIT(ast, code.info, newTypeS(tyStmt, c))
+  else:
+    result = semDirectOp(c, n, flags)
+
+proc semExpandMacroToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) == 2 and isCallExpr(n.sons[1]):
+    var macroCall = n.sons[1]
+
+    var s = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
+    if s == nil:
+      GlobalError(n.info, errUndeclaredIdentifier, macroCall.sons[0].strVal)
+
+    var expanded : Pnode
+
+    case s.kind
+    of skMacro: expanded = semMacroExpr(c, macroCall, s, false)
+    of skTemplate: expanded = semTemplateExpr(c, macroCall, s, false)
+    else: GlobalError(n.info, errXisNoMacroOrTemplate, s.name.s)
+
+    var macroRetType = newTypeS(s.typ.sons[0].kind, c)
+    result = newMetaNodeIT(expanded, n.info, macroRetType)
+  else:
+    GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
 
 proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   if sonsLen(n) == 2:
-    var a = c.semConstExpr(c, n.sons[1])
-    if a.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
-      GlobalError(a.info, errStringLiteralExpected)
+    var a = expectStringArg(c, n, 0)
     try:
       var content = readFile(a.strVal)
       result = newStrNode(nkStrLit, content)
@@ -927,7 +981,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
-  of mAstToYaml: result = semAstToYaml(c, n)
+  of mParseExprToAst: result = semParseExprToAst(c, n, flags)
+  of mParseStmtToAst: result = semParseStmtToAst(c, n, flags)
+  of mExpandMacroToAst: result = semExpandMacroToAst(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
@@ -1084,10 +1140,6 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   n.typ = n.sons[1].typ
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
-
-proc isCallExpr(n: PNode): bool = 
-  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
-                      nkCallStrLit}
 
 proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode = 
   checkMinSonsLen(n, 2)
