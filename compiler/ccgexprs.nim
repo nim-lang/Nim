@@ -128,7 +128,7 @@ proc genSetNode(p: BProc, n: PNode): PRope =
     if id == gid:
       # not found in cache:
       inc(gid)
-      appf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;",
+      appf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
   else:
     result = genRawSetData(cs, size)
@@ -371,8 +371,8 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     else:
       storage = getTypeDesc(p.module, t)
     var tmp = getTempName()
-    appcg(p, cpsLocals, "$1 $2;", [storage, tmp])
-    appcg(p, cpsStmts, "$1 = #$2($3, $4);", [tmp, toRope(prc[m]), 
+    appcg(p, cpsLocals, "$1 $2;$n", [storage, tmp])
+    appcg(p, cpsStmts, "$1 = #$2($3, $4);$n", [tmp, toRope(prc[m]), 
                                              rdLoc(a), rdLoc(b)])
     if size < platform.IntSize or t.kind in {tyRange, tyEnum, tySet}:
       appcg(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
