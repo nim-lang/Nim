@@ -19,7 +19,7 @@ proc genLineDir(p: BProc, t: PNode) =
     line = 0                  # negative numbers are not allowed in #line
   if optLineDir in p.Options and line > 0: 
     appff(p.s[cpsStmts], "#line $2 $1$n", "; line $2 \"$1\"$n", 
-          [makeCString(toFilename(t.info)), toRope(line)])
+          [toRope(makeSingleLineCString(toFullPath(t.info))), toRope(line)])
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
     appcg(p, cpsStmts, "#endb($1);$n", [toRope(line)])

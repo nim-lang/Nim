@@ -13,7 +13,7 @@
 import 
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, intsets,
-  nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os, 
+  nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   rodutils, renderer
 

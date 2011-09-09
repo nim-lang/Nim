@@ -438,6 +438,11 @@ proc newLineInfo*(filename: string, line, col: int): TLineInfo =
 proc ToFilename*(info: TLineInfo): string = 
   if info.fileIndex < 0: result = "???"
   else: result = filenames[info.fileIndex]
+
+proc toFullPath*(info: TLineInfo): string =
+  result = info.toFilename
+  if not isAbsolute(result):
+    result = JoinPath(options.projectPath, result)
   
 proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
