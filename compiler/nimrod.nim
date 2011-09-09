@@ -7,58 +7,58 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) and defined(windows): 
+when defined(gcc) and defined(windows):
   {.link: "icons/nimrod.res".}
 
-import 
-  times, commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
+import
+  times, commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, platform, main, parseopt
 
 when hasTinyCBackend:
   import tccgen
 
-var 
+var
   arguments: string = ""      # the arguments to be passed to the program that
                               # should be run
   cmdLineInfo: TLineInfo
 
-proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) = 
+proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
   var p = parseopt.initOptParser()
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongOption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongOption, cmdShortOption:
       # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
       # we fix this here
       var bracketLe = strutils.find(p.key, '[')
-      if bracketLe >= 0: 
+      if bracketLe >= 0:
         var key = substr(p.key, 0, bracketLe - 1)
         var val = substr(p.key, bracketLe + 1) & ':' & p.val
         ProcessSwitch(key, val, pass, cmdLineInfo)
-      else: 
+      else:
         ProcessSwitch(p.key, p.val, pass, cmdLineInfo)
-    of cmdArgument: 
-      if command == "": 
+    of cmdArgument:
+      if command == "":
         command = p.key
-      elif filename == "": 
+      elif filename == "":
         filename = unixToNativePath(p.key) # BUGFIX for portable build scripts
-        break 
-  if pass == passCmd2: 
+        break
+  if pass == passCmd2:
     arguments = cmdLineRest(p)
-    if optRun notin gGlobalOptions and arguments != "": 
+    if optRun notin gGlobalOptions and arguments != "":
       rawMessage(errArgsNeedRunOption, [])
-  
-proc HandleCmdLine() = 
+
+proc HandleCmdLine() =
   var start = epochTime()
-  if paramCount() == 0: 
+  if paramCount() == 0:
     writeCommandLineUsage()
-  else: 
+  else:
     # Process command line arguments:
     var command = ""
     var filename = ""
     ProcessCmdLine(passCmd1, command, filename)
-    if filename != "": 
+    if filename != "":
       var p = splitFile(filename)
       options.projectPath = p.dir
       options.projectName = p.name
@@ -75,14 +75,11 @@ proc HandleCmdLine() =
       when hasTinyCBackend:
         if gCmd == cmdRun:
           tccgen.run()
-      if gCmd notin {cmdInterpret, cmdRun}: 
-        rawMessage(hintSuccessX, [$gLinesCompiled, 
+      if gCmd notin {cmdInterpret, cmdRun}:
+        rawMessage(hintSuccessX, [$gLinesCompiled,
                    formatFloat(epochTime() - start, ffDecimal, 3)])
-      if optRun in gGlobalOptions: 
-        when defined(unix): 
-          var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))
-        else: 
-          var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
+      if optRun in gGlobalOptions:
+        var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
         execExternalProgram(prog & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
