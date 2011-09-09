@@ -12,7 +12,7 @@
 # did not, you can find it at http://www.gnu.org/
 #
 
-## Nimrod wrapper for ``shpinx``.
+## Nimrod wrapper for ``sphinx``.
 
 {.deadCodeElim: on.}
 when defined(windows):
@@ -26,7 +26,7 @@ else:
     sphinxDll* = "libspinxclient.so"
 
 #/ known searchd status codes:
-const 
+const
   SEARCHD_OK* = 0
   SEARCHD_ERROR* = 1
   SEARCHD_RETRY* = 2
@@ -34,7 +34,7 @@ const
 
 #/ known match modes
 
-const 
+const
   SPH_MATCH_ALL* = 0
   SPH_MATCH_ANY* = 1
   SPH_MATCH_PHRASE* = 2
@@ -45,7 +45,7 @@ const
 
 #/ known ranking modes (ext2 only)
 
-const 
+const
   SPH_RANK_PROXIMITY_BM25* = 0
   SPH_RANK_BM25* = 1
   SPH_RANK_NONE* = 2
@@ -58,7 +58,7 @@ const
 
 #/ known sort modes
 
-const 
+const
   SPH_SORT_RELEVANCE* = 0
   SPH_SORT_ATTR_DESC* = 1
   SPH_SORT_ATTR_ASC* = 2
@@ -68,14 +68,14 @@ const
 
 #/ known filter types
 
-const 
+const
   SPH_FILTER_VALUES* = 0
   SPH_FILTER_RANGE* = 1
   SPH_FILTER_FLOATRANGE* = 2
 
 #/ known attribute types
 
-const 
+const
   SPH_ATTR_INTEGER* = 1
   SPH_ATTR_TIMESTAMP* = 2
   SPH_ATTR_ORDINAL* = 3
@@ -87,7 +87,7 @@ const
 
 #/ known grouping functions
 
-const 
+const
   SPH_GROUPBY_DAY* = 0
   SPH_GROUPBY_WEEK* = 1
   SPH_GROUPBY_MONTH* = 2
@@ -95,19 +95,19 @@ const
   SPH_GROUPBY_ATTR* = 4
   SPH_GROUPBY_ATTRPAIR* = 5
 
-type  
+type
   TSphinxBool* {.size: sizeof(cint).} = enum
     SPH_FALSE = 0,
     SPH_TRUE = 1
 
   Tclient {.pure, final.} = object
   PClient* = ptr TClient
-  Twordinfo*{.pure, final.} = object 
+  Twordinfo*{.pure, final.} = object
     word*: cstring
     docs*: cint
     hits*: cint
 
-  Tresult*{.pure, final.} = object 
+  Tresult*{.pure, final.} = object
     error*: cstring
     warning*: cstring
     status*: cint
@@ -124,7 +124,7 @@ type
     num_words*: cint
     words*: ptr array [0..100_000, TWordinfo]
 
-  Texcerpt_options*{.pure, final.} = object 
+  Texcerpt_options*{.pure, final.} = object
     before_match*: cstring
     after_match*: cstring
     chunk_separator*: cstring
@@ -145,114 +145,114 @@ type
     allow_empty*: TSphinxBool
     emit_zones*: TSphinxBool
 
-  Tkeyword_info*{.pure, final.} = object 
+  Tkeyword_info*{.pure, final.} = object
     tokenized*: cstring
     normalized*: cstring
     num_docs*: cint
     num_hits*: cint
 
 
-proc create*(copy_args: TSphinxBool): PClient{.cdecl, importc: "sphinx_create", 
+proc create*(copy_args: TSphinxBool): PClient{.cdecl, importc: "sphinx_create",
     dynlib: sphinxDll.}
-proc cleanup*(client: PClient){.cdecl, importc: "sphinx_cleanup", 
+proc cleanup*(client: PClient){.cdecl, importc: "sphinx_cleanup",
                                     dynlib: sphinxDll.}
-proc destroy*(client: PClient){.cdecl, importc: "sphinx_destroy", 
+proc destroy*(client: PClient){.cdecl, importc: "sphinx_destroy",
                                     dynlib: sphinxDll.}
-proc error*(client: PClient): cstring{.cdecl, importc: "sphinx_error", 
+proc error*(client: PClient): cstring{.cdecl, importc: "sphinx_error",
     dynlib: sphinxDll.}
-proc warning*(client: PClient): cstring{.cdecl, importc: "sphinx_warning", 
+proc warning*(client: PClient): cstring{.cdecl, importc: "sphinx_warning",
     dynlib: sphinxDll.}
-proc set_server*(client: PClient, host: cstring, port: cint): TSphinxBool{.cdecl, 
+proc set_server*(client: PClient, host: cstring, port: cint): TSphinxBool{.cdecl,
     importc: "sphinx_set_server", dynlib: sphinxDll.}
-proc set_connect_timeout*(client: PClient, seconds: float32): TSphinxBool{.cdecl, 
+proc set_connect_timeout*(client: PClient, seconds: float32): TSphinxBool{.cdecl,
     importc: "sphinx_set_connect_timeout", dynlib: sphinxDll.}
-proc open*(client: PClient): TSphinxBool{.cdecl, importc: "sphinx_open", 
+proc open*(client: PClient): TSphinxBool{.cdecl, importc: "sphinx_open",
                                         dynlib: sphinxDll.}
-proc close*(client: PClient): TSphinxBool{.cdecl, importc: "sphinx_close", 
+proc close*(client: PClient): TSphinxBool{.cdecl, importc: "sphinx_close",
     dynlib: sphinxDll.}
-proc set_limits*(client: PClient, offset: cint, limit: cint, 
-                 max_matches: cint, cutoff: cint): TSphinxBool{.cdecl, 
+proc set_limits*(client: PClient, offset: cint, limit: cint,
+                 max_matches: cint, cutoff: cint): TSphinxBool{.cdecl,
     importc: "sphinx_set_limits", dynlib: sphinxDll.}
 proc set_max_query_time*(client: PClient, max_query_time: cint): TSphinxBool{.
     cdecl, importc: "sphinx_set_max_query_time", dynlib: sphinxDll.}
-proc set_match_mode*(client: PClient, mode: cint): TSphinxBool{.cdecl, 
+proc set_match_mode*(client: PClient, mode: cint): TSphinxBool{.cdecl,
     importc: "sphinx_set_match_mode", dynlib: sphinxDll.}
-proc set_ranking_mode*(client: PClient, ranker: cint): TSphinxBool{.cdecl, 
+proc set_ranking_mode*(client: PClient, ranker: cint): TSphinxBool{.cdecl,
     importc: "sphinx_set_ranking_mode", dynlib: sphinxDll.}
 proc set_sort_mode*(client: PClient, mode: cint, sortby: cstring): TSphinxBool{.
     cdecl, importc: "sphinx_set_sort_mode", dynlib: sphinxDll.}
-proc set_field_weights*(client: PClient, num_weights: cint, 
+proc set_field_weights*(client: PClient, num_weights: cint,
                         field_names: cstringArray, field_weights: ptr cint): TSphinxBool{.
     cdecl, importc: "sphinx_set_field_weights", dynlib: sphinxDll.}
-proc set_index_weights*(client: PClient, num_weights: cint, 
+proc set_index_weights*(client: PClient, num_weights: cint,
                         index_names: cstringArray, index_weights: ptr cint): TSphinxBool{.
     cdecl, importc: "sphinx_set_index_weights", dynlib: sphinxDll.}
 proc set_id_range*(client: PClient, minid: int64, maxid: int64): TSphinxBool{.
     cdecl, importc: "sphinx_set_id_range", dynlib: sphinxDll.}
-proc add_filter*(client: PClient, attr: cstring, num_values: cint, 
-                 values: ptr int64, exclude: TSphinxBool): TSphinxBool{.cdecl, 
+proc add_filter*(client: PClient, attr: cstring, num_values: cint,
+                 values: ptr int64, exclude: TSphinxBool): TSphinxBool{.cdecl,
     importc: "sphinx_add_filter", dynlib: sphinxDll.}
-proc add_filter_range*(client: PClient, attr: cstring, umin: int64, 
-                       umax: int64, exclude: TSphinxBool): TSphinxBool{.cdecl, 
+proc add_filter_range*(client: PClient, attr: cstring, umin: int64,
+                       umax: int64, exclude: TSphinxBool): TSphinxBool{.cdecl,
     importc: "sphinx_add_filter_range", dynlib: sphinxDll.}
-proc add_filter_float_range*(client: PClient, attr: cstring, fmin: float32, 
-                             fmax: float32, exclude: TSphinxBool): TSphinxBool{.cdecl, 
+proc add_filter_float_range*(client: PClient, attr: cstring, fmin: float32,
+                             fmax: float32, exclude: TSphinxBool): TSphinxBool{.cdecl,
     importc: "sphinx_add_filter_float_range", dynlib: sphinxDll.}
-proc set_geoanchor*(client: PClient, attr_latitude: cstring, 
+proc set_geoanchor*(client: PClient, attr_latitude: cstring,
                     attr_longitude: cstring, latitude: float32, longitude: float32): TSphinxBool{.
     cdecl, importc: "sphinx_set_geoanchor", dynlib: sphinxDll.}
-proc set_groupby*(client: PClient, attr: cstring, groupby_func: cint, 
-                  group_sort: cstring): TSphinxBool{.cdecl, 
+proc set_groupby*(client: PClient, attr: cstring, groupby_func: cint,
+                  group_sort: cstring): TSphinxBool{.cdecl,
     importc: "sphinx_set_groupby", dynlib: sphinxDll.}
-proc set_groupby_distinct*(client: PClient, attr: cstring): TSphinxBool{.cdecl, 
+proc set_groupby_distinct*(client: PClient, attr: cstring): TSphinxBool{.cdecl,
     importc: "sphinx_set_groupby_distinct", dynlib: sphinxDll.}
-proc set_retries*(client: PClient, count: cint, delay: cint): TSphinxBool{.cdecl, 
+proc set_retries*(client: PClient, count: cint, delay: cint): TSphinxBool{.cdecl,
     importc: "sphinx_set_retries", dynlib: sphinxDll.}
-proc add_override*(client: PClient, attr: cstring, docids: ptr int64, 
-                   num_values: cint, values: ptr cint): TSphinxBool{.cdecl, 
+proc add_override*(client: PClient, attr: cstring, docids: ptr int64,
+                   num_values: cint, values: ptr cint): TSphinxBool{.cdecl,
     importc: "sphinx_add_override", dynlib: sphinxDll.}
-proc set_select*(client: PClient, select_list: cstring): TSphinxBool{.cdecl, 
+proc set_select*(client: PClient, select_list: cstring): TSphinxBool{.cdecl,
     importc: "sphinx_set_select", dynlib: sphinxDll.}
-proc reset_filters*(client: PClient){.cdecl, 
+proc reset_filters*(client: PClient){.cdecl,
     importc: "sphinx_reset_filters", dynlib: sphinxDll.}
-proc reset_groupby*(client: PClient){.cdecl, 
+proc reset_groupby*(client: PClient){.cdecl,
     importc: "sphinx_reset_groupby", dynlib: sphinxDll.}
-proc query*(client: PClient, query: cstring, index_list: cstring, 
-            comment: cstring): ptr Tresult{.cdecl, importc: "sphinx_query", 
+proc query*(client: PClient, query: cstring, index_list: cstring,
+            comment: cstring): ptr Tresult{.cdecl, importc: "sphinx_query",
     dynlib: sphinxDll.}
-proc add_query*(client: PClient, query: cstring, index_list: cstring, 
-                comment: cstring): cint{.cdecl, importc: "sphinx_add_query", 
+proc add_query*(client: PClient, query: cstring, index_list: cstring,
+                comment: cstring): cint{.cdecl, importc: "sphinx_add_query",
     dynlib: sphinxDll.}
-proc run_queries*(client: PClient): ptr Tresult{.cdecl, 
+proc run_queries*(client: PClient): ptr Tresult{.cdecl,
     importc: "sphinx_run_queries", dynlib: sphinxDll.}
-proc get_num_results*(client: PClient): cint{.cdecl, 
+proc get_num_results*(client: PClient): cint{.cdecl,
     importc: "sphinx_get_num_results", dynlib: sphinxDll.}
-proc get_id*(result: ptr Tresult, match: cint): int64{.cdecl, 
+proc get_id*(result: ptr Tresult, match: cint): int64{.cdecl,
     importc: "sphinx_get_id", dynlib: sphinxDll.}
-proc get_weight*(result: ptr Tresult, match: cint): cint{.cdecl, 
+proc get_weight*(result: ptr Tresult, match: cint): cint{.cdecl,
     importc: "sphinx_get_weight", dynlib: sphinxDll.}
-proc get_int*(result: ptr Tresult, match: cint, attr: cint): int64{.cdecl, 
+proc get_int*(result: ptr Tresult, match: cint, attr: cint): int64{.cdecl,
     importc: "sphinx_get_int", dynlib: sphinxDll.}
-proc get_float*(result: ptr Tresult, match: cint, attr: cint): float32{.cdecl, 
+proc get_float*(result: ptr Tresult, match: cint, attr: cint): float32{.cdecl,
     importc: "sphinx_get_float", dynlib: sphinxDll.}
 proc get_mva*(result: ptr Tresult, match: cint, attr: cint): ptr cint{.
     cdecl, importc: "sphinx_get_mva", dynlib: sphinxDll.}
-proc get_string*(result: ptr Tresult, match: cint, attr: cint): cstring{.cdecl, 
+proc get_string*(result: ptr Tresult, match: cint, attr: cint): cstring{.cdecl,
     importc: "sphinx_get_string", dynlib: sphinxDll.}
-proc init_excerpt_options*(opts: ptr Texcerpt_options){.cdecl, 
+proc init_excerpt_options*(opts: ptr Texcerpt_options){.cdecl,
     importc: "sphinx_init_excerpt_options", dynlib: sphinxDll.}
-proc build_excerpts*(client: PClient, num_docs: cint, docs: cstringArray, 
+proc build_excerpts*(client: PClient, num_docs: cint, docs: cstringArray,
                      index: cstring, words: cstring, opts: ptr Texcerpt_options): cstringArray{.
     cdecl, importc: "sphinx_build_excerpts", dynlib: sphinxDll.}
-proc update_attributes*(client: PClient, index: cstring, num_attrs: cint, 
-                        attrs: cstringArray, num_docs: cint, 
+proc update_attributes*(client: PClient, index: cstring, num_attrs: cint,
+                        attrs: cstringArray, num_docs: cint,
                         docids: ptr int64, values: ptr int64): cint{.
     cdecl, importc: "sphinx_update_attributes", dynlib: sphinxDll.}
-proc update_attributes_mva*(client: PClient, index: cstring, attr: cstring, 
-                            docid: int64, num_values: cint, 
-                            values: ptr cint): cint{.cdecl, 
+proc update_attributes_mva*(client: PClient, index: cstring, attr: cstring,
+                            docid: int64, num_values: cint,
+                            values: ptr cint): cint{.cdecl,
     importc: "sphinx_update_attributes_mva", dynlib: sphinxDll.}
-proc build_keywords*(client: PClient, query: cstring, index: cstring, 
+proc build_keywords*(client: PClient, query: cstring, index: cstring,
                      hits: TSphinxBool, out_num_keywords: ptr cint): ptr Tkeyword_info{.
     cdecl, importc: "sphinx_build_keywords", dynlib: sphinxDll.}
 proc status*(client: PClient, num_rows: ptr cint, num_cols: ptr cint): cstringArray{.
