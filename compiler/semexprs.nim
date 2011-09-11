@@ -903,7 +903,7 @@ proc semExpandMacroToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
     var s = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
     if s == nil:
-      GlobalError(n.info, errUndeclaredIdentifier, macroCall.sons[0].strVal)
+      GlobalError(n.info, errUndeclaredIdentifier, macroCall.sons[0].renderTree)
 
     var expanded : Pnode
 

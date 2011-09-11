@@ -1,6 +1,6 @@
 discard """
   file: "tstringinterp.nim"
-  output: "Hello Alice \$ 64 | Hello Bob, 10"
+  output: "Hello Alice, 64 | Hello Bob, 10"
 """
 
 import macros, parseutils, strutils
@@ -13,23 +13,12 @@ proc concat(strings: openarray[string]) : string =
 template ProcessInterpolations(e: expr) =
   var 
     s = e[1].strVal
-    stringStart = 0
- 
-  for i in interpolatedFragments(s):
-    var leadingString = s[stringStart..i.interpStart-1]
-    var interpolatedExpr = s[i.exprStart..i.exprEnd]
-
-    addString(leadingString)
-
-    var interpTargetAst = parseExpr("$(x)")
-    interpTargetAst[1][0] = parseExpr(interpolatedExpr)
-    addExpr(interpTargetAst)
     
-    stringStart = i.interpEnd + 1
-
-  if stringStart != s.len:
-    var endingString = s[stringStart..s.len]
-    addString(endingString)
+  for f in interpolatedFragments(s):
+    if f.kind  == ikString:
+      addString(f.value)
+    else:
+      addExpr(f.value)
 
 macro formatStyleInterpolation(e: expr): expr =
   var 
@@ -75,7 +64,7 @@ var
   c = 34
 
 var
-  s1 = concatStyleInterpolation"Hello ${alice} \$ ${sum (a, b, c)}"
+  s1 = concatStyleInterpolation"Hello ${alice}, ${sum (a, b, c)}}"
   s2 = formatStyleInterpolation"Hello ${bob}, ${sum (alice.len, bob.len, 2)}"
 
 write(stdout, s1 & " | " & s2)

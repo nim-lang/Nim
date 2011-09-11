@@ -1381,6 +1381,7 @@ proc parseString(s: string, filename: string = "", line: int = 0): PNode =
 
   var parser : TParser
   OpenParser(parser, filename, stream)
-  
+
   result = parser.parseAll
+  CloseParser(parser)
   
