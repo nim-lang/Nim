@@ -59,7 +59,7 @@
 #
 
 import 
-  msgs, strutils, platform, hashes, crc
+  msgs, strutils, platform, hashes, crc, options
 
 const 
   CacheLeafs* = true
@@ -319,7 +319,10 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
         if j > high(args) + 1: 
           internalError("ropes: invalid format string $" & $(j))
         app(result, args[j - 1])
-      of 'N', 'n': 
+      of 'n':
+        if not (optLineDir in gOptions): app(result, tnl)
+        inc i
+      of 'N': 
         app(result, tnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])

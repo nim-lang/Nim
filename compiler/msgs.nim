@@ -414,7 +414,7 @@ proc UnknownLineInfo*(): TLineInfo =
   result.fileIndex = -1
 
 var 
-  filenames: seq[string] = @[]
+  filenames: seq[tuple[filename: string, fullpath: string]] = @[]
   msgContext: seq[TLineInfo] = @[]
 
 proc pushInfoContext*(info: TLineInfo) = 
@@ -425,10 +425,16 @@ proc popInfoContext*() =
 
 proc includeFilename*(f: string): int = 
   for i in countdown(high(filenames), low(filenames)): 
-    if filenames[i] == f: 
+    if filenames[i].filename == f:
       return i
+  
   result = len(filenames)
-  filenames.add(f)
+  
+  var fullpath: string
+  try: fullpath = expandFilename(f)
+  except: fullpath = ""
+
+  filenames.add((filename: f, fullpath: fullpath))
 
 proc newLineInfo*(filename: string, line, col: int): TLineInfo = 
   result.fileIndex = includeFilename(filename)
@@ -437,12 +443,11 @@ proc newLineInfo*(filename: string, line, col: int): TLineInfo =
 
 proc ToFilename*(info: TLineInfo): string = 
   if info.fileIndex < 0: result = "???"
-  else: result = filenames[info.fileIndex]
+  else: result = filenames[info.fileIndex].filename
 
 proc toFullPath*(info: TLineInfo): string =
-  result = info.toFilename
-  if not isAbsolute(result):
-    result = JoinPath(options.projectPath, result)
+  if info.fileIndex < 0: result = "???"
+  else: result = filenames[info.fileIndex].fullpath
   
 proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line

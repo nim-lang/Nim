@@ -204,7 +204,10 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
         if j > high(args) + 1: 
           internalError("ropes: invalid format string $" & $(j))
         app(result, args[j - 1])
-      of 'N', 'n': 
+      of 'n':
+        if not (optLineDir in gOptions): app(result, tnl)
+        inc(i)
+      of 'N': 
         app(result, tnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
@@ -241,6 +244,30 @@ proc appcg(p: BProc, s: TCProcSection, frmt: TFormatStr,
            args: openarray[PRope]) = 
   app(p.s[s], ropecg(p.module, frmt, args))
 
+proc safeLineNm(t: PNode) : int =
+  result = toLinenumber(t.info)   # BUGFIX
+  if result < 0: result = 0       # negative numbers are not allowed in #line
+
+proc genCLineDir(r: var PRope, filename: string, line: int) =
+  assert line >= 0
+  if optLineDir in gOptions:
+    appff(r, "$N#line $2 $1$N", "; line $2 \"$1\"$n",
+          [toRope(makeSingleLineCString(filename)), toRope(line)])
+
+proc genCLineDir(r: var PRope, t: PNode) = 
+  genCLineDir(r, t.info.toFullPath, t.safeLineNm)
+
+proc genLineDir(p: BProc, t: PNode) = 
+  var line = t.safeLineNm
+  genCLineDir(p.s[cpsStmts], t.info.toFullPath, line)
+  if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
+      (p.prc == nil or sfPure notin p.prc.flags): 
+    appcg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
+  elif ({optLineTrace, optStackTrace} * p.Options ==
+      {optLineTrace, optStackTrace}) and
+      (p.prc == nil or sfPure notin p.prc.flags): 
+    appf(p.s[cpsStmts], "F.line = $1;F.filename = $2;$n", 
+        [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
 include "ccgtypes.nim"
 
@@ -546,13 +573,13 @@ proc cgsym(m: BModule, name: string): PRope =
   result = sym.loc.r
   
 proc generateHeaders(m: BModule) = 
-  app(m.s[cfsHeaders], "#include \"nimbase.h\"" & tnl & tnl)
+  app(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
   var it = PStrEntry(m.headerFiles.head)
   while it != nil: 
     if it.data[0] notin {'\"', '<'}: 
-      appf(m.s[cfsHeaders], "#include \"$1\"$n", [toRope(it.data)])
+      appf(m.s[cfsHeaders], "$N#include \"$1\"$N", [toRope(it.data)])
     else: 
-      appf(m.s[cfsHeaders], "#include $1$n", [toRope(it.data)])
+      appf(m.s[cfsHeaders], "$N#include $1$N", [toRope(it.data)])
     it = PStrEntry(it.Next)
 
 proc getFrameDecl(p: BProc) = 
@@ -629,24 +656,24 @@ proc genProcAux(m: BModule, prc: PSym) =
       if gProcProfile >= 64 * 1024: 
         InternalError(prc.info, "too many procedures for profiling")
       discard cgsym(m, "profileData")
-      app(p.s[cpsLocals], "ticks NIM_profilingStart;" & tnl)
+      appf(p.s[cpsLocals], "ticks NIM_profilingStart;$n")
       if prc.loc.a < 0: 
         appf(m.s[cfsDebugInit], "profileData[$1].procname = $2;$n", [
             toRope(gProcProfile), 
             makeCString(prc.name.s)])
         prc.loc.a = gProcProfile
         inc(gProcProfile)
-      prepend(p.s[cpsInit], toRope("NIM_profilingStart = getticks();" & tnl))
+      prepend(p.s[cpsInit], ropef("NIM_profilingStart = getticks();$n"))
     app(generatedProc, p.s[cpsInit])
     app(generatedProc, p.s[cpsStmts])
-    if p.beforeRetNeeded: app(generatedProc, "BeforeRet: ;" & tnl)
+    if p.beforeRetNeeded: appf(generatedProc, "BeforeRet: $n;")
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
       appf(generatedProc, 
         "profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
         [toRope(prc.loc.a)])
     app(generatedProc, returnStmt)
-    app(generatedProc, '}' & tnl)
+    appf(generatedProc, "}$n")
   app(m.s[cfsProcs], generatedProc)
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
@@ -667,8 +694,8 @@ proc genProcNoForward(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
     # dependency to a compilerproc:
     discard cgsym(m, prc.name.s)
-    return
-  genProcPrototype(m, prc)
+    return  
+  genProcPrototype(m, prc)  
   if lfNoDecl in prc.loc.Flags: nil
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
@@ -854,7 +881,7 @@ proc genInitCode(m: BModule) =
   app(prc, m.initProc.s[cpsStmts])
   if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
     app(prc, deinitFrame(m.initProc))
-  app(prc, '}' & tnl & tnl)
+  appf(prc, "}$n$n")
   app(m.s[cfsProcs], prc)
 
 proc genModule(m: BModule, cfilenoext: string): PRope = 
