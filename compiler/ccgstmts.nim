@@ -13,22 +13,6 @@ const
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
-proc genLineDir(p: BProc, t: PNode) = 
-  var line = toLinenumber(t.info) # BUGFIX
-  if line < 0: 
-    line = 0                  # negative numbers are not allowed in #line
-  if optLineDir in p.Options and line > 0: 
-    appff(p.s[cpsStmts], "#line $2 $1$n", "; line $2 \"$1\"$n", 
-          [toRope(makeSingleLineCString(toFullPath(t.info))), toRope(line)])
-  if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
-      (p.prc == nil or sfPure notin p.prc.flags): 
-    appcg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
-  elif ({optLineTrace, optStackTrace} * p.Options ==
-      {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags): 
-    appf(p.s[cpsStmts], "F.line = $1;F.filename = $2;$n", 
-        [toRope(line), makeCString(toFilename(t.info).extractFilename)])
-
 proc genVarTuple(p: BProc, n: PNode) = 
   var tup, field: TLoc
   if n.kind != nkVarTuple: InternalError(n.info, "genVarTuple")
@@ -171,14 +155,14 @@ proc genWhileStmt(p: BProc, t: PNode) =
   setlen(p.blocks, length + 1)
   p.blocks[length].id = - p.labels # negative because it isn't used yet
   p.blocks[length].nestedTryStmts = p.nestedTryStmts.len
-  app(p.s[cpsStmts], "while (1) {" & tnl)
+  appf(p.s[cpsStmts], "while (1) {$n")
   initLocExpr(p, t.sons[0], a)
   if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
     p.blocks[length].id = abs(p.blocks[length].id)
     appf(p.s[cpsStmts], "if (!$1) goto $2;$n", [rdLoc(a), Labl])
   genStmts(p, t.sons[1])
   if p.blocks[length].id > 0: appf(p.s[cpsStmts], "} $1: ;$n", [Labl])
-  else: app(p.s[cpsStmts], '}' & tnl)
+  else: appf(p.s[cpsStmts], "}$n")
   setlen(p.blocks, len(p.blocks) - 1)
   dec(p.withinLoop)
 
@@ -231,9 +215,9 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     genLineDir(p, t)
     # reraise the last exception:
     #if gCmd == cmdCompileToCpp: 
-    #  appcg(p, cpsStmts, "throw;" & tnl)
+    #  appcg(p, cpsStmts, "throw;$n")
     #else: 
-    appcg(p, cpsStmts, "#reraiseException();" & tnl)
+    appcg(p, cpsStmts, "#reraiseException();$n")
 
 proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc, 
                           rangeFormat, eqFormat: TFormatStr, labl: TLabel) = 
@@ -326,7 +310,7 @@ proc genStringCase(p: BProc, t: PNode) =
       if branches[j] != nil: 
         appf(p.s[cpsStmts], "case $1: $n$2break;$n", 
              [intLiteral(j), branches[j]])
-    app(p.s[cpsStmts], '}' & tnl) # else statement:
+    appf(p.s[cpsStmts], "}$n") # else statement:
     if t.sons[sonsLen(t) - 1].kind != nkOfBranch: 
       appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.labels)]) 
     # third pass: generate statements
@@ -388,13 +372,13 @@ proc genOrdinalCase(p: BProc, n: PNode) =
         genStmts(p, branch[length-1])
       else: 
         # else part of case statement:
-        app(p.s[cpsStmts], "default:" & tnl)
+        appf(p.s[cpsStmts], "default:$n")
         genStmts(p, branch[0])
         hasDefault = true
-      app(p.s[cpsStmts], "break;" & tnl)
+      appf(p.s[cpsStmts], "break;$n")
     if (hasAssume in CC[ccompiler].props) and not hasDefault: 
-      app(p.s[cpsStmts], "default: __assume(0);" & tnl)
-    app(p.s[cpsStmts], '}' & tnl)
+      appf(p.s[cpsStmts], "default: __assume(0);$n")
+    appf(p.s[cpsStmts], "}$n")
   if Lend != nil: fixLabel(p, Lend)
   
 proc genCaseStmt(p: BProc, t: PNode) = 
@@ -453,7 +437,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     appf(p.s[cpsLocals], "volatile NIM_BOOL $1 = NIM_FALSE;$n", [rethrowFlag])
   if optStackTrace in p.Options: 
     appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
-  app(p.s[cpsStmts], "try {" & tnl)
+  appf(p.s[cpsStmts], "try {$n")
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   length = sonsLen(t)
@@ -467,7 +451,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     blen = sonsLen(t.sons[i])
     if blen == 1: 
       # general except section:
-      app(p.s[cpsStmts], "default: " & tnl)
+      appf(p.s[cpsStmts], "default:$n")
       genStmts(p, t.sons[i].sons[0])
     else: 
       for j in countup(0, blen - 2): 
@@ -476,10 +460,10 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
       genStmts(p, t.sons[i].sons[blen - 1])
     if rethrowFlag != nil: 
       appf(p.s[cpsStmts], "$1 = NIM_FALSE;  ", [rethrowFlag])
-    app(p.s[cpsStmts], "break;" & tnl)
+    appf(p.s[cpsStmts], "break;$n")
     inc(i)
   if t.sons[1].kind == nkExceptBranch: 
-    app(p.s[cpsStmts], "}}" & tnl) # end of catch-switch statement
+    appf(p.s[cpsStmts], "}}$n") # end of catch-switch statement
   appcg(p, cpsStmts, "#popSafePoint();")
   discard pop(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally): 
@@ -528,10 +512,10 @@ proc genTryStmt(p: BProc, t: PNode) =
     var blen = sonsLen(t.sons[i])
     if blen == 1: 
       # general except section:
-      if i > 1: app(p.s[cpsStmts], "else {" & tnl)
+      if i > 1: appf(p.s[cpsStmts], "else {$n")
       genStmts(p, t.sons[i].sons[0])
       appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();$n", [safePoint])
-      if i > 1: app(p.s[cpsStmts], '}' & tnl)
+      if i > 1: appf(p.s[cpsStmts], "}$n")
     else: 
       var orExpr: PRope = nil
       for j in countup(0, blen - 2): 
@@ -547,7 +531,7 @@ proc genTryStmt(p: BProc, t: PNode) =
       appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();}$n",
            [safePoint])
     inc(i)
-  app(p.s[cpsStmts], '}' & tnl) # end of if statement
+  appf(p.s[cpsStmts], "}$n") # end of if statement
   discard pop(p.nestedTryStmts)
   if i < length and t.sons[i].kind == nkFinally: 
     genStmts(p, t.sons[i].sons[0])
