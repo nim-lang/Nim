@@ -76,18 +76,17 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     ident = substr(s, start, i-1)
     result = i-start
 
-proc parseIdent*(s: string, start = 0): TOptional[string] =
-  ## parses an identifier and stores it in ``ident``. Returns
-  ## the number of the parsed characters or 0 in case of an error.
-  result.hasValue = false
+proc parseIdent*(s: string, start = 0): string =
+  ## parses an identifier and stores it in ``ident``. 
+  ## Returns the parsed identifier or an empty string in case of an error.
+  result = ""
   var i = start
 
   if s[i] in IdentStartChars:
     inc(i)
     while s[i] in IdentChars: inc(i)
     
-    result.hasValue = true
-    result.value = substr(s, start, i-1)
+    result = substr(s, start, i-1)
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline, deprecated.} =
@@ -284,10 +283,20 @@ proc isEscaped*(s: string, pos: int) : bool =
   return backslashes mod 2 != 0
 
 type
-  TInterpStrFragment* = tuple[interpStart, interpEnd, exprStart, exprEnd: int]
+  TInterpolatedKind* = enum
+    ikString, ikExpr
+
+  TInterpStrFragment* = tuple[kind: TInterpolatedKind, value: string]
 
 iterator interpolatedFragments*(s: string): TInterpStrFragment =
-  var i = 0
+  var 
+    i = 0
+    tokenStart = 0
+
+  proc token(kind: TInterpolatedKind, value: string): TInterpStrFragment =
+    result.kind = kind
+    result.value = value
+
   while i < s.len:
     # The $ sign marks the start of an interpolation.
     #
@@ -295,17 +304,22 @@ iterator interpolatedFragments*(s: string): TInterpStrFragment =
     # (so it should be before the end of the string)
     # if the dollar sign is escaped, don't trigger interpolation
     if s[i] == '$' and i < (s.len - 1) and not isEscaped(s, i):
+      # Interpolation starts here.
+      # Return any string that we've ran over so far.
+      if i != tokenStart:
+        yield token(ikString, s[tokenStart..i-1])
+
       var next = s[i+1]
-      
       if next == '{':
+        # Complex expression: ${foo(bar) in {1..100}}
+        # Find closing braket, while respecting any nested brackets
         inc i
+        tokenStart = i + 1
 
         var
           brackets = {'{', '}'}
           nestingCount = 1
-          start = i + 1
-
-        # find closing braket, while respecting any nested brackets
+        
         while i < s.len:
           inc i, skipUntil(s, brackets, i+1) + 1
           
@@ -316,33 +330,30 @@ iterator interpolatedFragments*(s: string): TInterpStrFragment =
             else:
               inc nestingCount
 
-        var t : TInterpStrFragment
-        t.interpStart = start - 2
-        t.interpEnd = i
-        t.exprStart = start
-        t.exprEnd = i - 1
+        yield token(ikExpr, s[tokenStart..(i-1)])
 
-        yield t
+        tokenStart = i + 1
         
       else:
-        var 
-          start = i + 1
-          identifier = parseIdent(s, i+1)
+        tokenStart = i + 1
+        var identifier = parseIdent(s, i+1)
         
-        if identifier.hasValue:
-          inc i, identifier.value.len
+        if identifier.len >  0:
+          inc i, identifier.len
 
-          var t : TInterpStrFragment
-          t.interpStart = start - 1
-          t.interpEnd = i
-          t.exprStart = start
-          t.exprEnd = i
+          yield token(ikExpr, s[tokenStart..i])
 
-          yield t
+          tokenStart = i + 1
 
         else:
           raise newException(EInvalidValue, "Unable to parse a varible name at " & s[i..s.len])
        
     inc i
+  #end while
+
+  # We've reached the end of the string without finding a new interpolation.
+  # Return the last fragment at string.
+  if i != tokenStart:
+    yield token(ikString, s[tokenStart..i])
 
 {.pop.}
