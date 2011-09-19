@@ -104,13 +104,17 @@ proc toAny*[T](x: var T): TAny {.inline.} =
 proc kind*(x: TAny): TAnyKind {.inline.} = 
   ## get the type kind
   result = TAnyKind(ord(x.rawType.kind))
+
+proc size*(x: TAny): int {.inline.} =
+  ## returns the size of `x`'s type.
+  result = x.rawType.size
   
 proc baseTypeKind*(x: TAny): TAnyKind {.inline.} = 
   ## get the base type's kind; ``akNone`` is returned if `x` has no base type.
   if x.rawType.base != nil:
     result = TAnyKind(ord(x.rawType.base.kind))
 
-proc baseTypeSize*(x: TAny): int =
+proc baseTypeSize*(x: TAny): int {.inline.} =
   ## returns the size of `x`'s basetype.
   if x.rawType.base != nil:
     result = x.rawType.base.size
@@ -339,8 +343,8 @@ proc getInt64*(x: TAny): int64 =
 
 proc getBiggestInt*(x: TAny): biggestInt =
   ## retrieve the integer value out of `x`. `x` needs to represent
-  ## some integer, a bool, a char or an enum. The value might be
-  ## sign-extended to ``biggestInt``.
+  ## some integer, a bool, a char, an enum or a small enough bit set.
+  ## The value might be sign-extended to ``biggestInt``.
   var t = skipRange(x.rawtype)
   case t.kind
   of tyInt: result = biggestInt(cast[ptr int](x.value)[])
@@ -350,7 +354,7 @@ proc getBiggestInt*(x: TAny): biggestInt =
   of tyInt64: result = biggestInt(cast[ptr int64](x.value)[])
   of tyBool: result = biggestInt(cast[ptr bool](x.value)[])
   of tyChar: result = biggestInt(cast[ptr char](x.value)[])
-  of tyEnum:
+  of tyEnum, tySet:
     case t.size
     of 1: result = ze64(cast[ptr int8](x.value)[])
     of 2: result = ze64(cast[ptr int16](x.value)[])
@@ -361,7 +365,7 @@ proc getBiggestInt*(x: TAny): biggestInt =
 
 proc setBiggestInt*(x: TAny, y: biggestInt) =
   ## sets the integer value of `x`. `x` needs to represent
-  ## some integer, a bool, a char or an enum.
+  ## some integer, a bool, a char, an enum or a small enough bit set.
   var t = skipRange(x.rawtype)
   case t.kind
   of tyInt: cast[ptr int](x.value)[] = int(y)
@@ -371,7 +375,7 @@ proc setBiggestInt*(x: TAny, y: biggestInt) =
   of tyInt64: cast[ptr int64](x.value)[] = int64(y)
   of tyBool: cast[ptr bool](x.value)[] = y != 0
   of tyChar: cast[ptr char](x.value)[] = chr(y.int)
-  of tyEnum:
+  of tyEnum, tySet:
     case t.size
     of 1: cast[ptr int8](x.value)[] = toU8(y.int)
     of 2: cast[ptr int16](x.value)[] = toU16(y.int)

@@ -728,7 +728,16 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool =
       else: 
         for i in countup(0, sonsLen(n) - 1): 
           result = typeAllowedNode(marker, n.sons[i], kind)
-          if not result: return 
+          if not result: break
+
+proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
+                last: TTypeKind): bool =
+  var a = a
+  for k, i in pattern.items:
+    if a.kind != k: return false
+    if i >= a.sonslen or a.sons[i] == nil: return false
+    a = a.sons[i]
+  result = a.kind == last
   
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   assert(kind in {skVar, skConst, skParam, skResult})
@@ -751,13 +760,14 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyProc: 
     for i in countup(1, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], skParam)
-      if not result: return 
-    if t.sons[0] != nil: result = typeAllowedAux(marker, t.sons[0], skResult)
+      if not result: break 
+    if result and t.sons[0] != nil:
+      result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
   of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation: 
     result = false            #InternalError('shit found');
-  of tyEmpty, tyNil: 
+  of tyEmpty, tyNil:
     result = kind == skConst
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyFloat128, tyCString, tyPointer: 
     result = true
@@ -781,13 +791,13 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyArrayConstr, tyTuple, tySet: 
     for i in countup(0, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], kind)
-      if not result: return 
+      if not result: break 
   of tyObject: 
     for i in countup(0, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], skVar)
-      if not result: return 
-    if t.n != nil: result = typeAllowedNode(marker, t.n, skVar)
-  
+      if not result: break 
+    if result and t.n != nil: result = typeAllowedNode(marker, t.n, skVar)
+    
 proc typeAllowed(t: PType, kind: TSymKind): bool = 
   var marker = InitIntSet()
   result = typeAllowedAux(marker, t, kind)

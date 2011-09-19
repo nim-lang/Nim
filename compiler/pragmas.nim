@@ -53,6 +53,7 @@ const
     wExtern, wImportcpp, wImportobjc}
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
                       wThread}
+  allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 proc pragmaAsm*(c: PContext, n: PNode): char

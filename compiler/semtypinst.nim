@@ -92,51 +92,90 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
-  if result == nil: 
+  if result == nil:
     GlobalError(t.sym.info, errCannotInstantiateX, typeToString(t))
   elif result.kind == tyGenericParam: 
     InternalError(cl.info, "substitution with generic parameter")
   
 proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
+  # tyGenericInvokation[A, tyGenericInvokation[A, B]]
+  # is difficult to handle: 
   var body = t.sons[0]
   if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
   var header: PType = nil
-  for i in countup(1, sonsLen(t) - 1):
-    var x = replaceTypeVarsT(cl, t.sons[i])
-    if t.sons[i].kind == tyGenericParam: 
-      if header == nil: header = copyType(t, t.owner, false)
-      header.sons[i] = x
-    when false:
-      var x: PType
-      if t.sons[i].kind == tyGenericParam: 
-        x = lookupTypeVar(cl, t.sons[i])
+  when true:
+    # search for some instantiation here:
+    result = searchInstTypes(gInstTypes, t)
+    if result != nil: return
+    for i in countup(1, sonsLen(t) - 1):
+      var x = t.sons[i]
+      if x.kind == tyGenericParam: 
+        x = lookupTypeVar(cl, x)
         if header == nil: header = copyType(t, t.owner, false)
         header.sons[i] = x
-      else: 
-        x = t.sons[i]
-    idTablePut(cl.typeMap, body.sons[i-1], x)
-  if header == nil: header = t
-  result = searchInstTypes(gInstTypes, header)
-  if result != nil: return 
-  result = newType(tyGenericInst, t.sons[0].owner)
-  for i in countup(0, sonsLen(t) - 1): 
-    # if one of the params is not concrete, we cannot do anything
-    # but we already raised an error!
-    addSon(result, header.sons[i])
-  idTablePut(gInstTypes, header, result)
-  var newbody = ReplaceTypeVarsT(cl, lastSon(body))
-  newbody.flags = newbody.flags + t.flags + body.flags
-  newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-  addSon(result, newbody)
-  #writeln(output, ropeToStr(Typetoyaml(newbody)));
-  checkPartialConstructedType(cl.info, newbody)
+        #idTablePut(cl.typeMap, body.sons[i-1], x)
+    if header != nil:
+      # search again after first pass:
+      result = searchInstTypes(gInstTypes, header)
+      if result != nil: return
+    else:
+      header = copyType(t, t.owner, false)
+    # ugh need another pass for deeply recursive generic types (e.g. PActor)
+    # we need to add the candidate here, before it's fully instantiated for
+    # recursive instantions:
+    result = newType(tyGenericInst, t.sons[0].owner)
+    idTablePut(gInstTypes, header, result)
+
+    for i in countup(1, sonsLen(t) - 1):
+      var x = replaceTypeVarsT(cl, t.sons[i])
+      assert x.kind != tyGenericInvokation
+      header.sons[i] = x
+      idTablePut(cl.typeMap, body.sons[i-1], x)
+    
+    for i in countup(0, sonsLen(t) - 1): 
+      # if one of the params is not concrete, we cannot do anything
+      # but we already raised an error!
+      addSon(result, header.sons[i])
+    
+    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
+    newbody.flags = newbody.flags + t.flags + body.flags
+    result.flags = result.flags + newbody.flags
+    newbody.callConv = body.callConv
+    newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
+    addSon(result, newbody)
+    checkPartialConstructedType(cl.info, newbody)
+  else:
+    for i in countup(1, sonsLen(t) - 1):
+      if PType(idTableGet(cl.typeMap, t.sons[i])) == nil: debug(t)
+      var x = replaceTypeVarsT(cl, t.sons[i])
+      if t.sons[i].kind == tyGenericParam: 
+        if header == nil: header = copyType(t, t.owner, false)
+        header.sons[i] = x
+      assert x.kind != tyGenericInvokation
+      idTablePut(cl.typeMap, body.sons[i-1], x)
+    if header == nil: header = t
+    result = searchInstTypes(gInstTypes, header)
+    if result != nil: return 
+    result = newType(tyGenericInst, t.sons[0].owner)
+    for i in countup(0, sonsLen(t) - 1): 
+      # if one of the params is not concrete, we cannot do anything
+      # but we already raised an error!
+      addSon(result, header.sons[i])
+    idTablePut(gInstTypes, header, result)
+    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
+    newbody.flags = newbody.flags + t.flags + body.flags
+    newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
+    addSon(result, newbody)
+    checkPartialConstructedType(cl.info, newbody)
   
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t
   if t == nil: return 
   case t.kind
-  of tyGenericParam: 
+  of tyGenericParam:
     result = lookupTypeVar(cl, t)
+    if result.kind == tyGenericInvokation:
+      result = handleGenericInvokation(cl, result)
   of tyGenericInvokation: 
     result = handleGenericInvokation(cl, t)
   of tyGenericBody: 
@@ -151,9 +190,10 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       result.n = ReplaceTypeVarsN(cl, result.n)
       if result.Kind in GenericTypes:
         LocalError(cl.info, errCannotInstantiateX, TypeToString(t, preferName))
-        #writeln(output, ropeToStr(Typetoyaml(result)))
-        #checkConstructedType(cl.info, result)
-
+      if result.kind == tyProc and result.sons[0] != nil:
+        if result.sons[0].kind == tyEmpty:
+          result.sons[0] = nil
+  
 proc generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode, 
                            t: PType): PType = 
   var cl: TReplTypeVars

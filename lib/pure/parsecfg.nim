@@ -323,6 +323,7 @@ proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent =
       if c.tok.kind == tkSymbol: 
         result.value = c.tok.literal
       else: 
+        reset result
         result.kind = cfgError
         result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
       rawGetTok(c, c.tok)

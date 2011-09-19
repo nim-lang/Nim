@@ -2,6 +2,7 @@ Comex
 Eric Doughty-Papassideris
 Keita Haga
 Philippe Lhoste
+Zahary Karadjov
 Mario Ray Mahardhika
 Alex Mitchell
 Dominik Picheta

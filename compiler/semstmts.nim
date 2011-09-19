@@ -554,13 +554,6 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     n.sons[codePos] = newSymNode(b)
   else:
     LocalError(n.info, errNoSymbolToBorrowFromFound) 
-
-proc sideEffectsCheck(c: PContext, s: PSym) = 
-  if {sfNoSideEffect, sfSideEffect} * s.flags ==
-      {sfNoSideEffect, sfSideEffect}: 
-    LocalError(s.info, errXhasSideEffects, s.name.s)
-  elif sfThread in s.flags and semthreads.needsGlobalAnalysis():
-    c.threadEntries.add(s)
   
 proc addResult(c: PContext, t: PType, info: TLineInfo) = 
   if t != nil: 

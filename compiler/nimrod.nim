@@ -49,6 +49,13 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
     if optRun notin gGlobalOptions and arguments != "": 
       rawMessage(errArgsNeedRunOption, [])
   
+proc prependCurDir(f: string): string =
+  when defined(unix):
+    if os.isAbsolute(f): result = f
+    else: result = "./" & f
+  else:
+    result = f
+  
 proc HandleCmdLine() = 
   var start = epochTime()
   if paramCount() == 0: 
@@ -79,11 +86,8 @@ proc HandleCmdLine() =
         rawMessage(hintSuccessX, [$gLinesCompiled, 
                    formatFloat(epochTime() - start, ffDecimal, 3)])
       if optRun in gGlobalOptions: 
-        when defined(unix): 
-          var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))
-        else: 
-          var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
-        execExternalProgram(prog & ' ' & arguments)
+        var ex = quoteIfContainsWhite(changeFileExt(filename, "").prependCurDir)
+        execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
 cmdLineInfo = newLineInfo("command line", -1, -1)

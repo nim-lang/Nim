@@ -30,7 +30,7 @@ proc spawn*[TIn, TOut](action: proc(
     self: PActor[TIn, TOut]){.thread.}): PActor[TIn, TOut] =
   ## creates an actor; that is a thread with an inbox. The caller MUST call
   ## ``join`` because that also frees the associated resources with the actor.
-  result = allocShared0(sizeof(result[]))
+  result = cast[PActor[TIn, TOut]](allocShared0(sizeof(result[])))
   open(result.i)
   createThread(result.t, action, result)
 
@@ -52,8 +52,8 @@ proc recv*[TIn, TOut](a: PActor[TIn, TOut]): TTask[TIn, TOut] =
   ## receives a task from `a`'s inbox.
   result = recv(a.i)
 
-proc send*[TIn, TOut, X, Y](sender: PActor[X, Z], 
-                            receiver: PActor[TIn, TOut], msg: TIn) =
+proc send*[TIn, TOut, X, Y](receiver: PActor[TIn, TOut], msg: TIn,
+                            sender: PActor[X, Y]) =
   ## sends a message to `a`'s inbox.
   var t: TTask[TIn, TOut]
   t.receiver = addr(sender.i)
@@ -99,9 +99,9 @@ proc poolWorker[TIn, TOut](self: PActor[TIn, TOut]) {.thread.} =
     var m = self.recv
     if m.shutDown: break
     when TOut is void:
-      action(m.data)
+      m.action(m.data)
     else:
-      self.repy(action(m.data))
+      self.repy(m.action(m.data))
 
 proc createActorPool*[TIn, TOut](a: var TActorPool[TIn, TOut], poolSize = 4) =
   ## creates an actor pool.
@@ -109,21 +109,20 @@ proc createActorPool*[TIn, TOut](a: var TActorPool[TIn, TOut], poolSize = 4) =
   when TOut isnot void:
     open(a.outputs)
   for i in 0 .. < a.actors.len:
-    a.actors[i] = spawn(poolWorker)
+    a.actors[i] = spawn(poolWorker[TIn, TOut])
 
 proc join*[TIn, TOut](a: var TActorPool[TIn, TOut]) =
   ## waits for each actor in the actor pool `a` to finish and frees the
   ## resources attached to `a`.
   var t: TTask[TIn, TOut]
   t.shutdown = true
-  for i in 0 .. < a.actors.len: send(a.actors[i], t)
+  for i in 0 .. < a.actors.len: send(a.actors[i].i, t)
   for i in 0 .. < a.actors.len: join(a.actors[i])
   when TOut isnot void:
     close(a.outputs)
   a.actors = nil
 
 template setupTask =
-  var t: TTask[TIn, TOut]
   t.action = action
   shallowCopy(t.data, input)
 
@@ -132,7 +131,7 @@ template schedule =
   # it remains 'hot' ;-). Round-robin hurts for keeping threads hot.
   for i in 0..high(a.actors):
     if a.actors[i].i.ready:
-      a.actors[i].send(t)
+      a.actors[i].i.send(t)
       return
   # no thread ready :-( --> send message to the thread which has the least
   # messages pending:
@@ -142,27 +141,29 @@ template schedule =
     var curr = a.actors[i].i.peek
     if curr == 0:
       # ok, is ready now:
-      a.actors[i].send(t)
+      a.actors[i].i.send(t)
       return
     if curr < minVal:
       minVal = curr
       minIdx = i
-  a.actors[minIdx].send(t)
+  a.actors[minIdx].i.send(t)
 
-proc spawn*[TIn, TOut](p: var TActorPool[TIn, TOut],
-                       action: proc (input: TIn): TOut {.thread.}, 
-                       input: TIn): ptr TChannel[TOut] =
-  ## uses the actor pool to run `action` concurrently. `spawn` is guaranteed
-  ## to not block.
+proc spawn*[TIn, TOut](p: var TActorPool[TIn, TOut], input: TIn,
+                       action: proc (input: TIn): TOut {.thread.}
+                       ): ptr TChannel[TOut] =
+  ## uses the actor pool to run ``action(input)`` concurrently.
+  ## `spawn` is guaranteed to not block.
+  var t: TTask[TIn, TOut]
   setupTask()
   result = addr(p.outputs)
+  t.receiver = result
   schedule()
 
-proc spawn*[TIn](p: var TActorPool[TIn, void],
-                 action: proc (input: TIn) {.thread.}, 
-                 input: TIn) =
-  ## uses the actor pool to run `action` concurrently. `spawn` is guaranteed
-  ## to not block.
+proc spawn*[TIn](p: var TActorPool[TIn, void], input: TIn,
+                 action: proc (input: TIn) {.thread.}) =
+  ## uses the actor pool to run ``action(input)`` concurrently.
+  ## `spawn` is guaranteed to not block.
+  var t: TTask[TIn, void]
   setupTask()
   schedule()
   
@@ -171,7 +172,7 @@ when isMainModule:
     a: TActorPool[int, void]
   createActorPool(a)
   for i in 0 .. < 300:
-    a.spawn(proc (x: int) {.thread.} = echo x)
+    a.spawn(i, proc (x: int) {.thread.} = echo x)
 
   when false:
     proc treeDepth(n: PNode): int {.thread.} =

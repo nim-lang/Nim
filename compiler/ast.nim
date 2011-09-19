@@ -279,8 +279,8 @@ type
 
   TTypeFlags* = set[TTypeFlag]
 
-  TSymKind* = enum # the different symbols (start with the prefix sk);
-                   # order is important for the documentation generator!
+  TSymKind* = enum        # the different symbols (start with the prefix sk);
+                          # order is important for the documentation generator!
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
@@ -846,6 +846,10 @@ proc initNodeTable(x: var TNodeTable) =
   newSeq(x.data, startSize)
 
 proc sonsLen(n: PType): int = 
+  if isNil(n.sons): result = 0
+  else: result = len(n.sons)
+
+proc len*(n: PType): int = 
   if isNil(n.sons): result = 0
   else: result = len(n.sons)
   

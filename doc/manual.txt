@@ -433,6 +433,15 @@ have no side-effect can be used in constant expressions too:
     constEval = contains("abc", 'b') # computed at compile time!
 
 
+The rules for compile-time computability are: 
+
+1. Literals are compile-time computable.
+2. Procedure calls of the form ``p(X)`` are compile-time computable if
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
+   for details) and if ``X`` is a (possibly empty) list of compile-time 
+   computable arguments.
+
+
 Types
 -----
 
