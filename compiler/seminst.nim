@@ -29,6 +29,10 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
       break
     if t.kind == tyGenericParam: 
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
+    elif t.kind == tyGenericInvokation:
+      #t = instGenericContainer(c, a, t)
+      t = generateTypeInstance(c, pt, a, t)
+      #t = ReplaceTypeVarsT(cl, t)
     s.typ = t
     addDecl(c, s)
     entry.concreteTypes[i] = t
@@ -94,6 +98,14 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       closeScope(c.tab)
       popInfoContext()
 
+proc sideEffectsCheck(c: PContext, s: PSym) = 
+  if {sfNoSideEffect, sfSideEffect} * s.flags ==
+      {sfNoSideEffect, sfSideEffect}: 
+    LocalError(s.info, errXhasSideEffects, s.name.s)
+  elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and 
+      s.ast.sons[genericParamsPos].kind == nkEmpty:
+    c.threadEntries.add(s)
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
                       info: TLineInfo): PSym = 
   # generates an instantiated proc
@@ -133,7 +145,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var oldPrc = GenericCacheGet(c, entry)
   if oldPrc == nil:
     generics.add(entry)
+    if n.sons[pragmasPos].kind != nkEmpty:
+      pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     instantiateBody(c, n, result)
+    sideEffectsCheck(c, result)
   else:
     result = oldPrc
   popInfoContext()

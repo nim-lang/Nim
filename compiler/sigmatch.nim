@@ -137,6 +137,8 @@ proc concreteType(mapping: TIdTable, t: PType): PType =
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
+  of tyGenericInvokation:
+    assert false
   else: 
     result = t                # Note: empty is valid here
   
@@ -388,8 +390,10 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyGenericInvokation: 
     assert(f.sons[0].kind == tyGenericBody)
     if a.kind == tyGenericInvokation: 
-      InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
-    if (a.kind == tyGenericInst): 
+      #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
+      # simply no match for now:
+      nil
+    elif a.kind == tyGenericInst:
       if (f.sons[0].containerID == a.sons[0].containerID) and
           (sonsLen(a) - 1 == sonsLen(f)): 
         assert(a.sons[0].kind == tyGenericBody)
@@ -404,7 +408,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
           var x = PType(idTableGet(mapping, f.sons[0].sons[i - 1]))
-          if x == nil or x.kind == tyGenericParam:
+          if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
             InternalError("wrong instantiated type!")
           idTablePut(mapping, f.sons[i], x)
   of tyGenericParam: 
@@ -413,8 +417,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       if sonsLen(f) == 0: 
         # no constraints
         var concrete = concreteType(mapping, a)
-        if concrete != nil: 
-          #MessageOut('putting: ' + f.sym.name.s);
+        if concrete != nil:
           idTablePut(mapping, f, concrete)
           result = isGeneric
       else: 

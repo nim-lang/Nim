@@ -216,23 +216,6 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       addSon(result.n, newSymNode(field))
       addSon(result, typ)
 
-proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
-  if s.typ == nil or s.typ.kind != tyGenericBody: 
-    GlobalError(n.info, errCannotInstantiateX, s.name.s)
-  result = newOrPrevType(tyGenericInvokation, prev, c)
-  if s.typ.containerID == 0: InternalError(n.info, "semtypes.semGeneric")
-  if sonsLen(n) != sonsLen(s.typ): 
-    GlobalError(n.info, errWrongNumberOfArguments)
-  addSon(result, s.typ)
-  var isConcrete = true # iterate over arguments:
-  for i in countup(1, sonsLen(n)-1): 
-    var elem = semTypeNode(c, n.sons[i], nil)
-    if elem.kind in {tyGenericParam, tyGenericInvokation}: isConcrete = false
-    addSon(result, elem)
-  if isConcrete:
-    if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
-    result = instGenericContainer(c, n, result)
-
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, 
                  allowed: TSymFlags): PSym = 
   # identifier with visibility
@@ -489,7 +472,6 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
   if ContainsOrIncl(cl, t.id): return 
   case t.kind
   of tyGenericBody: 
-    #debug(t)
     result = newTypeS(tyGenericInvokation, c)
     addSon(result, t)
     for i in countup(0, sonsLen(t) - 2): 
@@ -505,11 +487,9 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
       addSon(genericParams, newSymNode(s))
       addSon(result, t.sons[i])
   of tyGenericInst: 
-    #debug(t)
     var L = sonsLen(t) - 1
     t.sons[L] = addTypeVarsOfGenericBody(c, t.sons[L], genericParams, cl)
   of tyGenericInvokation: 
-    #debug(t)
     for i in countup(1, sonsLen(t) - 1): 
       t.sons[i] = addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl)
   else: 
@@ -520,7 +500,6 @@ proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType =
   result = semTypeNode(c, n, nil)
   if genericParams != nil and sonsLen(genericParams) == 0: 
     result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
-    #if result.kind == tyGenericInvokation: debug(result)
 
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType): PType = 
@@ -546,6 +525,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     var length = sonsLen(a)
     if a.sons[length-2].kind != nkEmpty: 
       typ = paramType(c, a.sons[length-2], genericParams, cl)
+      #if matchType(typ, [(tyVar, 0)], tyGenericInvokation):
+      #  debug a.sons[length-2][0][1]
+        
     else: 
       typ = nil
     if a.sons[length-1].kind != nkEmpty:
@@ -557,8 +539,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # and def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
-        def = fitNode(c, typ, def)
-    else: 
+        if not containsGenericType(typ):
+          def = fitNode(c, typ, def)
+    else:
       def = ast.emptyNode
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
@@ -578,6 +561,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       result.sons[0] = r
       res.typ = result.sons[0]
+  #if matchType(result, [(tyProc, 1), (tyVar, 0)], tyGenericInvokation):
+  #  debug result
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType = 
   checkMinSonsLen(n, 1)
@@ -602,6 +587,50 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   n.typ = result
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
+
+proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
+  # XXX hack 1022 for generics ... would have been nice if the compiler had
+  # been designed with them in mind from start ...
+  when false:
+    if n.kind == nkSym:
+      # for generics we need to lookup the type var again:
+      var s = SymtabGet(c.Tab, n.sym.name)
+      if s != nil:
+        if s.kind == skType and s.typ != nil:
+          var t = n.sym.typ
+          echo "came here"
+          return t
+        else:
+          echo "s is crap:"
+          debug(s)
+      else:
+        echo "s is nil!!!!"
+  result = semTypeNode(c, n, nil)
+
+proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
+  if s.typ == nil or s.typ.kind != tyGenericBody: 
+    GlobalError(n.info, errCannotInstantiateX, s.name.s)
+  result = newOrPrevType(tyGenericInvokation, prev, c)
+  if s.typ.containerID == 0: InternalError(n.info, "semtypes.semGeneric")
+  if sonsLen(n) != sonsLen(s.typ): 
+    GlobalError(n.info, errWrongNumberOfArguments)
+  addSon(result, s.typ)
+  var isConcrete = true # iterate over arguments:
+  for i in countup(1, sonsLen(n)-1):
+    var elem = semGenericParamInInvokation(c, n.sons[i])
+    if containsGenericType(elem): isConcrete = false
+    #if elem.kind in {tyGenericParam, tyGenericInvokation}: isConcrete = false
+    addSon(result, elem)
+  if isConcrete:
+    if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
+    result = instGenericContainer(c, n, result)
+
+proc FixupRemainingGenericInvokations(c: PContext, n: PNode, 
+                                      typ: PType): PType =
+  if typ.kind == tyGenericInvokation:
+    nil
+  else:
+    result = typ
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType = 
   result = nil

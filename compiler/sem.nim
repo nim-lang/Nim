@@ -146,7 +146,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
       addSon(n, prc.ast)
   lastGenericIdx = Len(generics)
 
-proc semExprNoFlags(c: PContext, n: PNode): PNode = 
+proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} = 
   result = semExpr(c, n, {})
 
 proc myOpen(module: PSym, filename: string): PPassContext = 

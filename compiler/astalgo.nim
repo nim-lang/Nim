@@ -46,7 +46,6 @@ proc StrTableContains*(t: TStrTable, n: PSym): bool
 proc StrTableAdd*(t: var TStrTable, n: PSym)
 proc StrTableGet*(t: TStrTable, name: PIdent): PSym  
   
-  # the iterator scheme:
 type 
   TTabIter*{.final.} = object # consider all fields here private
     h*: THash                 # current hash
@@ -748,6 +747,10 @@ proc IdTablePut(t: var TIdTable, key: PIdObj, val: PObject) =
       swap(t.data, n)
     IdTableRawInsert(t.data, key, val)
     inc(t.counter)
+
+iterator IdTablePairs*(t: TIdTable): tuple[key: PIdObj, val: PObject] =
+  for i in 0 .. high(t.data):
+    if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
 
 proc writeIdNodeTable(t: TIdNodeTable) = 
   nil

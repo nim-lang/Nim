@@ -1178,9 +1178,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
-    elif n.sons[0].kind == nkSymChoice: 
+    elif n.sons[0].kind == nkSymChoice or n[0].kind == nkBracketExpr and 
+        n[0][0].kind == nkSymChoice:
       result = semDirectOp(c, n, flags)
-    else: 
+    else:
       result = semIndirectOp(c, n, flags)
   of nkMacroStmt: 
     result = semMacroStmt(c, n)

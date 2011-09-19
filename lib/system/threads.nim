@@ -252,8 +252,10 @@ type
       object of TGcThread ## Nimrod thread. A thread is a heavy object (~14K)
                           ## that **must not** be part of a message! Use
                           ## a ``TThreadId`` for that.
-    dataFn: proc (m: TArg)
-    when TArg isnot void:
+    when TArg is void:
+      dataFn: proc ()
+    else:
+      dataFn: proc (m: TArg)
       data: TArg
   TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
                                        ## a pointer as a thread ID.
@@ -273,7 +275,7 @@ template ThreadProcWrapperBody(closure: expr) =
   when defined(registerThread):
     t.stackBottom = addr(t)
     registerThread(t)
-  if TArg is void: t.dataFn()
+  when TArg is void: t.dataFn()
   else: t.dataFn(t.data)
   when defined(registerThread): unregisterThread(t)
   when defined(deallocOsPages): deallocOsPages()
