@@ -96,7 +96,8 @@ simpleStmt ::= returnStmt
 complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
               | blockStmt | asmStmt
               | procDecl | iteratorDecl | macroDecl | templateDecl | methodDecl
-              | constSection | typeSection | whenStmt | varSection
+              | constSection | letSection | varSection
+              | typeSection | whenStmt
 
 indPush ::= IND # and push indentation onto the stack
 indPop ::= # pop indentation from the stack
@@ -157,6 +158,8 @@ colonAndEquals ::= [':' typeDesc] '=' expr
 constDecl ::= symbol ['*'] [pragma] colonAndEquals [COMMENT | IND COMMENT]
             | COMMENT
 constSection ::= 'const' indPush constDecl (SAD constDecl)* DED indPop
+letSection ::= 'let' indPush constDecl (SAD constDecl)* DED indPop
+
 typeDef ::= typeDesc | objectDef | enumDef | 'distinct' typeDesc
 
 objectField ::= symbol ['*'] [pragma]

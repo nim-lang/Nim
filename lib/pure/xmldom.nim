@@ -168,7 +168,7 @@ proc documentElement*(doc: PDocument): PElement =
 proc findNodes(nl: PNode, name: string): seq[PNode] =
   # Made for getElementsByTagName
   var r: seq[PNode] = @[]
-  if nl.childNodes == nil: return @[]
+  if isNil(nl.childNodes): return @[]
   if nl.childNodes.len() == 0: return @[]
 
   for i in items(nl.childNodes):
@@ -176,7 +176,7 @@ proc findNodes(nl: PNode, name: string): seq[PNode] =
       if i.FNodeName == name or name == "*":
         r.add(i)
         
-      if i.childNodes != nil:
+      if not isNil(i.childNodes):
         if i.childNodes.len() != 0:
           r.add(findNodes(i, name))
     
@@ -185,7 +185,7 @@ proc findNodes(nl: PNode, name: string): seq[PNode] =
 proc findNodesNS(nl: PNode, namespaceURI: string, localName: string): seq[PNode] =
   # Made for getElementsByTagNameNS
   var r: seq[PNode] = @[]
-  if nl.childNodes == nil: return @[]
+  if isNil(nl.childNodes): return @[]
   if nl.childNodes.len() == 0: return @[]
 
   for i in items(nl.childNodes):
@@ -193,7 +193,7 @@ proc findNodesNS(nl: PNode, namespaceURI: string, localName: string): seq[PNode]
       if (i.FNamespaceURI == namespaceURI or namespaceURI == "*") and (i.FLocalName == localName or localName == "*"):
         r.add(i)
         
-      if i.childNodes != nil:
+      if not isNil(i.childNodes):
         if i.childNodes.len() != 0:
           r.add(findNodesNS(i, namespaceURI, localName))
     
@@ -403,7 +403,7 @@ proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
     n.FParentNode = nil
     var tmp: seq[PNode] = n.childNodes
     n.childNodes = @[]
-    if deep == True:
+    if deep:
       for i in low(tmp.len())..high(tmp.len()):
         n.childNodes.add(importNode(doc, tmp[i], deep))
         
@@ -423,7 +423,7 @@ proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
     # Import the childNodes
     var tmp: seq[PNode] = n.childNodes
     n.childNodes = @[]
-    if deep == True:
+    if deep:
       for i in low(tmp.len())..high(tmp.len()):
         n.childNodes.add(importNode(doc, tmp[i], deep))
         
@@ -545,7 +545,7 @@ proc appendChild*(n: PNode, newChild: PNode) =
   ## If the newChild is already in the tree, it is first removed.
   
   # Check if n contains newChild
-  if n.childNodes != nil:
+  if not IsNil(n.childNodes):
     for i in low(n.childNodes)..high(n.childNodes):
       if n.childNodes[i] == newChild:
         raise newException(EHierarchyRequestErr, "The node to append is already in this nodes children.")
@@ -560,7 +560,7 @@ proc appendChild*(n: PNode, newChild: PNode) =
   if n.nodeType in childlessObjects:
     raise newException(ENoModificationAllowedErr, "Cannot append children to a childless node")
   
-  if n.childNodes == nil: n.childNodes = @[]
+  if isNil(n.childNodes): n.childNodes = @[]
     
   newChild.FParentNode = n
   for i in low(n.childNodes)..high(n.childNodes):
@@ -586,7 +586,7 @@ proc cloneNode*(n: PNode, deep: bool): PNode =
     # Import the childNodes
     var tmp: seq[PNode] = n.childNodes
     n.childNodes = @[]
-    if deep == True:
+    if deep:
       for i in low(tmp.len())..high(tmp.len()):
         n.childNodes.add(cloneNode(tmp[i], deep))
     return newNode
@@ -745,7 +745,7 @@ proc removeNamedItemNS*(NList: var seq[PNode], namespaceURI: string, localName: 
 proc setNamedItem*(NList: var seq[PNode], arg: PNode): PNode =
   ## Adds ``arg`` as a ``Node`` to the ``NList``
   ## If a node with the same name is already present in this map, it is replaced by the new one.
-  if NList != nil:
+  if not isNil(NList):
     if NList.len() > 0:
       #Check if newChild is from this nodes document
       if NList[0].FOwnerDocument != arg.FOwnerDocument:
@@ -769,7 +769,7 @@ proc setNamedItem*(NList: var seq[PNode], arg: PNode): PNode =
 proc setNamedItem*(NList: var seq[PAttr], arg: PAttr): PAttr =
   ## Adds ``arg`` as a ``Node`` to the ``NList``
   ## If a node with the same name is already present in this map, it is replaced by the new one.
-  if NList != nil:
+  if not IsNil(NList):
     if NList.len() > 0:
       # Check if newChild is from this nodes document
       if NList[0].FOwnerDocument != arg.FOwnerDocument:
@@ -795,7 +795,7 @@ proc setNamedItem*(NList: var seq[PAttr], arg: PAttr): PAttr =
     
 proc setNamedItemNS*(NList: var seq[PNode], arg: PNode): PNode =
   ## Adds a node using its ``namespaceURI`` and ``localName``
-  if NList != nil:
+  if not IsNil(NList):
     if NList.len() > 0:
       # Check if newChild is from this nodes document
       if NList[0].FOwnerDocument != arg.FOwnerDocument:
@@ -818,7 +818,7 @@ proc setNamedItemNS*(NList: var seq[PNode], arg: PNode): PNode =
     
 proc setNamedItemNS*(NList: var seq[PAttr], arg: PAttr): PAttr =
   ## Adds a node using its ``namespaceURI`` and ``localName``
-  if NList != nil:
+  if not isNil(NList):
     if NList.len() > 0:
       # Check if newChild is from this nodes document
       if NList[0].FOwnerDocument != arg.FOwnerDocument:
@@ -957,7 +957,7 @@ proc setAttributeNode*(el: PElement, newAttr: PAttr): PAttr =
       "This attribute is in use by another element, use cloneNode")
   # Exceptions end
   
-  if el.attributes == nil: el.attributes = @[]
+  if isNil(el.attributes): el.attributes = @[]
   return el.attributes.setNamedItem(newAttr)
   
 proc setAttributeNodeNS*(el: PElement, newAttr: PAttr): PAttr =
@@ -975,7 +975,7 @@ proc setAttributeNodeNS*(el: PElement, newAttr: PAttr): PAttr =
       "This attribute is in use by another element, use cloneNode")
   # Exceptions end
   
-  if el.attributes == nil: el.attributes = @[]
+  if isNil(el.attributes): el.attributes = @[]
   return el.attributes.setNamedItemNS(newAttr)
 
 proc setAttribute*(el: PElement, name: string, value: string) =

@@ -1,6 +1,7 @@
 Version 0.8.14
 ==============
 
+- 'let x = y'
 - threads should not have an inbox per default
 - make threadvar efficient again on linux after testing
 - fix the 'const' issues
@@ -8,7 +9,6 @@ Version 0.8.14
 - optional indentation for 'case' statement
 - taint mode
 - const ptr/ref
-- 'let x = y'
 - {.error.} pragma for proc headers
 
 

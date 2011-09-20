@@ -1288,8 +1288,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   result = s[L]
   setLen(s, L)
 
-proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] {.
-    noSideEffect.} = 
+proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] = 
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data` and returns the result as a sequence.
   newSeq(result, data.len)
