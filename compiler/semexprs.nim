@@ -8,6 +8,7 @@
 #
 
 # this module does the semantic checking for expressions
+
 const 
   ConstAbstractTypes = {tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
     tyArrayConstr, tyTuple, tySet}
@@ -384,6 +385,10 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   else: 
     nil
 
+proc isCallExpr(n: PNode): bool = 
+  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
+                      nkCallStrLit}
+
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode = 
   if n.kind == nkHiddenDeref: 
     checkSonsLen(n, 1)
@@ -742,7 +747,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     # [] operator for tuples requires constant expression:
-    n.sons[1] = semConstExpr(c, n.sons[1])
+    n.sons[1] = semAndEvalConstExpr(c, n.sons[1])
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal}).kind in
         {tyInt..tyInt64}: 
       var idx = getOrdValue(n.sons[1])
@@ -883,11 +888,38 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
+proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
+  result = c.semAndEvalConstExpr(n.sons[i+1])
+
+  if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+    GlobalError(result.info, errStringLiteralExpected)
+
+proc semExpandMacroToAst(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) == 2:
+    if not isCallExpr(n.sons[1]):
+      GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+
+    var macroCall = n.sons[1]
+
+    var s = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
+    if s == nil:
+      GlobalError(n.info, errUndeclaredIdentifier, macroCall.sons[0].renderTree)
+
+    var expanded : Pnode
+
+    case s.kind
+    of skMacro: expanded = semMacroExpr(c, macroCall, s, false)
+    of skTemplate: expanded = semTemplateExpr(c, macroCall, s, false)
+    else: GlobalError(n.info, errXisNoMacroOrTemplate, s.name.s)
+
+    var macroRetType = newTypeS(s.typ.sons[0].kind, c)
+    result = newMetaNodeIT(expanded, n.info, macroRetType)
+  else:
+    result = semDirectOp(c, n, flags)
+
 proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   if sonsLen(n) == 2:
-    var a = c.semConstExpr(c, n.sons[1])
-    if a.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
-      GlobalError(a.info, errStringLiteralExpected)
+    var a = expectStringArg(c, n, 0)
     try:
       var content = readFile(a.strVal)
       result = newStrNode(nkStrLit, content)
@@ -921,6 +953,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
+  of mExpandMacroToAst: result = semExpandMacroToAst(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
@@ -1077,10 +1110,6 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   n.typ = n.sons[1].typ
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
-
-proc isCallExpr(n: PNode): bool = 
-  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
-                      nkCallStrLit}
 
 proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode = 
   checkMinSonsLen(n, 2)
