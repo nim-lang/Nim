@@ -15,7 +15,8 @@
 
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
-  msgs, os, condsyms, idents, renderer, types, passes, semfold, transf
+  msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
+  parser, ropes
 
 type 
   PStackFrame* = ref TStackFrame
@@ -751,6 +752,31 @@ proc evalRepr(c: PEvalContext, n: PNode): PNode =
 proc isEmpty(n: PNode): bool = 
   result = (n != nil) and (n.kind == nkEmpty)
 
+# The lexer marks multi-line strings as residing at the line where they are closed
+# This function returns the line where the string begins
+# Maybe the lexer should mark both the beginning and the end of expressions, then
+# this function could be removed
+proc stringStartingLine(s: PNode): int =
+  var totalLines = 0
+  for ln in splitLines(s.strVal): inc totalLines
+
+  result = s.info.line - totalLines
+
+proc evalParseExpr(c: PEvalContext, n: Pnode): Pnode =
+  var code = evalAux(c, n.sons[1], {})
+  var ast = parseString(code.getStrValue, code.info.toFilename, code.stringStartingLine)
+
+  if sonsLen(ast) != 1:
+    GlobalError(code.info, errExprExpected, "multiple statements")
+
+  result = ast.sons[0]
+  result.typ = newType(tyExpr, c.module)
+
+proc evalParseStmt(c: PEvalContext, n: Pnode): Pnode =
+  var code = evalAux(c, n.sons[1], {})
+  result = parseString(code.getStrValue, code.info.toFilename, code.stringStartingLine)
+  result.typ = newType(tyStmt, c.module)
+
 proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode = 
   var m = getMagic(n)
   case m
@@ -775,6 +801,8 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mAppendStrCh: result = evalAppendStrCh(c, n)
   of mAppendStrStr: result = evalAppendStrStr(c, n)
   of mAppendSeqElem: result = evalAppendSeqElem(c, n)
+  of mParseExprToAst: result = evalParseExpr(c, n)
+  of mParseStmtToAst: result = evalParseStmt(c, n)
   of mNLen: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
@@ -981,6 +1009,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     if (a == b) or
         (b.kind in {nkNilLit, nkEmpty}) and (a.kind in {nkNilLit, nkEmpty}): 
       result.intVal = 1
+  of mAstToYaml:
+    var ast = evalAux(c, n.sons[1], {efLValue})
+    result = newStrNode(nkStrLit, ast.treeToYaml.ropeToStr)
   of mNHint: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1034,6 +1065,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
   case n.kind                 # atoms:
+  of nkMetaNode:
+    result = copyTree(n.sons[0])
+    result.typ = n.typ
   of nkEmpty: result = n
   of nkSym: result = evalSym(c, n, flags)
   of nkType..nkNilLit: result = copyNode(n) # end of atoms
