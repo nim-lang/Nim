@@ -103,6 +103,12 @@ proc toCChar*(c: Char): string =
   of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $(c)
+
+proc makeSingleLineCString*(s: string): string =
+  result = "\""
+  for c in items(s):
+    result.add(c.toCChar)
+  result.add('\"')
   
 proc makeCString*(s: string): PRope = 
   # BUGFIX: We have to split long strings into many ropes. Otherwise
@@ -113,10 +119,10 @@ proc makeCString*(s: string): PRope =
   var res: string
   result = nil
   res = "\""
-  for i in countup(0, len(s) + 0 - 1): 
-    if (i - 0 + 1) mod MaxLineLength == 0: 
+  for i in countup(0, len(s) - 1):
+    if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
-      add(res, "\n")
+      add(res, tnl)
       app(result, toRope(res)) # reset:
       setlen(res, 1)
       res[0] = '\"'
@@ -129,8 +135,8 @@ proc makeLLVMString*(s: string): PRope =
   var res: string
   result = nil
   res = "c\""
-  for i in countup(0, len(s) + 0 - 1): 
-    if (i - 0 + 1) mod MaxLineLength == 0: 
+  for i in countup(0, len(s) - 1): 
+    if (i + 1) mod MaxLineLength == 0: 
       app(result, toRope(res))
       setlen(res, 0)
     case s[i]

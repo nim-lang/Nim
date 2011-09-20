@@ -105,7 +105,7 @@ proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
 proc genRawSetData(cs: TBitSet, size: int): PRope =
   var frmt: TFormatStr
   if size > 8:
-    result = toRope('{' & tnl)
+    result = ropef("{$n")
     for i in countup(0, size - 1):
       if i < size - 1:
         # not last iteration?
@@ -128,7 +128,7 @@ proc genSetNode(p: BProc, n: PNode): PRope =
     if id == gid:
       # not found in cache:
       inc(gid)
-      appf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;",
+      appf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
   else:
     result = genRawSetData(cs, size)
@@ -371,8 +371,8 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     else:
       storage = getTypeDesc(p.module, t)
     var tmp = getTempName()
-    appcg(p, cpsLocals, "$1 $2;", [storage, tmp])
-    appcg(p, cpsStmts, "$1 = #$2($3, $4);", [tmp, toRope(prc[m]), 
+    appcg(p, cpsLocals, "$1 $2;$n", [storage, tmp])
+    appcg(p, cpsStmts, "$1 = #$2($3, $4);$n", [tmp, toRope(prc[m]), 
                                              rdLoc(a), rdLoc(b)])
     if size < platform.IntSize or t.kind in {tyRange, tyEnum, tySet}:
       appcg(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
@@ -797,14 +797,14 @@ proc fixupCall(p: BProc, t: PNode, d: var TLoc, pl: PRope) =
         app(pl, addrLoc(d))
         app(pl, ")")
         app(p.s[cpsStmts], pl)
-        app(p.s[cpsStmts], ';' & tnl)
+        appf(p.s[cpsStmts], ";$n")
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
         app(pl, ")")
         app(p.s[cpsStmts], pl)
-        app(p.s[cpsStmts], ';' & tnl)
+        appf(p.s[cpsStmts], ";$n")
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       app(pl, ")")
@@ -817,7 +817,7 @@ proc fixupCall(p: BProc, t: PNode, d: var TLoc, pl: PRope) =
   else:
     app(pl, ")")
     app(p.s[cpsStmts], pl)
-    app(p.s[cpsStmts], ';' & tnl)
+    appf(p.s[cpsStmts], ";$n")
 
 proc openArrayLoc(a: TLoc): PRope =
   case skipTypes(a.t, abstractVar).kind
@@ -926,14 +926,14 @@ proc genNamedParamCall(p: BProc, t: PNode, d: var TLoc) =
         app(pl, addrLoc(d))
         app(pl, "]")
         app(p.s[cpsStmts], pl)
-        app(p.s[cpsStmts], ';' & tnl)
+        appf(p.s[cpsStmts], ";$n")
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
         app(pl, "]")
         app(p.s[cpsStmts], pl)
-        app(p.s[cpsStmts], ';' & tnl)
+        appf(p.s[cpsStmts], ";$n")
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       app(pl, "]")
@@ -946,7 +946,7 @@ proc genNamedParamCall(p: BProc, t: PNode, d: var TLoc) =
   else:
     app(pl, "]")
     app(p.s[cpsStmts], pl)
-    app(p.s[cpsStmts], ';' & tnl)
+    appf(p.s[cpsStmts], ";$n")
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nimrod code>
@@ -1839,7 +1839,7 @@ proc genConstSimpleList(p: BProc, n: PNode): PRope =
   for i in countup(0, length - 2):
     appf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
   if length > 0: app(result, genNamedConstExpr(p, n.sons[length - 1]))
-  app(result, '}' & tnl)
+  appf(result, "}$n")
 
 proc genConstExpr(p: BProc, n: PNode): PRope =
   case n.Kind
