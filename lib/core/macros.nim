@@ -19,7 +19,7 @@ type
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
     nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
-    nnkTripleStrLit, nnkMetaNode, nnkNilLit, nnkDotCall, 
+    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall, 
     nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
     nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 
     nnkPrefix, nnkPostfix, nnkPar, nnkCurly, 
@@ -184,6 +184,53 @@ proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
+proc prettyPrint*(n: PNimrodNode): string {.compileTime.} =
+  ## Convert the AST `n` to a human-readable string
+  ##
+  ## You can use this as a tool to explore the Nimrod's abstract syntax 
+  ## tree and to discover what kind of nodes must be created to represent
+  ## a certain expression/statement
+  if n == nil: return "nil"
+
+  result = $n.kind
+  add(result, "(")
+  
+  case n.kind
+  of nnkEmpty: nil # same as nil node in this representation
+  of nnkNilLit: add(result, "nil")
+  of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
+  of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
+  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
+  of nnkIdent: add(result, $n.ident)
+  of nnkSym, nnkNone: assert false
+  else:
+    add(result, prettyPrint(n[0]))
+    for j in 1..n.len-1:
+      add(result, ", ")
+      add(result, prettyPrint(n[j]))
+
+  add(result, ")")
+
+proc toYaml*(n: PNimrodNode): string {.magic: "AstToYaml".}
+  ## Converts the AST `n` to an YAML string
+  ##
+  ## Provides more detailed, potentially harder to digest information
+  ## than `prettyPrint`
+
+proc parseExpr*(s: string) : expr {.magic: "ParseExprToAst".}
+  ## Compiles the passed string to its AST representation
+  ## Expects a single expression
+
+proc parseStmt*(s: string) : stmt {.magic: "ParseStmtToAst".}
+  ## Compiles the passed string to its AST representation
+  ## Expects one or more statements
+
+proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandMacroToAst".}
+  ## Obtains the AST nodes returned from a macro or template invocation
+  ## example:
+  ## macro FooMacro() = 
+  ##   var ast = getAst(BarTemplate())
+  
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing

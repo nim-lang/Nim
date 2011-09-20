@@ -208,6 +208,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mNewString, mNewStringOfCap, 
      mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
+     mParseExprToAst, mParseStmtToAst,
      mNLen..mNError, mEqRef: 
     nil
   else: InternalError(a.info, "evalOp(" & $m & ')')
