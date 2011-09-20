@@ -442,6 +442,11 @@ The rules for compile-time computability are:
    computable arguments.
 
 
+Constants cannot be of type ``var`` or ``object``, nor can 
+they contain such a type. For the types ``ptr`` and ``ref`` only the
+constant literal ``nil`` is possible.
+
+
 Types
 -----
 

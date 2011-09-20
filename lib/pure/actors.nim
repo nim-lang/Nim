@@ -1,3 +1,6 @@
+discard """
+  cmd: "nimrod cc --hints:on --threads:on $# $#"
+"""
 #
 #
 #            Nimrod's Runtime Library

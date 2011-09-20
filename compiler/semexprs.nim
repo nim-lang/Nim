@@ -169,7 +169,7 @@ proc semConv(c: PContext, n: PNode, s: PSym): PNode =
 
 proc semCast(c: PContext, n: PNode): PNode = 
   if optSafeCode in gGlobalOptions: localError(n.info, errCastNotInSafeMode)
-  incl(c.p.owner.flags, sfSideEffect)
+  #incl(c.p.owner.flags, sfSideEffect)
   checkSonsLen(n, 2)
   result = newNodeI(nkCast, n.info)
   result.typ = semTypeNode(c, n.sons[0], nil)
@@ -453,9 +453,8 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
     var callee = result.sons[0].sym
     if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
       GlobalError(n.info, errRecursiveDependencyX, callee.name.s)
-    if not (sfNoSideEffect in callee.flags): 
-      if (sfForward in callee.flags) or
-          ({sfImportc, sfSideEffect} * callee.flags != {}): 
+    if sfNoSideEffect notin callee.flags: 
+      if {sfImportc, sfSideEffect} * callee.flags != {}:
         incl(c.p.owner.flags, sfSideEffect)
   
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
