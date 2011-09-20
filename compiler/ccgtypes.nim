@@ -520,7 +520,7 @@ proc finishTypeDescriptions(m: BModule) =
   while i < len(m.typeStack): 
     discard getTypeDesc(m, m.typeStack[i])
     inc(i)
-
+  
 proc genProcHeader(m: BModule, prc: PSym): PRope = 
   var 
     rettype, params: PRope
@@ -529,6 +529,7 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
+  genCLineDir(result, prc.ast.sons[codePos])
   appf(result, "$1($2, $3)$4", 
        [toRope(CallingConvToStr[prc.typ.callConv]), rettype, prc.loc.r, params])
 
