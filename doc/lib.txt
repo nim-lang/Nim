@@ -274,6 +274,12 @@ Database support
   redis-server instance, send commands and receive replies.
 
 
+Modules for JS backend
+---------------------------
+
+* `dom <dom.html>`_
+  Declaration of the Document Object Model for the ECMAScript backend.
+
 
 Impure libraries
 ================

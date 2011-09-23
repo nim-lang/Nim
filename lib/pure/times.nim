@@ -52,7 +52,7 @@ elif defined(windows):
 
 elif defined(ECMAScript):
   type
-    TTime* {.final.} = object
+    TTime* {.final, importc.} = object
       getDay: proc (): int
       getFullYear: proc (): int
       getHours: proc (): int
@@ -62,6 +62,7 @@ elif defined(ECMAScript):
       getSeconds: proc (): int
       getTime: proc (): int
       getTimezoneOffset: proc (): int
+      getDate: proc (): int
       getUTCDate: proc (): int
       getUTCFullYear: proc (): int
       getUTCHours: proc (): int
@@ -310,7 +311,8 @@ when not defined(ECMAScript):
       result = toFloat(int(clock())) / toFloat(clocksPerSec)
     
 else:
-  proc getTime(): TTime {.importc: "new Date", nodecl.}
+  proc newDate(): TTime {.importc: "new Date", nodecl.}
+  proc getTime(): TTime = return newDate()
 
   const
     weekDays: array [0..6, TWeekDay] = [
@@ -346,7 +348,7 @@ else:
     result.setDate(timeInfo.monthday)
   
   proc `$`(timeInfo: TTimeInfo): string = return $(TimeInfoToTIme(timeInfo))
-  proc `$`(time: TTime): string = $time.toLocaleString()
+  proc `$`(time: TTime): string = return $time.toLocaleString()
     
   proc `-` (a, b: TTime): int64 = 
     return a.getTime() - b.getTime()
