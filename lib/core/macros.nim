@@ -36,15 +36,18 @@ type
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
     nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
     nnkAsmStmt, nnkPragma, nnkIfStmt, nnkWhenStmt, 
-    nnkForStmt, nnkWhileStmt, nnkCaseStmt, nnkVarSection, 
-    nnkConstSection, nnkConstDef, nnkTypeSection, nnkTypeDef, 
+    nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
+    nnkVarSection, nnkLetSection, nnkConstSection, 
+    nnkConstDef, nnkTypeSection, nnkTypeDef, 
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
     nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
     nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
     nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
-    nnkRefTy, nnkPtrTy, nnkVarTy, nnkDistinctTy, 
+    nnkRefTy, nnkPtrTy, nnkVarTy, 
+    nnkConstTy, nnkMutableTy,
+    nnkDistinctTy, 
     nnkProcTy, nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
@@ -184,7 +187,7 @@ proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
-proc prettyPrint*(n: PNimrodNode): string {.compileTime.} =
+proc toLisp*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable string
   ##
   ## You can use this as a tool to explore the Nimrod's abstract syntax 
@@ -204,10 +207,10 @@ proc prettyPrint*(n: PNimrodNode): string {.compileTime.} =
   of nnkIdent: add(result, $n.ident)
   of nnkSym, nnkNone: assert false
   else:
-    add(result, prettyPrint(n[0]))
+    add(result, toLisp(n[0]))
     for j in 1..n.len-1:
       add(result, ", ")
-      add(result, prettyPrint(n[j]))
+      add(result, toLisp(n[j]))
 
   add(result, ")")
 
@@ -215,7 +218,7 @@ proc toYaml*(n: PNimrodNode): string {.magic: "AstToYaml".}
   ## Converts the AST `n` to an YAML string
   ##
   ## Provides more detailed, potentially harder to digest information
-  ## than `prettyPrint`
+  ## than `toLisp`
 
 proc parseExpr*(s: string) : expr {.magic: "ParseExprToAst".}
   ## Compiles the passed string to its AST representation
@@ -226,10 +229,13 @@ proc parseStmt*(s: string) : stmt {.magic: "ParseStmtToAst".}
   ## Expects one or more statements
 
 proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandMacroToAst".}
-  ## Obtains the AST nodes returned from a macro or template invocation
-  ## example:
-  ## macro FooMacro() = 
-  ##   var ast = getAst(BarTemplate())
+  ## Obtains the AST nodes returned from a macro or template invocation.
+  ## Example:
+  ## 
+  ## .. code-block:: nimrod
+  ##
+  ##   macro FooMacro() = 
+  ##     var ast = getAst(BarTemplate())
   
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,

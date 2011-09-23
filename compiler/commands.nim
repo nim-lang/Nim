@@ -30,94 +30,8 @@ const
       "Copyright (c) 2004-2011 by Andreas Rumpf\n"
 
 const 
-  Usage = """
-Usage:
-  nimrod command [options] [projectfile] [arguments]
-Command:
-  compile, c                compile project with default code generator (C)
-  doc                       generate the documentation for inputfile
-  i                         start Nimrod in interactive mode (limited)
-Arguments:
-  arguments are passed to the program being run (if --run option is selected)
-Options:
-  -p, --path:PATH           add path to search paths
-  -d, --define:SYMBOL       define a conditional symbol
-  -u, --undef:SYMBOL        undefine a conditional symbol
-  -f, --forceBuild          force rebuilding of all modules
-  --stackTrace:on|off       turn stack tracing on|off
-  --lineTrace:on|off        turn line tracing on|off
-  --threads:on|off          turn support for multi-threading on|off
-  -x, --checks:on|off       turn all runtime checks on|off
-  --objChecks:on|off        turn obj conversion checks on|off
-  --fieldChecks:on|off      turn case variant field checks on|off
-  --rangeChecks:on|off      turn range checks on|off
-  --boundChecks:on|off      turn bound checks on|off
-  --overflowChecks:on|off   turn int over-/underflow checks on|off
-  -a, --assertions:on|off   turn assertions on|off
-  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
-  --nanChecks:on|off        turn NaN checks on|off
-  --infChecks:on|off        turn Inf checks on|off
-  --deadCodeElim:on|off     whole program dead code elimination on|off
-  --opt:none|speed|size     optimize not at all or for speed|size
-  --app:console|gui|lib     generate a console|GUI application|dynamic library
-  -r, --run                 run the compiled program with given arguments
-  --advanced                show advanced command line switches
-  -h, --help                show this help
-"""
-
-  AdvancedUsage = """
-Advanced commands:
-  compileToC, cc            compile project with C code generator
-  compileToCpp, cpp         compile project to C++ code
-  compileToOC, objc         compile project to Objective C code
-  rst2html                  convert a reStructuredText file to HTML
-  rst2tex                   convert a reStructuredText file to TeX
-  run                       run the project (with Tiny C backend; buggy!)
-  pretty                    pretty print the inputfile
-  genDepend                 generate a DOT file containing the
-                            module dependency graph
-  dump                      dump all defined conditionals and search paths
-  check                     checks the project for syntax and semantic
-  idetools                  compiler support for IDEs: possible options:
-    --track:FILE,LINE,COL   track a file/cursor position
-    --suggest               suggest all possible symbols at position
-    --def                   list all possible symbols at position
-    --context               list possible invokation context  
-Advanced options:
-  -o, --out:FILE            set the output filename
-  --stdout                  output to stdout
-  -w, --warnings:on|off     turn all warnings on|off
-  --warning[X]:on|off       turn specific warning X on|off
-  --hints:on|off            turn all hints on|off
-  --hint[X]:on|off          turn specific hint X on|off
-  --lib:PATH                set the system library path
-  --nimcache:PATH           set the path used for generated files
-  -c, --compileOnly         compile only; do not assemble or link
-  --noLinking               compile but do not link
-  --noMain                  do not generate a main procedure
-  --genScript               generate a compile script (in the 'nimcache'
-                            subdirectory named 'compile_$project$scriptext')
-  --os:SYMBOL               set the target operating system (cross-compilation)
-  --cpu:SYMBOL              set the target processor (cross-compilation)
-  --debuginfo               enables debug information
-  --debugger:on|off         turn Embedded Nimrod Debugger on|off
-  -t, --passc:OPTION        pass an option to the C compiler
-  -l, --passl:OPTION        pass an option to the linker
-  --genMapping              generate a mapping file containing
-                            (Nimrod, mangled) identifier pairs
-  --lineDir:on|off          generation of #line directive on|off
-  --threadanalysis:on|off   turn thread analysis on|off
-  --skipCfg                 do not read the general configuration file
-  --skipProjCfg             do not read the project's configuration file
-  --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
-  --index:FILE              use FILE to generate a documentation index file
-  --putenv:key=value        set an environment variable
-  --listCmd                 list the commands used to execute external programs
-  --parallelBuild=0|1|...   perform a parallel build
-                            value = number of processors (0 for auto-detect)
-  --verbosity:0|1|2|3       set Nimrod's verbosity level (0 is default)
-  -v, --version             show detailed version information
-"""
+  Usage = slurp"doc/basicopt.txt".replace("//", "")
+  AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string = 
   result = `%`(HelpMessage, [VersionAsString, platform.os[platform.hostOS].name, 
@@ -276,6 +190,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "symbolfiles": result = contains(gGlobalOptions, optSymbolFiles)
   of "genscript": result = contains(gGlobalOptions, optGenScript)
   of "threads": result = contains(gGlobalOptions, optThreads)
+  of "taintmode": result = contains(gGlobalOptions, optTaintMode)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string): string = 
@@ -399,6 +314,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "assertions", "a": ProcessOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
   of "threads": ProcessOnOffSwitchG({optThreads}, arg, pass, info)
+  of "taintmode": ProcessOnOffSwitchG({optTaintMode}, arg, pass, info)
   of "opt":
     expectArg(switch, arg, pass, info)
     case arg.normalize

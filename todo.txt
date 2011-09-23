@@ -2,14 +2,14 @@ Version 0.8.14
 ==============
 
 - 'let x = y'
-- threads should not have an inbox per default
+- T(x) as l-value
+- fix actors.nim
 - make threadvar efficient again on linux after testing
 - fix the 'const' issues
 - test the sort implementation again
 - optional indentation for 'case' statement
 - taint mode
 - const ptr/ref
-- {.error.} pragma for proc headers
 
 
 version 0.9.0

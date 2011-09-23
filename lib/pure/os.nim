@@ -692,7 +692,7 @@ proc findEnvVar(key: string): int =
     if startsWith(environment[i], temp): return i
   return -1
 
-proc getEnv*(key: string): string =
+proc getEnv*(key: string): TaintedString =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
   ## If the variable does not exist, "" is returned. To distinguish
@@ -700,11 +700,11 @@ proc getEnv*(key: string): string =
   ## `existsEnv(key)`.
   var i = findEnvVar(key)
   if i >= 0:
-    return substr(environment[i], find(environment[i], '=')+1)
+    return TaintedString(substr(environment[i], find(environment[i], '=')+1))
   else:
     var env = cgetenv(key)
-    if env == nil: return ""
-    result = $env
+    if env == nil: return TaintedString("")
+    result = TaintedString($env)
 
 proc existsEnv*(key: string): bool =
   ## Checks whether the environment variable named `key` exists.
@@ -733,14 +733,15 @@ proc putEnv*(key, val: string) =
     if SetEnvironmentVariableA(key, val) == 0'i32:
       OSError()
 
-iterator envPairs*(): tuple[key, value: string] =
+iterator envPairs*(): tuple[key, value: TaintedString] =
   ## Iterate over all `environments variables`:idx:. In the first component 
   ## of the tuple is the name of the current variable stored, in the second
   ## its value.
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')
-    yield (substr(environment[i], 0, p-1), substr(environment[i], p+1))
+    yield (TaintedString(substr(environment[i], 0, p-1)), 
+           TaintedString(substr(environment[i], p+1)))
 
 iterator walkFiles*(pattern: string): string =
   ## Iterate over all the files that match the `pattern`. On POSIX this uses
@@ -1078,18 +1079,18 @@ proc exclFilePermissions*(filename: string,
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the home directory of the current user.
-  when defined(windows): return getEnv("USERPROFILE") & "\\"
-  else: return getEnv("HOME") & "/"
+  when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
+  else: return string(getEnv("HOME")) & "/"
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the config directory of the current user for applications.
-  when defined(windows): return getEnv("APPDATA") & "\\"
-  else: return getEnv("HOME") & "/.config/"
+  when defined(windows): return string(getEnv("APPDATA")) & "\\"
+  else: return string(getEnv("HOME")) & "/.config/"
 
 proc getTempDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the temporary directory of the current user for applications to
   ## save temporary files in.
-  when defined(windows): return getEnv("TEMP") & "\\"
+  when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
 when defined(windows):
@@ -1107,14 +1108,14 @@ when defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
     result = ownArgv.len-1
 
-  proc paramStr*(i: int): string {.rtl, extern: "nos$1".} =
+  proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1".} =
     ## Returns the `i`-th `command line argument`:idx: given to the
     ## application.
     ##
     ## `i` should be in the range `1..paramCount()`, else
     ## the `EOutOfIndex` exception is raised.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
-    return ownArgv[i]
+    return TaintedString(ownArgv[i])
 
 elif not defined(createNimRtl):
   # On Posix, there is no portable way to get the command line from a DLL.
@@ -1122,8 +1123,8 @@ elif not defined(createNimRtl):
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr*(i: int): string =
-    if i < cmdCount and i >= 0: return $cmdLine[i]
+  proc paramStr*(i: int): TaintedString =
+    if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
     raise newException(EInvalidIndex, "invalid index")
 
   proc paramCount*(): int = return cmdCount-1
@@ -1172,13 +1173,14 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
       result = "" # error!
   else:
     # little heuristic that may work on other POSIX-like systems:
-    result = getEnv("_")
+    result = string(getEnv("_"))
     if len(result) == 0:
-      result = ParamStr(0) # POSIX guaranties that this contains the executable
-                           # as it has been executed by the calling process
+      result = string(ParamStr(0))
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
       if len(result) > 0 and result[0] != DirSep: # not an absolute path?
         # iterate over any path in the $PATH environment variable
-        for p in split(getEnv("PATH"), {PathSep}):
+        for p in split(string(getEnv("PATH")), {PathSep}):
           var x = joinPath(p, result)
           if ExistsFile(x): return x
 
@@ -1230,7 +1232,7 @@ proc findExe*(exe: string): string =
   ## is added an ``.exe`` file extension if it has no extension.
   result = addFileExt(exe, os.exeExt)
   if ExistsFile(result): return
-  var path = os.getEnv("PATH")
+  var path = string(os.getEnv("PATH"))
   for candidate in split(path, pathSep): 
     var x = candidate / result
     if ExistsFile(x): return x

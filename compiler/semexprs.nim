@@ -103,7 +103,7 @@ proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
 proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
   const 
     IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyFloat128}
-  if sameType(castDest, src): 
+  if sameType(castDest, src) and castDest.sym == src.sym: 
     # don't annoy conversions that may be needed on another processor:
     if not (castDest.kind in {tyInt..tyFloat128, tyNil}): 
       Message(info, hintConvFromXtoItselfNotNeeded, typeToString(castDest))

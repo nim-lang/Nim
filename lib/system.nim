@@ -787,6 +787,19 @@ proc compileOption*(option, arg: string): bool {.
 const
   hasThreadSupport = compileOption("threads")
   hasSharedHeap = defined(boehmgc) # don't share heaps; every thread has its own
+#  taintMode = compileOption("taintmode")
+
+when defined(taintMode):
+  # XXX use a compile time option for it!
+  type TaintedString* = distinct string ## a distinct string type that 
+                                        ## is `tainted`:idx:. It is an alias for
+                                        ## ``string`` if the taint mode is not
+                                        ## turned on. Use the ``-d:taintMode``
+                                        ## command line switch to turn the taint
+                                        ## mode on.
+else:
+  type TaintedString* = string
+
 
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
@@ -896,11 +909,6 @@ type # these work for most platforms:
   PInt64* = ptr Int64 ## an alias for ``ptr int64``
   PInt32* = ptr Int32 ## an alias for ``ptr int32``
 
-type TOptional*[T] = object
-  case hasValue* : bool
-  of true: value*: T
-  of false: nil
- 
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
@@ -1653,7 +1661,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc FlushFile*(f: TFile) {.importc: "fflush", noDecl.}
     ## Flushes `f`'s buffer.
 
-  proc readFile*(filename: string): string
+  proc readFile*(filename: string): TaintedString
     ## Opens a file named `filename` for reading. Then reads the
     ## file's content completely into a string and
     ## closes the file afterwards. Returns the string. 
@@ -1675,7 +1683,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc write*(f: TFile, a: openArray[string])
     ## Writes a value to the file `f`. May throw an IO exception.
 
-  proc readLine*(f: TFile): string
+  proc readLine*(f: TFile): TaintedString
     ## reads a line of text from the file `f`. May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
     ## ``CRLF``. The newline character(s) are not part of the returned string.
@@ -1814,22 +1822,22 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/channels"
 
-  iterator lines*(filename: string): string =
+  iterator lines*(filename: string): TaintedString =
     ## Iterate over any line in the file named `filename`.
     ## If the file does not exist `EIO` is raised.
     var f = open(filename)
     var res = ""
     while not endOfFile(f):
       rawReadLine(f, res)
-      yield res
+      yield TaintedString(res)
     Close(f)
 
-  iterator lines*(f: TFile): string =
+  iterator lines*(f: TFile): TaintedString =
     ## Iterate over any line in the file `f`.
     var res = ""
     while not endOfFile(f):
       rawReadLine(f, res)
-      yield res
+      yield TaintedString(res)
 
   include "system/assign"
   include "system/repr"

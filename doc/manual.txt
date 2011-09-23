@@ -436,7 +436,8 @@ have no side-effect can be used in constant expressions too:
 The rules for compile-time computability are: 
 
 1. Literals are compile-time computable.
-2. Procedure calls of the form ``p(X)`` are compile-time computable if
+2. Type conversions are compile-time computable.
+3. Procedure calls of the form ``p(X)`` are compile-time computable if
    ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
    for details) and if ``X`` is a (possibly empty) list of compile-time 
    computable arguments.
@@ -1207,7 +1208,7 @@ Void type
 ~~~~~~~~~
 
 The `void`:idx: type denotes the absense of any type. Parameters of 
-type ``void`` are treated as non-existent, a result ``void`` type means that
+type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 
 .. code-block:: nimrod
@@ -1295,6 +1296,48 @@ Since types are graphs which can have cycles, the above algorithm needs an
 auxiliary set ``s`` to detect this case.
 
 
+Type equality modulo type distinction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following algorithm (in pseudo-code) determines whether two types
+are equal with no respect to ``distinct`` types. For brevity the cycle check
+with an auxiliary set ``s`` is omitted:
+
+.. code-block:: nimrod
+  proc typeEqualsOrDistinct(a, b: PType): bool =
+    if a.kind == b.kind:
+      case a.kind
+      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+          bool, nil, void:
+        # leaf type: kinds identical; nothing more to check
+        result = true
+      of ref, ptr, var, set, seq, openarray:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType)
+      of range:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
+          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
+      of array:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType) and
+                 typeEqualsOrDistinct(a.indexType, b.indexType)
+      of tuple:
+        if a.tupleLen == b.tupleLen:
+          for i in 0..a.tupleLen-1:
+            if not typeEqualsOrDistinct(a[i], b[i]): return false
+          result = true
+      of distinct:
+        result = typeEqualsOrDistinct(a.baseType, b.baseType)
+      of object, enum:
+        result = a == b
+      of proc:
+        result = typeEqualsOrDistinct(a.parameterTuple, b.parameterTuple) and
+                 typeEqualsOrDistinct(a.resultType, b.resultType) and
+                 a.callingConvention == b.callingConvention
+    elif a.kind == distinct:
+      result = typeEqualsOrDistinct(a.baseType, b)
+    elif b.kind == distinct:
+      result = typeEqualsOrDistinct(a, b.baseType)
+      
+
 Subtype relation
 ~~~~~~~~~~~~~~~~
 If object ``a`` inherits from ``b``, ``a`` is a subtype of ``b``. This subtype
@@ -1323,14 +1366,6 @@ algorithm returns true:
   # XXX range types?
   proc isImplicitlyConvertible(a, b: PType): bool =
     case a.kind
-    of proc:
-      if b.kind == proc:
-        var x = a.parameterTuple
-        var y = b.parameterTuple
-        if x.tupleLen == y.tupleLen:
-          for i in 0.. x.tupleLen-1:
-            if not isSubtype(x[i], y[i]): return false
-          result = isSubType(b.resultType, a.resultType)
     of int8:    result = b.kind in {int16, int32, int64, int}
     of int16:   result = b.kind in {int32, int64, int}
     of int32:   result = b.kind in {int64, int}
@@ -1357,10 +1392,9 @@ algorithm returns true:
 
   proc isExplicitlyConvertible(a, b: PType): bool =
     if isImplicitlyConvertible(a, b): return true
+    if typeEqualsOrDistinct(a, b): return true
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
-    if a.kind == distinct and typeEquals(a.baseType, b): return true
-    if b.kind == distinct and typeEquals(b.baseType, a): return true
     return false
     
 The convertible relation can be relaxed by a user-defined type 
@@ -1379,6 +1413,9 @@ The convertible relation can be relaxed by a user-defined type
   # you can use the explicit form too
   x = chr.toInt
   echo x # => 97
+
+The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and 
+``typeEqualsOrDistinct(T, type(a))`` holds.
 
 
 Assignment compatibility
@@ -2852,7 +2889,7 @@ as helpers for macros.
 
 noReturn pragma
 ---------------
-The `noreturn`:idx: pragma is used to mark a proc that it never returns. 
+The `noreturn`:idx: pragma is used to mark a proc that never returns. 
 
 
 Acyclic pragma
@@ -2930,8 +2967,17 @@ only consist of an assembler statement.
 error pragma
 ------------
 The `error`:idx: pragma is used to make the compiler output an error message
-with the given content. Compilation currently aborts after an error, but this
-may be changed in later versions.
+with the given content. Compilation does not necessarily abort after an error
+though. 
+
+The ``error`` pragma can also be used to
+annotate a symbol (like an iterator or proc). The *usage* of the symbol then
+triggers a compile-time error. This is especially useful to rule out that some
+operation is valid due to overloading and type conversions: 
+
+.. code-block:: nimrod
+  ## check that underlying int values are compared and not the pointers:
+  proc `==`(x, y: ptr int): bool {.error.}
 
 
 fatal pragma
@@ -3238,7 +3284,7 @@ Even though Nimrod's `thread`:idx: support and semantics are preliminary,
 they should be quite usable already. To enable thread support 
 the ``--threads:on`` command line switch needs to be used. The ``system``
 module then contains several threading primitives. 
-See the `threads <threads.html>`_ and `inboxes <inboxes.html>`_ modules 
+See the `threads <threads.html>`_ and `channels <channels.html>`_ modules 
 for the thread API.
 
 Nimrod's memory model for threads is quite different than that of other common
@@ -3259,7 +3305,7 @@ violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory 
 allocated from different (thread local) heaps. 
 
-Since the semantic checking of threads requires a whole program analysis, 
+Since the semantic checking of threads requires whole program analysis, 
 it is quite expensive and can be turned off with ``--threadanalysis:off`` to 
 improve compile times.
 
