@@ -778,9 +778,10 @@ proc genSwap(p: var TProc, n: PNode, r: var TCompRes) =
 proc genFieldAddr(p: var TProc, n: PNode, r: var TCompRes) = 
   var a: TCompRes
   r.kind = etyBaseIndex
-  gen(p, n.sons[0], a)
-  if n.sons[1].kind != nkSym: InternalError(n.sons[1].info, "genFieldAddr")
-  var f = n.sons[1].sym
+  var b = if n.kind == nkHiddenAddr: n.sons[0] else: n
+  gen(p, b.sons[0], a)
+  if b.sons[1].kind != nkSym: InternalError(b.sons[1].info, "genFieldAddr")
+  var f = b.sons[1].sym
   if f.loc.r == nil: f.loc.r = mangleName(f)
   r.res = makeCString(ropeToStr(f.loc.r))
   r.com = mergeExpr(a)
@@ -1030,42 +1031,68 @@ proc genVarStmt(p: var TProc, n: PNode, r: var TCompRes) =
     genLineDir(p, a, r)
     genVarInit(p, v, a.sons[2], r)
 
-proc genConstStmt(p: var TProc, n: PNode, r: var TCompRes) = 
+proc genConstStmt(p: var TProc, n: PNode, r: var TCompRes) =
   genLineDir(p, n, r)
-  for i in countup(0, sonsLen(n) - 1): 
+  for i in countup(0, sonsLen(n) - 1):
     if n.sons[i].kind == nkCommentStmt: continue 
     assert(n.sons[i].kind == nkConstDef)
     var c = n.sons[i].sons[0].sym
     if (c.ast != nil) and (c.typ.kind in ConstantDataTypes) and
-        not (lfNoDecl in c.loc.flags): 
+        not (lfNoDecl in c.loc.flags):
       genLineDir(p, n.sons[i], r)
       genVarInit(p, c, c.ast, r)
 
-proc genNew(p: var TProc, n: PNode, r: var TCompRes) = 
+proc genNew(p: var TProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   gen(p, n.sons[1], a)
   var t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
   if a.com != nil: appf(r.com, "$1;$n", [a.com])
   appf(r.com, "$1 = $2;$n", [a.res, createVar(p, t, true)])
 
-proc genOrd(p: var TProc, n: PNode, r: var TCompRes) = 
+proc genOrd(p: var TProc, n: PNode, r: var TCompRes) =
   case skipTypes(n.sons[1].typ, abstractVar).kind
   of tyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r)
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
   else: InternalError(n.info, "genOrd")
   
-proc genConStrStr(p: var TProc, n: PNode, r: var TCompRes) = 
-  var a, b: TCompRes
-  gen(p, n.sons[1], a)
-  gen(p, n.sons[2], b)
-  r.com = mergeExpr(a.com, b.com)
-  if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar: 
-    a.res = ropef("[$1, 0]", [a.res])
-  if skipTypes(n.sons[2].typ, abstractVarRange).kind == tyChar: 
-    b.res = ropef("[$1, 0]", [b.res])
-  r.res = ropef("($1.slice(0,-1)).concat($2)", [a.res, b.res])
+proc genConStrStr(p: var TProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
 
-proc genMagic(p: var TProc, n: PNode, r: var TCompRes) = 
+  gen(p, n.sons[1], a)
+  r.com = mergeExpr(r.com, a.com)
+  if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar:
+    r.res.app(ropef("[$1].concat(", [a.res]))
+  else:
+    r.res.app(ropef("($1.slice(0,-1)).concat(", [a.res]))
+
+  for i in countup(2, sonsLen(n) - 2):
+    gen(p, n.sons[i], a)
+    r.com = mergeExpr(r.com, a.com)
+
+    if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
+      r.res.app(ropef("[$1],", [a.res]))
+    else:
+      r.res.app(ropef("$1.slice(0,-1),", [a.res]))
+
+  gen(p, n.sons[sonsLen(n) - 1], a)
+  r.com = mergeExpr(r.com, a.com)
+  if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
+    r.res.app(ropef("[$1, 0])", [a.res]))
+  else:
+    r.res.app(ropef("$1)", [a.res]))
+
+proc genRepr(p: var TProc, n: PNode, r: var TCompRes) =
+  var t = skipTypes(n.sons[1].typ, abstractVarRange)
+  case t.kind
+  of tyInt..tyInt64:
+    unaryExpr(p, n, r, "", "reprInt($1)")
+  of tyEnum, tyOrdinal:
+    binaryExpr(p, n, r, "", "reprEnum($1, $2)")
+  else:
+    # XXX:
+    internalError(n.info, "genRepr: Not implemented")
+
+proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   var 
     a: TCompRes
     line, filen: PRope
@@ -1073,54 +1100,59 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   case op
   of mOr: genOr(p, n.sons[1], n.sons[2], r)
   of mAnd: genAnd(p, n.sons[1], n.sons[2], r)
-  of mAddi..mStrToStr: arith(p, n, r, op)        #mRepr: genRepr(p, n, r);
+  of mAddi..mStrToStr: arith(p, n, r, op)
+  of mRepr: genRepr(p, n, r)
   of mSwap: genSwap(p, n, r)
-  of mUnaryLt: 
+  of mUnaryLt:
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): unaryExpr(p, n, r, "", "$1 - 1")
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
-  of mPred: 
+  of mPred:
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")
     else: binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
-  of mSucc: 
+  of mSucc:
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")
     else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
   of mAppendStrCh: binaryStmt(p, n, r, "addChar", "$1 = addChar($1, $2)")
-  of mAppendStrStr: 
-    binaryStmt(p, n, r, "", "$1 = ($1.slice(0,-1)).concat($2)") 
-    # XXX: make a copy of $2, because of EMCAScript's sucking semantics
+  of mAppendStrStr:
+    if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
+        binaryStmt(p, n, r, "", "$1 += $2")
+    else:
+      binaryStmt(p, n, r, "", "$1 = ($1.slice(0,-1)).concat($2)")
+    # XXX: make a copy of $2, because of ECMAScript's sucking semantics
   of mAppendSeqElem: binaryStmt(p, n, r, "", "$1.push($2)")
   of mConStrStr: genConStrStr(p, n, r)
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
   of mLeStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
   of mIsNil: unaryExpr(p, n, r, "", "$1 == null")
-  of mAssert: 
-    if (optAssert in p.Options): 
+  of mEnumToStr: genRepr(p, n, r)
+  of mAssert:
+    if (optAssert in p.Options):
       useMagic(p, "internalAssert")
       gen(p, n.sons[1], a)
       line = toRope(toLinenumber(n.info))
       filen = makeCString(ToFilename(n.info))
-      appf(r.com, "if (!($3)) internalAssert($1, $2)", 
+      appf(r.com, "if (!($3)) internalAssert($1, $2)",
            [filen, line, mergeExpr(a)])
   of mNew, mNewFinalize: genNew(p, n, r)
   of mSizeOf: r.res = toRope(getSize(n.sons[1].typ))
   of mChr: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr: unaryExpr(p, n, r, "", "($1.length-1)")
-  of mLengthSeq, mLengthOpenArray, mLengthArray: 
+  of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "$1.length")
-  of mHigh: 
-    if skipTypes(n.sons[0].typ, abstractVar).kind == tyString: 
+  of mHigh:
+    if skipTypes(n.sons[0].typ, abstractVar).kind == tyString:
       unaryExpr(p, n, r, "", "($1.length-2)")
-    else: 
+    else:
       unaryExpr(p, n, r, "", "($1.length-1)")
-  of mInc: 
+  of mInc:
     if not (optOverflowCheck in p.Options): binaryStmt(p, n, r, "", "$1 += $2")
     else: binaryStmt(p, n, r, "addInt", "$1 = addInt($1, $2)")
-  of ast.mDec: 
+  of ast.mDec:
     if not (optOverflowCheck in p.Options): binaryStmt(p, n, r, "", "$1 -= $2")
     else: binaryStmt(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr: binaryStmt(p, n, r, "", "$1.length = ($2)-1")
@@ -1135,12 +1167,12 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   of mIncl: binaryStmt(p, n, r, "", "$1[$2] = true")
   of mExcl: binaryStmt(p, n, r, "", "delete $1[$2]")
   of mInSet: binaryExpr(p, n, r, "", "($1[$2] != undefined)")
-  of mNLen..mNError: 
+  of mNLen..mNError:
     localError(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
   of mNewSeq: binaryStmt(p, n, r, "", "$1 = new Array($2)")
   of mEcho: genEcho(p, n, r)
-  else: 
-    genCall(p, n, r)          
+  else:
+    genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);
   
 proc genSetConstr(p: var TProc, n: PNode, r: var TCompRes) = 

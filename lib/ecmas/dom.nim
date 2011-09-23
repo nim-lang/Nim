@@ -227,6 +227,7 @@ type
     getAttributeNode*: proc (attr: cstring): ref TNode
     getElementsByTagName*: proc (): seq[ref TNode]
     hasChildNodes*: proc (): bool
+    innerHTML*: cstring
     insertBefore*: proc (newNode, before: ref TNode)
     insertData*: proc (position: int, data: cstring)
     removeAttribute*: proc (attr: cstring)
