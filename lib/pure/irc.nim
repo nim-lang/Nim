@@ -70,7 +70,12 @@ type
   
 proc send*(irc: var TIRC, message: string) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.
-  irc.sock.send(message & "\c\L")
+  try:
+    irc.sock.send(message & "\c\L")
+  except EOS:
+    # Assuming disconnection of every EOS could be bad,
+    # but I can't exactly check for EBrokenPipe.
+    irc.connected = false
 
 proc privmsg*(irc: var TIRC, target, message: string) =
   ## Sends ``message`` to ``target``. ``Target`` can be a channel, or a user.
@@ -199,6 +204,7 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
   ##
   ## This function should be called often as it also handles pinging
   ## the server.
+  if not irc.connected: ev.typ = EvDisconnected
   var line = ""
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
