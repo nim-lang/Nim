@@ -228,7 +228,7 @@ proc cmp(x, y: string): int = return cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.noStackFrame, compilerProc.} =
   asm """
-    if (`a == `b`) return true;
+    if (`a` == `b`) return true;
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;

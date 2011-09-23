@@ -1503,6 +1503,8 @@ else:
       `x`[0][len] = 0
     """
 
+  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
+
 proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo", noSideEffect.}
   ## special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
@@ -1894,6 +1896,7 @@ elif defined(ecmaScript) or defined(NimrodVM):
 
   when defined(ecmaScript):
     include "system/ecmasys"
+    include "system/reprjs"
   elif defined(NimrodVM):
     proc cmp(x, y: string): int =
       if x == y: return 0
