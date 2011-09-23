@@ -55,8 +55,8 @@ proc rawReadLine(f: TFile, result: var string) =
       break
     add result, chr(int(c))
 
-proc readLine(f: TFile): string =
-  result = ""
+proc readLine(f: TFile): TaintedString =
+  result = TaintedString("")
   rawReadLine(f, result)
 
 proc write(f: TFile, i: int) = 
@@ -81,7 +81,7 @@ proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: openArray[string]) =
   for x in items(a): write(f, x)
 
-proc readFile(filename: string): string =
+proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
     var len = getFileSize(f)

@@ -23,15 +23,15 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame}
+    wNoStackFrame, wError}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
-    wImportcpp, wImportobjc}
+    wImportcpp, wImportobjc, wError}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportcpp, wImportobjc}
+    wImportcpp, wImportobjc, wError}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
@@ -43,14 +43,14 @@ const
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
-    wImportcpp, wImportobjc}
+    wImportcpp, wImportobjc, wError}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
-    wImportcpp, wImportobjc}
+    wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
-    wImportcpp, wImportobjc}
+    wImportcpp, wImportobjc, wError}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportcpp, wImportobjc}
+    wExtern, wImportcpp, wImportobjc, wError}
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
                       wThread}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
@@ -530,7 +530,12 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             if sym.typ != nil: incl(sym.typ.flags, tfThread)
           of wHint: Message(it.info, hintUser, expectStrLit(c, it))
           of wWarning: Message(it.info, warnUser, expectStrLit(c, it))
-          of wError: LocalError(it.info, errUser, expectStrLit(c, it))
+          of wError: 
+            if sym != nil:
+              noVal(it)
+              incl(sym.flags, sfError)
+            else:            
+              LocalError(it.info, errUser, expectStrLit(c, it))
           of wFatal: Fatal(it.info, errUser, expectStrLit(c, it))
           of wDefine: processDefine(c, it)
           of wUndef: processUndef(c, it)

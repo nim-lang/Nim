@@ -178,7 +178,9 @@ proc makeRangeType(c: PContext, first, last: biggestInt,
   
 proc markUsed*(n: PNode, s: PSym) = 
   incl(s.flags, sfUsed)
-  if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
+  if {sfDeprecated, sfError} * s.flags != {}:
+    if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
+    if sfError in s.flags: LocalError(n.info, errWrongSymbolX, s.name.s)
   
 proc illFormedAst*(n: PNode) = 
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))

@@ -143,6 +143,7 @@ type
     nkWhileStmt,          # a while statement
     nkCaseStmt,           # a case statement
     nkVarSection,         # a var section
+    nkLetSection,         # a let section
     nkConstSection,       # a const section
     nkConstDef,           # a const definition
     nkTypeSection,        # a type section (consists of type definitions)
@@ -178,6 +179,8 @@ type
     nkRefTy,
     nkPtrTy,
     nkVarTy,
+    nkConstTy,            # ``const T``
+    nkMutableTy,          # ``mutable T``
     nkDistinctTy,         # distinct type
     nkProcTy,
     nkEnumTy,
@@ -186,7 +189,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 29 flags!
+  TSymFlag* = enum    # already 30 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed 
@@ -212,6 +215,7 @@ type
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
     sfDeprecated,     # symbol is deprecated
+    sfError,          # usage of symbol should trigger a compile-time error
     sfInClosure,      # variable is accessed by a closure
     sfThread,         # proc will run as a thread
     sfCompileTime,    # proc can be evaluated at compile time
@@ -254,7 +258,12 @@ type
     tyPointer, tyOpenArray,
     tyString, tyCString, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
-    tyFloat, tyFloat32, tyFloat64, tyFloat128
+    tyFloat, tyFloat32, tyFloat64, tyFloat128,
+    tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
+    tyBigNum, 
+    tyConst, tyMutable, tyVarargs, 
+    tyIter, # unused
+    tyProxy # currently unused
 
   TTypeKinds* = set[TTypeKind]
 

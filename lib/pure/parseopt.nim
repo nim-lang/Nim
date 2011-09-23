@@ -48,7 +48,7 @@ when defined(os.ParamCount):
     else: 
       result.cmd = ""
       for i in countup(1, ParamCount()): 
-        result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i)) & ' '
+        result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i).string) & ' '
     result.kind = cmdEnd
     result.key = ""
     result.val = ""

@@ -46,7 +46,8 @@ type                          # please make sure we have under 32 options
     optSuggest,               # ideTools: 'suggest'
     optContext,               # ideTools: 'context'
     optDef,                   # ideTools: 'def'
-    optThreadAnalysis         # thread analysis pass
+    optThreadAnalysis,        # thread analysis pass
+    optTaintMode              # taint mode turned on
 
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands

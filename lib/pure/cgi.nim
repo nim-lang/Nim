@@ -107,7 +107,7 @@ proc cgiError*(msg: string) {.noreturn.} =
   raise e
 
 proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
-  case getenv("REQUEST_METHOD")
+  case getenv("REQUEST_METHOD").string
   of "POST":
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
@@ -192,131 +192,131 @@ proc validateData*(data: PStringTable, validKeys: openarray[string]) =
 
 proc getContentLength*(): string =
   ## returns contents of the ``CONTENT_LENGTH`` environment variable
-  return getenv("CONTENT_LENGTH")
+  return getenv("CONTENT_LENGTH").string
 
 proc getContentType*(): string =
   ## returns contents of the ``CONTENT_TYPE`` environment variable
-  return getenv("CONTENT_Type")
+  return getenv("CONTENT_Type").string
 
 proc getDocumentRoot*(): string =
   ## returns contents of the ``DOCUMENT_ROOT`` environment variable
-  return getenv("DOCUMENT_ROOT")
+  return getenv("DOCUMENT_ROOT").string
 
 proc getGatewayInterface*(): string =
   ## returns contents of the ``GATEWAY_INTERFACE`` environment variable
-  return getenv("GATEWAY_INTERFACE")
+  return getenv("GATEWAY_INTERFACE").string
 
 proc getHttpAccept*(): string =
   ## returns contents of the ``HTTP_ACCEPT`` environment variable
-  return getenv("HTTP_ACCEPT")
+  return getenv("HTTP_ACCEPT").string
 
 proc getHttpAcceptCharset*(): string =
   ## returns contents of the ``HTTP_ACCEPT_CHARSET`` environment variable
-  return getenv("HTTP_ACCEPT_CHARSET")
+  return getenv("HTTP_ACCEPT_CHARSET").string
 
 proc getHttpAcceptEncoding*(): string =
   ## returns contents of the ``HTTP_ACCEPT_ENCODING`` environment variable
-  return getenv("HTTP_ACCEPT_ENCODING")
+  return getenv("HTTP_ACCEPT_ENCODING").string
 
 proc getHttpAcceptLanguage*(): string =
   ## returns contents of the ``HTTP_ACCEPT_LANGUAGE`` environment variable
-  return getenv("HTTP_ACCEPT_LANGUAGE")
+  return getenv("HTTP_ACCEPT_LANGUAGE").string
 
 proc getHttpConnection*(): string =
   ## returns contents of the ``HTTP_CONNECTION`` environment variable
-  return getenv("HTTP_CONNECTION")
+  return getenv("HTTP_CONNECTION").string
 
 proc getHttpCookie*(): string =
   ## returns contents of the ``HTTP_COOKIE`` environment variable
-  return getenv("HTTP_COOKIE")
+  return getenv("HTTP_COOKIE").string
 
 proc getHttpHost*(): string =
   ## returns contents of the ``HTTP_HOST`` environment variable
-  return getenv("HTTP_HOST")
+  return getenv("HTTP_HOST").string
 
 proc getHttpReferer*(): string =
   ## returns contents of the ``HTTP_REFERER`` environment variable
-  return getenv("HTTP_REFERER")
+  return getenv("HTTP_REFERER").string
 
 proc getHttpUserAgent*(): string =
   ## returns contents of the ``HTTP_USER_AGENT`` environment variable
-  return getenv("HTTP_USER_AGENT")
+  return getenv("HTTP_USER_AGENT").string
 
 proc getPathInfo*(): string =
   ## returns contents of the ``PATH_INFO`` environment variable
-  return getenv("PATH_INFO")
+  return getenv("PATH_INFO").string
 
 proc getPathTranslated*(): string =
   ## returns contents of the ``PATH_TRANSLATED`` environment variable
-  return getenv("PATH_TRANSLATED")
+  return getenv("PATH_TRANSLATED").string
 
 proc getQueryString*(): string =
   ## returns contents of the ``QUERY_STRING`` environment variable
-  return getenv("QUERY_STRING")
+  return getenv("QUERY_STRING").string
 
 proc getRemoteAddr*(): string =
   ## returns contents of the ``REMOTE_ADDR`` environment variable
-  return getenv("REMOTE_ADDR")
+  return getenv("REMOTE_ADDR").string
 
 proc getRemoteHost*(): string =
   ## returns contents of the ``REMOTE_HOST`` environment variable
-  return getenv("REMOTE_HOST")
+  return getenv("REMOTE_HOST").string
 
 proc getRemoteIdent*(): string =
   ## returns contents of the ``REMOTE_IDENT`` environment variable
-  return getenv("REMOTE_IDENT")
+  return getenv("REMOTE_IDENT").string
 
 proc getRemotePort*(): string =
   ## returns contents of the ``REMOTE_PORT`` environment variable
-  return getenv("REMOTE_PORT")
+  return getenv("REMOTE_PORT").string
 
 proc getRemoteUser*(): string =
   ## returns contents of the ``REMOTE_USER`` environment variable
-  return getenv("REMOTE_USER")
+  return getenv("REMOTE_USER").string
 
 proc getRequestMethod*(): string =
   ## returns contents of the ``REQUEST_METHOD`` environment variable
-  return getenv("REQUEST_METHOD")
+  return getenv("REQUEST_METHOD").string
 
 proc getRequestURI*(): string =
   ## returns contents of the ``REQUEST_URI`` environment variable
-  return getenv("REQUEST_URI")
+  return getenv("REQUEST_URI").string
 
 proc getScriptFilename*(): string =
   ## returns contents of the ``SCRIPT_FILENAME`` environment variable
-  return getenv("SCRIPT_FILENAME")
+  return getenv("SCRIPT_FILENAME").string
 
 proc getScriptName*(): string =
   ## returns contents of the ``SCRIPT_NAME`` environment variable
-  return getenv("SCRIPT_NAME")
+  return getenv("SCRIPT_NAME").string
 
 proc getServerAddr*(): string =
   ## returns contents of the ``SERVER_ADDR`` environment variable
-  return getenv("SERVER_ADDR")
+  return getenv("SERVER_ADDR").string
 
 proc getServerAdmin*(): string =
   ## returns contents of the ``SERVER_ADMIN`` environment variable
-  return getenv("SERVER_ADMIN")
+  return getenv("SERVER_ADMIN").string
 
 proc getServerName*(): string =
   ## returns contents of the ``SERVER_NAME`` environment variable
-  return getenv("SERVER_NAME")
+  return getenv("SERVER_NAME").string
 
 proc getServerPort*(): string =
   ## returns contents of the ``SERVER_PORT`` environment variable
-  return getenv("SERVER_PORT")
+  return getenv("SERVER_PORT").string
 
 proc getServerProtocol*(): string =
   ## returns contents of the ``SERVER_PROTOCOL`` environment variable
-  return getenv("SERVER_PROTOCOL")
+  return getenv("SERVER_PROTOCOL").string
 
 proc getServerSignature*(): string =
   ## returns contents of the ``SERVER_SIGNATURE`` environment variable
-  return getenv("SERVER_SIGNATURE")
+  return getenv("SERVER_SIGNATURE").string
 
 proc getServerSoftware*(): string =
   ## returns contents of the ``SERVER_SOFTWARE`` environment variable
-  return getenv("SERVER_SOFTWARE")
+  return getenv("SERVER_SOFTWARE").string
 
 proc setTestData*(keysvalues: openarray[string]) =
   ## fills the appropriate environment variables to test your CGI application.
@@ -360,10 +360,10 @@ proc setCookie*(name, value: string) =
 var
   gcookies: PStringTable = nil
 
-proc getCookie*(name: string): string =
+proc getCookie*(name: string): TaintedString =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
-  result = gcookies[name]
+  result = TaintedString(gcookies[name])
 
 proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.

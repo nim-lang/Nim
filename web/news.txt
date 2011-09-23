@@ -45,6 +45,8 @@ Language Additions
 - The built-in type ``void`` can be used to denote the absense of any type.
   This is useful in generic code.
 - Return types may be of the type ``var T`` to return an l-value.
+- The error pragma can now be used to mark symbols whose *usage* should trigger
+  a compile-time error.
 
 
 Compiler Additions
