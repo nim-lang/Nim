@@ -402,7 +402,7 @@ include "system/hti"
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
   return ti.base.kind notin {tyObject,
-    tyArray, tyArrayConstr, tyPureObject, tyTuple,
+    tyArray, tyArrayConstr, tyTuple,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
 proc NimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
@@ -439,7 +439,7 @@ proc NimCopy(x: pointer, ti: PNimType): pointer =
       `result` = {};
       for (var key in `x`) { `result`[key] = `x`[key]; }
     """
-  of tyPureObject, tyTuple, tyObject:
+  of tyTuple, tyObject:
     if ti.base != nil: result = NimCopy(x, ti.base)
     elif ti.kind == tyObject:
       asm "`result` = {m_type: `ti`};"

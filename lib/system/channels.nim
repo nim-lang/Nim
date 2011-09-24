@@ -122,7 +122,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel,
     # XXX use dynamic type here!
     pint[] = mt
     storeAux(dest, src, mt.node, t, mode)
-  of tyTuple, tyPureObject:
+  of tyTuple:
     storeAux(dest, src, mt.node, t, mode)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:

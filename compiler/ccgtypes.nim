@@ -498,7 +498,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
       if not isImportedType(t): 
         appf(m.s[cfsTypes], "typedef NU8 $1[$2];$n", 
              [result, toRope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal: 
+  of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter: 
     result = getTypeDescAux(m, lastSon(t), check)
   else: 
     InternalError("getTypeDescAux(" & $t.kind & ')')
