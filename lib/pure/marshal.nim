@@ -47,7 +47,7 @@ proc storeAny(s: PStream, a: TAny, stored: var TIntSet) =
         if i > 0: s.write(", ")
         storeAny(s, a[i], stored)
       s.write("]")
-  of akObject, akPureObject, akTuple:
+  of akObject, akTuple:
     s.write("{")
     var i = 0
     for key, val in fields(a):
@@ -138,7 +138,7 @@ proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
       else: raiseParseErr(p, "")
     else:
       raiseParseErr(p, "'[' expected for a seq")
-  of akObject, akPureObject, akTuple:
+  of akObject, akTuple:
     if a.kind == akObject: setObjectRuntimeType(a)
     if p.kind != jsonObjectStart: raiseParseErr(p, "'{' expected for an object")
     next(p)
