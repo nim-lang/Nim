@@ -23,15 +23,15 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError}
+    wNoStackFrame, wError, wOptional}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
-    wImportcpp, wImportobjc, wError}
+    wImportcpp, wImportobjc, wError, wOptional}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportcpp, wImportobjc, wError}
+    wImportcpp, wImportobjc, wError, wOptional}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
@@ -461,7 +461,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             incl(sym.flags, sfRegister)
           of wThreadVar: 
             noVal(it)
-            incl(sym.flags, sfThreadVar)
+            incl(sym.flags, sfThread)
           of wDeadCodeElim: pragmaDeadCodeElim(c, it)
           of wMagic: processMagic(c, it, sym)
           of wCompileTime: 
@@ -553,6 +553,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wPragma: 
             processPragma(c, n, i)
             break
+          of wOptional:
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfOptional)
           of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
              wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
              wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef,

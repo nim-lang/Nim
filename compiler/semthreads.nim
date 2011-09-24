@@ -110,7 +110,7 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   of skVar, skResult:
     result = toNil
     if sfGlobal in v.flags:
-      if sfThreadVar in v.flags: 
+      if sfThread in v.flags: 
         result = toMine 
       elif containsGarbageCollectedRef(v.typ):
         result = toTheirs

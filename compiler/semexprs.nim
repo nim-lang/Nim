@@ -548,11 +548,14 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   addSon(result, semExpr(c, arg))
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
+  proc ImplicitelyDiscardable(n: PNode): bool {.inline.} =
+    result = isCallExpr(n) and n.sons[0].kind == nkSym and 
+             sfOptional in n.sons[0].sym.flags
   result = semExpr(c, n)
   if result.typ != nil and result.typ.kind != tyStmt:
     if gCmd == cmdInteractive:
       result = buildEchoStmt(c, result)
-    else:
+    elif not ImplicitelyDiscardable(result):
       localError(n.info, errDiscardValue)
   
 proc isTypeExpr(n: PNode): bool = 
@@ -1196,7 +1199,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skMacro: result = semMacroExpr(c, n, s)
       of skTemplate: result = semTemplateExpr(c, n, s)
       of skType: 
-        if n.kind != nkCall: GlobalError(n.info, errXisNotCallable, s.name.s)
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n, s)

@@ -445,7 +445,7 @@ proc assignGlobalVar(p: BProc, s: PSym) =
     fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap)
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return
-  if sfThreadVar in s.flags: 
+  if sfThread in s.flags: 
     declareThreadVar(p.module, s, sfImportc in s.flags)
   else: 
     if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
@@ -724,7 +724,7 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   if sym.owner.id != m.module.id: 
     # else we already have the symbol generated!
     assert(sym.loc.r != nil)
-    if sfThreadVar in sym.flags: 
+    if sfThread in sym.flags: 
       declareThreadVar(m, sym, true)
     else:
       app(m.s[cfsVars], "extern ")

@@ -1474,13 +1474,25 @@ Syntax::
 Example:
 
 .. code-block:: nimrod
+  proc p(x, y: int): int {.optional.} = 
+    return x + y
 
-  discard proc_call("arg1", "arg2") # discard the return value of `proc_call`
+  discard p(3, 4) # discard the return value of `p`
 
 The `discard`:idx: statement evaluates its expression for side-effects and
-throws the expression's resulting value away. If the expression has no
-side-effects, this generates a static error. Ignoring the return value of a
-procedure without using a discard statement is a static error too.
+throws the expression's resulting value away. 
+
+Ignoring the return value of a procedure without using a discard statement is
+a static error.
+
+The return value can be ignored implicitely if the called proc/iterator has
+been declared with the `optional`:idx: pragma: 
+
+.. code-block:: nimrod
+  proc p(x, y: int): int {.optional.} = 
+    return x + y
+    
+  p(3, 4) # now valid
 
 
 Var statement
