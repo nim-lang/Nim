@@ -49,7 +49,7 @@ proc raiseNoOK(status: string) =
     raise newException(EInvalidReply, "Expected \"OK\" got \"$1\"" % status)
 
 proc parseStatus(r: TRedis): TRedisStatus =
-  var line = r.socket.recv()
+  var line = r.socket.recv.string
   
   if line[0] == '-':
     raise newException(ERedis, strip(line))
@@ -59,7 +59,7 @@ proc parseStatus(r: TRedis): TRedisStatus =
   return line.substr(1, line.len-3) # Strip '+' and \c\L.
   
 proc parseInteger(r: TRedis): TRedisInteger =
-  var line = r.socket.recv()
+  var line = r.socket.recv.string
 
   if line[0] == '-':
     raise newException(ERedis, strip(line))
@@ -70,14 +70,14 @@ proc parseInteger(r: TRedis): TRedisInteger =
   if parseBiggestInt(line, result, 1) == 0:
     raise newException(EInvalidReply, "Unable to parse integer.") 
 
-proc recv(sock: TSocket, size: int): string =
-  result = newString(size)
+proc recv(sock: TSocket, size: int): TaintedString =
+  result = newString(size).TaintedString
   if sock.recv(cstring(result), size) != size:
     raise newException(EInvalidReply, "recv failed")
 
 proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var line = ""
-  if not r.socket.recvLine(line):
+  if not r.socket.recvLine(line.TaintedString):
     raise newException(EInvalidReply, "recvLine failed")
   
   # Error.
@@ -97,17 +97,17 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
     return RedisNil
 
   var s = r.socket.recv(numBytes+2)
-  result = strip(s)
+  result = strip(s.string)
 
 proc parseMultiBulk(r: TRedis): TRedisList =
-  var line = ""
+  var line = TaintedString""
   if not r.socket.recvLine(line):
     raise newException(EInvalidReply, "recvLine failed")
     
-  if line[0] != '*':
-    raiseInvalidReply('*', line[0])
+  if line.string[0] != '*':
+    raiseInvalidReply('*', line.string[0])
   
-  var numElems = parseInt(line.substr(1))
+  var numElems = parseInt(line.string.substr(1))
   if numElems == -1: return nil
   result = @[]
   for i in 1..numElems:
@@ -839,7 +839,7 @@ proc shutdown*(r: TRedis) =
   ## Synchronously save the dataset to disk and then shut down the server
   r.sendCommand("SHUTDOWN")
   var s = r.socket.recv()
-  if s != "": raise newException(ERedis, s)
+  if s.string.len != 0: raise newException(ERedis, s.string)
 
 proc slaveof*(r: TRedis, host: string, port: string) =
   ## Make the server a slave of another instance, or promote it as master

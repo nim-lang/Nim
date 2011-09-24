@@ -75,7 +75,7 @@ proc fileError(msg: string) =
 proc charAt(d: var string, i: var int, s: TSocket): char {.inline.} = 
   result = d[i]
   while result == '\0':
-    d = s.recv()
+    d = string(s.recv())
     i = 0
     result = d[i]
 
@@ -98,7 +98,7 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
         digitFound = true
         chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('A') + 10)
       of '\0': 
-        d = s.recv()
+        d = string(s.recv())
         i = -1
       else: break
       inc(i)
@@ -123,7 +123,7 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
         inc(L, bytesRead)
         dec(missing, bytesRead)
       # next chunk:
-      d = s.recv()
+      d = string(s.recv())
       i = 0
     # skip trailing CR-LF:
     while charAt(d, i, s) in {'\C', '\L'}: inc(i)
@@ -139,7 +139,7 @@ proc parseBody(d: var string, start: int, s: TSocket,
     var contentLengthHeader = headers["Content-Length"]
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
-      while result.len() < length: result.add(s.recv())
+      while result.len() < length: result.add(s.recv.string)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
       
@@ -147,12 +147,12 @@ proc parseBody(d: var string, start: int, s: TSocket,
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
         while True:
-          var moreData = recv(s)
+          var moreData = recv(s).string
           if moreData.len == 0: break
           result.add(moreData)
 
 proc parseResponse(s: TSocket): TResponse =
-  var d = s.recv()
+  var d = s.recv.string
   var i = 0
 
   # Parse the version

@@ -43,19 +43,19 @@ proc URLretrieveStream*(url: string): PStream =
   if easy_perform(hCurl) != E_OK: return nil
   easy_cleanup(hCurl)
   
-proc URLretrieveString*(url: string): string = 
+proc URLretrieveString*(url: string): TaintedString = 
   ## retrieves the given `url` and returns the contents. Returns nil if an
   ## error occurs.
   var stream = newStringStream()
   var hCurl = easy_init()
-  if hCurl == nil: return nil
-  if easy_setopt(hCurl, OPT_URL, url) != E_OK: return nil
+  if hCurl == nil: return
+  if easy_setopt(hCurl, OPT_URL, url) != E_OK: return
   if easy_setopt(hCurl, OPT_WRITEFUNCTION, 
-                      curlwrapperWrite) != E_OK: return nil
-  if easy_setopt(hCurl, OPT_WRITEDATA, stream) != E_OK: return nil
-  if easy_perform(hCurl) != E_OK: return nil
+                      curlwrapperWrite) != E_OK: return
+  if easy_setopt(hCurl, OPT_WRITEDATA, stream) != E_OK: return
+  if easy_perform(hCurl) != E_OK: return
   easy_cleanup(hCurl)
-  result = stream.data
+  result = stream.data.TaintedString
 
 when isMainModule:
   echo URLretrieveString("http://nimrod.ethexor.com/")

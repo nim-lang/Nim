@@ -113,11 +113,11 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
     env["REQUEST_METHOD"] = "GET"
     env["QUERY_STRING"] = query
   of reqPost:
-    var buf = ""
+    var buf = TaintedString""
     var dataAvail = false
     while dataAvail:
       dataAvail = recvLine(client, buf)
-      var L = toLower(buf)
+      var L = toLower(buf.string)
       if L.startsWith("content-length:"):
         var i = len("content-length:")
         while L[i] in Whitespace: inc(i)
@@ -146,7 +146,7 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
   var outp = process.outputStream
   while running(process) or not outp.atEnd(outp):
     var line = outp.readLine()
-    send(client, line)
+    send(client, line.string)
     send(client, wwwNL)
 
 # --------------- Server Setup -----------------------------------------------
@@ -154,10 +154,10 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
 proc acceptRequest(client: TSocket) =
   var cgi = false
   var query = ""
-  var buf = ""
+  var buf = TaintedString""
   discard recvLine(client, buf)
   var path = ""
-  var data = buf.split()
+  var data = buf.string.split()
   var meth = reqGet
 
   var q = find(data[1], '?')
@@ -231,7 +231,7 @@ proc next*(s: var TServer) =
   ## proceed to the first/next request.
   s.client = accept(s.socket)
   headers(s.client, "")
-  var data = recv(s.client)
+  var data = recv(s.client).string
   #discard recvLine(s.client, data)
   
   var i = skipWhitespace(data)
