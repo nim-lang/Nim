@@ -227,7 +227,7 @@ type
                       # for interfacing with C++, JS
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
-    sfOptional        # returned value may be discarded implicitely
+    sfDiscardable     # returned value may be discarded implicitely
 
   TSymFlags* = set[TSymFlag]
 

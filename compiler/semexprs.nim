@@ -550,7 +550,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 proc semExprNoType(c: PContext, n: PNode): PNode =
   proc ImplicitelyDiscardable(n: PNode): bool {.inline.} =
     result = isCallExpr(n) and n.sons[0].kind == nkSym and 
-             sfOptional in n.sons[0].sym.flags
+             sfDiscardable in n.sons[0].sym.flags
   result = semExpr(c, n)
   if result.typ != nil and result.typ.kind != tyStmt:
     if gCmd == cmdInteractive:

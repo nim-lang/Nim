@@ -1486,10 +1486,10 @@ Ignoring the return value of a procedure without using a discard statement is
 a static error.
 
 The return value can be ignored implicitely if the called proc/iterator has
-been declared with the `optional`:idx: pragma: 
+been declared with the `discardable`:idx: pragma: 
 
 .. code-block:: nimrod
-  proc p(x, y: int): int {.optional.} = 
+  proc p(x, y: int): int {.discardable.} = 
     return x + y
     
   p(3, 4) # now valid

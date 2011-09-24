@@ -47,8 +47,8 @@ Language Additions
 - Return types may be of the type ``var T`` to return an l-value.
 - The error pragma can now be used to mark symbols whose *usage* should trigger
   a compile-time error.
-- There is a new ``optional`` pragma that can be used to mark a routine so that
-  its result can be discarded implicitely.
+- There is a new ``discardable`` pragma that can be used to mark a routine 
+  so that its result can be discarded implicitely.
 
 
 Compiler Additions

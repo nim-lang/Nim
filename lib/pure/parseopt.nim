@@ -30,7 +30,7 @@ type
     pos: int
     inShortState: bool
     kind*: TCmdLineKind       ## the dected command line token
-    key*, val*: string        ## key and value pair; ``key`` is the option
+    key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
@@ -50,8 +50,8 @@ when defined(os.ParamCount):
       for i in countup(1, ParamCount()): 
         result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i).string) & ' '
     result.kind = cmdEnd
-    result.key = ""
-    result.val = ""
+    result.key = TaintedString""
+    result.val = TaintedString""
 
 proc parseWord(s: string, i: int, w: var string, 
                delim: TCharSet = {'\x09', ' ', '\0'}): int = 
@@ -70,7 +70,7 @@ proc parseWord(s: string, i: int, w: var string,
 proc handleShortOption(p: var TOptParser) = 
   var i = p.pos
   p.kind = cmdShortOption
-  add(p.key, p.cmd[i])
+  add(p.key.string, p.cmd[i])
   inc(i)
   p.inShortState = true
   while p.cmd[i] in {'\x09', ' '}: 
@@ -80,7 +80,7 @@ proc handleShortOption(p: var TOptParser) =
     inc(i)
     p.inShortState = false
     while p.cmd[i] in {'\x09', ' '}: inc(i)
-    i = parseWord(p.cmd, i, p.val)
+    i = parseWord(p.cmd, i, p.val.string)
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
@@ -91,8 +91,8 @@ proc next*(p: var TOptParser) {.
   var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
-  setlen(p.key, 0)
-  setlen(p.val, 0)
+  setlen(p.key.string, 0)
+  setlen(p.val.string, 0)
   if p.inShortState: 
     handleShortOption(p)
     return 
@@ -104,29 +104,29 @@ proc next*(p: var TOptParser) {.
     if p.cmd[i] == '-': 
       p.kind = cmdLongOption
       inc(i)
-      i = parseWord(p.cmd, i, p.key, {'\0', ' ', '\x09', ':', '='})
+      i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)
       if p.cmd[i] in {':', '='}: 
         inc(i)
         while p.cmd[i] in {'\x09', ' '}: inc(i)
-        p.pos = parseWord(p.cmd, i, p.val)
+        p.pos = parseWord(p.cmd, i, p.val.string)
       else: 
         p.pos = i
     else: 
       p.pos = i
       handleShortOption(p)
-  else: 
+  else:
     p.kind = cmdArgument
-    p.pos = parseWord(p.cmd, i, p.key)
+    p.pos = parseWord(p.cmd, i, p.key.string)
 
-proc cmdLineRest*(p: TOptParser): string {.
+proc cmdLineRest*(p: TOptParser): TaintedString {.
   rtl, extern: "npo$1".} = 
   ## retrieves the rest of the command line that has not been parsed yet.
-  result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)) 
+  result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
 
 when defined(initOptParser):
 
-  iterator getopt*(): tuple[kind: TCmdLineKind, key, val: string] =
+  iterator getopt*(): tuple[kind: TCmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line.
     ## This uses the TOptParser object. Example:
     ##
