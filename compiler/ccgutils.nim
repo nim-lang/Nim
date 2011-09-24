@@ -72,7 +72,7 @@ proc GetUniqueType*(key: PType): PType =
     if result == nil: 
       IdTablePut(gTypeTable[k], key, key)
       result = key
-  of tyGenericInst, tyDistinct, tyOrdinal: 
+  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter: 
     result = GetUniqueType(lastSon(key))
   of tyProc: 
     nil
@@ -116,9 +116,8 @@ proc makeCString*(s: string): PRope =
   # further information.
   const 
     MaxLineLength = 64
-  var res: string
   result = nil
-  res = "\""
+  var res = "\""
   for i in countup(0, len(s) - 1):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
@@ -132,9 +131,8 @@ proc makeCString*(s: string): PRope =
 
 proc makeLLVMString*(s: string): PRope = 
   const MaxLineLength = 64
-  var res: string
   result = nil
-  res = "c\""
+  var res = "c\""
   for i in countup(0, len(s) - 1): 
     if (i + 1) mod MaxLineLength == 0: 
       app(result, toRope(res))

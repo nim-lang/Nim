@@ -1316,6 +1316,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkConverter: result = parseRoutine(p, nkConverterDef)
   of tkType: result = parseSection(p, nkTypeSection, parseTypeDef)
   of tkConst: result = parseSection(p, nkConstSection, parseConstant)
+  of tkLet: result = parseSection(p, nkLetSection, parseConstant)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   else: result = simpleStmt(p)
@@ -1379,7 +1380,7 @@ proc parseString(s: string, filename: string = "", line: int = 0): PNode =
   var stream = LLStreamOpen(s)
   stream.lineOffset = line
 
-  var parser : TParser
+  var parser: TParser
   OpenParser(parser, filename, stream)
 
   result = parser.parseAll
