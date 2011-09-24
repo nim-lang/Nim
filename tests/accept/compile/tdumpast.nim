@@ -10,17 +10,17 @@ macro call(e: expr): expr =
   
 macro dumpAST(n: stmt): stmt =
   # dump AST as a side-effect and return the inner node
-  echo n.prettyPrint
+  echo n.toLisp
   echo n.toYaml
 
   var plusAst = getAst(plus(1, 2))
-  echo plusAst.prettyPrint
+  echo plusAst.toLisp
 
   var callAst = getAst(call())
-  echo callAst.prettyPrint
+  echo callAst.toLisp
 
   var e = parseExpr("foo(bar + baz)")
-  echo e.prettyPrint
+  echo e.toLisp
 
   result = n[1]
   
