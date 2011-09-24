@@ -50,11 +50,11 @@ proc connect*(sock: var TSecureSocket, address: string,
   
   result = SSL_get_verify_result(sock.ssl)
 
-proc recvLine*(sock: TSecureSocket, line: var string): bool =
+proc recvLine*(sock: TSecureSocket, line: var TaintedString): bool =
   ## Acts in a similar fashion to the `recvLine` in the sockets module.
   ## Returns false when no data is available to be read.
   ## `Line` must be initialized and not nil!
-  setLen(line, 0)
+  setLen(line.string, 0)
   while True:
     var c: array[0..0, char]
     var n = BIO_read(sock.bio, c, c.len)
@@ -66,7 +66,7 @@ proc recvLine*(sock: TSecureSocket, line: var string): bool =
       elif n <= 0:
         return False
     elif c[0] == '\L': return True
-    add(line, c)
+    add(line.string, c)
 
 
 proc send*(sock: TSecureSocket, data: string) =

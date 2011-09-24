@@ -553,17 +553,28 @@ proc recv*(socket: TSocket): TaintedString =
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
   const bufSize = 1000
-  var buf = newString(bufSize)
-  result = TaintedString""
+  result = newStringOfCap(bufSize).TaintedString
+  var pos = 0
   while true:
-    var bytesRead = recv(socket, cstring(buf), bufSize-1)
-    # Error
+    var bytesRead = recv(socket, addr(string(result)[pos]), bufSize-1)
     if bytesRead == -1: OSError()
-    
-    buf[bytesRead] = '\0' # might not be necessary
-    setLen(buf, bytesRead)
-    add(result.string, buf)
+    setLen(result.string, pos + bytesRead)
     if bytesRead != bufSize-1: break
+    # increase capacity:
+    setLen(result.string, result.string.len + bufSize)
+    inc(pos, bytesRead)
+  when false:
+    var buf = newString(bufSize)
+    result = TaintedString""
+    while true:
+      var bytesRead = recv(socket, cstring(buf), bufSize-1)
+      # Error
+      if bytesRead == -1: OSError()
+      
+      buf[bytesRead] = '\0' # might not be necessary
+      setLen(buf, bytesRead)
+      add(result.string, buf)
+      if bytesRead != bufSize-1: break
 
 proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
   ## receives all the data from a non-blocking socket. If socket is non-blocking 
@@ -572,11 +583,12 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
   ## If socket is not a connectionless socket and socket is not connected
   ## ``s`` will be set to ``""``.
   const bufSize = 1000
-  var buf = newString(bufSize)
-  s = ""
+  # ensure bufSize capacity:
+  setLen(s.string, bufSize)
+  setLen(s.string, 0)
+  var pos = 0
   while true:
-    var bytesRead = recv(socket, cstring(buf), bufSize-1)
-    # Error
+    var bytesRead = recv(socket, addr(string(s)[pos]), bufSize-1)
     if bytesRead == -1:
       when defined(windows):
         # TODO: Test on Windows
@@ -588,11 +600,12 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
         if errno == EAGAIN or errno == EWOULDBLOCK:
           return False
         else: OSError()
-    
-    buf[bytesRead] = '\0' # might not be necessary
-    setLen(buf, bytesRead)
-    add(s, buf)
+
+    setLen(s.string, pos + bytesRead)
     if bytesRead != bufSize-1: break
+    # increase capacity:
+    setLen(s.string, s.string.len + bufSize)
+    inc(pos, bytesRead)
   result = True
   
 proc skip*(socket: TSocket) =

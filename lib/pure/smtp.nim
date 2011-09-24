@@ -59,8 +59,8 @@ proc debugSend(smtp: TSMTP, cmd: string) =
     when not defined(noSSL):
       smtp.sslSock.send(cmd)
 
-proc debugRecv(smtp: TSMTP): string =
-  var line = ""
+proc debugRecv(smtp: TSMTP): TaintedString =
+  var line = TaintedString""
   var ret = False
   if not smtp.ssl:
     ret = smtp.sock.recvLine(line)
@@ -69,11 +69,11 @@ proc debugRecv(smtp: TSMTP): string =
       ret = smtp.sslSock.recvLine(line)
   if ret:
     if smtp.debug:
-      echo("S:" & line)
+      echo("S:" & line.string)
     return line
   else:
     OSError()
-    return ""
+    return TaintedString""
 
 proc quitExcpt(smtp: TSMTP, msg: string) =
   smtp.debugSend("QUIT")
@@ -81,8 +81,8 @@ proc quitExcpt(smtp: TSMTP, msg: string) =
 
 proc checkReply(smtp: TSMTP, reply: string) =
   var line = smtp.debugRecv()
-  if not line.startswith(reply):
-    quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
+  if not line.string.startswith(reply):
+    quitExcpt(smtp, "Expected " & reply & " reply, got: " & line.string)
 
 proc connect*(address: string, port = 25, 
               ssl = false, debug = false): TSMTP =

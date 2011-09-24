@@ -61,6 +61,10 @@ Compiler Additions
   and Objective C somewhat easier.
 - Added a ``--nimcache:PATH`` configuration option for control over the output
   directory for generated code.
+- The compiler and standard library now support a *taint mode*. Input strings
+  are declared with the ``TaintedString`` string type. If the taint
+  mode is turned on it is a distinct string type which helps to detect input
+  validation errors.
 
 
 Library Additions

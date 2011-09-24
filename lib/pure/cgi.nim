@@ -111,19 +111,19 @@ proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
   of "POST":
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
-    var L = parseInt(getenv("CONTENT_LENGTH"))
+    var L = parseInt(getenv("CONTENT_LENGTH").string)
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")
   of "GET":
     if methodGet notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
-    result = getenv("QUERY_STRING")
+    result = getenv("QUERY_STRING").string
   else:
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: string] =
+iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   var i = 0
@@ -160,13 +160,13 @@ iterator decodeData*(data: string): tuple[key, value: string] =
       of '&', '\0': break
       else: add(value, data[i])
       inc(i)
-    yield (name, value)
+    yield (name.TaintedString, value.TaintedString)
     if data[i] == '&': inc(i)
     elif data[i] == '\0': break
     else: cgiError("'&' expected")
 
 iterator decodeData*(allowedMethods: set[TRequestMethod] =
-       {methodNone, methodPost, methodGet}): tuple[key, value: string] =
+       {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
@@ -181,7 +181,7 @@ proc readData*(allowedMethods: set[TRequestMethod] =
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
   for name, value in decodeData(allowedMethods):
-    result[name] = value
+    result[name.string] = value.string
 
 proc validateData*(data: PStringTable, validKeys: openarray[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable

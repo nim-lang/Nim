@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- taint mode
 - 'let x = y'; const ptr/ref
 - fix actors.nim
 - make threadvar efficient again on linux after testing

@@ -41,7 +41,7 @@ type
 
 proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
-                                                  poUseShell}): string {.
+                                                  poUseShell}): TaintedString {.
                                                   rtl, extern: "nosp$1".}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
@@ -203,13 +203,13 @@ proc select*(readfds: var seq[PProcess], timeout = 500): int
 when not defined(useNimRtl):
   proc execProcess(command: string,
                    options: set[TProcessOption] = {poStdErrToStdOut,
-                                                   poUseShell}): string =
+                                                   poUseShell}): TaintedString =
     var p = startProcessAux(command, options=options)
     var outp = outputStream(p)
-    result = ""
+    result = TaintedString""
     while running(p) or not outp.atEnd(outp):
-      result.add(outp.readLine())
-      result.add("\n")
+      result.string.add(outp.readLine().string)
+      result.string.add("\n")
     outp.close(outp)
     close(p)
 

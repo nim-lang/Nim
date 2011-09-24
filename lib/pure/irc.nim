@@ -205,15 +205,15 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
   ## This function should be called often as it also handles pinging
   ## the server.
   if not irc.connected: ev.typ = EvDisconnected
-  var line = ""
+  var line = TaintedString""
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
   if socks.len() == 0 and ret == 1:
     if irc.sock.recvLine(line):
-      if line == "":
+      if line.string.len == 0:
         ev.typ = EvDisconnected
       else:
-        ev = parseMessage(line)
+        ev = parseMessage(line.string)
         if ev.cmd == MPing:
           irc.send("PONG " & ev.params[0])
         if ev.cmd == MPong:
