@@ -77,7 +77,8 @@ proc mapType(typ: PType): TCTypeKind =
   of tySet: result = mapSetType(typ)
   of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
-  of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal: 
+  of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
+     tyConst, tyMutable, tyIter: 
     result = mapType(lastSon(typ))
   of tyEnum: 
     if firstOrd(typ) < 0: 

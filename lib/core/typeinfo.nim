@@ -39,8 +39,7 @@ type
     akFloat = 36,       ## any represents a float
     akFloat32 = 37,     ## any represents a float32
     akFloat64 = 38,     ## any represents a float64
-    akFloat128 = 39,    ## any represents a float128
-    akPureObject = 40   ## any represents an object that has no `type` field
+    akFloat128 = 39     ## any represents a float128
 
   TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
@@ -230,7 +229,7 @@ proc fieldsAux(p: pointer, n: ptr TNimNode,
 iterator fields*(x: TAny): tuple[name: string, any: TAny] =
   ## iterates over every active field of the any `x` that represents an object
   ## or a tuple.
-  assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
+  assert x.rawType.kind in {tyTuple, tyObject}
   var p = x.value
   var t = x.rawType
   # XXX BUG: does not work yet, however is questionable anyway
@@ -282,7 +281,7 @@ proc `[]=`*(x: TAny, fieldName: string, value: TAny) =
   # XXX BUG: does not work yet, however is questionable anyway
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
-  assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
+  assert x.rawType.kind in {tyTuple, tyObject}
   var n = getFieldNode(x.value, t.node, fieldname)
   if n != nil:
     assert n.typ == value.rawType
@@ -296,7 +295,7 @@ proc `[]`*(x: TAny, fieldName: string): TAny =
   # XXX BUG: does not work yet, however is questionable anyway
   when false:
     if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
-  assert x.rawType.kind in {tyTuple, tyPureObject, tyObject}
+  assert x.rawType.kind in {tyTuple, tyObject}
   var n = getFieldNode(x.value, t.node, fieldname)
   if n != nil:
     result.value = x.value +!! n.offset
