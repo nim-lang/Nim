@@ -86,7 +86,7 @@ proc initProc(p: var TProc, globals: PGlobals, module: BModule, procDef: PNode,
   
 const 
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, 
-    tySet, tyVar, tyRef, tyPtr}
+    tySet, tyVar, tyRef, tyPtr, tyBigNum}
 
 proc mapType(typ: PType): TEcmasTypeKind = 
   var t = skipTypes(typ, abstractInst)
@@ -99,13 +99,15 @@ proc mapType(typ: PType): TEcmasTypeKind =
   of tyPointer: 
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyInt
-  of tyRange, tyDistinct, tyOrdinal: result = mapType(t.sons[0])
-  of tyInt..tyInt64, tyEnum, tyChar: result = etyInt
+  of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter, tyVarargs,
+     tyProxy: 
+    result = mapType(t.sons[0])
+  of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence: result = etyInt # little hack to get right semantics
-  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray: 
+  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyBigNum: 
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation, tyNone, 

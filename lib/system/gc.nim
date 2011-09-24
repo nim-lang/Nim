@@ -301,7 +301,7 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
     case mt.Kind
     of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[ppointer](d)[], op)
-    of tyObject, tyTuple, tyPureObject:
+    of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
     of tyArray, tyArrayConstr, tyOpenArray:
       for i in 0..(mt.size div mt.base.size)-1:

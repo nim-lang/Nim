@@ -553,7 +553,7 @@ proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) =
   allocMemTI(m, typ, name)
   if (typ.kind == tyObject) and (tfFinal in typ.flags) and
       (typ.sons[0] == nil): 
-    nimtypeKind = ord(high(TTypeKind)) + 1 # tyPureObject
+    nimtypeKind = ord(tyPureObject)
   else:
     nimtypeKind = ord(typ.kind)
   appf(m.s[cfsTypeInit3], 

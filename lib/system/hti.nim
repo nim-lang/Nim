@@ -27,7 +27,7 @@ type # This should be he same as ast.TTypeKind
     tyOrdinal,
     tyArray,
     tyObject,
-    tyTuple,
+    tyTuple,             # WARNING: The compiler uses tyTuple for pure objects!
     tySet,
     tyRange,
     tyPtr, tyRef,
@@ -37,8 +37,7 @@ type # This should be he same as ast.TTypeKind
     tyPointer, tyOpenArray,
     tyString, tyCString, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-    tyFloat, tyFloat32, tyFloat64, tyFloat128,
-    tyPureObject # signals that object has no `n_type` field
+    tyFloat, tyFloat32, tyFloat64, tyFloat128
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
   TNimNode {.codegenType, final.} = object
