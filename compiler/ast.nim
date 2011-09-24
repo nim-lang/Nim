@@ -197,7 +197,7 @@ type
                       # be written into the ROD file
     sfGlobal,         # symbol is at global scope
 
-    sfForward,        # symbol is forward directed
+    sfForward,        # symbol is forward declared
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
     sfVolatile,       # variable is volatile
@@ -218,15 +218,16 @@ type
     sfError,          # usage of symbol should trigger a compile-time error
     sfInClosure,      # variable is accessed by a closure
     sfThread,         # proc will run as a thread
+                      # variable is a thread variable
     sfCompileTime,    # proc can be evaluated at compile time
-    sfThreadVar,      # variable is a thread variable
     sfMerge,          # proc can be merged with itself
     sfDeadCodeElim,   # dead code elimination for the module is turned on
     sfBorrow,         # proc is borrowed
     sfInfixCall,      # symbol needs infix call syntax in target language;
                       # for interfacing with C++, JS
-    sfNamedParamCall  # symbol needs named parameter call syntax in target
+    sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
+    sfOptional        # returned value may be discarded implicitely
 
   TSymFlags* = set[TSymFlag]
 

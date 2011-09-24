@@ -1761,7 +1761,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: var not init " & sym.name.s)
-      if sfThreadVar in sym.flags:
+      if sfThread in sym.flags:
         AccessThreadLocalVar(p, sym)
         if emulatedThreadVars(): 
           putIntoDest(p, d, sym.loc.t, con("NimTV->", sym.loc.r))

@@ -2,7 +2,6 @@ Version 0.8.14
 ==============
 
 - 'let x = y'
-- T(x) as l-value
 - fix actors.nim
 - make threadvar efficient again on linux after testing
 - fix the 'const' issues
