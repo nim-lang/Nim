@@ -1,7 +1,7 @@
 /*
 
             Nimrod's Runtime Library
-        (c) Copyright 2010 Andreas Rumpf
+        (c) Copyright 2011 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -281,6 +281,7 @@ static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
+#  define NIM_NIL 0
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -293,10 +294,9 @@ static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
 #  ifndef NIM_FALSE
 #    define NIM_FALSE ((NIM_BOOL) 0)
 #  endif
-#endif
-
-#define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
+#  define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
                               the generated code does not rely on it anymore */
+#endif
 
 #if defined(__BORLANDC__) || defined(__DMC__) \
    || defined(__WATCOMC__) || defined(_MSC_VER)
