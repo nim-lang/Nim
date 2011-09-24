@@ -62,7 +62,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
     dstseq.space = seq.len
-  of tyObject, tyTuple, tyPureObject:
+  of tyObject, tyTuple:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
     genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
@@ -121,7 +121,7 @@ proc objectInit(dest: Pointer, typ: PNimType) =
     var pint = cast[ptr PNimType](dest)
     pint[] = typ
     objectInitAux(dest, typ.node)
-  of tyTuple, tyPureObject:
+  of tyTuple:
     objectInitAux(dest, typ.node)
   of tyArray, tyArrayConstr:
     for i in 0..(typ.size div typ.base.size)-1:
@@ -149,7 +149,7 @@ proc genericReset(dest: Pointer, mt: PNimType) =
   case mt.Kind
   of tyString, tyRef, tySequence:
     unsureAsgnRef(cast[ppointer](dest), nil)
-  of tyObject, tyTuple, tyPureObject:
+  of tyObject, tyTuple:
     # we don't need to reset m_type field for tyObject
     genericResetAux(dest, mt.node)
   of tyArray, tyArrayConstr:

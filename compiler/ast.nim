@@ -265,6 +265,10 @@ type
     tyIter, # unused
     tyProxy # currently unused
 
+const
+  tyPureObject* = tyTuple
+
+type
   TTypeKinds* = set[TTypeKind]
 
   TNodeFlag* = enum
