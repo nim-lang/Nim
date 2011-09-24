@@ -525,11 +525,11 @@ proc select*(readfds: var seq[TSocket], timeout = 500): int =
   pruneSocketSet(readfds, (rd))
 
 
-proc recvLine*(socket: TSocket, line: var string): bool =
+proc recvLine*(socket: TSocket, line: var TaintedString): bool =
   ## returns false if no further data is available. `Line` must be initialized
   ## and not nil! This does not throw an EOS exception, therefore
   ## it can be used in both blocking and non-blocking sockets.
-  setLen(line, 0)
+  setLen(line.string, 0)
   while true:
     var c: char
     var n = recv(cint(socket), addr(c), 1, 0'i32)
@@ -541,20 +541,20 @@ proc recvLine*(socket: TSocket, line: var string): bool =
       elif n <= 0: return false
       return true
     elif c == '\L': return true
-    add(line, c)
+    add(line.string, c)
 
 proc recv*(socket: TSocket, data: pointer, size: int): int =
   ## receives data from a socket
   result = recv(cint(socket), data, size, 0'i32)
 
-proc recv*(socket: TSocket): string =
+proc recv*(socket: TSocket): TaintedString =
   ## receives all the data from the socket.
   ## Socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
-  const bufSize = 200
+  const bufSize = 1000
   var buf = newString(bufSize)
-  result = ""
+  result = TaintedString""
   while true:
     var bytesRead = recv(socket, cstring(buf), bufSize-1)
     # Error
@@ -562,16 +562,16 @@ proc recv*(socket: TSocket): string =
     
     buf[bytesRead] = '\0' # might not be necessary
     setLen(buf, bytesRead)
-    add(result, buf)
+    add(result.string, buf)
     if bytesRead != bufSize-1: break
 
-proc recvAsync*(socket: TSocket, s: var string): bool =
+proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
   ## receives all the data from a non-blocking socket. If socket is non-blocking 
   ## and there are no messages available, `False` will be returned.
   ## Other socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``s`` will be set to ``""``.
-  const bufSize = 200
+  const bufSize = 1000
   var buf = newString(bufSize)
   s = ""
   while true:
@@ -597,7 +597,7 @@ proc recvAsync*(socket: TSocket, s: var string): bool =
   
 proc skip*(socket: TSocket) =
   ## skips all the data that is pending for the socket
-  const bufSize = 200
+  const bufSize = 1000
   var buf = alloc(bufSize)
   while recv(socket, buf, bufSize) == bufSize: nil
   dealloc(buf)

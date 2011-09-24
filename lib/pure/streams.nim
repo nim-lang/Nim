@@ -80,24 +80,24 @@ proc readFloat64*(s: PStream): float64 =
   ## reads a float64 from the stream `s`. Raises `EIO` if an error occured.
   read(s, result)
 
-proc readStr*(s: PStream, length: int): string = 
+proc readStr*(s: PStream, length: int): TaintedString = 
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if 
   ## an error occured.
-  result = newString(length)
-  var L = s.readData(s, addr(result[0]), length)
-  if L != length: setLen(result, L)
+  result = newString(length).TaintedString
+  var L = s.readData(s, addr(string(result)[0]), length)
+  if L != length: setLen(result.string, L)
 
-proc readLine*(s: PStream): string =
+proc readLine*(s: PStream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occured.
-  result = ""
+  result = TaintedString""
   while not s.atEnd(s): 
     var c = readChar(s)
     if c == '\c': 
       c = readChar(s)
       break
     elif c == '\L' or c == '\0': break
-    result.add(c)
+    result.string.add(c)
 
 type
   PStringStream* = ref TStringStream ## a stream that encapsulates a string

@@ -787,9 +787,9 @@ proc compileOption*(option, arg: string): bool {.
 const
   hasThreadSupport = compileOption("threads")
   hasSharedHeap = defined(boehmgc) # don't share heaps; every thread has its own
-#  taintMode = compileOption("taintmode")
+  taintMode = compileOption("taintmode")
 
-when defined(taintMode):
+when taintMode:
   # XXX use a compile time option for it!
   type TaintedString* = distinct string ## a distinct string type that 
                                         ## is `tainted`:idx:. It is an alias for

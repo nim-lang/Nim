@@ -126,22 +126,22 @@ proc parseCmdLine(c: var TConfigData) =
     next(p)
     var kind = p.kind
     var key = p.key
-    var val = p.val
+    var val = p.val.string
     case kind
     of cmdArgument:
       if c.actions == {}:
-        for a in split(normalize(key), {';', ','}):
+        for a in split(normalize(key.string), {';', ','}):
           case a
           of "csource": incl(c.actions, actionCSource)
           of "zip": incl(c.actions, actionZip)
           of "inno": incl(c.actions, actionInno)
           else: quit(Usage)
       else:
-        c.infile = addFileExt(key, "ini")
-        c.nimrodArgs = cmdLineRest(p)
+        c.infile = addFileExt(key.string, "ini")
+        c.nimrodArgs = cmdLineRest(p).string
         break
     of cmdLongOption, cmdShortOption:
-      case normalize(key)
+      case normalize(key.string)
       of "help", "h": 
         stdout.write(Usage)
         quit(0)

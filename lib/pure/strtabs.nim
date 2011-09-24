@@ -136,7 +136,8 @@ proc RaiseFormatException(s: string) =
 
 proc getValue(t: PStringTable, flags: set[TFormatFlag], key: string): string =
   if hasKey(t, key): return t[key]
-  if useEnvironment in flags: result = os.getEnv(key)
+  # hm difficult: assume safety in taint mode here. XXX This is dangerous!
+  if useEnvironment in flags: result = os.getEnv(key).string
   else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key

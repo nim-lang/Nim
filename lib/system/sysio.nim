@@ -56,8 +56,12 @@ proc rawReadLine(f: TFile, result: var string) =
     add result, chr(int(c))
 
 proc readLine(f: TFile): TaintedString =
-  result = TaintedString("")
-  rawReadLine(f, result)
+  when taintMode:
+    result = TaintedString""
+    rawReadLine(f, result.string)
+  else:
+    result = ""
+    rawReadLine(f, result)
 
 proc write(f: TFile, i: int) = 
   when sizeof(int) == 8:
@@ -86,9 +90,14 @@ proc readFile(filename: string): TaintedString =
   try:
     var len = getFileSize(f)
     if len < high(int):
-      result = newString(int(len))
-      if readBuffer(f, addr(result[0]), int(len)) != len:
-        raiseEIO("error while reading from file")
+      when taintMode:
+        result = newString(int(len)).TaintedString
+        if readBuffer(f, addr(string(result)[0]), int(len)) != len:
+          raiseEIO("error while reading from file")
+      else:
+        result = newString(int(len))
+        if readBuffer(f, addr(result[0]), int(len)) != len:
+          raiseEIO("error while reading from file")
     else:
       raiseEIO("file too big to fit in memory")
   finally:
