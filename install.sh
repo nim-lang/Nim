@@ -174,6 +174,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/cellsets.nim
   cp lib/system/cgprocs.nim $libdir/system/cgprocs.nim || exit 1
   chmod 644 $libdir/system/cgprocs.nim
+  cp lib/system/channels.nim $libdir/system/channels.nim || exit 1
+  chmod 644 $libdir/system/channels.nim
   cp lib/system/debugger.nim $libdir/system/debugger.nim || exit 1
   chmod 644 $libdir/system/debugger.nim
   cp lib/system/dyncalls.nim $libdir/system/dyncalls.nim || exit 1
@@ -186,8 +188,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/gc.nim
   cp lib/system/hti.nim $libdir/system/hti.nim || exit 1
   chmod 644 $libdir/system/hti.nim
-  cp lib/system/inboxes.nim $libdir/system/inboxes.nim || exit 1
-  chmod 644 $libdir/system/inboxes.nim
   cp lib/system/inclrtl.nim $libdir/system/inclrtl.nim || exit 1
   chmod 644 $libdir/system/inclrtl.nim
   cp lib/system/mmdisp.nim $libdir/system/mmdisp.nim || exit 1
@@ -196,6 +196,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/profiler.nim
   cp lib/system/repr.nim $libdir/system/repr.nim || exit 1
   chmod 644 $libdir/system/repr.nim
+  cp lib/system/reprjs.nim $libdir/system/reprjs.nim || exit 1
+  chmod 644 $libdir/system/reprjs.nim
   cp lib/system/sets.nim $libdir/system/sets.nim || exit 1
   chmod 644 $libdir/system/sets.nim
   cp lib/system/sysio.nim $libdir/system/sysio.nim || exit 1
@@ -206,16 +208,22 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sysstr.nim
   cp lib/system/threads.nim $libdir/system/threads.nim || exit 1
   chmod 644 $libdir/system/threads.nim
+  cp lib/core/locks.nim $libdir/core/locks.nim || exit 1
+  chmod 644 $libdir/core/locks.nim
   cp lib/core/macros.nim $libdir/core/macros.nim || exit 1
   chmod 644 $libdir/core/macros.nim
   cp lib/core/typeinfo.nim $libdir/core/typeinfo.nim || exit 1
   chmod 644 $libdir/core/typeinfo.nim
+  cp lib/pure/actors.nim $libdir/pure/actors.nim || exit 1
+  chmod 644 $libdir/pure/actors.nim
   cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim || exit 1
   chmod 644 $libdir/pure/algorithm.nim
   cp lib/pure/base64.nim $libdir/pure/base64.nim || exit 1
   chmod 644 $libdir/pure/base64.nim
   cp lib/pure/browsers.nim $libdir/pure/browsers.nim || exit 1
   chmod 644 $libdir/pure/browsers.nim
+  cp lib/pure/bson.nim $libdir/pure/bson.nim || exit 1
+  chmod 644 $libdir/pure/bson.nim
   cp lib/pure/cgi.nim $libdir/pure/cgi.nim || exit 1
   chmod 644 $libdir/pure/cgi.nim
   cp lib/pure/colors.nim $libdir/pure/colors.nim || exit 1
@@ -242,6 +250,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/httpclient.nim
   cp lib/pure/httpserver.nim $libdir/pure/httpserver.nim || exit 1
   chmod 644 $libdir/pure/httpserver.nim
+  cp lib/pure/irc.nim $libdir/pure/irc.nim || exit 1
+  chmod 644 $libdir/pure/irc.nim
   cp lib/pure/json.nim $libdir/pure/json.nim || exit 1
   chmod 644 $libdir/pure/json.nim
   cp lib/pure/lexbase.nim $libdir/pure/lexbase.nim || exit 1
@@ -298,6 +308,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/times.nim
   cp lib/pure/unicode.nim $libdir/pure/unicode.nim || exit 1
   chmod 644 $libdir/pure/unicode.nim
+  cp lib/pure/uuid.nim $libdir/pure/uuid.nim || exit 1
+  chmod 644 $libdir/pure/uuid.nim
   cp lib/pure/xmldom.nim $libdir/pure/xmldom.nim || exit 1
   chmod 644 $libdir/pure/xmldom.nim
   cp lib/pure/xmldomparser.nim $libdir/pure/xmldomparser.nim || exit 1

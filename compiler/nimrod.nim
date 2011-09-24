@@ -66,7 +66,11 @@ proc HandleCmdLine() =
     var filename = ""
     ProcessCmdLine(passCmd1, command, filename)
     if filename != "": 
-      var fullPath = expandFilename(filename)
+      var fullpath: string
+      try:
+        fullPath = expandFilename(filename)
+      except EOS: 
+        fullpath = filename
       var p = splitFile(fullPath)
       options.projectPath = p.dir
       options.projectName = p.name
