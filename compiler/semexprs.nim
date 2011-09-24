@@ -378,6 +378,10 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
     # Object and tuple conversions are still addressable, so we skip them
     if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
       result = isAssignable(c, n.sons[1])
+    elif equalOrDistinctOf(n.typ, n.sons[1].typ) or 
+         equalOrDistinctOf(n.sons[1].typ, n.typ):
+      # types that are equal modulo distinction preserve l-value:
+      result = isAssignable(c, n.sons[1])
   of nkHiddenDeref, nkDerefExpr: 
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
