@@ -583,6 +583,16 @@ allow to silently throw away a return value:
   discard yes("May I ask a pointless question?")
 
 
+The return value can be ignored implicitely if the called proc/iterator has
+been declared with the ``discardable`` pragma: 
+
+.. code-block:: nimrod
+  proc p(x, y: int): int {.discardable.} = 
+    return x + y
+    
+  p(3, 4) # now valid
+
+
 Named arguments
 ---------------
 
