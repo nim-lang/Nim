@@ -346,8 +346,13 @@ proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   var field = n.sons[1].sym
   for i in countup(0, sonsLen(x) - 1): 
     var it = x.sons[i]
-    if it.kind != nkExprColonExpr: 
-      InternalError(it.info, "evalFieldAccess")
+    if it.kind != nkExprColonExpr:
+      # lookup per index:
+      result = x.sons[field.position]
+      if result.kind == nkExprColonExpr: result = result.sons[1]
+      if not aliasNeeded(result, flags): result = copyTree(result)
+      return
+      #InternalError(it.info, "evalFieldAccess")
     if it.sons[0].sym.name.id == field.name.id: 
       result = x.sons[i].sons[1]
       if not aliasNeeded(result, flags): result = copyTree(result)
@@ -752,29 +757,28 @@ proc evalRepr(c: PEvalContext, n: PNode): PNode =
 proc isEmpty(n: PNode): bool = 
   result = (n != nil) and (n.kind == nkEmpty)
 
-# The lexer marks multi-line strings as residing at the line where they are closed
-# This function returns the line where the string begins
-# Maybe the lexer should mark both the beginning and the end of expressions, then
-# this function could be removed
+# The lexer marks multi-line strings as residing at the line where they 
+# are closed. This function returns the line where the string begins
+# Maybe the lexer should mark both the beginning and the end of expressions,
+# then this function could be removed.
 proc stringStartingLine(s: PNode): int =
   var totalLines = 0
   for ln in splitLines(s.strVal): inc totalLines
-
   result = s.info.line - totalLines
 
 proc evalParseExpr(c: PEvalContext, n: Pnode): Pnode =
   var code = evalAux(c, n.sons[1], {})
-  var ast = parseString(code.getStrValue, code.info.toFilename, code.stringStartingLine)
-
+  var ast = parseString(code.getStrValue, code.info.toFilename,
+                        code.stringStartingLine)
   if sonsLen(ast) != 1:
     GlobalError(code.info, errExprExpected, "multiple statements")
-
   result = ast.sons[0]
   result.typ = newType(tyExpr, c.module)
 
 proc evalParseStmt(c: PEvalContext, n: Pnode): Pnode =
   var code = evalAux(c, n.sons[1], {})
-  result = parseString(code.getStrValue, code.info.toFilename, code.stringStartingLine)
+  result = parseString(code.getStrValue, code.info.toFilename,
+                       code.stringStartingLine)
   result.typ = newType(tyStmt, c.module)
 
 proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode = 
@@ -1086,7 +1090,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     var a = copyTree(n)
     for i in countup(0, sonsLen(n) - 1): 
       var it = n.sons[i]
-      if it.kind == nkExprEqExpr:
+      if it.kind == nkExprColonExpr:
         result = evalAux(c, it.sons[1], flags)
         if isSpecial(result): return 
         a.sons[i].sons[1] = result

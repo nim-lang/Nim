@@ -3405,9 +3405,9 @@ exception in one thread terminates the whole *process*!
 Taint mode
 ==========
 
-The Nimrod compiler and standard library support a `taint mode`:idx:. 
-Input strings are declared with the `TaintedString`:idx: string type declared
-in the ``system`` module.
+The Nimrod compiler and most parts of the standard library support 
+a `taint mode`:idx:. Input strings are declared with the `TaintedString`:idx: 
+string type declared in the ``system`` module.
 
 If the taint mode is turned on (via the ``--taintMode:on`` command line 
 option) it is a distinct string type which helps to detect input
@@ -3422,5 +3422,4 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
-
 

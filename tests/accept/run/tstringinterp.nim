@@ -5,20 +5,17 @@ discard """
 
 import macros, parseutils, strutils
 
-proc concat(strings: openarray[string]) : string =
+proc concat(strings: openarray[string]): string =
   result = newString(0)
   for s in items(strings): result.add(s)
 
-# This will run though the intee
 template ProcessInterpolations(e: expr) =
-  var 
-    s = e[1].strVal
-    
+  var s = e[1].strVal
   for f in interpolatedFragments(s):
-    if f.kind  == ikString:
+    if f.kind == ikStr:
       addString(f.value)
     else:
-      addExpr(f.value)
+      addExpr(newCall("$", parseExpr(f.value)))
 
 macro formatStyleInterpolation(e: expr): expr =
   var 
@@ -41,7 +38,7 @@ macro formatStyleInterpolation(e: expr): expr =
   result[2] = arrayNode
 
 macro concatStyleInterpolation(e: expr): expr =
-  var args : seq[PNimrodNode]
+  var args: seq[PNimrodNode]
   newSeq(args, 0)
 
   proc addString(s: string)  = args.add(newStrLitNode(s))
@@ -64,8 +61,8 @@ var
   c = 34
 
 var
-  s1 = concatStyleInterpolation"Hello ${alice}, ${sum (a, b, c)}}"
-  s2 = formatStyleInterpolation"Hello ${bob}, ${sum (alice.len, bob.len, 2)}"
+  s1 = concatStyleInterpolation"Hello ${alice}, ${sum(a, b, c)}"
+  s2 = formatStyleInterpolation"Hello ${bob}, ${sum(alice.len, bob.len, 2)}"
 
 write(stdout, s1 & " | " & s2)
 

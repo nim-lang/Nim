@@ -73,7 +73,6 @@ version 0.9.XX
 Library
 -------
 
-- proper URL-parser
 - wrappers for poppler; libharu
 - radix tree for strings; maybe suffix tree
 - locale support

@@ -266,94 +266,76 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   result = parseBiggestFloat(s, bf, start)
   number = bf
   
-proc isEscaped*(s: string, pos: int) : bool =
-  assert pos >= 0 and pos < s.len
+type
+  TInterpolatedKind* = enum  ## describes for `interpolatedFragments`
+                             ## which part of the interpolated string is
+                             ## yielded; for example in "str$var${expr}"
+    ikStr,                   ## ``str`` part of the interpolated string 
+    ikVar,                   ## ``var`` part of the interpolated string
+    ikExpr                   ## ``expr`` part of the interpolated string
 
-  var
-    backslashes = 0
-    j = pos - 1
-
-  while j >= 0:
-    if s[j] == '\\':
-      inc backslashes
-      dec j
+iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
+  value: string] =
+  ## Tokenizes the string `s` into substrings for interpolation purposes.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   for k, v in interpolatedFragments("  $this is ${an  example}  "):
+  ##     echo "(", k, ", \"", v, "\")"
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   (ikString, "  ")
+  ##   (ikExpr, "this")
+  ##   (ikString, " is ")
+  ##   (ikExpr, "an  example")
+  ##   (ikString, "  ")
+  var i = 0
+  var kind: TInterpolatedKind
+  while true:
+    var j = i
+    if s[j] == '$' and s[j+1] != '$':
+      if s[j+1] == '{':
+        inc j, 2
+        var nesting = 0
+        while true:
+          case s[j]
+          of '{': inc nesting
+          of '}':
+            if nesting == 0: 
+              inc j
+              break
+            dec nesting
+          of '\0':
+            raise newException(EInvalidValue, 
+              "Expected closing '}': " & s[i..s.len])
+          else: nil
+          inc j
+        inc i, 2 # skip ${
+        kind = ikExpr
+      elif s[j+1] in IdentStartChars:
+        inc j, 2
+        while s[j] in IdentChars: inc(j)
+        inc i # skip $
+        kind = ikVar
+      else:
+        raise newException(EInvalidValue, 
+          "Unable to parse a varible name at " & s[i..s.len])
+    else:
+      while j < s.len and (s[j] != '$' or s[j+1] == '$'): inc j
+      kind = ikStr
+    if j > i:
+      # do not copy the trailing } for ikExpr:
+      yield (kind, substr(s, i, j-1-ord(kind == ikExpr)))
     else:
       break
+    i = j
 
-  return backslashes mod 2 != 0
+when isMainModule:
+  for k, v in interpolatedFragments("$test{}  $this is ${an{  example}}  "):
+    echo "(", k, ", \"", v, "\")"
 
-type
-  TInterpolatedKind* = enum
-    ikString, ikExpr
-
-  TInterpStrFragment* = tuple[kind: TInterpolatedKind, value: string]
-
-iterator interpolatedFragments*(s: string): TInterpStrFragment =
-  var 
-    i = 0
-    tokenStart = 0
-
-  proc token(kind: TInterpolatedKind, value: string): TInterpStrFragment =
-    result.kind = kind
-    result.value = value
-
-  while i < s.len:
-    # The $ sign marks the start of an interpolation.
-    #
-    # It's followed either by a varialbe name or an opening bracket 
-    # (so it should be before the end of the string)
-    # if the dollar sign is escaped, don't trigger interpolation
-    if s[i] == '$' and i < (s.len - 1) and not isEscaped(s, i):
-      # Interpolation starts here.
-      # Return any string that we've ran over so far.
-      if i != tokenStart:
-        yield token(ikString, s[tokenStart..i-1])
-
-      var next = s[i+1]
-      if next == '{':
-        # Complex expression: ${foo(bar) in {1..100}}
-        # Find closing braket, while respecting any nested brackets
-        inc i
-        tokenStart = i + 1
-
-        var
-          brackets = {'{', '}'}
-          nestingCount = 1
-        
-        while i < s.len:
-          inc i, skipUntil(s, brackets, i+1) + 1
-          
-          if not isEscaped(s, i):
-            if s[i] == '}':
-              dec nestingCount
-              if nestingCount == 0: break
-            else:
-              inc nestingCount
-
-        yield token(ikExpr, s[tokenStart..(i-1)])
-
-        tokenStart = i + 1
-        
-      else:
-        tokenStart = i + 1
-        var identifier = parseIdent(s, i+1)
-        
-        if identifier.len >  0:
-          inc i, identifier.len
-
-          yield token(ikExpr, s[tokenStart..i])
-
-          tokenStart = i + 1
-
-        else:
-          raise newException(EInvalidValue, "Unable to parse a varible name at " & s[i..s.len])
-       
-    inc i
-  #end while
-
-  # We've reached the end of the string without finding a new interpolation.
-  # Return the last fragment at string.
-  if i != tokenStart:
-    yield token(ikString, s[tokenStart..i])
 
 {.pop.}

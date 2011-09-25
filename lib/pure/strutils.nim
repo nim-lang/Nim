@@ -640,8 +640,7 @@ proc join*(a: openArray[string], sep: string): string {.
   if len(a) > 0:
     var L = sep.len * (a.len-1)
     for i in 0..high(a): inc(L, a[i].len)
-    result = newString(L)
-    setLen(result, 0)
+    result = newStringOfCap(L)
     add(result, a[0])
     for i in 1..high(a):
       add(result, sep)
@@ -655,8 +654,7 @@ proc join*(a: openArray[string]): string {.
   if len(a) > 0:
     var L = 0
     for i in 0..high(a): inc(L, a[i].len)
-    result = newString(L)
-    setLen(result, 0)
+    result = newStringOfCap(L)
     for i in 0..high(a): add(result, a[i])
   else:
     result = ""
@@ -867,9 +865,9 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
 
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuEditDistance".} =
-  ## returns the edit distance between `a` and `b`. This uses the Levenshtein
-  ## distance algorithm with only a linear memory overhead. This implementation
-  ## is highly optimized!
+  ## returns the edit distance between `a` and `b`. This uses the 
+  ## `Levenshtein`:idx: distance algorithm with only a linear memory overhead.
+  ## This implementation is highly optimized!
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:

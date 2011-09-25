@@ -17,6 +17,7 @@ Bugfixes
   the end of file for text files that do not end with a newline.
 - Bugfix c2nim, c2pas: the ``--out`` option has never worked properly.
 - Bugfix: forwarding of generic procs never worked.
+- Some more bugfixes for macros and compile-time evaluation.
 
 
 Changes affecting backwards compatibility
@@ -80,6 +81,9 @@ Library Additions
 - Added ``system.running`` for threads.
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``.
+- Added ``parseutils.interpolatedFragments``.
+- Added ``macros.toLisp``, ``macros.toYaml``, ``macros.parseExpr``,
+  ``macros.parseStmt``, ``macros.getAst``.
 - Added ``locks`` core module for more flexible locking support.
 - Added ``irc`` module.
 

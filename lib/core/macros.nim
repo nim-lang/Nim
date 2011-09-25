@@ -220,13 +220,13 @@ proc toYaml*(n: PNimrodNode): string {.magic: "AstToYaml".}
   ## Provides more detailed, potentially harder to digest information
   ## than `toLisp`
 
-proc parseExpr*(s: string) : expr {.magic: "ParseExprToAst".}
-  ## Compiles the passed string to its AST representation
-  ## Expects a single expression
+proc parseExpr*(s: string): expr {.magic: "ParseExprToAst".}
+  ## Compiles the passed string to its AST representation.
+  ## Expects a single expression.
 
-proc parseStmt*(s: string) : stmt {.magic: "ParseStmtToAst".}
-  ## Compiles the passed string to its AST representation
-  ## Expects one or more statements
+proc parseStmt*(s: string): stmt {.magic: "ParseStmtToAst".}
+  ## Compiles the passed string to its AST representation.
+  ## Expects one or more statements.
 
 proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandMacroToAst".}
   ## Obtains the AST nodes returned from a macro or template invocation.
