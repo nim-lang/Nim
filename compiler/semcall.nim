@@ -35,6 +35,8 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
       z.calleeSym = sym
       matches(c, n, z)
       if z.state == csMatch: 
+        # little hack so that iterators are preferred over everything else:
+        if sym.kind == skIterator: inc(z.exactMatches, 200)
         case x.state
         of csEmpty, csNoMatch: x = z
         of csMatch: 
@@ -48,7 +50,7 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
     # do not generate an error yet; the semantic checking will check for
     # an overloaded () operator
   elif y.state == csMatch and cmpCandidates(x, y) == 0 and
-      not sameMethodDispatcher(x.calleeSym, y.calleeSym): 
+      not sameMethodDispatcher(x.calleeSym, y.calleeSym):
     if x.state != csMatch: 
       InternalError(n.info, "x.state is not csMatch") 
     LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [

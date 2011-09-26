@@ -10,3 +10,10 @@ template toSeq*(iter: expr): expr =
 for x in items(toSeq(countup(2, 6))): 
   stdout.write(x)
 
+import strutils
+
+var y: type("a b c".split)
+y = "xzy"
+
+
+

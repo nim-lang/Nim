@@ -35,7 +35,7 @@ proc semStmtScope(c: PContext, n: PNode): PNode
 
 type 
   TExprFlag = enum 
-    efAllowType, efLValue, efWantIterator
+    efAllowType, efLValue, efWantIterator, efInTypeof
   TExprFlags = set[TExprFlag]
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode

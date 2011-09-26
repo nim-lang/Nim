@@ -1460,7 +1460,8 @@ statements always have to be intended::
   complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
                    | blockStmt | asmStmt
                    | procDecl | iteratorDecl | macroDecl | templateDecl
-                   | constSection | typeSection | whenStmt | varSection
+                   | constSection | letSection 
+                   | typeSection | whenStmt | varSection
 
 
 
@@ -2430,6 +2431,18 @@ be used to get the type of an expression:
   var x = 0
   var y: type(x) # y has type int
 
+If ``type`` is used to determine the result type of a proc/iterator/converter
+call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
+interpretation where ``c`` is an iterator is preferred over the
+other interpretations:
+
+.. code-block:: nimrod
+  import strutils
+  
+  # strutils contains both a ``split`` proc and iterator, but since an
+  # an iterator is the preferred interpretation, `y` has the type ``string``:
+  var y: type("a b c".split)
+
 
 Type constraints
 ~~~~~~~~~~~~~~~~
@@ -3306,6 +3319,7 @@ helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 Memory allocation requires no lock at all! This design easily scales to massive
 multicore processors that will become the norm in the future.
+
 
 
 Thread pragma
