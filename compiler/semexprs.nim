@@ -445,13 +445,15 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
-                                 flags: TExprFlags): PNode = 
-  var symflags = {skProc, skMethod, skConverter}
+                                 flags: TExprFlags): PNode =
   if efWantIterator in flags:
-    # for ``type countup(1,3)``, see ``tests/ttoseq``.
-    symflags = {skIterator}
-  result = semDirectCall(c, n, symflags)
-  if result != nil: 
+    result = semDirectCall(c, n, {skIterator})
+  elif efInTypeOf in flags:
+    # for ``type(countup(1,3))``, see ``tests/ttoseq``.
+    result = semDirectCall(c, n, {skIterator, skProc, skMethod, skConverter})
+  else:
+    result = semDirectCall(c, n, {skProc, skMethod, skConverter})
+  if result != nil:
     if result.sons[0].kind != nkSym: 
       InternalError("semDirectCallAnalyseEffects")
     var callee = result.sons[0].sym

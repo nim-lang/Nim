@@ -18,7 +18,7 @@ type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
   TCandidate* {.final.} = object 
-    exactMatches: int
+    exactMatches*: int
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
     convMatches: int

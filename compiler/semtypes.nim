@@ -625,23 +625,15 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
     result = instGenericContainer(c, n, result)
 
-proc FixupRemainingGenericInvokations(c: PContext, n: PNode, 
-                                      typ: PType): PType =
-  if typ.kind == tyGenericInvokation:
-    nil
-  else:
-    result = typ
-
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType = 
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
   of nkEmpty: nil
-  of nkTypeOfExpr: 
-    # for ``type countup(1,3)``, see ``tests/ttoseq``.
-    # XXX We should find a better solution.
+  of nkTypeOfExpr:
+    # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
-    result = semExprWithType(c, n.sons[0], {efWantIterator}).typ
+    result = semExprWithType(c, n.sons[0], {efInTypeof}).typ
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)
