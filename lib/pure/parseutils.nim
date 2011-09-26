@@ -269,8 +269,9 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
 type
   TInterpolatedKind* = enum  ## describes for `interpolatedFragments`
                              ## which part of the interpolated string is
-                             ## yielded; for example in "str$var${expr}"
-    ikStr,                   ## ``str`` part of the interpolated string 
+                             ## yielded; for example in "str$$$var${expr}"
+    ikStr,                   ## ``str`` part of the interpolated string
+    ikDollar,                ## escaped ``$`` part of the interpolated string
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
@@ -281,7 +282,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
   ## Example:
   ##
   ## .. code-block:: nimrod
-  ##   for k, v in interpolatedFragments("  $this is ${an  example}  "):
+  ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
   ##     echo "(", k, ", \"", v, "\")"
   ##
   ## Results in:
@@ -292,11 +293,12 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
   ##   (ikString, " is ")
   ##   (ikExpr, "an  example")
   ##   (ikString, "  ")
+  ##   (ikDollar, "$")
   var i = 0
   var kind: TInterpolatedKind
   while true:
     var j = i
-    if s[j] == '$' and s[j+1] != '$':
+    if s[j] == '$':
       if s[j+1] == '{':
         inc j, 2
         var nesting = 0
@@ -320,11 +322,15 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
         while s[j] in IdentChars: inc(j)
         inc i # skip $
         kind = ikVar
+      elif s[j+1] == '$':
+        inc j, 2
+        inc i # skip $
+        kind = ikDollar
       else:
         raise newException(EInvalidValue, 
           "Unable to parse a varible name at " & s[i..s.len])
     else:
-      while j < s.len and (s[j] != '$' or s[j+1] == '$'): inc j
+      while j < s.len and s[j] != '$': inc j
       kind = ikStr
     if j > i:
       # do not copy the trailing } for ikExpr:
