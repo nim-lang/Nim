@@ -270,7 +270,7 @@ proc mangleRules(s: string, p: TParser): string =
   block mangle:
     for pattern, frmt in items(p.options.mangleRules):
       if s.match(pattern):
-        result = s.replace(pattern, frmt)
+        result = s.replacef(pattern, frmt)
         break mangle
     block prefixes:
       for prefix in items(p.options.prefixes): 
@@ -674,21 +674,17 @@ proc addTypeDef(section, name, t: PNode) =
   addSon(section, def)
   
 proc otherTypeDef(p: var TParser, section, typ: PNode) = 
-  var name, t: PNode
-  case p.tok.xkind
-  of pxParLe: 
+  var name: PNode
+  var t = typ
+  if p.tok.xkind == pxStar:
+    t = pointer(p, t)
+  if p.tok.xkind == pxParLe: 
     # function pointer: typedef typ (*name)();
-    var x = parseFunctionPointerDecl(p, typ)
+    var x = parseFunctionPointerDecl(p, t)
     name = x[0]
     t = x[2]
-  of pxStar:
-    # typedef typ *b;
-    t = pointer(p, typ)
-    markTypeIdent(p, t)
-    name = skipIdentExport(p)
   else: 
     # typedef typ name;
-    t = typ
     markTypeIdent(p, t)
     name = skipIdentExport(p)
   t = parseTypeSuffix(p, t)

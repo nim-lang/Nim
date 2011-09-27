@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 typedef void (*callback_t) (int rc);
+typedef const char* (*callback2)(int rc, long L, const char* buffer);
 
 int   aw_callback_set (AW_CALLBACK c, callback_t callback );
 int   aw_instance_callback_set (AW_CALLBACK c, callback_t callback);
