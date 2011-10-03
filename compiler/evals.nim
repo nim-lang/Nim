@@ -65,6 +65,7 @@ proc popStackFrame*(c: PEvalContext) {.inline.} =
   if (c.tos == nil): InternalError("popStackFrame")
   c.tos = c.tos.next
 
+proc eval*(c: PEvalContext, n: PNode): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
 proc stackTraceAux(x: PStackFrame) =
@@ -764,7 +765,7 @@ proc isEmpty(n: PNode): bool =
 proc stringStartingLine(s: PNode): int =
   result = s.info.line - countLines(s.strVal)
 
-proc evalParseExpr(c: PEvalContext, n: Pnode): Pnode =
+proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   var ast = parseString(code.getStrValue, code.info.toFilename,
                         code.stringStartingLine)
@@ -773,11 +774,58 @@ proc evalParseExpr(c: PEvalContext, n: Pnode): Pnode =
   result = ast.sons[0]
   result.typ = newType(tyExpr, c.module)
 
-proc evalParseStmt(c: PEvalContext, n: Pnode): Pnode =
+proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   result = parseString(code.getStrValue, code.info.toFilename,
                        code.stringStartingLine)
   result.typ = newType(tyStmt, c.module)
+
+proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
+  var s = newStackFrame()
+  s.call = n
+  setlen(s.params, 2)
+  s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  s.params[1] = n
+  pushStackFrame(c, s)
+  discard eval(c, sym.ast.sons[codePos])
+  result = s.params[0]
+  popStackFrame(c)
+  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
+
+# XXX:
+# These imports could be removed when the template evaluation code is extracted in a 
+# separate module. semdata is needed only for PContext (which is not wanted here, see below)
+import
+  semdata, sem
+  
+proc evalExpandToAst(c: PEvalContext, n: PNode): PNode =
+  var 
+    macroCall = n.sons[1]
+    expandedSym = macroCall.sons[0].sym
+    
+    # XXX: It's unfortunate that evalTemplate requires a PContext,
+    # although it's used only for very specific corner cases.
+    #
+    # Template expansion should be about AST manipulation only, so 
+    # maybe this requirement can be lifted.
+    dummyContext : PContext
+
+  for i in countup(1, macroCall.sonsLen - 1):
+    macroCall.sons[i] = evalAux(c, macroCall.sons[i], {})
+
+  case expandedSym.kind
+  of skTemplate:
+    result = evalTemplate(dummyContext, macroCall, expandedSym)
+  of skMacro:
+    # XXX:
+    # At this point macroCall.sons[0] is nkSym node.
+    # To be completely compatible with normal macro invocation,
+    # we may want to replace it with nkIdent node featuring
+    # the original unmangled macro name.
+    result = evalMacroCall(c, macroCall, expandedSym)
+  else:
+    InternalError(macroCall.info,
+      "ExpandToAst: expanded symbol is no macro or template")
 
 proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode = 
   var m = getMagic(n)
@@ -805,6 +853,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mAppendSeqElem: result = evalAppendSeqElem(c, n)
   of mParseExprToAst: result = evalParseExpr(c, n)
   of mParseStmtToAst: result = evalParseStmt(c, n)
+  of mExpandMacroToAst: result = evalExpandToAst(c, n)
   of mNLen: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 

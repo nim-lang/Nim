@@ -10,28 +10,14 @@
 # This module implements the semantic checking pass.
 
 import
-  strutils, hashes, lists, options, lexer, ast, astalgo, trees, treetab, 
-  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math, 
-  magicsys, parser, nversion, nimsets, semdata, evals, semfold, importer, 
+  strutils, hashes, lists, options, lexer, ast, astalgo, trees, treetab,
+  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
+  magicsys, parser, nversion, semdata, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest,
-  semthreads, intsets, transf
+  semthreads, intsets, transf, evals
 
 proc semPass*(): TPass
 # implementation
-
-proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.tab.tos <= 2
-
-proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
-  result = newSym(kind, considerAcc(n), getCurrOwner())
-  result.info = n.info
-  
-proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
-                 allowed: TSymFlags): PSym
-  # identifier with visability
-proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
-                        allowed: TSymFlags): PSym
-proc semStmtScope(c: PContext, n: PNode): PNode
 
 type 
   TExprFlag = enum 
@@ -50,9 +36,35 @@ proc addResult(c: PContext, t: PType, info: TLineInfo)
 proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 
+proc typeMismatch(n: PNode, formal, actual: PType) = 
+  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+      typeToString(actual) & ") " &
+      `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
+
+proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
+  result = IndexTypesMatch(c, formal, arg.typ, arg)
+  if result == nil:
+    typeMismatch(arg, formal, arg.typ)
+
+proc isTopLevel(c: PContext): bool {.inline.} = 
+  result = c.tab.tos <= 2
+
+proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
+  result = newSym(kind, considerAcc(n), getCurrOwner())
+  result.info = n.info
+  
+proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
+                 allowed: TSymFlags): PSym
+  # identifier with visability
+proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
+                        allowed: TSymFlags): PSym
+proc semStmtScope(c: PContext, n: PNode): PNode
+
 proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
   if not typeAllowed(typ, skConst):
     GlobalError(typ.n.info, errXisNoType, typeToString(typ))
+
+include semtempl
 
 proc semConstExpr(c: PContext, n: PNode): PNode = 
   var e = semExprWithType(c, n)
@@ -76,17 +88,7 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
   result = semConstExpr(c, n)
   
 include seminst, semcall
-  
-proc typeMismatch(n: PNode, formal, actual: PType) = 
-  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
-      typeToString(actual) & ") " &
-      `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
-
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
-  result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil:
-    typeMismatch(arg, formal, arg.typ)
-  
+    
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
   case s.typ.sons[0].kind
@@ -101,8 +103,6 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     result = semExpr(c, result)
     result = fitNode(c, s.typ.sons[0], result)
     #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
-  
-include "semtempl.nim"
 
 proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
@@ -111,16 +111,7 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
     GlobalError(n.info, errTemplateInstantiationTooNested)
   markUsed(n, sym)
   var p = newEvalContext(c.module, "", false)
-  var s = newStackFrame()
-  s.call = n
-  setlen(s.params, 2)
-  s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
-  s.params[1] = n
-  pushStackFrame(p, s)
-  discard eval(p, sym.ast.sons[codePos])
-  result = s.params[0]
-  popStackFrame(p)
-  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
+  result = evalMacroCall(p, n, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
   dec(evalTemplateCounter)
 
