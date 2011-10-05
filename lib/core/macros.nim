@@ -187,6 +187,8 @@ proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
+proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo".}
+
 proc toLisp*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable string
   ##
