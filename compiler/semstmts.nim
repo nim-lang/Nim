@@ -428,7 +428,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
     var typ = n.sons[0].typ
     if typ.kind != tyRef or typ.sons[0].kind != tyObject: 
       localError(n.info, errExprCannotBeRaised)
-  
+
 proc semTry(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 2)
@@ -438,15 +438,19 @@ proc semTry(c: PContext, n: PNode): PNode =
     var a = n.sons[i]
     checkMinSonsLen(a, 1)
     var length = sonsLen(a)
-    if a.kind == nkExceptBranch: 
-      for j in countup(0, length - 2): 
+    if a.kind == nkExceptBranch:
+      if length == 2 and a.sons[0].kind == nkBracket:
+        a.sons.splice(0, 1, a.sons[0].sons)
+        length = a.sonsLen
+
+      for j in countup(0, length - 2):
         var typ = semTypeNode(c, a.sons[j], nil)
         if typ.kind == tyRef: typ = typ.sons[0]
-        if typ.kind != tyObject: 
+        if typ.kind != tyObject:
           GlobalError(a.sons[j].info, errExprCannotBeRaised)
         a.sons[j] = newNodeI(nkType, a.sons[j].info)
         a.sons[j].typ = typ
-        if ContainsOrIncl(check, typ.id): 
+        if ContainsOrIncl(check, typ.id):
           localError(a.sons[j].info, errExceptionAlreadyHandled)
     elif a.kind != nkFinally: 
       illFormedAst(n) 

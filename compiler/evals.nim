@@ -798,8 +798,9 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
 import
   semdata, sem
   
-proc evalExpandToAst(c: PEvalContext, n: PNode): PNode =
-  var 
+proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
+  var
+    n = original.copyTree
     macroCall = n.sons[1]
     expandedSym = macroCall.sons[0].sym
     
@@ -854,7 +855,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mParseExprToAst: result = evalParseExpr(c, n)
   of mParseStmtToAst: result = evalParseStmt(c, n)
   of mExpandMacroToAst: result = evalExpandToAst(c, n)
-  of mNLen: 
+  of mNLen:
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
     var a = result
@@ -1060,6 +1061,10 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     if (a == b) or
         (b.kind in {nkNilLit, nkEmpty}) and (a.kind in {nkNilLit, nkEmpty}): 
       result.intVal = 1
+  of mNLineInfo:
+    result = evalAux(c, n.sons[1], {})
+    if isSpecial(result): return
+    result = newStrNodeT(result.info.toFileLineCol, n)
   of mAstToYaml:
     var ast = evalAux(c, n.sons[1], {efLValue})
     result = newStrNode(nkStrLit, ast.treeToYaml.ropeToStr)

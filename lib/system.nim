@@ -857,6 +857,27 @@ proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
     dec(j)
   x[i] = item
 
+template spliceImpl(x, start, count, elements: expr): stmt =
+  var 
+    shift = elements.len - count
+    newLen = x.len + shift
+    totalShifted = x.len - (start + count)
+    firstShifted = newLen - totalShifted
+    
+  if shift > 0:
+    setLen(x, newLen)
+
+  for i in countup(firstShifted, newLen - 1):
+    shallowCopy(x[i], x[i-shift])
+
+  for c in countup(0, elements.len - 1):
+    x[start + c] = elements[c]
+
+  if shift < 0:
+    setLen(x, newLen)
+
+proc splice*[T](x: var seq[T], start, count: int, elements: openarray[T] = []) =
+  spliceImpl(x, start, count, elements)
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nimrod variable and returns its string representation. It
