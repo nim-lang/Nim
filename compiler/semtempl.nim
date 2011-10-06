@@ -33,22 +33,6 @@ proc isTypeDesc(n: PNode): bool =
     result = true
   else: result = false
   
-proc evalTemplateAux(templ, actual: PNode, sym: PSym): PNode = 
-  case templ.kind
-  of nkSym: 
-    var p = templ.sym
-    if (p.kind == skParam) and (p.owner.id == sym.id): 
-      result = copyTree(actual.sons[p.position])
-    else: 
-      result = copyNode(templ)
-  of nkNone..nkIdent, nkType..nkNilLit: # atom
-    result = copyNode(templ)
-  else: 
-    result = copyNode(templ)
-    newSons(result, sonsLen(templ))
-    for i in countup(0, sonsLen(templ) - 1): 
-      result.sons[i] = evalTemplateAux(templ.sons[i], actual, sym)
-  
 var evalTemplateCounter: int = 0
   # to prevend endless recursion in templates instantation
 

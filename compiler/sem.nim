@@ -106,14 +106,10 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
 
 proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > 100: 
-    GlobalError(n.info, errTemplateInstantiationTooNested)
   markUsed(n, sym)
   var p = newEvalContext(c.module, "", false)
   result = evalMacroCall(p, n, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
-  dec(evalTemplateCounter)
 
 proc forceBool(c: PContext, n: PNode): PNode = 
   result = fitNode(c, getSysType(tyBool), n)

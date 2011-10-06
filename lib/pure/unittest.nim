@@ -56,7 +56,7 @@ template test*(name: expr, body: stmt): stmt =
 
     finally:
       TestTeardownIMPL()
-      echo "[" & $TestStatusIMPL & "] " & name
+      echo "[" & $TestStatusIMPL & "] " & name & "\n"
 
 proc checkpoint*(msg: string) =
   checkpoints.add(msg)
@@ -77,19 +77,8 @@ macro check*(conditions: stmt): stmt =
       if not Exp:
         checkpoint(lineInfoLit & ": Check failed: " & expLit)
         fail()
-
-    # XXX: If we don't create a string literal node below, the compiler
-    # will SEGFAULT in a rather strange fashion:
-    #
-    # rewrite(e, e.toStrLit, e.toStrLit) is ok, but
-    #
-    # rewrite(e, e.lineinfo, e.toStrLit) or
-    # rewrite(e, "anything", e.toStrLit) are not
-    #
-    # It may have something to do with the dummyContext hack in 
-    # evals.nim/evalTemplate
-    #
-    result = getAst(rewrite(e, newStrLitNode(e.lineinfo), e.toStrLit))
+ 
+    result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
   
   case conditions.kind
   of nnkCall, nnkCommand, nnkMacroStmt:
@@ -110,7 +99,7 @@ macro check*(conditions: stmt): stmt =
 
         result = getAst(rewrite(
           op[0], op[1], op[2],
-          newStrLitNode(op.lineinfo),
+          op.lineinfo,
           op.toStrLit,
           op[1].toStrLit,
           op[2].toStrLit))
@@ -153,5 +142,5 @@ macro expect*(exp: stmt): stmt =
   for i in countup(1, expectCall.len - 1):
     errorTypes.add(expectCall[i])
 
-  result = getAst(expectBody(errorTypes, newStrLitNode(exp.lineinfo), body))
+  result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 

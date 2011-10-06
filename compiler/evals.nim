@@ -780,7 +780,66 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
                        code.stringStartingLine)
   result.typ = newType(tyStmt, c.module)
 
+proc evalTemplateAux*(templ, actual: PNode, sym: PSym): PNode = 
+  case templ.kind
+  of nkSym: 
+    var p = templ.sym
+    if (p.kind == skParam) and (p.owner.id == sym.id): 
+      result = copyTree(actual.sons[p.position])
+    else: 
+      result = copyNode(templ)
+  of nkNone..nkIdent, nkType..nkNilLit: # atom
+    result = copyNode(templ)
+  else: 
+    result = copyNode(templ)
+    newSons(result, sonsLen(templ))
+    for i in countup(0, sonsLen(templ) - 1): 
+      result.sons[i] = evalTemplateAux(templ.sons[i], actual, sym)
+
+proc evalTemplateArgs(n: PNode, s: PSym): PNode =
+  var 
+    f, a: int
+    arg: PNode
+    
+  f = sonsLen(s.typ)
+
+  # if the template has zero arguments, it can be called without ``()``
+  # `n` is then a nkSym or something similar
+  case n.kind
+  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
+    a = sonsLen(n)
+  else: a = 0
+  
+  if a > f: GlobalError(n.info, errWrongNumberOfArguments)
+
+  result = copyNode(n)
+  for i in countup(1, f - 1):
+    if i < a:
+      arg = n.sons[i]
+    else:
+      arg = copyTree(s.typ.n.sons[i].sym.ast)
+
+    addSon(result, arg)
+
+var evalTemplateCounter = 0
+  # to prevend endless recursion in templates instantation
+
+proc evalTemplate(n: PNode, sym: PSym): PNode = 
+  inc(evalTemplateCounter)
+  if evalTemplateCounter > 100:
+    GlobalError(n.info, errTemplateInstantiationTooNested)
+
+  # replace each param by the corresponding node:
+  var args = evalTemplateArgs(n, sym)
+  result = evalTemplateAux(sym.ast.sons[codePos], args, sym)
+
+  dec(evalTemplateCounter)
+
 proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
+  inc(evalTemplateCounter)
+  if evalTemplateCounter > 100: 
+    GlobalError(n.info, errTemplateInstantiationTooNested)
+
   var s = newStackFrame()
   s.call = n
   setlen(s.params, 2)
@@ -792,37 +851,26 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   popStackFrame(c)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
 
-# XXX:
-# These imports could be removed when the template evaluation code is extracted in a 
-# separate module. semdata is needed only for PContext (which is not wanted here, see below)
-import
-  semdata, sem
+  dec(evalTemplateCounter)
   
 proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
   var
     n = original.copyTree
     macroCall = n.sons[1]
     expandedSym = macroCall.sons[0].sym
-    
-    # XXX: It's unfortunate that evalTemplate requires a PContext,
-    # although it's used only for very specific corner cases.
-    #
-    # Template expansion should be about AST manipulation only, so 
-    # maybe this requirement can be lifted.
-    dummyContext : PContext
 
   for i in countup(1, macroCall.sonsLen - 1):
     macroCall.sons[i] = evalAux(c, macroCall.sons[i], {})
 
   case expandedSym.kind
   of skTemplate:
-    result = evalTemplate(dummyContext, macroCall, expandedSym)
+    result = evalTemplate(macroCall, expandedSym)
   of skMacro:
-    # XXX:
     # At this point macroCall.sons[0] is nkSym node.
     # To be completely compatible with normal macro invocation,
-    # we may want to replace it with nkIdent node featuring
+    # we want to replace it with nkIdent node featuring
     # the original unmangled macro name.
+    macroCall.sons[0] = newIdentNode(expandedSym.name, expandedSym.info)
     result = evalMacroCall(c, macroCall, expandedSym)
   else:
     InternalError(macroCall.info,
@@ -854,7 +902,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mAppendSeqElem: result = evalAppendSeqElem(c, n)
   of mParseExprToAst: result = evalParseExpr(c, n)
   of mParseStmtToAst: result = evalParseStmt(c, n)
-  of mExpandMacroToAst: result = evalExpandToAst(c, n)
+  of mExpandToAst: result = evalExpandToAst(c, n)
   of mNLen:
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 

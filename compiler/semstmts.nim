@@ -440,7 +440,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     var length = sonsLen(a)
     if a.kind == nkExceptBranch:
       if length == 2 and a.sons[0].kind == nkBracket:
-        a.sons.splice(0, 1, a.sons[0].sons)
+        a.sons[0..0] = a.sons[0].sons
         length = a.sonsLen
 
       for j in countup(0, length - 2):

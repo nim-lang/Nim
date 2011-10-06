@@ -230,7 +230,7 @@ proc parseStmt*(s: string): stmt {.magic: "ParseStmtToAst".}
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements.
 
-proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandMacroToAst".}
+proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandToAst".}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ## 
