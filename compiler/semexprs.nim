@@ -907,7 +907,7 @@ proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
 proc isAstValue(n: PNode): bool =
   result = n.typ.sym.name.s in [ "expr", "stmt", "PNimrodNode" ]
 
-proc semExpandMacroToAst(c: PContext, n: PNode, magicSym: PSym, flags: TExprFlags): PNode =
+proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym, flags: TExprFlags): PNode =
   if sonsLen(n) == 2:
     if not isCallExpr(n.sons[1]):
       GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
@@ -925,29 +925,14 @@ proc semExpandMacroToAst(c: PContext, n: PNode, magicSym: PSym, flags: TExprFlag
     macroCall.sons[0].sym = expandedSym
     markUsed(n, expandedSym)
 
-    # Any macro arguments that are already AST values are passed as such
-    # All other expressions within the arguments are converted to AST as
-    # in normal macro/template expansion.
-    # The actual expansion does not happen here, but in evals.nim, where
-    # the dynamic AST values will be known.
     for i in countup(1, macroCall.sonsLen - 1):
-      var argAst = macroCall.sons[i]
-      var typedArg = semExprWithType(c, argAst, {efAllowType})
-      if isAstValue(typedArg):
-        macroCall.sons[i] = typedArg
-      else:
-        macroCall.sons[i] = newMetaNodeIT(argAst, argAst.info, newTypeS(tyExpr, c))
+      macroCall.sons[i] = semExprWithType(c, macroCall.sons[i], {efAllowType})
 
     # Preserve the magic symbol in order to handled in evals.nim
     n.sons[0] = newNodeI(nkSym, n.info)
     n.sons[0].sym = magicSym
-    
-    # XXX: 
-    # Hmm, expandedSym.typ is something like proc (e: expr): stmt
-    # In theory, it should be better here to report the actual return type,
-    # but the code is working fine so far with tyStmt, so I am leaving it
-    # here for someone more knowledgable to see ;)
-    n.typ = newTypeS(tyStmt, c) # expandedSym.typ
+   
+    n.typ = expandedSym.getReturnType
 
     result = n
   else:
@@ -989,7 +974,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
-  of mExpandMacroToAst: result = semExpandMacroToAst(c, n, s, flags)
+  of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
