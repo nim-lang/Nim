@@ -65,7 +65,7 @@ proc popStackFrame*(c: PEvalContext) {.inline.} =
   if (c.tos == nil): InternalError("popStackFrame")
   c.tos = c.tos.next
 
-proc eval*(c: PEvalContext, n: PNode): PNode
+proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
 proc stackTraceAux(x: PStackFrame) =
@@ -834,24 +834,6 @@ proc evalTemplate(n: PNode, sym: PSym): PNode =
   result = evalTemplateAux(sym.ast.sons[codePos], args, sym)
 
   dec(evalTemplateCounter)
-
-proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > 100: 
-    GlobalError(n.info, errTemplateInstantiationTooNested)
-
-  var s = newStackFrame()
-  s.call = n
-  setlen(s.params, 2)
-  s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
-  s.params[1] = n
-  pushStackFrame(c, s)
-  discard eval(c, sym.ast.sons[codePos])
-  result = s.params[0]
-  popStackFrame(c)
-  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
-
-  dec(evalTemplateCounter)
   
 proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
   var
@@ -1257,6 +1239,24 @@ proc evalConstExpr*(module: PSym, e: PNode): PNode =
   result = eval(p, e)
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
+
+proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
+  # XXX GlobalError() is ugly here, but I don't know a better solution for now
+  inc(evalTemplateCounter)
+  if evalTemplateCounter > 100: 
+    GlobalError(n.info, errTemplateInstantiationTooNested)
+
+  var s = newStackFrame()
+  s.call = n
+  setlen(s.params, 2)
+  s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  s.params[1] = n
+  pushStackFrame(c, s)
+  discard eval(c, sym.ast.sons[codePos])
+  result = s.params[0]
+  popStackFrame(c)
+  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
+  dec(evalTemplateCounter)
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
   var c = newEvalContext(module, filename, false)

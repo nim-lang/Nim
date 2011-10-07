@@ -942,7 +942,7 @@ proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) == 2:
     var a = expectStringArg(c, n, 0)
     try:
-      var content = readFile(a.strVal)
+      var content = readFile(a.strVal.FindFile)
       result = newStrNode(nkStrLit, content)
       result.typ = getSysType(tyString)
       result.info = n.info

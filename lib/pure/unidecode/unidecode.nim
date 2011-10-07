@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -22,23 +22,32 @@
 ## strictly one-way transformation. However a human reader will probably 
 ## still be able to guess what original string was meant from the context.
 ##
-## This module needs the data file "unidecode.dat" to work, so it has to be
-## shipped with the application! 
+## This module needs the data file "unidecode.dat" to work: You can either
+## ship this file with your application and initialize this module with the
+## `loadUnidecodeTable` proc or you can define the ``embedUnidecodeTable``
+## symbol to embed the file as a resource into your application.
 
 import unicode
 
-proc loadTranslationTable(filename: string): seq[string] =  
-  newSeq(result, 0xffff)
-  var i = 0
-  for line in lines(filename):
-    result[i] = line
-    inc(i)
-
-var 
-  translationTable: seq[string]
+when defined(embedUnidecodeTable):
+  import strutils
   
-var
-  datafile* = "unidecode.dat"   ## location can be overwritten for deployment
+  const translationTable = splitLines(slurp"unidecode/unidecode.dat")
+else:
+  # shared is fine for threading:
+  var translationTable: seq[string]
+
+proc loadUnidecodeTable*(datafile = "unidecode.dat") =
+  ## loads the datafile that `unidecode` to work. Unless this module is
+  ## compiled with the ``embedUnidecodeTable`` symbol defined, this needs
+  ## to be called by the main thread before any thread can make a call
+  ## to `unidecode`.
+  when not defined(embedUnidecodeTable):
+    newSeq(translationTable, 0xffff)
+    var i = 0
+    for line in lines(datafile):
+      translationTable[i] = line
+      inc(i)
 
 proc unidecode*(s: string): string = 
   ## Finds the sequence of ASCII characters that is the closest approximation
@@ -51,15 +60,14 @@ proc unidecode*(s: string): string =
   ##
   ## Results in: "Bei Jing"
   ##
+  assert(not isNil(translationTable))
   result = ""
   for r in runes(s): 
     var c = int(r)
     if c <=% 127: add(result, chr(c))
-    elif c <=% 0xffff: 
-      if isNil(translationTable):
-        translationTable = loadTranslationTable(datafile)
-      add(result, translationTable[c-128])
+    elif c <% translationTable.len: add(result, translationTable[c-128])
 
-when isMainModule: 
+when isMainModule:
+  loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
   echo unidecode("Äußerst")
 

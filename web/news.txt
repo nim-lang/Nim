@@ -37,6 +37,7 @@ Changes affecting backwards compatibility
 - The ``is`` operator is now used to check type equivalence in generic code.
 - The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
 - The threading API has been completely redesigned.
+- The interface of the ``unidecode`` module changed and it's now thread-safe.
 
 
 Language Additions
@@ -50,6 +51,7 @@ Language Additions
   a compile-time error.
 - There is a new ``discardable`` pragma that can be used to mark a routine 
   so that its result can be discarded implicitely.
+- Constants can now have the type ``seq``.
 
 
 Compiler Additions
@@ -74,6 +76,7 @@ Library Additions
 - Added ``system.mainThreadId``.
 - Added ``system.allocShared``, ``system.allocShared0``, 
   ``system.deallocShared``, ``system.reallocShared``.
+- Slicing as implemented by the system module now supports *splicing*.
 - Added explicit channels for thread communication.
 - Added ``matchers`` module for email address etc. matching.
 - Added ``strutils.unindent``, ``strutils.countLines``.
