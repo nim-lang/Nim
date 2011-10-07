@@ -857,7 +857,6 @@ proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
     dec(j)
   x[i] = item
 
-
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nimrod variable and returns its string representation. It
   ## works even for complex data graphs with cycles. This is a great
@@ -1922,6 +1921,26 @@ proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
   ## slice operation for strings. Negative indexes are supported.
   result = s.substr(x.a-|s, x.b-|s)
 
+template spliceImpl(x, start, endp, spliced: expr): stmt =
+  var 
+    count = endp - start + 1
+    shift = spliced.len - count
+    newLen = x.len + shift
+    totalShifted = x.len - (start + count)
+    firstShifted = newLen - totalShifted
+
+  if shift > 0:
+    setLen(x, newLen)
+
+  for i in countdown(newLen - 1, firstShifted):
+    shallowCopy(x[i], x[i-shift])
+
+  for c in countup(0, spliced.len - 1):
+    x[start + c] = spliced[c]
+
+  if shift < 0:
+    setLen(x, newLen)
+
 proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
   ## slice assignment for strings. Negative indexes are supported.
   var a = x.a-|s
@@ -1929,7 +1948,7 @@ proc `[]=`*(s: var string, x: TSlice[int], b: string) =
   if L == b.len:
     for i in 0 .. <L: s[i+a] = b[i]
   else:
-    raise newException(EOutOfRange, "differing lengths for slice assignment")
+    spliceImpl(s, x.a, x.b, b)
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
   ## slice operation for arrays. Negative indexes are NOT supported because
@@ -1983,7 +2002,7 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
   if L == b.len:
     for i in 0 .. <L: s[i+a] = b[i]
   else:
-    raise newException(EOutOfRange, "differing lengths for slice assignment")
+    spliceImpl(s, x.a, x.b, b)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
