@@ -762,7 +762,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyOpenArray, tyVarargs: 
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
   of tySequence: 
-    result = (kind != skConst) and typeAllowedAux(marker, t.sons[0], skVar) or
+    result = typeAllowedAux(marker, t.sons[0], skVar) or
         t.sons[0].kind == tyEmpty
   of tyArray:
     result = typeAllowedAux(marker, t.sons[1], skVar) or

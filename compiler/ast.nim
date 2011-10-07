@@ -559,9 +559,11 @@ const
     tyBool, tyChar, tyEnum, tyArray, tyObject, 
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
     tyPointer, 
-    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128} 
+    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+    tyUInt..tyUInt64} 
   
-  ConstantDataTypes*: TTypeKinds = {tyArray, tySet, tyTuple}
+  ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
+                                    tyTuple, tySequence}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}

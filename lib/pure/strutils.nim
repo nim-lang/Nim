@@ -8,8 +8,8 @@
 #
 
 ## This module contains various string utility routines.
-## See the module `re` for regular expression support.
-## See the module `pegs` for PEG support.
+## See the module `re <re.html>`_ for regular expression support.
+## See the module `pegs <pegs.html>`_ for PEG support.
 
 import parseutils
 
@@ -368,6 +368,19 @@ proc splitLines*(s: string): seq[string] {.noSideEffect,
   ## The same as the `splitLines` iterator, but is a proc that returns a
   ## sequence of substrings.
   accumulateResult(splitLines(s))
+
+proc countLines*(s: string): int {.noSideEffect,
+  rtl, extern: "nsuCountLines".} =
+  ## same as ``len(splitLines(s))``, but much more efficient.
+  var i = 0
+  while i < s.len:
+    case s[i]
+    of '\c':
+      if s[i+1] == '\l': inc i
+      inc result
+    of '\l': inc result
+    else: nil
+    inc i
 
 proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
@@ -754,7 +767,7 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` the characters at position `first`..`last`. This modifies
+  ## Deletes in `s` the characters at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
   var i = first
   var j = last+1
@@ -958,7 +971,7 @@ proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
                                      noSideEffect.}
 
 type
-  TFloatFormat* = enum
+  TFloatFormat* = enum ## the different modes of floating point formating
     ffDefault,    ## use the shorter floating point notation
     ffDecimal,    ## use decimal floating point notation
     ffScientific  ## use scientific notation (using ``e`` character)

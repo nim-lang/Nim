@@ -181,10 +181,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result.info = n.info
   of mConStrStr: result = newStrNodeT(getStrOrChar(a) & getStrOrChar(b), n)
   of mInSet: result = newIntNodeT(Ord(inSet(a, b)), n)
-  of mRepr: 
-    # BUGFIX: we cannot eval mRepr here. But this means that it is not 
-    # available for interpretation. I don't know how to fix this.
-    #result := newStrNodeT(renderTree(a, {@set}[renderNoComments]), n);      
+  of mRepr:
+    # BUGFIX: we cannot eval mRepr here for reasons that I forgot.
   of mIntToStr, mInt64ToStr: result = newStrNodeT($(getOrdValue(a)), n)
   of mBoolToStr: 
     if getOrdValue(a) == 0: result = newStrNodeT("false", n)
@@ -324,7 +322,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     var s = n.sym
     if s.kind == skEnumField: 
       result = newIntNodeT(s.position, n)
-    elif (s.kind == skConst): 
+    elif s.kind == skConst: 
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
       of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
@@ -370,10 +368,14 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mLow: 
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh: 
-        if not (skipTypes(n.sons[1].typ, abstractVar).kind in
-            {tyOpenArray, tySequence, tyString}): 
-          result = newIntNodeT(lastOrd(skipTypes(n.sons[1].typ, abstractVar)),
-                               n)
+        if  skipTypes(n.sons[1].typ, abstractVar).kind notin
+            {tyOpenArray, tySequence, tyString}: 
+          result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
+        else:
+          var a = n.sons[1]
+          if a.kind == nkBracket:
+            # we can optimize it away: 
+            result = newIntNodeT(sonsLen(a)-1, n)
       of mLengthOpenArray:
         var a = n.sons[1]
         if a.kind == nkBracket: 

@@ -417,37 +417,6 @@ The grammar's start symbol is ``module``.
 Semantics
 =========
 
-Constants
----------
-
-`Constants`:idx: are symbols which are bound to a value. The constant's value
-cannot change. The compiler must be able to evaluate the expression in a
-constant declaration at compile time.
-
-Nimrod contains a sophisticated compile-time evaluator, so procedures which
-have no side-effect can be used in constant expressions too:
-
-.. code-block:: nimrod
-  import strutils
-  const
-    constEval = contains("abc", 'b') # computed at compile time!
-
-
-The rules for compile-time computability are: 
-
-1. Literals are compile-time computable.
-2. Type conversions are compile-time computable.
-3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
-   for details) and if ``X`` is a (possibly empty) list of compile-time 
-   computable arguments.
-
-
-Constants cannot be of type ``var`` or ``object``, nor can 
-they contain such a type. For the types ``ptr`` and ``ref`` only the
-constant literal ``nil`` is possible.
-
-
 Types
 -----
 
@@ -671,8 +640,8 @@ and ``pred`` are not available for them either.
 
 
 The compiler supports the built-in stringify operator ``$`` for enumerations.
-The stringify's result can be controlled by specifying the string values to
-use explicitely:
+The stringify's result can be controlled by explicitely giving the string 
+values to use:
 
 .. code-block:: nimrod
 
@@ -1521,6 +1490,7 @@ variables of the same type:
 
 If an initializer is given the type can be omitted: the variable is then of the
 same type as the initializing expression. Variables are always initialized
+
 with a default value if there is no initializing expression. The default
 value depends on the type and is always a zero in binary.
 
@@ -1554,17 +1524,32 @@ Syntax::
               | COMMENT
   constSection ::= 'const' indPush constDecl (SAD constDecl)* DED indPop
 
+`Constants`:idx: are symbols which are bound to a value. The constant's value
+cannot change. The compiler must be able to evaluate the expression in a
+constant declaration at compile time.
 
-Example:
+Nimrod contains a sophisticated compile-time evaluator, so procedures which
+have no side-effect can be used in constant expressions too:
 
 .. code-block:: nimrod
-
+  import strutils
   const
-    MyFilename = "/home/my/file.txt"
-    debugMode: bool = false
+    constEval = contains("abc", 'b') # computed at compile time!
 
-The `const`:idx: section declares symbolic constants. A symbolic constant is
-a name for a constant expression. Symbolic constants only allow read-access.
+
+The rules for compile-time computability are: 
+
+1. Literals are compile-time computable.
+2. Type conversions are compile-time computable.
+3. Procedure calls of the form ``p(X)`` are compile-time computable if
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
+   for details) and if ``X`` is a (possibly empty) list of compile-time 
+   computable arguments.
+
+
+Constants cannot be of type ``var`` or ``object``, nor can 
+they contain such a type. For the types ``ptr`` and ``ref`` only the
+constant literal ``nil`` is possible.
 
 
 If statement
@@ -2398,7 +2383,6 @@ Example:
   add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
   add(root, newNode("world")) # ``add``
   for str in inorder(root):
-
     writeln(stdout, str)
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types with
@@ -3337,6 +3321,12 @@ improve compile times.
 
 A thread proc is passed to ``createThread`` and invoked indirectly; so the
 ``thread`` pragma implies ``procvar``.
+
+If a global variable can also be marked with the ``thread`` pragma; it is 
+a `thead-local`:idx: variable then:
+
+.. code-block:: nimrod
+  var checkpoints* {.thread.}: seq[string] = @[]
 
 
 Actor model

@@ -1831,6 +1831,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     if sym.loc.r == nil or sym.loc.t == nil:
       InternalError(e.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
+  of nkMetaNode: expr(p, e.sons[0], d)
   else: InternalError(e.info, "expr(" & $e.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): PRope =
@@ -1845,6 +1846,24 @@ proc genConstSimpleList(p: BProc, n: PNode): PRope =
   if length > 0: app(result, genNamedConstExpr(p, n.sons[length - 1]))
   appf(result, "}$n")
 
+proc genConstSeq(p: BProc, n: PNode, t: PType): PRope =
+  var data = ropef("{{$1, $1}", n.len.toRope)
+  for i in countup(0, n.len - 1):
+    appf(data, ",$1$n", [genConstExpr(p, n.sons[i])])
+  data.app("}")
+  
+  inc(p.labels)
+  result = con("CNSTSEQ", p.labels.toRope)
+  
+  appcg(p.module, cfsData,
+        "NIM_CONST struct {$n" & 
+        "  #TGenericSeq Sup;$n" &
+        "  $1 data[$2];$n" & 
+        "} $3 = $4;$n", [
+        getTypeDesc(p.module, t.sons[0]), n.len.toRope, result, data])
+
+  result = ropef("(($1)&$2)", [getTypeDesc(p.module, t), result])
+
 proc genConstExpr(p: BProc, n: PNode): PRope =
   case n.Kind
   of nkHiddenStdConv, nkHiddenSubConv:
@@ -1855,7 +1874,11 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     result = genRawSetData(cs, int(getSize(n.typ)))
   of nkBracket, nkPar:
     # XXX: tySequence!
-    result = genConstSimpleList(p, n)
+    var t = skipTypes(n.typ, abstractInst)
+    if t.kind == tySequence:
+      result = genConstSeq(p, n, t)
+    else:
+      result = genConstSimpleList(p, n)
   else:
     var d: TLoc
     initLocExpr(p, n, d)

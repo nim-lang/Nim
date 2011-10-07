@@ -1426,6 +1426,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkCStringToString: convCStrToStr(p, n, r)
   of nkStmtListExpr: genStmtListExpr(p, n, r)
   of nkEmpty: nil
+  of nkMetaNode: gen(p, n.sons[0], r)
   else: InternalError(n.info, "gen: unknown node type: " & $n.kind)
   
 var globals: PGlobals

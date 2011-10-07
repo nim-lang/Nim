@@ -55,25 +55,26 @@ proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
     GlobalError(typ.n.info, errXisNoType, typeToString(typ))
 
 proc semConstExpr(c: PContext, n: PNode): PNode = 
-  result = semExprWithType(c, n)
-  if result == nil: 
-    GlobalError(n.info, errConstExprExpected)
-    return 
-  result = getConstExpr(c.module, result)
-  if result == nil: GlobalError(n.info, errConstExprExpected)
-  
-proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
   var e = semExprWithType(c, n)
   if e == nil: 
     GlobalError(n.info, errConstExprExpected)
     return nil
   result = getConstExpr(c.module, e)
-  if result == nil: 
-    #writeln(output, renderTree(n));
+  if result == nil:
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty: 
       GlobalError(n.info, errConstExprExpected)
-
+  when false:
+    result = semExprWithType(c, n)
+    if result == nil: 
+      GlobalError(n.info, errConstExprExpected)
+      return 
+    result = getConstExpr(c.module, result)
+    if result == nil: GlobalError(n.info, errConstExprExpected)
+  
+proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
+  result = semConstExpr(c, n)
+  
 include seminst, semcall
   
 proc typeMismatch(n: PNode, formal, actual: PType) = 
