@@ -33,22 +33,6 @@ proc isTypeDesc(n: PNode): bool =
     result = true
   else: result = false
   
-proc evalTemplateAux(c: PContext, templ, actual: PNode, sym: PSym): PNode = 
-  case templ.kind
-  of nkSym: 
-    var p = templ.sym
-    if (p.kind == skParam) and (p.owner.id == sym.id): 
-      result = copyTree(actual.sons[p.position])
-    else: 
-      result = copyNode(templ)
-  of nkNone..nkIdent, nkType..nkNilLit: # atom
-    result = copyNode(templ)
-  else: 
-    result = copyNode(templ)
-    newSons(result, sonsLen(templ))
-    for i in countup(0, sonsLen(templ) - 1): 
-      result.sons[i] = evalTemplateAux(c, templ.sons[i], actual, sym)
-  
 var evalTemplateCounter: int = 0
   # to prevend endless recursion in templates instantation
 
@@ -77,13 +61,13 @@ proc evalTemplateArgs(c: PContext, n: PNode, s: PSym): PNode =
       arg = fitNode(c, s.typ.sons[i], semExprWithType(c, arg))
     addSon(result, arg)
 
-proc evalTemplate(c: PContext, n: PNode, sym: PSym): PNode = 
+proc evalTemplate*(c: PContext, n: PNode, sym: PSym): PNode = 
   var args: PNode
   inc(evalTemplateCounter)
   if evalTemplateCounter <= 100: 
     # replace each param by the corresponding node:
     args = evalTemplateArgs(c, n, sym)
-    result = evalTemplateAux(c, sym.ast.sons[codePos], args, sym)
+    result = evalTemplateAux(sym.ast.sons[codePos], args, sym)
     dec(evalTemplateCounter)
   else:
     GlobalError(n.info, errTemplateInstantiationTooNested)

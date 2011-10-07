@@ -925,6 +925,11 @@ proc computeSize(typ: PType): biggestInt =
   var a: biggestInt = 1
   result = computeSizeAux(typ, a)
 
+proc getReturnType*(s: PSym): PType =
+  # Obtains the return type of a iterator/proc/macro/template
+  assert s.kind in { skProc, skTemplate, skMacro, skIterator }
+  result = s.typ.n.sons[0].typ
+
 proc getSize(typ: PType): biggestInt = 
   result = computeSize(typ)
   if result < 0: InternalError("getSize(" & $typ.kind & ')')
