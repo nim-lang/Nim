@@ -456,6 +456,12 @@ proc ToLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} = 
   result = info.col
 
+proc toFileLine*(info: TLineInfo): string {.inline.} =
+  result = info.toFilename & ":" & $info.line
+
+proc toFileLineCol*(info: TLineInfo): string {.inline.} =
+  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+
 var checkPoints: seq[TLineInfo] = @[]
 
 proc addCheckpoint*(info: TLineInfo) = 
