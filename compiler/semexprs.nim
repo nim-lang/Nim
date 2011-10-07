@@ -9,10 +9,6 @@
 
 # this module does the semantic checking for expressions
 
-const 
-  ConstAbstractTypes = {tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
-    tyArrayConstr, tyTuple, tySet}
-
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
@@ -49,6 +45,11 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s)
   
+proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
+  result = copyTree(s.ast)
+  result.typ = s.typ
+  result.info = n.info
+
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
@@ -56,24 +57,25 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         getModule(s).id != c.module.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
-  of skConst: 
-    #
-    # Consider::
-    #     const x = []
-    #     proc p(a: openarray[int])
-    #     proc q(a: openarray[char])
-    #     p(x)
-    #     q(x)
-    #
-    # It is clear that ``[]`` means two totally different things. Thus, we
-    # copy `x`'s AST into each context, so that the type fixup phase can
-    # deal with two different ``[]``.
-    #
+  of skConst:
     markUsed(n, s)
-    if s.typ.kind in ConstAbstractTypes:
-      result = copyTree(s.ast)
-      result.typ = s.typ
-      result.info = n.info
+    case skipTypes(s.typ, abstractInst).kind
+    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
+        tyTuple, tySet, tyUInt..tyUInt64:
+      result = inlineConst(n, s)
+    of tyArrayConstr, tySequence:
+      # Consider::
+      #     const x = []
+      #     proc p(a: openarray[int])
+      #     proc q(a: openarray[char])
+      #     p(x)
+      #     q(x)
+      #
+      # It is clear that ``[]`` means two totally different things. Thus, we
+      # copy `x`'s AST into each context, so that the type fixup phase can
+      # deal with two different ``[]``.
+      if s.ast.len == 0: result = inlineConst(n, s)
+      else: result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)

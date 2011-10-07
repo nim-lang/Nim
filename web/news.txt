@@ -76,7 +76,7 @@ Library Additions
   ``system.deallocShared``, ``system.reallocShared``.
 - Added explicit channels for thread communication.
 - Added ``matchers`` module for email address etc. matching.
-- Added ``strutils.unindent``.
+- Added ``strutils.unindent``, ``strutils.countLines``.
 - Added ``system.slurp`` for easy resource embedding.
 - Added ``system.running`` for threads.
 - Added ``xmltree.innerText``.

@@ -43,7 +43,7 @@ const
   evalMaxIterations = 500_000 # max iterations of all loops
   evalMaxRecDepth = 10_000    # max recursion depth for evaluation
 
-# Much better: use a timeout! -> Wether code compiles depends on the machine
+# other idea: use a timeout! -> Wether code compiles depends on the machine
 # the compiler runs on then! Bad idea!
 
 proc newStackFrame*(): PStackFrame = 
@@ -754,17 +754,15 @@ proc evalRepr(c: PEvalContext, n: PNode): PNode =
   if isSpecial(result): return 
   result = newStrNodeT(renderTree(result, {renderNoComments}), n)
 
-proc isEmpty(n: PNode): bool = 
-  result = (n != nil) and (n.kind == nkEmpty)
+proc isEmpty(n: PNode): bool =
+  result = n != nil and n.kind == nkEmpty
 
 # The lexer marks multi-line strings as residing at the line where they 
 # are closed. This function returns the line where the string begins
 # Maybe the lexer should mark both the beginning and the end of expressions,
 # then this function could be removed.
 proc stringStartingLine(s: PNode): int =
-  var totalLines = 0
-  for ln in splitLines(s.strVal): inc totalLines
-  result = s.info.line - totalLines
+  result = s.info.line - countLines(s.strVal)
 
 proc evalParseExpr(c: PEvalContext, n: Pnode): Pnode =
   var code = evalAux(c, n.sons[1], {})
@@ -1069,9 +1067,6 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
   case n.kind                 # atoms:
-  of nkMetaNode:
-    result = copyTree(n.sons[0])
-    result.typ = n.typ
   of nkEmpty: result = n
   of nkSym: result = evalSym(c, n, flags)
   of nkType..nkNilLit: result = copyNode(n) # end of atoms
@@ -1131,6 +1126,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
      nkTypeSection, nkTemplateDef, nkConstSection, nkIteratorDef,
      nkConverterDef, nkIncludeStmt, nkImportStmt, nkFromStmt: 
     nil
+  of nkMetaNode:
+    result = copyTree(n.sons[0])
+    result.typ = n.typ
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
      nkLambda, nkContinueStmt, nkIdent: 
     stackTrace(c, n, errCannotInterpretNodeX, $n.kind)

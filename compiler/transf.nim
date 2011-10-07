@@ -161,7 +161,6 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
 
 proc transformSymAux(c: PTransf, n: PNode): PNode = 
   var b: PNode
-  if (n.kind != nkSym): internalError(n.info, "transformSym")
   var tc = c.transCon
   if sfBorrow in n.sym.flags: 
     # simply exchange the symbol:
@@ -176,14 +175,15 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if result != nil: return
     tc = tc.next
   result = b
-  case b.sym.kind
-  of skConst, skEnumField: 
-    if sfFakeConst notin b.sym.flags:
-      if skipTypes(b.sym.typ, abstractInst).kind notin ConstantDataTypes: 
-        result = getConstExpr(c.module, b)
-        if result == nil: InternalError(b.info, "transformSym: const")
-  else: 
-    nil
+  when false:
+    case b.sym.kind
+    of skConst, skEnumField: 
+      if sfFakeConst notin b.sym.flags:
+        if skipTypes(b.sym.typ, abstractInst).kind notin ConstantDataTypes: 
+          result = getConstExpr(c.module, b)
+          if result == nil: InternalError(b.info, "transformSym: const")
+    else: 
+      nil
 
 proc transformSym(c: PTransf, n: PNode): PTransNode = 
   result = PTransNode(transformSymAux(c, n))
@@ -360,7 +360,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n.sons[1].typ, abstractVarRange)
   case dest.kind
-  of tyInt..tyInt64, tyEnum, tyChar, tyBool: 
+  of tyInt..tyInt64, tyEnum, tyChar, tyBool, tyUInt..tyUInt64: 
     if not isOrdinalType(source):
       # XXX int64 -> float conversion?
       result = transformSons(c, n)
@@ -659,7 +659,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 proc transform(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 
-    return transformSym(c, n)
+    result = transformSym(c, n)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
     # nothing to be done for leaves:
     result = PTransNode(n)
@@ -719,7 +719,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
-  if cnst != nil: 
+  if cnst != nil and (cnst.kind != nkBracket or cnst.len == 0): 
     result = PTransNode(cnst) # do not miss an optimization  
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 

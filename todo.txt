@@ -1,10 +1,10 @@
 Version 0.8.14
 ==============
 
+- fix the 'const' issues
 - 'let x = y'; const ptr/ref
 - fix actors.nim
 - make threadvar efficient again on linux after testing
-- fix the 'const' issues
 - test the sort implementation again
 - optional indentation for 'case' statement
 

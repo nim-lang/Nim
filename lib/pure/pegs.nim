@@ -1651,20 +1651,20 @@ proc peg*(pattern: string): TPeg =
   ##   peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
-proc escapePeg*(s: string): string = 
+proc escapePeg*(s: string): string =
   ## escapes `s` so that it is matched verbatim when used as a peg.
   result = ""
   var inQuote = false
-  for c in items(s):  
+  for c in items(s):
     case c
-    of '\0'..'\31', '\'', '"', '\\': 
-      if inQuote: 
+    of '\0'..'\31', '\'', '"', '\\':
+      if inQuote:
         result.add('\'')
         inQuote = false
       result.add("\\x")
       result.add(toHex(ord(c), 2))
     else:
-      if not inQuote: 
+      if not inQuote:
         result.add('\'')
         inQuote = true
       result.add(c)
