@@ -362,7 +362,7 @@ static N_INLINE(NI32, float32ToInt32)(float val) {
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
     TGenericSeq Sup;                      \
-    NIM_CHAR data[length + 1];            \
+    NIM_CHAR data[(length) + 1];          \
   } name = {{length, length}, str}
 
 typedef struct TStringDesc* string;
