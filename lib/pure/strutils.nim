@@ -972,9 +972,9 @@ proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
 
 type
   TFloatFormat* = enum ## the different modes of floating point formating
-    ffDefault,    ## use the shorter floating point notation
-    ffDecimal,    ## use decimal floating point notation
-    ffScientific  ## use scientific notation (using ``e`` character)
+    ffDefault,         ## use the shorter floating point notation
+    ffDecimal,         ## use decimal floating point notation
+    ffScientific       ## use scientific notation (using ``e`` character)
 
 proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
                          precision = 16): string {.noSideEffect,

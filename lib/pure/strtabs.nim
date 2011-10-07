@@ -218,7 +218,7 @@ proc `$`*(t: PStringTable): string {.rtl, extern: "nstDollar".} =
     result.add("}")
 
 when isMainModule:
-  const x = {"k": "v", "11": "22", "565": "67"}.newStringTable
+  var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
   assert x["k"] == "v"
   assert x["11"] == "22"
   assert x["565"] == "67"

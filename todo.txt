@@ -1,12 +1,15 @@
 Version 0.8.14
 ==============
 
-- fix the 'const' issues
+- optimize unused constants away
 - 'let x = y'; const ptr/ref
 - fix actors.nim
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
 - optional indentation for 'case' statement
+- ``bind`` as a declaration
+- document splicing
+- fix unidecode.nim
 
 
 version 0.9.0
@@ -20,6 +23,7 @@ version 0.9.0
 - implement closures; implement proper coroutines
 - make exceptions compatible with C++ exceptions
 - ``=`` should be overloadable; requires specialization for ``=``
+- 'const' objects including case objects
 
 Bugs
 ----
@@ -93,6 +97,7 @@ Low priority
 ------------
 
 - ``with proc `+`(x, y: T): T`` for generic code
+- new feature: ``distinct T with operations``
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful

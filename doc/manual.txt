@@ -1547,9 +1547,8 @@ The rules for compile-time computability are:
    computable arguments.
 
 
-Constants cannot be of type ``var`` or ``object``, nor can 
-they contain such a type. For the types ``ptr`` and ``ref`` only the
-constant literal ``nil`` is possible.
+Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can 
+they contain such a type.
 
 
 If statement
@@ -3322,7 +3321,11 @@ improve compile times.
 A thread proc is passed to ``createThread`` and invoked indirectly; so the
 ``thread`` pragma implies ``procvar``.
 
-If a global variable can also be marked with the ``thread`` pragma; it is 
+
+Threadvar pragma
+----------------
+
+A global variable can be marked with the `threadvar`:idx: pragma; it is 
 a `thead-local`:idx: variable then:
 
 .. code-block:: nimrod
