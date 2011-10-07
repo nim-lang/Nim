@@ -18,7 +18,7 @@
 ##
 
 import
-  macros
+  macros, terminal
 
 type
   TestStatus* = enum OK, FAILED
@@ -45,6 +45,10 @@ template suite*(name: expr, body: stmt): stmt =
 
     body
 
+proc printStatus*(s: TestStatus, name: string) =
+  var color = (if s == OK: fgGreen else: fgRed)
+  styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+  
 template test*(name: expr, body: stmt): stmt =
   if bind shouldRun(name):
     bind checkpoints = @[]
@@ -56,7 +60,7 @@ template test*(name: expr, body: stmt): stmt =
 
     finally:
       TestTeardownIMPL()
-      echo "[" & $TestStatusIMPL & "] " & name & "\n"
+      printStatus(TestStatusIMPL, name)
 
 proc checkpoint*(msg: string) =
   checkpoints.add(msg)

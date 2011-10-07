@@ -14,6 +14,8 @@
 ## Changing the style is permanent even after program termination! Use the
 ## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
 
+import macros
+
 when defined(windows):
   import windows, os
 
@@ -210,24 +212,32 @@ type
 
 when not defined(windows):
   var
+    # XXX: These better be thread-local
     gFG = 0
     gBG = 0
 
-proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) =
-  ## writes the text `txt` in a given `style`.
+proc setStyle*(style: set[TStyle]) =
+  ## sets the terminal style
   when defined(windows):
     var a = 0'i16
     if styleBright in style: a = a or int16(FOREGROUND_INTENSITY)
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    var old = getAttributes()
     discard SetConsoleTextAttribute(conHandle, old or a)
-    stdout.write(txt)
-    discard SetConsoleTextAttribute(conHandle, old)
   else:
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')
+
+proc WriteStyled*(txt: string, style: set[TStyle] = {styleBright}) =
+  ## writes the text `txt` in a given `style`.
+  when defined(windows):
+    var old = getAttributes()
+    setStyle(style)
+    stdout.write(txt)
+    discard SetConsoleTextAttribute(conHandle, old)
+  else:
+    setStyle(style)
     stdout.write(txt)
     resetAttributes()
     if gFG != 0:
@@ -297,6 +307,24 @@ proc setBackgroundColor*(bg: TBackgroundColor, bright=false) =
     gBG = ord(bg)
     if bright: inc(gBG, 60)
     stdout.write("\e[" & $gBG & 'm')
+
+# XXX: 
+# These should be private, but there is no yet 
+# facility for binding local symbols within macros
+proc styledEchoProcessArg*(s: string)               = write stdout, s
+proc styledEchoProcessArg*(style: TStyle)           = setStyle {style}
+proc styledEchoProcessArg*(style: set[TStyle])      = setStyle style
+proc styledEchoProcessArg*(color: TForegroundColor) = setForeGroundColor color
+proc styledEchoProcessArg*(color: TBackgroundColor) = setBackGroundColor color
+
+macro styledEcho*(m: stmt): stmt =
+  result = newNimNode(nnkStmtList)
+
+  for i in countup(1, m.len - 1):
+    result.add(newCall(!"styledEchoProcessArg", m[i]))
+
+  result.add(newCall(!"write", newIdentNode("stdout"), newStrLitNode("\n")))
+  result.add(newCall(!"resetAttributes"))
 
 when isMainModule:
   system.addQuitProc(resetAttributes)
