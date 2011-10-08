@@ -312,7 +312,7 @@ proc setBackgroundColor*(bg: TBackgroundColor, bright=false) =
 # These should be private, but there is no yet 
 # facility for binding local symbols within macros
 proc styledEchoProcessArg*(s: string)               = write stdout, s
-proc styledEchoProcessArg*(style: TStyle)           = setStyle {style}
+proc styledEchoProcessArg*(style: TStyle)           = setStyle({style})
 proc styledEchoProcessArg*(style: set[TStyle])      = setStyle style
 proc styledEchoProcessArg*(color: TForegroundColor) = setForeGroundColor color
 proc styledEchoProcessArg*(color: TBackgroundColor) = setBackGroundColor color

@@ -5,5 +5,6 @@ discard """
 
 import unidecode
 
-unidecode("Äußerst")
+assert unidecode("\\x53\\x17\\x4E\\xB0") == "Bei Jing"
+echo unidecode("Äußerst")
 
