@@ -22,7 +22,7 @@ type
     nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall, 
     nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
     nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 
-    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, 
+    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, nnkCurlyExpr,
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkAccQuoted, 

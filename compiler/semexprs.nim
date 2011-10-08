@@ -712,10 +712,9 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else: 
       GlobalError(n.Info, errUndeclaredFieldX, i.s)
 
-proc buildOverloadedSubscripts(n: PNode, inAsgn: bool): PNode =
+proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newIdentNode(
-    if inAsgn: getIdent"[]=" else: getIdent"[]", n.info))
+  result.add(newIdentNode(ident, n.info))
   for i in 0 .. n.len-1: result.add(n[i])
   
 proc semDeref(c: PContext, n: PNode): PNode =
@@ -772,7 +771,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
-    result = semExpr(c, buildOverloadedSubscripts(n, inAsgn=false))
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
 
 proc propertyWriteAccess(c: PContext, n, a: PNode): PNode = 
   var id = considerAcc(a[1])
@@ -828,10 +827,15 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     # --> `[]=`(a, i, x)
     a = semSubscript(c, a, {efLValue})
     if a == nil:
-      result = buildOverloadedSubscripts(n.sons[0], inAsgn=true)
+      result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
       add(result, n[1])
       return semExprNoType(c, result)
-  else: 
+  of nkCurlyExpr:
+    # a{i} = x -->  `{}=`(a, i, x)
+    result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
+    add(result, n[1])
+    return semExprNoType(c, result)
+  else:
     a = semExprWithType(c, a, {efLValue})
   n.sons[0] = a
   # a = b # both are vars, means: a[] = b[]
@@ -1243,6 +1247,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = explicitGenericInstantiation(c, n, s)
     else: 
       result = semArrayAccess(c, n, flags)
+  of nkCurlyExpr:
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent"{}"), flags)
   of nkPragmaExpr: 
     # which pragmas are allowed for expressions? `likely`, `unlikely`
     internalError(n.info, "semExpr() to implement") # XXX: to implement

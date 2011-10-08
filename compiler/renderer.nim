@@ -330,7 +330,8 @@ proc lsub(n: PNode): int =
     else: result = len(atom(n))
   of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit: 
     result = len(atom(n))
-  of nkCall, nkBracketExpr, nkConv: result = lsub(n.sons[0]) + lcomma(n, 1) + 2
+  of nkCall, nkBracketExpr, nkCurlyExpr, nkConv:
+    result = lsub(n.sons[0]) + lcomma(n, 1) + 2
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: result = lsub(n[1])
   of nkCast: result = lsub(n.sons[0]) + lsub(n.sons[1]) + len("cast[]()")
   of nkAddr: result = lsub(n.sons[0]) + len("addr()")
@@ -702,6 +703,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketLe, "[")
     gcomma(g, n, 1)
     put(g, tkBracketRi, "]")
+  of nkCurlyExpr:
+    gsub(g, n.sons[0])
+    put(g, tkCurlyLe, "{")
+    gcomma(g, n, 1)
+    put(g, tkCurlyRi, "}")
   of nkPragmaExpr: 
     gsub(g, n.sons[0])
     gcomma(g, n, 1)

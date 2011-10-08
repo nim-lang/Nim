@@ -25,7 +25,7 @@ indexExpr ::= expr
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
-symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')' | '[' ']'
+symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')' | '[' ']' | '{' '}'
                | '=' | literal)+ '`'
          | IDENT
          
@@ -33,6 +33,7 @@ primaryPrefix ::= (prefixOperator | 'bind') optInd
 primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '(' optInd namedExprList optPar ')'
                 | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
+                | '{' optInd ':' | colonExprList optPar '}'
                 | pragma
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 

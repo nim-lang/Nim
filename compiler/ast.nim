@@ -80,6 +80,7 @@ type
     nkPostfix,            # something like a! (also used for visibility)
     nkPar,                # syntactic (); may be a tuple constructor
     nkCurly,              # syntactic {}
+    nkCurlyExpr,          # an expression like a{i}
     nkBracket,            # syntactic []
     nkBracketExpr,        # an expression like a[i..j, k]
     nkPragmaExpr,         # an expression like a{.pragmas.}

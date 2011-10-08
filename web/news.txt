@@ -37,7 +37,7 @@ Changes affecting backwards compatibility
 - The ``is`` operator is now used to check type equivalence in generic code.
 - The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
 - The threading API has been completely redesigned.
-- The interface of the ``unidecode`` module changed and it's now thread-safe.
+- The ``unidecode`` module is now thread-safe and its interface has changed.
 
 
 Language Additions
@@ -52,6 +52,9 @@ Language Additions
 - There is a new ``discardable`` pragma that can be used to mark a routine 
   so that its result can be discarded implicitely.
 - Constants can now have the type ``seq``.
+- There is a new user-definable syntactic construct ``a{i, ...}``
+  that has no semantics yet for built-in types and so can be overloaded to your
+  heart's content.
 
 
 Compiler Additions

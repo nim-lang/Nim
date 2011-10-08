@@ -189,6 +189,10 @@ proc parseSymbol(p: var TParser): PNode =
         add(result, newIdentNodeP(getIdent"()", p))
         getTok(p)
         eat(p, tkParRi)
+      of tkCurlyLe:
+        add(result, newIdentNodeP(getIdent"{}", p))
+        getTok(p)
+        eat(p, tkCurlyRi)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr, tkDotDot:
         add(result, newIdentNodeP(p.tok.ident, p))
         getTok(p)
@@ -457,7 +461,13 @@ proc primary(p: var TParser): PNode =
       result = parseGStrLit(p, result)
     of tkBracketLe: 
       result = indexExprList(p, result)
-    else: break 
+    of tkCurlyLe:
+      var a = result
+      result = newNodeP(nkCurlyExpr, p)
+      var b = setOrTableConstr(p)
+      result.add(a)
+      for i in 0 .. <b.len: result.add(b.sons[i])
+    else: break
   
 proc lowestExprAux(p: var TParser, limit: int): PNode = 
   result = primary(p) 
