@@ -33,7 +33,7 @@ primaryPrefix ::= (prefixOperator | 'bind') optInd
 primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '(' optInd namedExprList optPar ')'
                 | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
-                | '{' optInd ':' | colonExprList optPar '}'
+                | '{' optInd [indexExpr (comma indexExpr)* [comma]] optPar '}'
                 | pragma
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 
@@ -98,7 +98,7 @@ complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
               | blockStmt | asmStmt
               | procDecl | iteratorDecl | macroDecl | templateDecl | methodDecl
               | constSection | letSection | varSection
-              | typeSection | whenStmt
+              | typeSection | whenStmt | bindStmt
 
 indPush ::= IND # and push indentation onto the stack
 indPop ::= # pop indentation from the stack
@@ -132,6 +132,7 @@ blockStmt ::= 'block' [symbol] ':' stmt
 filename ::= symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
 importStmt ::= 'import' filename (comma filename)*
 includeStmt ::= 'include' filename (comma filename)*
+bindStmt ::= 'bind' IDENT (comma IDENT)*
 fromStmt ::= 'from' filename 'import' symbol (comma symbol)*
 
 pragma ::= '{.' optInd (colonExpr [comma])* optPar ('.}' | '}')

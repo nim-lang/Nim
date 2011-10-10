@@ -212,20 +212,20 @@ proc parseSymbol(p: var TParser): PNode =
 proc indexExpr(p: var TParser): PNode = 
   result = parseExpr(p)
 
-proc indexExprList(p: var TParser, first: PNode): PNode = 
-  result = newNodeP(nkBracketExpr, p)
+proc indexExprList(p: var TParser, first: PNode, k: TNodeKind, 
+                   endToken: TTokType): PNode = 
+  result = newNodeP(k, p)
   addSon(result, first)
   getTok(p)
   optInd(p, result)
-  while (p.tok.tokType != tkBracketRi) and (p.tok.tokType != tkEof) and
-      (p.tok.tokType != tkSad): 
+  while p.tok.tokType notin {endToken, tkEof, tkSad}:
     var a = indexExpr(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
   optPar(p)
-  eat(p, tkBracketRi)
+  eat(p, endToken)
 
 proc exprColonEqExpr(p: var TParser, kind: TNodeKind, tok: TTokType): PNode = 
   var a = parseExpr(p)
@@ -460,13 +460,9 @@ proc primary(p: var TParser): PNode =
       addSon(result, parseSymbol(p))
       result = parseGStrLit(p, result)
     of tkBracketLe: 
-      result = indexExprList(p, result)
+      result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
-      var a = result
-      result = newNodeP(nkCurlyExpr, p)
-      var b = setOrTableConstr(p)
-      result.add(a)
-      for i in 0 .. <b.len: result.add(b.sons[i])
+      result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
     else: break
   
 proc lowestExprAux(p: var TParser, limit: int): PNode = 
@@ -1291,6 +1287,18 @@ proc parseVariable(p: var TParser): PNode =
   else: result = parseIdentColonEquals(p, {withPragma})
   indAndComment(p, result)    # special extension!
   
+proc parseBind(p: var TParser): PNode =
+  result = newNodeP(nkBindStmt, p)
+  getTok(p)
+  optInd(p, result)
+  while p.tok.tokType == tkSymbol: 
+    var a = newIdentNodeP(p.tok.ident, p)
+    getTok(p)
+    addSon(result, a)
+    if p.tok.tokType != tkComma: break 
+    getTok(p)
+    optInd(p, a)
+  
 proc simpleStmt(p: var TParser): PNode = 
   case p.tok.tokType
   of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
@@ -1329,6 +1337,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkLet: result = parseSection(p, nkLetSection, parseConstant)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
+  of tkBind: result = parseBind(p)
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode = 

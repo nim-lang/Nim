@@ -100,10 +100,12 @@ proc OpenScope*(tab: var TSymTab)
 proc RawCloseScope*(tab: var TSymTab)
   # the real "closeScope" adds some
   # checks in parsobj
-  # these are for debugging only:
-proc debug*(n: PSym)
-proc debug*(n: PType)
-proc debug*(n: PNode)
+
+# these are for debugging only: They are not really deprecated, but I want
+# the warning so that release versions do not contain debugging statements:
+proc debug*(n: PSym) {.deprecated.}
+proc debug*(n: PType) {.deprecated.}
+proc debug*(n: PNode) {.deprecated.}
 
 # --------------------------- ident tables ----------------------------------
 proc IdTableGet*(t: TIdTable, key: PIdObj): PObject

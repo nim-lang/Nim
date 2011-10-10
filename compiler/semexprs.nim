@@ -1207,7 +1207,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.kind == nkDotCall: 
       result.kind = nkCall
       result = semExpr(c, result, flags)
-  of nkBind: 
+  of nkBind:
+    Message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:

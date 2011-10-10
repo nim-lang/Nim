@@ -31,6 +31,13 @@ You have to find out for yourself. If you don't find a tongue-in-cheek
 interpretation you will have to look harder.
 
 
+Why yet another programming language?
+-------------------------------------
+
+Nimrod is one of the very few *programmable* strongly typed languages, and 
+one of the even fewer that will produce native binaries that require no 
+runtime or interpreter.
+
 How is Nimrod licensed?
 -----------------------
 

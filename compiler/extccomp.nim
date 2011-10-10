@@ -239,9 +239,9 @@ const
      asmStmtFrmt: "asm($1);$n", 
      props: {hasSwitchRange, hasComputedGoto, hasCpp})]
 
-var ccompiler*: TSystemCC = ccGcc
+var ccompiler*: TSystemCC = ccGcc # the used compiler
 
-const                   # the used compiler
+const               
   hExt* = "h"
 
 var cExt*: string = "c" # extension of generated C/C++ files

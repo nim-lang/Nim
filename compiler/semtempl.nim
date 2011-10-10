@@ -96,6 +96,19 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
       addSon(result, newSymNode(a))
       a = nextOverloadIter(o, c, n)
 
+proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
+  for i in 0 .. < n.len:
+    var a = n.sons[i]
+    if a.kind == nkIdent:
+      var s = SymtabGet(c.Tab, a.ident)
+      if s != nil:
+        toBind.incl(s.name.id)
+      else:
+        localError(a.info, errUndeclaredIdentifier, a.ident.s)
+    else: 
+      illFormedAst(a)
+  result = newNodeI(nkEmpty, n.info)
+
 proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool, 
                            toBind: var TIntSet): PNode = 
   var s: PSym
@@ -103,7 +116,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool,
   of nkIdent: 
     if not withinBind and not Contains(toBind, n.ident.id): 
       s = SymTabLocalGet(c.Tab, n.ident)
-      if (s != nil): 
+      if s != nil: 
         result = newSymNode(s)
         result.info = n.info
       else: 
@@ -115,6 +128,8 @@ proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool,
     result = n
   of nkBind: 
     result = resolveTemplateParams(c, n.sons[0], true, toBind)
+  of nkBindStmt:
+    result = semBindStmt(c, n, toBind)
   else: 
     result = n
     for i in countup(0, sonsLen(n) - 1): 

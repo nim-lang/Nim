@@ -38,6 +38,7 @@ Changes affecting backwards compatibility
 - The ``pure`` pragma for procs has been renamed to ``noStackFrame``. 
 - The threading API has been completely redesigned.
 - The ``unidecode`` module is now thread-safe and its interface has changed.
+- The ``bind`` expression is deprecated, use a ``bind`` declaration instead.
 
 
 Language Additions
@@ -55,6 +56,8 @@ Language Additions
 - There is a new user-definable syntactic construct ``a{i, ...}``
   that has no semantics yet for built-in types and so can be overloaded to your
   heart's content.
+- ``bind`` (used for symbol binding in templates and generics) is now a
+  declarative statement.
 
 
 Compiler Additions

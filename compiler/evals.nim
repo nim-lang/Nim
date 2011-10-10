@@ -822,7 +822,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     addSon(result, arg)
 
 var evalTemplateCounter = 0
-  # to prevend endless recursion in templates instantation
+  # to prevent endless recursion in templates instantation
 
 proc evalTemplate(n: PNode, sym: PSym): PNode = 
   inc(evalTemplateCounter)
