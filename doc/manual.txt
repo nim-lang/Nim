@@ -2589,11 +2589,17 @@ Symbol binding within templates happens after template instantation:
   
   echo genId() # Error: undeclared identifier: 'lastId'
 
+
+Bind statement
+~~~~~~~~~~~~~~
+
+Syntax::
+  
+  bindStmt ::= 'bind' IDENT (comma IDENT)*
+
 Exporting a template is a often a leaky abstraction. However, to compensate for
-this case, the ``bind`` operator can be used: All identifiers within a ``bind``
-context are bound early (i.e. when the template is parsed).
-The affected identifiers are then always bound early even if the other
-occurences are in no ``bind`` context: 
+this case, a `bind`:idx: statement can be used: It declares all identifiers
+that should be bound early (i.e. when the template is parsed):
 
 .. code-block:: nimrod
   # Module A
@@ -2601,7 +2607,8 @@ occurences are in no ``bind`` context:
     lastId = 0
   
   template genId*: expr =
-    inc(bind lastId)
+    bind lastId
+    inc(lastId)
     lastId
 
 .. code-block:: nimrod
@@ -2610,14 +2617,8 @@ occurences are in no ``bind`` context:
   
   echo genId() # Works
 
+A ``bind`` statement can also be used in generics for the same purpose.
 
-**Style note**: For code readability, it is the best idea to use the least
-powerful programming construct that still suffices. So the "check list" is:
-
-(1) Use an ordinary proc/iterator, if possible.
-(2) Else: Use a generic proc/iterator, if possible.
-(3) Else: Use a template, if possible.
-(4) Else: Use a macro.
 
 Identifier construction
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -2739,6 +2740,14 @@ regular expressions:
   else:
     return tkUnknown
 
+
+**Style note**: For code readability, it is the best idea to use the least
+powerful programming construct that still suffices. So the "check list" is:
+
+(1) Use an ordinary proc/iterator, if possible.
+(2) Else: Use a generic proc/iterator, if possible.
+(3) Else: Use a template, if possible.
+(4) Else: Use a macro.
 
 
 Modules

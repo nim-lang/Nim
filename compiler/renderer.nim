@@ -345,6 +345,7 @@ proc lsub(n: PNode): int =
   of nkTupleTy: result = lcomma(n) + len("tuple[]")
   of nkDotExpr: result = lsons(n) + 1
   of nkBind: result = lsons(n) + len("bind_")
+  of nkBindStmt: result = lcomma(n) + len("bind_")
   of nkCheckedFieldExpr: result = lsub(n.sons[0])
   of nkLambda: result = lsons(n) + len("lambda__=_")
   of nkConstDef, nkIdentDefs: 
@@ -1027,6 +1028,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gcoms(g)
     gstmts(g, lastSon(n), c)
+  of nkBindStmt: 
+    putWithSpace(g, tkBind, "bind")
+    gcomma(g, n, c)
   of nkElifBranch: 
     optNL(g)
     putWithSpace(g, tkElif, "elif")

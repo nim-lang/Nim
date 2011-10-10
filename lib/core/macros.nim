@@ -42,7 +42,8 @@ type
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
     nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
-    nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
+    nnkIncludeStmt, nnkBindStmt,
+    nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
     nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
     nnkRefTy, nnkPtrTy, nnkVarTy, 
@@ -195,6 +196,7 @@ proc toLisp*(n: PNimrodNode): string {.compileTime.} =
   ## You can use this as a tool to explore the Nimrod's abstract syntax 
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement
+
   if n == nil: return "nil"
 
   result = $n.kind

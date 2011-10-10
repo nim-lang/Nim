@@ -700,9 +700,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
-      if s.typ.sons[0] != nil and kind != skIterator: 
-        addDecl(c, newSym(skUnknown, getIdent("result"), nil))
-      n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], {})
+      if s.typ.sons[0] != nil and kind != skIterator:
+        addDecl(c, newSym(skUnknown, getIdent"result", nil))
+      var toBind = initIntSet()
+      n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], {}, toBind)
       fixupInstantiatedSymbols(c, s)
     if sfImportc in s.flags: 
       # so we just ignore the body after semantic checking for importc:

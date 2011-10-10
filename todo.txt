@@ -7,7 +7,6 @@ Version 0.8.14
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
 - optional indentation for 'case' statement
-- ``bind`` as a declaration
 - document & test splicing; don't forget to test negative indexes
 - thread local vs. global raiseHook()
 
@@ -105,6 +104,39 @@ Low priority
   is allocated
 - timeout for locks
 
+
+Super operators
+===============
+
+macro (pattern) [T](arg: array[T]) =
+  
+  
+
+Patterns
+--------
+
+Patterns are PEGs over the Nimrod AST. Patterns consist of:
+
+  type
+    TPatternKind = enum
+      pkAny,              ## any node (.)
+      pkNodeClass,        ## set of node kinds
+      pkTerminal,         ## 'xyz'
+      pkNonTerminal,      ## a
+      pkSequence,         ## a b c
+      pkOrderedChoice,    ## a / b / c
+      pkGreedyRep,        ## a*
+                          ## a+     --> (a a*)
+      pkOption,           ## a?
+      pkAndPredicate,     ## &a
+      pkNotPredicate,     ## !a
+      pkCapture,          ## {a}
+      pkBackRef,          ## $i
+      pkSearch,           ## @a
+      pkCapturedSearch,   ## {@} a
+      pkRule,             ## a <- b
+      pkGrammar,          ## list of rules
+  
 
 Version 2
 =========

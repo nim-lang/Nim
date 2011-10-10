@@ -162,6 +162,7 @@ type
     nkImportStmt,         # an import statement
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
+    nkBindStmt,           # a bind statement
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
