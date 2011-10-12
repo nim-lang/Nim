@@ -1,6 +1,8 @@
 type
-  HttpDataProc* = proc (a2: ptr THttpParser, at: cstring, length: csize): cint
-  HttpProc* = proc (a2: ptr THttpParser): cint
+  csize = int
+  
+  HttpDataProc* = proc (a2: ptr THttpParser, at: cstring, length: csize): cint {.cdecl.}
+  HttpProc* = proc (a2: ptr THttpParser): cint {.cdecl.}
 
   THttpMethod* = enum
     HTTP_DELETE = 0, HTTP_GET, HTTP_HEAD, HTTP_POST, HTTP_PUT, HTTP_CONNECT,

@@ -224,31 +224,31 @@ const
 
 proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
-type 
-  TWSAData* {.pure, final.} = object 
+type
+  TWSAData* {.pure, final, importc: "WSADATA", header: "Winsock2.h".} = object 
     wVersion, wHighVersion: int16
     szDescription: array[0..WSADESCRIPTION_LEN, char]
     szSystemStatus: array[0..WSASYS_STATUS_LEN, char]
     iMaxSockets, iMaxUdpDg: int16
     lpVendorInfo: cstring
     
-  TSockAddr* {.pure, final.} = object 
+  TSockAddr* {.pure, final, importc: "SOCKADDR", header: "Winsock2.h".} = object 
     sa_family*: int16 # unsigned
     sa_data: array[0..13, char]
 
-  TInAddr* {.pure, final.} = object ## struct in_addr
+  TInAddr* {.pure, final, importc: "IN_ADDR", header: "Winsock2.h".} = object
     s_addr*: int32  # IP address
   
-  Tsockaddr_in* {.pure, final.} = object
+  Tsockaddr_in* {.pure, final, importc: "SOCKADDR_IN", header: "Winsock2.h".} = object
     sin_family*: int16
     sin_port*: int16 # unsigned
     sin_addr*: TInAddr
     sin_zero*: array[0..7, char]
 
-  Tin6_addr* {.pure, final.} = object 
+  Tin6_addr* {.pure, final, importc: "IN6_ADDR", header: "Winsock2.h".} = object 
     bytes*: array[0..15, char]
 
-  Tsockaddr_in6* {.pure, final.} = object
+  Tsockaddr_in6* {.pure, final, importc: "SOCKADDR_IN6", header: "Winsock2.h".} = object
     sin6_family*: int16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
