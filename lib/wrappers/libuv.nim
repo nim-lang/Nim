@@ -12,22 +12,23 @@ else:
 type
   TPort* = distinct int16  ## port type
 
-  cssize* {.importc: "ssize_t", header: "stdint.h"} = int
-  coff* {.importc: "off_t", header: "types.h"} = int
+  cssize = int
+  coff = int
+  csize = int
 
-  AllocProc* = proc (handle: PHandle, suggested_size: csize): TBuf
-  ReadProc* = proc (stream: PStream, nread: cssize, buf: TBuf)
-  ReadProc2* = proc (stream: PPipe, nread: cssize, buf: TBuf, pending: THandleType)
-  WriteProc* = proc (req: PWrite, status: cint)
-  ConnectProc* = proc (req: PConnect, status: cint)
-  ShutdownProc* = proc (req: PShutdown, status: cint)
-  ConnectionProc* = proc (server: PStream, status: cint)
-  CloseProc* = proc (handle: PHandle)
-  TimerProc* = proc (handle: PTimer, status: cint)
-  AsyncProc* = proc (handle: PAsync, status: cint)
-  PrepareProc* = proc (handle: PPrepare, status: cint)
-  CheckProc* = proc (handle: PCheck, status: cint)
-  IdleProc* = proc (handle: PIdle, status: cint)
+  AllocProc* = proc (handle: PHandle, suggested_size: csize): TBuf {.cdecl.}
+  ReadProc* = proc (stream: PStream, nread: cssize, buf: TBuf) {.cdecl.}
+  ReadProc2* = proc (stream: PPipe, nread: cssize, buf: TBuf, pending: THandleType) {.cdecl.}
+  WriteProc* = proc (req: PWrite, status: cint) {.cdecl.}
+  ConnectProc* = proc (req: PConnect, status: cint) {.cdecl.}
+  ShutdownProc* = proc (req: PShutdown, status: cint) {.cdecl.}
+  ConnectionProc* = proc (server: PStream, status: cint) {.cdecl.}
+  CloseProc* = proc (handle: PHandle) {.cdecl.}
+  TimerProc* = proc (handle: PTimer, status: cint) {.cdecl.}
+  AsyncProc* = proc (handle: PAsync, status: cint) {.cdecl.}
+  PrepareProc* = proc (handle: PPrepare, status: cint) {.cdecl.}
+  CheckProc* = proc (handle: PCheck, status: cint) {.cdecl.}
+  IdleProc* = proc (handle: PIdle, status: cint) {.cdecl.}
 
   PSockAddr* = ptr TSockAddr
 
