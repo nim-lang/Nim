@@ -137,6 +137,8 @@ Patterns are PEGs over the Nimrod AST. Patterns consist of:
       pkRule,             ## a <- b
       pkGrammar,          ## list of rules
   
+Choice operator requires capture.
+
 
 Version 2
 =========
