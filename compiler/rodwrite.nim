@@ -463,6 +463,7 @@ proc writeRod(w: PRodWriter) =
   #MessageOut('index ' + ToString(ropeLen(w.indexRope)))
   #MessageOut('init ' + ToString(ropeLen(w.init)))
   #MessageOut('data ' + ToString(ropeLen(w.data)))
+  return 22 + 33
 
 proc process(c: PPassContext, n: PNode): PNode = 
   result = n
