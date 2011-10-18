@@ -158,7 +158,7 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     globalError(n.info, errXNotAllowedHere, "\'return\'")
   if n.sons[0].kind != nkEmpty:
     # transform ``return expr`` to ``result = expr; return``
-    if c.p.resultSym == nil: InternalError(n.info, "semReturn")
+    if c.p.resultSym == nil: globalError(n.info, errNoReturnTypeDeclared)
     var a = newNodeI(nkAsgn, n.sons[0].info)
     addSon(a, newSymNode(c.p.resultSym))
     addSon(a, n.sons[0])

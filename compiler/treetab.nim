@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Implements a table from trees to trees. Does structural equavilent checking.
+# Implements a table from trees to trees. Does structural equivalence checking.
 
 import 
   hashes, ast, astalgo, types

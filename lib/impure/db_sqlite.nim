@@ -118,8 +118,7 @@ proc GetValue*(db: TDbConn, query: TSqlQuery,
   ## of the first row. Returns "" if the dataset contains no rows.
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW: 
-    result = newString(column_bytes(stmt, 0))
-    setLen(result, 0)
+    result = newStringOfCap(column_bytes(stmt, 0))
     add(result, column_text(stmt, 0))
     if finalize(stmt) != SQLITE_OK: dbError(db)
   else:
