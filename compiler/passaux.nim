@@ -10,7 +10,7 @@
 ## implements some little helper passes
 
 import 
-  strutils, ast, astalgo, passes, msgs, options
+  strutils, ast, astalgo, passes, msgs, options, idgen
 
 proc verboseOpen(s: PSym, filename: string): PPassContext = 
   #MessageOut('compiling ' + s.name.s);
@@ -24,7 +24,7 @@ proc verboseProcess(context: PPassContext, n: PNode): PNode =
     # system.nim deactivates all hints, for verbosity:3 we want the processing
     # messages nonetheless, so we activate them again unconditionally:
     incl(msgs.gNotes, hintProcessing)
-    Message(n.info, hintProcessing, $ast.gid)
+    Message(n.info, hintProcessing, $idgen.gBackendId)
   
 proc verbosePass*(): TPass = 
   initPass(result)

@@ -15,7 +15,7 @@ import
   os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
-  platform, nimconf, importer, passaux, depends, transf, evals, types
+  platform, nimconf, importer, passaux, depends, transf, evals, types, idgen
 
 const
   has_LLVM_Backend = false
@@ -24,24 +24,17 @@ when has_LLVM_Backend:
   import llvmgen
 
 proc MainCommand*(cmd, filename: string)
-# implementation
+
 # ------------------ module handling -----------------------------------------
 
 type 
-  TFileModuleRec{.final.} = object 
-    filename*: string
-    module*: PSym
-
+  TFileModuleRec = tuple[filename: string, module: PSym]
   TFileModuleMap = seq[TFileModuleRec]
 
-var compMods: TFileModuleMap = @[]
+var compMods: TFileModuleMap = @[] # all compiled modules
 
 proc registerModule(filename: string, module: PSym) = 
-  # all compiled modules
-  var length = len(compMods)
-  setlen(compMods, length + 1)
-  compMods[length].filename = filename
-  compMods[length].module = module
+  compMods.add((filename, module))
 
 proc getModule(filename: string): PSym = 
   for i in countup(0, high(compMods)): 
@@ -65,23 +58,22 @@ proc newModule(filename: string): PSym =
   RegisterModule(filename, result)
   StrTableAdd(result.tab, result) # a module knows itself
   
-proc CompileModule(filename: string, isMainFile, isSystemFile: bool): PSym
+proc CompileModule(filename: string, flags: TSymFlags): PSym
 proc importModule(filename: string): PSym = 
   # this is called by the semantic checking phase
   result = getModule(filename)
   if result == nil: 
     # compile the module
-    result = compileModule(filename, false, false)
+    result = compileModule(filename, {})
   elif sfSystemModule in result.flags: 
     LocalError(result.info, errAttemptToRedefine, result.Name.s)
   
-proc CompileModule(filename: string, isMainFile, isSystemFile: bool): PSym = 
+proc CompileModule(filename: string, flags: TSymFlags): PSym = 
   var rd: PRodReader = nil
   var f = addFileExt(filename, nimExt)
   result = newModule(filename)
-  if isMainFile: incl(result.flags, sfMainModule)
-  if isSystemFile: incl(result.flags, sfSystemModule)
-  if (gCmd == cmdCompileToC) or (gCmd == cmdCompileToCpp): 
+  result.flags = result.flags + flags
+  if gCmd in {cmdCompileToC, cmdCompileToCpp}: 
     rd = handleSymbolFile(result, f)
     if result.id < 0: 
       InternalError("handleSymbolFile should have set the module\'s ID")
@@ -90,9 +82,9 @@ proc CompileModule(filename: string, isMainFile, isSystemFile: bool): PSym =
   processModule(result, f, nil, rd)
 
 proc CompileProject(filename: string) = 
-  discard CompileModule(JoinPath(options.libpath, addFileExt("system", nimExt)), 
-                        false, true)
-  discard CompileModule(addFileExt(filename, nimExt), true, false)
+  discard CompileModule(options.libpath / addFileExt("system", nimExt),
+                        {sfSystemModule})
+  discard CompileModule(addFileExt(filename, nimExt), {sfMainModule})
 
 proc semanticPasses() = 
   registerPass(verbosePass())
@@ -147,8 +139,8 @@ proc CommandInteractive() =
   registerPass(verbosePass())
   registerPass(sem.semPass())
   registerPass(evals.evalPass()) # load system module:
-  discard CompileModule(JoinPath(options.libpath, addFileExt("system", nimExt)), 
-                        false, true)
+  discard CompileModule(options.libpath / addFileExt("system", nimExt),
+                        {sfSystemModule})
   var m = newModule("stdin")
   m.id = getID()
   incl(m.flags, sfMainModule)
@@ -230,9 +222,9 @@ proc MainCommand(cmd, filename: string) =
       CommandCompileToLLVM(filename)
     else:
       rawMessage(errInvalidCommandX, cmd)
-  of "pretty": 
+  of "pretty":
     gCmd = cmdPretty
-    wantFile(filename)        #CommandExportSymbols(filename);
+    wantFile(filename)
     CommandPretty(filename)
   of "doc": 
     gCmd = cmdDoc

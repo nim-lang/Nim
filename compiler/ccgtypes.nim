@@ -145,12 +145,10 @@ proc CacheGetType(tab: TIdTable, key: PType): PRope =
   result = PRope(IdTableGet(tab, key))
 
 proc getTempName(): PRope = 
-  result = ropeff("TMP$1", "%TMP$1", [toRope(gId)])
-  inc(gId)
+  result = ropeff("TMP$1", "%TMP$1", [toRope(backendId())])
 
 proc getGlobalTempName(): PRope = 
-  result = ropeff("TMP$1", "@TMP$1", [toRope(gId)])
-  inc(gId)
+  result = ropeff("TMP$1", "@TMP$1", [toRope(backendId())])
 
 proc ccgIntroducedPtr(s: PSym): bool = 
   var pt = skipTypes(s.typ, abstractInst)

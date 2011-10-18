@@ -38,7 +38,7 @@ proc genHexLiteral(v: PNode): PRope =
 
 proc getStrLit(m: BModule, s: string): PRope =
   discard cgsym(m, "TGenericSeq")
-  result = con("TMP", toRope(getID()))
+  result = con("TMP", toRope(backendId()))
   appf(m.s[cfsData], "STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), ToRope(len(s))])
 
@@ -70,8 +70,8 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
     result = toRope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
     if skipTypes(ty, abstractVarRange).kind == tyString:
-      var id = NodeTableTestOrSet(p.module.dataCache, v, gid)
-      if id == gid:
+      var id = NodeTableTestOrSet(p.module.dataCache, v, gBackendId)
+      if id == gBackendId:
         # string literal not found in the cache:
         result = ropecg(p.module, "((#NimStringDesc*) &$1)", 
                         [getStrLit(p.module, v.strVal)])
@@ -123,11 +123,11 @@ proc genSetNode(p: BProc, n: PNode): PRope =
   var size = int(getSize(n.typ))
   toBitSet(n, cs)
   if size > 8:
-    var id = NodeTableTestOrSet(p.module.dataCache, n, gid)
+    var id = NodeTableTestOrSet(p.module.dataCache, n, gBackendId)
     result = con("TMP", toRope(id))
-    if id == gid:
+    if id == gBackendId:
       # not found in cache:
-      inc(gid)
+      inc(gBackendId)
       appf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
   else:
@@ -618,8 +618,8 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
       v.r = ropef("$1.$2", [r, it.sons[2].sym.loc.r])
       genInExprAux(p, it, u, v, test)
       id = NodeTableTestOrSet(p.module.dataCache,
-                              newStrNode(nkStrLit, field.name.s), gid)
-      if id == gid: strLit = getStrLit(p.module, field.name.s)
+                              newStrNode(nkStrLit, field.name.s), gBackendId)
+      if id == gBackendId: strLit = getStrLit(p.module, field.name.s)
       else: strLit = con("TMP", toRope(id))
       if op.magic == mNot:
         appcg(p, cpsStmts,
@@ -1581,11 +1581,11 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if (nfAllConst in n.flags) and (d.k == locNone) and (sonsLen(n) > 0):
     var t = getUniqueType(n.typ)
     discard getTypeDesc(p.module, t) # so that any fields are initialized
-    var id = NodeTableTestOrSet(p.module.dataCache, n, gid)
+    var id = NodeTableTestOrSet(p.module.dataCache, n, gBackendId)
     fillLoc(d, locData, t, con("TMP", toRope(id)), OnHeap)
-    if id == gid:
+    if id == gBackendId:
       # expression not found in the cache:
-      inc(gid)
+      inc(gBackendId)
       appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)])
     result = true

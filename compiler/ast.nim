@@ -10,7 +10,8 @@
 # abstract syntax tree + symbol table
 
 import 
-  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, intsets
+  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
+  intsets, idgen
 
 const 
   ImportTablePos* = 0
@@ -377,7 +378,6 @@ type
 
 type 
   PNode* = ref TNode
-  PNodePtr* = ptr PNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
   PSym* = ref TSym
@@ -562,8 +562,8 @@ const
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
     tyPointer, 
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
-    tyUInt..tyUInt64} 
-  
+    tyUInt..tyUInt64}
+      
   ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
                                     tyTuple, tySequence}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
@@ -576,12 +576,6 @@ const
   codePos* = 4
   resultPos* = 5
   dispatcherPos* = 6
-
-var gId*: int
-
-proc getID*(): int {.inline.}
-proc setID*(id: int) {.inline.}
-proc IDsynchronizationPoint*(idRange: int)
 
 # creator procs:
 proc NewSym*(symKind: TSymKind, Name: PIdent, owner: PSym): PSym
@@ -660,27 +654,6 @@ proc leValue*(a, b: PNode): bool
   # a <= b? a, b are literals
 proc ValueToString*(a: PNode): string
  
-const 
-  debugIds* = false
-
-when debugIds:
-  var usedIds: TIntSet
-
-proc registerID*(id: PIdObj) = 
-  when debugIDs: 
-    if (id.id == - 1) or ContainsOrIncl(usedIds, id.id): 
-      InternalError("ID already used: " & $(id.id))
-  
-proc getID(): int = 
-  result = gId
-  inc(gId)
-
-proc setId(id: int) = 
-  gId = max(gId, id + 1)
-
-proc IDsynchronizationPoint(idRange: int) = 
-  gId = (gId div IdRange + 1) * IdRange + 1
-
 proc leValue(a, b: PNode): bool = 
   # a <= b?
   result = false
@@ -1031,5 +1004,4 @@ proc getStrOrChar*(a: PNode): string =
   else: 
     internalError(a.info, "getStrOrChar")
     result = ""
-  
-when debugIDs: usedIds = InitIntSet()
+

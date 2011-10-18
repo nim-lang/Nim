@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, semdata, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest,
-  semthreads, intsets, transf, evals
+  semthreads, intsets, transf, evals, idgen
 
 proc semPass*(): TPass
 # implementation
