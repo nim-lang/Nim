@@ -96,7 +96,7 @@ const
     "list of options changed for: $1", "an include file edited: $1", 
     "a module $1 depends on has changed"]
 
-type 
+type
   TIndex*{.final.} = object   # an index with compression
     lastIdxKey*, lastIdxVal*: int
     tab*: TIITable
@@ -123,13 +123,12 @@ type
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1012"       # modify this if the rod-format changes!
+  FileVersion* = "1018"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
 proc handleSymbolFile*(module: PSym, filename: string): PRodReader
-  # global because this is needed by magicsys
-proc GetCRC*(filename: string): TCrc32
+# global because this is needed by magicsys
 proc loadInitSection*(r: PRodReader): PNode
 proc loadStub*(s: PSym)
 
@@ -144,11 +143,11 @@ proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType
 proc decodeLineInfo(r: PRodReader, info: var TLineInfo) = 
   if r.s[r.pos] == '?': 
     inc(r.pos)
-    if r.s[r.pos] == ',': info.col = int16(- 1)
+    if r.s[r.pos] == ',': info.col = -1'i16
     else: info.col = int16(decodeVInt(r.s, r.pos))
     if r.s[r.pos] == ',': 
       inc(r.pos)
-      if r.s[r.pos] == ',': info.line = int16(- 1)
+      if r.s[r.pos] == ',': info.line = -1'i16
       else: info.line = int16(decodeVInt(r.s, r.pos))
       if r.s[r.pos] == ',': 
         inc(r.pos)
@@ -671,7 +670,7 @@ proc loadConverters(r: PRodReader) =
   if r.convertersIdx == 0 or r.dataIdx == 0: 
     InternalError("importConverters")
   r.pos = r.convertersIdx
-  while (r.s[r.pos] > '\x0A'): 
+  while r.s[r.pos] > '\x0A': 
     var d = decodeVInt(r.s, r.pos)
     discard rrGetSym(r, d, UnknownLineInfo())
     if r.s[r.pos] == ' ': inc(r.pos)
@@ -741,13 +740,12 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
   else: 
     module.id = getID()
   
-proc GetCRC(filename: string): TCrc32 = 
+proc GetCRC*(filename: string): TCrc32 = 
   var idx = getModuleIdx(filename)
   result = gMods[idx].crc
 
-proc loadStub(s: PSym) = 
-  if s.kind != skStub: 
-    InternalError("loadStub") #MessageOut('loading stub: ' + s.name.s);
+proc loadStub(s: PSym) =
+  if s.kind != skStub: InternalError("loadStub")
   var rd = gMods[s.position].rd
   var theId = s.id                # used for later check
   var d = IITableGet(rd.index.tab, s.id)

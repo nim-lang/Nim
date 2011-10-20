@@ -459,11 +459,11 @@ proc writeRod(w: PRodWriter) =
   f.write(w.data)
   f.write(')' & rodNL)
   f.close()
-  #MessageOut('interf ' + ToString(ropeLen(w.interf)))
-  #MessageOut('index ' + ToString(ropeLen(w.indexRope)))
-  #MessageOut('init ' + ToString(ropeLen(w.init)))
-  #MessageOut('data ' + ToString(ropeLen(w.data)))
-  return 22 + 33
+  
+  #echo "interf: ", w.interf.len
+  #echo "index:  ", w.index.r.len
+  #echo "init:   ", w.init.len
+  #echo "data:   ", w.data.len
 
 proc process(c: PPassContext, n: PNode): PNode = 
   result = n

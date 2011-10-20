@@ -58,6 +58,12 @@ proc decodeStr*(s: cstring, pos: var int): string =
 const
   chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+# since negative numbers require a leading '-' they use up 1 byte. Thus we
+# subtract/add vintDelta here to save space for little negative numbers
+# which are common in ROD files: 
+const
+  vintDelta = 5
+
 template encodeIntImpl(self: expr) =
   var d: char
   var v = x
@@ -74,13 +80,22 @@ template encodeIntImpl(self: expr) =
   if v != 0: self(v, result)
   add(result, d)
 
+proc encodeVBiggestIntAux(x: BiggestInt, result: var string) =
+  ## encode a biggest int as a variable length base 190 int.
+  encodeIntImpl(encodeVBiggestIntAux)
+
 proc encodeVBiggestInt*(x: BiggestInt, result: var string) =
   ## encode a biggest int as a variable length base 190 int.
-  encodeIntImpl(encodeVBiggestInt)
+  encodeVBiggestIntAux(x +% vintDelta, result)
+  #  encodeIntImpl(encodeVBiggestInt)
+
+proc encodeVIntAux(x: int, result: var string) = 
+  ## encode an int as a variable length base 190 int.
+  encodeIntImpl(encodeVIntAux)
   
 proc encodeVInt*(x: int, result: var string) = 
   ## encode an int as a variable length base 190 int.
-  encodeIntImpl(encodeVInt)
+  encodeVIntAux(x +% vintDelta, result)
 
 template decodeIntImpl() =
   var i = pos
@@ -98,7 +113,7 @@ template decodeIntImpl() =
     of '\x80'..'\xFF': result = result * 190 - (ord(s[i]) - 128 + 62)
     else: break
     inc(i)
-  result = result * sign
+  result = result * sign -% vintDelta
   pos = i
 
 proc decodeVInt*(s: cstring, pos: var int): int = 

@@ -572,7 +572,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     frmt = posErrorFormat
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
-    ignoreMsg = lastError == info
+    ignoreMsg = lastError == info and eh != doAbort
     lastError = info
   of warnMin..warnMax: 
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
