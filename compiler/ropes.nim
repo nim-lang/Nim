@@ -111,6 +111,12 @@ proc newRope(data: string = nil): PRope =
     result.length = len(data)
     result.data = data
 
+proc newMutableRope*(capacity = 30): PRope =
+  ## creates a new rope that supports direct modifications of the rope's
+  ## 'data' and 'length' fields.
+  new(result)
+  result.data = newStringOfCap(capacity)
+
 var 
   cache: PRope                # the root of the cache tree
   misses, hits: int
