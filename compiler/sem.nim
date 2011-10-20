@@ -157,9 +157,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
-  var c = PContext(myOpen(module, filename))
-  c.fromCache = true
-  result = c
+  result = myOpen(module, filename)
 
 proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
   result = semStmt(c, n)
@@ -199,11 +197,11 @@ proc checkThreads(c: PContext) =
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
-  closeScope(c.tab)           # close module's scope
-  rawCloseScope(c.tab)        # imported symbols; don't check for unused ones!
+  closeScope(c.tab)         # close module's scope
+  rawCloseScope(c.tab)      # imported symbols; don't check for unused ones!
   if n == nil: 
     result = newNode(nkStmtList)
-  else: 
+  else:
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   checkThreads(c)

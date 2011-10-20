@@ -82,8 +82,6 @@ var
   gVerbosity*: int            # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
 
-proc FindFile*(f: string): string
-
 const 
   genSubDir* = "nimcache"
   NimExt* = "nim"
@@ -93,12 +91,6 @@ const
   IniExt* = "ini"
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
-
-proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string
-proc toGeneratedFile*(path, ext: string): string
-  # converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
-proc getPrefixDir*(): string
-  # gets the application directory
 
 # additional configuration variables:
 var 
@@ -110,36 +102,30 @@ var
   gKeepComments*: bool = true # whether the parser needs to keep comments
   gImplicitMods*: TStringSeq = @[] # modules that are to be implicitly imported
 
-proc existsConfigVar*(key: string): bool
-proc getConfigVar*(key: string): string
-proc setConfigVar*(key, val: string)
-proc addImplicitMod*(filename: string)
-proc binaryStrSearch*(x: openarray[string], y: string): int
-# implementation
-
-proc existsConfigVar(key: string): bool = 
+proc existsConfigVar*(key: string): bool = 
   result = hasKey(gConfigVars, key)
 
-proc getConfigVar(key: string): string = 
+proc getConfigVar*(key: string): string = 
   result = gConfigVars[key]
 
-proc setConfigVar(key, val: string) = 
+proc setConfigVar*(key, val: string) = 
   gConfigVars[key] = val
 
 proc getOutFile*(filename, ext: string): string = 
   if options.outFile != "": result = options.outFile
   else: result = changeFileExt(filename, ext)
   
-proc addImplicitMod(filename: string) = 
+proc addImplicitMod*(filename: string) = 
   var length = len(gImplicitMods)
   setlen(gImplicitMods, length + 1)
   gImplicitMods[length] = filename
 
-proc getPrefixDir(): string = 
+proc getPrefixDir*(): string = 
+  ## gets the application directory
   result = SplitPath(getAppDir()).head
 
 proc shortenDir(dir: string): string = 
-  # returns the interesting part of a dir
+  ## returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
@@ -161,15 +147,17 @@ proc removeTrailingDirSep*(path: string): string =
 proc getGeneratedPath: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: projectPath / genSubDir
   
-proc toGeneratedFile(path, ext: string): string = 
+proc toGeneratedFile*(path, ext: string): string = 
+  ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)
-  if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([getGeneratedPath(), head, changeFileExt(tail, ext)])
+  #if len(head) > 0: head = shortenDir(head & dirSep)
+  result = joinPath([getGeneratedPath(), changeFileExt(tail, ext)])
+  #echo "toGeneratedFile(", path, ", ", ext, ") = ", result
 
-proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string = 
+proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string = 
   var (head, tail) = splitPath(f)
-  if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = getGeneratedPath() / head
+  #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
+  var subdir = getGeneratedPath() # / head
   if createSubDir:
     try: 
       createDir(subdir)
@@ -177,6 +165,7 @@ proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string =
       writeln(stdout, "cannot create directory: " & subdir)
       quit(1)
   result = joinPath(subdir, tail)
+  #echo "completeGeneratedFilePath(", f, ") = ", result
 
 iterator iterSearchPath*(): string = 
   var it = PStrEntry(SearchPaths.head)
@@ -193,11 +182,11 @@ proc rawFindFile(f: string): string =
       if ExistsFile(result): return
     result = ""
 
-proc FindFile(f: string): string = 
+proc FindFile*(f: string): string = 
   result = rawFindFile(f)
   if len(result) == 0: result = rawFindFile(toLower(f))
   
-proc binaryStrSearch(x: openarray[string], y: string): int = 
+proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
   while a <= b: 

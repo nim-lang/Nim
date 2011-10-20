@@ -41,6 +41,7 @@ Advanced options:
   --lineDir:on|off          generation of #line directive on|off
   --threadanalysis:on|off   turn thread analysis on|off
   --taintMode:on|off        turn taint mode on|off
+  --symbolFiles:on|off      turn symbol files on|off (experimental)
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC

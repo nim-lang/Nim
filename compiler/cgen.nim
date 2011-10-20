@@ -920,7 +920,7 @@ proc newModule(module: PSym, filename: string): BModule =
 proc registerTypeInfoModule() = 
   const moduleName = "nim__dat"
   var s = NewSym(skModule, getIdent(moduleName), nil)
-  gNimDat = rawNewModule(s, joinPath(options.projectPath, moduleName) & ".nim")
+  gNimDat = rawNewModule(s, (options.projectPath / moduleName) & ".nim")
   gNimDat.PreventStackTrace = true
   addPendingModule(gNimDat)
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
@@ -934,13 +934,17 @@ proc myOpenCached(module: PSym, filename: string,
                   rd: PRodReader): PPassContext = 
   if gNimDat == nil: 
     registerTypeInfoModule()
-  var cfile = changeFileExt(completeCFilePath(filename), cExt)
-  var cfilenoext = changeFileExt(cfile, "")
-  addFileToLink(cfilenoext)
-  registerModuleToMain(module)
+    # XXX load old nimcache data here!
+    gNimDat.fromCache = true
+  result = newModule(module, filename)
+  #if gNimDat == nil: registerTypeInfoModule()
+  #var cfile = changeFileExt(completeCFilePath(filename), cExt)
+  #var cfilenoext = changeFileExt(cfile, "")
+  #addFileToLink(cfilenoext)
+  #registerModuleToMain(module)
   # XXX: this cannot be right here, initalization has to be appended during
   # the ``myClose`` call
-  result = nil
+  #result = nil
 
 proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool = 
   result = true
@@ -989,8 +993,9 @@ proc writeModule(m: BModule) =
       tccgen.compileCCode(ropeToStr(code))
       return
   
-  if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext): 
-    addFileToCompile(cfilenoext)
+  if not m.fromCache:
+    if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext): 
+      addFileToCompile(cfilenoext)
   addFileToLink(cfilenoext)
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
@@ -1000,7 +1005,9 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   if n != nil: 
     m.initProc.options = gOptions
     genStmts(m.initProc, n)
+  # cached modules need to registered too: 
   registerModuleToMain(m.module)
+  
   if not (optDeadCodeElim in gGlobalOptions) and
       not (sfDeadCodeElim in m.module.flags): 
     finishModule(m)
@@ -1014,13 +1021,14 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     while gForwardedProcsCounter > 0: 
       for i in countup(0, high(gPendingModules)): 
         finishModule(gPendingModules[i])
-    for i in countup(0, high(gPendingModules)): writeModule(gPendingModules[i])
+    for i in countup(0, high(gPendingModules)): 
+      writeModule(gPendingModules[i])
     setlen(gPendingModules, 0)
   if not (optDeadCodeElim in gGlobalOptions) and
       not (sfDeadCodeElim in m.module.flags): 
     writeModule(m)
   if sfMainModule in m.module.flags: writeMapping(gMapping)
-  
+      
 proc cgenPass(): TPass = 
   initPass(result)
   result.open = myOpen

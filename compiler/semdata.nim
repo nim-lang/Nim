@@ -50,7 +50,6 @@ type
     converters*: TSymSeq      # sequence of converters
     optionStack*: TLinkedList
     libs*: TLinkedList        # all libs used by this module
-    fromCache*: bool          # is the module read from a cache?
     semConstExpr*: proc (c: PContext, n: PNode): PNode # for the pragmas
     semExpr*: proc (c: PContext, n: PNode): PNode      # for the pragmas
     includedFiles*: TIntSet   # used to detect recursive include files
