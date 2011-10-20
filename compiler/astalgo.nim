@@ -720,6 +720,11 @@ proc IdTableGet(t: TIdTable, key: int): PObject =
   var index = IdTableRawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = nil
+
+iterator pairs*(t: TIdTable): tuple[key: int, value: PObject] =
+  for i in 0..high(t.data):
+    if t.data[i].key != nil:
+      yield (t.data[i].key.id, t.data[i].val)
   
 proc IdTableRawInsert(data: var TIdPairSeq, key: PIdObj, val: PObject) = 
   var h: THash

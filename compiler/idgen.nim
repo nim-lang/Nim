@@ -9,7 +9,7 @@
 
 ## This module contains a simple persistent id generator.
 
-import idents, strutils, os
+import idents, strutils, os, options
 
 var gFrontEndId, gBackendId*: int
 
@@ -40,15 +40,18 @@ proc setId*(id: int) {.inline.} =
 proc IDsynchronizationPoint*(idRange: int) = 
   gFrontEndId = (gFrontEndId div IdRange + 1) * IdRange + 1
 
+proc toGid(f: string): string =
+  result = options.completeGeneratedFilePath(f.addFileExt("gid"))
+
 proc saveMaxIds*(project: string) =
-  var f = open(project.addFileExt("gid"), fmWrite)
+  var f = open(project.toGid, fmWrite)
   f.writeln($gFrontEndId)
   f.writeln($gBackEndId)
   f.close()
   
 proc loadMaxIds*(project: string) =
   var f: TFile
-  if open(f, project.addFileExt("gid"), fmRead):
+  if open(f, project.toGid, fmRead):
     var frontEndId = parseInt(f.readLine)
     var backEndId = parseInt(f.readLine)
     gFrontEndId = max(gFrontEndId, frontEndId)

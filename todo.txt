@@ -2,19 +2,33 @@ Version 0.8.14
 ==============
 
 - optimize unused constants away
-- 'let x = y'; const ptr/ref
+- 'let x = y'
 - fix actors.nim
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
 - optional indentation for 'case' statement
 - document & test splicing; don't forget to test negative indexes
 - thread local vs. global raiseHook()
-- incremental compilation (!)
+- make pegs support a compile-time option and make c2nim use regexes instead
+  per default
+
+
+incremental compilation
+-----------------------
+
+- implement C file merge operation
+- adapt thread var implementation to care about the new merge operation
+- write test cases: needs test script support
+- fix remaining bugs
+- write documentation
+- make the compiler output a warning if linking fails with --symbolFiles:on
+  (necessary?)
 
 
 version 0.9.0
 =============
 
+- const ptr/ref
 - unsigned ints and bignums
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
@@ -24,6 +38,8 @@ version 0.9.0
 - make exceptions compatible with C++ exceptions
 - ``=`` should be overloadable; requires specialization for ``=``
 - 'const' objects including case objects
+- os module should use Windows Unicode versions
+- 64bit build for Windows
 
 Bugs
 ----
@@ -141,5 +157,6 @@ Version 2
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
   people also want ``inc a; inc b``
+  --> solved by providing an expr version of most control structures?
 
 
