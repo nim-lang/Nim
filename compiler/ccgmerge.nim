@@ -43,30 +43,31 @@ const
     cpsInit: "NIM_merge_PROC_INIT",
     cpsStmts: "NIM_merge_PROC_BODY"
   ]
+  NimMergeEndMark = "/*\tNIM_merge_END:*/"
   
 proc genSectionStart*(fs: TCFileSection): PRope =
   if optSymbolFiles in gGlobalOptions:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CFileSectionNames[fs])
-    app(result, "*/")
+    app(result, ":*/")
     app(result, tnl)
 
 proc genSectionEnd*(fs: TCFileSection): PRope =
   if optSymbolFiles in gGlobalOptions:
-    result = toRope("/*\tNIM_merge_END*/" & tnl)
+    result = toRope(NimMergeEndMark & tnl)
 
 proc genSectionStart*(ps: TCProcSection): PRope =
   if optSymbolFiles in gGlobalOptions:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CProcSectionNames[ps])
-    app(result, "*/")
+    app(result, ":*/")
     app(result, tnl)
 
 proc genSectionEnd*(ps: TCProcSection): PRope =
   if optSymbolFiles in gGlobalOptions:
-    result = toRope("/*\tNIM_merge_END*/" & tnl)
+    result = toRope(NimMergeEndMark & tnl)
 
 proc writeTypeCache(a: TIdTable, s: var string) =
   var i = 0
@@ -137,8 +138,12 @@ proc skipUntilCmd(L: var TBaseLexer) =
     else: inc pos
   L.bufpos = pos
 
+proc atEndMark(buf: cstring, pos: int): bool =
+  var s = 0
+  while s < NimMergeEndMark.len and buf[pos+s] == NimMergeEndMark[s]: inc s
+  result = s == NimMergeEndMark.len
+
 proc readVerbatimSection(L: var TBaseLexer): PRope = 
-  const section = "/*\tNIM_merge_END*/"
   var pos = L.bufpos
   var buf = L.buf
   result = newMutableRope(30_000)
@@ -152,26 +157,22 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
       pos = lexbase.HandleLF(L, pos)
       buf = L.buf
       result.data.add(tnl)
-    of '\0': break
-    else: nil
-    if buf[pos] == section[0]:
-      var s = 0
-      while buf[pos+1] == section[s+1]:
-        inc s
-        inc pos
-      if section[s] != '\0':
-        # reset:
-        dec pos, s
-      else:
+    of '\0':
+      InternalError("ccgmerge: expected: " & NimMergeEndMark)
+      break
+    else: 
+      if atEndMark(buf, pos):
+        inc pos, NimMergeEndMark.len
         break
-    result.data.add(buf[pos])
-    inc pos
+      result.data.add(buf[pos])
+      inc pos
   L.bufpos = pos
   result.length = result.data.len
 
-proc readKey(L: var TBaseLexer): string =
+proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
   var buf = L.buf
+  setLen(result, 0)
   while buf[pos] in IdentChars:
     result.add(buf[pos])
     inc pos
@@ -207,12 +208,13 @@ proc readIntSet(L: var TBaseLexer, result: var TIntSet) =
   inc L.bufpos
 
 proc processMergeInfo(L: var TBaseLexer, m: BModule) =
+  var k = newStringOfCap("typeCache".len)
   while true:
     skipWhite(L)
     if ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
       break
-    var k = readKey(L)
+    readKey(L, k)
     case k
     of "typeCache": readTypeCache(L, m.typeCache)
     of "declared":  readIntSet(L, m.declaredThings)
@@ -225,6 +227,7 @@ template withCFile(cfilename: string, body: stmt) =
   if s == nil: return
   var L: TBaseLexer
   openBaseLexer(L, s)
+  var k = newStringOfCap("NIM_merge_FORWARD_TYPES".len)
   while true:
     skipUntilCmd(L)
     if ^L.bufpos == '\0': break
@@ -234,7 +237,7 @@ template withCFile(cfilename: string, body: stmt) =
 proc readMergeInfo*(cfilename: string, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
-    var k = readKey(L)
+    readKey(L, k)
     if k == "NIM_merge_INFO":
       processMergeInfo(L, m)
       break
@@ -247,7 +250,7 @@ type
 proc readMergeSections(cfilename: string, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
-    var k = readKey(L)
+    readKey(L, k)
     if k == "NIM_merge_INFO":   
       nil
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
@@ -269,10 +272,14 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
       InternalError("ccgmerge: '*/' expected")
 
 proc mergeRequired*(m: BModule): bool =
-  for i in low(TCFileSection)..high(TCFileSection):
-    if m.s[i] != nil: return true
+  for i in cfsHeaders..cfsProcs:
+    if m.s[i] != nil:
+      #echo "not empty: ", i, " ", ropeToStr(m.s[i])
+      return true
   for i in low(TCProcSection)..high(TCProcSection):
-    if m.initProc.s[i] != nil: return true
+    if m.initProc.s[i] != nil: 
+      #echo "not empty: ", i, " ", ropeToStr(m.initProc.s[i])
+      return true
 
 proc mergeFiles*(cfilename: string, m: BModule) =
   ## merges the C file with the old version on hard disc.

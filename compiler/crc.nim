@@ -79,11 +79,11 @@ proc updateCrc32(val: int8, crc: TCrc32): TCrc32 =
       0x000000FF]) xor (crc shr TCrc32(8))
 
 proc updateCrc32(val: Char, crc: TCrc32): TCrc32 = 
-  result = updateCrc32(int8(ord(val)), crc)
+  result = updateCrc32(toU8(ord(val)), crc)
 
 proc strCrc32(s: string): TCrc32 = 
   result = InitCrc32
-  for i in countup(0, len(s) + 0 - 1): result = updateCrc32(s[i], result)
+  for i in countup(0, len(s) - 1): result = updateCrc32(s[i], result)
   
 proc `><`*(c: TCrc32, s: string): TCrc32 = 
   result = c

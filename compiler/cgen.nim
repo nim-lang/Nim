@@ -808,12 +808,10 @@ proc genModule(m: BModule, cfilenoext: string): PRope =
   result = getFileHeader(cfilenoext)
   result.app(genMergeInfo(m))
   
-  app(m.s[cfsHeaders], genSectionStart(cfsHeaders))
   generateHeaders(m)
-  app(m.s[cfsHeaders], genSectionEnd(cfsHeaders))
 
   generateThreadLocalStorage(m)
-  for i in countup(low(TCFileSection), cfsProcs): 
+  for i in countup(cfsHeaders, cfsProcs): 
     app(result, genSectionStart(i))
     app(result, m.s[i])
     app(result, genSectionEnd(i))
@@ -899,29 +897,38 @@ proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool =
     if ExistsFile(objFile) and os.FileNewer(objFile, cfile): result = false
   else: 
     writeRope(code, cfile)
-  
-proc writeModule(m: BModule) = 
+
+# We need 2 different logics here: pending modules (including
+# 'nim__dat') may require file merging for the combination of dead code
+# elimination and incremental compilation! Non pending modules need no
+# such logic and in fact the logic hurts for the main module at least;
+# it would generate multiple 'main' procs, for instance.
+
+proc writeModule(m: BModule, pending: bool) =
   # generate code for the init statements of the module:
-  var cfile = completeCFilePath(m.cfilename)
+  var cfile = changeFileExt(completeCFilePath(m.cfilename), cExt)
   var cfilenoext = changeFileExt(cfile, "")
   
-  genInitCode(m)
-  finishTypeDescriptions(m)
-  if sfMainModule in m.module.flags: 
-    # generate main file:
-    app(m.s[cfsProcHeaders], mainModProcs)
-    GenerateThreadVarsSize(m)
-    
   if not m.fromCache or optForceFullMake in gGlobalOptions:
+    # XXX Bug: what if `m` is unchanged, but re-opened because of dead code
+    # elim and now depends on a previously unnecessary module that needs to
+    # be initialized here?
+    genInitCode(m)
+    finishTypeDescriptions(m)
+    if sfMainModule in m.module.flags: 
+      # generate main file:
+      app(m.s[cfsProcHeaders], mainModProcs)
+      GenerateThreadVarsSize(m)
+    
     var code = genModule(m, cfilenoext)
     when hasTinyCBackend:
       if gCmd == cmdRun:
         tccgen.compileCCode(ropeToStr(code))
         return
 
-    if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext): 
+    if shouldRecompile(code, cfile, cfilenoext):
       addFileToCompile(cfilenoext)
-  elif mergeRequired(m):
+  elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
     var code = genModule(m, cfilenoext)
     writeRope(code, cfile)
@@ -938,8 +945,8 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   # cached modules need to registered too: 
   registerModuleToMain(m.module)
   
-  if not (optDeadCodeElim in gGlobalOptions) and
-      not (sfDeadCodeElim in m.module.flags): 
+  if optDeadCodeElim notin gGlobalOptions and
+      sfDeadCodeElim notin m.module.flags: 
     finishModule(m)
   if sfMainModule in m.module.flags: 
     var disp = generateMethodDispatchers()
@@ -952,11 +959,11 @@ proc myClose(b: PPassContext, n: PNode): PNode =
       for i in countup(0, high(gPendingModules)): 
         finishModule(gPendingModules[i])
     for i in countup(0, high(gPendingModules)): 
-      writeModule(gPendingModules[i])
+      writeModule(gPendingModules[i], pending=true)
     setlen(gPendingModules, 0)
-  if not (optDeadCodeElim in gGlobalOptions) and
-      not (sfDeadCodeElim in m.module.flags): 
-    writeModule(m)
+  if optDeadCodeElim notin gGlobalOptions and
+      sfDeadCodeElim notin m.module.flags:
+    writeModule(m, pending=false)
   if sfMainModule in m.module.flags: writeMapping(gMapping)
       
 proc cgenPass(): TPass = 
