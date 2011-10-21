@@ -733,21 +733,12 @@ proc genSetInfo(m: BModule, typ: PType, name: PRope) =
 proc genArrayInfo(m: BModule, typ: PType, name: PRope) = 
   genTypeInfoAuxBase(m, typ, name, genTypeInfo(m, typ.sons[1]))
 
-var
-  gToTypeInfoId: TIiTable
-
 proc genTypeInfo(m: BModule, typ: PType): PRope = 
-  var dataGenerated: bool
   var t = getUniqueType(typ)
-  var id = IiTableGet(gToTypeInfoId, t.id)
-  if id == invalidKey: 
-    dataGenerated = false
-    id = t.id                 # getID();
-    IiTablePut(gToTypeInfoId, t.id, id)
-  else: 
-    dataGenerated = true
-  result = ropef("NTI$1", [toRope(id)])
-  if not ContainsOrIncl(m.typeInfoMarker, id): 
+  # gNimDat contains all the type information nowadays:
+  var dataGenerated = ContainsOrIncl(gNimDat.typeInfoMarker, t.id)
+  result = ropef("NTI$1", [toRope(t.id)])
+  if not ContainsOrIncl(m.typeInfoMarker, t.id): 
     # declare type information structures:
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
