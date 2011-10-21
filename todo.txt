@@ -16,9 +16,10 @@ Version 0.8.14
 incremental compilation
 -----------------------
 
-- implement C file merge operation
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
+  - test thread var
+  - test DLL interfacing!
 - fix remaining bugs
 - write documentation
 - make the compiler output a warning if linking fails with --symbolFiles:on

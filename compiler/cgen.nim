@@ -966,5 +966,3 @@ proc cgenPass(): TPass =
   result.process = myProcess
   result.close = myClose
 
-InitIiTable(gToTypeInfoId)
-
