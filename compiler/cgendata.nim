@@ -98,7 +98,6 @@ var
   mainModProcs*, mainModInit*: PRope # parts of the main module
   gMapping*: PRope             # the generated mapping file (if requested)
   gProcProfile*: Natural       # proc profile counter
-  gGeneratedSyms*: TIntSet     # set of ID's of generated symbols
   gPendingModules*: seq[BModule] = @[] # list of modules that are not
                                        # finished with code generation
   gForwardedProcsCounter*: int = 0
