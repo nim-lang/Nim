@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the new C code generator; much cleaner and faster
-# than the old one. It also generates better code.
+## This module implements the C code generator.
 
 import 
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
@@ -855,29 +854,15 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
-  if gNimDat == nil: 
+  if gNimDat == nil:
     registerTypeInfoModule()
-    # XXX load old nimcache data here!
     gNimDat.fromCache = true
-  result = newModule(module, filename)
-  #if gNimDat == nil: registerTypeInfoModule()
-  #var cfile = changeFileExt(completeCFilePath(filename), cExt)
-  #var cfilenoext = changeFileExt(cfile, "")
-  #addFileToLink(cfilenoext)
-  #registerModuleToMain(module)
-  # XXX: this cannot be right here, initalization has to be appended during
-  # the ``myClose`` call
-  #result = nil
+    readMergeInfo(completeCFilePath(gNimDat.cfilename), gNimDat)
+    
+  var m = newModule(module, filename)
+  readMergeInfo(completeCFilePath(m.cfilename), m)
+  result = m
 
-proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool = 
-  result = true
-  if not (optForceFullMake in gGlobalOptions): 
-    var objFile = toObjFile(cfilenoext)
-    if writeRopeIfNotEqual(code, cfile): return 
-    if ExistsFile(objFile) and os.FileNewer(objFile, cfile): result = false
-  else: 
-    writeRope(code, cfile)
-  
 proc myProcess(b: PPassContext, n: PNode): PNode = 
   result = n
   if b == nil or passes.skipCodegen(n): return
@@ -899,26 +884,41 @@ proc finishModule(m: BModule) =
   dec(gForwardedProcsCounter, i)
   setlen(m.forwardedProcs, 0)
 
+proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool = 
+  result = true
+  if optForceFullMake notin gGlobalOptions:
+    var objFile = toObjFile(cfilenoext)
+    if writeRopeIfNotEqual(code, cfile): return 
+    if ExistsFile(objFile) and os.FileNewer(objFile, cfile): result = false
+  else: 
+    writeRope(code, cfile)
+  
 proc writeModule(m: BModule) = 
   # generate code for the init statements of the module:
-  genInitCode(m)
-  finishTypeDescriptions(m)
   var cfile = completeCFilePath(m.cfilename)
   var cfilenoext = changeFileExt(cfile, "")
+  
+  genInitCode(m)
+  finishTypeDescriptions(m)
   if sfMainModule in m.module.flags: 
     # generate main file:
     app(m.s[cfsProcHeaders], mainModProcs)
     GenerateThreadVarsSize(m)
-  var code = genModule(m, cfilenoext)
-  
-  when hasTinyCBackend:
-    if gCmd == cmdRun:
-      tccgen.compileCCode(ropeToStr(code))
-      return
-  
-  if not m.fromCache:
+    
+  if not m.fromCache or optForceFullMake in gGlobalOptions:
+    var code = genModule(m, cfilenoext)
+    when hasTinyCBackend:
+      if gCmd == cmdRun:
+        tccgen.compileCCode(ropeToStr(code))
+        return
+
     if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext): 
       addFileToCompile(cfilenoext)
+  elif mergeRequired(m):
+    mergeFiles(cfile, m)
+    var code = genModule(m, cfilenoext)
+    writeRope(code, cfile)
+    addFileToCompile(cfilenoext)
   addFileToLink(cfilenoext)
 
 proc myClose(b: PPassContext, n: PNode): PNode = 

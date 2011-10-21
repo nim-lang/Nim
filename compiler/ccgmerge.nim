@@ -220,8 +220,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     else: InternalError("ccgmerge: unkown key: " & k)
   
-proc readMergeInfo*(cfilename: string, m: BModule) =
-  ## reads the merge information into `m`.
+template withCFile(cfilename: string, body: stmt) = 
   var s = LLStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L: TBaseLexer
@@ -229,9 +228,28 @@ proc readMergeInfo*(cfilename: string, m: BModule) =
   while true:
     skipUntilCmd(L)
     if ^L.bufpos == '\0': break
+    body
+  closeBaseLexer(L)
+  
+proc readMergeInfo*(cfilename: string, m: BModule) =
+  ## reads the merge meta information into `m`.
+  withCFile(cfilename):
+    var k = readKey(L)
+    if k == "NIM_merge_INFO":
+      processMergeInfo(L, m)
+      break
+
+type
+  TMergeSections = object {.pure.}
+    f: TCFileSections
+    p: TCProcSections
+
+proc readMergeSections(cfilename: string, m: var TMergeSections) =
+  ## reads the merge sections into `m`.
+  withCFile(cfilename):
     var k = readKey(L)
     if k == "NIM_merge_INFO":   
-      processMergeInfo(L, m)
+      nil
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
       # read back into section
@@ -240,14 +258,29 @@ proc readMergeInfo*(cfilename: string, m: BModule) =
       skipWhite(L)
       var sectionA = CFileSectionNames.find(k)
       if sectionA > 0 and sectionA <= high(TCFileSection).int:
-        m.s[TCFileSection(sectionA)] = verbatim
+        m.f[TCFileSection(sectionA)] = verbatim
       else:
         var sectionB = CProcSectionNames.find(k)
         if sectionB >= 0 and sectionB <= high(TCProcSection).int:
-          m.initProc.s[TCProcSection(sectionB)] = verbatim
+          m.p[TCProcSection(sectionB)] = verbatim
         else:
           InternalError("ccgmerge: unknown section: " & k)
     else:
-      InternalError("ccgmerge: */ expected")
-  closeBaseLexer(L)
+      InternalError("ccgmerge: '*/' expected")
+
+proc mergeRequired*(m: BModule): bool =
+  for i in low(TCFileSection)..high(TCFileSection):
+    if m.s[i] != nil: return true
+  for i in low(TCProcSection)..high(TCProcSection):
+    if m.initProc.s[i] != nil: return true
+
+proc mergeFiles*(cfilename: string, m: BModule) =
+  ## merges the C file with the old version on hard disc.
+  var old: TMergeSections
+  readMergeSections(cfilename, old)  
+  # do the merge; old section before new section:    
+  for i in low(TCFileSection)..high(TCFileSection):
+    m.s[i] = con(old.f[i], m.s[i])
+  for i in low(TCProcSection)..high(TCProcSection):
+    m.initProc.s[i] = con(old.p[i], m.initProc.s[i])
 

@@ -40,12 +40,12 @@ type
     ctVoid, ctChar, ctBool, ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64, 
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64, ctFloat, ctFloat32, ctFloat64, 
     ctFloat128, ctArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc, ctCString
-  TCFileSections = array[TCFileSection, PRope] # represents a generated C file
+  TCFileSections* = array[TCFileSection, PRope] # represents a generated C file
   TCProcSection* = enum       # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
     cpsInit,                  # section for init of variables for C proc
     cpsStmts                  # section of local statements for C proc
-  TCProcSections = array[TCProcSection, PRope] # represents a generated C proc
+  TCProcSections* = array[TCProcSection, PRope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
   TBlock{.final.} = object 
