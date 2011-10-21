@@ -713,8 +713,8 @@ proc checkDep(filename: string): TReasonForRecompile =
             # we cannot break here, because of side-effects of `checkDep`
   else: 
     result = rrRodDoesNotExist
-  if result != rrNone and gVerbosity > 0: 
-    MsgWriteln(`%`(reasonToFrmt[result], [filename]))
+  if result != rrNone and gVerbosity > 0:
+    rawMessage(hintProcessing, reasonToFrmt[result] % filename)
   if result != rrNone or optForceFullMake in gGlobalOptions: 
     # recompilation is necessary:
     r = nil

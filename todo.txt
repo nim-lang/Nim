@@ -19,6 +19,7 @@ incremental compilation
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
   - test thread var
+  - test method generation
   - test DLL interfacing!
 - fix remaining bugs
 - write documentation
