@@ -76,6 +76,28 @@ Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
 
 
+Compilation cache
+=================
+
+**Warning**: The compilation cache is still highly experimental!
+
+The ``nimcache`` directory may also contain so called `rod`:idx: 
+or `symbol files`:idx:. These files are pre-compiled modules that are used by
+the compiler to perform `incremental compilation`:idx:. This means that only
+modules that have changed since the last compilation (or the modules depending
+on them etc.) are re-compiled. However, per default no symbol files are 
+generated; use the ``--symbolFiles:on`` command line switch to activate them.
+
+Unfortunately due to technical reasons the ``--symbolFiles:on`` needs 
+to *aggregate* some generated C code. This means that the resulting executable
+might contain some cruft even in when dead code elimination is turned on. So
+the final release build should be done with ``--symbolFiles:off``.
+
+Due to the aggregation of C code it is also recommended that each project
+resists in its own directory so that the generated ``nimcache`` directory
+is not shared between different projects.
+
+
 Cross compilation
 =================
 

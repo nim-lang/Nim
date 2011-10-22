@@ -18,16 +18,13 @@ incremental compilation
 
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
+  - test type converters
   - test thread var
   - test method generation
-  - test type converters
   - test init sections
   - test DLL interfacing!
   - hallo.rod is missing initial statements: feature or bug?
 - fix remaining bugs
-- write documentation
-- make the compiler output a warning if linking fails with --symbolFiles:on
-  (necessary?)
 
 
 version 0.9.0
