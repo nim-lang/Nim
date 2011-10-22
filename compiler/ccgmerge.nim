@@ -107,6 +107,8 @@ proc genMergeInfo*(m: BModule): PRope =
   writeIntSet(m.typeInfoMarker, s)
   s.add("labels:")
   encodeVInt(m.labels, s)
+  s.add(" hasframe:")
+  encodeVInt(ord(m.FrameDeclared), s)
   s.add(tnl)
   s.add("*/")
   result = s.toRope
@@ -220,6 +222,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
+    of "hasframe":  m.FrameDeclared = decodeVInt(L.buf, L.bufpos) != 0
     else: InternalError("ccgmerge: unkown key: " & k)
   
 template withCFile(cfilename: string, body: stmt) = 
@@ -284,7 +287,7 @@ proc mergeRequired*(m: BModule): bool =
 proc mergeFiles*(cfilename: string, m: BModule) =
   ## merges the C file with the old version on hard disc.
   var old: TMergeSections
-  readMergeSections(cfilename, old)  
+  readMergeSections(cfilename, old)
   # do the merge; old section before new section:    
   for i in low(TCFileSection)..high(TCFileSection):
     m.s[i] = con(old.f[i], m.s[i])

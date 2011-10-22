@@ -45,6 +45,7 @@ version 0.9.0
 - 'const' objects including case objects
 - os module should use Windows Unicode versions
 - 64bit build for Windows
+- codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 
 Bugs
 ----
@@ -70,9 +71,6 @@ version 0.9.XX
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency; better: 
   proc specialization in the code gen
-- find a way to reintroduce the cleanup() pass for C code generation: this
-  is hard because of partial evaluation --> symbol files will fix this as
-  a side effect
 - EcmaScript needs a new and better code gen: simply adapt the C code gen to it
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking

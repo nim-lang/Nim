@@ -888,6 +888,10 @@ proc addSon(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
+proc addSonNilAllowed*(father, son: PNode) =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)
+
 proc delSon(father: PNode, idx: int) = 
   if isNil(father.sons): return 
   var length = sonsLen(father)

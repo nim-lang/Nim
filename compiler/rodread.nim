@@ -129,7 +129,7 @@ type
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1022"       # modify this if the rod-format changes!
+  FileVersion* = "1023"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
@@ -205,8 +205,9 @@ proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
         result.sym = rrGetSym(r, id, result.info)
       else: 
         internalError(result.info, "decodeNode: nkSym")
-    else: 
-      while r.s[r.pos] != ')': addSon(result, decodeNode(r, result.info))
+    else:
+      while r.s[r.pos] != ')': 
+        addSonNilAllowed(result, decodeNode(r, result.info))
     if r.s[r.pos] == ')': inc(r.pos)
     else: internalError(result.info, "decodeNode")
   else: 
@@ -338,6 +339,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     ident = getIdent(decodeStr(r.s, r.pos))
   else: 
     InternalError(info, "decodeSym: no ident")
+  #echo "decoding: {", ident.s
   result = PSym(IdTableGet(r.syms, id))
   if result == nil: 
     new(result)
@@ -380,6 +382,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     result.offset = - 1
   decodeLoc(r, result.loc, result.info)
   result.annex = decodeLib(r, info)
+  #echo "decoded: ", ident.s, "}"
 
 proc skipSection(r: PRodReader) = 
   if r.s[r.pos] == ':': 

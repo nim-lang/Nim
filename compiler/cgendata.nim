@@ -78,6 +78,8 @@ type
     s*: TCFileSections        # sections of the C file
     PreventStackTrace*: bool  # true if stack traces need to be prevented
     usesThreadVars*: bool     # true if the module uses a thread var
+    FrameDeclared*: bool      # hack for ROD support so that we don't declare
+                              # a frame var twice in an init proc
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
