@@ -282,15 +282,20 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     result.add('@')
     encodeVInt(ord(s.magic), result)
   if s.ast != nil: 
-    var codeAst: PNode = nil
-    if not astNeeded(s):
-      codeAst = s.ast.sons[codePos]
-      # ugly hack to not store the AST:
-      s.ast.sons[codePos] = ast.emptyNode
+    # we used to attempt to save space here by only storing a dummy AST if
+    # it is not necessary, but Nimrod's heavy compile-time evaluation features
+    # make that unfeasible nowadays:
     encodeNode(w, s.info, s.ast, result)
-    if codeAst != nil:
-      # resore the AST:
-      s.ast.sons[codePos] = codeAst
+    when false:
+      var codeAst: PNode = nil
+      if not astNeeded(s):
+        codeAst = s.ast.sons[codePos]
+        # ugly hack to not store the AST:
+        s.ast.sons[codePos] = ast.emptyNode
+      encodeNode(w, s.info, s.ast, result)
+      if codeAst != nil:
+        # resore the AST:
+        s.ast.sons[codePos] = codeAst
   if s.options != w.options: 
     result.add('!')
     encodeVInt(cast[int32](s.options), result)
@@ -458,6 +463,9 @@ proc writeRod(w: PRodWriter) =
   f.write("DATA(" & rodNL)
   f.write(w.data)
   f.write(')' & rodNL)
+  # write trailing zero which is necessary because we use memory mapped files
+  # for reading:
+  f.write("\0")
   f.close()
   
   #echo "interf: ", w.interf.len

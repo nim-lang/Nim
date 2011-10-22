@@ -11,7 +11,7 @@ Version 0.8.14
 - thread local vs. global raiseHook()
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default
-
+- implement lib/pure/memfiles properly
 
 incremental compilation
 -----------------------
@@ -20,6 +20,8 @@ incremental compilation
 - write test cases: needs test script support
   - test thread var
   - test method generation
+  - test type converters
+  - test init sections
   - test DLL interfacing!
   - hallo.rod is missing initial statements: feature or bug?
 - fix remaining bugs
