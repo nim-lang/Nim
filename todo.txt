@@ -6,11 +6,7 @@ Version 0.8.14
 - fix actors.nim
 - make threadvar efficient again on linux after testing
 - test the sort implementation again
-- optional indentation for 'case' statement
 - document & test splicing; don't forget to test negative indexes
-- thread local vs. global raiseHook()
-- make pegs support a compile-time option and make c2nim use regexes instead
-  per default
 - implement lib/pure/memfiles properly
 
 incremental compilation
@@ -32,6 +28,7 @@ version 0.9.0
 
 - const ptr/ref
 - unsigned ints and bignums
+- implement the high level optimizer
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs
 - tests: run the GC tests
@@ -43,6 +40,7 @@ version 0.9.0
 - os module should use Windows Unicode versions
 - 64bit build for Windows
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
+- optional indentation for 'case' statement
 
 Bugs
 ----
@@ -74,6 +72,8 @@ version 0.9.XX
 - 'nimrod def': does not always work?
 - test branch coverage
 - checked exceptions
+- make pegs support a compile-time option and make c2nim use regexes instead
+  per default?
 - fix implicit generic routines
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:

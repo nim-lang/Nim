@@ -194,8 +194,10 @@ proc quitOrDebug() {.inline.} =
 
 proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   e.name = ename
-  if raiseHook != nil:
-    if not raiseHook(e): return
+  if localRaiseHook != nil:
+    if not localRaiseHook(e): return
+  if globalRaiseHook != nil:
+    if not globalRaiseHook(e): return
   if excHandler != nil:
     pushCurrentException(e)
     c_longjmp(excHandler.context, 1)

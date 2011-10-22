@@ -39,6 +39,9 @@ Changes affecting backwards compatibility
 - The threading API has been completely redesigned.
 - The ``unidecode`` module is now thread-safe and its interface has changed.
 - The ``bind`` expression is deprecated, use a ``bind`` declaration instead.
+- ``system.raiseHook`` is now split into ``system.localRaiseHook`` and
+  ``system.globalRaiseHook`` to distinguish between thread local and global
+  raise hooks.
 
 
 Language Additions
