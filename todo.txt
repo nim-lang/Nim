@@ -21,6 +21,7 @@ incremental compilation
   - test thread var
   - test method generation
   - test DLL interfacing!
+  - hallo.rod is missing initial statements: feature or bug?
 - fix remaining bugs
 - write documentation
 - make the compiler output a warning if linking fails with --symbolFiles:on

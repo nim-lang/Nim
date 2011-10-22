@@ -286,7 +286,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     if not astNeeded(s):
       codeAst = s.ast.sons[codePos]
       # ugly hack to not store the AST:
-      s.ast.sons[codePos] = nil
+      s.ast.sons[codePos] = ast.emptyNode
     encodeNode(w, s.info, s.ast, result)
     if codeAst != nil:
       # resore the AST:
