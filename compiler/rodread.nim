@@ -68,12 +68,16 @@
 #    sym
 #    )
 #
+#    The data section MUST be the last section of the file, because processing
+#    stops immediately after ``DATA(`` and the rest is only loaded on demand
+#    by using mem'mapped a file.
+#
 #  We now also do index compression, because an index always needs to be read.
 #
 
 import 
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms, 
-  ropes, idents, crc, idgen, rodutils
+  ropes, idents, crc, idgen, rodutils, memfiles
 
 type 
   TReasonForRecompile* = enum 
@@ -104,26 +108,28 @@ type
     offset*: int              # readers use this
   
   TRodReader* = object of TObject
-    pos*: int                 # position; used for parsing
-    s*: string                # the whole file in memory; XXX mmap this!
-    options*: TOptions
-    reason*: TReasonForRecompile
-    modDeps*: TStringSeq
-    files*: TStringSeq
-    dataIdx*: int             # offset of start of data section
-    convertersIdx*: int       # offset of start of converters section
-    initIdx*, interfIdx*, compilerProcsIdx*, cgenIdx*: int
-    filename*: string
-    index*, imports*: TIndex
-    readerIndex*: int
-    line*: int            # only used for debugging, but is always in the code
-    moduleID*: int
-    syms*: TIdTable           # already processed symbols
+    pos: int                 # position; used for parsing
+    s: cstring               # mmap'ed file contents
+    options: TOptions
+    reason: TReasonForRecompile
+    modDeps: TStringSeq
+    files: TStringSeq
+    dataIdx: int             # offset of start of data section
+    convertersIdx: int       # offset of start of converters section
+    initIdx, interfIdx, compilerProcsIdx: int
+    filename: string
+    index, imports: TIndex
+    readerIndex: int
+    line: int            # only used for debugging, but is always in the code
+    moduleID: int
+    syms: TIdTable       # already processed symbols
+    memfile: TMemFile    # unfortunately there is no point in time where we
+                         # can close this! XXX
   
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1019"       # modify this if the rod-format changes!
+  FileVersion* = "1022"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
@@ -541,13 +547,10 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "DATA": 
       r.dataIdx = r.pos + 2 # "(\10"
       # We do not read the DATA section here! We read the needed objects on
-      # demand.
-      skipSection(r)
+      # demand. And the DATA section comes last in the file, so we stop here:
+      break
     of "INIT": 
       r.initIdx = r.pos + 2   # "(\10"
-      skipSection(r)
-    of "CGEN": 
-      r.cgenIdx = r.pos + 2
       skipSection(r)
     else: 
       MsgWriteln("skipping section: " & $r.pos)
@@ -555,6 +558,12 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     if r.s[r.pos] == '\x0A': 
       inc(r.pos)
       inc(r.line)
+
+
+proc startsWith(buf: cstring, token: string, pos = 0): bool =
+  var s = 0
+  while s < token.len and buf[pos+s] == token[s]: inc s
+  result = s == token.len
 
 proc newRodReader(modfilename: string, crc: TCrc32, 
                   readerIndex: int): PRodReader = 
@@ -568,7 +577,10 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   r.readerIndex = readerIndex
   r.filename = modfilename
   InitIdTable(r.syms)
-  r.s = readFile(modfilename)
+  if not open(r.memFile, modfilename): return nil
+  # we terminate the file explicitely with ``\0``, so the cast to `cstring`
+  # is save:
+  r.s = cast[cstring](r.memFile.mem)
   if startsWith(r.s, "NIM:"): 
     initIITable(r.index.tab)
     initIITable(r.imports.tab) # looks like a ROD file
