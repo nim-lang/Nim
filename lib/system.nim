@@ -1447,11 +1447,20 @@ var
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
-  raiseHook*: proc (e: ref E_Base): bool
+  globalRaiseHook*: proc (e: ref E_Base): bool
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
     ## application code should never set this hook! You better know what you
-    ## do when setting this. If ``raiseHook`` returns false, the exception
+    ## do when setting this. If ``globalRaiseHook`` returns false, the
+    ## exception is caught and does not propagate further through the call
+    ## stack.
+
+  localRaiseHook* {.threadvar.}: proc (e: ref E_Base): bool
+    ## with this hook you can influence exception handling on a
+    ## thread local level.
+    ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
+    ## application code should never set this hook! You better know what you
+    ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
   outOfMemHook*: proc
