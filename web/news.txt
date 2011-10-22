@@ -74,6 +74,9 @@ Compiler Additions
   are declared with the ``TaintedString`` string type. If the taint
   mode is turned on it is a distinct string type which helps to detect input
   validation errors.
+- The compiler now supports the compilation cache via ``--symbolFiles:on``. 
+  This potentially speeds up compilations by an order of magnitude, but is
+  still highly experimental!
 
 
 Library Additions

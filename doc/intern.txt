@@ -112,7 +112,7 @@ Look at the file ``lib/system/hti.nim`` for more information.
 The compiler's architecture
 ===========================
 
-Nimrod uses the classic compiler architecture: A scanner feds tokens to a
+Nimrod uses the classic compiler architecture: A lexer/scanner feds tokens to a
 parser. The parser builds a syntax tree that is used by the code generator.
 This syntax tree is the interface between the parser and the code generator.
 It is essential to understand most of the compiler's code.
@@ -146,6 +146,89 @@ needed by the code generator. A ``magic`` proc is not the same as a
 ``compilerproc``: A ``magic`` is a proc that needs compiler magic for its
 semantic checking, a ``compilerproc`` is a proc that is used by the code
 generator.
+
+
+Compilation cache
+=================
+
+The implementation of the `compilation cache`:idx: is tricky: There are lots
+of issues to be solved for the front- and backend. In the following 
+sections *global* means *shared between modules* or *property of the whole
+program*.
+
+
+Frontend issues
+---------------
+
+Nimrod contains language features that are *global*. The best example for that
+are multi methods: Introducing a new method with the same name and some 
+compatible object parameter means that the method's dispatcher needs to take
+the new method into account. So the dispatching logic is only completely known
+after the whole program has been translated!
+
+Other features that are *implicitly* triggered cause problems for modularity 
+too. Type converters fall into this category:
+
+.. code-block:: nimrod
+  # module A
+  converter toBool(x: int): bool =
+    result = x != 0
+    
+.. code-block:: nimrod
+  # module B
+  import A
+  
+  if 1:
+    echo "ugly, but should work"
+
+If in the above example module ``B`` is re-compiled, but ``A`` is not then
+``B`` needs to be aware of ``toBool`` even though  ``toBool`` is not referenced
+in ``B`` *explicitely*. 
+
+Both the multi method and the type converter problems are solved by storing 
+them in special sections in the ROD file that are loaded *unconditionally*
+when the ROD file is read.
+
+
+Backend issues
+--------------
+
+- Init procs must not be "forgotten" to be called.
+- Files must not be "forgotten" to be linked.
+- Anything that is contained in ``nim__dat.c`` is shared between modules
+  implicitely.
+- Method dispatchers are global.
+- DLL loading via ``dlsym`` is global.
+- Emulated thread vars are global.
+
+
+However the biggest problem is that dead code elimination breaks modularity! 
+To see why, consider this scenario: The module ``G`` (for example the huge
+Gtk2 module...) is compiled with dead code elimination turned on. So no
+of ``G``'s procs is generated at all.
+
+Then module ``B`` is compiled that requires ``G.P1``. Ok, no problem,
+``G.P1`` is loaded from the symbol file and ``G.c`` now contains ``G.P1``.
+
+Then module ``A`` (that depends onto ``B`` and ``G``) is compiled and ``B`` 
+and ``G`` are left unchanged. ``A`` requires ``G.P2``.
+
+So now ``G.c`` MUST contain both ``P1`` and ``P2``, but we haven't even 
+loaded ``P1`` from the symbol file, nor do we want to because we then quickly 
+would restore large parts of the whole program. But we also don't want to 
+store ``P1`` in ``B.c`` because that would mean to store every symbol where 
+it is referred from which ultimately means the main module and putting
+everything in a single C file.
+
+There is however another solution: The old file ``G.c`` containing ``P1`` is
+**merged** with the new file ``G.c`` containing ``P2``. This is the solution
+that is implemented in the C code generator (have a look at the ``ccgmerge``
+module). The merging may lead to *cruft* (aka dead code) in generated C code
+which can only be removed by recompiling a project with the compilation cache
+turned off. Nevertheless the merge solution is way superior to the
+cheap solution "turn off dead code elimination if the compilation cache is 
+turned on".
+
 
 
 Debugging Nimrod's memory management
