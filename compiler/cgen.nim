@@ -767,9 +767,10 @@ proc genInitCode(m: BModule) =
   if m.nimTypes > 0: 
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n", 
           [m.nimTypesName, toRope(m.nimTypes)])
-  if optStackTrace in m.initProc.options:
+  if optStackTrace in m.initProc.options and not m.FrameDeclared:
     # BUT: the generated init code might depend on a current frame, so
     # declare it nevertheless:
+    m.FrameDeclared = true
     getFrameDecl(m.initProc)
   
   app(prc, genSectionStart(cpsLocals))
@@ -795,7 +796,7 @@ proc genInitCode(m: BModule) =
 
   app(prc, genSectionStart(cpsStmts))  
   app(prc, m.initProc.s[cpsStmts])
-  if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
+  if optStackTrace in m.initProc.options and not m.PreventStackTrace:
     app(prc, deinitFrame(m.initProc))
   app(prc, genSectionEnd(cpsStmts))
   appf(prc, "}$n$n")
@@ -857,15 +858,18 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   if gNimDat == nil: registerTypeInfoModule()
   result = newModule(module, filename)
 
+proc getCFile(m: BModule): string =
+  result = changeFileExt(completeCFilePath(m.cfilename), cExt)
+
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
   if gNimDat == nil:
     registerTypeInfoModule()
     gNimDat.fromCache = true
-    readMergeInfo(completeCFilePath(gNimDat.cfilename), gNimDat)
+    readMergeInfo(getCFile(gNimDat), gNimDat)
     
   var m = newModule(module, filename)
-  readMergeInfo(completeCFilePath(m.cfilename), m)
+  readMergeInfo(getCFile(m), m)
   result = m
 
 proc myProcess(b: PPassContext, n: PNode): PNode = 
@@ -906,13 +910,10 @@ proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool =
 
 proc writeModule(m: BModule, pending: bool) =
   # generate code for the init statements of the module:
-  var cfile = changeFileExt(completeCFilePath(m.cfilename), cExt)
+  var cfile = getCFile(m)
   var cfilenoext = changeFileExt(cfile, "")
   
   if not m.fromCache or optForceFullMake in gGlobalOptions:
-    # XXX Bug: what if `m` is unchanged, but re-opened because of dead code
-    # elim and now depends on a previously unnecessary module that needs to
-    # be initialized here?
     genInitCode(m)
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags: 
@@ -930,6 +931,8 @@ proc writeModule(m: BModule, pending: bool) =
       addFileToCompile(cfilenoext)
   elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
+    genInitCode(m)
+    finishTypeDescriptions(m)
     var code = genModule(m, cfilenoext)
     writeRope(code, cfile)
     addFileToCompile(cfilenoext)

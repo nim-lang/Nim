@@ -14,7 +14,7 @@
 ## Oh and currently only ``fmRead`` is supported...
 
 type
-  TMemFile* = object {.pure.}
+  TMemFile* = object {.pure.} ## represents a memory mapped file
     file: TFile
     buffer: pointer
     fileLen: int

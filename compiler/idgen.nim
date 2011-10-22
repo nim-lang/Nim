@@ -41,7 +41,10 @@ proc IDsynchronizationPoint*(idRange: int) =
   gFrontEndId = (gFrontEndId div IdRange + 1) * IdRange + 1
 
 proc toGid(f: string): string =
-  result = options.completeGeneratedFilePath(f.addFileExt("gid"))
+  # we used to use ``f.addFileExt("gid")`` (aka ``$project.gid``), but this
+  # will cause strange bugs if multiple projects are in the same folder, so
+  # we simply use a project independent name:
+  result = options.completeGeneratedFilePath("nimrod.gid")
 
 proc saveMaxIds*(project: string) =
   var f = open(project.toGid, fmWrite)
