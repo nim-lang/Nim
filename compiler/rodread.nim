@@ -123,7 +123,7 @@ type
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1018"       # modify this if the rod-format changes!
+  FileVersion* = "1019"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
