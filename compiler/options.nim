@@ -27,7 +27,7 @@ type                          # please make sure we have under 32 options
                               # (for interfacing with C)
     optProfiler               # profiler turned on
   TOptions* = set[TOption]
-  TGlobalOption* = enum 
+  TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 
     optListCmd, optCompileOnly, optNoLinking, 
     optSafeCode,              # only allow safe code
@@ -51,6 +51,7 @@ type                          # please make sure we have under 32 options
 
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
+                              # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
     cmdCompileToEcmaScript, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
     cmdGenDepend, cmdDump, 
@@ -93,10 +94,10 @@ const
   DocTexConfig* = "nimdoc.tex.cfg"
 
 # additional configuration variables:
-var 
-  gConfigVars*: PStringTable
-  libpath*: string = ""
-  projectPath*: string = ""
+var
+  gConfigVars* = newStringTable(modeStyleInsensitive)
+  libpath* = ""
+  projectPath* = ""
   projectName* = ""
   nimcacheDir* = ""
   gKeepComments*: bool = true # whether the parser needs to keep comments
@@ -200,4 +201,3 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
-gConfigVars = newStringTable(modeStyleInsensitive)

@@ -24,6 +24,8 @@
 #  - a section containing the compiler options and defines this
 #    module has been compiled with:
 #    OPTIONS:options\n
+#    GOPTIONS:options\n # global options
+#    CMD:command\n
 #    DEFINES:defines\n
 #  - FILES(
 #    myfile.inc
@@ -106,7 +108,8 @@ const
     "symbol file for $1 has the wrong version", 
     "file edited since last compilation: $1", 
     "list of conditional symbols changed for: $1", 
-    "list of options changed for: $1", "an include file edited: $1", 
+    "list of options changed for: $1", 
+    "an include file edited: $1", 
     "a module $1 depends on has changed"]
 
 type
@@ -139,7 +142,7 @@ type
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1023"       # modify this if the rod-format changes!
+  FileVersion* = "1024"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
@@ -501,7 +504,15 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos)              # skip ':'
       r.options = cast[TOptions](int32(decodeVInt(r.s, r.pos)))
       if options.gOptions != r.options: r.reason = rrOptions
-    of "DEFINES": 
+    of "GOPTIONS":
+      inc(r.pos)              # skip ':'
+      var dep = cast[TGlobalOptions](int32(decodeVInt(r.s, r.pos)))
+      if gGlobalOptions != dep: r.reason = rrOptions
+    of "CMD":
+      inc(r.pos)              # skip ':'
+      var dep = cast[TCommands](int32(decodeVInt(r.s, r.pos)))
+      if gCmd != dep: r.reason = rrOptions
+    of "DEFINES":
       inc(r.pos)              # skip ':'
       d = 0
       while r.s[r.pos] > '\x0A': 

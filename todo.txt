@@ -29,8 +29,6 @@ incremental compilation
   - test G, A, B example from the documentation
   - test init sections
 
-- fix remaining bugs
-
 
 version 0.9.0
 =============
@@ -66,9 +64,9 @@ Bugs
     result = forward(x)
 
 - bug: DLL generation is broken
-- bug: stress testing basic method example (eval) without ``-d:relase`` leaks
-  memory; good way to figure out how a fixed amount of stack can hold
-  an arbitrary number of GC roots!
+- bug: stress testing basic method example (eval example) 
+  without ``-d:relase`` leaks memory; good way to figure out how a 
+  fixed amount of stack can hold an arbitrary number of GC roots!
 
 
 version 0.9.XX
