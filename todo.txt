@@ -1,16 +1,16 @@
 Version 0.8.14
 ==============
 
-- optimize unused constants away (affected by HLO)
+- optimize unused constants away (affected by HLO); get rid of nfAllConst
 - 'let x = y'
 - fix actors.nim
 - make threadvar efficient again on linux after testing
-- test the sort implementation again
 - document & test splicing; don't forget to test negative indexes
 - implement lib/pure/memfiles properly
 - eval context is per module; this way modularity is kept; global id generation
   macro can still be done once macros support basic IO (store current id in
   some file)
+- methods for JS backend (very easy to do!)
 
 
 incremental compilation
@@ -18,7 +18,6 @@ incremental compilation
 
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
-  - fix method generation
   - test thread var
   - test DLL interfacing!
   - stress test with whole compiler
@@ -26,13 +25,14 @@ incremental compilation
 - automate tests:
   - test basic recompilation scheme
   - test type converters
-  - test G, A, B example from the documentation
-  - test init sections
+  - test G, A, B example from the documentation; test init sections
+  - test method generation
 
 
 version 0.9.0
 =============
 
+- test the sort implementation again
 - const ptr/ref
 - unsigned ints and bignums
 - implement the high level optimizer

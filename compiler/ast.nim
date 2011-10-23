@@ -13,9 +13,9 @@ import
   msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
   intsets, idgen
 
-const 
-  ImportTablePos* = 0
-  ModuleTablePos* = 1
+const
+  ImportTablePos* = 0         # imported symbols are at level 0
+  ModuleTablePos* = 1         # module's top level symbols are at level 1
 
 type 
   TCallingConvention* = enum 
@@ -173,20 +173,20 @@ type
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
                           # types as syntactic trees:
-    nkTypeOfExpr,
-    nkObjectTy,
-    nkTupleTy,
+    nkTypeOfExpr,         # type(1+2)
+    nkObjectTy,           # object body
+    nkTupleTy,            # tuple body
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
-    nkRefTy,
-    nkPtrTy,
-    nkVarTy,
+    nkRefTy,              # ``ref T``
+    nkPtrTy,              # ``ptr T``
+    nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
     nkMutableTy,          # ``mutable T``
     nkDistinctTy,         # distinct type
-    nkProcTy,
-    nkEnumTy,
+    nkProcTy,             # proc type
+    nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkReturnToken         # token used for interpretation
   TNodeKinds* = set[TNodeKind]
@@ -235,7 +235,8 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim # const cannot be put into a data section
+  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
+  sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher 
 
 type
   TTypeKind* = enum  # order is important!
@@ -246,7 +247,7 @@ type
     tyGenericInvokation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
-    tyGenericParam,      # ``a`` in the example
+    tyGenericParam,      # ``a`` in the above patterns
     tyDistinct,
     tyEnum,
     tyOrdinal,           # misnamed: should become 'tyConstraint'
@@ -575,7 +576,7 @@ const
   pragmasPos* = 3
   codePos* = 4
   resultPos* = 5
-  dispatcherPos* = 6
+  dispatcherPos* = 6 # caution: if method has no 'result' it can be position 5!
 
 # creator procs:
 proc NewSym*(symKind: TSymKind, Name: PIdent, owner: PSym): PSym
