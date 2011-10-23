@@ -676,7 +676,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkConverterDef: 
     if n.sons[genericParamsPos].kind == nkEmpty: 
       n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
-      if n.kind == nkMethodDef: methodDef(n.sons[namePos].sym)
+      if n.kind == nkMethodDef: methodDef(n.sons[namePos].sym, false)
     result = PTransNode(n)
   of nkContinueStmt:
     result = PTransNode(newNode(nkBreakStmt))
@@ -742,7 +742,7 @@ proc openTransf(module: PSym, filename: string): PPassContext =
 proc openTransfCached(module: PSym, filename: string, 
                       rd: PRodReader): PPassContext = 
   result = openTransf(module, filename)
-  for m in items(rd.methods): methodDef(m)
+  for m in items(rd.methods): methodDef(m, true)
 
 proc transfPass(): TPass = 
   initPass(result)

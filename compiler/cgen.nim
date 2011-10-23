@@ -936,6 +936,11 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cfilenoext)
     writeRope(code, cfile)
     addFileToCompile(cfilenoext)
+  elif not ExistsFile(toObjFile(cfilenoext)):
+    # Consider: first compilation compiles ``system.nim`` and produces
+    # ``system.c`` but then compilation fails due to an error. This means
+    # that ``system.o`` is missing, so we need to call the C compiler for it:
+    addFileToCompile(cfilenoext)
   addFileToLink(cfilenoext)
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
@@ -953,7 +958,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     finishModule(m)
   if sfMainModule in m.module.flags: 
     var disp = generateMethodDispatchers()
-    for i in 0..sonsLen(disp)-1: genProcAux(gNimDat, disp.sons[i].sym)
+    for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m) 
     # we need to process the transitive closure because recursive module
     # deps are allowed (and the system module is processed in the wrong
