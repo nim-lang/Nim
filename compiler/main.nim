@@ -171,6 +171,7 @@ proc CommandScan(filename: string) =
 proc CommandSuggest(filename: string) = 
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
+  registerPass(rodwrite.rodwritePass())
   compileProject(filename)
 
 proc WantFile(filename: string) = 

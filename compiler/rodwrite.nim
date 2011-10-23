@@ -421,6 +421,16 @@ proc writeRod(w: PRodWriter) =
   encodeVInt(cast[int32](w.options), options)
   f.write(options)
   f.write(rodNL)
+
+  var goptions = "GOPTIONS:"
+  encodeVInt(cast[int32](gGlobalOptions), goptions)
+  f.write(goptions)
+  f.write(rodNL)
+
+  var cmd = "CMD:"
+  encodeVInt(cast[int32](gCmd), cmd)
+  f.write(cmd)
+  f.write(rodNL)  
   
   f.write("DEFINES:")
   f.write(w.defines)
