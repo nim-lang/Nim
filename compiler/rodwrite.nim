@@ -322,7 +322,7 @@ proc addToIndex(w: var TIndex, key, val: int) =
   w.lastIdxVal = val
   IiTablePut(w.tab, key, val)
 
-var debugWritten: TIntSet
+#var debugWritten = initIntSet()
 
 proc symStack(w: PRodWriter) =
   var i = 0
@@ -351,7 +351,7 @@ proc symStack(w: PRodWriter) =
         if s.kind == skConverter: 
           if w.converters.len != 0: add(w.converters, ' ')
           encodeVInt(s.id, w.converters)
-        elif s.kind == skMethod:
+        elif s.kind == skMethod and sfDispatcher notin s.flags:
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
       elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
@@ -569,4 +569,3 @@ proc rodwritePass(): TPass =
     result.close = myClose
     result.process = process
 
-debugWritten = initIntSet()

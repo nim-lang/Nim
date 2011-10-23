@@ -103,6 +103,7 @@ proc CommandGenDepend(filename: string) =
 proc CommandCheck(filename: string) = 
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
+  registerPass(rodwrite.rodwritePass())
   compileProject(filename)
 
 proc CommandCompileToC(filename: string) = 

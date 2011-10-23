@@ -34,9 +34,11 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   
 proc methodCall*(n: PNode): PNode = 
   result = n
+  # replace ordinary method by dispatcher method: 
   var disp = lastSon(result.sons[0].sym.ast).sym
   result.sons[0].sym = disp
-  for i in countup(1, sonsLen(result) - 1): 
+  # change the arguments to up/downcasts to fit the dispatcher's parameters:
+  for i in countup(1, sonsLen(result)-1):
     result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
 
 # save for incremental compilation:
@@ -67,24 +69,36 @@ proc sameMethodBucket(a, b: PSym): bool =
       return 
   result = true
 
+proc attachDispatcher(s: PSym, dispatcher: PNode) =
+  var L = s.ast.len-1
+  var x = s.ast.sons[L]
+  if x.kind == nkSym and sfDispatcher in x.sym.flags:
+    # we've added a dispatcher already, so overwrite it
+    s.ast.sons[L] = dispatcher
+  else:
+    s.ast.add(dispatcher)
+
 proc methodDef*(s: PSym, fromCache: bool) =
   var L = len(gMethods)
   for i in countup(0, L - 1): 
     if sameMethodBucket(gMethods[i][0], s): 
-      add(gMethods[i], s)     # store a symbol to the dispatcher:
-      addSon(s.ast, lastSon(gMethods[i][0].ast))
+      add(gMethods[i], s)
+      attachDispatcher(s, lastSon(gMethods[i][0].ast))
       return 
   add(gMethods, @[s])
   # create a new dispatcher:
   if not fromCache:
     var disp = copySym(s)
+    incl(disp.flags, sfDispatcher)
+    excl(disp.flags, sfExported)
     disp.typ = copyType(disp.typ, disp.typ.owner, false)
+    # we can't inline the dispatcher itself (for now):
     if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
     disp.ast = copyTree(s.ast)
     disp.ast.sons[codePos] = ast.emptyNode
     if s.typ.sons[0] != nil: 
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
-    addSon(s.ast, newSymNode(disp))
+    attachDispatcher(s, newSymNode(disp))
 
 proc relevantCol(methods: TSymSeq, col: int): bool = 
   # returns true iff the position is relevant
