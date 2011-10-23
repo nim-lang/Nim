@@ -8,7 +8,7 @@
 #
 
 ## Thread var support for crappy architectures that lack native support for 
-## thread local storage.
+## thread local storage. (**Thank you Mac OS X!**)
 
 proc emulatedThreadVars(): bool {.inline.} =
   result = optThreads in gGlobalOptions
@@ -23,9 +23,17 @@ proc AccessThreadLocalVar(p: BProc, s: PSym) =
     appcg(p, cpsInit, "NimTV=(NimThreadVars*)#GetThreadLocalVars();$n")
 
 var
-  nimtv: PRope # nimrod thread vars
-  nimtvDeps: seq[PType] = @[]
-  nimtvDeclared = initIntSet()
+  nimtv: PRope                 # nimrod thread vars; the struct body
+  nimtvDeps: seq[PType] = @[]  # type deps: every module needs whole struct
+  nimtvDeclared = initIntSet() # so that every var/field exists only once
+                               # in the struct
+
+# 'nimtv' is incredibly hard to modularize! Best effort is to store all thread
+# vars in a ROD section and with their type deps and load them
+# unconditionally...
+
+# nimtvDeps is VERY hard to cache because it's not a list of IDs nor can it be
+# made to be one.
 
 proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
   if emulatedThreadVars():

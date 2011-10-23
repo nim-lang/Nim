@@ -61,6 +61,8 @@ Language Additions
   heart's content.
 - ``bind`` (used for symbol binding in templates and generics) is now a
   declarative statement.
+- The slice assignment ``a[i..j] = b`` where ``a`` is a sequence or string
+  now supports *splicing*.
 
 
 Compiler Additions

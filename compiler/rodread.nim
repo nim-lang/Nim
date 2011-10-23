@@ -9,10 +9,11 @@
 
 # This module is responsible for loading of rod files.
 #
-#  Reading and writing binary files are really hard to debug. Therefore we use
-#  a special text format. ROD-files are more efficient to process because
-#  symbols are only loaded on demand.
-#  It consists of:
+# Reading and writing binary files are really hard to debug. Therefore we use
+# a "creative" text/binary hybrid format. ROD-files are more efficient
+# to process because symbols are can be loaded on demand.
+# 
+# A ROD file consists of:
 #
 #  - a header:
 #    NIM:$fileversion\n
@@ -28,7 +29,7 @@
 #    myfile.inc
 #    lib/mymodA
 #    )
-#  - a include file dependency section:
+#  - an include file dependency section:
 #    INCLUDES(
 #    <fileidx> <CRC of myfile.inc>\n # fileidx is the LINE in the file section!
 #    )
@@ -48,6 +49,11 @@
 #    id-diff idx-diff\n
 #    id-diff idx-diff\n
 #    )
+#
+#    Since the whole index has to be read in advance, we compress it by 
+#    storing the integer differences to the last entry instead of using the
+#    real numbers.
+#
 #  - an import index consisting of (ID, moduleID)-pairs:
 #    IMPORTS(
 #    id-diff moduleID-diff\n
@@ -55,7 +61,12 @@
 #    )
 #  - a list of all exported type converters because they are needed for correct
 #    semantic checking:
-#    CONVERTERS:id id\n   # position of the symbol in the DATA section
+#    CONVERTERS:id id\n   # symbol ID
+#
+#  - a list of all (private or exported) methods because they are needed for
+#    correct dispatcher generation:
+#    METHODS: id id\n   # symbol ID
+#
 #  - an AST section that contains the module's AST:
 #    INIT(
 #    idx\n  # position of the node in the DATA section
@@ -71,8 +82,6 @@
 #    The data section MUST be the last section of the file, because processing
 #    stops immediately after ``DATA(`` and the rest is only loaded on demand
 #    by using mem'mapped a file.
-#
-#  We now also do index compression, because an index always needs to be read.
 #
 
 import 
@@ -116,7 +125,7 @@ type
     files: TStringSeq
     dataIdx: int             # offset of start of data section
     convertersIdx: int       # offset of start of converters section
-    initIdx, interfIdx, compilerProcsIdx: int
+    initIdx, interfIdx, compilerProcsIdx, methodsIdx: int
     filename: string
     index, imports: TIndex
     readerIndex: int
@@ -125,6 +134,7 @@ type
     syms: TIdTable       # already processed symbols
     memfile: TMemFile    # unfortunately there is no point in time where we
                          # can close this! XXX
+    methods*: TSymSeq
   
   PRodReader* = ref TRodReader
 
@@ -547,6 +557,9 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "CONVERTERS": 
       r.convertersIdx = r.pos + 1
       skipSection(r)
+    of "METHODS":
+      r.methodsIdx = r.pos + 1
+      skipSection(r)
     of "DATA": 
       r.dataIdx = r.pos + 2 # "(\10"
       # We do not read the DATA section here! We read the needed objects on
@@ -573,6 +586,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   new(result)
   result.files = @[]
   result.modDeps = @[]
+  result.methods = @[]
   var r = result
   r.reason = rrNone
   r.pos = 0
@@ -599,7 +613,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
       processRodFile(r, crc)
     else: 
       result = nil
-  else: 
+  else:
     result = nil
   
 proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType = 
@@ -681,13 +695,23 @@ proc loadInitSection(r: PRodReader): PNode =
   r.pos = oldPos
 
 proc loadConverters(r: PRodReader) = 
-  # We have to ensure that no exported converter is a stub anymore.
+  # We have to ensure that no exported converter is a stub anymore, and the
+  # import mechanism takes care of the rest.
   if r.convertersIdx == 0 or r.dataIdx == 0: 
     InternalError("importConverters")
   r.pos = r.convertersIdx
   while r.s[r.pos] > '\x0A': 
     var d = decodeVInt(r.s, r.pos)
     discard rrGetSym(r, d, UnknownLineInfo())
+    if r.s[r.pos] == ' ': inc(r.pos)
+
+proc loadMethods(r: PRodReader) =
+  if r.methodsIdx == 0 or r.dataIdx == 0:
+    InternalError("loadMethods")
+  r.pos = r.methodsIdx
+  while r.s[r.pos] > '\x0A':
+    var d = decodeVInt(r.s, r.pos)
+    r.methods.add(rrGetSym(r, d, UnknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
   
 proc getModuleIdx(filename: string): int = 
@@ -752,7 +776,8 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
     processInterf(result, module)
     processCompilerProcs(result, module)
     loadConverters(result)
-  else: 
+    loadMethods(result)
+  else:
     module.id = getID()
   
 proc GetCRC*(filename: string): TCrc32 = 
