@@ -29,7 +29,7 @@ type
     interf: string
     compilerProcs: string
     index, imports: TIndex
-    converters: string
+    converters, methods: string
     init: string
     data: string
     filename: string
@@ -85,6 +85,7 @@ proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter =
   result.interf = newStringOfCap(2_000)
   result.compilerProcs = ""
   result.converters = ""
+  result.methods = ""
   result.init = ""
   result.data = newStringOfCap(12_000)
   
@@ -350,6 +351,9 @@ proc symStack(w: PRodWriter) =
         if s.kind == skConverter: 
           if w.converters.len != 0: add(w.converters, ' ')
           encodeVInt(s.id, w.converters)
+        elif s.kind == skMethod:
+          if w.methods.len != 0: add(w.methods, ' ')
+          encodeVInt(s.id, w.methods)
       elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
         addToIndex(w.imports, s.id, m.id) #if not Contains(debugWritten, s.id):
                                           #  MessageOut(w.filename);
@@ -455,6 +459,10 @@ proc writeRod(w: PRodWriter) =
   f.write("CONVERTERS:")
   f.write(w.converters)
   f.write(rodNL)
+
+  f.write("METHODS:")
+  f.write(w.methods)
+  f.write(rodNL)
   
   f.write("INIT(" & rodNL)
   f.write(w.init)
@@ -486,10 +494,10 @@ proc process(c: PPassContext, n: PNode): PNode =
   of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef: 
     var s = n.sons[namePos].sym
     if s == nil: InternalError(n.info, "rodwrite.process")
-    if (n.sons[codePos].kind != nkEmpty) or (s.magic != mNone) or
-        not (sfForward in s.flags): 
+    if n.sons[codePos].kind != nkEmpty or s.magic != mNone or
+        sfForward notin s.flags:
       addInterfaceSym(w, s)
-  of nkVarSection: 
+  of nkVarSection:
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 

@@ -18,7 +18,7 @@
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
-  idents, renderer, types, passes, semfold, magicsys, cgmeth
+  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread
 
 const 
   genPrefix* = ":tmp"         # prefix for generated names
@@ -726,7 +726,7 @@ proc processTransf(context: PPassContext, n: PNode): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
-  if passes.skipCodegen(n): return n
+  if passes.skipCodegen(n) or context.fromCache: return n
   var c = PTransf(context)
   pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = PNode(transform(c, n))
@@ -739,9 +739,15 @@ proc openTransf(module: PSym, filename: string): PPassContext =
   n.module = module
   result = n
 
+proc openTransfCached(module: PSym, filename: string, 
+                      rd: PRodReader): PPassContext = 
+  result = openTransf(module, filename)
+  for m in items(rd.methods): methodDef(m)
+
 proc transfPass(): TPass = 
   initPass(result)
   result.open = openTransf
+  result.openCached = openTransfCached
   result.process = processTransf
   result.close = processTransf # we need to process generics too!
   
