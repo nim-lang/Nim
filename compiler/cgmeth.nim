@@ -38,8 +38,9 @@ proc methodCall*(n: PNode): PNode =
   result.sons[0].sym = disp
   for i in countup(1, sonsLen(result) - 1): 
     result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
-  
-var gMethods: seq[TSymSeq]
+
+# save for incremental compilation:
+var gMethods: seq[TSymSeq] = @[]
 
 proc sameMethodBucket(a, b: PSym): bool = 
   result = false
@@ -66,22 +67,24 @@ proc sameMethodBucket(a, b: PSym): bool =
       return 
   result = true
 
-proc methodDef*(s: PSym) =
+proc methodDef*(s: PSym, fromCache: bool) =
   var L = len(gMethods)
   for i in countup(0, L - 1): 
     if sameMethodBucket(gMethods[i][0], s): 
       add(gMethods[i], s)     # store a symbol to the dispatcher:
       addSon(s.ast, lastSon(gMethods[i][0].ast))
       return 
-  add(gMethods, @[s])        # create a new dispatcher:
-  var disp = copySym(s)
-  disp.typ = copyType(disp.typ, disp.typ.owner, false)
-  if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
-  disp.ast = copyTree(s.ast)
-  disp.ast.sons[codePos] = ast.emptyNode
-  if s.typ.sons[0] != nil: 
-    disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
-  addSon(s.ast, newSymNode(disp))
+  add(gMethods, @[s])
+  # create a new dispatcher:
+  if not fromCache:
+    var disp = copySym(s)
+    disp.typ = copyType(disp.typ, disp.typ.owner, false)
+    if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
+    disp.ast = copyTree(s.ast)
+    disp.ast.sons[codePos] = ast.emptyNode
+    if s.typ.sons[0] != nil: 
+      disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
+    addSon(s.ast, newSymNode(disp))
 
 proc relevantCol(methods: TSymSeq, col: int): bool = 
   # returns true iff the position is relevant
@@ -177,4 +180,3 @@ proc generateMethodDispatchers*(): PNode =
     sortBucket(gMethods[bucket], relevantCols)
     addSon(result, newSymNode(genDispatcher(gMethods[bucket], relevantCols)))
 
-gMethods = @[]

@@ -18,16 +18,16 @@ incremental compilation
 
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
-  - test G, A, B example from the documentation
+  - fix method generation
   - test thread var
-  - test method generation; could work, needs ROD support though
-  - test init sections
   - test DLL interfacing!
-  - hallo.rod is missing initial statements: feature or bug?
+  - stress test with whole compiler
 
 - automate tests:
   - test basic recompilation scheme
   - test type converters
+  - test G, A, B example from the documentation
+  - test init sections
 
 - fix remaining bugs
 

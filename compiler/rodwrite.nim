@@ -338,7 +338,7 @@ proc symStack(w: PRodWriter) =
         #intSetIncl(debugWritten, s.id)
         encodeSym(w, s, w.data)
         add(w.data, rodNL)
-        if sfExported in s.flags: 
+        if sfExported in s.flags and s.kind in ExportableSymKinds: 
           encodeStr(s.name.s, w.interf)
           add(w.interf, ' ')
           encodeVInt(s.id, w.interf)
@@ -386,7 +386,8 @@ proc rawAddInterfaceSym(w: PRodWriter, s: PSym) =
 
 proc addInterfaceSym(w: PRodWriter, s: PSym) = 
   if w == nil: return 
-  if {sfExported, sfCompilerProc} * s.flags != {}: 
+  if s.kind in ExportableSymKinds and 
+      {sfExported, sfCompilerProc} * s.flags != {}: 
     rawAddInterfaceSym(w, s)
 
 proc addStmt(w: PRodWriter, n: PNode) = 
