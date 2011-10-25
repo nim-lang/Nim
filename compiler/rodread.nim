@@ -142,7 +142,7 @@ type
   PRodReader* = ref TRodReader
 
 const 
-  FileVersion* = "1024"       # modify this if the rod-format changes!
+  FileVersion* = "1026"       # modify this if the rod-format changes!
 
 var rodCompilerprocs*: TStrTable
 
@@ -657,17 +657,26 @@ proc decodeSymSafePos(rd: PRodReader, offset: int, info: TLineInfo): PSym =
   result = decodeSym(rd, info)
   rd.pos = oldPos
 
+proc findSomeWhere(id: int) =
+  for i in countup(0, high(gMods)): 
+    var rd = gMods[i].rd
+    if rd != nil: 
+      var d = IITableGet(rd.index.tab, id)
+      if d != invalidKey:
+        echo "found id ", id, " in ", gMods[i].filename
+
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym = 
   result = PSym(IdTableGet(r.syms, id))
   if result == nil: 
     # load the symbol:
     var d = IITableGet(r.index.tab, id)
     if d == invalidKey: 
+      # import from other module:
       var moduleID = IiTableGet(r.imports.tab, id)
-      if moduleID < 0: 
+      if moduleID < 0:
         var x = ""
         encodeVInt(id, x)
-        InternalError(info, "missing from both indexes: +" & x) 
+        InternalError(info, "missing from both indexes: +" & x)
       # find the reader with the correct moduleID:
       for i in countup(0, high(gMods)): 
         var rd = gMods[i].rd
@@ -680,6 +689,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
             else:
               var x = ""
               encodeVInt(id, x)
+              when false: findSomeWhere(id)
               InternalError(info, "rrGetSym: no reader found: +" & x)
           else:
             #if IiTableGet(rd.index.tab, id) <> invalidKey then

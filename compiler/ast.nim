@@ -568,7 +568,7 @@ const
   ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
                                     tyTuple, tySequence}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
-    skMacro, skTemplate, skConverter, skStub}
+    skMacro, skTemplate, skConverter, skEnumField, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}
   namePos* = 0
   genericParamsPos* = 1

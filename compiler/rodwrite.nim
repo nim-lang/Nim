@@ -322,7 +322,10 @@ proc addToIndex(w: var TIndex, key, val: int) =
   w.lastIdxVal = val
   IiTablePut(w.tab, key, val)
 
-#var debugWritten = initIntSet()
+const debugWrittenIds = false
+
+when debugWrittenIds:
+  var debugWritten = initIntSet()
 
 proc symStack(w: PRodWriter) =
   var i = 0
@@ -335,10 +338,12 @@ proc symStack(w: PRodWriter) =
         # put definition in here
         var L = w.data.len
         addToIndex(w.index, s.id, L) 
-        #intSetIncl(debugWritten, s.id)
+        when debugWrittenIds: incl(debugWritten, s.id)
         encodeSym(w, s, w.data)
         add(w.data, rodNL)
-        if sfExported in s.flags and s.kind in ExportableSymKinds: 
+        # put into interface section if appropriate:
+        if {sfExported, sfFromGeneric} * s.flags == {sfExported} and 
+            s.kind in ExportableSymKinds: 
           encodeStr(s.name.s, w.interf)
           add(w.interf, ' ')
           encodeVInt(s.id, w.interf)
@@ -355,12 +360,14 @@ proc symStack(w: PRodWriter) =
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
       elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
-        addToIndex(w.imports, s.id, m.id) #if not Contains(debugWritten, s.id):
-                                          #  MessageOut(w.filename);
-                                          #  debug(s.owner);
-                                          #  debug(s);
-                                          #  InternalError('BUG!!!!');
-                                          #end
+        addToIndex(w.imports, s.id, m.id)
+        when debugWrittenIds:
+          if not Contains(debugWritten, s.id):
+            echo(w.filename)
+            debug(s)
+            debug(s.owner)
+            debug(m)
+            InternalError("BUG!!!!")
     inc(i)
   setlen(w.sstack, 0)
 

@@ -527,8 +527,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       typ = paramType(c, a.sons[length-2], genericParams, cl)
       #if matchType(typ, [(tyVar, 0)], tyGenericInvokation):
       #  debug a.sons[length-2][0][1]
-        
-    else: 
+    else:
       typ = nil
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1]) 

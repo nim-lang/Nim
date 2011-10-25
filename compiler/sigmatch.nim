@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements the signature matching for resolving
-# the call to overloaded procs, generic procs and operators.
+## This module implements the signature matching for resolving
+## the call to overloaded procs, generic procs and operators.
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
