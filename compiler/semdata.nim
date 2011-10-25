@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This module contains the data structures for the semantic checking phase.
+## This module contains the data structures for the semantic checking phase.
 
 import 
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
@@ -37,10 +37,24 @@ type
     genericSym*, instSym*: PSym
     concreteTypes*: seq[PType]
   
+  # If we generate an instance of a generic, we'd like to re-use that
+  # instance if possible across module boundaries. However, this is not
+  # possible if the compilation cache is enabled. So we give up then and use
+  # the caching of generics only per module, not per project.
+  TGenericsCache* {.final.} = object
+    InstTypes*: TIdTable # map PType to PType
+    generics*: seq[TInstantiatedSymbol] # a list of the things to compile
+    lastGenericIdx*: int      # used for the generics stack
+  
+  PGenericsCache* = ref TGenericsCache
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym             # the module sym belonging to the context
     p*: PProcCon              # procedure context
+    generics*: PGenericsCache # may point to a global or module-local structure 
+    friendModule*: PSym       # current friend module; may access private data;
+                              # this is used so that generic instantiations can
+                              # access private object fields
     InstCounter*: int         # to prevent endless instantiations
    
     threadEntries*: TSymSeq   # list of thread entries to check
@@ -56,10 +70,13 @@ type
     filename*: string         # the module's filename
     userPragmas*: TStrTable
   
+var
+  gGenericsCache: PGenericsCache # save for modularity
 
-var gInstTypes*: TIdTable # map PType to PType
-var generics*: seq[TInstantiatedSymbol] = @[] # a list of the things to compile
-var lastGenericIdx*: int      # used for the generics stack
+proc newGenericsCache: PGenericsCache =
+  new(result)
+  initIdTable(result.InstTypes)
+  result.generics = @[]
 
 proc newContext*(module: PSym, nimfile: string): PContext
 
@@ -126,11 +143,21 @@ proc newContext(module: PSym, nimfile: string): PContext =
   initLinkedList(result.libs)
   append(result.optionStack, newOptionEntry())
   result.module = module
+  result.friendModule = module
   result.threadEntries = @[]
   result.converters = @[]
   result.filename = nimfile
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
+  if optSymbolFiles notin gGlobalOptions:
+    # re-usage of generic instantiations across module boundaries is
+    # very nice for code size:
+    if gGenericsCache == nil: gGenericsCache = newGenericsCache()
+    result.generics = gGenericsCache
+  else:
+    # we have to give up and use a per-module cache for generic instantiations:
+    result.generics = newGenericsCache()
+    assert gGenericsCache == nil
 
 proc addConverter(c: PContext, conv: PSym) = 
   var L = len(c.converters)
@@ -189,5 +216,4 @@ proc checkSonsLen*(n: PNode, length: int) =
   
 proc checkMinSonsLen*(n: PNode, length: int) = 
   if sonsLen(n) < length: illFormedAst(n)
-  
-initIdTable(gInstTypes)
+

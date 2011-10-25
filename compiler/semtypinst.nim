@@ -105,7 +105,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   var header: PType = nil
   when true:
     # search for some instantiation here:
-    result = searchInstTypes(gInstTypes, t)
+    result = searchInstTypes(cl.c.generics.InstTypes, t)
     if result != nil: return
     for i in countup(1, sonsLen(t) - 1):
       var x = t.sons[i]
@@ -116,7 +116,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
         #idTablePut(cl.typeMap, body.sons[i-1], x)
     if header != nil:
       # search again after first pass:
-      result = searchInstTypes(gInstTypes, header)
+      result = searchInstTypes(cl.c.generics.InstTypes, header)
       if result != nil: return
     else:
       header = copyType(t, t.owner, false)
@@ -124,7 +124,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     # we need to add the candidate here, before it's fully instantiated for
     # recursive instantions:
     result = newType(tyGenericInst, t.sons[0].owner)
-    idTablePut(gInstTypes, header, result)
+    idTablePut(cl.c.generics.InstTypes, header, result)
 
     for i in countup(1, sonsLen(t) - 1):
       var x = replaceTypeVarsT(cl, t.sons[i])
@@ -154,14 +154,14 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
       assert x.kind != tyGenericInvokation
       idTablePut(cl.typeMap, body.sons[i-1], x)
     if header == nil: header = t
-    result = searchInstTypes(gInstTypes, header)
+    result = searchInstTypes(cl.c.generics.InstTypes, header)
     if result != nil: return 
     result = newType(tyGenericInst, t.sons[0].owner)
     for i in countup(0, sonsLen(t) - 1): 
       # if one of the params is not concrete, we cannot do anything
       # but we already raised an error!
       addSon(result, header.sons[i])
-    idTablePut(gInstTypes, header, result)
+    idTablePut(cl.c.generics.InstTypes, header, result)
     var newbody = ReplaceTypeVarsT(cl, lastSon(body))
     newbody.flags = newbody.flags + t.flags + body.flags
     newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)

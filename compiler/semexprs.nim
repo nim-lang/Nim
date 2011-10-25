@@ -53,8 +53,9 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
+    var smoduleId = getModule(s).id
     if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
-        getModule(s).id != c.module.id: 
+        smoduleId != c.module.id and smoduleId != c.friendModule.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
   of skConst:
@@ -673,8 +674,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if ty.sons[0] == nil: break 
       ty = skipTypes(ty.sons[0], {tyGenericInst})
     if f != nil: 
-      if sfExported in f.flags or getModule(f).id == c.module.id: 
-        # is the access to a public field or in the same module?
+      var fmoduleId = getModule(f).id
+      if sfExported in f.flags or fmoduleId == c.module.id or
+          fmoduleId == c.friendModule.id: 
+        # is the access to a public field or in the same module or in a friend?
         n.sons[0] = makeDeref(n.sons[0])
         n.sons[1] = newSymNode(f) # we now have the correct field
         n.typ = f.typ

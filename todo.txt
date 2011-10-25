@@ -16,11 +16,12 @@ Version 0.8.14
 incremental compilation
 -----------------------
 
+- object types need to be compared by container ID!
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
-  - test thread var
-  - test DLL interfacing!
   - stress test with whole compiler
+  - test DLL interfacing!
+  - test thread var
 
 - automate tests:
   - test basic recompilation scheme

@@ -160,6 +160,9 @@ program*.
 Frontend issues
 ---------------
 
+Methods and type converters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Nimrod contains language features that are *global*. The best example for that
 are multi methods: Introducing a new method with the same name and some 
 compatible object parameter means that the method's dispatcher needs to take
@@ -188,6 +191,17 @@ in ``B`` *explicitely*.
 Both the multi method and the type converter problems are solved by storing 
 them in special sections in the ROD file that are loaded *unconditionally*
 when the ROD file is read.
+
+Generics
+~~~~~~~~
+
+If we generate an instance of a generic, we'd like to re-use that
+instance if possible across module boundaries. However, this is not
+possible if the compilation cache is enabled. So we give up then and use
+the caching of generics only per module, not per project. This means that
+``--symbolFiles:on`` hurts a bit for efficiency. A better solution would
+be to persist the instantiations in a global cache per project. This might be
+implemented in later versions.
 
 
 Backend issues
