@@ -56,35 +56,70 @@ proc hashString*(s: string): biggestInt =
     a = a +% `shl`(a, 15'i32)
     result = a
 
-var gTypeTable: array[TTypeKind, TIdTable]
+var 
+  gTypeTable: array[TTypeKind, TIdTable]
+  gCanonicalTypes: array[TTypeKind, PType]
 
 proc initTypeTables() = 
   for i in countup(low(TTypeKind), high(TTypeKind)): InitIdTable(gTypeTable[i])
+
+when false:
+  proc echoStats*() =
+    for i in countup(low(TTypeKind), high(TTypeKind)): 
+      echo i, " ", gTypeTable[i].counter
   
 proc GetUniqueType*(key: PType): PType = 
   # this is a hotspot in the compiler!
-  result = key
   if key == nil: return 
   var k = key.kind
-  case k 
-  of tyObject, tyEnum: 
+  case k
+  of  tyNone, tyBool, tyChar, tyEmpty,
+      tyNil, tyExpr, tyStmt, tyTypeDesc, tyPointer, tyString, tyCString, 
+      tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
+      tyFloat, tyFloat32, tyFloat64, tyFloat128,
+      tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64, tyBigNum:
+    result = gCanonicalTypes[k]
+    if result == nil:
+      gCanonicalTypes[k] = key
+      result = key
+  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
+    result = GetUniqueType(lastSon(key))
+  of tyArrayConstr, tyGenericInvokation, tyGenericBody, tyGenericParam,
+     tyOpenArray, tyArray, tyTuple, tySet, tyRange, 
+     tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy:
+    # we have to do a slow linear search because types may need
+    # to be compared by their structure:
+    if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
+    for h in countup(0, high(gTypeTable[k].data)): 
+      var t = PType(gTypeTable[k].data[h].key)
+      if t != nil and sameType(t, key): 
+        return t
+    IdTablePut(gTypeTable[k], key, key)
+    result = key
+  of tyObject:
+    if tfFromGeneric notin key.flags:
+      # fast case; lookup per id suffices:
+      result = PType(IdTableGet(gTypeTable[k], key))
+      if result == nil: 
+        IdTablePut(gTypeTable[k], key, key)
+        result = key
+    else:
+      # ugly slow case: need to compare by structure
+      if IdTableHasObjectAsKey(gTypeTable[k], key): return key
+      for h in countup(0, high(gTypeTable[k].data)): 
+        var t = PType(gTypeTable[k].data[h].key)
+        if t != nil and sameType(t, key): 
+          return t
+      IdTablePut(gTypeTable[k], key, key)
+      result = key
+  of tyEnum:
     result = PType(IdTableGet(gTypeTable[k], key))
     if result == nil: 
       IdTablePut(gTypeTable[k], key, key)
       result = key
-  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter: 
-    result = GetUniqueType(lastSon(key))
-  of tyProc: 
-    nil
-  else: 
-    # we have to do a slow linear search because types may need
-    # to be compared by their structure:
-    if IdTableHasObjectAsKey(gTypeTable[k], key): return 
-    for h in countup(0, high(gTypeTable[k].data)): 
-      var t = PType(gTypeTable[k].data[h].key)
-      if (t != nil) and sameType(t, key): 
-        return t
-    IdTablePut(gTypeTable[k], key, key)
+  of tyProc, tyVar: 
+    # tyVar is not 100% correct, but speeds things up a little:
+    result = key
 
 proc TableGetType*(tab: TIdTable, key: PType): PObject = 
   # returns nil if we need to declare this type

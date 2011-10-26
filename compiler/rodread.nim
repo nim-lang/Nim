@@ -141,9 +141,6 @@ type
   
   PRodReader* = ref TRodReader
 
-const 
-  FileVersion* = "1026"       # modify this if the rod-format changes!
-
 var rodCompilerprocs*: TStrTable
 
 proc handleSymbolFile*(module: PSym, filename: string): PRodReader
@@ -376,7 +373,6 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   if r.s[r.pos] == '@': 
     inc(r.pos)
     result.magic = TMagic(decodeVInt(r.s, r.pos))
-  if r.s[r.pos] == '(': result.ast = decodeNode(r, result.info)
   if r.s[r.pos] == '!': 
     inc(r.pos)
     result.options = cast[TOptions](int32(decodeVInt(r.s, r.pos)))
@@ -395,6 +391,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     result.offset = - 1
   decodeLoc(r, result.loc, result.info)
   result.annex = decodeLib(r, info)
+  if r.s[r.pos] == '(': result.ast = decodeNode(r, result.info)
   #echo "decoded: ", ident.s, "}"
 
 proc skipSection(r: PRodReader) = 
@@ -618,7 +615,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
       add(version, r.s[r.pos])
       inc(r.pos)
     if r.s[r.pos] == '\x0A': inc(r.pos)
-    if version == FileVersion: 
+    if version == RodFileVersion: 
       # since ROD files are only for caching, no backwarts compatibility is
       # needed
       processRodFile(r, crc)
