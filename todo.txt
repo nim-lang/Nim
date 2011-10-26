@@ -16,11 +16,11 @@ Version 0.8.14
 incremental compilation
 -----------------------
 
-- object types need to be compared by container ID!
+- fix DLL interfacing!
+- the loading has to be MUCH more lazy! --> next version: We should re-load
+  symbol.ast lazily
 - adapt thread var implementation to care about the new merge operation
 - write test cases: needs test script support
-  - stress test with whole compiler
-  - test DLL interfacing!
   - test thread var
 
 - automate tests:

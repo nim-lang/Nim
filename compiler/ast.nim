@@ -293,7 +293,10 @@ type
     tfAcyclic,        # type is acyclic (for GC optimization)
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
-    tfThread          # proc type is marked as ``thread``
+    tfThread,         # proc type is marked as ``thread``
+    tfFromGeneric     # type is an instantiation of a generic; this is needed
+                      # because for instantiations of objects, structural
+                      # type equality has to be used
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -487,14 +490,14 @@ type
                               # same id; there may be multiple copies of a type
                               # in memory!
     kind*: TTypeKind          # kind of type
+    callConv*: TCallingConvention # for procs
+    flags*: TTypeFlags        # flags of the type
     sons*: TTypeSeq           # base types, etc.
     n*: PNode                 # node for types:
                               # for range types a nkRange node
                               # for record types a nkRecord node
                               # for enum types a list of symbols
                               # else: unused
-    flags*: TTypeFlags        # flags of the type
-    callConv*: TCallingConvention # for procs
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings

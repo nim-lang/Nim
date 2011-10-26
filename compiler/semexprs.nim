@@ -128,8 +128,7 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(d, s)
     of isNone, isGeneric: 
-      if not equalOrDistinctOf(castDest, src) and
-          not equalOrDistinctOf(src, castDest): 
+      if not compareTypes(castDest, src, dcEqIgnoreDistinct):
         GlobalError(info, errGenerated, `%`(
             MsgKindToString(errIllegalConvFromXtoY), 
             [typeToString(src), typeToString(castDest)]))
@@ -381,8 +380,7 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
     # Object and tuple conversions are still addressable, so we skip them
     if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
       result = isAssignable(c, n.sons[1])
-    elif equalOrDistinctOf(n.typ, n.sons[1].typ) or 
-         equalOrDistinctOf(n.sons[1].typ, n.typ):
+    elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(c, n.sons[1])
   of nkHiddenDeref, nkDerefExpr: 

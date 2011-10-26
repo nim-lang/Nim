@@ -32,9 +32,7 @@ proc IterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
   # Returns result of `iter`.
 proc mutateType*(t: PType, iter: TTypeMutator, closure: PObject): PType
   # Returns result of `iter`.
-proc SameType*(x, y: PType): bool
-proc SameTypeOrNil*(a, b: PType): bool
-proc equalOrDistinctOf*(x, y: PType): bool
+
 type 
   TParamsEquality* = enum     # they are equal, but their
                               # identifiers or their return
@@ -543,6 +541,53 @@ proc lengthOrd(t: PType): biggestInt =
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct, tyConst, tyMutable: result = lengthOrd(t.sons[0])
   else: result = lastOrd(t) - firstOrd(t) + 1
+
+# -------------- type equality -----------------------------------------------
+
+type
+  TDistinctCompare* = enum ## how distinct types are to be compared
+    dcEq,                  ## a and b should be the same type
+    dcEqIgnoreDistinct,    ## compare symetrically: (distinct a) == b, a == b
+                           ## or a == (distinct b)
+    dcEqOrDistinctOf       ## a equals b or a is distinct of b
+
+  TSameTypeClosure = object {.pure.}
+    cmp: TDistinctCompare
+    initSets: bool
+    recCheck: int
+    a: TIntSet
+    b: TIntSet
+
+proc initSameTypeClosure: TSameTypeClosure =
+  # we do the initialization lazy for performance (avoids memory allocations)
+  nil
+
+proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
+  result = c.initSets and c.a.contains(a.id) and c.b.contains(b.id)
+  if not result:
+    if not c.initSets:
+      c.initSets = true
+      c.a = initIntSet()
+      c.b = initIntSet()
+    c.a.incl(a.id)
+    c.b.incl(b.id)
+
+proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
+proc SameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
+  if a == b:
+    result = true
+  else:
+    if a == nil or b == nil: result = false
+    else: result = SameTypeAux(a, b, c)
+
+proc SameTypeOrNil*(a, b: PType): bool =
+  if a == b:
+    result = true
+  else: 
+    if a == nil or b == nil: result = false
+    else: 
+      var c = initSameTypeClosure()
+      result = SameTypeAux(a, b, c)
   
 proc equalParam(a, b: PSym): TParamsEquality = 
   if SameTypeOrNil(a.typ, b.typ): 
@@ -587,13 +632,6 @@ proc equalParams(a, b: PNode): TParamsEquality =
         result = paramsIncompatible # overloading by different
                                     # result types does not work
   
-proc SameTypeOrNil(a, b: PType): bool = 
-  if a == b: 
-    result = true
-  else: 
-    if a == nil or b == nil: result = false
-    else: result = SameType(a, b)
-  
 proc SameLiteral(x, y: PNode): bool = 
   if x.kind == y.kind: 
     case x.kind
@@ -606,15 +644,14 @@ proc SameRanges(a, b: PNode): bool =
   result = SameLiteral(a.sons[0], b.sons[0]) and
            SameLiteral(a.sons[1], b.sons[1])
 
-proc sameTuple(a, b: PType, DistinctOf: bool): bool = 
+proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool = 
   # two tuples are equivalent iff the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
   if sonsLen(a) == sonsLen(b): 
     result = true
     for i in countup(0, sonsLen(a) - 1): 
-      if DistinctOf: result = equalOrDistinctOf(a.sons[i], b.sons[i])
-      else: result = SameType(a.sons[i], b.sons[i])
+      result = SameTypeAux(a.sons[i], b.sons[i], c)
       if not result: return 
     if a.n != nil and b.n != nil: 
       for i in countup(0, sonsLen(a.n) - 1): 
@@ -627,74 +664,138 @@ proc sameTuple(a, b: PType, DistinctOf: bool): bool =
         if not result: break 
   else: 
     result = false
-  
-proc SameType(x, y: PType): bool = 
+
+template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) =
+  if tfFromGeneric notin a.flags + b.flags:
+    # fast case: id comparison suffices:
+    result = a.id == b.id
+  else:
+    # expensive structural equality test; however due to the way generic and
+    # objects work, if one of the types does **not** contain tfFromGeneric,
+    # they cannot be equal. The check ``a.sym.Id == b.sym.Id`` checks
+    # for the same origin and is essential because we don't want "pure" 
+    # structural type equivalence:
+    #
+    # type
+    #   TA[T] = object
+    #   TB[T] = object
+    # --> TA[int] != TB[int]
+    if tfFromGeneric in a.flags * b.flags and a.sym.Id == b.sym.Id:
+      # ok, we need the expensive structural check
+      body
+
+proc sameObjectTypes*(a, b: PType): bool =
+  # specialized for efficiency (sigmatch uses it)
+  IfFastObjectTypeCheckFailed(a, b):
+    var c = initSameTypeClosure()
+    result = sameTypeAux(a, b, c)
+
+proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
+  result = sameObjectTypes(a, b)
+
+proc sameEnumTypes*(a, b: PType): bool {.inline.} =
+  result = a.id == b.id
+
+proc SameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
+  if a == b:
+    result = true
+  elif (a != nil) and (b != nil) and (a.kind == b.kind):
+    if sameTypeOrNilAux(a.typ, b.typ, c):
+      case a.kind
+      of nkSym:
+        # same symbol as string is enough:
+        result = a.sym.name.id == b.sym.name.id
+      of nkIdent: result = a.ident.id == b.ident.id
+      of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+      of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+      of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+      of nkEmpty, nkNilLit, nkType: result = true
+      else:
+        if sonsLen(a) == sonsLen(b): 
+          for i in countup(0, sonsLen(a) - 1): 
+            if not SameObjectTree(a.sons[i], b.sons[i], c): return 
+          result = true
+
+proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
+  # check base types:
+  if sonsLen(a) != sonsLen(b): return
+  for i in countup(0, sonsLen(a) - 1):
+    if not SameTypeOrNilAux(a.sons[i], b.sons[i], c): return
+  if not SameObjectTree(a.n, b.n, c): return
+  result = true
+
+proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool = 
+  template CycleCheck() =
+    # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
+    # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
+    # again: Since the recursion check is only to not get caught in an endless
+    # recursion, we use a counter and only if it's value is over some 
+    # threshold we perform the expansive exact cycle check:
+    if c.recCheck < 20:
+      inc c.recCheck
+    else:
+      if containsOrIncl(c, a, b): return true
+
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst})
   var b = skipTypes(y, {tyGenericInst})
   assert(a != nil)
   assert(b != nil)
-  if a.kind != b.kind: 
-    return false
+  if a.kind != b.kind:
+    case c.cmp
+    of dcEq: return false
+    of dcEqIgnoreDistinct:
+      while a.kind == tyDistinct: a = a.sons[0]
+      while b.kind == tyDistinct: b = b.sons[0]
+      if a.kind != b.kind: return false
+    of dcEqOrDistinctOf:
+      while a.kind == tyDistinct: a = a.sons[0]
+      if a.kind != b.kind: return false
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
      tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc: 
     result = true
-  of tyEnum, tyForward, tyObject, tyDistinct, tyProxy: result = (a.id == b.id)
-  of tyTuple: result = sameTuple(a, b, false)
-  of tyGenericInst: result = sameType(lastSon(a), lastSon(b))
-  of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence, tyOrdinal, 
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr, tyArray, tyProc,
-     tyConst, tyMutable, tyVarargs, tyIter: 
-    if sonsLen(a) == sonsLen(b): 
+  of tyObject:
+    IfFastObjectTypeCheckFailed(a, b):
+      CycleCheck()
+      result = sameObjectStructures(a, b, c)
+  of tyDistinct:
+    CycleCheck()
+    result = sameTypeAux(a.sons[0], b.sons[0], c)
+  of tyEnum, tyForward, tyProxy:
+    # XXX generic enums do not make much sense, but require structural checking
+    result = a.id == b.id
+  of tyTuple:
+    CycleCheck()
+    result = sameTuple(a, b, c)
+  of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
+  of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
+     tyOrdinal, tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
+     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter: 
+    if sonsLen(a) == sonsLen(b):
+      CycleCheck()
       result = true
-      for i in countup(0, sonsLen(a) - 1): 
-        result = SameTypeOrNil(a.sons[i], b.sons[i]) # BUGFIX
+      for i in countup(0, sonsLen(a) - 1):
+        result = SameTypeOrNilAux(a.sons[i], b.sons[i], c)
         if not result: return 
       if result and (a.kind == tyProc): 
-        result = a.callConv == b.callConv # BUGFIX
-    else: 
-      result = false
-  of tyRange: 
-    result = SameTypeOrNil(a.sons[0], b.sons[0]) and
+        result = a.callConv == b.callConv
+  of tyRange:
+    CycleCheck()    
+    result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         SameValue(a.n.sons[0], b.n.sons[0]) and
         SameValue(a.n.sons[1], b.n.sons[1])
   of tyNone: result = false
+
+proc SameType*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  result = sameTypeAux(x, y, c)
   
-proc equalOrDistinctOf(x, y: PType): bool = 
-  if x == y: return true
-  if x == nil or y == nil: return false
-  var a = skipTypes(x, {tyGenericInst})
-  var b = skipTypes(y, {tyGenericInst})
-  assert(a != nil)
-  assert(b != nil)
-  if a.kind != b.kind: 
-    if a.kind == tyDistinct: a = a.sons[0]
-    if a.kind != b.kind: 
-      return false
-  case a.Kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-     tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc: 
-    result = true
-  of tyEnum, tyForward, tyObject, tyDistinct, tyProxy: result = (a.id == b.id)
-  of tyTuple: result = sameTuple(a, b, true)
-  of tyGenericInst: result = equalOrDistinctOf(lastSon(a), lastSon(b))
-  of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence, tyOrdinal, 
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr, tyArray, tyProc,
-     tyConst, tyMutable, tyVarargs, tyIter: 
-    if sonsLen(a) == sonsLen(b): 
-      result = true
-      for i in countup(0, sonsLen(a) - 1): 
-        result = equalOrDistinctOf(a.sons[i], b.sons[i])
-        if not result: return 
-      if result and (a.kind == tyProc): result = a.callConv == b.callConv
-    else: 
-      result = false
-  of tyRange: 
-    result = equalOrDistinctOf(a.sons[0], b.sons[0]) and
-        SameValue(a.n.sons[0], b.n.sons[0]) and
-        SameValue(a.n.sons[1], b.n.sons[1])
-  of tyNone: result = false
+proc compareTypes*(x, y: PType, cmp: TDistinctCompare): bool =
+  ## compares two type for equality (modulo type distinction)
+  var c = initSameTypeClosure()
+  c.cmp = cmp
+  result = sameTypeAux(x, y, c)
   
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool
 proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool = 
@@ -927,8 +1028,9 @@ proc computeSize(typ: PType): biggestInt =
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
-  assert s.kind in { skProc, skTemplate, skMacro, skIterator }
-  result = s.typ.n.sons[0].typ
+  assert s.kind in {skProc, skTemplate, skMacro, skIterator}
+  # XXX ask Zahary if this change broke something
+  result = s.typ.sons[0]
 
 proc getSize(typ: PType): biggestInt = 
   result = computeSize(typ)

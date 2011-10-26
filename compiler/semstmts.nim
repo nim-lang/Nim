@@ -502,7 +502,14 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       s.typ.kind = tyGenericBody
       if s.typ.containerID != 0: 
         InternalError(a.info, "semTypeSection: containerID")
-      s.typ.containerID = getID()
+      s.typ.containerID = s.typ.id
+      # XXX for generic type aliases this is not correct! We need the
+      # underlying Id really: 
+      #
+      # type
+      #   TGObj[T] = object
+      #   TAlias[T] = TGObj[T]
+      # 
       a.sons[1] = semGenericParamList(c, a.sons[1], s.typ)
       s.typ.size = -1 # could not be computed properly
       # we fill it out later. For magic generics like 'seq', it won't be filled

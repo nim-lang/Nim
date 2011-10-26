@@ -44,7 +44,7 @@ proc searchInstTypes(tab: TIdTable, key: PType): PType =
     for h in countup(0, high(tab.data)): 
       var t = PType(tab.data[h].key)
       if t != nil: 
-        if key.containerId == t.containerID: 
+        if key.containerId == t.containerId: 
           var match = true
           for j in countup(0, sonsLen(t) - 1): 
             # XXX sameType is not really correct for nested generics?
@@ -184,6 +184,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   else:
     if containsGenericType(t):
       result = copyType(t, t.owner, false)
+      incl(result.flags, tfFromGeneric)
       result.size = -1 # needs to be recomputed
       for i in countup(0, sonsLen(result) - 1):
         result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])

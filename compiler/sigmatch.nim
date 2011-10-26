@@ -161,9 +161,9 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
     elif (k >= tyFloat) and (k <= tyFloat128): result = isConvertible
     else: result = isNone
   
-proc isObjectSubtype(a, f: PType): bool = 
+proc isObjectSubtype(a, f: PType): bool =
   var t = a
-  while t != nil and t.id != f.id: t = base(t)
+  while t != nil and not sameObjectTypes(f, t): t = t.sons[0]
   result = t != nil
 
 proc minRel(a, b: TTypeRelation): TTypeRelation = 
@@ -240,8 +240,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     return typeRel(mapping, f, a.sons[0])
   case f.kind
   of tyEnum: 
-    if a.kind == f.kind and a.id == f.id: result = isEqual
-    elif skipTypes(a, {tyRange}).id == f.id: result = isSubtype
+    if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
+    elif sameEnumTypes(f, skipTypes(a, {tyRange})): result = isSubtype
   of tyBool, tyChar: 
     if a.kind == f.kind: result = isEqual
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
@@ -327,11 +327,11 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyTuple: 
     if a.kind == tyTuple: result = tupleRel(mapping, f, a)
   of tyObject: 
-    if a.kind == tyObject: 
-      if a.id == f.id: result = isEqual
+    if a.kind == tyObject:
+      if sameObjectTypes(f, a): result = isEqual
       elif isObjectSubtype(a, f): result = isSubtype
   of tyDistinct: 
-    if (a.kind == tyDistinct) and (a.id == f.id): result = isEqual
+    if (a.kind == tyDistinct) and sameDistinctTypes(f, a): result = isEqual
   of tySet: 
     if a.kind == tySet: 
       if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty): 

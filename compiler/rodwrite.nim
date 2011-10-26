@@ -46,8 +46,6 @@ proc addInterfaceSym(w: PRodWriter, s: PSym)
 proc addStmt(w: PRodWriter, n: PNode)
 proc writeRod(w: PRodWriter)
 
-proc processStacks(w: PRodWriter)
-
 proc getDefines(): string = 
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)
@@ -282,7 +280,20 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.magic != mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
-  if s.ast != nil: 
+  if s.options != w.options: 
+    result.add('!')
+    encodeVInt(cast[int32](s.options), result)
+  if s.position != 0: 
+    result.add('%')
+    encodeVInt(s.position, result)
+  if s.offset != - 1:
+    result.add('`')
+    encodeVInt(s.offset, result)
+  encodeLoc(w, s.loc, result)
+  if s.annex != nil: encodeLib(w, s.annex, s.info, result)
+  # lazy loading will soon reload the ast lazily, so the ast needs to be
+  # the last entry of a symbol:
+  if s.ast != nil:
     # we used to attempt to save space here by only storing a dummy AST if
     # it is not necessary, but Nimrod's heavy compile-time evaluation features
     # make that unfeasible nowadays:
@@ -297,17 +308,6 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
       if codeAst != nil:
         # resore the AST:
         s.ast.sons[codePos] = codeAst
-  if s.options != w.options: 
-    result.add('!')
-    encodeVInt(cast[int32](s.options), result)
-  if s.position != 0: 
-    result.add('%')
-    encodeVInt(s.position, result)
-  if s.offset != - 1:
-    result.add('`')
-    encodeVInt(s.offset, result)
-  encodeLoc(w, s.loc, result)
-  if s.annex != nil: encodeLib(w, s.annex, s.info, result)
   
 proc addToIndex(w: var TIndex, key, val: int) =
   if key - w.lastIdxKey == 1:
@@ -327,11 +327,14 @@ const debugWrittenIds = false
 when debugWrittenIds:
   var debugWritten = initIntSet()
 
-proc symStack(w: PRodWriter) =
+proc symStack(w: PRodWriter): int =
   var i = 0
   while i < len(w.sstack): 
     var s = w.sstack[i]
-    if IiTableGet(w.index.tab, s.id) == invalidKey: 
+    if sfForward in s.flags:
+      w.sstack[result] = s
+      inc result
+    elif IiTableGet(w.index.tab, s.id) == invalidKey:
       var m = getModule(s)
       if m == nil: InternalError("symStack: module nil: " & s.name.s)
       if (m.id == w.module.id) or (sfFromGeneric in s.flags): 
@@ -367,29 +370,40 @@ proc symStack(w: PRodWriter) =
             debug(s)
             debug(s.owner)
             debug(m)
-            InternalError("BUG!!!!")
+            InternalError("Symbol referred to but never written")
     inc(i)
-  setlen(w.sstack, 0)
+  setlen(w.sstack, result)
 
-proc typeStack(w: PRodWriter) = 
+proc typeStack(w: PRodWriter): int = 
   var i = 0
   while i < len(w.tstack): 
-    if IiTableGet(w.index.tab, w.tstack[i].id) == invalidKey: 
+    var t = w.tstack[i]
+    if t.kind == tyForward:
+      w.tstack[result] = t
+      inc result
+    elif IiTableGet(w.index.tab, t.id) == invalidKey: 
       var L = w.data.len
-      addToIndex(w.index, w.tstack[i].id, L)
-      encodeType(w, w.tstack[i], w.data)
+      addToIndex(w.index, t.id, L)
+      encodeType(w, t, w.data)
       add(w.data, rodNL)
     inc(i)
-  setlen(w.tstack, 0)
+  setlen(w.tstack, result)
 
-proc processStacks(w: PRodWriter) = 
-  while (len(w.tstack) > 0) or (len(w.sstack) > 0): 
-    symStack(w)
-    typeStack(w)
+proc processStacks(w: PRodWriter, finalPass: bool) =
+  var oldS = 0
+  var oldT = 0
+  while true:
+    var slen = symStack(w)
+    var tlen = typeStack(w)
+    if slen == oldS and tlen == oldT: break
+    oldS = slen
+    oldT = tlen
+  if finalPass and (oldS != 0 or oldT != 0):
+    InternalError("could not serialize some forwarded symbols/types")
 
 proc rawAddInterfaceSym(w: PRodWriter, s: PSym) = 
   pushSym(w, s)
-  processStacks(w)
+  processStacks(w, false)
 
 proc addInterfaceSym(w: PRodWriter, s: PSym) = 
   if w == nil: return 
@@ -402,17 +416,17 @@ proc addStmt(w: PRodWriter, n: PNode) =
   add(w.init, rodNL)
   encodeNode(w, UnknownLineInfo(), n, w.data)
   add(w.data, rodNL)
-  processStacks(w)
+  processStacks(w, false)
 
 proc writeRod(w: PRodWriter) = 
-  processStacks(w)
+  processStacks(w, true)
   var f: TFile
   if not open(f, completeGeneratedFilePath(changeFileExt(w.filename, "rod")),
               fmWrite):
     return
   # write header:
   f.write("NIM:")
-  f.write(FileVersion)
+  f.write(RodFileVersion)
   f.write(rodNL)
   var id = "ID:"
   encodeVInt(w.module.id, id)
