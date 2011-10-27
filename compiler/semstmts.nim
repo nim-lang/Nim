@@ -257,6 +257,9 @@ proc semVar(c: PContext, n: PNode): PNode =
     for j in countup(0, length-3): 
       var v = semIdentDef(c, a.sons[j], skVar)
       addInterfaceDecl(c, v)
+      if def != nil and def.kind != nkEmpty:
+        # this is only needed for the evaluation pass:
+        v.ast = def
       if a.kind != nkVarTuple: 
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)

@@ -32,6 +32,7 @@ type
     tos*: PStackFrame         # top of stack
     lastException*: PNode
     optEval*: bool            # evaluation done for optimization purposes
+    globals*: TIdNodeTable    # state of global vars
   
   PEvalContext* = ref TEvalContext
 
@@ -56,13 +57,14 @@ proc newEvalContext*(module: PSym, filename: string,
   new(result)
   result.module = module
   result.optEval = optEval
+  initIdNodeTable(result.globals)
 
 proc pushStackFrame*(c: PEvalContext, t: PStackFrame) {.inline.} = 
   t.next = c.tos
   c.tos = t
 
 proc popStackFrame*(c: PEvalContext) {.inline.} = 
-  if (c.tos == nil): InternalError("popStackFrame")
+  if c.tos == nil: InternalError("popStackFrame")
   c.tos = c.tos.next
 
 proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode
@@ -306,6 +308,20 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
     x = x.next
   result = emptyNode
 
+proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
+  result = IdNodeTableGet(c.globals, s)
+  if result != nil: 
+    if not aliasNeeded(result, flags): 
+      result = copyTree(result)
+  else:
+    result = s.ast
+    if result == nil or result.kind == nkEmpty:
+      result = getNullValue(s.typ, s.info)
+    else:
+      result = evalAux(c, result, {})
+      if isSpecial(result): return
+    IdNodeTablePut(c.globals, s, result)
+
 proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = evalAux(c, n.sons[0], flags)
   if isSpecial(result): return 
@@ -430,19 +446,23 @@ proc evalSwap(c: PEvalContext, n: PNode): PNode =
   result = emptyNode
 
 proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
-  case n.sym.kind
-  of skProc, skConverter, skMacro: result = n.sym.ast.sons[codePos]
-  of skVar, skForVar, skTemp, skResult: 
-    result = evalVariable(c.tos, n.sym, flags)
+  var s = n.sym
+  case s.kind
+  of skProc, skConverter, skMacro: result = s.ast.sons[codePos]
+  of skVar, skForVar, skTemp, skResult:
+    if sfGlobal notin s.flags:
+      result = evalVariable(c.tos, s, flags)
+    else:
+      result = evalGlobalVar(c, s, flags)
   of skParam: 
     # XXX what about LValue?
-    result = c.tos.params[n.sym.position + 1]
-  of skConst: result = n.sym.ast
-  of skEnumField: result = newIntNodeT(n.sym.position, n)
+    result = c.tos.params[s.position + 1]
+  of skConst: result = s.ast
+  of skEnumField: result = newIntNodeT(s.position, n)
   else: 
-    stackTrace(c, n, errCannotInterpretNodeX, $n.sym.kind)
+    stackTrace(c, n, errCannotInterpretNodeX, $s.kind)
     result = emptyNode
-  if result == nil: stackTrace(c, n, errCannotInterpretNodeX, n.sym.name.s)
+  if result == nil: stackTrace(c, n, errCannotInterpretNodeX, s.name.s)
   
 proc evalIncDec(c: PEvalContext, n: PNode, sign: biggestInt): PNode = 
   result = evalAux(c, n.sons[1], {efLValue})
@@ -532,11 +552,12 @@ proc evalAddr(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
 proc evalConv(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[1], {efLValue})
   if isSpecial(result): return
-  var a = result
-  result = foldConv(n, a)
-  if result == nil: 
-    # foldConv() cannot deal with everything that we want to do here:
-    result = a
+  if result.typ != nil:
+    var a = result
+    result = foldConv(n, a)
+    if result == nil: 
+      # foldConv() cannot deal with everything that we want to do here:
+      result = a
 
 proc evalCheckedFieldAccess(c: PEvalContext, n: PNode, 
                             flags: TEvalFlags): PNode = 

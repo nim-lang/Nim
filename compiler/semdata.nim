@@ -13,7 +13,7 @@ import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg, 
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
-  magicsys, nversion, nimsets, parser, times, passes, rodread
+  magicsys, nversion, nimsets, parser, times, passes, rodread, evals
 
 type 
   TOptionEntry* = object of lists.TListEntry # entries to put on a
@@ -69,6 +69,7 @@ type
     includedFiles*: TIntSet   # used to detect recursive include files
     filename*: string         # the module's filename
     userPragmas*: TStrTable
+    evalContext*: PEvalContext
   
 var
   gGenericsCache: PGenericsCache # save for modularity
