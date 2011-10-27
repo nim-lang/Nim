@@ -8,14 +8,14 @@
 #
 
 # This is the EMCAScript (also known as JavaScript) code generator.
-# **Invariant: each expression only occurs once in the generated
+# **Invariant: each expression occurs only once in the generated
 # code!**
 
 import 
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets
+  intsets, cgmeth
 
 proc ecmasgenPass*(): TPass
 # implementation
@@ -1290,31 +1290,30 @@ proc genProcBody(p: var TProc, prc: PSym, r: TCompRes): PRope =
         " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}", [result])
   if optStackTrace in prc.options: 
     app(result, "framePtr = framePtr.prev;" & tnl)
-  
-proc genProc(oldProc: var TProc, n: PNode, r: var TCompRes) = 
+
+proc genProc(oldProc: var TProc, prc: PSym, r: var TCompRes) = 
   var 
     p: TProc
     resultSym: PSym
     name, returnStmt, resultAsgn, header: PRope
     a: TCompRes
-  var prc = n.sons[namePos].sym
-  initProc(p, oldProc.globals, oldProc.module, n, prc.options)
+  initProc(p, oldProc.globals, oldProc.module, prc.ast, prc.options)
   returnStmt = nil
   resultAsgn = nil
   name = mangleName(prc)
   header = generateHeader(p, prc.typ)
   if (prc.typ.sons[0] != nil) and not (sfPure in prc.flags): 
-    resultSym = n.sons[resultPos].sym
+    resultSym = prc.ast.sons[resultPos].sym
     resultAsgn = ropef("var $1 = $2;$n", [mangleName(resultSym), 
         createVar(p, resultSym.typ, isIndirect(resultSym))])
-    gen(p, n.sons[resultPos], a)
+    gen(p, prc.ast.sons[resultPos], a)
     if a.com != nil: appf(returnStmt, "$1;$n", [a.com])
     returnStmt = ropef("return $1;$n", [a.res])
-  genStmt(p, n.sons[codePos], r)
+  genStmt(p, prc.ast.sons[codePos], r)
   r.com = ropef("function $1($2) {$n$3$4$5}$n", 
                 [name, header, resultAsgn, genProcBody(p, prc, r), returnStmt])
-  r.res = nil
-
+  r.res = nil  
+  
 proc genStmtListExpr(p: var TProc, n: PNode, r: var TCompRes) = 
   var a: TCompRes
   # watch out this trick: ``function () { stmtList; return expr; }()``
@@ -1361,9 +1360,9 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (n.sons[genericParamsPos].kind == nkEmpty): 
       var prc = n.sons[namePos].sym
-      if (n.sons[codePos].kind != nkEmpty) and not (lfNoDecl in prc.loc.flags): 
-        genProc(p, n, r)
-      else: 
+      if (prc.ast.sons[codePos].kind != nkEmpty) and not (lfNoDecl in prc.loc.flags): 
+        genProc(p, prc, r)
+      else:
         discard mangleName(prc)
   else: 
     genLineDir(p, n, r)
@@ -1469,6 +1468,15 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags: 
+    var disp = generateMethodDispatchers()
+    for i in 0..sonsLen(disp)-1: 
+      var 
+        p: TProc
+        r: TCompRes
+      initProc(p, globals, m, nil, m.module.options)
+      genProc(p, disp.sons[i].sym, r)
+      app(p.globals.code, mergeStmt(r))
+
     # write the file:
     var code = con(globals.typeInfo, globals.code)
     var outfile = changeFileExt(completeCFilePath(m.filename), "js")

@@ -10,8 +10,7 @@ Version 0.8.14
 - eval context is per module; this way modularity is kept; global id generation
   macro can still be done once macros support basic IO (store current id in
   some file)
-- methods for JS backend (very easy to do!)
-
+  
 
 incremental compilation
 -----------------------
