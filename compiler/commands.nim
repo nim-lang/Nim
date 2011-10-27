@@ -34,8 +34,8 @@ const
   AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string = 
-  result = `%`(HelpMessage, [VersionAsString, platform.os[platform.hostOS].name, 
-                             cpu[platform.hostCPU].name]) & Usage
+  result = (HelpMessage % [VersionAsString, platform.os[platform.hostOS].name, 
+                           cpu[platform.hostCPU].name]) & Usage
 
 var 
   helpWritten: bool           # BUGFIX 19
@@ -191,6 +191,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "genscript": result = contains(gGlobalOptions, optGenScript)
   of "threads": result = contains(gGlobalOptions, optThreads)
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
+  of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string): string = 
@@ -314,6 +315,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "assertions", "a": ProcessOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
   of "threads": ProcessOnOffSwitchG({optThreads}, arg, pass, info)
+  of "tlsemulation": ProcessOnOffSwitchG({optTlsEmulation}, arg, pass, info)
   of "taintmode": ProcessOnOffSwitchG({optTaintMode}, arg, pass, info)
   of "opt":
     expectArg(switch, arg, pass, info)
@@ -438,7 +440,6 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
 proc ProcessCommand(switch: string, pass: TCmdLinePass) = 
   var
     cmd, arg: string
-    info: TLineInfo
-  info = newLineInfo("command line", 1, 1)
+  var info = newLineInfo("command line", 1, 1)
   splitSwitch(switch, cmd, arg, pass, info)
   ProcessSwitch(cmd, arg, pass, info)

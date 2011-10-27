@@ -40,6 +40,7 @@ Advanced options:
                             (Nimrod, mangled) identifier pairs
   --lineDir:on|off          generation of #line directive on|off
   --threadanalysis:on|off   turn thread analysis on|off
+  --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --symbolFiles:on|off      turn symbol files on|off (experimental)
   --skipCfg                 do not read the general configuration file

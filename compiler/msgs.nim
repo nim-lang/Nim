@@ -59,7 +59,8 @@ type
     errCannotInstantiateX, errExprHasNoAddress, errXStackEscape,
     errVarForOutParamNeeded, 
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX, 
-    errAmbiguousCallXYZ, errWrongNumberOfArguments, errXCannotBePassedToProcVar, 
+    errAmbiguousCallXYZ, errWrongNumberOfArguments, 
+    errXCannotBePassedToProcVar, 
     errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProc, errImplOfXNotAllowed, 
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValue, 
     errInvalidDiscard, errIllegalConvFromXtoY, errCannotBindXTwice, 
@@ -94,7 +95,7 @@ type
     errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
-    warnCannotWriteMO2, warnCannotReadMO2, warnDeprecated, 
+    warnDeprecated, 
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnXisPassedToProcVar, warnDerefDeprecated, warnAnalysisLoophole,
@@ -323,8 +324,6 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]", 
     warnXIsNeverRead: "\'$1\' is never read [XIsNeverRead]", 
     warnXmightNotBeenInit: "\'$1\' might not have been initialized [XmightNotBeenInit]", 
-    warnCannotWriteMO2: "cannot write file \'$1\' [CannotWriteMO2]", 
-    warnCannotReadMO2: "cannot read file \'$1\' [CannotReadMO2]", 
     warnDeprecated: "\'$1\' is deprecated [Deprecated]", 
     warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one) [SmallLshouldNotBeUsed]", 
     warnUnknownMagic: "unknown magic \'$1\' might crash the compiler [UnknownMagic]", 
@@ -354,8 +353,8 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..18, string] = ["CannotOpenFile", "OctalEscape", 
-    "XIsNeverRead", "XmightNotBeenInit", "CannotWriteMO2", "CannotReadMO2", 
+  WarningsToStr*: array[0..16, string] = ["CannotOpenFile", "OctalEscape", 
+    "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "XisPassedToProcVar", "DerefDeprecated",

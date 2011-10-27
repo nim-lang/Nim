@@ -88,4 +88,7 @@ proc InitDefines*() =
   DefineSymbol(normalize(endianToStr[cpu[targetCPU].endian]))
   DefineSymbol(cpu[targetCPU].name)
   DefineSymbol(platform.os[targetOS].name)
+  if platform.OS[targetOS].props.contains(ospLacksThreadVars):
+    DefineSymbol("emulatedthreadvars")
+
 

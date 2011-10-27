@@ -151,7 +151,7 @@ else:
       importc: "pthread_attr_setstack", header: "<pthread.h>".}
 
 const
-  emulatedThreadVars = true
+  emulatedThreadVars = compileOption("tlsEmulation")
 
 when emulatedThreadVars:
   # the compiler generates this proc for us, so that we can get the size of
