@@ -6,17 +6,15 @@ Version 0.8.14
 - fix actors.nim
 - make threadvar efficient again on linux after testing
 - document & test splicing; don't forget to test negative indexes
-- implement lib/pure/memfiles properly
-- eval context is per module; this way modularity is kept; global id generation
-  macro can still be done once macros support basic IO (store current id in
-  some file)
-  
+- dead code elim for JS backend
+
 
 incremental compilation
 -----------------------
 
-- the loading has to be MUCH more lazy! --> next version: We should re-load
-  symbol.ast lazily
+- the loading has to be MUCH lazier! --> next version: We should re-load
+  symbol.ast.sons[codePos] lazily
+- implement lib/pure/memfiles properly
 
 
 version 0.9.0

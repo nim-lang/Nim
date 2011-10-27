@@ -107,8 +107,9 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
 proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
-  var p = newEvalContext(c.module, "", false)
-  result = evalMacroCall(p, n, sym)
+  if c.evalContext == nil:
+    c.evalContext = newEvalContext(c.module, "", false)
+  result = evalMacroCall(c.evalContext, n, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
 proc forceBool(c: PContext, n: PNode): PNode = 
