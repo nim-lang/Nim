@@ -655,9 +655,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     asgnFieldDiscriminant(p, e)
 
 proc genStmts(p: BProc, t: PNode) = 
-  var 
-    a: TLoc
-    prc: PSym
+  var a: TLoc
   case t.kind
   of nkEmpty: 
     nil
@@ -697,7 +695,7 @@ proc genStmts(p: BProc, t: PNode) =
   of nkPragma: genPragma(p, t)
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (t.sons[genericParamsPos].kind == nkEmpty): 
-      prc = t.sons[namePos].sym
+      var prc = t.sons[namePos].sym
       if (optDeadCodeElim notin gGlobalOptions and
           sfDeadCodeElim notin getModule(prc).flags) or
           ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

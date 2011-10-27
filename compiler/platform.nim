@@ -151,24 +151,24 @@ type
 type 
   TEndian* = enum 
     littleEndian, bigEndian
-  TInfoCPU* = tuple[name: string, intSize: int, endian: TEndian, floatSize: int, 
-                    bit: int]
+  TInfoCPU* = tuple[name: string, intSize: int, endian: TEndian, 
+                    floatSize, bit: int]
 
-const 
+const
   EndianToStr*: array[TEndian, string] = ["littleEndian", "bigEndian"]
   CPU*: array[succ(low(TSystemCPU))..high(TSystemCPU), TInfoCPU] = [
     (name: "i386", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
     (name: "m68k", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "alpha", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 
     (name: "powerpc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
-    (name: "powerpc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64), 
+    (name: "powerpc64", intSize: 64, endian: bigEndian, floatSize: 64,bit: 64), 
     (name: "sparc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "vm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
     (name: "ia64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 
     (name: "amd64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
-    (name: "ecmascript", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
+    (name: "ecmascript", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32), 
     (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32)]
 
 var 

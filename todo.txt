@@ -18,10 +18,6 @@ incremental compilation
 
 - the loading has to be MUCH more lazy! --> next version: We should re-load
   symbol.ast lazily
-- adapt thread var implementation to care about the new merge operation
-- write test cases: needs test script support
-  - test thread var
-
 - automate tests:
   - test basic recompilation scheme
   - test type converters
@@ -77,6 +73,7 @@ version 0.9.XX
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency; better: 
   proc specialization in the code gen
+- adapt thread var emulation to care about the new merge operation
 - EcmaScript needs a new and better code gen: simply adapt the C code gen to it
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking

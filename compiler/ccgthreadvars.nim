@@ -11,9 +11,7 @@
 ## thread local storage. (**Thank you Mac OS X!**)
 
 proc emulatedThreadVars(): bool {.inline.} =
-  result = optThreads in gGlobalOptions
-  # NOW: Use the work-around everywhere, because it should be faster anyway.
-  #platform.OS[targetOS].props.contains(ospLacksThreadVars)
+  result = {optThreads, optTlsEmulation} <= gGlobalOptions
 
 proc AccessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.ThreadVarAccessed:
