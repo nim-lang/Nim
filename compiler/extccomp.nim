@@ -334,7 +334,7 @@ proc addFileToLink*(filename: string) =
   # BUGFIX: was ``appendStr``
 
 proc execExternalProgram*(cmd: string) = 
-  if (optListCmd in gGlobalOptions) or (gVerbosity > 0): MsgWriteln(cmd)
+  if optListCmd in gGlobalOptions or gVerbosity > 0: MsgWriteln(cmd)
   if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: PRope) = 

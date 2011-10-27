@@ -148,9 +148,9 @@ proc appcg(p: BProc, s: TCProcSection, frmt: TFormatStr,
            args: openarray[PRope]) = 
   app(p.s[s], ropecg(p.module, frmt, args))
 
-proc safeLineNm(t: PNode) : int =
-  result = toLinenumber(t.info)   # BUGFIX
-  if result < 0: result = 0       # negative numbers are not allowed in #line
+proc safeLineNm(info: TLineInfo): int =
+  result = toLinenumber(info)
+  if result < 0: result = 0 # negative numbers are not allowed in #line
 
 proc genCLineDir(r: var PRope, filename: string, line: int) =
   assert line >= 0
@@ -158,11 +158,11 @@ proc genCLineDir(r: var PRope, filename: string, line: int) =
     appff(r, "$N#line $2 $1$N", "; line $2 \"$1\"$n",
           [toRope(makeSingleLineCString(filename)), toRope(line)])
 
-proc genCLineDir(r: var PRope, t: PNode) = 
-  genCLineDir(r, t.info.toFullPath, t.safeLineNm)
+proc genCLineDir(r: var PRope, info: TLineInfo) = 
+  genCLineDir(r, info.toFullPath, info.safeLineNm)
 
 proc genLineDir(p: BProc, t: PNode) = 
-  var line = t.safeLineNm
+  var line = t.info.safeLineNm
   genCLineDir(p.s[cpsStmts], t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
@@ -447,7 +447,6 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
-  #discard cgsym(m, "nimGetProcAddr")
   if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
   var tmp = mangleDynLibProc(sym)
   sym.loc.r = tmp             # from now on we only need the internal name
@@ -460,6 +459,10 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
   appff(m.s[cfsVars], "$2 $1;$n", 
       "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
+
+proc SymInDynamicLibPartial(m: BModule, sym: PSym) =
+  sym.loc.r = mangleDynLibProc(sym)
+  sym.typ.sym = nil           # generate a new name
 
 proc cgsym(m: BModule, name: string): PRope = 
   var sym = magicsys.getCompilerProc(name)
@@ -583,7 +586,7 @@ proc genProcAux(m: BModule, prc: PSym) =
 proc genProcPrototype(m: BModule, sym: PSym) = 
   useHeader(m, sym)
   if lfNoDecl in sym.loc.Flags: return 
-  if lfDynamicLib in sym.loc.Flags: 
+  if lfDynamicLib in sym.loc.Flags:
     if sym.owner.id != m.module.id and
         not ContainsOrIncl(m.declaredThings, sym.id): 
       appf(m.s[cfsVars], "extern $1 $2;$n", 
@@ -610,6 +613,8 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     var q = findPendingModule(m, prc)
     if q != nil and not ContainsOrIncl(q.declaredThings, prc.id): 
       SymInDynamicLib(q, prc)
+    else:
+      SymInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     if q != nil and not ContainsOrIncl(q.declaredThings, prc.id): 

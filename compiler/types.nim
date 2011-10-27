@@ -70,11 +70,6 @@ proc getOrdValue*(n: PNode): biggestInt
 proc computeSize*(typ: PType): biggestInt
 proc getSize*(typ: PType): biggestInt
 proc isPureObject*(typ: PType): bool
-proc inheritanceDiff*(a, b: PType): int
-  # | returns: 0 iff `a` == `b`
-  # | returns: -x iff `a` is the x'th direct superclass of `b`
-  # | returns: +x iff `a` is the x'th direct subclass of `b`
-  # | returns: `maxint` iff `a` and `b` are not compatible at all
 proc InvalidGenericInst*(f: PType): bool
   # for debugging
 type 
@@ -92,22 +87,6 @@ proc typeAllowed*(t: PType, kind: TSymKind): bool
 
 proc InvalidGenericInst(f: PType): bool = 
   result = (f.kind == tyGenericInst) and (lastSon(f) == nil)
-
-proc inheritanceDiff(a, b: PType): int = 
-  # conversion to superclass?
-  var x = a
-  result = 0
-  while x != nil: 
-    if x.id == b.id: return 
-    x = x.sons[0]
-    dec(result)
-  var y = b
-  result = 0
-  while y != nil: 
-    if y.id == a.id: return 
-    y = y.sons[0]
-    inc(result)
-  result = high(int)
 
 proc isPureObject(typ: PType): bool = 
   var t = typ
@@ -553,24 +532,19 @@ type
 
   TSameTypeClosure = object {.pure.}
     cmp: TDistinctCompare
-    initSets: bool
     recCheck: int
-    a: TIntSet
-    b: TIntSet
+    s: seq[tuple[a,b: int]] # seq for a set as it's hopefully faster
+                            # (few elements expected)
 
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazy for performance (avoids memory allocations)
   nil
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
-  result = c.initSets and c.a.contains(a.id) and c.b.contains(b.id)
+  result = not IsNil(c.s) and c.s.contains((a.id, b.id))
   if not result:
-    if not c.initSets:
-      c.initSets = true
-      c.a = initIntSet()
-      c.b = initIntSet()
-    c.a.incl(a.id)
-    c.b.incl(b.id)
+    if IsNil(c.s): c.s = @[]
+    c.s.add((a.id, b.id))
 
 proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
 proc SameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
@@ -731,7 +705,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     # again: Since the recursion check is only to not get caught in an endless
     # recursion, we use a counter and only if it's value is over some 
     # threshold we perform the expansive exact cycle check:
-    if c.recCheck < 20:
+    if c.recCheck < 3:
       inc c.recCheck
     else:
       if containsOrIncl(c, a, b): return true
@@ -797,6 +771,25 @@ proc compareTypes*(x, y: PType, cmp: TDistinctCompare): bool =
   c.cmp = cmp
   result = sameTypeAux(x, y, c)
   
+proc inheritanceDiff*(a, b: PType): int = 
+  # | returns: 0 iff `a` == `b`
+  # | returns: -x iff `a` is the x'th direct superclass of `b`
+  # | returns: +x iff `a` is the x'th direct subclass of `b`
+  # | returns: `maxint` iff `a` and `b` are not compatible at all
+  var x = a
+  result = 0
+  while x != nil:
+    if sameObjectTypes(x, b): return 
+    x = x.sons[0]
+    dec(result)
+  var y = b
+  result = 0
+  while y != nil:
+    if sameObjectTypes(y, a): return 
+    y = y.sons[0]
+    inc(result)
+  result = high(int)
+    
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool
 proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool = 
   result = true
