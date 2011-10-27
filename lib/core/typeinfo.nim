@@ -11,7 +11,11 @@
 ## Note that even though ``TAny`` and its operations hide the nasty low level
 ## details from its clients, it remains inherently unsafe!
 
+{.push hints: off.}
+
 include "system/hti.nim"
+
+{.pop.}
 
 type
   TAnyKind* = enum      ## what kind of ``any`` it is

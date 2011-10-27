@@ -267,6 +267,51 @@ proc runSingleTest(r: var TResults, test, options: string) =
 proc run(r: var TResults, dir, options: string) =
   for test in os.walkFiles(dir / "t*.nim"): runSingleTest(r, test, options)
 
+# ---------------- ROD file tests ---------------------------------------------
+
+const
+  rodfilesDir = "tests/rodfiles"
+
+proc delNimCache() = removeDir(rodfilesDir / "nimcache")
+proc plusCache(options: string): string = return options & " --symbolFiles:on"
+
+proc runRodFiles(r: var TResults, options: string) =
+  var options = options.plusCache
+  delNimCache()
+  
+  # test basic recompilation scheme:
+  runSingleTest(r, rodfilesDir / "hallo", options)
+  runSingleTest(r, rodfilesDir / "hallo", options)
+  # test incremental type information:
+  runSingleTest(r, rodfilesDir / "hallo2", options)
+  delNimCache()
+  
+  # test type converters:
+  runSingleTest(r, rodfilesDir / "aconv", options)
+  runSingleTest(r, rodfilesDir / "bconv", options)
+  delNimCache()
+  
+  # test G, A, B example from the documentation; test init sections:
+  runSingleTest(r, rodfilesDir / "deada", options)
+  runSingleTest(r, rodfilesDir / "deada2", options)
+  delNimCache()
+  
+  # test method generation:
+  runSingleTest(r, rodfilesDir / "bmethods", options)
+  runSingleTest(r, rodfilesDir / "bmethods2", options)
+  delNimCache()
+  
+
+proc compileRodFiles(r: var TResults, options: string) =
+  var options = options.plusCache
+  delNimCache()
+  # test DLL interfacing:
+  compileSingleTest(r, rodfilesDir / "gtkex1", options)
+  compileSingleTest(r, rodfilesDir / "gtkex2", options)
+  delNimCache()
+
+# -----------------------------------------------------------------------------
+
 proc compileExample(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
 
@@ -303,6 +348,7 @@ proc main(action: string) =
     var compileRes = initResults()
     compile(compileRes, "tests/accept/compile/t*.nim", options)
     compile(compileRes, "tests/ecmas.nim", options)
+    compileRodFiles(compileRes, options)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)
@@ -313,6 +359,7 @@ proc main(action: string) =
   of "run":
     var runRes = initResults()
     run(runRes, "tests/accept/run", options)
+    runRodFiles(runRes, options)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
