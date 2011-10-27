@@ -16,7 +16,6 @@ Version 0.8.14
 incremental compilation
 -----------------------
 
-- fix DLL interfacing!
 - the loading has to be MUCH more lazy! --> next version: We should re-load
   symbol.ast lazily
 - adapt thread var implementation to care about the new merge operation
@@ -28,6 +27,7 @@ incremental compilation
   - test type converters
   - test G, A, B example from the documentation; test init sections
   - test method generation
+  - test DLL interfacing
 
 
 version 0.9.0
@@ -35,7 +35,7 @@ version 0.9.0
 
 - test the sort implementation again
 - const ptr/ref
-- unsigned ints and bignums
+- unsigned ints and bignums; requires abstract integer literal type
 - implement the high level optimizer
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs

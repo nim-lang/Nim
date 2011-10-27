@@ -531,7 +531,9 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
-  genCLineDir(result, prc.ast.sons[codePos])
+  # careful here! don't access ``prc.ast`` as that could reload large parts of
+  # the object graph!
+  genCLineDir(result, prc.info)
   appf(result, "$1($2, $3)$4", 
        [toRope(CallingConvToStr[prc.typ.callConv]), rettype, prc.loc.r, params])
 
