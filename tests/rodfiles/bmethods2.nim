@@ -1,6 +1,5 @@
 discard """
-  output: '''
-derived class 2
+  output: '''derived class 2
 base class
 '''
 """

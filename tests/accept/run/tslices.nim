@@ -4,6 +4,8 @@ discard """
 456456
 456456
 Zugr5nd
+egerichtetd
+verichtetd
 '''
 """
 
@@ -40,4 +42,18 @@ for x in items(myseq): stdout.write(x)
 echo()
 
 echo mystr
+
+mystr[4..4] = "u"
+
+# test full replacement
+mystr[.. -2] = "egerichtet"
+
+echo mystr
+
+mystr[0..2] = "ve"
+echo mystr
+
+var s = "abcdef"
+s[1 .. -2] = "xyz"
+assert s == "axyzf"
 
