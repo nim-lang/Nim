@@ -1930,36 +1930,37 @@ proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
   ## slice operation for strings. Negative indexes are supported.
   result = s.substr(x.a-|s, x.b-|s)
 
-template spliceImpl(x, start, endp, spliced: expr): stmt =
-  var 
-    count = endp - start + 1
-    shift = spliced.len - count
-    newLen = x.len + shift
-    totalShifted = x.len - (start + count)
-    firstShifted = newLen - totalShifted
-
+template spliceImpl(s, a, L, b: expr): stmt =
+  # make room for additional elements or cut:
+  var slen = s.len
+  var shift = b.len - L
+  var newLen = slen + shift
   if shift > 0:
-    setLen(x, newLen)
-
-  for i in countdown(newLen - 1, firstShifted):
-    shallowCopy(x[i], x[i-shift])
-
-  for c in countup(0, spliced.len - 1):
-    x[start + c] = spliced[c]
-
-  if shift < 0:
-    setLen(x, newLen)
+    # enlarge:
+    setLen(s, newLen)
+    for i in countdown(newLen-1, a+shift+1): shallowCopy(s[i], s[i-shift])
+  else:
+    for i in countup(a+b.len, s.len-1+shift): shallowCopy(s[i], s[i-shift])
+    # cut down:
+    setLen(s, newLen)
+  # fill the hole:
+  for i in 0 .. <b.len: s[i+a] = b[i]  
 
 proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
   ## slice assignment for strings. Negative indexes are supported. If
   ## ``b.len`` is not exactly the number of elements that are referred to
-  ## by `x`, a `splice`:idx: is performed. 
+  ## by `x`, a `splice`:idx: is performed:
+  ##
+  ## .. code-block:: nimrod
+  ##   var s = "abcdef"
+  ##   s[1 .. -2] = "xyz"
+  ##   assert s == "axyzf"
   var a = x.a-|s
   var L = x.b-|s - a + 1
   if L == b.len:
     for i in 0 .. <L: s[i+a] = b[i]
   else:
-    spliceImpl(s, x.a, x.b, b)
+    spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2015,7 +2016,7 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
   if L == b.len:
     for i in 0 .. <L: s[i+a] = b[i]
   else:
-    spliceImpl(s, x.a, x.b, b)
+    spliceImpl(s, a, L, b)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but

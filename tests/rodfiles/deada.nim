@@ -1,6 +1,5 @@
 discard """
-  output: '''
-246
+  output: '''246
 '''
 """
 
