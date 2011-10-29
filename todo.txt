@@ -1,10 +1,8 @@
 Version 0.8.14
 ==============
 
-- optimize unused constants away (affected by HLO); get rid of nfAllConst
-- 'let x = y'
-- fix actors.nim
-- make threadvar efficient again on linux after testing
+- optimize unused constants away (affected by HLO)
+- fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend
 
 
@@ -16,42 +14,14 @@ incremental compilation
 - implement lib/pure/memfiles properly
 
 
-Destructors
------------
-
-A destructor is bound to a proc instead of a type. The proc is then called
-an *init proc*. A destructor is called at
-scope exit for the local variables (declared with ``var`` or ``let``)
-that are initialized with its corresponding init proc:
-
-.. code-block:: nimrod
-  proc autoOpen(filename: string): TFile {.destructor: close.} =
-    result = open(filename)
-    
-  var f = autoOpen("abc.txt")
-
-A template ``atScopeExit`` can easily be defined with this mechanism. However
-unfortunately the regex problem is not solved at all: 
-
-.. code-block:: nimrod
-  if x =~ re"abc":
-    ...
-
-We really need some form of escape analysis; ``var`` or ``let`` is not enough!
-Hm, but what if the procs declare that property: 
-  
-.. code-block:: nimrod
-  proc `=~` (s: string, pattern: TRegex{.noEscape.}): bool
-
-So it's bound to a type again?
-
-
 version 0.9.0
 =============
 
 - test the sort implementation again
+- 'let x = y'
 - const ptr/ref
-- unsigned ints and bignums; requires abstract integer literal type
+- unsigned ints and bignums; requires abstract integer literal type: 
+  use tyInt+node for that
 - implement the high level optimizer
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
@@ -64,7 +34,6 @@ version 0.9.0
 - 'const' objects including case objects
 - os module should use Windows Unicode versions
 - 64bit build for Windows
-- codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 - optional indentation for 'case' statement
 
 Bugs
@@ -83,7 +52,7 @@ Bugs
 
 - bug: DLL generation is broken; write at least a basic test
 - bug: stress testing basic method example (eval example) 
-  without ``-d:relase`` leaks memory; good way to figure out how a 
+  without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
 
 
@@ -149,6 +118,7 @@ Low priority
   is allocated
 - timeout for locks
 - adapt thread var emulation to care about the new merge operation
+- codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 
 
 Version 2

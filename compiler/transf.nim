@@ -719,7 +719,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
-  if cnst != nil and (cnst.kind != nkBracket or cnst.len == 0): 
+  # we inline constants if they are not complex constants:
+  if cnst != nil and (cnst.kind notin {nkCurly, nkPar, nkBracket} or
+                      cnst.len == 0): 
     result = PTransNode(cnst) # do not miss an optimization  
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 

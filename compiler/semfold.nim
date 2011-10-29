@@ -155,9 +155,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newIntNodeT(ord(`<%`(getOrdValue(a), getOrdValue(b))), n)
   of mLeU, mLeU64: 
     result = newIntNodeT(ord(`<=%`(getOrdValue(a), getOrdValue(b))), n)
-  of mBitandI, mBitandI64, mAnd: result = newIntNodeT(getInt(a) and getInt(b), n)
+  of mBitandI, mBitandI64, mAnd: result = newIntNodeT(a.getInt and b.getInt, n)
   of mBitorI, mBitorI64, mOr: result = newIntNodeT(getInt(a) or getInt(b), n)
-  of mBitxorI, mBitxorI64, mXor: result = newIntNodeT(getInt(a) xor getInt(b), n)
+  of mBitxorI, mBitxorI64, mXor: result = newIntNodeT(a.getInt xor b.getInt, n)
   of mAddU, mAddU64: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n)
   of mSubU, mSubU64: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n)
   of mMulU, mMulU64: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n)
@@ -199,7 +199,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = copyTree(a)
     result.typ = n.typ
   of mCompileOption:
-    result = newIntNodeT(Ord(commands.testCompileOption(getStr(a), n.info)), n)  
+    result = newIntNodeT(Ord(commands.testCompileOption(a.getStr, n.info)), n)  
   of mCompileOptionArg:
     result = newIntNodeT(Ord(
       testCompileOptionArg(getStr(a), getStr(b), n.info)), n)
@@ -315,6 +315,59 @@ proc foldConv*(n, a: PNode): PNode =
     result = a
     result.typ = n.typ
   
+proc getArrayConstr(m: PSym, n: PNode): PNode =
+  if n.kind == nkBracket:
+    result = n
+  else:
+    result = getConstExpr(m, n)
+    if result == nil: result = n
+  
+proc foldArrayAccess(m: PSym, n: PNode): PNode = 
+  var x = getConstExpr(m, n.sons[0])
+  if x == nil: return
+  
+  var y = getConstExpr(m, n.sons[1])
+  if y == nil: return
+  
+  var idx = getOrdValue(y)
+  case x.kind
+  of nkPar: 
+    if (idx >= 0) and (idx < sonsLen(x)): 
+      result = x.sons[int(idx)]
+      if result.kind == nkExprColonExpr: result = result.sons[1]
+    else:
+      LocalError(n.info, errIndexOutOfBounds)
+  of nkBracket, nkMetaNode: 
+    if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)]
+    else: LocalError(n.info, errIndexOutOfBounds)
+  of nkStrLit..nkTripleStrLit: 
+    result = newNodeIT(nkCharLit, x.info, n.typ)
+    if (idx >= 0) and (idx < len(x.strVal)): 
+      result.intVal = ord(x.strVal[int(idx)])
+    elif idx == len(x.strVal): 
+      nil
+    else: 
+      LocalError(n.info, errIndexOutOfBounds)
+  else: nil
+  
+proc foldFieldAccess(m: PSym, n: PNode): PNode = 
+  # a real field access; proc calls have already been transformed
+  var x = getConstExpr(m, n.sons[0])
+  if x == nil or x.kind != nkPar: return
+
+  var field = n.sons[1].sym
+  for i in countup(0, sonsLen(x) - 1): 
+    var it = x.sons[i]
+    if it.kind != nkExprColonExpr:
+      # lookup per index:
+      result = x.sons[field.position]
+      if result.kind == nkExprColonExpr: result = result.sons[1]
+      return
+    if it.sons[0].sym.name.id == field.name.id: 
+      result = x.sons[i].sons[1]
+      return
+  localError(n.info, errFieldXNotFound, field.name.s)
+  
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -333,7 +386,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNimrodPatch: result = newIntNodeT(VersionPatch, n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
-      of mHostCPU: result = newStrNodeT(toLower(platform.CPU[targetCPU].name), n)
+      of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLower, n)
       of mAppType: result = getAppType(n)
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
@@ -346,7 +399,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     result = copyNode(n)
   of nkIfExpr: 
     result = getConstIfExpr(m, n)
-  of nkCall, nkCommand, nkCallStrLit: 
+  of nkCall, nkCommand, nkCallStrLit, nkPrefix, nkInfix: 
     if n.sons[0].kind != nkSym: return 
     var s = n.sons[0].sym
     if s.kind != skProc: return 
@@ -372,13 +425,13 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
             {tyOpenArray, tySequence, tyString}: 
           result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
         else:
-          var a = n.sons[1]
+          var a = getArrayConstr(m, n.sons[1])
           if a.kind == nkBracket:
             # we can optimize it away: 
             result = newIntNodeT(sonsLen(a)-1, n)
       of mLengthOpenArray:
-        var a = n.sons[1]
-        if a.kind == nkBracket: 
+        var a = getArrayConstr(m, n.sons[1])
+        if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``. 
           result = newIntNodeT(sonsLen(a), n)
         else:
@@ -449,5 +502,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return 
     result = foldConv(n, a)
-  else: 
+  of nkBracketExpr: result = foldArrayAccess(m, n)
+  of nkDotExpr: result = foldFieldAccess(m, n)
+  else:
     nil

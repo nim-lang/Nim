@@ -281,7 +281,9 @@ type
     nfBase2,    # nfBase10 is default, so not needed
     nfBase8,
     nfBase16,
-    nfAllConst, # used to mark complex expressions constant
+    nfAllConst, # used to mark complex expressions constant; easy to get rid of
+                # but unfortunately it has measurable impact for compilation
+                # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
 
