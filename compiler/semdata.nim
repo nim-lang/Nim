@@ -70,6 +70,7 @@ type
     filename*: string         # the module's filename
     userPragmas*: TStrTable
     evalContext*: PEvalContext
+    slurpedFiles*: seq[string]
   
 var
   gGenericsCache: PGenericsCache # save for modularity
@@ -150,6 +151,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   result.filename = nimfile
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
+  result.slurpedFiles = @[]
   if optSymbolFiles notin gGlobalOptions:
     # re-usage of generic instantiations across module boundaries is
     # very nice for code size:

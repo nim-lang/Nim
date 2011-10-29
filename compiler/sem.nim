@@ -205,6 +205,12 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   else:
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
+  # we produce a fake include statement for every slurped filename, so that
+  # the module dependencies are accurate:
+  var ics = newNode(nkIncludeStmt)
+  for s in items(c.slurpedFiles): ics.add(newStrNode(nkStrLit, s))
+  result.add(ics)
+  
   checkThreads(c)
   popOwner()
   popProcCon(c)
