@@ -947,10 +947,12 @@ proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) == 2:
     var a = expectStringArg(c, n, 0)
     try:
-      var content = readFile(a.strVal.FindFile)
+      var filename = a.strVal.FindFile
+      var content = readFile(filename)
       result = newStrNode(nkStrLit, content)
       result.typ = getSysType(tyString)
       result.info = n.info
+      c.slurpedFiles.add(filename)
     except EIO:
       GlobalError(a.info, errCannotOpenFile, a.strVal)
   else:

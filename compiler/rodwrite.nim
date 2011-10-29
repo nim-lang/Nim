@@ -578,9 +578,9 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   result = w
 
 proc myClose(c: PPassContext, n: PNode): PNode = 
+  result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)
-  result = n
   idgen.saveMaxIds(options.projectPath / options.projectName)
 
 proc rodwritePass(): TPass = 
