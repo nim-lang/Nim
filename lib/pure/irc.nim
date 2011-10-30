@@ -39,6 +39,8 @@ type
     lastPong: float
     lag: float
     channelsToJoin: seq[string]
+    msgLimit: bool
+    messageBuffer: seq[tuple[timeToSend: float, m: string]]
 
   TIRCMType* = enum
     MUnknown,
@@ -54,7 +56,8 @@ type
     MNick,
     MNotice,
     MPing,
-    MPong
+    MPong,
+    MError
   
   TIRCEventType* = enum
     EvMsg, EvDisconnected
@@ -66,16 +69,27 @@ type
       nick*, user*, host*, servername*: string
       numeric*: string
       params*: seq[string]
+      origin*: string ## The channel/user that this msg originated from
       raw*: string
   
-proc send*(irc: var TIRC, message: string) =
+proc send*(irc: var TIRC, message: string, sendImmediately = false) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.
-  try:
-    irc.sock.send(message & "\c\L")
-  except EOS:
-    # Assuming disconnection of every EOS could be bad,
-    # but I can't exactly check for EBrokenPipe.
-    irc.connected = false
+  var sendMsg = true
+  if irc.msgLimit and not sendImmediately:
+    var timeToSend = epochTime()
+    if irc.messageBuffer.len() >= 3:
+      timeToSend = (irc.messageBuffer[irc.messageBuffer.len()-1][0] + 2.0)
+
+    irc.messageBuffer.add((timeToSend, message))
+    sendMsg = false
+
+  if sendMsg:
+    try:
+      irc.sock.send(message & "\c\L")
+    except EOS:
+      # Assuming disconnection of every EOS could be bad,
+      # but I can't exactly check for EBrokenPipe.
+      irc.connected = false
 
 proc privmsg*(irc: var TIRC, target, message: string) =
   ## Sends ``message`` to ``target``. ``Target`` can be a channel, or a user.
@@ -147,6 +161,7 @@ proc parseMessage(msg: string): TIRCEvent =
     of "QUIT": result.cmd = MQuit
     of "NICK": result.cmd = MNick
     of "NOTICE": result.cmd = MNotice
+    of "ERROR": result.cmd = MError
     else: result.cmd = MUnknown
   
   # Don't skip space here. It is skipped in the following While loop.
@@ -172,17 +187,20 @@ proc connect*(irc: var TIRC) =
   
   irc.sock = socket()
   irc.sock.connect(irc.address, irc.port)
+ 
+  irc.connected = true
   
   # Greet the server :)
-  if irc.serverPass != "": irc.send("PASS " & irc.serverPass)
-  irc.send("NICK " & irc.nick)
-  irc.send("USER $1 * 0 :$2" % [irc.user, irc.realname])
+  if irc.serverPass != "": irc.send("PASS " & irc.serverPass, true)
+  irc.send("NICK " & irc.nick, true)
+  irc.send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
 
 proc irc*(address: string, port: TPort = 6667.TPort,
          nick = "NimrodBot",
          user = "NimrodBot",
          realname = "NimrodBot", serverPass = "",
-         joinChans: seq[string] = @[]): TIRC =
+         joinChans: seq[string] = @[],
+         msgLimit: bool = true): TIRC =
   ## This function calls `connect`, so you don't need to.
   result.address = address
   result.port = port
@@ -194,6 +212,8 @@ proc irc*(address: string, port: TPort = 6667.TPort,
   result.lastPong = -1.0
   result.lag = -1.0
   result.channelsToJoin = joinChans
+  result.msgLimit = msgLimit
+  result.messageBuffer = @[]
 
   result.connect()
   
@@ -214,6 +234,14 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
         ev.typ = EvDisconnected
       else:
         ev = parseMessage(line.string)
+        # Get the origin
+        ev.origin = ev.params[0]
+        if ev.origin == irc.nick: ev.origin = ev.nick
+
+        if ev.cmd == MError:
+          ev.typ = EvDisconnected
+          return
+
         if ev.cmd == MPing:
           irc.send("PONG " & ev.params[0])
         if ev.cmd == MPong:
@@ -227,7 +255,20 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
 
   if epochTime() - irc.lastPing >= 20.0:
     irc.lastPing = epochTime()
-    irc.send("PING :" & formatFloat(irc.lastPing))
+    irc.send("PING :" & formatFloat(irc.lastPing), true)
+
+  if epochTime() - irc.lastPong >= 120.0 and irc.lastPong != -1.0:
+    ev.typ = EvDisconnected # TODO: EvTimeout?
+    return true
+
+  
+  for i in 0..irc.messageBuffer.len-1:
+    if epochTime() >= irc.messageBuffer[0][0]:
+      irc.send(irc.messageBuffer[0].m, true)
+      irc.messageBuffer.delete(0)
+    else:
+      break # messageBuffer is guaranteed to be from the quickest to the
+            # later-est.
 
 proc getLag*(irc: var TIRC): float =
   ## Returns the latency between this client and the IRC server in seconds.
@@ -235,17 +276,18 @@ proc getLag*(irc: var TIRC): float =
   ## If latency is unknown, returns -1.0.
   return irc.lag
 
-proc getLastPong*(irc: var TIRC): float =
-  ## Returns the last time the server has responded to a PING message.
-  ##
-  ## This is useful if you want to detect whether your 
-  ## connection has timed out.
-  ## 
-  ## If a PONG has never been received, returns -1.0.
-  return irc.lastPong
- 
+proc isConnected*(irc: var TIRC): bool =
+  ## Returns whether this IRC client is connected to an IRC server.
+  return irc.connected
+
 when isMainModule:
-  var client = irc("irc.freenode.net", nick="TestBot", joinChans = @["#nimrod"])
+  #var m = parseMessage("ERROR :Closing Link: dom96.co.cc (Ping timeout: 252 seconds)")
+  #echo(repr(m))
+
+  #discard """
+  
+  var client = irc("amber.tenthbit.net", nick="TestBot1234",
+                   joinChans = @["#flood"])
   while True:
     var event: TIRCEvent
     if client.poll(event):
@@ -255,8 +297,11 @@ when isMainModule:
       of EvMsg:
         if event.cmd == MPrivMsg:
           var msg = event.params[event.params.high]
-          if msg == "|test": client.privmsg(event.params[0], "hello")
-          
-        echo( repr(event) )
-      echo("Lag: ", formatFloat(client.getLag()))
-      echo("Last pong: ", formatFloat(client.getLastPong()))
+          if msg == "|test": client.privmsg(event.origin, "hello")
+          if msg == "|excessFlood":
+            for i in 0..10:
+              client.privmsg(event.origin, "TEST" & $i)
+
+        #echo( repr(event) )
+      #echo("Lag: ", formatFloat(client.getLag()))
+  #"""

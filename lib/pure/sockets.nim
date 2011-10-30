@@ -175,6 +175,15 @@ proc parseIp4*(s: string): int32 =
   if s[i] != '\0': invalidIp4(s)
   result = int32(a shl 24 or b shl 16 or c shl 8 or d)
 
+template gaiNim(a, p, h, l: expr): stmt =
+  block:
+    var gaiResult = getAddrInfo(a, $p, addr(h), l)
+    if gaiResult != 0'i32:
+      when defined(windows):
+        OSError()
+      else:
+        OSError($gai_strerror(gaiResult))
+
 proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
   ## binds an address/port number to a socket.
   ## Use address string in dotted decimal form like "a.b.c.d"
@@ -197,7 +206,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
     hints.ai_family = toInt(AF_INET)
     hints.ai_socktype = toInt(SOCK_STREAM)
     hints.ai_protocol = toInt(IPPROTO_TCP)
-    if getAddrInfo(address, $port, addr(hints), aiList) != 0'i32: OSError()
+    gaiNim(address, port, hints, aiList)
     if bindSocket(cint(socket), aiList.ai_addr, aiList.ai_addrLen) < 0'i32:
       OSError()
 
@@ -355,7 +364,7 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(SOCK_STREAM)
   hints.ai_protocol = toInt(IPPROTO_TCP)
-  if getAddrInfo(name, $port, addr(hints), aiList) != 0'i32: OSError()
+  gaiNim(name, port, hints, aiList)
   # try all possibilities:
   var success = false
   var it = aiList
@@ -391,7 +400,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(SOCK_STREAM)
   hints.ai_protocol = toInt(IPPROTO_TCP)
-  if getAddrInfo(name, $port, addr(hints), aiList) != 0'i32: OSError()
+  gaiNim(name, port, hints, aiList)
   # try all possibilities:
   var success = false
   var it = aiList
