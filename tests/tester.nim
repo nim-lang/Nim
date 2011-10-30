@@ -272,42 +272,53 @@ proc run(r: var TResults, dir, options: string) =
 const
   rodfilesDir = "tests/rodfiles"
 
-proc delNimCache() = removeDir(rodfilesDir / "nimcache")
+proc delNimCache() =
+  try:
+    removeDir(rodfilesDir / "nimcache")
+  except EOS:
+    nil
+    
 proc plusCache(options: string): string = return options & " --symbolFiles:on"
 
 proc runRodFiles(r: var TResults, options: string) =
+  template test(filename: expr): stmt =
+    runSingleTest(r, rodfilesDir / filename, options)
+  
   var options = options.plusCache
   delNimCache()
   
   # test basic recompilation scheme:
-  runSingleTest(r, rodfilesDir / "hallo", options)
-  runSingleTest(r, rodfilesDir / "hallo", options)
+  test "hallo"
+  test "hallo"
   # test incremental type information:
-  runSingleTest(r, rodfilesDir / "hallo2", options)
+  test "hallo2"
   delNimCache()
   
   # test type converters:
-  runSingleTest(r, rodfilesDir / "aconv", options)
-  runSingleTest(r, rodfilesDir / "bconv", options)
+  test "aconv"
+  test "bconv"
   delNimCache()
   
   # test G, A, B example from the documentation; test init sections:
-  runSingleTest(r, rodfilesDir / "deada", options)
-  runSingleTest(r, rodfilesDir / "deada2", options)
+  test "deada"
+  test "deada2"
   delNimCache()
   
   # test method generation:
-  runSingleTest(r, rodfilesDir / "bmethods", options)
-  runSingleTest(r, rodfilesDir / "bmethods2", options)
+  test "bmethods"
+  test "bmethods2"
   delNimCache()
   
 
 proc compileRodFiles(r: var TResults, options: string) =
+  template test(filename: expr): stmt =
+    compileSingleTest(r, rodfilesDir / filename, options)
+    
   var options = options.plusCache
   delNimCache()
   # test DLL interfacing:
-  compileSingleTest(r, rodfilesDir / "gtkex1", options)
-  compileSingleTest(r, rodfilesDir / "gtkex2", options)
+  test "gtkex1"
+  test "gtkex2"
   delNimCache()
 
 # -----------------------------------------------------------------------------

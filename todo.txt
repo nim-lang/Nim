@@ -4,13 +4,6 @@ Version 0.8.14
 - optimize unused constants away (affected by HLO)
 - fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend
-
-
-incremental compilation
------------------------
-
-- the loading has to be MUCH lazier! --> next version: We should re-load
-  symbol.ast.sons[codePos] lazily
 - implement lib/pure/memfiles properly
 
 
@@ -38,6 +31,8 @@ version 0.9.0
 
 Bugs
 ----
+- bug: s[1..n] = @[] produces wrong C code
+- bug: template t(f_no_Type): stmt = ... crashes the compiler
 - bug: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
     should make use of this fact to generate better code...
@@ -54,6 +49,7 @@ Bugs
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
+- bug: osproc.execProcess() should raise an exception if the exit code is not 0
 
 
 version 0.9.XX

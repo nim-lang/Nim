@@ -576,7 +576,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   var b = SearchForBorrowProc(c, s, c.tab.tos - 2)
   if b != nil: 
     # store the alias:
-    n.sons[codePos] = newSymNode(b)
+    n.sons[bodyPos] = newSymNode(b)
   else:
     LocalError(n.info, errNoSymbolToBorrowFromFound) 
   
@@ -594,7 +594,7 @@ proc addResultNode(c: PContext, n: PNode) =
   
 proc semLambda(c: PContext, n: PNode): PNode = 
   result = n
-  checkSonsLen(n, codePos + 1)
+  checkSonsLen(n, bodyPos + 1)
   var s = newSym(skProc, getIdent":anonymous", getCurrOwner())
   s.info = n.info
   s.ast = n
@@ -615,12 +615,12 @@ proc semLambda(c: PContext, n: PNode): PNode =
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
-  if n.sons[codePos].kind != nkEmpty: 
+  if n.sons[bodyPos].kind != nkEmpty: 
     if sfImportc in s.flags: 
-      LocalError(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
+      LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info)
-    n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+    n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
     addResultNode(c, n)
     popProcCon(c)
   else: 
@@ -633,7 +633,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
   result = n
-  checkSonsLen(n, codePos + 1)
+  checkSonsLen(n, bodyPos + 1)
   var s = semIdentDef(c, n.sons[0], kind)
   n.sons[namePos] = newSymNode(s)
   s.ast = n
@@ -695,10 +695,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if n.sons[codePos].kind != nkEmpty: 
+  if n.sons[bodyPos].kind != nkEmpty: 
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags: 
-      LocalError(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
+      LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     if n.sons[genericParamsPos].kind == nkEmpty: 
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
@@ -706,18 +706,18 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addResult(c, s.typ.sons[0], n.info)
       if sfImportc notin s.flags: 
         # no semantic checking for importc:
-        n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+        n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
       if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator:
         addDecl(c, newSym(skUnknown, getIdent"result", nil))
       var toBind = initIntSet()
-      n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], {}, toBind)
+      n.sons[bodyPos] = semGenericStmtScope(c, n.sons[bodyPos], {}, toBind)
       fixupInstantiatedSymbols(c, s)
     if sfImportc in s.flags: 
       # so we just ignore the body after semantic checking for importc:
-      n.sons[codePos] = ast.emptyNode
+      n.sons[bodyPos] = ast.emptyNode
   else: 
     if proto != nil: LocalError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {}: incl(s.flags, sfForward)
@@ -732,7 +732,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil: 
     LocalError(n.info, errXNeedsReturnType, "iterator")
-  if n.sons[codePos].kind == nkEmpty and s.magic == mNone: 
+  if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
 proc semProc(c: PContext, n: PNode): PNode = 
@@ -758,7 +758,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "converter")
-  checkSonsLen(n, codePos + 1)
+  checkSonsLen(n, bodyPos + 1)
   if n.sons[genericParamsPos].kind != nkEmpty: 
     LocalError(n.info, errNoGenericParamsAllowedForX, "converter")
   result = semProcAux(c, n, skConverter, converterPragmas)
@@ -769,7 +769,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   addConverter(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode = 
-  checkSonsLen(n, codePos + 1)
+  checkSonsLen(n, bodyPos + 1)
   if n.sons[genericParamsPos].kind != nkEmpty: 
     LocalError(n.info, errNoGenericParamsAllowedForX, "macro")
   result = semProcAux(c, n, skMacro, macroPragmas)
@@ -777,7 +777,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "macro")
   if sonsLen(t) != 2: LocalError(n.info, errXRequiresOneArgument, "macro")
-  if n.sons[codePos].kind == nkEmpty:
+  if n.sons[bodyPos].kind == nkEmpty:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
 proc evalInclude(c: PContext, n: PNode): PNode = 

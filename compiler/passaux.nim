@@ -42,7 +42,7 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
     if n.sons[namePos].kind == nkSym: 
       var s = n.sons[namePos].sym
       if sfDeadCodeElim notin getModule(s).flags and not astNeeded(s): 
-        s.ast.sons[codePos] = ast.emptyNode # free the memory
+        s.ast.sons[bodyPos] = ast.emptyNode # free the memory
   else: 
     nil
 

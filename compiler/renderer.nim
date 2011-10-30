@@ -780,7 +780,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[pragmasPos])
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
-    gsub(g, n.sons[codePos])
+    gsub(g, n.sons[bodyPos])
   of nkConstDef, nkIdentDefs: 
     gcomma(g, n, 0, - 3)
     var L = sonsLen(n)

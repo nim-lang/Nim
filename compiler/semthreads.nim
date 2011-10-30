@@ -59,7 +59,7 @@
 
 import
   ast, astalgo, strutils, hashes, options, msgs, idents, types, os,
-  renderer, tables
+  renderer, tables, rodread
 
 type
   TThreadOwner = enum
@@ -188,8 +188,8 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
       var formal = skipTypes(prc.typ, abstractInst).n.sons[i].sym 
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
-    result = analyse(newCtx, prc.ast.sons[codePos])
-    if prc.ast.sons[codePos].kind == nkEmpty and 
+    result = analyse(newCtx, prc.getBody)
+    if prc.ast.sons[bodyPos].kind == nkEmpty and 
        {sfNoSideEffect, sfThread, sfImportc} * prc.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
       if result == toUndefined: result = toNil
@@ -372,7 +372,7 @@ proc analyseThreadProc*(prc: PSym) =
   for i in 1 .. formals.len-1:
     var formal = formals.sons[i].sym 
     c.mapping[formal.id] = toTheirs # thread receives foreign data!
-  discard analyse(c, prc.ast.sons[codePos])
+  discard analyse(c, prc.getBody)
 
 proc needsGlobalAnalysis*: bool =
   result = gGlobalOptions * {optThreads, optThreadAnalysis} == 

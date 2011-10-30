@@ -164,7 +164,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in n.sym.flags: 
     # simply exchange the symbol:
-    b = n.sym.ast.sons[codePos]
+    b = n.sym.getBody
     if b.kind != nkSym: internalError(n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym)
     b.info = n.info
@@ -493,7 +493,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       IdNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
-  var body = newC.owner.ast.sons[codePos]
+  var body = newC.owner.getBody
   pushInfoContext(n.info)
   inc(c.inlining)
   add(result, transform(c, body))
@@ -551,8 +551,9 @@ proc transformLambda(c: PTransf, n: PNode): PNode =
   result = n
   if n.sons[namePos].kind != nkSym: InternalError(n.info, "transformLambda")
   var s = n.sons[namePos].sym
-  var closure = newNodeI(nkRecList, n.sons[codePos].info)
-  gatherVars(c, n.sons[codePos], marked, s, closure) 
+  var closure = newNodeI(nkRecList, n.info)
+  var body = s.getBody
+  gatherVars(c, body, marked, s, closure) 
   # add closure type to the param list (even if closure is empty!):
   var cl = newType(tyObject, s)
   cl.n = closure
@@ -570,7 +571,7 @@ proc transformLambda(c: PTransf, n: PNode): PNode =
       IdNodeTablePut(newC.mapping, closure.sons[i].sym, 
                      indirectAccess(param, closure.sons[i].sym))
     pushTransCon(c, newC)
-    n.sons[codePos] = transform(c, n.sons[codePos]).pnode
+    n.sons[bodyPos] = transform(c, body).pnode
     popTransCon(c)
 
 proc transformCase(c: PTransf, n: PNode): PTransNode = 
@@ -666,7 +667,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkBracketExpr: 
     result = transformArrayAccess(c, n)
   of nkLambda: 
-    n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
+    var s = n.sons[namePos].sym
+    n.sons[bodyPos] = PNode(transform(c, s.getBody))
     result = PTransNode(n)
     when false: result = transformLambda(c, n)
   of nkForStmt: 
@@ -675,8 +677,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformCase(c, n)
   of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkConverterDef: 
     if n.sons[genericParamsPos].kind == nkEmpty: 
-      n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
-      if n.kind == nkMethodDef: methodDef(n.sons[namePos].sym, false)
+      var s = n.sons[namePos].sym
+      n.sons[bodyPos] = PNode(transform(c, s.getBody))
+      if n.kind == nkMethodDef: methodDef(s, false)
     result = PTransNode(n)
   of nkContinueStmt:
     result = PTransNode(newNode(nkBreakStmt))

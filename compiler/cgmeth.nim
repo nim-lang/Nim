@@ -95,7 +95,7 @@ proc methodDef*(s: PSym, fromCache: bool) =
     # we can't inline the dispatcher itself (for now):
     if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
     disp.ast = copyTree(s.ast)
-    disp.ast.sons[codePos] = ast.emptyNode
+    disp.ast.sons[bodyPos] = ast.emptyNode
     if s.typ.sons[0] != nil: 
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
     attachDispatcher(s, newSymNode(disp))
@@ -183,7 +183,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
       addSon(disp, a)
     else:
       disp = ret
-  result.ast.sons[codePos] = disp
+  result.ast.sons[bodyPos] = disp
 
 proc generateMethodDispatchers*(): PNode = 
   result = newNode(nkStmtList)

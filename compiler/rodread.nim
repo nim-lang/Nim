@@ -169,7 +169,22 @@ proc decodeLineInfo(r: PRodReader, info: var TLineInfo) =
         inc(r.pos)
         info = newLineInfo(r.files[decodeVInt(r.s, r.pos)], info.line, info.col)
 
-proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode = 
+proc skipNode(r: PRodReader) =
+  assert r.s[r.pos] == '('
+  var par = 0
+  var pos = r.pos+1
+  while true:
+    case r.s[pos]
+    of ')':
+      if par == 0: break
+      dec par
+    of '(': inc par
+    else: nil
+    inc pos
+  r.pos = pos+1 # skip ')'
+
+proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo, 
+                        belongsTo: PSym): PNode = 
   result = nil
   if r.s[r.pos] == '(': 
     inc(r.pos)
@@ -216,12 +231,22 @@ proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
       else: 
         internalError(result.info, "decodeNode: nkSym")
     else:
+      var i = 0
       while r.s[r.pos] != ')': 
-        addSonNilAllowed(result, decodeNode(r, result.info))
+        if belongsTo != nil and i == bodyPos:
+          addSonNilAllowed(result, nil)
+          belongsTo.offset = r.pos
+          skipNode(r)
+        else:
+          addSonNilAllowed(result, decodeNodeLazyBody(r, result.info, nil))
+        inc i
     if r.s[r.pos] == ')': inc(r.pos)
     else: internalError(result.info, "decodeNode")
   else: 
-    InternalError(result.info, "decodeNode " & r.s[r.pos])
+    InternalError(fInfo, "decodeNode " & r.s[r.pos])
+
+proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
+  result = decodeNodeLazyBody(r, fInfo, nil)
   
 proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) = 
   if r.s[r.pos] == '<': 
@@ -381,9 +406,10 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   if r.s[r.pos] == '%': 
     inc(r.pos)
     result.position = decodeVInt(r.s, r.pos)
-  else: 
-    result.position = 0       
-    # BUGFIX: this may have been misused as reader index!
+  elif result.kind notin routineKinds:
+    result.position = 0
+    # BUGFIX: this may have been misused as reader index! But we still
+    # need it for routines as the body is loaded lazily.
   if r.s[r.pos] == '`': 
     inc(r.pos)
     result.offset = decodeVInt(r.s, r.pos)
@@ -391,7 +417,11 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     result.offset = - 1
   decodeLoc(r, result.loc, result.info)
   result.annex = decodeLib(r, info)
-  if r.s[r.pos] == '(': result.ast = decodeNode(r, result.info)
+  if r.s[r.pos] == '(':
+    if result.kind in routineKinds:
+      result.ast = decodeNodeLazyBody(r, result.info, result)
+    else:
+      result.ast = decodeNode(r, result.info)
   #echo "decoded: ", ident.s, "}"
 
 proc skipSection(r: PRodReader) = 
@@ -814,6 +844,22 @@ proc loadStub(s: PSym) =
   elif rs.id != theId: 
     InternalError(rs.info, "loadStub: wrong ID") 
   #MessageOut('loaded stub: ' + s.name.s);
+  
+proc getBody*(s: PSym): PNode =
+  ## retrieves the AST's body of `s`. If `s` has been loaded from a rod-file
+  ## it may perform an expensive reload operation. Otherwise it's a simple
+  ## accessor.
+  assert s.kind in routineKinds
+  result = s.ast.sons[bodyPos]
+  if result == nil:
+    assert s.offset != 0
+    var r = gMods[s.position].rd
+    var oldPos = r.pos
+    r.pos = s.offset
+    result = decodeNode(r, s.info)
+    r.pos = oldPos
+    s.ast.sons[bodyPos] = result
+    s.offset = 0
   
 InitIdTable(gTypeTable)
 InitStrTable(rodCompilerProcs)

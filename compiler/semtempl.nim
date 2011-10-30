@@ -67,7 +67,7 @@ proc evalTemplate*(c: PContext, n: PNode, sym: PSym): PNode =
   if evalTemplateCounter <= 100: 
     # replace each param by the corresponding node:
     args = evalTemplateArgs(c, n, sym)
-    result = evalTemplateAux(sym.ast.sons[codePos], args, sym)
+    result = evalTemplateAux(sym.getBody, args, sym)
     dec(evalTemplateCounter)
   else:
     GlobalError(n.info, errTemplateInstantiationTooNested)
@@ -186,15 +186,15 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
   addParams(c, s.typ.n)       # resolve parameters:
   var toBind = initIntSet()
-  n.sons[codePos] = resolveTemplateParams(c, n.sons[codePos], false, toBind)
-  if not (s.typ.sons[0].kind in {tyStmt, tyTypeDesc}): 
-    n.sons[codePos] = transformToExpr(n.sons[codePos]) 
+  n.sons[bodyPos] = resolveTemplateParams(c, n.sons[bodyPos], false, toBind)
+  if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
+    n.sons[bodyPos] = transformToExpr(n.sons[bodyPos]) 
     # only parameters are resolved, no type checking is performed
   closeScope(c.tab)
   popOwner()
   s.ast = n
   result = n
-  if n.sons[codePos].kind == nkEmpty: 
+  if n.sons[bodyPos].kind == nkEmpty: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
   # add identifier of template as a last step to not allow recursive templates:
   addInterfaceDecl(c, s)

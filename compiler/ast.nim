@@ -333,6 +333,11 @@ type
                           # mean: never)
   TSymKinds* = set[TSymKind]
 
+const
+  routineKinds* = {skProc, skMethod, skIterator, skConverter,
+    skMacro, skTemplate}
+
+type
   TMagic* = enum # symbols that require compiler magic:
     mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, mOf,
     mEcho, mShallowCopy, mSlurp,
@@ -579,7 +584,7 @@ const
   genericParamsPos* = 1
   paramsPos* = 2
   pragmasPos* = 3
-  codePos* = 4
+  bodyPos* = 4       # position of body; use rodread.getBody() instead!
   resultPos* = 5
   dispatcherPos* = 6 # caution: if method has no 'result' it can be position 5!
 

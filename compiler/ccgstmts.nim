@@ -702,7 +702,7 @@ proc genStmts(p: BProc, t: PNode) =
           (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
           (prc.kind == skMethod): 
         # we have not only the header: 
-        if t.sons[codePos].kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
+        if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
           genProc(p.module, prc)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
   
