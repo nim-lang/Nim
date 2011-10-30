@@ -529,6 +529,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       #  debug a.sons[length-2][0][1]
     else:
       typ = nil
+      # consider: 
+      # template T(x)
+      # it's wrong, but the parser might not generate a fatal error (when in
+      # 'check' mode for example), so we need to check again here:
+      if unlikely(a.sons[length-1].kind == nkEmpty): continue
+      
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1]) 
       # check type compability between def.typ and typ:
