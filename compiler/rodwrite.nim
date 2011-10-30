@@ -526,7 +526,9 @@ proc process(c: PPassContext, n: PNode): PNode =
   of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef: 
     var s = n.sons[namePos].sym
     if s == nil: InternalError(n.info, "rodwrite.process")
-    if n.sons[codePos].kind != nkEmpty or s.magic != mNone or
+    if n.sons[bodyPos] == nil:
+      InternalError(n.info, "rodwrite.process: body is nil")
+    if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
   of nkVarSection:

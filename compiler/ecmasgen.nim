@@ -1309,7 +1309,7 @@ proc genProc(oldProc: var TProc, prc: PSym, r: var TCompRes) =
     gen(p, prc.ast.sons[resultPos], a)
     if a.com != nil: appf(returnStmt, "$1;$n", [a.com])
     returnStmt = ropef("return $1;$n", [a.res])
-  genStmt(p, prc.ast.sons[codePos], r)
+  genStmt(p, prc.getBody, r)
   r.com = ropef("function $1($2) {$n$3$4$5}$n", 
                 [name, header, resultAsgn, genProcBody(p, prc, r), returnStmt])
   r.res = nil  
@@ -1360,7 +1360,7 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (n.sons[genericParamsPos].kind == nkEmpty): 
       var prc = n.sons[namePos].sym
-      if (prc.ast.sons[codePos].kind != nkEmpty) and not (lfNoDecl in prc.loc.flags): 
+      if lfNoDecl notin prc.loc.flags and prc.getBody.kind != nkEmpty:
         genProc(p, prc, r)
       else:
         discard mangleName(prc)

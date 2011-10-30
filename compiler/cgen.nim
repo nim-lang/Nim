@@ -544,7 +544,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
     var param = prc.typ.n.sons[i].sym
     assignParam(p, param)
-  genStmts(p, prc.ast.sons[codePos]) # modifies p.locals, p.init, etc.
+  genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags: 
     generatedProc = ropeff("$1 {$n$2$3$4}$n", "define $1 {$n$2$3$4}$n",

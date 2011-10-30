@@ -16,7 +16,7 @@
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
   msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
-  parser, ropes
+  parser, ropes, rodread
 
 type 
   PStackFrame* = ref TStackFrame
@@ -448,7 +448,8 @@ proc evalSwap(c: PEvalContext, n: PNode): PNode =
 proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   var s = n.sym
   case s.kind
-  of skProc, skConverter, skMacro: result = s.ast.sons[codePos]
+  of skProc, skConverter, skMacro: 
+    result = s.getBody
   of skVar, skForVar, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
@@ -621,15 +622,16 @@ proc evalReturn(c: PEvalContext, n: PNode): PNode =
 
 proc evalProc(c: PEvalContext, n: PNode): PNode = 
   if n.sons[genericParamsPos].kind == nkEmpty: 
+    var s = n.sons[namePos].sym
     if (resultPos < sonsLen(n)) and (n.sons[resultPos].kind != nkEmpty): 
       var v = n.sons[resultPos].sym
       result = getNullValue(v.typ, n.info)
       IdNodeTablePut(c.tos.mapping, v, result)
-      result = evalAux(c, n.sons[codePos], {})
+      result = evalAux(c, s.getBody, {})
       if result.kind == nkReturnToken: 
         result = IdNodeTableGet(c.tos.mapping, v)
     else:
-      result = evalAux(c, n.sons[codePos], {})
+      result = evalAux(c, s.getBody, {})
       if result.kind == nkReturnToken: 
         result = emptyNode
   else: 
@@ -852,7 +854,7 @@ proc evalTemplate(n: PNode, sym: PSym): PNode =
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, sym)
-  result = evalTemplateAux(sym.ast.sons[codePos], args, sym)
+  result = evalTemplateAux(sym.getBody, args, sym)
 
   dec(evalTemplateCounter)
   
@@ -1273,7 +1275,7 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   s.params[1] = n
   pushStackFrame(c, s)
-  discard eval(c, sym.ast.sons[codePos])
+  discard eval(c, sym.getBody)
   result = s.params[0]
   popStackFrame(c)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)

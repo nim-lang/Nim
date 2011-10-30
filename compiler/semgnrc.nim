@@ -243,7 +243,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef, nkLambda: 
-    checkSonsLen(n, codePos + 1)
+    checkSonsLen(n, bodyPos + 1)
     addDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
     openScope(c.tab)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos], 
@@ -253,7 +253,8 @@ proc semGenericStmt(c: PContext, n: PNode,
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, toBind)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, toBind)
-    n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos], flags, toBind)
+    var s = n.sons[namePos].sym
+    n.sons[bodyPos] = semGenericStmtScope(c, s.getBody, flags, toBind)
     closeScope(c.tab)
   else: 
     for i in countup(0, sonsLen(n) - 1): 

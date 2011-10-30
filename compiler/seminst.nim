@@ -70,17 +70,17 @@ proc removeDefaultParamValues(n: PNode) =
         a.sons[L-1] = ast.emptyNode
 
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
-  if n.sons[codePos].kind != nkEmpty:
+  if n.sons[bodyPos].kind != nkEmpty:
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
     if result.kind in {skProc, skMethod, skConverter}: 
       addResult(c, result.typ.sons[0], n.info)
       addResultNode(c, n)
-    n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+    n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
     if result.kind == skIterator:
       # XXX Bad hack for tests/titer2:
-      n.sons[codePos] = transform(c.module, n.sons[codePos])
+      n.sons[bodyPos] = transform(c.module, n.sons[bodyPos])
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)
@@ -92,7 +92,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushInfoContext(oldPrc.info)
       openScope(c.tab)
       var n = oldPrc.ast
-      n.sons[codePos] = copyTree(s.ast.sons[codePos])
+      n.sons[bodyPos] = copyTree(s.getBody)
       if n.sons[paramsPos].kind != nkEmpty: addParams(c, oldPrc.typ.n)
       instantiateBody(c, n, oldPrc)
       closeScope(c.tab)
@@ -118,6 +118,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
   result.owner = getCurrOwner().owner
+  # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
   result.ast = n
   pushOwner(result)
@@ -146,6 +147,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     c.generics.generics.add(entry)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
+    if isNil(n.sons[bodyPos]):
+      n.sons[bodyPos] = copyTree(fn.getBody)
     instantiateBody(c, n, result)
     sideEffectsCheck(c, result)
   else:

@@ -130,7 +130,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in countup(c.generics.lastGenericIdx, Len(c.generics.generics) - 1):
     var prc = c.generics.generics[i].instSym
     if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone: 
-      if prc.ast == nil or prc.ast.sons[codePos] == nil: 
+      if prc.ast == nil or prc.ast.sons[bodyPos] == nil: 
         InternalError(prc.info, "no code for " & prc.name.s)
       addSon(n, prc.ast)
   c.generics.lastGenericIdx = Len(c.generics.generics)
