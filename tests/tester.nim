@@ -288,25 +288,25 @@ proc runRodFiles(r: var TResults, options: string) =
   delNimCache()
   
   # test basic recompilation scheme:
-  test "hallo"
-  test "hallo"
+  test "hallo.nim"
+  test "hallo.nim"
   # test incremental type information:
-  test "hallo2"
+  test "hallo2.nim"
   delNimCache()
   
   # test type converters:
-  test "aconv"
-  test "bconv"
+  test "aconv.nim"
+  test "bconv.nim"
   delNimCache()
   
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
-  test "deada2"
+  test "deada.nim"
+  test "deada2.nim"
   delNimCache()
   
   # test method generation:
-  test "bmethods"
-  test "bmethods2"
+  test "bmethods.nim"
+  test "bmethods2.nim"
   delNimCache()
   
 
