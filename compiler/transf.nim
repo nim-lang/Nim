@@ -657,6 +657,12 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
   else:
     result = transformSons(c, n)
 
+proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
+  # symbols that expand to a complex constant (array, etc.) should not be
+  # inlined, unless it's the empty array:
+  result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkBracket} and 
+      cnst.len != 0
+
 proc transform(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 
@@ -723,8 +729,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
   # we inline constants if they are not complex constants:
-  if cnst != nil and (cnst.kind notin {nkCurly, nkPar, nkBracket} or
-                      cnst.len == 0): 
+  if cnst != nil and not dontInlineConstant(n, cnst):
     result = PTransNode(cnst) # do not miss an optimization  
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 

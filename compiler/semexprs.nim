@@ -261,7 +261,7 @@ proc changeType(n: PNode, newType: PType) =
     if newType.kind != tyTuple: 
       InternalError(n.info, "changeType: no tuple type for constructor")
     if newType.n == nil: nil
-    elif (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr): 
+    elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr: 
       for i in countup(0, sonsLen(n) - 1): 
         var m = n.sons[i].sons[0]
         if m.kind != nkSym: 
@@ -269,8 +269,8 @@ proc changeType(n: PNode, newType: PType) =
         var f = getSymFromList(newType.n, m.sym.name)
         if f == nil: internalError(m.info, "changeType(): invalid identifier")
         changeType(n.sons[i].sons[1], f.typ)
-    else: 
-      for i in countup(0, sonsLen(n) - 1): 
+    else:
+      for i in countup(0, sonsLen(n) - 1):
         var m = n.sons[i]
         var a = newNodeIT(nkExprColonExpr, m.info, newType.sons[i])
         addSon(a, newSymNode(newType.n.sons[i].sym))
@@ -314,6 +314,7 @@ proc semArrayConstr(c: PContext, n: PNode): PNode =
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) = 
+  # XXX finally rewrite that crap!
   for i in countup(1, sonsLen(n) - 1): 
     var it = n.sons[i]
     case it.kind
@@ -909,10 +910,8 @@ proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
   if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
     GlobalError(result.info, errStringLiteralExpected)
 
-proc isAstValue(n: PNode): bool =
-  result = n.typ.sym.name.s in [ "expr", "stmt", "PNimrodNode" ]
-
-proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym, flags: TExprFlags): PNode =
+proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym, 
+                    flags: TExprFlags): PNode =
   if sonsLen(n) == 2:
     if not isCallExpr(n.sons[1]):
       GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
@@ -921,24 +920,23 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym, flags: TExprFlags): P
 
     var expandedSym = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
     if expandedSym == nil:
-      GlobalError(n.info, errUndeclaredIdentifier, macroCall.sons[0].renderTree)
+      GlobalError(n.info, errUndeclaredIdentifier, macroCall[0].renderTree)
 
-    if not (expandedSym.kind in { skMacro, skTemplate }):
+    if expandedSym.kind notin {skMacro, skTemplate}:
       GlobalError(n.info, errXisNoMacroOrTemplate, expandedSym.name.s)
 
     macroCall.sons[0] = newNodeI(nkSym, macroCall.info)
     macroCall.sons[0].sym = expandedSym
     markUsed(n, expandedSym)
 
-    for i in countup(1, macroCall.sonsLen - 1):
+    for i in countup(1, macroCall.len-1):
       macroCall.sons[i] = semExprWithType(c, macroCall.sons[i], {efAllowType})
 
     # Preserve the magic symbol in order to handled in evals.nim
     n.sons[0] = newNodeI(nkSym, n.info)
     n.sons[0].sym = magicSym
-   
+    
     n.typ = expandedSym.getReturnType
-
     result = n
   else:
     result = semDirectOp(c, n, flags)

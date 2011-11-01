@@ -67,7 +67,7 @@ proc genConstStmt(p: BProc, t: PNode) =
     var c = it.sons[0].sym 
     if sfFakeConst in c.flags:
       genSingleVar(p, it)
-    elif c.typ.kind in ConstantDataTypes and not (lfNoDecl in c.loc.flags) and
+    elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and
         c.ast.len != 0: 
       # generate the data:
       fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)

@@ -1,6 +1,8 @@
 Version 0.8.14
 ==============
 
+- bug: s[1..n] = @[] produces wrong C code
+- bug: DLL generation is broken; write at least a basic test
 - optimize unused constants away (affected by HLO)
 - fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend
@@ -10,6 +12,9 @@ Version 0.8.14
 version 0.9.0
 =============
 
+- special precedence rules for assignment operators: If the operator ends with
+  '=' and does **not** start with '<', '>', '!', '=', '~', '?', it is an 
+  assignment operator
 - test the sort implementation again
 - 'let x = y'
 - const ptr/ref
@@ -31,8 +36,6 @@ version 0.9.0
 
 Bugs
 ----
-- bug: s[1..n] = @[] produces wrong C code
-- bug: template t(f_no_Type): stmt = ... crashes the compiler
 - bug: generic assign still buggy
   - Optimization: If we use a temporary for the result anyway the code gen
     should make use of this fact to generate better code...
@@ -45,7 +48,6 @@ Bugs
     var x: int
     result = forward(x)
 
-- bug: DLL generation is broken; write at least a basic test
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
