@@ -1141,7 +1141,7 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
            [filen, line, mergeExpr(a)])
   of mNew, mNewFinalize: genNew(p, n, r)
   of mSizeOf: r.res = toRope(getSize(n.sons[1].typ))
-  of mChr: gen(p, n.sons[1], r)      # nothing to do
+  of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr: unaryExpr(p, n, r, "", "($1.length-1)")
   of mLengthSeq, mLengthOpenArray, mLengthArray:

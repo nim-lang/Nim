@@ -190,7 +190,7 @@ when not defined(ECMAScript):
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
-  proc random*(max: int): int = return floor(mathrandom() * max)
+  proc random*(max: int): int = return int(floor(mathrandom() * float(max)))
   proc randomize*() = nil
   
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
@@ -204,7 +204,7 @@ else:
   
   proc frexp*(x: float, exponent: var int): float =
     if x == 0.0:
-      exponent = 0.0
+      exponent = 0
       result = 0.0
     elif x < 0.0:
       result = -frexp(-x, exponent)
