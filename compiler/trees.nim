@@ -108,6 +108,19 @@ proc isConstExpr*(n: PNode): bool =
       {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, 
        nkFloatLit..nkFloat64Lit, nkNilLit}) or (nfAllConst in n.flags)
 
+proc isDeepConstExpr*(n: PNode): bool =
+  case n.kind
+  of nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, 
+      nkFloatLit..nkFloat64Lit, nkNilLit:
+    result = true
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+    result = isDeepConstExpr(n.sons[1])
+  of nkCurly, nkBracket, nkPar:
+    for i in 0 .. <n.len:
+      if not isDeepConstExpr(n.sons[i]): return false
+    result = true
+  else: nil
+
 proc flattenTreeAux(d, a: PNode, op: TMagic) = 
   if (getMagic(a) == op):     # a is a "leaf", so add it:
     for i in countup(1, sonsLen(a) - 1): # BUGFIX

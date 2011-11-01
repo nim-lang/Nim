@@ -147,7 +147,8 @@ proc removeTrailingDirSep*(path: string): string =
     result = path
   
 proc getGeneratedPath: string =
-  result = if nimcacheDir.len > 0: nimcacheDir else: projectPath / genSubDir
+  result = if nimcacheDir.len > 0: nimcacheDir else: projectPath.shortenDir /
+                                                         genSubDir
   
 proc toGeneratedFile*(path, ext: string): string = 
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"

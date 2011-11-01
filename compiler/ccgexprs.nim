@@ -1727,6 +1727,23 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       for i in countup(1, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
     putIntoDest(p, d, n.typ, r)
 
+proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
+  var t = getUniqueType(n.typ)
+  discard getTypeDesc(p.module, t) # so that any fields are initialized
+  var id = NodeTableTestOrSet(p.module.dataCache, n, gBackendId)
+  var tmp = con("TMP", toRope(id))
+  
+  if id == gBackendId:
+    # expression not found in the cache:
+    inc(gBackendId)
+    appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+         [getTypeDesc(p.module, t), tmp, genConstExpr(p, n)])
+  
+  if d.k == locNone:
+    fillLoc(d, locData, t, tmp, OnHeap)
+  else:
+    putIntoDest(p, d, t, tmp)
+
 proc genBlock(p: BProc, t: PNode, d: var TLoc)
 proc expr(p: BProc, e: PNode, d: var TLoc) =
   case e.kind
@@ -1791,13 +1808,23 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       genNamedParamCall(p, e, d)
     else:
       genCall(p, e, d)
-  of nkCurly: genSetConstr(p, e, d)
+  of nkCurly:
+    if isDeepConstExpr(e) and e.len != 0:
+      putIntoDest(p, d, e.typ, genSetNode(p, e))
+    else:
+      genSetConstr(p, e, d)
   of nkBracket:
-    if skipTypes(e.typ, abstractVarRange).kind == tySequence:
+    if isDeepConstExpr(e) and e.len != 0:
+      exprComplexConst(p, e, d)
+    elif skipTypes(e.typ, abstractVarRange).kind == tySequence:
       genSeqConstr(p, e, d)
     else:
       genArrayConstr(p, e, d)
-  of nkPar: genTupleConstr(p, e, d)
+  of nkPar:
+    if isDeepConstExpr(e) and e.len != 0:
+      exprComplexConst(p, e, d)
+    else:
+      genTupleConstr(p, e, d)
   of nkCast: genCast(p, e, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, e, d)
   of nkHiddenAddr, nkAddr: genAddr(p, e, d)
@@ -1851,8 +1878,8 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): PRope =
     appf(data, ",$1$n", [genConstExpr(p, n.sons[i])])
   data.app("}")
   
-  inc(p.labels)
-  result = con("CNSTSEQ", p.labels.toRope)
+  inc(gBackendId)
+  result = con("CNSTSEQ", gBackendId.toRope)
   
   appcg(p.module, cfsData,
         "NIM_CONST struct {$n" & 
@@ -1872,7 +1899,6 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
   of nkBracket, nkPar:
-    # XXX: tySequence!
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, t)

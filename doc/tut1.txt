@@ -76,7 +76,7 @@ Note that this is basically the only form of type inference that exists in
 Nimrod: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already
-known to the compiler: ``echo``, ``readLine``, etc. These built-in items are
+known to the compiler: ``echo``, ``readLine``, etc. These built-ins are
 declared in the system_ module which is implicitly imported by any other
 module.
 
@@ -558,8 +558,8 @@ caller, a ``var`` parameter can be used:
 
 .. code-block:: nimrod
   proc divmod(a, b: int, res, remainder: var int) =
-    res = a div b
-    remainder = a mod b
+    res = a div b        # integer division
+    remainder = a mod b  # integer modulo operation
 
   var
     x, y: int

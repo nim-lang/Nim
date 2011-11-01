@@ -474,7 +474,8 @@ proc lowestExprAux(p: var TParser, limit: int): PNode =
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
-    optInd(p, opNode)         # read sub-expression with higher priority
+    optInd(p, opNode)         
+    # read sub-expression with higher priority:
     var b = lowestExprAux(p, opPrec + leftAssoc)
     addSon(a, opNode)
     addSon(a, result)
