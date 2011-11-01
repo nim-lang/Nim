@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-proc alert(s: cstring) {.importc, nodecl.}
+proc alert*(s: cstring) {.importc, nodecl.}
+proc log*(s: cstring) {.importc: "console.log", nodecl.}
 
 type
   PSafePoint = ptr TSafePoint
