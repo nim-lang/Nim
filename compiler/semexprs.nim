@@ -663,6 +663,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     elif efAllowType notin flags: 
       GlobalError(n.sons[0].info, errATypeHasNoValue)
       return
+    # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
+    ty = n.sons[0].Typ
+      
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
   if ty.kind == tyObject: 
