@@ -7,7 +7,8 @@ discard """
 proc p1(x: int8, y: int): int = return x + y
 
 template tempBind(x, y: expr): expr = 
-  bind p1(x, y) 
+  bind p1
+  p1(x, y) 
 
 proc p1(x: int, y: int8): int = return x - y
 

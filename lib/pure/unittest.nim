@@ -50,8 +50,9 @@ proc printStatus*(s: TestStatus, name: string) =
   styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
   
 template test*(name: expr, body: stmt): stmt =
-  if bind shouldRun(name):
-    bind checkpoints = @[]
+  bind shouldRun, checkPoints
+  if shouldRun(name):
+    checkpoints = @[]
     var TestStatusIMPL = OK
     
     try:
@@ -67,7 +68,8 @@ proc checkpoint*(msg: string) =
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
 template fail* =
-  for msg in items(bind checkpoints):
+  bind checkpoints
+  for msg in items(checkpoints):
     echo msg
 
   if AbortOnError: quit(1)
