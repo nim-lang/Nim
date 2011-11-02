@@ -2,7 +2,7 @@ Version 0.8.14
 ==============
 
 - bug: s[1..n] = @[] produces wrong C code
-- bug: DLL generation is broken; write at least a basic test
+- test suite should contain DLL tests
 - optimize unused constants away (affected by HLO)
 - fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend

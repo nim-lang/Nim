@@ -179,14 +179,15 @@ type
       nil
 
 # XXX it'd be more efficient to not use a global variable for the 
-# thread storage slot, but to rely on the implementation to assign slot 0
+# thread storage slot, but to rely on the implementation to assign slot X
 # for us... ;-)
 var globalsSlot = ThreadVarAlloc()
 #const globalsSlot = TThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
-proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
-  result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).tls)
+when emulatedThreadVars:
+  proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
+    result = addr(cast[PGcThread](ThreadVarGetValue(globalsSlot)).tls)
 
 when useStackMaskHack:
   proc MaskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
@@ -198,12 +199,13 @@ when useStackMaskHack:
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
+  
   when not useStackMaskHack:
     var mainThread: TGcThread
     ThreadVarSetValue(globalsSlot, addr(mainThread))
     initStackBottom()
     initGC()
-
+    
   when emulatedThreadVars:
     if NimThreadVarsSize() > sizeof(TThreadLocalStorage):
       echo "too large thread local storage size requested"
@@ -264,7 +266,7 @@ when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
 template ThreadProcWrapperBody(closure: expr) =
-  ThreadVarSetValue(globalsSlot, closure)
+  when defined(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
