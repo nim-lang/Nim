@@ -56,7 +56,8 @@ proc unidecode*(s: string): string =
   ## Example: 
   ## 
   ## ..code-block:: nimrod
-  ##   unidecode("\\x53\\x17\\x4E\\xB0")
+  ##
+  ##   unidecode("\x53\x17\x4E\xB0")
   ##
   ## Results in: "Bei Jing"
   ##

@@ -735,7 +735,8 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = sameObjectStructures(a, b, c)
   of tyDistinct:
     CycleCheck()
-    result = sameTypeAux(a.sons[0], b.sons[0], c)
+    if c.cmp == dcEq: result = sameDistinctTypes(a, b)
+    else: result = sameTypeAux(a.sons[0], b.sons[0], c)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id

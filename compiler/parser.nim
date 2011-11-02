@@ -95,6 +95,10 @@ proc optInd(p: var TParser, n: PNode) =
   skipComment(p, n)
   skipInd(p)
 
+proc ExpectNl(p: TParser) = 
+  if p.tok.tokType notin {tkEof, tkSad, tkInd, tkDed}: 
+    lexMessage(p.lex, errNewlineExpected, prettyTok(p.tok))
+
 proc expectIdentOrKeyw(p: TParser) = 
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType): 
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
@@ -761,6 +765,7 @@ proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
+  expectNl(p)
 
 proc parseFromStmt(p: var TParser): PNode = 
   var a: PNode
@@ -798,6 +803,7 @@ proc parseFromStmt(p: var TParser): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
+  expectNl(p)
 
 proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode = 
   result = newNodeP(kind, p)
@@ -1299,6 +1305,7 @@ proc parseBind(p: var TParser): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
+  expectNl(p)
   
 proc simpleStmt(p: var TParser): PNode = 
   case p.tok.tokType

@@ -253,8 +253,10 @@ proc semGenericStmt(c: PContext, n: PNode,
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, toBind)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, toBind)
-    var s = n.sons[namePos].sym
-    n.sons[bodyPos] = semGenericStmtScope(c, s.getBody, flags, toBind)
+    var body: PNode
+    if n.sons[namePos].kind == nkSym: body = n.sons[namePos].sym.getBody
+    else: body = n.sons[bodyPos]
+    n.sons[bodyPos] = semGenericStmtScope(c, body, flags, toBind)
     closeScope(c.tab)
   else: 
     for i in countup(0, sonsLen(n) - 1): 
