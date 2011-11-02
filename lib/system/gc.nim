@@ -63,10 +63,10 @@ type
     region: TMemRegion       # garbage collected region
     stat: TGcStat
 
-when not defined(useNimRtl):
-  var
-    gch {.rtlThreadVar.}: TGcHeap
+var
+  gch {.rtlThreadVar.}: TGcHeap
 
+when not defined(useNimRtl):
   InstantiateForRegion(gch.region)
 
 proc acquire(gch: var TGcHeap) {.inline.} = 
