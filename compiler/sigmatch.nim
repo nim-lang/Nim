@@ -172,7 +172,9 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
   
 proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   result = isNone
-  if sonsLen(a) == sonsLen(f): 
+  if sameType(f, a):
+    result = isEqual
+  elif sonsLen(a) == sonsLen(f): 
     result = isEqual
     for i in countup(0, sonsLen(f) - 1): 
       var m = typeRel(mapping, f.sons[i], a.sons[i])

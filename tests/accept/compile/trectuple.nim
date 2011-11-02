@@ -1,6 +1,3 @@
-discard """
-  disabled: true
-"""
 
 type
     PNode = ref TNode
