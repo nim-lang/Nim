@@ -1874,8 +1874,13 @@ proc genConstSimpleList(p: BProc, n: PNode): PRope =
 
 proc genConstSeq(p: BProc, n: PNode, t: PType): PRope =
   var data = ropef("{{$1, $1}", n.len.toRope)
-  for i in countup(0, n.len - 1):
-    appf(data, ",$1$n", [genConstExpr(p, n.sons[i])])
+  if n.len > 0: 
+    # array part needs extra curlies:
+    data.app(", {")
+    for i in countup(0, n.len - 1):
+      if i > 0: data.appf(",$n")
+      data.app genConstExpr(p, n.sons[i])
+    data.app("}")
   data.app("}")
   
   inc(gBackendId)
