@@ -96,7 +96,7 @@ proc optInd(p: var TParser, n: PNode) =
   skipInd(p)
 
 proc ExpectNl(p: TParser) = 
-  if p.tok.tokType notin {tkEof, tkSad, tkInd, tkDed}: 
+  if p.tok.tokType notin {tkEof, tkSad, tkInd, tkDed, tkComment}: 
     lexMessage(p.lex, errNewlineExpected, prettyTok(p.tok))
 
 proc expectIdentOrKeyw(p: TParser) = 
