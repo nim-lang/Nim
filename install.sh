@@ -132,6 +132,10 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut1.txt
   cp doc/tut2.txt $docdir/tut2.txt || exit 1
   chmod 644 $docdir/tut2.txt
+  cp doc/intern.html $docdir/intern.html || exit 1
+  chmod 644 $docdir/intern.html
+  cp doc/nimrodc.html $docdir/nimrodc.html || exit 1
+  chmod 644 $docdir/nimrodc.html
   cp doc/mytest.cfg $docdir/mytest.cfg || exit 1
   chmod 644 $docdir/mytest.cfg
   cp doc/c2nim.pdf $docdir/c2nim.pdf || exit 1
@@ -264,6 +268,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/math.nim
   cp lib/pure/md5.nim $libdir/pure/md5.nim || exit 1
   chmod 644 $libdir/pure/md5.nim
+  cp lib/pure/memfiles.nim $libdir/pure/memfiles.nim || exit 1
+  chmod 644 $libdir/pure/memfiles.nim
   cp lib/pure/os.nim $libdir/pure/os.nim || exit 1
   chmod 644 $libdir/pure/os.nim
   cp lib/pure/osproc.nim $libdir/pure/osproc.nim || exit 1
@@ -308,8 +314,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/times.nim
   cp lib/pure/unicode.nim $libdir/pure/unicode.nim || exit 1
   chmod 644 $libdir/pure/unicode.nim
-  cp lib/pure/uuid.nim $libdir/pure/uuid.nim || exit 1
-  chmod 644 $libdir/pure/uuid.nim
+  cp lib/pure/unittest.nim $libdir/pure/unittest.nim || exit 1
+  chmod 644 $libdir/pure/unittest.nim
   cp lib/pure/xmldom.nim $libdir/pure/xmldom.nim || exit 1
   chmod 644 $libdir/pure/xmldom.nim
   cp lib/pure/xmldomparser.nim $libdir/pure/xmldomparser.nim || exit 1
@@ -360,8 +366,12 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/expat.nim
   cp lib/wrappers/iup.nim $libdir/wrappers/iup.nim || exit 1
   chmod 644 $libdir/wrappers/iup.nim
+  cp lib/wrappers/joyent_http_parser.nim $libdir/wrappers/joyent_http_parser.nim || exit 1
+  chmod 644 $libdir/wrappers/joyent_http_parser.nim
   cp lib/wrappers/libcurl.nim $libdir/wrappers/libcurl.nim || exit 1
   chmod 644 $libdir/wrappers/libcurl.nim
+  cp lib/wrappers/libuv.nim $libdir/wrappers/libuv.nim || exit 1
+  chmod 644 $libdir/wrappers/libuv.nim
   cp lib/wrappers/mysql.nim $libdir/wrappers/mysql.nim || exit 1
   chmod 644 $libdir/wrappers/mysql.nim
   cp lib/wrappers/odbcsql.nim $libdir/wrappers/odbcsql.nim || exit 1

@@ -127,6 +127,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/intsets.c -o build/1_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodutils.c -o build/1_1/rodutils.o"
@@ -163,6 +165,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/filter_tmpl.c -o build/1_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passes.c -o build/1_1/passes.o"
@@ -189,8 +193,6 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/semdata.c -o build/1_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/treetab.c -o build/1_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/treetab.c -o build/1_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evals.c -o build/1_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evals.c -o build/1_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/semfold.c -o build/1_1/semfold.o"
@@ -199,6 +201,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pragmas.c -o build/1_1/pragmas.o"
@@ -219,6 +223,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgen.c -o build/1_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ccgutils.c -o build/1_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ccgutils.c -o build/1_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgendata.c -o build/1_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/cgendata.c -o build/1_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ccgmerge.c -o build/1_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/ccgmerge.c -o build/1_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passaux.c -o build/1_1/passaux.o"
@@ -251,6 +259,7 @@ build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/intsets.o \
 build/1_1/math.o \
+build/1_1/idgen.o \
 build/1_1/astalgo.o \
 build/1_1/rodutils.o \
 build/1_1/extccomp.o \
@@ -269,6 +278,7 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
 build/1_1/types.o \
@@ -282,11 +292,11 @@ build/1_1/importer.o \
 build/1_1/lookups.o \
 build/1_1/semdata.o \
 build/1_1/treetab.o \
-build/1_1/sem.o \
 build/1_1/evals.o \
 build/1_1/semfold.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
+build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
@@ -297,6 +307,8 @@ build/1_1/rst.o \
 build/1_1/highlite.o \
 build/1_1/cgen.o \
 build/1_1/ccgutils.o \
+build/1_1/cgendata.o \
+build/1_1/ccgmerge.o \
 build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
@@ -325,6 +337,7 @@ build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/intsets.o \
 build/1_1/math.o \
+build/1_1/idgen.o \
 build/1_1/astalgo.o \
 build/1_1/rodutils.o \
 build/1_1/extccomp.o \
@@ -343,6 +356,7 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
 build/1_1/types.o \
@@ -356,11 +370,11 @@ build/1_1/importer.o \
 build/1_1/lookups.o \
 build/1_1/semdata.o \
 build/1_1/treetab.o \
-build/1_1/sem.o \
 build/1_1/evals.o \
 build/1_1/semfold.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
+build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
@@ -371,6 +385,8 @@ build/1_1/rst.o \
 build/1_1/highlite.o \
 build/1_1/cgen.o \
 build/1_1/ccgutils.o \
+build/1_1/cgendata.o \
+build/1_1/ccgmerge.o \
 build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
@@ -423,6 +439,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodutils.c -o build/1_2/rodutils.o"
@@ -459,6 +477,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o"
@@ -485,8 +505,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semdata.c -o build/1_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/treetab.c -o build/1_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/treetab.c -o build/1_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o"
@@ -495,6 +513,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
@@ -515,6 +535,10 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgen.c -o build/1_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgendata.c -o build/1_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgendata.c -o build/1_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgmerge.c -o build/1_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgmerge.c -o build/1_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
@@ -547,6 +571,7 @@ build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
 build/1_2/math.o \
+build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
 build/1_2/extccomp.o \
@@ -565,6 +590,7 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
 build/1_2/types.o \
@@ -578,11 +604,11 @@ build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
 build/1_2/treetab.o \
-build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
+build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -593,6 +619,8 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
+build/1_2/cgendata.o \
+build/1_2/ccgmerge.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
@@ -621,6 +649,7 @@ build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
 build/1_2/math.o \
+build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
 build/1_2/extccomp.o \
@@ -639,6 +668,7 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
 build/1_2/types.o \
@@ -652,11 +682,11 @@ build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
 build/1_2/treetab.o \
-build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
+build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -667,6 +697,8 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
+build/1_2/cgendata.o \
+build/1_2/ccgmerge.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
@@ -719,6 +751,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodutils.c -o build/1_2/rodutils.o"
@@ -755,6 +789,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o"
@@ -781,8 +817,6 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semdata.c -o build/1_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/treetab.c -o build/1_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/treetab.c -o build/1_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evals.c -o build/1_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semfold.c -o build/1_2/semfold.o"
@@ -791,6 +825,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
@@ -811,6 +847,10 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgen.c -o build/1_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgutils.c -o build/1_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgendata.c -o build/1_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/cgendata.c -o build/1_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ccgmerge.c -o build/1_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/ccgmerge.c -o build/1_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
@@ -843,6 +883,7 @@ build/1_3/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
 build/1_2/math.o \
+build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
 build/1_2/extccomp.o \
@@ -861,6 +902,7 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
 build/1_2/types.o \
@@ -874,11 +916,11 @@ build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
 build/1_2/treetab.o \
-build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
+build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -889,6 +931,8 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
+build/1_2/cgendata.o \
+build/1_2/ccgmerge.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
@@ -917,6 +961,7 @@ build/1_3/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
 build/1_2/math.o \
+build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
 build/1_2/extccomp.o \
@@ -935,6 +980,7 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
 build/1_2/types.o \
@@ -948,11 +994,11 @@ build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
 build/1_2/treetab.o \
-build/1_2/sem.o \
 build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
+build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
@@ -963,6 +1009,8 @@ build/1_2/rst.o \
 build/1_2/highlite.o \
 build/1_2/cgen.o \
 build/1_2/ccgutils.o \
+build/1_2/cgendata.o \
+build/1_2/ccgmerge.o \
 build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
@@ -1023,6 +1071,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/idgen.c -o build/2_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/idgen.c -o build/2_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodutils.c -o build/2_1/rodutils.o"
@@ -1059,6 +1109,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/filter_tmpl.c -o build/2_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -1085,8 +1137,6 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/semdata.c -o build/2_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evals.c -o build/2_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evals.c -o build/2_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/semfold.c -o build/2_1/semfold.o"
@@ -1095,6 +1145,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pragmas.c -o build/2_1/pragmas.o"
@@ -1115,6 +1167,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgen.c -o build/2_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ccgutils.c -o build/2_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ccgutils.c -o build/2_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ccgmerge.c -o build/2_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/ccgmerge.c -o build/2_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passaux.c -o build/2_1/passaux.o"
@@ -1147,6 +1203,7 @@ build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/2_1/idgen.o \
 build/2_1/astalgo.o \
 build/2_1/rodutils.o \
 build/2_1/extccomp.o \
@@ -1165,6 +1222,7 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
 build/2_1/types.o \
@@ -1178,11 +1236,11 @@ build/2_1/importer.o \
 build/2_1/lookups.o \
 build/2_1/semdata.o \
 build/2_1/treetab.o \
-build/2_1/sem.o \
 build/2_1/evals.o \
 build/2_1/semfold.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
+build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
@@ -1193,6 +1251,8 @@ build/2_1/rst.o \
 build/2_1/highlite.o \
 build/2_1/cgen.o \
 build/2_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/2_1/ccgmerge.o \
 build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
@@ -1221,6 +1281,7 @@ build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/2_1/idgen.o \
 build/2_1/astalgo.o \
 build/2_1/rodutils.o \
 build/2_1/extccomp.o \
@@ -1239,6 +1300,7 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
 build/2_1/types.o \
@@ -1252,11 +1314,11 @@ build/2_1/importer.o \
 build/2_1/lookups.o \
 build/2_1/semdata.o \
 build/2_1/treetab.o \
-build/2_1/sem.o \
 build/2_1/evals.o \
 build/2_1/semfold.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
+build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
@@ -1267,6 +1329,8 @@ build/2_1/rst.o \
 build/2_1/highlite.o \
 build/2_1/cgen.o \
 build/2_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/2_1/ccgmerge.o \
 build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
@@ -1319,6 +1383,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodutils.c -o build/2_2/rodutils.o"
@@ -1355,6 +1421,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -1381,8 +1449,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semdata.c -o build/2_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o"
@@ -1391,6 +1457,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
@@ -1411,6 +1479,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgen.c -o build/2_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgmerge.c -o build/2_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgmerge.c -o build/2_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
@@ -1443,6 +1515,7 @@ build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
 build/2_2/extccomp.o \
@@ -1461,6 +1534,7 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
 build/2_2/types.o \
@@ -1474,11 +1548,11 @@ build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
 build/2_2/treetab.o \
-build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
+build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1489,6 +1563,8 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/2_2/ccgmerge.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
@@ -1517,6 +1593,7 @@ build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
 build/2_2/extccomp.o \
@@ -1535,6 +1612,7 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
 build/2_2/types.o \
@@ -1548,11 +1626,11 @@ build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
 build/2_2/treetab.o \
-build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
+build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1563,6 +1641,8 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/2_2/ccgmerge.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
@@ -1615,6 +1695,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodutils.c -o build/2_2/rodutils.o"
@@ -1651,6 +1733,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -1677,8 +1761,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semdata.c -o build/2_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evals.c -o build/2_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semfold.c -o build/2_2/semfold.o"
@@ -1687,6 +1769,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
@@ -1707,6 +1791,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgen.c -o build/2_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgutils.c -o build/2_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ccgmerge.c -o build/2_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/ccgmerge.c -o build/2_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
@@ -1739,6 +1827,7 @@ build/2_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
 build/2_2/extccomp.o \
@@ -1757,6 +1846,7 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
 build/2_2/types.o \
@@ -1770,11 +1860,11 @@ build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
 build/2_2/treetab.o \
-build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
+build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1785,6 +1875,8 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/2_2/ccgmerge.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
@@ -1813,6 +1905,7 @@ build/2_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
 build/2_2/extccomp.o \
@@ -1831,6 +1924,7 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
 build/2_2/types.o \
@@ -1844,11 +1938,11 @@ build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
 build/2_2/treetab.o \
-build/2_2/sem.o \
 build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
+build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
@@ -1859,6 +1953,8 @@ build/2_2/rst.o \
 build/2_2/highlite.o \
 build/2_2/cgen.o \
 build/2_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/2_2/ccgmerge.o \
 build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
@@ -1919,6 +2015,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodutils.c -o build/3_1/rodutils.o"
@@ -1955,6 +2053,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filter_tmpl.c -o build/3_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -1981,8 +2081,6 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/semdata.c -o build/3_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evals.c -o build/3_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evals.c -o build/3_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semfold.c -o build/3_1/semfold.o"
@@ -1991,6 +2089,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pragmas.c -o build/3_1/pragmas.o"
@@ -2011,6 +2111,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgen.c -o build/3_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ccgmerge.c -o build/3_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/ccgmerge.c -o build/3_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/passaux.c -o build/3_1/passaux.o"
@@ -2043,6 +2147,7 @@ build/3_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
 build/3_1/extccomp.o \
@@ -2061,6 +2166,7 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
 build/3_1/types.o \
@@ -2074,11 +2180,11 @@ build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
 build/2_1/treetab.o \
-build/3_1/sem.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
@@ -2089,6 +2195,8 @@ build/3_1/rst.o \
 build/3_1/highlite.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/3_1/ccgmerge.o \
 build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
@@ -2117,6 +2225,7 @@ build/3_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
 build/3_1/extccomp.o \
@@ -2135,6 +2244,7 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
 build/3_1/types.o \
@@ -2148,11 +2258,11 @@ build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
 build/2_1/treetab.o \
-build/3_1/sem.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
@@ -2163,6 +2273,8 @@ build/3_1/rst.o \
 build/3_1/highlite.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/3_1/ccgmerge.o \
 build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
@@ -2215,6 +2327,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodutils.c -o build/3_2/rodutils.o"
@@ -2251,6 +2365,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -2277,8 +2393,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semdata.c -o build/3_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o"
@@ -2287,6 +2401,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
@@ -2307,6 +2423,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgen.c -o build/3_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
@@ -2339,6 +2459,7 @@ build/3_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
@@ -2357,6 +2478,7 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
 build/3_2/types.o \
@@ -2370,11 +2492,11 @@ build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
 build/2_2/treetab.o \
-build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2385,6 +2507,8 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/3_2/ccgmerge.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
@@ -2413,6 +2537,7 @@ build/3_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
@@ -2431,6 +2556,7 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
 build/3_2/types.o \
@@ -2444,11 +2570,11 @@ build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
 build/2_2/treetab.o \
-build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2459,6 +2585,8 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/3_2/ccgmerge.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
@@ -2511,6 +2639,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodutils.c -o build/3_2/rodutils.o"
@@ -2547,6 +2677,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -2573,8 +2705,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semdata.c -o build/3_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o"
@@ -2583,6 +2713,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
@@ -2603,6 +2735,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgen.c -o build/3_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
@@ -2635,6 +2771,7 @@ build/3_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
@@ -2653,6 +2790,7 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
 build/3_2/types.o \
@@ -2666,11 +2804,11 @@ build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
 build/2_2/treetab.o \
-build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2681,6 +2819,8 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/3_2/ccgmerge.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
@@ -2709,6 +2849,7 @@ build/3_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
@@ -2727,6 +2868,7 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
 build/3_2/types.o \
@@ -2740,11 +2882,11 @@ build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
 build/2_2/treetab.o \
-build/3_2/sem.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
@@ -2755,6 +2897,8 @@ build/3_2/rst.o \
 build/3_2/highlite.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/3_2/ccgmerge.o \
 build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
@@ -2815,6 +2959,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
@@ -2851,6 +2997,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -2877,8 +3025,6 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semdata.c -o build/4_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
@@ -2887,6 +3033,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -2907,6 +3055,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
@@ -2939,6 +3091,7 @@ build/4_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -2957,6 +3110,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -2970,11 +3124,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -2985,6 +3139,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -3013,6 +3169,7 @@ build/4_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -3031,6 +3188,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -3044,11 +3202,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3059,6 +3217,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -3111,6 +3271,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -3147,6 +3309,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -3173,8 +3337,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -3183,6 +3345,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -3203,6 +3367,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -3235,6 +3403,7 @@ build/4_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -3253,6 +3422,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -3266,11 +3436,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3281,6 +3451,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -3309,6 +3481,7 @@ build/4_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -3327,6 +3500,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -3340,11 +3514,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3355,6 +3529,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -3407,6 +3583,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -3443,6 +3621,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -3469,8 +3649,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -3479,6 +3657,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -3499,6 +3679,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -3531,6 +3715,7 @@ build/4_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -3549,6 +3734,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -3562,11 +3748,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3577,6 +3763,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -3605,6 +3793,7 @@ build/4_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -3623,6 +3812,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -3636,11 +3826,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -3651,6 +3841,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -3711,6 +3903,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
@@ -3747,6 +3941,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -3773,8 +3969,6 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semdata.c -o build/4_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
@@ -3783,6 +3977,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -3803,6 +3999,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
@@ -3835,6 +4035,7 @@ build/5_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -3853,6 +4054,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -3866,11 +4068,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3881,6 +4083,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -3909,6 +4113,7 @@ build/5_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -3927,6 +4132,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -3940,11 +4146,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -3955,6 +4161,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -4007,6 +4215,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -4043,6 +4253,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -4069,8 +4281,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -4079,6 +4289,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4099,6 +4311,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -4131,6 +4347,7 @@ build/5_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -4149,6 +4366,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -4162,11 +4380,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4177,6 +4395,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -4205,6 +4425,7 @@ build/5_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -4223,6 +4444,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -4236,11 +4458,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4251,6 +4473,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -4303,6 +4527,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -4339,6 +4565,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -4365,8 +4593,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -4375,6 +4601,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4395,6 +4623,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -4427,6 +4659,7 @@ build/5_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -4445,6 +4678,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -4458,11 +4692,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4473,6 +4707,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -4501,6 +4737,7 @@ build/5_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -4519,6 +4756,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -4532,11 +4770,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -4547,6 +4785,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -4607,6 +4847,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
@@ -4643,6 +4885,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -4669,8 +4913,6 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semdata.c -o build/4_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
@@ -4679,6 +4921,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -4699,6 +4943,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
@@ -4731,6 +4979,7 @@ build/6_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -4749,6 +4998,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -4762,11 +5012,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -4777,6 +5027,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -4805,6 +5057,7 @@ build/6_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -4823,6 +5076,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -4836,11 +5090,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -4851,6 +5105,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -4903,6 +5159,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -4939,6 +5197,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -4965,8 +5225,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -4975,6 +5233,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -4995,6 +5255,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -5027,6 +5291,7 @@ build/6_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -5045,6 +5310,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -5058,11 +5324,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5073,6 +5339,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -5101,6 +5369,7 @@ build/6_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -5119,6 +5388,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -5132,11 +5402,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5147,6 +5417,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -5199,6 +5471,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -5235,6 +5509,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -5261,8 +5537,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -5271,6 +5545,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -5291,6 +5567,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -5323,6 +5603,7 @@ build/6_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -5341,6 +5622,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -5354,11 +5636,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5369,6 +5651,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -5397,6 +5681,7 @@ build/6_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -5415,6 +5700,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -5428,11 +5714,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5443,6 +5729,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -5503,6 +5791,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
@@ -5539,6 +5829,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
@@ -5565,8 +5857,6 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semdata.c -o build/4_1/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evals.c -o build/4_1/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semfold.c -o build/4_1/semfold.o"
@@ -5575,6 +5865,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
@@ -5595,6 +5887,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgen.c -o build/4_1/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgutils.c -o build/4_1/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/ccgmerge.c -o build/4_1/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
@@ -5627,6 +5923,7 @@ build/7_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -5645,6 +5942,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -5658,11 +5956,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -5673,6 +5971,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -5701,6 +6001,7 @@ build/7_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
 build/2_1/math.o \
+build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
 build/4_1/extccomp.o \
@@ -5719,6 +6020,7 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
 build/4_1/types.o \
@@ -5732,11 +6034,11 @@ build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
 build/2_1/treetab.o \
-build/4_1/sem.o \
 build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
@@ -5747,6 +6049,8 @@ build/4_1/rst.o \
 build/4_1/highlite.o \
 build/4_1/cgen.o \
 build/4_1/ccgutils.o \
+build/2_1/cgendata.o \
+build/4_1/ccgmerge.o \
 build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
@@ -5799,6 +6103,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -5835,6 +6141,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -5861,8 +6169,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -5871,6 +6177,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -5891,6 +6199,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -5923,6 +6235,7 @@ build/7_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -5941,6 +6254,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -5954,11 +6268,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -5969,6 +6283,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -5997,6 +6313,7 @@ build/7_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -6015,6 +6332,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -6028,11 +6346,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -6043,6 +6361,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -6095,6 +6415,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
@@ -6131,6 +6453,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
@@ -6157,8 +6481,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semdata.c -o build/4_2/semdata.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evals.c -o build/4_2/evals.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semfold.c -o build/4_2/semfold.o"
@@ -6167,6 +6489,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
@@ -6187,6 +6511,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgen.c -o build/4_2/cgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgutils.c -o build/4_2/ccgutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/ccgmerge.c -o build/4_2/ccgmerge.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
@@ -6219,6 +6547,7 @@ build/7_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -6237,6 +6566,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -6250,11 +6580,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -6265,6 +6595,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
@@ -6293,6 +6625,7 @@ build/7_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
 build/2_2/math.o \
+build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
 build/4_2/extccomp.o \
@@ -6311,6 +6644,7 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
 build/4_2/types.o \
@@ -6324,11 +6658,11 @@ build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
 build/2_2/treetab.o \
-build/4_2/sem.o \
 build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
@@ -6339,6 +6673,8 @@ build/4_2/rst.o \
 build/4_2/highlite.o \
 build/4_2/cgen.o \
 build/4_2/ccgutils.o \
+build/2_2/cgendata.o \
+build/4_2/ccgmerge.o \
 build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
