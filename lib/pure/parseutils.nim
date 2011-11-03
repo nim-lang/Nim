@@ -106,18 +106,28 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   while s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
+  ## skips the `token` starting at ``s[start]``. Returns the length of `token`
+  ## or 0 if there was no `token` at ``s[start]``.
   while result < token.len and s[result+start] == token[result]: inc(result)
   if result != token.len: result = 0
   
 proc skipIgnoreCase*(s, token: string, start = 0): int =
+  ## same as `skip` but case is ignored for token matching.
   while result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
   
 proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
-  ## Skips all characters until one char from the set `token` is found.
+  ## Skips all characters until one char from the set `until` is found
+  ## or the end is reached.
   ## Returns number of characters skipped.
   while s[result+start] notin until and s[result+start] != '\0': inc(result)
+
+proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
+  ## Skips all characters until the char `until` is found
+  ## or the end is reached.
+  ## Returns number of characters skipped.
+  while s[result+start] != until and s[result+start] != '\0': inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
@@ -130,7 +140,17 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters notin `until`. 
   var i = start
-  while s[i] notin until: inc(i)
+  while i < s.len and s[i] notin until: inc(i)
+  result = i-start
+  token = substr(s, start, i-1)
+
+proc parseUntil*(s: string, token: var string, until: char,
+                 start = 0): int {.inline.} =
+  ## parses a token and stores it in ``token``. Returns
+  ## the number of the parsed characters or 0 in case of an error. A token
+  ## consists of any character that is not the `until` character.
+  var i = start
+  while i < s.len and s[i] != until: inc(i)
   result = i-start
   token = substr(s, start, i-1)
 
