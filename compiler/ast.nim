@@ -341,7 +341,7 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, mOf,
     mEcho, mShallowCopy, mSlurp,
-    mAstToYaml, mParseExprToAst, mParseStmtToAst, mExpandToAst,
+    mParseExprToAst, mParseStmtToAst, mExpandToAst,
     mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
