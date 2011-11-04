@@ -1118,9 +1118,6 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return
     result = newStrNodeT(result.info.toFileLineCol, n)
-  of mAstToYaml:
-    var ast = evalAux(c, n.sons[1], {efLValue})
-    result = newStrNode(nkStrLit, ast.treeToYaml.ropeToStr)
   of mNHint: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
