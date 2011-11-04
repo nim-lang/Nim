@@ -189,40 +189,8 @@ proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   return newStrLitNode(repr(n))
 
 proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo".}
-
-proc toLisp*(n: PNimrodNode): string {.compileTime.} =
-  ## Convert the AST `n` to a human-readable string
-  ##
-  ## You can use this as a tool to explore the Nimrod's abstract syntax 
-  ## tree and to discover what kind of nodes must be created to represent
-  ## a certain expression/statement
-
-  if n == nil: return "nil"
-
-  result = $n.kind
-  add(result, "(")
-  
-  case n.kind
-  of nnkEmpty: nil # same as nil node in this representation
-  of nnkNilLit: add(result, "nil")
-  of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
-  of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
-  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
-  of nnkIdent: add(result, $n.ident)
-  of nnkSym, nnkNone: assert false
-  else:
-    add(result, toLisp(n[0]))
-    for j in 1..n.len-1:
-      add(result, ", ")
-      add(result, toLisp(n[j]))
-
-  add(result, ")")
-
-proc toYaml*(n: PNimrodNode): string {.magic: "AstToYaml".}
-  ## Converts the AST `n` to an YAML string
-  ##
-  ## Provides more detailed, potentially harder to digest information
-  ## than `toLisp`
+  ## returns the position the node appears in the original source file
+  ## in the form filename(line, col)
 
 proc parseExpr*(s: string): expr {.magic: "ParseExprToAst".}
   ## Compiles the passed string to its AST representation.
@@ -275,8 +243,8 @@ proc newCall*(theProc: string,
   result.add(newIdentNode(theProc))
   result.add(args)
 
-proc nestList*(theProc: TNimrodIdent,  
-               x: PNimrodNode): PNimrodNode {.compileTime.} = 
+proc nestList*(theProc: TNimrodIdent,
+               x: PNimrodNode): PNimrodNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
   ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``
   var L = x.len
@@ -284,4 +252,73 @@ proc nestList*(theProc: TNimrodIdent,
   var a = result
   for i in countdown(L-3, 0):
     a = newCall(theProc, x[i], copyNimTree(a))
+
+proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
+  ## Convert the AST `n` to a human-readable tree-like string
+  ##
+  ## see also `repr` and `lispRepr`
+
+  proc traverse(res: var string, level: int, n: PNimrodNode) =
+    for i in 0..level-1: res.add "  "
+    
+    if n == nil:
+      res.add "nil"
+    else:
+      res.add(($n.kind).substr(3))
+      
+      case n.kind
+      of nnkEmpty: nil # same as nil node in this representation
+      of nnkNilLit: res.add(" nil")
+      of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
+      of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
+      of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
+      of nnkIdent: res.add(" " & $n.ident)
+      of nnkSym, nnkNone: assert false
+      else:
+        for j in 0..n.len-1:
+          res.add "\n"
+          traverse(res, level + 1, n[j])
+
+  result = ""
+  traverse(result, 0, n)
+
+proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
+  ## Convert the AST `n` to a human-readable lisp-like string
+  ##
+  ## see also `repr` and `treeRepr`
+  
+  if n == nil: return "nil"
+
+  result = ($n.kind).substr(3)
+  add(result, "(")
+  
+  case n.kind
+  of nnkEmpty: nil # same as nil node in this representation
+  of nnkNilLit: add(result, "nil")
+  of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
+  of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
+  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
+  of nnkIdent: add(result, $n.ident)
+  of nnkSym, nnkNone: assert false
+  else:
+    add(result, lispRepr(n[0]))
+    for j in 1..n.len-1:
+      add(result, ", ")
+      add(result, lispRepr(n[j]))
+
+  add(result, ")")
+
+macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
+  ## Accepts a block of nimrod code and prints the parsed abstract syntax
+  ## tree using the `toTree` function.
+  ##
+  ## You can use this as a tool to explore the Nimrod's abstract syntax 
+  ## tree and to discover what kind of nodes must be created to represent
+  ## a certain expression/statement
+
+macro dumpLisp*(s: stmt): stmt = echo s[1].lispRepr
+  ## Accepts a block of nimrod code and prints the parsed abstract syntax
+  ## tree using the `toLisp` function.
+  ##
+  ## see `dumpTree`
 
