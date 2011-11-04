@@ -323,6 +323,15 @@ proc compileRodFiles(r: var TResults, options: string) =
 
 # -----------------------------------------------------------------------------
 
+# DLL generation tests
+proc testDLLGen(r: var TResults, options: string) =
+  compileSingleTest(r, "lib/nimrtl.nim", "--app:lib -d:createNimRtl")
+  
+  template test(filename: expr): stmt =
+    compileSingleTest(r, "tests/dll/" / filename, options)
+  
+  test "dllsimple.nim"
+   
 proc compileExample(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
 
@@ -360,6 +369,7 @@ proc main(action: string) =
     compile(compileRes, "tests/accept/compile/t*.nim", options)
     compile(compileRes, "tests/ecmas.nim", options)
     compileRodFiles(compileRes, options)
+    testDllGen(compileRes, options)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)
