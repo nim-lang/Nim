@@ -6,7 +6,6 @@ Version 0.8.14
 - optimize unused constants away (affected by HLO)
 - fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend
-- implement lib/pure/memfiles properly
 
 
 version 0.9.0
@@ -92,7 +91,6 @@ Library
 - radix tree for strings; maybe suffix tree
 - locale support
 - bignums
-- ftp (and other internet protocols)
 
 - pdcurses bindings
 
