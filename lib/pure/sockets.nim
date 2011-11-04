@@ -175,9 +175,9 @@ proc parseIp4*(s: string): int32 =
   if s[i] != '\0': invalidIp4(s)
   result = int32(a shl 24 or b shl 16 or c shl 8 or d)
 
-template gaiNim(a, p, h, l: expr): stmt =
+template gaiNim(a, p, h, list: expr): stmt =
   block:
-    var gaiResult = getAddrInfo(a, $p, addr(h), l)
+    var gaiResult = getAddrInfo(a, $p, addr(h), list)
     if gaiResult != 0'i32:
       when defined(windows):
         OSError()
@@ -453,8 +453,13 @@ proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
 
 proc select*(readfds, writefds, exceptfds: var seq[TSocket], 
              timeout = 500): int = 
-  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
-  ## Specify -1 for no timeout.
+  ## Traditional select function. This function will return the number of
+  ## sockets that are ready, if none are ready; 0 is returned. 
+  ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
+  ## 
+  ## You can determine whether a socket is ready by checking if it's still
+  ## in one of the TSocket sequences.
+
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -476,8 +481,6 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
 
 proc select*(readfds, writefds: var seq[TSocket], 
              timeout = 500): int = 
-  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
-  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -497,8 +500,6 @@ proc select*(readfds, writefds: var seq[TSocket],
 
 proc selectWrite*(writefds: var seq[TSocket], 
                   timeout = 500): int = 
-  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
-  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
@@ -516,8 +517,6 @@ proc selectWrite*(writefds: var seq[TSocket],
 
 
 proc select*(readfds: var seq[TSocket], timeout = 500): int = 
-  ## select with a sensible Nimrod interface. `timeout` is in miliseconds.
-  ## Specify -1 for no timeout.
   var tv: TTimeVal
   tv.tv_sec = 0
   tv.tv_usec = timeout * 1000
