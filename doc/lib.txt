@@ -181,6 +181,9 @@ Internet Protocols and Support
 * `irc <irc.html>`_
   This module implements an asynchronous IRC client.  
 
+* `ftpclient <ftpclient.html>`_
+  This module implements an FTP client.
+
 Parsers
 -------
 
