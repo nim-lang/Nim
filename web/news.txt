@@ -101,8 +101,8 @@ Library Additions
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``.
 - Added ``parseutils.interpolatedFragments``.
-- Added ``macros.toLisp``, ``macros.toYaml``, ``macros.parseExpr``,
-  ``macros.parseStmt``, ``macros.getAst``.
+- Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``, 
+  ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``, ``macros.getAst``.
 - Added ``locks`` core module for more flexible locking support.
 - Added ``irc`` module.
 
