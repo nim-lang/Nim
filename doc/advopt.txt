@@ -23,6 +23,7 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
+  --recursivePath:PATH      add a path and all of its subdirectories
   --lib:PATH                set the system library path
   --nimcache:PATH           set the path used for generated files
   -c, --compileOnly         compile only; do not assemble or link
