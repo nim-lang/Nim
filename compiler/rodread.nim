@@ -632,7 +632,10 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   r.readerIndex = readerIndex
   r.filename = modfilename
   InitIdTable(r.syms)
-  if not open(r.memFile, modfilename): return nil
+  try:
+    r.memFile = memfiles.open(modfilename)
+  except EOS:
+    return nil
   # we terminate the file explicitely with ``\0``, so the cast to `cstring`
   # is save:
   r.s = cast[cstring](r.memFile.mem)

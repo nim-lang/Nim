@@ -141,6 +141,10 @@ Generic Operating System Services
   (also called *console*). The implementation simply uses ANSI escape
   sequences and does not depend on any other module.
 
+* `memfiles <memfiles.html>`_
+  This module provides support for memory mapped files (Posix's ``mmap``) 
+  on the different operating systems.
+
 
 Math libraries
 --------------
