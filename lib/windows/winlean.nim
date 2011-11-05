@@ -12,6 +12,7 @@
 
 type
   THandle* = int
+  LONG* = int
   WINBOOL* = int32
   DWORD* = int32
 
@@ -65,6 +66,7 @@ const
   DETACHED_PROCESS* = 8'i32
   
   SW_SHOWNORMAL* = 1'i32
+  INVALID_HANDLE_VALUE* = THANDLE(-1)
 
 proc CloseHandle*(hObject: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -143,6 +145,7 @@ const
   FILE_ATTRIBUTE_HIDDEN* = 2'i32
   FILE_ATTRIBUTE_READONLY* = 1'i32
   FILE_ATTRIBUTE_SYSTEM* = 4'i32
+  FILE_ATTRIBUTE_TEMPORARY* = 256'i32
 
   MAX_PATH* = 260
 type
@@ -239,7 +242,8 @@ type
   TInAddr* {.pure, final, importc: "IN_ADDR", header: "Winsock2.h".} = object
     s_addr*: int32  # IP address
   
-  Tsockaddr_in* {.pure, final, importc: "SOCKADDR_IN", header: "Winsock2.h".} = object
+  Tsockaddr_in* {.pure, final, importc: "SOCKADDR_IN", 
+                  header: "Winsock2.h".} = object
     sin_family*: int16
     sin_port*: int16 # unsigned
     sin_addr*: TInAddr
@@ -248,7 +252,8 @@ type
   Tin6_addr* {.pure, final, importc: "IN6_ADDR", header: "Winsock2.h".} = object 
     bytes*: array[0..15, char]
 
-  Tsockaddr_in6* {.pure, final, importc: "SOCKADDR_IN6", header: "Winsock2.h".} = object
+  Tsockaddr_in6* {.pure, final, importc: "SOCKADDR_IN6", 
+                   header: "Winsock2.h".} = object
     sin6_family*: int16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
@@ -397,3 +402,54 @@ type
 proc WaitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
                              bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
     stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
+    
+    
+# for memfiles.nim:
+
+const
+  GENERIC_READ* = 0x80000000'i32
+  GENERIC_ALL* = 0x10000000'i32
+  FILE_SHARE_READ* = 1'i32
+  CREATE_ALWAYS* = 2'i32
+  OPEN_EXISTING* = 3'i32
+  FILE_BEGIN* = 0'i32
+  INVALID_SET_FILE_POINTER* = -1'i32
+  NO_ERROR* = 0'i32
+  PAGE_READONLY* = 2'i32
+  PAGE_READWRITE* = 4'i32
+  FILE_MAP_READ* = 4'i32
+  FILE_MAP_WRITE* = 2'i32
+  INVALID_FILE_SIZE* = -1'i32
+
+proc CreateFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
+                  lpSecurityAttributes: pointer,
+                  dwCreationDisposition, dwFlagsAndAttributes: DWORD,
+                  hTemplateFile: THANDLE): THANDLE {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileA".}
+
+proc SetEndOfFile*(hFile: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
+    importc: "SetEndOfFile".}
+
+proc SetFilePointer*(hFile: THANDLE, lDistanceToMove: LONG,
+                     lpDistanceToMoveHigh: ptr LONG, 
+                     dwMoveMethod: DWORD): DWORD {.
+    stdcall, dynlib: "kernel32", importc: "SetFilePointer".}
+
+proc GetFileSize*(hFile: THANDLE, lpFileSizeHigh: ptr DWORD): DWORD{.stdcall,
+    dynlib: "kernel32", importc: "GetFileSize".}
+
+proc MapViewOfFileEx*(hFileMappingObject: THANDLE, dwDesiredAccess: DWORD,
+                      dwFileOffsetHigh, dwFileOffsetLow: DWORD,
+                      dwNumberOfBytesToMap: DWORD, 
+                      lpBaseAddress: pointer): pointer{.
+    stdcall, dynlib: "kernel32", importc: "MapViewOfFileEx".}
+
+proc CreateFileMapping*(hFile: THANDLE,
+                        lpFileMappingAttributes: pointer,
+                        flProtect, dwMaximumSizeHigh: DWORD,
+                        dwMaximumSizeLow: DWORD, lpName: cstring): THANDLE {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileMappingA".}
+
+proc UnmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
+    dynlib: "kernel32", importc: "UnmapViewOfFile".}
+

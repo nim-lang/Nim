@@ -7,15 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
+## :Author: Zahary Karadjov (zah@github)
+##
 ## This module implements the standard unit testing facilities such as
 ## suites, fixtures and test cases as well as facilities for combinatorial 
 ## and randomzied test case generation (not yet available) 
 ## and object mocking (not yet available)
 ##
 ## It is loosely based on C++'s boost.test and Haskell's QuickTest
-##
-## Maintainer: Zahary Karadjov (zah@github)
-##
 
 import
   macros, terminal

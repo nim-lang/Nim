@@ -11,6 +11,9 @@
 ##
 ## This module implements operations for the built-in `seq`:idx: type
 ## which were inspired by functional programming languages.
+##
+## **Note**: This interface will change as soon as the compiler supports
+## closures and proper coroutines.
 
 proc concat*[T](seqs: openarray[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside of one sequence.

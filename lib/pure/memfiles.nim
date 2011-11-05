@@ -1,39 +1,32 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2011 Nimrod Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
+## :Authors: Zahary Karadjov, Andreas Rumpf
+##
 ## This module provides support for `memory mapped files`:idx:
 ## (Posix's `mmap`:idx:) on the different operating systems.
 
 when defined(windows):
-  import windows
+  import winlean
 elif defined(posix):
   import posix
 else:
-  {.error: "the memfiles module is not supported yet on your operating system!".}
+  {.error: "the memfiles module is not supported on your operating system!".}
 
-## mem
-## a pointer to the memory mapped file `f`. The pointer can be
-## used directly to change the contents of the file, if `f` was opened
-## with write access.
-
-## size
-## size of the memory mapped file `f`.
-
-when defined(windows):
-  type Tsize = int64
-else:
-  type Tsize = int
+import os
 
 type
   TMemFile* = object {.pure.} ## represents a memory mapped file
-    mem*: pointer # XXX: The compiler won't let me add comments on the next line
-    size*: Tsize
+    mem*: pointer    ## a pointer to the memory mapped file. The pointer
+                     ## can be used directly to change the contents of the
+                     ## file, if it was opened with write access.
+    size*: int       ## size of the memory mapped file
 
     when defined(windows):
       fHandle: int
@@ -41,32 +34,31 @@ type
     else:
       handle: cint
 
-proc open*(
-  f           : var TMemFile,
-  filename    : string,
-  mode        : TFileMode = fmRead,
-  mappedSize  : int       = -1,
-  offset      : Tsize     = 0,
-  newFileSize : Tsize     = -1 ): bool =
-  ## open a memory mapped file `f`. Returns true for success.
+proc open*(filename: string, mode: TFileMode = fmRead,
+           mappedSize = -1, offset = 0, newFileSize = -1): TMemFile =
+  ## opens a memory mapped file. If this fails, ``EOS`` is raised.
+  ## `newFileSize` can only be set if the file is not opened with ``fmRead``
+  ## access. `mappedSize` and `offset` can be used to map only a slice of
+  ## the file.
 
-  # The file can be resized only when write mode is used
+  # The file can be resized only when write mode is used:
   assert newFileSize == -1 or mode != fmRead
   var readonly = mode == fmRead
 
   template rollback =
-    f.mem = nil
-    f.size = 0
+    result.mem = nil
+    result.size = 0
 
   when defined(windows):
     template fail(msg: expr) =
       rollback()
-      if f.fHandle != 0: discard CloseHandle(f.fHandle)
-      if f.mapHandle != 0: discard CloseHandle(f.mapHandle)
+      if result.fHandle != 0: discard CloseHandle(result.fHandle)
+      if result.mapHandle != 0: discard CloseHandle(result.mapHandle)
+      OSError()
       # return false
-      raise newException(EIO, msg)
+      #raise newException(EIO, msg)
       
-    f.fHandle = CreateFileA(
+    result.fHandle = CreateFileA(
       filename,
       if readonly: GENERIC_READ else: GENERIC_ALL,
       FILE_SHARE_READ,
@@ -75,7 +67,7 @@ proc open*(
       if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
       0)
 
-    if f.fHandle == INVALID_HANDLE_VALUE:
+    if result.fHandle == INVALID_HANDLE_VALUE:
       fail "error opening file"
 
     if newFileSize != -1:
@@ -83,86 +75,82 @@ proc open*(
         sizeHigh = int32(newFileSize shr 32)
         sizeLow  = int32(newFileSize and 0xffffffff)
 
-      var status = SetFilePointer(f.fHandle, sizeLow, addr(sizeHigh), FILE_BEGIN)
+      var status = SetFilePointer(result.fHandle, sizeLow, addr(sizeHigh),
+                                  FILE_BEGIN)
       if (status == INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) or
-         (SetEndOfFile(f.fHandle) == 0):
+         (SetEndOfFile(result.fHandle) == 0):
         fail "error setting file size"
 
-    f.mapHandle = CreateFileMapping(
-      f.fHandle, nil,
+    result.mapHandle = CreateFileMapping(
+      result.fHandle, nil,
       if readonly: PAGE_READONLY else: PAGE_READWRITE,
       0, 0, nil)
 
-    if f.mapHandle == 0:
+    if result.mapHandle == 0:
       fail "error creating mapping"
 
-    f.mem = MapViewOfFileEx(
-      f.mapHandle,
+    result.mem = MapViewOfFileEx(
+      result.mapHandle,
       if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
       if mappedSize == -1: 0 else: mappedSize,
       nil)
 
-    if f.mem == nil:
+    if result.mem == nil:
       fail "error mapping view"
 
     var hi, low: int32
-    low = GetFileSize(f.fHandle, addr(hi))
+    low = GetFileSize(result.fHandle, addr(hi))
     if low == INVALID_FILE_SIZE:
       fail "error getting file size"
     else:
       var fileSize = (int64(hi) shr 32) or low
-      f.size = if mappedSize != -1: min(fileSize, mappedSize) else: fileSize
-
-    result = true
+      if mappedSize != -1: result.size = min(fileSize, mappedSize).int
+      else: result.size = fileSize.int
 
   else:
     template fail(msg: expr) =
       rollback()
-      if f.handle != 0:
-        discard close(f.handle)
-      # return false
-      raise newException(system.EIO, msg)
+      if result.handle != 0: discard close(result.handle)
+      OSError()
   
     var flags = if readonly: O_RDONLY else: O_RDWR
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
 
-    f.handle = open(filename, flags)
-    if f.handle == -1:
+    result.handle = open(filename, flags)
+    if result.handle == -1:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?
       fail "error opening file"
 
     if newFileSize != -1:
-      if ftruncate(f.handle, newFileSize) == -1:
+      if ftruncate(result.handle, newFileSize) == -1:
         fail "error setting file size"
 
     if mappedSize != -1:
-      f.size = mappedSize
+      result.size = mappedSize
     else:
       var stat: Tstat
-      if fstat(f.handle, stat) != -1:
+      if fstat(result.handle, stat) != -1:
         # XXX: Hmm, this could be unsafe
         # Why is mmap taking int anyway?
-        f.size = int(stat.st_size)
+        result.size = int(stat.st_size)
       else:
         fail "error getting file size"
 
-    f.mem = mmap(
+    result.mem = mmap(
       nil,
-      f.size,
+      result.size,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
       if readonly: MAP_PRIVATE else: MAP_SHARED,
-      f.handle,
+      result.handle,
       offset)
 
-    if f.mem == cast[pointer](MAP_FAILED):
+    if result.mem == cast[pointer](MAP_FAILED):
       fail "file mapping failed"
-
-    result = true
 
 proc close*(f: var TMemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
@@ -189,6 +177,5 @@ proc close*(f: var TMemFile) =
   else:
     f.handle = 0
   
-  if error:
-    raise newException(system.EIO, "error closing file")
+  if error: OSError()
 
