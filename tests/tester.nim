@@ -272,12 +272,7 @@ proc run(r: var TResults, dir, options: string) =
 const
   rodfilesDir = "tests/rodfiles"
 
-proc delNimCache() =
-  try:
-    removeDir(rodfilesDir / "nimcache")
-  except EOS:
-    nil
-    
+proc delNimCache() = removeDir(rodfilesDir / "nimcache")
 proc plusCache(options: string): string = return options & " --symbolFiles:on"
 
 proc runRodFiles(r: var TResults, options: string) =
