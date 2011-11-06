@@ -613,9 +613,13 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1".} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
   if crename(source, dest) != 0'i32: OSError()
 
+when not defined(ENOENT):
+  var ENOENT* {.importc, header: "<errno.h>".}: cint
+
 proc removeFile*(file: string) {.rtl, extern: "nos$1".} =
-  ## Removes the `file`. If this fails, `EOS` is raised.
-  if cremove(file) != 0'i32: OSError()
+  ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
+  ## if the file never existed in the first place.
+  if cremove(file) != 0'i32 and errno != ENOENT: OSError()
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
   ## Executes a `shell command`:idx:.
@@ -855,13 +859,14 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
 
 proc rawRemoveDir(dir: string) = 
   when defined(windows):
-    if RemoveDirectoryA(dir) == 0'i32: OSError()
+    if RemoveDirectoryA(dir) == 0'i32 and GetLastError() != 3'i32: OSError()
   else:
-    if rmdir(dir) != 0'i32: OSError()
+    if rmdir(dir) != 0'i32 and errno != ENOENT: OSError()
 
 proc removeDir*(dir: string) {.rtl, extern: "nos$1".} =
   ## Removes the directory `dir` including all subdirectories and files
-  ## in `dir` (recursively). If this fails, `EOS` is raised.
+  ## in `dir` (recursively). If this fails, `EOS` is raised. This does not fail
+  ## if the directory never existed in the first place.
   for kind, path in walkDir(dir): 
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)

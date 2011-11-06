@@ -42,6 +42,8 @@ Changes affecting backwards compatibility
 - ``system.raiseHook`` is now split into ``system.localRaiseHook`` and
   ``system.globalRaiseHook`` to distinguish between thread local and global
   raise hooks.
+- Changed exception handling/error reporting for ``os.removeFile`` and
+  ``os.removeDir``.
 
 
 Language Additions
