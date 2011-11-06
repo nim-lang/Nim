@@ -518,12 +518,12 @@ proc process(c: PPassContext, n: PNode): PNode =
   if c == nil: return 
   var w = PRodWriter(c)
   case n.kind
-  of nkStmtList: 
+  of nkStmtList:
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
-  of nkTemplateDef, nkMacroDef: 
-    var s = n.sons[namePos].sym
-    addInterfaceSym(w, s)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef: 
+    #var s = n.sons[namePos].sym
+    #addInterfaceSym(w, s)
+  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef, 
+      nkTemplateDef, nkMacroDef: 
     var s = n.sons[namePos].sym
     if s == nil: InternalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
