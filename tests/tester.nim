@@ -309,6 +309,10 @@ proc runRodFiles(r: var TResults, options: string) =
   test "bmethods2.nim"
   delNimCache()
   
+  # test generics:
+  test "tgeneric1.nim"
+  test "tgeneric2.nim"
+  delNimCache()
 
 proc compileRodFiles(r: var TResults, options: string) =
   template test(filename: expr): stmt =

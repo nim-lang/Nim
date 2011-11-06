@@ -83,7 +83,7 @@
 #
 #    The data section MUST be the last section of the file, because processing
 #    stops immediately after ``DATA(`` and the rest is only loaded on demand
-#    by using mem'mapped a file.
+#    by using a mem'mapped file.
 #
 
 import 
@@ -91,8 +91,8 @@ import
   ropes, idents, crc, idgen, rodutils, memfiles
 
 type 
-  TReasonForRecompile* = enum 
-    rrEmpty,                  # used by moddeps module
+  TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
+    rrEmpty,                  # dependencies not yet computed
     rrNone,                   # no need to recompile
     rrRodDoesNotExist,        # rod file does not exist
     rrRodInvalid,             # rod file is invalid
@@ -146,9 +146,10 @@ var rodCompilerprocs*: TStrTable
 proc handleSymbolFile*(module: PSym, filename: string): PRodReader
 # global because this is needed by magicsys
 proc loadInitSection*(r: PRodReader): PNode
-proc loadStub*(s: PSym)
 
 # implementation
+
+proc rawLoadStub(s: PSym)
 
 var gTypeTable: TIdTable
 
@@ -241,9 +242,9 @@ proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo,
           addSonNilAllowed(result, decodeNodeLazyBody(r, result.info, nil))
         inc i
     if r.s[r.pos] == ')': inc(r.pos)
-    else: internalError(result.info, "decodeNode")
-  else: 
-    InternalError(fInfo, "decodeNode " & r.s[r.pos])
+    else: internalError(result.info, "decodeNode: ')' missing")
+  else:
+    InternalError(fInfo, "decodeNode: '(' missing " & $r.pos)
 
 proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
   result = decodeNodeLazyBody(r, fInfo, nil)
@@ -408,7 +409,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     result.position = decodeVInt(r.s, r.pos)
   elif result.kind notin routineKinds:
     result.position = 0
-    # BUGFIX: this may have been misused as reader index! But we still
+    # this may have been misused as reader index! But we still
     # need it for routines as the body is loaded lazily.
   if r.s[r.pos] == '`': 
     inc(r.pos)
@@ -420,6 +421,9 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   if r.s[r.pos] == '(':
     if result.kind in routineKinds:
       result.ast = decodeNodeLazyBody(r, result.info, result)
+      # since we load the body lazily, we need to set the reader to
+      # be able to reload:
+      result.position = r.readerIndex
     else:
       result.ast = decodeNode(r, result.info)
   #echo "decoded: ", ident.s, "}"
@@ -637,7 +641,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   except EOS:
     return nil
   # we terminate the file explicitely with ``\0``, so the cast to `cstring`
-  # is save:
+  # is safe:
   r.s = cast[cstring](r.memFile.mem)
   if startsWith(r.s, "NIM:"): 
     initIITable(r.index.tab)
@@ -649,7 +653,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
       inc(r.pos)
     if r.s[r.pos] == '\x0A': inc(r.pos)
     if version == RodFileVersion: 
-      # since ROD files are only for caching, no backwarts compatibility is
+      # since ROD files are only for caching, no backwards compatibility is
       # needed
       processRodFile(r, crc)
     else: 
@@ -729,7 +733,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
     else: 
       # own symbol:
       result = decodeSymSafePos(r, d, info)
-  if result != nil and result.kind == skStub: loadStub(result)
+  if result != nil and result.kind == skStub: rawLoadStub(result)
   
 proc loadInitSection(r: PRodReader): PNode = 
   if r.initIdx == 0 or r.dataIdx == 0: InternalError("loadInitSection")
@@ -835,7 +839,7 @@ proc GetCRC*(filename: string): TCrc32 =
   var idx = getModuleIdx(filename)
   result = gMods[idx].crc
 
-proc loadStub(s: PSym) =
+proc rawLoadStub(s: PSym) =
   if s.kind != skStub: InternalError("loadStub")
   var rd = gMods[s.position].rd
   var theId = s.id                # used for later check
@@ -847,6 +851,17 @@ proc loadStub(s: PSym) =
   elif rs.id != theId: 
     InternalError(rs.info, "loadStub: wrong ID") 
   #MessageOut('loaded stub: ' + s.name.s);
+  
+proc LoadStub*(s: PSym) =
+  ## loads the stub symbol `s`.
+  
+  # deactivate the GC here because we do a deep recursion and generate no
+  # garbage when restoring parts of the object graph anyway.
+  # Since we die with internal errors if this fails, so no try-finally is
+  # necessary.
+  GC_disable()
+  rawLoadStub(s)
+  GC_enable()
   
 proc getBody*(s: PSym): PNode =
   ## retrieves the AST's body of `s`. If `s` has been loaded from a rod-file
