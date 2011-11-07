@@ -78,45 +78,49 @@ when defined(boehmgc):
   proc boehmRealloc(p: pointer, size: int): pointer {.
     importc: "GC_realloc", dynlib: boehmLib.}
   proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
+  
+  when not defined(useNimRtl):
     
-  proc alloc(size: int): pointer =
-    result = boehmAlloc(size)
-    if result == nil: raiseOutOfMem()
-  proc alloc0(size: int): pointer =
-    result = alloc(size)
-    zeroMem(result, size)
-  proc realloc(p: Pointer, newsize: int): pointer =
-    result = boehmRealloc(p, newsize)
-    if result == nil: raiseOutOfMem()
-  proc dealloc(p: Pointer) = boehmDealloc(p)
+    proc alloc(size: int): pointer =
+      result = boehmAlloc(size)
+      if result == nil: raiseOutOfMem()
+    proc alloc0(size: int): pointer =
+      result = alloc(size)
+      zeroMem(result, size)
+    proc realloc(p: Pointer, newsize: int): pointer =
+      result = boehmRealloc(p, newsize)
+      if result == nil: raiseOutOfMem()
+    proc dealloc(p: Pointer) = boehmDealloc(p)
 
-  proc allocShared(size: int): pointer =
-    result = boehmAlloc(size)
-    if result == nil: raiseOutOfMem()
-  proc allocShared0(size: int): pointer =
-    result = alloc(size)
-    zeroMem(result, size)
-  proc reallocShared(p: Pointer, newsize: int): pointer =
-    result = boehmRealloc(p, newsize)
-    if result == nil: raiseOutOfMem()
-  proc deallocShared(p: Pointer) = boehmDealloc(p)
+    proc allocShared(size: int): pointer =
+      result = boehmAlloc(size)
+      if result == nil: raiseOutOfMem()
+    proc allocShared0(size: int): pointer =
+      result = alloc(size)
+      zeroMem(result, size)
+    proc reallocShared(p: Pointer, newsize: int): pointer =
+      result = boehmRealloc(p, newsize)
+      if result == nil: raiseOutOfMem()
+    proc deallocShared(p: Pointer) = boehmDealloc(p)
+
+    #boehmGCincremental()
+
+    proc GC_disable() = boehmGC_disable()
+    proc GC_enable() = boehmGC_enable()
+    proc GC_fullCollect() = boehmGCfullCollect()
+    proc GC_setStrategy(strategy: TGC_Strategy) = nil
+    proc GC_enableMarkAndSweep() = nil
+    proc GC_disableMarkAndSweep() = nil
+    proc GC_getStatistics(): string = return ""
+    
+    proc getOccupiedMem(): int = return -1
+    proc getFreeMem(): int = return -1
+    proc getTotalMem(): int = return -1
+
+    proc setStackBottom(theStackBottom: pointer) = nil
 
   proc initGC() = 
     when defined(macosx): boehmGCinit()
-  
-  #boehmGCincremental()
-
-  proc GC_disable() = boehmGC_disable()
-  proc GC_enable() = boehmGC_enable()
-  proc GC_fullCollect() = boehmGCfullCollect()
-  proc GC_setStrategy(strategy: TGC_Strategy) = nil
-  proc GC_enableMarkAndSweep() = nil
-  proc GC_disableMarkAndSweep() = nil
-  proc GC_getStatistics(): string = return ""
-  
-  proc getOccupiedMem(): int = return -1
-  proc getFreeMem(): int = return -1
-  proc getTotalMem(): int = return -1
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc(size)
@@ -128,7 +132,6 @@ when defined(boehmgc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc setStackBottom(theStackBottom: pointer) = nil
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
   

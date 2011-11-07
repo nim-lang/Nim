@@ -50,8 +50,7 @@ when not defined(parseCfgBool):
 
 proc extractSpec(filename: string): string =
   const tripleQuote = "\"\"\""
-  var x = readFile(filename)
-  if isNil(x): quit "cannot open file: " & filename
+  var x = readFile(filename).string
   var a = x.find(tripleQuote)
   var b = x.find(tripleQuote, a+3)
   if a >= 0 and b > a:
@@ -101,9 +100,6 @@ proc parseSpec(filename: string): TSpec =
 
 # ----------------------------------------------------------------------------
 
-proc myExec(cmd: string): string =
-  result = osproc.execProcess(cmd)
-
 var
   pegLineError = peg"{[^(]*} '(' {\d+} ', ' \d+ ') Error:' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
@@ -119,7 +115,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var outp = p.outputStream
   var s = ""
   while running(p) or not outp.atEnd(outp):
-    var x = outp.readLine()
+    var x = outp.readLine().string
     if x =~ pegOfInterest:
       # `s` should contain the last error message
       s = x
@@ -145,7 +141,7 @@ proc initResults: TResults =
   result.data = ""
 
 proc readResults(filename: string): TResults =
-  result = marshal.to[TResults](readFile(filename))
+  result = marshal.to[TResults](readFile(filename).string)
 
 proc writeResults(filename: string, r: TResults) =
   writeFile(filename, $$r)
@@ -255,12 +251,16 @@ proc runSingleTest(r: var TResults, test, options: string) =
     else:
       var exeFile = changeFileExt(test, ExeExt)
       if existsFile(exeFile):
-        var buf = myExec(exeFile)
-        var success = strip(buf) == strip(expected.outp)
-        if expected.substr: success = expected.outp in buf
-        if success: inc(r.passed)
-        r.addResult(t, expected.outp,
-            buf, if success: reSuccess else: reFailure)
+        var (buf, exitCode) = execCmdEx(exeFile)
+        if exitCode != 0:
+          r.addResult(t, expected.outp, "exitCode: " & $exitCode, reFailure)
+        else:
+          var success = strip(buf.string) == strip(expected.outp)
+          if expected.substr and not success: 
+            success = expected.outp in buf.string
+          if success: inc(r.passed)
+          r.addResult(t, expected.outp,
+              buf.string, if success: reSuccess else: reFailure)
       else:
         r.addResult(t, expected.outp, "executable not found", reFailure)
 
@@ -320,16 +320,35 @@ proc compileRodFiles(r: var TResults, options: string) =
   test "gtkex2"
   delNimCache()
 
-# -----------------------------------------------------------------------------
+# --------------------- DLL generation tests ----------------------------------
 
-# DLL generation tests
-proc testDLLGen(r: var TResults, options: string) =
-  compileSingleTest(r, "lib/nimrtl.nim", "--app:lib -d:createNimRtl")
+proc runBasicDLLTest(r: var TResults, options: string) =
+  compileSingleTest r, "lib/nimrtl.nim", options & " --app:lib -d:createNimRtl"
+  compileSingleTest r, "tests/dll/server.nim", 
+    options & " --app:lib -d:useNimRtl"
   
-  template test(filename: expr): stmt =
-    compileSingleTest(r, "tests/dll/" / filename, options)
+  when defined(Windows): 
+    # windows looks in the dir of the exe (yay!):
+    var nimrtlDll = DynlibFormat % "nimrtl"
+    copyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
+  else:
+    # posix relies on crappy LD_LIBRARY_PATH (ugh!):
+    var libpath = getenv"LD_LIBRARY_PATH".string
+    if peg"\i '/nimrod' (!'/')* '/lib'" notin libpath:
+      echo "[Warning] insufficient LD_LIBRARY_PATH"
+    var serverDll = DynlibFormat % "server"
+    copyFile("tests/dll" / serverDll, "lib" / serverDll)
   
-  test "dllsimple.nim"
+  runSingleTest r, "tests/dll/client.nim", options & " -d:useNimRtl"
+
+proc runDLLTests(r: var TResults, options: string) =
+  runBasicDLLTest(r, options)
+  runBasicDLLTest(r, options & " -d:release")
+  runBasicDLLTest(r, options & " --gc:boehm")
+  runBasicDLLTest(r, options & " -d:release --gc:boehm")
+  
+  
+# -----------------------------------------------------------------------------
    
 proc compileExample(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
@@ -356,7 +375,7 @@ proc main(action: string) =
   var options = ""
   for i in 2.. paramCount():
     add(options, " ")
-    add(options, paramStr(i))
+    add(options, paramStr(i).string)
 
   case action
   of "reject":
@@ -368,7 +387,6 @@ proc main(action: string) =
     compile(compileRes, "tests/accept/compile/t*.nim", options)
     compile(compileRes, "tests/ecmas.nim", options)
     compileRodFiles(compileRes, options)
-    testDllGen(compileRes, options)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)
@@ -380,6 +398,7 @@ proc main(action: string) =
     var runRes = initResults()
     run(runRes, "tests/accept/run", options)
     runRodFiles(runRes, options)
+    runDLLTests(runRes, options)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
@@ -387,10 +406,14 @@ proc main(action: string) =
     var runRes = readResults(runJson)
     listResults(rejectRes, compileRes, runRes)
     outputJSON(rejectRes, compileRes, runRes)
+  of "dll":
+    var runRes = initResults()
+    runDLLTests runRes, ""
+    writeResults(runJson, runRes)
   else:
     quit usage
 
 if paramCount() == 0:
   quit usage
-main(paramStr(1))
+main(paramStr(1).string)
 

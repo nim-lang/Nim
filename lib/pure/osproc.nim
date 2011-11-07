@@ -48,7 +48,8 @@ proc execProcess*(command: string,
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1".}
   ## Executes ``command`` and returns its error code. Standard input, output,
-  ## error streams are inherited from the calling process.
+  ## error streams are inherited from the calling process. This operation
+  ## is also often called `system`:idx:.
 
 proc startProcess*(command: string,
                    workingDir: string = "",
@@ -69,6 +70,17 @@ proc startProcess*(command: string,
   ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
+
+proc startCmd*(command: string, options: set[TProcessOption] = {
+               poStdErrToStdOut, poUseShell}): PProcess =
+  ## a simpler version of `startProcess` that parses the command line into
+  ## program and arguments and then calls `startProcess` with the empty string
+  ## for `workingDir` and the nil string table for `env`.
+  var c = parseCmdLine(command)
+  var a: seq[string]
+  newSeq(a, c.len-1) # avoid slicing for now (still unstable)
+  for i in 1 .. c.len-1: a[i-1] = c[i]
+  result = startProcess(command=c[0], args=a, options=options)
 
 proc close*(p: PProcess) {.rtl, extern: "nosp$1".}
   ## When the process has finished executing, cleanup related handles
@@ -140,12 +152,6 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 1
 
-proc startProcessAux(cmd: string, options: set[TProcessOption]): PProcess =
-  var c = parseCmdLine(cmd)
-  var a: seq[string] = @[] # slicing is not yet implemented :-(
-  for i in 1 .. c.len-1: add(a, c[i])
-  result = startProcess(command=c[0], args=a, options=options)
-
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1".} =
@@ -158,7 +164,7 @@ proc execProcesses*(cmds: openArray[string],
     newSeq(q, n)
     var m = min(n, cmds.len)
     for i in 0..m-1:
-      q[i] = startProcessAux(cmds[i], options=options)
+      q[i] = startCmd(cmds[i], options=options)
     when defined(noBusyWaiting):
       var r = 0
       for i in m..high(cmds):
@@ -171,7 +177,7 @@ proc execProcesses*(cmds: openArray[string],
           echo(err)
         result = max(waitForExit(q[r]), result)
         if q[r] != nil: close(q[r])
-        q[r] = startProcessAux(cmds[i], options=options)
+        q[r] = startCmd(cmds[i], options=options)
         r = (r + 1) mod n
     else:
       var i = m
@@ -182,7 +188,7 @@ proc execProcesses*(cmds: openArray[string],
             #echo(outputStream(q[r]).readLine())
             result = max(waitForExit(q[r]), result)
             if q[r] != nil: close(q[r])
-            q[r] = startProcessAux(cmds[i], options=options)
+            q[r] = startCmd(cmds[i], options=options)
             inc(i)
             if i > high(cmds): break
     for i in 0..m-1:
@@ -190,7 +196,7 @@ proc execProcesses*(cmds: openArray[string],
       result = max(waitForExit(q[i]), result)
   else:
     for i in 0..high(cmds):
-      var p = startProcessAux(cmds[i], options=options)
+      var p = startCmd(cmds[i], options=options)
       result = max(waitForExit(p), result)
       close(p)
 
@@ -204,7 +210,7 @@ when not defined(useNimRtl):
   proc execProcess(command: string,
                    options: set[TProcessOption] = {poStdErrToStdOut,
                                                    poUseShell}): TaintedString =
-    var p = startProcessAux(command, options=options)
+    var p = startCmd(command, options=options)
     var outp = outputStream(p)
     result = TaintedString""
     while running(p) or not outp.atEnd(outp):
@@ -624,6 +630,27 @@ elif not defined(useNimRtl):
       result = int(select(cint(m+1), addr(rd), nil, nil, nil))
     
     pruneProcessSet(readfds, (rd))
+
+
+proc execCmdEx*(command: string, options: set[TProcessOption] = {
+                poStdErrToStdOut, poUseShell}): tuple[
+                output: TaintedString, 
+                exitCode: int] =
+  ## a convenience proc that runs the `command`, grabs all its output and
+  ## exit code and returns both.
+  var p = startCmd(command, options)
+  var outp = outputStream(p)
+  result = (TaintedString"", -1)
+  while not outp.atEnd(outp):
+    result[0].string.add(outp.readLine().string)
+    result[0].string.add("\n")
+    result[1] = peekExitCode(p)
+    if result[1] != -1: break
+  outp.close(outp)
+  if result[1] == -1:
+    result[1] = peekExitCode(p)
+  close(p)
+
 
 when isMainModule:
   var x = execProcess("gcc -v")
