@@ -2,7 +2,6 @@ Version 0.8.14
 ==============
 
 - bug: s[1..n] = @[] produces wrong C code
-- test suite should contain DLL tests
 - optimize unused constants away (affected by HLO)
 - fix actors.nim; test with different thread var implementations
 - dead code elim for JS backend
@@ -25,6 +24,8 @@ version 0.9.0
 - tests: run the GC tests
 - change overloading resolution
 - implement closures; implement proper coroutines
+- implicit invokation of `items` seems nice
+- we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - ``=`` should be overloadable; requires specialization for ``=``
 - 'const' objects including case objects

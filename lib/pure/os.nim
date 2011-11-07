@@ -74,6 +74,10 @@ when defined(Nimdoc): # only for proper documentation:
       ## The file extension of a script file. For example: "" for POSIX,
       ## "bat" on Windows.
 
+    DynlibFormat* = "lib$1.so"
+      ## The format string to turn a filename into a `DLL`:idx: file (also
+      ## called `shared object`:idx: on some operating systems).
+
 elif defined(macos):
   const
     curdir* = ':'
@@ -84,6 +88,7 @@ elif defined(macos):
     FileSystemCaseSensitive* = false
     ExeExt* = ""
     ScriptExt* = ""
+    DynlibFormat* = "$1.dylib"
 
   #  MacOS paths
   #  ===========
@@ -113,6 +118,7 @@ elif doslike:
     FileSystemCaseSensitive* = false
     ExeExt* = "exe"
     ScriptExt* = "bat"
+    DynlibFormat* = "$1.dll"
 elif defined(PalmOS) or defined(MorphOS):
   const
     dirsep* = '/'
@@ -122,6 +128,7 @@ elif defined(PalmOS) or defined(MorphOS):
     FileSystemCaseSensitive* = false
     ExeExt* = ""
     ScriptExt* = ""
+    DynlibFormat* = "$1.prc"
 elif defined(RISCOS):
   const
     dirsep* = '.'
@@ -131,6 +138,7 @@ elif defined(RISCOS):
     FileSystemCaseSensitive* = true
     ExeExt* = ""
     ScriptExt* = ""
+    DynlibFormat* = "lib$1.so"
 else: # UNIX-like operating system
   const
     curdir* = '.'
@@ -141,6 +149,7 @@ else: # UNIX-like operating system
     FileSystemCaseSensitive* = true
     ExeExt* = ""
     ScriptExt* = ""
+    DynlibFormat* = "lib$1.so"
 
 const
   ExtSep* = '.'

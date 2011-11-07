@@ -101,7 +101,7 @@ Library Additions
 - Added ``system.slurp`` for easy resource embedding.
 - Added ``system.running`` for threads.
 - Added ``xmltree.innerText``.
-- Added ``os.isAbsolute``.
+- Added ``os.isAbsolute``, ``os.dynLibFormat``.
 - Added ``parseutils.interpolatedFragments``.
 - Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``, 
   ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``, ``macros.getAst``.
@@ -109,6 +109,7 @@ Library Additions
 - Added ``irc`` module.
 - Added ``ftpclient`` module.
 - Added ``memfiles`` module.
+- Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 
 
 2011-07-10 Version 0.8.12 released

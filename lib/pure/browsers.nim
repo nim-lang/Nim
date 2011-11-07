@@ -34,7 +34,7 @@ proc openDefaultBrowser*(url: string) =
     var u = quoteIfContainsWhite(url)
     for a in items(attempts):
       if execShellCmd(a & u) == 0: return
-    for b in getEnv("BROWSER").split(PathSep):
+    for b in getEnv("BROWSER").string.split(PathSep):
       try:
         # we use ``startProcess`` here because we don't want to block!
         discard startProcess(command=b, args=[url], options={poUseShell})

@@ -177,7 +177,9 @@ proc clean(args: string) =
       RemoveDir(path)
 
 proc tests(args: string) =
-  exec("nimrod cc tests/tester")
+  # we compile the tester with taintMode:on to have a basic
+  # taint mode test :-)
+  exec("nimrod cc --taintMode:on tests/tester")
   exec("tests/tester reject")
   exec("tests/tester compile")
   exec("tests/tester examples")
