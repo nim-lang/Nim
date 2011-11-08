@@ -11,13 +11,14 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
-  marshal, cgi
+  marshal, cgi, parseopt
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
   resultsFile = "testresults.html"
   jsonFile = "testresults.json"
-  Usage = "usage: tester reject|compile|examples|run|merge [nimrod options]"
+  Usage = "usage: tester reject|compile|examples|run|merge [nimrod options]\n" &
+          "   or: tester test singleTest"
 
 type
   TTestAction = enum
@@ -26,7 +27,7 @@ type
     action: TTestAction
     file, cmd: string
     outp: string
-    line: int
+    line, exitCode: int
     msg: string
     err: bool
     disabled: bool
@@ -93,6 +94,8 @@ proc parseSpec(filename: string): TSpec =
     of "outputsub":
       result.outp = e.value
       result.substr = true
+    of "exitcode": 
+      discard parseInt(e.value, result.exitCode)
     of "errormsg", "msg": result.msg = e.value
     of "disabled": result.disabled = parseCfgBool(e.value)
     of "cmd": result.cmd = e.value
@@ -108,9 +111,7 @@ var
 
 proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var c = parseCmdLine(cmdTemplate % [options, filename])
-  var a: seq[string] = @[] # slicing is not yet implemented :-(
-  for i in 1 .. c.len-1: add(a, c[i])
-  var p = startProcess(command=c[0], args=a,
+  var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
   var outp = p.outputStream
   var s = ""
@@ -200,19 +201,21 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
     r.addResult(test, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
+proc rejectSingleTest(r: var TResults, test, options: string) =
+  var t = extractFilename(test)
+  inc(r.total)
+  echo t
+  var expected = parseSpec(test)
+  if expected.disabled:
+    r.addResult(t, "", "", reIgnored)
+    inc(r.skipped)
+  else:
+    var given = callCompiler(expected.cmd, test, options)
+    cmpMsgs(r, expected, given, t)
+
 proc reject(r: var TResults, dir, options: string) =
   ## handle all the tests that the compiler should reject
-  for test in os.walkFiles(dir / "t*.nim"):
-    var t = extractFilename(test)
-    inc(r.total)
-    echo t
-    var expected = parseSpec(test)
-    if expected.disabled:
-      r.addResult(t, "", "", reIgnored)
-      inc(r.skipped)
-    else:
-      var given = callCompiler(expected.cmd, test, options)
-      cmpMsgs(r, expected, given, t)
+  for test in os.walkFiles(dir / "t*.nim"): rejectSingleTest(r, test, options)
 
 proc compile(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern):
@@ -252,8 +255,9 @@ proc runSingleTest(r: var TResults, test, options: string) =
       var exeFile = changeFileExt(test, ExeExt)
       if existsFile(exeFile):
         var (buf, exitCode) = execCmdEx(exeFile)
-        if exitCode != 0:
-          r.addResult(t, expected.outp, "exitCode: " & $exitCode, reFailure)
+        if exitCode != expected.ExitCode:
+          r.addResult(t, "exitcode: " & $expected.ExitCode,
+                         "exitcode: " & $exitCode, reFailure)
         else:
           var success = strip(buf.string) == strip(expected.outp)
           if expected.substr and not success: 
@@ -322,9 +326,9 @@ proc compileRodFiles(r: var TResults, options: string) =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(r: var TResults, options: string) =
-  compileSingleTest r, "lib/nimrtl.nim", options & " --app:lib -d:createNimRtl"
-  compileSingleTest r, "tests/dll/server.nim", 
+proc runBasicDLLTest(c, r: var TResults, options: string) =
+  compileSingleTest c, "lib/nimrtl.nim", options & " --app:lib -d:createNimRtl"
+  compileSingleTest c, "tests/dll/server.nim", 
     options & " --app:lib -d:useNimRtl"
   
   when defined(Windows): 
@@ -342,10 +346,13 @@ proc runBasicDLLTest(r: var TResults, options: string) =
   runSingleTest r, "tests/dll/client.nim", options & " -d:useNimRtl"
 
 proc runDLLTests(r: var TResults, options: string) =
-  runBasicDLLTest(r, options)
-  runBasicDLLTest(r, options & " -d:release")
-  runBasicDLLTest(r, options & " --gc:boehm")
-  runBasicDLLTest(r, options & " -d:release --gc:boehm")
+  # dummy compile result:
+  var c = initResults()
+  
+  runBasicDLLTest c, r, options
+  runBasicDLLTest c, r, options & " -d:release"
+  runBasicDLLTest c, r, options & " --gc:boehm"
+  runBasicDLLTest c, r, options & " -d:release --gc:boehm"
   
   
 # -----------------------------------------------------------------------------
@@ -367,38 +374,39 @@ proc outputJSON(reject, compile, run: TResults) =
   var s = pretty(doc)
   writeFile(jsonFile, s)
 
-proc main(action: string) =
+proc main() =
   const
     compileJson = "compile.json"
     runJson = "run.json"
     rejectJson = "reject.json"
-  var options = ""
-  for i in 2.. paramCount():
-    add(options, " ")
-    add(options, paramStr(i).string)
-
+  
+  var p = initOptParser()
+  p.next()
+  if p.kind != cmdArgument: quit usage
+  var action = p.key.string.normalize
+  p.next()
   case action
   of "reject":
     var rejectRes = initResults()
-    reject(rejectRes, "tests/reject", options)
+    reject(rejectRes, "tests/reject", p.cmdLineRest.string)
     writeResults(rejectJson, rejectRes)
   of "compile":
     var compileRes = initResults()
-    compile(compileRes, "tests/accept/compile/t*.nim", options)
-    compile(compileRes, "tests/ecmas.nim", options)
-    compileRodFiles(compileRes, options)
+    compile(compileRes, "tests/accept/compile/t*.nim", p.cmdLineRest.string)
+    compile(compileRes, "tests/ecmas.nim", p.cmdLineRest.string)
+    compileRodFiles(compileRes, p.cmdLineRest.string)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)
-    compileExample(compileRes, "lib/pure/*.nim", options)
-    compileExample(compileRes, "examples/*.nim", options)
-    compileExample(compileRes, "examples/gtk/*.nim", options)
+    compileExample(compileRes, "lib/pure/*.nim", p.cmdLineRest.string)
+    compileExample(compileRes, "examples/*.nim", p.cmdLineRest.string)
+    compileExample(compileRes, "examples/gtk/*.nim", p.cmdLineRest.string)
     writeResults(compileJson, compileRes)
   of "run":
     var runRes = initResults()
-    run(runRes, "tests/accept/run", options)
-    runRodFiles(runRes, options)
-    runDLLTests(runRes, options)
+    run(runRes, "tests/accept/run", p.cmdLineRest.string)
+    runRodFiles(runRes, p.cmdLineRest.string)
+    runDLLTests(runRes, p.cmdLineRest.string)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
@@ -406,14 +414,22 @@ proc main(action: string) =
     var runRes = readResults(runJson)
     listResults(rejectRes, compileRes, runRes)
     outputJSON(rejectRes, compileRes, runRes)
-  of "dll":
-    var runRes = initResults()
-    runDLLTests runRes, ""
-    writeResults(runJson, runRes)
+  of "test":
+    var r = initResults()
+    if p.kind != cmdArgument: quit usage
+    var testFile = p.key.string
+    p.next()
+    if peg"'/reject/'" in testFile:
+      reject(r, testFile, p.cmdLineRest.string)
+    elif peg"'/compile/'" in testFile:
+       compileSingleTest(r, testFile, p.cmdLineRest.string)
+    else:
+      runSingleTest(r, testFile, p.cmdLineRest.string)
+    echo r
   else:
     quit usage
 
 if paramCount() == 0:
   quit usage
-main(paramStr(1).string)
+main()
 

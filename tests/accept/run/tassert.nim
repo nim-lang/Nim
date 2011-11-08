@@ -1,6 +1,7 @@
 discard """
   file: "tassert.nim"
   outputsub: "assertion failure!this shall be always written"
+  exitcode: "1"
 """
 # test assert and exception handling
 

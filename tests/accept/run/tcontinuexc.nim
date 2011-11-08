@@ -1,6 +1,7 @@
 discard """
   file: "tcontinuexc.nim"
   outputsub: "ECcaught"
+  exitcode: "1"
 """
 type
   ESomething = object of E_Base
