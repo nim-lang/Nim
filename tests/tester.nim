@@ -202,6 +202,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
     inc(r.passed)
 
 proc rejectSingleTest(r: var TResults, test, options: string) =
+  var test = test.addFileExt(".nim")
   var t = extractFilename(test)
   inc(r.total)
   echo t
@@ -232,6 +233,7 @@ proc compile(r: var TResults, pattern, options: string) =
       if not given.err: inc(r.passed)
 
 proc compileSingleTest(r: var TResults, test, options: string) =
+  var test = test.addFileExt(".nim")
   var t = extractFilename(test)
   inc(r.total)
   echo t
@@ -240,6 +242,7 @@ proc compileSingleTest(r: var TResults, test, options: string) =
   if not given.err: inc(r.passed)
 
 proc runSingleTest(r: var TResults, test, options: string) =
+  var test = test.addFileExt(".nim")
   var t = extractFilename(test)
   echo t
   inc(r.total)
@@ -287,30 +290,30 @@ proc runRodFiles(r: var TResults, options: string) =
   delNimCache()
   
   # test basic recompilation scheme:
-  test "hallo.nim"
-  test "hallo.nim"
+  test "hallo"
+  test "hallo"
   # test incremental type information:
-  test "hallo2.nim"
+  test "hallo2"
   delNimCache()
   
   # test type converters:
-  test "aconv.nim"
-  test "bconv.nim"
+  test "aconv"
+  test "bconv"
   delNimCache()
   
   # test G, A, B example from the documentation; test init sections:
-  test "deada.nim"
-  test "deada2.nim"
+  test "deada"
+  test "deada2"
   delNimCache()
   
   # test method generation:
-  test "bmethods.nim"
-  test "bmethods2.nim"
+  test "bmethods"
+  test "bmethods2"
   delNimCache()
   
   # test generics:
-  test "tgeneric1.nim"
-  test "tgeneric2.nim"
+  test "tgeneric1"
+  test "tgeneric2"
   delNimCache()
 
 proc compileRodFiles(r: var TResults, options: string) =
@@ -420,12 +423,12 @@ proc main() =
     var testFile = p.key.string
     p.next()
     if peg"'/reject/'" in testFile:
-      reject(r, testFile, p.cmdLineRest.string)
+      rejectSingleTest(r, testFile, p.cmdLineRest.string)
     elif peg"'/compile/'" in testFile:
-       compileSingleTest(r, testFile, p.cmdLineRest.string)
+      compileSingleTest(r, testFile, p.cmdLineRest.string)
     else:
       runSingleTest(r, testFile, p.cmdLineRest.string)
-    echo r
+    echo r.data, r
   else:
     quit usage
 

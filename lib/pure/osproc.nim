@@ -642,7 +642,7 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
   var outp = outputStream(p)
   result = (TaintedString"", -1)
   while true:
-    result[1] = peekExitCode(p)
+    if result[1] == -1: result[1] = peekExitCode(p)
     if result[1] != -1 and outp.atEnd(outp): break
     result[0].string.add(outp.readLine().string)
     result[0].string.add("\n")
