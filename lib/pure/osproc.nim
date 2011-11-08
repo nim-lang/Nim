@@ -568,7 +568,7 @@ elif not defined(useNimRtl):
     if waitPid(p.id, p.exitCode, 0) < 0:
       p.exitCode = -3
       OSError()
-    result = int(p.exitCode)
+    result = int(p.exitCode) shr 8
 
   proc peekExitCode(p: PProcess): int =
     if p.exitCode != -3: return p.exitCode
@@ -576,7 +576,7 @@ elif not defined(useNimRtl):
     var b = ret == int(p.id)
     if b: result = -1
     if p.exitCode == -3: result = -1
-    else: result = p.exitCode
+    else: result = p.exitCode.int shr 8
 
   proc inputStream(p: PProcess): PStream =
     var f: TFile
@@ -641,14 +641,12 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
   var p = startCmd(command, options)
   var outp = outputStream(p)
   result = (TaintedString"", -1)
-  while not outp.atEnd(outp):
+  while true:
+    result[1] = peekExitCode(p)
+    if result[1] != -1 and outp.atEnd(outp): break
     result[0].string.add(outp.readLine().string)
     result[0].string.add("\n")
-    result[1] = peekExitCode(p)
-    if result[1] != -1: break
   outp.close(outp)
-  if result[1] == -1:
-    result[1] = peekExitCode(p)
   close(p)
 
 

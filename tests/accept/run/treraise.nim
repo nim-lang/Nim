@@ -1,6 +1,7 @@
 discard """
   file: "treraise.nim"
   outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
+  exitcode: "1"
 """
 type
   ESomething = object of E_Base
