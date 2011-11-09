@@ -387,13 +387,25 @@ This section lists Nimrod's standard syntax in ENBF. How the parser receives
 indentation tokens is already described in the `Lexical Analysis`_ section.
 
 Nimrod allows user-definable operators.
-Binary operators have 9 different levels of precedence. For user-defined
-operators, the precedence depends on the first character the operator consists
-of. All binary operators are left-associative, except binary operators starting
-with (or only consisting of) ``^``.
+Binary operators have 10 different levels of precedence. 
+All binary operators are left-associative, except binary operators starting
+with (or only consisting of) ``^``. 
+
+For operators that are not keywords the precedence is determined by the
+following rules: 
+
+An operator symbol's *relevant character* is its first
+character unless the first character is ``\`` and its length is greater than 1
+then it is the second character.
+
+If the operator ends with ``=`` and its relevant character is none of 
+``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
+has the lowest precedence.
+
+Otherwise precedence is determined by the relevant character.
 
 ================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First characters    Terminal symbol
+Precedence level    Operators                                      Relevant character  Terminal symbol
 ================  ===============================================  ==================  ===============
   9 (highest)                                                      ``$  ^``            OP9
   8               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP8
@@ -403,7 +415,8 @@ Precedence level    Operators                                      First charact
   4               ``==  <= < >= > !=  in not_in is isnot not of``  ``= <  > !``        OP4
   3               ``and``                                                              OP3
   2               ``or xor``                                                           OP2
-  1 (lowest)                                                       ``@  : ?``          OP1
+  1                                                                ``@  : ?``          OP1
+  0 (lowest)      *assignment operator* (like ``+=``, ``*=``)                          OP0
 ================  ===============================================  ==================  ===============
 
 

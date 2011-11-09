@@ -1,7 +1,7 @@
 module ::= ([COMMENT] [SAD] stmt)*
 
 comma ::= ',' [COMMENT] [IND]
-operator ::= OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
+operator ::=  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
            | 'or' | 'xor' | 'and'
            | 'is' | 'isnot' | 'in' | 'notin' | 'of'
            | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
@@ -11,7 +11,8 @@ prefixOperator ::= operator
 optInd ::= [COMMENT] [IND]
 optPar ::= [IND] | [SAD]
 
-lowestExpr ::= orExpr (OP1 optInd orExpr)*
+lowestExpr ::= assignExpr (OP0 optInd assignExpr)*
+assignExpr ::= orExpr (OP1 optInd orExpr)*
 orExpr ::= andExpr (OP2 optInd andExpr)*
 andExpr ::= cmpExpr (OP3 optInd cmpExpr)*
 cmpExpr ::= sliceExpr (OP4 optInd sliceExpr)*

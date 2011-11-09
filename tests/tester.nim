@@ -417,6 +417,10 @@ proc main() =
     var runRes = readResults(runJson)
     listResults(rejectRes, compileRes, runRes)
     outputJSON(rejectRes, compileRes, runRes)
+  of "dll":
+    var r = initResults()
+    runDLLTests r, p.cmdLineRest.string
+    echo r.data, r
   of "test":
     var r = initResults()
     if p.kind != cmdArgument: quit usage
