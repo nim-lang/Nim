@@ -153,20 +153,30 @@ proc IsLeftAssociative(tok: TToken): bool {.inline.} =
 
 proc getPrecedence(tok: TToken): int = 
   case tok.tokType
-  of tkOpr: 
-    case tok.ident.s[0]
-    of '$', '^': result = 9
-    of '*', '%', '/', '\\': result = 8
-    of '+', '-', '~', '|': result = 7
-    of '&': result = 6
-    of '=', '<', '>', '!': result = 4
-    of '.': result = 5
-    else: result = 1
-  of tkDiv, tkMod, tkShl, tkShr: result = 8
-  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf: result = 4
-  of tkDotDot: result = 5
-  of tkAnd: result = 3
-  of tkOr, tkXor: result = 2
+  of tkOpr:
+    var relevantChar = tok.ident.s[0]
+    var L = tok.ident.s.len
+    if relevantChar == '\\' and L > 1:
+      relevantChar = tok.ident.s[1]
+    
+    template considerAsgn(value: expr) = 
+      result = if tok.ident.s[L-1] == '=': 1 else: value     
+       
+    case relevantChar
+    of '$', '^': considerAsgn(10)
+    of '*', '%', '/', '\\': considerAsgn(9)
+    of '~': result = 8
+    of '+', '-', '|': considerAsgn(8)
+    of '&': considerAsgn(7)
+    of '=', '<', '>', '!': result = 5
+    of '.': considerAsgn(6)
+    of '?': result = 2
+    else: considerAsgn(2)
+  of tkDiv, tkMod, tkShl, tkShr: result = 9
+  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf: result = 5
+  of tkDotDot: result = 6
+  of tkAnd: result = 4
+  of tkOr, tkXor: result = 3
   else: result = - 10
   
 proc isOperator(tok: TToken): bool = 
