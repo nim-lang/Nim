@@ -17,16 +17,17 @@
 ## It is loosely based on C++'s boost.test and Haskell's QuickTest
 
 import
-  macros, terminal
+  macros, terminal, os
 
 type
   TTestStatus* = enum OK, FAILED
   TOutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
-  
+
 var 
   # XXX: These better be thread-local
-  AbortOnError* = false
-  OutputLevel* = PRINT_ALL
+  AbortOnError*: bool
+  OutputLevel*: TOutputLevel
+  ColorOutput*: bool
   
   checkpoints: seq[string] = @[]
 
@@ -52,7 +53,11 @@ proc testDone(name: string, s: TTestStatus) =
 
   if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
     var color = (if s == OK: fgGreen else: fgRed)
-    styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+    
+    if ColorOutput:
+      styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+    else:
+      echo "[", $s, "] ", name, "\n"
   
 template test*(name: expr, body: stmt): stmt =
   bind shouldRun, checkpoints, testDone
@@ -92,8 +97,6 @@ macro check*(conditions: stmt): stmt =
  
     result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
   
-  echo conditions.lispRepr
-
   case conditions.kind
   of nnkCall, nnkCommand, nnkMacroStmt:
     case conditions[1].kind
@@ -133,7 +136,8 @@ macro check*(conditions: stmt): stmt =
       result = standardRewrite(conditions[1])
 
   else:
-    error conditions.lineinfo & ": Malformed check statement:"
+    var ast = conditions.treeRepr
+    error conditions.lineinfo & ": Malformed check statement:\n" & ast
 
 template require*(conditions: stmt): stmt =
   block:
@@ -158,3 +162,15 @@ macro expect*(exp: stmt): stmt =
 
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 
+
+## Reading settings
+var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
+
+if envOutLvl.len > 0:
+  for opt in countup(low(TOutputLevel), high(TOutputLevel)):
+    if $opt == envOutLvl:
+      OutputLevel = opt
+      break
+
+AbortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+ColorOutput  = not existsEnv("NIMTEST_NO_COLOR")
