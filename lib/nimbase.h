@@ -331,6 +331,8 @@ typedef long long int NI64;
 typedef unsigned int NU32;
 #endif
 
+extern NI nim_program_result;
+
 typedef float NF32;
 typedef double NF64;
 typedef double NF;

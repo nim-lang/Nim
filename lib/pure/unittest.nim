@@ -20,12 +20,14 @@ import
   macros, terminal
 
 type
-  TestStatus* = enum OK, FAILED
-  # ETestFailed* = object of ESynch
-
+  TTestStatus* = enum OK, FAILED
+  TOutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
+  
 var 
   # XXX: These better be thread-local
   AbortOnError* = false
+  OutputLevel* = PRINT_ALL
+  
   checkpoints: seq[string] = @[]
 
 template TestSetupIMPL*: stmt = nil
@@ -36,20 +38,25 @@ proc shouldRun(testName: string): bool =
 
 template suite*(name: expr, body: stmt): stmt =
   block:
-    template setup(setupBody: stmt): stmt =
+    template setup*(setupBody: stmt): stmt =
       template TestSetupIMPL: stmt = setupBody
 
-    template teardown(teardownBody: stmt): stmt =
+    template teardown*(teardownBody: stmt): stmt =
       template TestTeardownIMPL: stmt = teardownBody
 
     body
 
-proc printStatus*(s: TestStatus, name: string) =
-  var color = (if s == OK: fgGreen else: fgRed)
-  styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+proc testDone(name: string, s: TTestStatus) =
+  if s == FAILED:
+    program_result += 1
+
+  if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
+    var color = (if s == OK: fgGreen else: fgRed)
+    styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
   
 template test*(name: expr, body: stmt): stmt =
-  bind shouldRun, checkPoints
+  bind shouldRun, checkpoints, testDone
+
   if shouldRun(name):
     checkpoints = @[]
     var TestStatusIMPL = OK
@@ -60,7 +67,7 @@ template test*(name: expr, body: stmt): stmt =
 
     finally:
       TestTeardownIMPL()
-      printStatus(TestStatusIMPL, name)
+      testDone name, TestStatusIMPL
 
 proc checkpoint*(msg: string) =
   checkpoints.add(msg)
@@ -85,6 +92,8 @@ macro check*(conditions: stmt): stmt =
  
     result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
   
+  echo conditions.lispRepr
+
   case conditions.kind
   of nnkCall, nnkCommand, nnkMacroStmt:
     case conditions[1].kind
@@ -124,7 +133,7 @@ macro check*(conditions: stmt): stmt =
       result = standardRewrite(conditions[1])
 
   else:
-    error conditions.lineinfo & ": Malformed check statement"
+    error conditions.lineinfo & ": Malformed check statement:"
 
 template require*(conditions: stmt): stmt =
   block:
