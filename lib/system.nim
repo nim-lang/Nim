@@ -402,6 +402,9 @@ proc `+` *(x, y: int32): int32 {.magic: "AddI", noSideEffect.}
 proc `+` *(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
   ## Binary `+` operator for an integer.
 
+proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}
+  ## Increments an ordinal
+
 proc `-` *(x, y: int): int {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int8): int8 {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int16): int16 {.magic: "SubI", noSideEffect.}
@@ -409,12 +412,19 @@ proc `-` *(x, y: int32): int32 {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
   ## Binary `-` operator for an integer.
 
+proc `-=`*[T](x, y: ordinal[T]) {.magic: "Dec", noSideEffect.}
+  ## Decrements an ordinal
+  
 proc `*` *(x, y: int): int {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int8): int8 {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int16): int16 {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int32): int32 {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
   ## Binary `*` operator for an integer.
+
+proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline noSideEffect.} =
+  ## Binary `*=` operator for oridinals
+  x = x * y
 
 proc `div` *(x, y: int): int {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
@@ -569,6 +579,22 @@ proc `*` *(x, y: float): float {.magic: "MulF64", noSideEffect.}
 proc `/` *(x, y: float): float {.magic: "DivF64", noSideEffect.}
   ## computes the floating point division
 
+proc `+=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Increments in placee a floating point number
+  x = x + y
+
+proc `-=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Decrements in place a floating point number
+  x = x - y
+
+proc `*=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Multiplies in place a floating point number
+  x = x * y
+
+proc `/=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Divides in place a floating point number
+  x = x / y
+
 proc `==` *(x, y: float): bool {.magic: "EqF64", noSideEffect.}
 proc `<=` *(x, y: float): bool {.magic: "LeF64", noSideEffect.}
 proc `<`  *(x, y: float): bool {.magic: "LtF64", noSideEffect.}
@@ -716,6 +742,8 @@ proc `&` * (x: char, y: string): string {.
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 
 type
   TEndian* = enum ## is a type describing the endianness of a processor.
@@ -1540,6 +1568,11 @@ const
   QuitFailure* = 1
     ## is the value that should be passed to ``quit`` to indicate
     ## failure.
+
+var program_result* {.exportc: "nim_$1".} = QuitSuccess
+  ## modify this varialbe to specify the exit code of the program
+  ## under normal circumstances. when the program is terminated
+  ## prematurelly using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", noDecl, noReturn.}

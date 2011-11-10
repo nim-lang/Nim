@@ -102,6 +102,7 @@ Library Additions
 - Added ``strutils.unindent``, ``strutils.countLines``.
 - Added ``system.slurp`` for easy resource embedding.
 - Added ``system.running`` for threads.
+- Added ``system.program_result``.
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``, ``os.dynLibFormat``.
 - Added ``parseutils.interpolatedFragments``.
