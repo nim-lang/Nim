@@ -18,7 +18,6 @@ version 0.9.0
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
-- tests: run the GC tests
 - change overloading resolution
 - implement closures; implement proper coroutines
 - implicit invokation of `items` seems nice
@@ -28,7 +27,10 @@ version 0.9.0
 - 'const' objects including case objects
 - os module should use Windows Unicode versions
 - 64bit build for Windows
-- optional indentation for 'case' statement
+- change how comments are part of the AST
+- optional indentation for 'case' statement; hm, keep in mind other syntax
+  changes that people want; may turn out to be a bad idea
+
 
 Bugs
 ----

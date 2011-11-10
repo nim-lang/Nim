@@ -1,3 +1,7 @@
+discard """
+  outputsub: "no leak: "
+"""
+
 type
   TTestObj = object of TObject
     x: string

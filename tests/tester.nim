@@ -357,6 +357,19 @@ proc runDLLTests(r: var TResults, options: string) =
   runBasicDLLTest c, r, options & " --gc:boehm"
   runBasicDLLTest c, r, options & " -d:release --gc:boehm"
   
+# ------------------------------ GC tests -------------------------------------
+
+proc runGcTests(r: var TResults, options: string) =
+  template test(filename: expr): stmt =
+    runSingleTest(r, "tests/gc" / filename, options)
+    runSingleTest(r, "tests/gc" / filename, options & " -d:release")
+  
+  test "gcbench"
+  test "gcleak"
+  test "gcleak2"
+  test "gctest"
+  # disabled for now as it somehow runs very slowly ('delete' bug?) but works:
+  test "gcleak3"
   
 # -----------------------------------------------------------------------------
    
@@ -410,6 +423,7 @@ proc main() =
     run(runRes, "tests/accept/run", p.cmdLineRest.string)
     runRodFiles(runRes, p.cmdLineRest.string)
     runDLLTests(runRes, p.cmdLineRest.string)
+    runGCTests(runRes, p.cmdLineRest.string)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
@@ -420,6 +434,10 @@ proc main() =
   of "dll":
     var r = initResults()
     runDLLTests r, p.cmdLineRest.string
+    echo r.data, r
+  of "gc":
+    var r = initResults()
+    runGCTests(r, p.cmdLineRest.string)
     echo r.data, r
   of "test":
     var r = initResults()
