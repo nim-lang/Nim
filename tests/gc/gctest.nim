@@ -1,5 +1,8 @@
-# Test the garbage collector:
-# This file is not in the test suite because it takes too much time.
+discard """
+  outputsub: "finished"
+"""
+
+# Test the garbage collector.
 
 import
   strutils
@@ -29,7 +32,7 @@ type
     else: unused: seq[string]
 
   TIdObj* = object of TObject
-    id*: int                  # unique id; use this for comparisons and not the pointers
+    id*: int  # unique id; use this for comparisons and not the pointers
   
   PIdObj* = ref TIdObj
   PIdent* = ref TIdent
@@ -185,13 +188,15 @@ writeln(stdout, repr(caseTree()))
 father.t.data = @["ha", "lets", "stress", "it"]
 father.t.data = @["ha", "lets", "stress", "it"]
 var t = buildTree()
-write(stdout, repr(t^))
+write(stdout, repr(t[]))
 buildBTree(father)
 write(stdout, repr(father))
 
 write(stdout, "starting main...\n")
 main()
-write(stdout, "finished\n")
+
 GC_fullCollect()
 GC_fullCollect()
 writeln(stdout, GC_getStatistics())
+write(stdout, "finished\n")
+

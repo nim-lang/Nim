@@ -1,3 +1,7 @@
+discard """
+  outputsub: "Success!"
+"""
+
 # This is adapted from a benchmark written by John Ellis and Pete Kovac
 # of Post Communications.
 # It was modified by Hans Boehm of Silicon Graphics.
@@ -158,6 +162,6 @@ proc main() =
 
   var elapsed = getStartMilsecs() - t
   PrintDiagnostics()
-  echo("Completed in " & $elapsed & "ms.")
+  echo("Completed in " & $elapsed & "ms. Success!")
 
 main()
