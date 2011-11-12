@@ -46,6 +46,9 @@ Changes affecting backwards compatibility
   ``os.removeDir``.
 - Operators now have diffent precedence rules: Assignment-like operators 
   (like ``*=``) are now special-cased. 
+- The fields in ``TStream`` have been renamed to have an ``Impl`` suffix 
+  because they should not be used directly anymore. 
+  Wrapper procs have been created that should be used instead.
 
 
 Language Additions

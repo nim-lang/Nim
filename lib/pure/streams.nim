@@ -19,13 +19,75 @@ proc newEIO(msg: string): ref EIO =
 type
   PStream* = ref TStream
   TStream* = object of TObject ## Stream interface that supports
-                               ## writing or reading.
-    close*: proc (s: PStream)
-    atEnd*: proc (s: PStream): bool
-    setPosition*: proc (s: PStream, pos: int)
-    getPosition*: proc (s: PStream): int
-    readData*: proc (s: PStream, buffer: pointer, bufLen: int): int
-    writeData*: proc (s: PStream, buffer: pointer, bufLen: int)
+                               ## writing or reading. Note that these fields
+                               ## here shouldn't be used directly. They are
+                               ## accessible so that a stream implementation
+                               ## can override them.
+    closeImpl*: proc (s: PStream)
+    atEndImpl*: proc (s: PStream): bool
+    setPositionImpl*: proc (s: PStream, pos: int)
+    getPositionImpl*: proc (s: PStream): int
+    readDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int): int
+    writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int)
+    flushImpl*: proc (s: PStream)
+
+proc flush*(s: PStream) =
+  ## flushes the buffers that the stream `s` might use.
+  if not isNil(s.flushImpl): s.flushImpl(s)
+
+proc close*(s: PStream) =
+  ## closes the stream `s`.
+  if not isNil(s.closeImpl): s.closeImpl(s)
+
+proc close*(s, unused: PStream) {.deprecated.} =
+  ## closes the stream `s`.
+  s.closeImpl(s)
+
+proc atEnd*(s: PStream): bool =
+  ## checks if more data can be read from `f`. Returns true if all data has
+  ## been read.
+  result = s.atEndImpl(s)
+
+proc atEnd*(s, unused: PStream): bool {.deprecated.} =
+  ## checks if more data can be read from `f`. Returns true if all data has
+  ## been read.
+  result = s.atEndImpl(s)
+
+proc setPosition*(s: PStream, pos: int) =
+  ## sets the position `pos` of the stream `s`.
+  s.setPositionImpl(s, pos)
+
+proc setPosition*(s, unused: PStream, pos: int) {.deprecated.} =
+  ## sets the position `pos` of the stream `s`.
+  s.setPositionImpl(s, pos)
+
+proc getPosition*(s: PStream): int =
+  ## retrieves the current position in the stream `s`.
+  result = s.getPositionImpl(s)
+
+proc getPosition*(s, unused: PStream): int {.deprecated.} =
+  ## retrieves the current position in the stream `s`.
+  result = s.getPositionImpl(s)
+
+proc readData*(s: PStream, buffer: pointer, bufLen: int): int =
+  ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
+  result = s.readDataImpl(s, buffer, bufLen)
+
+proc readData*(s, unused: PStream, buffer: pointer, 
+               bufLen: int): int {.deprecated.} =
+  ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
+  result = s.readDataImpl(s, buffer, bufLen)
+
+proc writeData*(s: PStream, buffer: pointer, bufLen: int) =
+  ## low level proc that writes an untyped `buffer` of `bufLen` size
+  ## to the stream `s`.
+  s.writeDataImpl(s, buffer, bufLen)
+
+proc writeData*(s, unused: PStream, buffer: pointer, 
+                bufLen: int) {.deprecated.} =
+  ## low level proc that writes an untyped `buffer` of `bufLen` size
+  ## to the stream `s`.
+  s.writeDataImpl(s, buffer, bufLen)
 
 proc write*[T](s: PStream, x: T) = 
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:
@@ -35,22 +97,22 @@ proc write*[T](s: PStream, x: T) =
   ##     s.writeData(s, addr(x), sizeof(x))
   var y: T
   shallowCopy(y, x)
-  s.writeData(s, addr(y), sizeof(y))
+  writeData(s, addr(y), sizeof(y))
 
 proc write*(s: PStream, x: string) = 
   ## writes the string `x` to the the stream `s`. No length field or 
   ## terminating zero is written.
-  s.writeData(s, cstring(x), x.len)
+  writeData(s, cstring(x), x.len)
 
 proc read[T](s: PStream, result: var T) = 
   ## generic read procedure. Reads `result` from the stream `s`.
-  if s.readData(s, addr(result), sizeof(T)) != sizeof(T):
+  if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
 proc readChar*(s: PStream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occured.
   ## Returns '\0' as an EOF marker.
-  discard s.readData(s, addr(result), sizeof(result))
+  discard readData(s, addr(result), sizeof(result))
 
 proc readBool*(s: PStream): bool = 
   ## reads a bool from the stream `s`. Raises `EIO` if an error occured.
@@ -84,14 +146,14 @@ proc readStr*(s: PStream, length: int): TaintedString =
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if 
   ## an error occured.
   result = newString(length).TaintedString
-  var L = s.readData(s, addr(string(result)[0]), length)
+  var L = readData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: PStream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occured.
   result = TaintedString""
-  while not s.atEnd(s): 
+  while not atEnd(s): 
     var c = readChar(s)
     if c == '\c': 
       c = readChar(s)
@@ -140,12 +202,12 @@ proc newStringStream*(s: string = ""): PStringStream =
   new(result)
   result.data = s
   result.pos = 0
-  result.close = ssClose
-  result.atEnd = ssAtEnd
-  result.setPosition = ssSetPosition
-  result.getPosition = ssGetPosition
-  result.readData = ssReadData
-  result.writeData = ssWriteData
+  result.closeImpl = ssClose
+  result.atEndImpl = ssAtEnd
+  result.setPositionImpl = ssSetPosition
+  result.getPositionImpl = ssGetPosition
+  result.readDataImpl = ssReadData
+  result.writeDataImpl = ssWriteData
 
 type
   PFileStream* = ref TFileStream ## a stream that encapsulates a `TFile`
@@ -153,6 +215,7 @@ type
     f: TFile
 
 proc fsClose(s: PStream) = close(PFileStream(s).f)
+proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
 proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
 proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
 proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
@@ -168,12 +231,13 @@ proc newFileStream*(f: TFile): PFileStream =
   ## creates a new stream from the file `f`.
   new(result)
   result.f = f
-  result.close = fsClose
-  result.atEnd = fsAtEnd
-  result.setPosition = fsSetPosition
-  result.getPosition = fsGetPosition
-  result.readData = fsReadData
-  result.writeData = fsWriteData
+  result.closeImpl = fsClose
+  result.atEndImpl = fsAtEnd
+  result.setPositionImpl = fsSetPosition
+  result.getPositionImpl = fsGetPosition
+  result.readDataImpl = fsReadData
+  result.writeDataImpl = fsWriteData
+  result.flushImpl = fsFlush
 
 proc newFileStream*(filename: string, mode: TFileMode): PFileStream = 
   ## creates a new stream from the file named `filename` with the mode `mode`.

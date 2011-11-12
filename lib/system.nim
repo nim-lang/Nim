@@ -2040,23 +2040,23 @@ proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}
 proc `-=`*[T](x, y: ordinal[T]) {.magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline noSideEffect.} =
-  ## Binary `*=` operator for oridinals
+proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline, noSideEffect.} =
+  ## Binary `*=` operator for ordinals
   x = x * y
 
-proc `+=` *(x: var float, y:float) {.inline noSideEffect.} =
+proc `+=` *(x: var float, y:float) {.inline, noSideEffect.} =
   ## Increments in placee a floating point number
   x = x + y
 
-proc `-=` *(x: var float, y:float) {.inline noSideEffect.} =
+proc `-=` *(x: var float, y:float) {.inline, noSideEffect.} =
   ## Decrements in place a floating point number
   x = x - y
 
-proc `*=` *(x: var float, y:float) {.inline noSideEffect.} =
+proc `*=` *(x: var float, y:float) {.inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
-proc `/=` *(x: var float, y:float) {.inline noSideEffect.} =
+proc `/=` *(x: var float, y:float) {.inline, noSideEffect.} =
   ## Divides in place a floating point number
   x = x / y
 
