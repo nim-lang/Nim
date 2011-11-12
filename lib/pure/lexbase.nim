@@ -64,7 +64,7 @@ const
 
 proc close(L: var TBaseLexer) =
   dealloc(L.buf)
-  L.input.close(L.input)
+  close(L.input)
 
 proc FillBuffer(L: var TBaseLexer) =
   var
@@ -80,8 +80,8 @@ proc FillBuffer(L: var TBaseLexer) =
   if toCopy > 0:
     MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
     # "moveMem" handles overlapping regions
-  charsRead = L.input.readData(L.input, addr(L.buf[toCopy]),
-                               (L.sentinel + 1) * chrSize) div chrSize
+  charsRead = readData(L.input, addr(L.buf[toCopy]),
+                       (L.sentinel + 1) * chrSize) div chrSize
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -103,8 +103,8 @@ proc FillBuffer(L: var TBaseLexer) =
         L.bufLen = L.BufLen * 2
         L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBuflen == oldBufLen)
-        charsRead = L.input.ReadData(L.input, addr(L.buf[oldBufLen]),
-                                     oldBufLen * chrSize) div chrSize
+        charsRead = ReadData(L.input, addr(L.buf[oldBufLen]),
+                             oldBufLen * chrSize) div chrSize
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
