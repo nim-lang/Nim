@@ -962,7 +962,9 @@ proc substr*(s: string, first, last: int): string {.
   ## copies a slice of `s` into a new string and returns this new
   ## string. The bounds `first` and `last` denote the indices of
   ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``.
+  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
+  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
+  ## or `limit`:idx: a string's length.
 
 proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
   ## overwrites the contents of the memory at ``p`` with the value 0.

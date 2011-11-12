@@ -115,7 +115,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
                        options={poStdErrToStdOut, poUseShell})
   var outp = p.outputStream
   var s = ""
-  while running(p) or not outp.atEnd(outp):
+  while running(p) or not atEnd(outp):
     var x = outp.readLine().string
     if x =~ pegOfInterest:
       # `s` should contain the last error message
@@ -164,19 +164,35 @@ const
   TableHeader3 = "<table border=\"1\"><tr><td>Test</td>" &
                  "<td>Given</td><td>Success</td></tr>\n"
   TableFooter = "</table>\n"
+  HtmlBegin = """<html>
+    <head> 
+      <title>Test results</title>
+      <style type="text/css">
+      <!--""" & slurp("css/boilerplate.css") & "\n" &
+                slurp("css/style.css") &
+      """-->
+    </style>
+
+    </head>
+    <body>"""
+  
+  HtmlEnd = "</body></html>"
+
+proc td(s: string): string =
+  result = s.substr(0, 200).XMLEncode
 
 proc addResult(r: var TResults, test, expected, given: string,
                success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    XMLEncode(test), XMLEncode(expected), XMLEncode(given), success.colorResult])
+    XMLEncode(test), td(expected), td(given), success.colorResult])
 
 proc addResult(r: var TResults, test, given: string,
                success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    XMLEncode(test), XMLEncode(given), success.colorResult])
+    XMLEncode(test), td(given), success.colorResult])
 
 proc listResults(reject, compile, run: TResults) =
-  var s = "<html>"
+  var s = HtmlBegin
   s.add("<h1>Tests to Reject</h1>\n")
   s.add($reject)
   s.add(TableHeader4 & reject.data & TableFooter)
@@ -186,7 +202,7 @@ proc listResults(reject, compile, run: TResults) =
   s.add("<br /><br /><br /><h1>Tests to Run</h1>\n")
   s.add($run)
   s.add(TableHeader4 & run.data & TableFooter)
-  s.add("</html>")
+  s.add(HtmlEnd)
   writeFile(resultsFile, s)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
