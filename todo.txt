@@ -3,7 +3,7 @@ Version 0.8.14
 
 - bug: s[1..n] = @[] produces wrong C code
 - optimize unused constants away (affected by HLO)
-- fix actors.nim; test with different thread var implementations
+- fix actors.nim: fix thread local storage emulation
 
 version 0.9.0
 =============
@@ -68,6 +68,7 @@ version 0.9.XX
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?
 - fix implicit generic routines
+- improve docgen to use the semantic pass
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:
   o.p(x) --> p(o, x) -->  myMacro(o, p, x)

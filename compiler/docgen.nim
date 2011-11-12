@@ -435,7 +435,7 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
     result = ropef("$n$1$3$n$1$2$n$1$3", 
                    [ind, result, toRope(repeatChar(L, lvlToChar[n.level]))])
   of rnTransition: 
-    result = ropef("$n$n$1$2$n$n", [ind, toRope(repeatChar(78 - d.indent, '-'))])
+    result = ropef("$n$n$1$2$n$n", [ind, toRope(repeatChar(78-d.indent, '-'))])
   of rnParagraph: 
     result = renderRstSons(d, n)
     result = ropef("$n$n$1$2", [ind, result])
