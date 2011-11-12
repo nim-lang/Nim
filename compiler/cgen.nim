@@ -707,13 +707,13 @@ proc genMainProc(m: BModule) =
         CommonMainBody & "}$n"
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
         "  cmdLine = args;$n" & "  cmdCount = argc;$n" & "  gEnv = env;$n" &
-        "  NimMain();$n" & "  return 0;$n" & "}$n"
+        "  NimMain();$n" & "  return nim_program_result;$n" & "}$n"
     WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
         "                        HINSTANCE hPrevInstance, $n" &
         "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
-        "  NimMain();$n" & "  return 0;$n" & "}$n"
+        "  NimMain();$n" & "  return nim_program_result;$n" & "}$n"
     WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCDllMain = 
