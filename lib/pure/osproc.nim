@@ -171,7 +171,7 @@ proc execProcesses*(cmds: openArray[string],
         when defined(debugExecProcesses):
           var err = ""
           var outp = outputStream(q[r])
-          while running(q[r]) or not outp.atEnd(outp):
+          while running(q[r]) or not atEnd(outp):
             err.add(outp.readLine())
             err.add("\n")
           echo(err)
@@ -213,10 +213,10 @@ when not defined(useNimRtl):
     var p = startCmd(command, options=options)
     var outp = outputStream(p)
     result = TaintedString""
-    while running(p) or not outp.atEnd(outp):
+    while running(p) or not atEnd(outp):
       result.string.add(outp.readLine().string)
       result.string.add("\n")
-    outp.close(outp)
+    close(outp)
     close(p)
 
 when false:
@@ -259,10 +259,10 @@ when defined(Windows) and not defined(useNimRtl):
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
     new(result)
     result.handle = handle
-    result.close = hsClose
-    result.atEnd = hsAtEnd
-    result.readData = hsReadData
-    result.writeData = hsWriteData
+    result.closeImpl = hsClose
+    result.atEndImpl = hsAtEnd
+    result.readDataImpl = hsReadData
+    result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openarray[string]): cstring =
     var res = quoteIfContainsWhite(a)
@@ -643,10 +643,10 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
   result = (TaintedString"", -1)
   while true:
     if result[1] == -1: result[1] = peekExitCode(p)
-    if result[1] != -1 and outp.atEnd(outp): break
+    if result[1] != -1 and atEnd(outp): break
     result[0].string.add(outp.readLine().string)
     result[0].string.add("\n")
-  outp.close(outp)
+  close(outp)
   close(p)
 
 

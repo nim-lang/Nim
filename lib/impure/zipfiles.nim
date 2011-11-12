@@ -75,10 +75,10 @@ proc mySourceCallback(state, data: pointer, len: int,
   var src = cast[PStream](state)
   case cmd
   of ZIP_SOURCE_OPEN: 
-    if src.setPosition != nil: src.setPosition(src, 0) # reset
+    if src.setPositionImpl != nil: setPosition(src, 0) # reset
   of ZIP_SOURCE_READ:
-    result = src.readData(src, data, len)
-  of ZIP_SOURCE_CLOSE: src.close(src)
+    result = readData(src, data, len)
+  of ZIP_SOURCE_CLOSE: close(src)
   of ZIP_SOURCE_STAT: 
     var stat = cast[PZipStat](data)
     zip_stat_init(stat)
@@ -120,8 +120,8 @@ proc fsReadData(s: PStream, buffer: pointer, bufLen: int): int =
 proc newZipFileStream(f: PZipFile): PZipFileStream = 
   new(result)
   result.f = f
-  result.close = fsClose
-  result.readData = fsReadData
+  result.closeImpl = fsClose
+  result.readDataImpl = fsReadData
   # other methods are nil!
 
 # ----------------------------------------------------------------------------
