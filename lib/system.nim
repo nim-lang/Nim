@@ -1541,6 +1541,11 @@ const
     ## is the value that should be passed to ``quit`` to indicate
     ## failure.
 
+var program_result* {.exportc: "nim_$1".} = QuitSuccess
+  ## modify this varialbe to specify the exit code of the program
+  ## under normal circumstances. when the program is terminated
+  ## prematurelly using ``quit``, this value is ignored.
+
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", noDecl, noReturn.}
   ## stops the program immediately; before stopping the program the
@@ -2028,4 +2033,32 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
   ##
   ##   const myResource = slurp"mydatafile.bin"
   ##
+
+proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}
+  ## Increments an ordinal
+
+proc `-=`*[T](x, y: ordinal[T]) {.magic: "Dec", noSideEffect.}
+  ## Decrements an ordinal
+
+proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline noSideEffect.} =
+  ## Binary `*=` operator for oridinals
+  x = x * y
+
+proc `+=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Increments in placee a floating point number
+  x = x + y
+
+proc `-=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Decrements in place a floating point number
+  x = x - y
+
+proc `*=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Multiplies in place a floating point number
+  x = x * y
+
+proc `/=` *(x: var float, y:float) {.inline noSideEffect.} =
+  ## Divides in place a floating point number
+  x = x / y
+
+proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 

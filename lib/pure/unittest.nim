@@ -17,15 +17,18 @@
 ## It is loosely based on C++'s boost.test and Haskell's QuickTest
 
 import
-  macros, terminal
+  macros, terminal, os
 
 type
-  TestStatus* = enum OK, FAILED
-  # ETestFailed* = object of ESynch
+  TTestStatus* = enum OK, FAILED
+  TOutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
 
 var 
   # XXX: These better be thread-local
-  AbortOnError* = false
+  AbortOnError*: bool
+  OutputLevel*: TOutputLevel
+  ColorOutput*: bool
+  
   checkpoints: seq[string] = @[]
 
 template TestSetupIMPL*: stmt = nil
@@ -36,20 +39,29 @@ proc shouldRun(testName: string): bool =
 
 template suite*(name: expr, body: stmt): stmt =
   block:
-    template setup(setupBody: stmt): stmt =
+    template setup*(setupBody: stmt): stmt =
       template TestSetupIMPL: stmt = setupBody
 
-    template teardown(teardownBody: stmt): stmt =
+    template teardown*(teardownBody: stmt): stmt =
       template TestTeardownIMPL: stmt = teardownBody
 
     body
 
-proc printStatus*(s: TestStatus, name: string) =
-  var color = (if s == OK: fgGreen else: fgRed)
-  styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+proc testDone(name: string, s: TTestStatus) =
+  if s == FAILED:
+    program_result += 1
+
+  if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
+    var color = (if s == OK: fgGreen else: fgRed)
+    
+    if ColorOutput:
+      styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+    else:
+      echo "[", $s, "] ", name, "\n"
   
 template test*(name: expr, body: stmt): stmt =
-  bind shouldRun, checkPoints
+  bind shouldRun, checkpoints, testDone
+
   if shouldRun(name):
     checkpoints = @[]
     var TestStatusIMPL = OK
@@ -60,7 +72,7 @@ template test*(name: expr, body: stmt): stmt =
 
     finally:
       TestTeardownIMPL()
-      printStatus(TestStatusIMPL, name)
+      testDone name, TestStatusIMPL
 
 proc checkpoint*(msg: string) =
   checkpoints.add(msg)
@@ -124,7 +136,8 @@ macro check*(conditions: stmt): stmt =
       result = standardRewrite(conditions[1])
 
   else:
-    error conditions.lineinfo & ": Malformed check statement"
+    var ast = conditions.treeRepr
+    error conditions.lineinfo & ": Malformed check statement:\n" & ast
 
 template require*(conditions: stmt): stmt =
   block:
@@ -149,3 +162,15 @@ macro expect*(exp: stmt): stmt =
 
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 
+
+## Reading settings
+var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
+
+if envOutLvl.len > 0:
+  for opt in countup(low(TOutputLevel), high(TOutputLevel)):
+    if $opt == envOutLvl:
+      OutputLevel = opt
+      break
+
+AbortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+ColorOutput  = not existsEnv("NIMTEST_NO_COLOR")

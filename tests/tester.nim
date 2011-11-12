@@ -391,6 +391,9 @@ proc outputJSON(reject, compile, run: TResults) =
   writeFile(jsonFile, s)
 
 proc main() =
+  os.putenv "NIMTEST_NO_COLOR", "1"
+  os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
+
   const
     compileJson = "compile.json"
     runJson = "run.json"
