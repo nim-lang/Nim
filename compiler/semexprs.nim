@@ -318,16 +318,25 @@ proc fixAbstractType(c: PContext, n: PNode) =
   for i in countup(1, sonsLen(n) - 1): 
     var it = n.sons[i]
     case it.kind
-    of nkHiddenStdConv, nkHiddenSubConv: 
-      if it.sons[1].kind == nkBracket: 
+    of nkHiddenStdConv, nkHiddenSubConv:
+      if it.sons[1].kind == nkBracket:
         it.sons[1] = semArrayConstr(c, it.sons[1])
       if skipTypes(it.typ, abstractVar).kind == tyOpenArray: 
+        #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
+        #  debug(n)
+        
         var s = skipTypes(it.sons[1].typ, abstractVar)
-        if (s.kind == tyArrayConstr) and (s.sons[1].kind == tyEmpty): 
+        if s.kind == tyArrayConstr and s.sons[1].kind == tyEmpty: 
           s = copyType(s, getCurrOwner(), false)
           skipTypes(s, abstractVar).sons[1] = elemType(
               skipTypes(it.typ, abstractVar))
           it.sons[1].typ = s
+        elif s.kind == tySequence and s.sons[0].kind == tyEmpty:
+          s = copyType(s, getCurrOwner(), false)
+          skipTypes(s, abstractVar).sons[0] = elemType(
+              skipTypes(it.typ, abstractVar))
+          it.sons[1].typ = s
+          
       elif skipTypes(it.sons[1].typ, abstractVar).kind in
           {tyNil, tyArrayConstr, tyTuple, tySet}: 
         var s = skipTypes(it.typ, abstractVar)
@@ -338,7 +347,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
       n.sons[i] = semArrayConstr(c, it)
     else: 
       if (it.typ == nil): 
-        InternalError(it.info, "fixAbstractType: " & renderTree(it))
+        InternalError(it.info, "fixAbstractType: " & renderTree(it))  
   
 proc skipObjConv(n: PNode): PNode = 
   case n.kind

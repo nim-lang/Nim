@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- bug: s[1..n] = @[] produces wrong C code
 - optimize unused constants away (affected by HLO)
 - fix actors.nim: fix thread local storage emulation
 
