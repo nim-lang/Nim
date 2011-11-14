@@ -1213,7 +1213,8 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
   var t = skipTypes(e.sons[1].typ, abstractVar)
-  appcg(p, cpsStmts, "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n", [
+  appcg(p, cpsStmts, 
+      "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n", [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       getTypeDesc(p.module, t.sons[0])])
 
@@ -1316,7 +1317,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mIncl:
       var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d,
-                       "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n")
+          "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n")
     of mExcl:
       var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d, "$1 &= ~(1 << ((" & ts & ")($2) % (sizeof(" &
@@ -1375,10 +1376,10 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
   if (skipTypes(e.typ, abstractRange).kind in ValueTypes) and
       not (lfIndirect in a.flags):
     putIntoDest(p, d, e.typ, ropef("(*($1*) ($2))",
-                                   [getTypeDesc(p.module, e.typ), addrLoc(a)]))
+        [getTypeDesc(p.module, e.typ), addrLoc(a)]))
   else:
     putIntoDest(p, d, e.typ, ropef("(($1) ($2))",
-                                   [getTypeDesc(p.module, e.typ), rdCharLoc(a)]))
+        [getTypeDesc(p.module, e.typ), rdCharLoc(a)]))
 
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
@@ -1386,7 +1387,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   if optRangeCheck notin p.options:
     InitLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n.typ, ropef("(($1) ($2))",
-                                   [getTypeDesc(p.module, dest), rdCharLoc(a)]))
+        [getTypeDesc(p.module, dest), rdCharLoc(a)]))
   else:
     InitLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
@@ -1403,7 +1404,8 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, skipTypes(n.typ, abstractVar), ropef("$1->data", [rdLoc(a)]))
+  putIntoDest(p, d, skipTypes(n.typ, abstractVar), ropef("$1->data",
+      [rdLoc(a)]))
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc

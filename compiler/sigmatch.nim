@@ -504,19 +504,19 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     result = copyTree(arg)
     result.typ = getInstantiatedType(c, arg, m, f) 
     # BUG: f may not be the right key!
-    if (skipTypes(result.typ, abstractVar).kind in {tyTuple}): 
+    if skipTypes(result.typ, abstractVar).kind in {tyTuple}:
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
       # BUGFIX: use ``result.typ`` and not `f` here
   of isEqual: 
     inc(m.exactMatches)
     result = copyTree(arg)
-    if (skipTypes(f, abstractVar).kind in {tyTuple}): 
+    if skipTypes(f, abstractVar).kind in {tyTuple}: 
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isNone: 
     result = userConvMatch(c, m, f, a, arg) 
     # check for a base type match, which supports openarray[T] without []
     # constructor in a call:
-    if (result == nil) and (f.kind == tyOpenArray): 
+    if result == nil and f.kind == tyOpenArray:
       r = typeRel(m.bindings, base(f), a)
       if r >= isGeneric: 
         inc(m.convMatches)
@@ -525,7 +525,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         m.baseTypeMatch = true
       else: 
         result = userConvMatch(c, m, base(f), a, arg)
-  
+
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
                      arg: PNode): PNode = 
   if arg == nil or arg.kind != nkSymChoice: 
@@ -710,4 +710,12 @@ proc matches*(c: PContext, n: PNode, m: var TCandidate) =
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
+
+  when false:
+    if sfSystemModule notin c.module.flags:
+      if includeFilename("temp.nim") == c.module.info.fileIndex:
+        echo "########################"
+        echo m.call.renderTree
+        for i in 1..m.call.len-1:
+          debug m.call[i].typ
 
