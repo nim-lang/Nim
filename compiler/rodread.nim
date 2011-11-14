@@ -515,6 +515,23 @@ proc processIndex(r: PRodReader, idx: var TIndex) =
       inc(r.line)
   if r.s[r.pos] == ')': inc(r.pos)
   
+proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
+  if old == new: return false
+  # we use a 'case' statement without 'else' so that addition of a
+  # new command forces us to consider it here :-)
+  case old
+  of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
+      cmdCompileToEcmaScript, cmdCompileToLLVM:
+    if new in {cmdDoc, cmdCheck, cmdIdeTools, cmdPretty, cmdDef,
+               cmdInteractive}:
+      return false
+  of cmdNone, cmdDoc, cmdInterpret, cmdPretty, cmdGenDepend, cmdDump,
+      cmdCheck, cmdParse, cmdScan, cmdIdeTools, cmdDef, 
+      cmdRst2html, cmdRst2tex, cmdInteractive, cmdRun:
+    nil
+  # else: trigger recompilation:
+  result = true
+  
 proc processRodFile(r: PRodReader, crc: TCrc32) = 
   var 
     w: string
@@ -542,7 +559,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "CMD":
       inc(r.pos)              # skip ':'
       var dep = cast[TCommands](int32(decodeVInt(r.s, r.pos)))
-      if gCmd != dep: r.reason = rrOptions
+      if cmdChangeTriggersRecompilation(dep, gCmd): r.reason = rrOptions
     of "DEFINES":
       inc(r.pos)              # skip ':'
       d = 0
