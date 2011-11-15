@@ -6,7 +6,7 @@
 #    distribution, for details about the copyright.
 #
 
-import sockets, strutils, parseutils, times
+import sockets, strutils, parseutils, times, os
 
 ## This module **partially** implements an FTP client as specified
 ## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_. 
@@ -54,6 +54,7 @@ type
     of JRetr, JStore:
       dsockClosed: bool
       file: TFile
+      filename: string
       total: biggestInt # In bytes.
       progress: biggestInt # In bytes.
       oneSecond: biggestInt # Bytes transferred in one second.
@@ -64,6 +65,7 @@ type
     EvTransferProgress, EvLines, EvRetr, EvStore
 
   TFTPEvent* = object ## Event
+    filename*: string
     case typ*: FTPEventType
     of EvLines:
       lines*: string ## Lines that have been transferred.
@@ -184,6 +186,47 @@ proc asyncLines(ftp: var TFTPClient, timeout: int): bool =
       assertReply ftp.expectReply(), "226"
       return true
 
+proc listDirs*(ftp: var TFTPClient, dir: string = "",
+               async = false): seq[string] =
+  ## Returns a list of filenames in the given directory. If ``dir`` is "",
+  ## the current directory is used. If ``async`` is true, this
+  ## function will return immediately and it will be your job to
+  ## call ``poll`` to progress this operation.
+
+  ftp.createJob(asyncLines, JRetrText)
+  ftp.pasv()
+
+  assertReply ftp.send("NLST " & dir), ["125", "150"]
+
+  if not async:
+    while not ftp.job.prc(ftp, 500): nil
+    result = splitLines(ftp.job.lines)
+    ftp.deleteJob()
+  else: return @[]
+
+proc fileExists*(ftp: var TFTPClient, file: string): bool =
+  ## Determines whether ``file`` exists.
+  ##
+  ## Warning: This function may block. Especially on directories with many
+  ## files, because a full list of file names must be retrieved.
+  var files = ftp.listDirs()
+  for f in items(files):
+    if f == file: return true
+
+proc createDir*(ftp: var TFTPClient, dir: string, recursive: bool = false) =
+  ## Creates a directory ``dir``. If ``recursive`` is true, the topmost
+  ## subdirectory of ``dir`` will be created first, following the secondmost...
+  ## etc. this allows you to give a full path as the ``dir`` without worrying
+  ## about subdirectories not existing.
+  if not recursive:
+    assertReply ftp.send("MKD " & dir), "257"
+  else:
+    var reply = TaintedString""
+    for p in split(dir, {os.dirSep, os.altSep}):
+      if p != "":
+        reply = ftp.send("MKD " & p)
+    assertReply reply, "257"
+
 proc list*(ftp: var TFTPClient, dir: string = "", async = false): string =
   ## Lists all files in ``dir``. If ``dir`` is ``""``, uses the current
   ## working directory. If ``async`` is true, this function will return
@@ -233,6 +276,8 @@ proc asyncFile(ftp: var TFTPClient, timeout: int): bool =
 proc retrFile*(ftp: var TFTPClient, file, dest: string, async = false) =
   ## Downloads ``file`` and saves it to ``dest``. Usage of this function
   ## asynchronously is recommended to view the progress of the download.
+  ## The ``EvRetr`` event is given by ``poll`` when the download is finished,
+  ## and the ``filename`` field will be equal to ``file``.
   ftp.createJob(asyncFile, JRetr)
   ftp.job.file = open(dest, mode = fmWrite)
   ftp.pasv()
@@ -246,6 +291,7 @@ proc retrFile*(ftp: var TFTPClient, file, dest: string, async = false) =
     
   ftp.job.total = fileSize
   ftp.job.lastProgressReport = epochTime()
+  ftp.job.filename = file
 
   if not async:
     while not ftp.job.prc(ftp, 500): nil
@@ -281,10 +327,13 @@ proc store*(ftp: var TFTPClient, file, dest: string, async = false) =
   ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
   ## the download.
+  ## The ``EvStore`` event is given by ``poll`` when the upload is finished,
+  ## and the ``filename`` field will be equal to ``file``.
   ftp.createJob(asyncUpload, JStore)
   ftp.job.file = open(file)
   ftp.job.total = ftp.job.file.getFileSize()
   ftp.job.lastProgressReport = epochTime()
+  ftp.job.filename = file
   ftp.pasv()
   
   assertReply ftp.send("STOR " & dest), ["125", "150"]
@@ -304,10 +353,12 @@ proc poll*(ftp: var TFTPClient, r: var TFTPEvent, timeout = 500): bool =
         r.lines = ftp.job.lines
       of JRetr:
         r.typ = EvRetr
+        r.filename = ftp.job.filename
         if ftp.job.progress != ftp.job.total:
           raise newException(EFTP, "Didn't download full file.")
       of JStore:
         r.typ = EvStore
+        r.filename = ftp.job.filename
         if ftp.job.progress != ftp.job.total:
           raise newException(EFTP, "Didn't upload full file.")
       ftp.deleteJob()
@@ -321,6 +372,7 @@ proc poll*(ftp: var TFTPClient, r: var TFTPEvent, timeout = 500): bool =
         r.bytesTotal = ftp.job.total
         r.bytesFinished = ftp.job.progress
         r.speed = ftp.job.oneSecond
+        r.filename = ftp.job.filename
         ftp.job.oneSecond = 0
 
 proc close*(ftp: var TFTPClient) =
@@ -331,7 +383,6 @@ proc close*(ftp: var TFTPClient) =
   ftp.dsock.close()
 
 when isMainModule:
-  import os
   var ftp = FTPClient("ex.org", user = "user", pass = "p")
   ftp.connect()
   echo ftp.pwd()
