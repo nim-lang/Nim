@@ -1,3 +1,11 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2011 Dominik Picheta
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import sockets, strutils, parseutils, times
 
 ## This module **partially** implements an FTP client as specified
@@ -76,27 +84,28 @@ proc FTPClient*(address: string, port = TPort(21),
   result.address = address
   result.port = port
 
-proc expectReply(ftp: var TFTPClient): string =
-  result = ""
-  if not ftp.csock.recvLine(result): setLen(result, 0)
+proc expectReply(ftp: var TFTPClient): TaintedString =
+  result = TaintedString""
+  if not ftp.csock.recvLine(result): setLen(result.string, 0)
 
-proc send*(ftp: var TFTPClient, m: string): string =
+proc send*(ftp: var TFTPClient, m: string): TaintedString =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ftp.csock.send(m & "\c\L")
   return ftp.expectReply()
 
-proc assertReply(received, expected: string) =
-  if not received.startsWith(expected):
+proc assertReply(received: TaintedString, expected: string) =
+  if not received.string.startsWith(expected):
     raise newException(EInvalidReply,
-                       "Expected reply '$1' got: $2" % [expected, received])
+                       "Expected reply '$1' got: $2" % [
+                       expected, received.string])
 
-proc assertReply(received: string, expected: openarray[string]) =
+proc assertReply(received: TaintedString, expected: openarray[string]) =
   for i in items(expected):
-    if received.startsWith(i): return
+    if received.string.startsWith(i): return
   raise newException(EInvalidReply,
                      "Expected reply '$1' got: $2" %
-                     [expected.join("' or '"), received])
+                     [expected.join("' or '"), received.string])
 
 proc createJob(ftp: var TFTPClient,
                  prc: proc (ftp: var TFTPClient, timeout: int): bool,
@@ -124,9 +133,9 @@ proc deleteJob(ftp: var TFTPClient) =
 
 proc pasv(ftp: var TFTPClient) =
   ## Negotiate a data connection.
-  var pasvMsg = ftp.send("PASV").strip
+  var pasvMsg = ftp.send("PASV").string.strip.TaintedString
   assertReply(pasvMsg, "227")
-  var betweenParens = captureBetween(pasvMsg, '(', ')')
+  var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
   var ip = nums[0.. -3]
   var port = nums[-2.. -1]
@@ -152,7 +161,7 @@ proc pwd*(ftp: var TFTPClient): string =
   ## Returns the current working directory.
   var wd = ftp.send("PWD")
   assertReply wd, "257"
-  return wd.captureBetween('"') # "
+  return wd.string.captureBetween('"') # "
 
 proc cd*(ftp: var TFTPClient, dir: string) =
   ## Changes the current directory on the remote FTP server to ``dir``.
@@ -168,9 +177,9 @@ proc asyncLines(ftp: var TFTPClient, timeout: int): bool =
   var readSocks: seq[TSocket] = @[ftp.dsock, ftp.csock]
   if readSocks.select(timeout) != 0:
     if ftp.dsock notin readSocks:
-      var r = ""
+      var r = TaintedString""
       if ftp.dsock.recvLine(r):
-        ftp.job.lines.add(r & "\n")
+        ftp.job.lines.add(r.string & "\n")
     if ftp.csock notin readSocks:
       assertReply ftp.expectReply(), "226"
       return true
@@ -211,10 +220,10 @@ proc asyncFile(ftp: var TFTPClient, timeout: int): bool =
   var readSocks: seq[TSocket] = @[ftp.dsock, ftp.csock]
   if readSocks.select(timeout) != 0:
     if ftp.dsock notin readSocks:
-      var r = ftp.dsock.recv()
+      var r = ftp.dsock.recv().string
       if r != "":
-        ftp.job.progress.inc(r.len())
-        ftp.job.oneSecond.inc(r.len())
+        ftp.job.progress.inc(r.len)
+        ftp.job.oneSecond.inc(r.len)
         ftp.job.file.write(r)
       
     if ftp.csock notin readSocks:
@@ -229,10 +238,12 @@ proc retrFile*(ftp: var TFTPClient, file, dest: string, async = false) =
   ftp.pasv()
   var reply = ftp.send("RETR " & file)
   assertReply reply, ["125", "150"]
-  if {'(', ')'} notin reply:
+  if {'(', ')'} notin reply.string:
     raise newException(EInvalidReply, "Reply has no file size.")
   var fileSize: biggestInt
-  assert reply.captureBetween('(', ')').parseBiggestInt(fileSize) != 0
+  if reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
+    raise newException(EInvalidReply, "Reply has no file size.")
+    
   ftp.job.total = fileSize
   ftp.job.lastProgressReport = epochTime()
 
@@ -254,7 +265,9 @@ proc asyncUpload(ftp: var TFTPClient, timeout: int): bool =
         ftp.job.dsockClosed = true
         return
 
-      if ftp.dsock.send(addr(buffer), len) != len: assert(false)
+      if ftp.dsock.send(addr(buffer), len) != len: 
+        raise newException(EIO, "could not 'send' all data.")
+      
       ftp.job.progress.inc(len)
       ftp.job.oneSecond.inc(len)
   
