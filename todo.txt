@@ -19,6 +19,7 @@ version 0.9.0
   --> solve by implicit conversion from varargs to openarray
 - change overloading resolution
 - implement closures; implement proper coroutines
+- implement ``partial`` pragma for partial evaluation
 - implicit invokation of `items` seems nice
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions

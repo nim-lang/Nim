@@ -280,8 +280,8 @@ proc isGBCRef(t: PType): bool =
   result = t.kind in {tyRef, tySequence, tyString}
 
 proc containsGarbageCollectedRef(typ: PType): bool = 
-  # returns true if typ contains a reference, sequence or string (all the things
-  # that are garbage-collected)
+  # returns true if typ contains a reference, sequence or string (all the
+  # things that are garbage-collected)
   result = searchTypeFor(typ, isGBCRef)
 
 proc isTyRef(t: PType): bool =
@@ -868,11 +868,12 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     for i in countup(0, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], kind)
       if not result: break 
-  of tyObject: 
+  of tyObject:
+    if kind == skConst: return false
     for i in countup(0, sonsLen(t) - 1): 
-      result = typeAllowedAux(marker, t.sons[i], skVar)
-      if not result: break 
-    if result and t.n != nil: result = typeAllowedNode(marker, t.n, skVar)
+      result = typeAllowedAux(marker, t.sons[i], kind)
+      if not result: break
+    if result and t.n != nil: result = typeAllowedNode(marker, t.n, kind)
     
 proc typeAllowed(t: PType, kind: TSymKind): bool = 
   var marker = InitIntSet()

@@ -736,11 +736,12 @@ proc processTransf(context: PPassContext, n: PNode): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
-  if passes.skipCodegen(n) or context.fromCache: return n
+  if passes.skipCodegen(n) or context.fromCache or nfTransf in n.flags: return n
   var c = PTransf(context)
   pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = PNode(transform(c, n))
   popTransCon(c)
+  incl(result.flags, nfTransf)
 
 proc openTransf(module: PSym, filename: string): PPassContext = 
   var n: PTransf
@@ -762,6 +763,10 @@ proc transfPass(): TPass =
   result.close = processTransf # we need to process generics too!
   
 proc transform*(module: PSym, n: PNode): PNode =
-  var c = openTransf(module, "")
-  result = processTransf(c, n)
+  if nfTransf in n.flags: 
+    result = n
+  else:
+    var c = openTransf(module, "")
+    result = processTransf(c, n)
+    incl(result.flags, nfTransf)
 
