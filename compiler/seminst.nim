@@ -77,10 +77,9 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     if result.kind in {skProc, skMethod, skConverter}: 
       addResult(c, result.typ.sons[0], n.info)
       addResultNode(c, n)
-    n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
-    if result.kind == skIterator:
-      # XXX Bad hack for tests/titer2:
-      n.sons[bodyPos] = transform(c.module, n.sons[bodyPos])
+    var b = semStmtScope(c, n.sons[bodyPos])
+    # XXX Bad hack for tests/titer2 and tests/tactiontable
+    n.sons[bodyPos] = transform(c.module, b)
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)

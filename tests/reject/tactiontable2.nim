@@ -1,5 +1,6 @@
 discard """
-  output: "action 3 arg"
+  line: 21
+  errormsg: "invalid type: 'TTable'"
 """
 
 import tables
@@ -16,7 +17,7 @@ proc action3(arg: string) =
 proc action4(arg: string) = 
   echo "action 4 ", arg
 
-var
+const
   actionTable = {
     "A": action1, 
     "B": action2, 
