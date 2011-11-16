@@ -569,16 +569,16 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   #if matchType(result, [(tyProc, 1), (tyVar, 0)], tyGenericInvokation):
   #  debug result
 
-proc semStmtListType(c: PContext, n: PNode, prev: PType): PType = 
+proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
   var length = sonsLen(n)
-  for i in countup(0, length - 2): 
+  for i in countup(0, length - 2):
     n.sons[i] = semStmt(c, n.sons[i])
-  if length > 0: 
+  if length > 0:
     result = semTypeNode(c, n.sons[length - 1], prev)
     n.typ = result
     n.sons[length - 1].typ = result
-  else: 
+  else:
     result = nil
   
 proc semBlockType(c: PContext, n: PNode, prev: PType): PType = 
@@ -630,6 +630,18 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
     result = instGenericContainer(c, n, result)
 
+proc semExpandToType(c: PContext, n: PNode, sym: PSym): PType =
+  # Expands a macro or template until a type is returned
+  # results in GlobalError if the macro expands to something different
+  markUsed(n, sym)
+  case sym.kind
+  of skMacro:
+    result = semTypeNode(c, semMacroExpr(c, n, sym), nil)
+  of skTemplate:
+    result = semTypeNode(c, semTemplateExpr(c, n, sym), nil)
+  else:
+    GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType = 
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -642,7 +654,15 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)
-  of nkBracketExpr: 
+  of nkCallKinds:
+    # expand macros and templates
+    var expandedSym = expectMacroOrTemplateCall(c, n)
+    result = semExpandToType(c, n, expandedSym)
+  of nkWhenStmt:
+    var whenResult = semWhen(c, n, false)
+    if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
+    result = semTypeNode(c, whenResult, prev)
+  of nkBracketExpr:
     checkMinSonsLen(n, 2)
     var s = semTypeIdent(c, n.sons[0])
     case s.magic

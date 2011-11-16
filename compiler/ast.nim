@@ -633,6 +633,12 @@ proc copyNode*(src: PNode): PNode
 proc copyTree*(src: PNode): PNode
   # does copy its sons!
 
+const nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
+                      nkCallStrLit}
+
+proc isCallExpr*(n: PNode): bool =
+  result = n.kind in nkCallKinds
+
 proc discardSons*(father: PNode)
 
 proc len*(n: PNode): int {.inline.} =

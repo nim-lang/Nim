@@ -64,6 +64,15 @@ proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
   if not typeAllowed(typ, skConst):
     GlobalError(typ.n.info, errXisNoType, typeToString(typ))
 
+proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
+
+proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
+
+proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
+                  semCheck: bool = true): PNode
+
+proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
+
 include semtempl
 
 proc semConstExpr(c: PContext, n: PNode): PNode = 
@@ -92,13 +101,16 @@ include seminst, semcall
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
   case s.typ.sons[0].kind
-  of tyExpr: 
+  of tyExpr:
     # BUGFIX: we cannot expect a type here, because module aliases would not 
     # work then (see the ``tmodulealias`` test)
     # semExprWithType(c, result)
-    result = semExpr(c, result) 
-  of tyStmt: result = semStmt(c, result)
-  of tyTypeDesc: result.typ = semTypeNode(c, result, nil)
+    result = semExpr(c, result)
+  of tyStmt:
+    result = semStmt(c, result)
+  of tyTypeDesc:
+    if n.kind == nkStmtList: result.kind = nkStmtListType
+    result.typ = semTypeNode(c, result, nil)
   else:
     result = semExpr(c, result)
     result = fitNode(c, s.typ.sons[0], result)

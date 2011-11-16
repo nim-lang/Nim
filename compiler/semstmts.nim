@@ -12,8 +12,15 @@
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
 
-proc semWhen(c: PContext, n: PNode): PNode = 
+proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
+  # If semCheck is set to false, ``when`` will return the verbatim AST of
+  # the correct branch. Otherwise the AST will be passed through semStmt.
   result = nil
+  
+  template set_result(e: expr) =
+    if semCheck: result = semStmt(c, e) # do not open a new scope!
+    else: result = e
+
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     case it.kind
@@ -21,12 +28,12 @@ proc semWhen(c: PContext, n: PNode): PNode =
       checkSonsLen(it, 2)
       var e = semAndEvalConstExpr(c, it.sons[0])
       if (e.kind != nkIntLit): InternalError(n.info, "semWhen")
-      if (e.intVal != 0) and (result == nil): 
-        result = semStmt(c, it.sons[1]) # do not open a new scope!
+      if (e.intVal != 0) and (result == nil):
+        set_result(it.sons[1]) 
     of nkElse: 
       checkSonsLen(it, 1)
       if result == nil: 
-        result = semStmt(c, it.sons[0]) # do not open a new scope!
+        set_result(it.sons[0])
     else: illFormedAst(n)
   if result == nil: 
     result = newNodeI(nkNilLit, n.info) 
