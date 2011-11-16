@@ -400,10 +400,6 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   else: 
     nil
 
-proc isCallExpr(n: PNode): bool = 
-  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
-                      nkCallStrLit}
-
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode = 
   if n.kind == nkHiddenDeref: 
     checkSonsLen(n, 1)
@@ -922,32 +918,35 @@ proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
   if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
     GlobalError(result.info, errStringLiteralExpected)
 
-proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym, 
+proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
+  ## The argument to the proc should be nkCall(...) or similar
+  ## Returns the macro/template symbol
+  if not isCallExpr(n):
+    GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+
+  var expandedSym = qualifiedLookup(c, n[0], {checkUndeclared})
+  if expandedSym == nil:
+    GlobalError(n.info, errUndeclaredIdentifier, n[0].renderTree)
+
+  if expandedSym.kind notin {skMacro, skTemplate}:
+    GlobalError(n.info, errXisNoMacroOrTemplate, expandedSym.name.s)
+
+  result = expandedSym
+
+proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
                     flags: TExprFlags): PNode =
   if sonsLen(n) == 2:
-    if not isCallExpr(n.sons[1]):
-      GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
+    var macroCall = n[1]
+    var expandedSym = expectMacroOrTemplateCall(c, macroCall)
 
-    var macroCall = n.sons[1]
-
-    var expandedSym = qualifiedLookup(c, macroCall.sons[0], {checkUndeclared})
-    if expandedSym == nil:
-      GlobalError(n.info, errUndeclaredIdentifier, macroCall[0].renderTree)
-
-    if expandedSym.kind notin {skMacro, skTemplate}:
-      GlobalError(n.info, errXisNoMacroOrTemplate, expandedSym.name.s)
-
-    macroCall.sons[0] = newNodeI(nkSym, macroCall.info)
-    macroCall.sons[0].sym = expandedSym
+    macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
     markUsed(n, expandedSym)
 
     for i in countup(1, macroCall.len-1):
-      macroCall.sons[i] = semExprWithType(c, macroCall.sons[i], {efAllowType})
+      macroCall.sons[i] = semExprWithType(c, macroCall[i], {efAllowType})
 
-    # Preserve the magic symbol in order to handled in evals.nim
-    n.sons[0] = newNodeI(nkSym, n.info)
-    n.sons[0].sym = magicSym
-    
+    # Preserve the magic symbol in order to be handled in evals.nim
+    n.sons[0] = newSymNode(magicSym, n.info)
     n.typ = expandedSym.getReturnType
     result = n
   else:
