@@ -265,7 +265,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
   of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(typ, "NIM_CHAR")
   of tyNil: result = typeNameOrLiteral(typ, "0")
-  of tyInt..tyFloat128: 
+  of tyInt..tyFloat128, tyUInt..tyUInt64: 
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.Kind])
   of tyRange: result = getSimpleTypeDesc(m, typ.sons[0])
   else: result = nil

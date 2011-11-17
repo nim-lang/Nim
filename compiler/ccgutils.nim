@@ -73,11 +73,15 @@ proc GetUniqueType*(key: PType): PType =
   if key == nil: return 
   var k = key.kind
   case k
-  of  tyNone, tyBool, tyChar, tyEmpty,
-      tyNil, tyExpr, tyStmt, tyTypeDesc, tyPointer, tyString, tyCString, 
+  of  tyBool, tyChar, 
       tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
       tyFloat, tyFloat32, tyFloat64, tyFloat128,
-      tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64, tyBigNum:
+      tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64:
+    # no canonicalization for integral types, so that e.g. ``pid_t`` is
+    # produced instead of ``NI``.
+    result = key
+  of  tyEmpty, tyNil, tyExpr, tyStmt, tyTypeDesc, tyPointer, tyString, 
+      tyCString, tyNone, tyBigNum:
     result = gCanonicalTypes[k]
     if result == nil:
       gCanonicalTypes[k] = key

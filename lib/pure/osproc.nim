@@ -25,9 +25,10 @@ type
     when defined(windows):
       FProcessHandle: Thandle
       inputHandle, outputHandle, errorHandle: TFileHandle
+      id: THandle
     else:
       inputHandle, outputHandle, errorHandle: TFileHandle
-    id: cint
+      id: TPid
     exitCode: cint
 
   PProcess* = ref TProcess ## represents an operating system process
@@ -158,6 +159,10 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
+  when defined(posix):
+    # poParentStreams causes problems on Posix, so we disable it simply:
+    var options = options - {poParentStreams}
+  
   assert n > 0
   if n > 1:
     var q: seq[PProcess]
@@ -475,6 +480,17 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
+  proc EnvToCStringArray(): cstringArray =
+    var counter = 0
+    for key, val in envPairs(): inc counter
+    result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
+    var i = 0
+    for key, val in envPairs():
+      var x = key & "=" & val
+      result[i] = cast[cstring](alloc(x.len+1))
+      copyMem(result[i], addr(x[0]), x.len+1)
+      inc(i)
+
   proc startProcess(command: string,
                  workingDir: string = "",
                  args: openarray[string] = [],
@@ -484,58 +500,122 @@ elif not defined(useNimRtl):
       p_stdin, p_stdout, p_stderr: array [0..1, cint]
     new(result)
     result.exitCode = -3 # for ``waitForExit``
-    if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
-       pipe(p_stderr) != 0'i32:
-      OSError()
-    var Pid = fork()
-    if Pid < 0: OSError()
+    if poParentStreams notin options:
+      if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32 or
+         pipe(p_stderr) != 0'i32:
+        OSError()
+    
+    var pid: TPid
+    when defined(posix_spawn) and not defined(useFork):
+      var attr: Tposix_spawnattr
+      var fops: Tposix_spawn_file_actions
 
-    if pid == 0:
-      ## child process:
-      discard close(p_stdin[writeIdx])
-      if dup2(p_stdin[readIdx], readIdx) < 0: OSError()
-      discard close(p_stdout[readIdx])
-      if dup2(p_stdout[writeIdx], writeIdx) < 0: OSError()
-      discard close(p_stderr[readIdx])
-      if poStdErrToStdOut in options:
-        if dup2(p_stdout[writeIdx], 2) < 0: OSError()
-      else:
-        if dup2(p_stderr[writeIdx], 2) < 0: OSError()
+      template chck(e: expr) = 
+        if e != 0'i32: OSError()
 
-      # Create a new process group
-      if setpgid(0, 0) == -1: quit("setpgid call failed: " & $strerror(errno))
+      chck posix_spawn_file_actions_init(fops)
+      chck posix_spawnattr_init(attr)
+      
+      var mask: Tsigset
+      chck sigemptyset(mask)
+      chck posix_spawnattr_setsigmask(attr, mask)
+      chck posix_spawnattr_setpgroup(attr, 0'i32)
+      
+      chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
+                                          POSIX_SPAWN_SETSIGMASK or
+                                          POSIX_SPAWN_SETPGROUP)
 
+      if poParentStreams notin options:
+        chck posix_spawn_file_actions_addclose(fops, p_stdin[writeIdx])
+        chck posix_spawn_file_actions_adddup2(fops, p_stdin[readIdx], readIdx)
+        chck posix_spawn_file_actions_addclose(fops, p_stdout[readIdx])
+        chck posix_spawn_file_actions_adddup2(fops, p_stdout[writeIdx], writeIdx)
+        chck posix_spawn_file_actions_addclose(fops, p_stderr[readIdx])
+        if poStdErrToStdOut in options:
+          chck posix_spawn_file_actions_adddup2(fops, p_stdout[writeIdx], 2)
+        else:
+          chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
+      
+      var e = if env == nil: EnvToCStringArray() else: ToCStringArray(env)
+      
       if workingDir.len > 0: os.setCurrentDir(workingDir)
       if poUseShell notin options:
         var a = toCStringArray([extractFilename(command)], args)
-        if env == nil:
-          discard execv(command, a)
-        else:
-          discard execve(command, a, ToCStringArray(env))
+        chck posix_spawn(pid, command, fops, attr, a, e)
       else:
         var x = addCmdArgs(command, args)
         var a = toCStringArray(["sh", "-c"], [x])
-        if env == nil:
-          discard execv("/bin/sh", a)
+        chck posix_spawn(pid, "/bin/sh", fops, attr, a, e)
+
+      if {poEchoCmd, poUseShell} * options == {poEchoCmd}:
+        # shell echos already, so ...
+        echo(command, " ", join(args, " "))
+
+      chck posix_spawn_file_actions_destroy(fops)
+      chck posix_spawnattr_destroy(attr)
+
+    else:
+    
+      Pid = fork()
+      if Pid < 0: OSError()
+      if pid == 0:
+        ## child process:
+
+        if poParentStreams notin options:
+          discard close(p_stdin[writeIdx])
+          if dup2(p_stdin[readIdx], readIdx) < 0: OSError()
+          discard close(p_stdout[readIdx])
+          if dup2(p_stdout[writeIdx], writeIdx) < 0: OSError()
+          discard close(p_stderr[readIdx])
+          if poStdErrToStdOut in options:
+            if dup2(p_stdout[writeIdx], 2) < 0: OSError()
+          else:
+            if dup2(p_stderr[writeIdx], 2) < 0: OSError()
+
+        # Create a new process group
+        if setpgid(0, 0) == -1: quit("setpgid call failed: " & $strerror(errno))
+
+        if workingDir.len > 0: os.setCurrentDir(workingDir)
+        if poUseShell notin options:
+          var a = toCStringArray([extractFilename(command)], args)
+          if env == nil:
+            discard execv(command, a)
+          else:
+            discard execve(command, a, ToCStringArray(env))
         else:
-          discard execve("/bin/sh", a, ToCStringArray(env))
-      # too risky to raise an exception here:
-      quit("execve call failed: " & $strerror(errno))
+          var x = addCmdArgs(command, args)
+          var a = toCStringArray(["sh", "-c"], [x])
+          if env == nil:
+            discard execv("/bin/sh", a)
+          else:
+            discard execve("/bin/sh", a, ToCStringArray(env))
+        # too risky to raise an exception here:
+        quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
     if poEchoCmd in options:
+      # shell with no redirects echos already, so ...
       echo(command, " ", join(args, " "))
     result.id = pid
 
-    result.inputHandle = p_stdin[writeIdx]
-    result.outputHandle = p_stdout[readIdx]
-    if poStdErrToStdOut in options:
-      result.errorHandle = result.outputHandle
-      discard close(p_stderr[readIdx])
+    if poParentStreams in options:
+      # does not make much sense, but better than nothing:
+      result.inputHandle = 0
+      result.outputHandle = 1
+      if poStdErrToStdOut in options:
+        result.errorHandle = result.outputHandle
+      else:
+        result.errorHandle = 2
     else:
-      result.errorHandle = p_stderr[readIdx]
-    discard close(p_stderr[writeIdx])
-    discard close(p_stdin[readIdx])
-    discard close(p_stdout[writeIdx])
+      result.inputHandle = p_stdin[writeIdx]
+      result.outputHandle = p_stdout[readIdx]
+      if poStdErrToStdOut in options:
+        result.errorHandle = result.outputHandle
+        discard close(p_stderr[readIdx])
+      else:
+        result.errorHandle = p_stderr[readIdx]
+      discard close(p_stderr[writeIdx])
+      discard close(p_stdin[readIdx])
+      discard close(p_stdout[writeIdx])
 
   proc close(p: PProcess) =
     discard close(p.inputHandle)
