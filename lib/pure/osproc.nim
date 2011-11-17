@@ -486,7 +486,7 @@ elif not defined(useNimRtl):
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
     var i = 0
     for key, val in envPairs():
-      var x = key & "=" & val
+      var x = key.string & "=" & val.string
       result[i] = cast[cstring](alloc(x.len+1))
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
