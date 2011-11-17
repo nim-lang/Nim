@@ -574,7 +574,8 @@ const
     tyPointer, 
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
-      
+  IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
+    tyFloat..tyFloat128, tyUInt..tyUInt64}
   ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
                                     tyTuple, tySequence}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 

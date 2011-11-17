@@ -427,6 +427,11 @@ __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
 #ifdef __GNUC__
 #  define likely(x) __builtin_expect(x, 1)
 #  define unlikely(x) __builtin_expect(x, 0)
+/* We need the following for the posix wrapper. In particular it will give us
+   POSIX_SPAWN_USEVFORK: */
+#  ifndef _GNU_SOURCE
+#    define _GNU_SOURCE
+#  endif
 #else
 #  define likely(x) (x)
 #  define unlikely(x) (x)

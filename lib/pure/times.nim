@@ -27,7 +27,8 @@ type
     
 when defined(posix): 
   type
-    TTime* = distinct int ## distinct type that represents a time
+    TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int
+    TTime* = distinct TTimeImpl ## distinct type that represents a time
     
     Ttimeval {.importc: "struct timeval", header: "<sys/select.h>", 
                final, pure.} = object ## struct timeval
@@ -46,9 +47,12 @@ elif defined(windows):
   
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
-    type TTime* = distinct int64
+    type TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int64
   else:
-    type TTime* = distinct int32
+    type TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int32
+  
+  type
+    TTime* = distinct TTimeImpl
 
 elif defined(ECMAScript):
   type

@@ -24,13 +24,13 @@
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The
-## resulting C code will just include <XYZ.h> and *not* define the
+## resulting C code will just ``#include <XYZ.h>`` and *not* define the
 ## symbols declared here.
 
 from times import TTime
 
 const
-  hasSpawnH = defined(linux)
+  hasSpawnH = true # should exist for every Posix system really nowadays
   hasAioH = defined(linux)
 
 when false:
@@ -401,9 +401,9 @@ when hasAioH:
 when hasSpawnH:
   type
     Tposix_spawnattr* {.importc: "posix_spawnattr_t", 
-                        header: "<spawn.h>".} = cint
+                        header: "<spawn.h>", final, pure.} = object
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t", 
-                                 header: "<spawn.h>".} = cint 
+                                 header: "<spawn.h>", final, pure.} = object
 
 type
   TSocklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cint
@@ -1720,7 +1720,8 @@ when hasSpawnh:
     POSIX_SPAWN_SETSCHEDULER* {.importc, header: "<spawn.h>".}: cint
     POSIX_SPAWN_SETSIGDEF* {.importc, header: "<spawn.h>".}: cint
     POSIX_SPAWN_SETSIGMASK* {.importc, header: "<spawn.h>".}: cint
-
+    POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
+    
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc aio_error*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
@@ -2369,7 +2370,7 @@ when hasSpawnH:
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_setsigdefault*(a1: var tposix_spawnattr,
             a2: var tsigset): cint {.importc, header: "<spawn.h>".}
-  proc posix_spawnattr_setflags*(a1: var tposix_spawnattr, a2: cshort): cint {.
+  proc posix_spawnattr_setflags*(a1: var tposix_spawnattr, a2: cint): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_setpgroup*(a1: var tposix_spawnattr, a2: tpid): cint {.
     importc, header: "<spawn.h>".}
