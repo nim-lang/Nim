@@ -224,14 +224,6 @@ when not defined(useNimRtl):
     close(outp)
     close(p)
 
-when false:
-  proc deallocCStringArray(a: cstringArray) =
-    var i = 0
-    while a[i] != nil:
-      dealloc(a[i])
-      inc(i)
-    dealloc(a)
-
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
@@ -491,6 +483,13 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
+  proc deallocCStringArray(a: cstringArray) =
+    var i = 0
+    while a[i] != nil:
+      dealloc(a[i])
+      inc(i)
+    dealloc(a)
+    
   proc startProcess(command: string,
                  workingDir: string = "",
                  args: openarray[string] = [],
@@ -537,18 +536,21 @@ elif not defined(useNimRtl):
           chck posix_spawn_file_actions_adddup2(fops, p_stderr[writeIdx], 2)
       
       var e = if env == nil: EnvToCStringArray() else: ToCStringArray(env)
-      
+      var a: cstringArray
+      var res: cint
       if workingDir.len > 0: os.setCurrentDir(workingDir)
       if poUseShell notin options:
-        var a = toCStringArray([extractFilename(command)], args)
-        chck posix_spawn(pid, command, fops, attr, a, e)
+        a = toCStringArray([extractFilename(command)], args)
+        res = posix_spawn(pid, command, fops, attr, a, e)
       else:
         var x = addCmdArgs(command, args)
-        var a = toCStringArray(["sh", "-c"], [x])
-        chck posix_spawn(pid, "/bin/sh", fops, attr, a, e)
-
-      chck posix_spawn_file_actions_destroy(fops)
-      chck posix_spawnattr_destroy(attr)
+        a = toCStringArray(["sh", "-c"], [x])
+        res = posix_spawn(pid, "/bin/sh", fops, attr, a, e)
+      deallocCStringArray(a)
+      deallocCStringArray(e)
+      discard posix_spawn_file_actions_destroy(fops)
+      discard posix_spawnattr_destroy(attr)
+      chck res
 
     else:
     

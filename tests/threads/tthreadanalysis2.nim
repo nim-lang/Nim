@@ -1,6 +1,6 @@
 discard """
   file: "tthreadanalysis2.nim"
-  line: 45
+  line: 42
   errormsg: "write to foreign heap"
   cmd: "nimrod cc --hints:on --threads:on $# $#"
 """

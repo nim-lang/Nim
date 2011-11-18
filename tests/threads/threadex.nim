@@ -1,3 +1,6 @@
+discard """
+  output: ""
+"""
 
 type
   TMsgKind = enum
@@ -18,7 +21,7 @@ proc consume() {.thread.} =
       x.backTo.send(printedLines)
       break
     echo x.data
-    discard atomicInc(printedLines)
+    atomicInc(printedLines)
 
 proc produce() =
   var m: TMsg

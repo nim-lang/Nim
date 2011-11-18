@@ -1774,10 +1774,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   # ----------------------------------------------------------------------------
 
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline.}
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
     ## atomic increment of `memLoc`. Returns the value after the operation.
   
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline.}
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable.}
     ## atomic decrement of `memLoc`. Returns the value after the operation.
 
   include "system/atomics"
