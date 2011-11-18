@@ -547,10 +547,6 @@ elif not defined(useNimRtl):
         var a = toCStringArray(["sh", "-c"], [x])
         chck posix_spawn(pid, "/bin/sh", fops, attr, a, e)
 
-      if {poEchoCmd, poUseShell} * options == {poEchoCmd}:
-        # shell echos already, so ...
-        echo(command, " ", join(args, " "))
-
       chck posix_spawn_file_actions_destroy(fops)
       chck posix_spawnattr_destroy(attr)
 
@@ -593,7 +589,6 @@ elif not defined(useNimRtl):
         quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      # shell with no redirects echos already, so ...
       echo(command, " ", join(args, " "))
     result.id = pid
 

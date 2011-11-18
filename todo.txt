@@ -2,7 +2,8 @@ Version 0.8.14
 ==============
 
 - optimize unused constants away (affected by HLO)
-- fix actors.nim: fix thread local storage emulation
+- fix actors.nim: fix thread local storage emulation; 
+  add thread tests to test suite
 
 version 0.9.0
 =============
