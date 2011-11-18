@@ -18,7 +18,7 @@ const
   resultsFile = "testresults.html"
   jsonFile = "testresults.json"
   Usage = "usage: tester reject|compile|examples|run|merge [nimrod options]\n" &
-          "   or: tester test singleTest"
+          "   or: tester test|comp|rej singleTest"
 
 type
   TTestAction = enum
@@ -104,7 +104,8 @@ proc parseSpec(filename: string): TSpec =
 # ----------------------------------------------------------------------------
 
 var
-  pegLineError = peg"{[^(]*} '(' {\d+} ', ' \d+ ') Error:' \s* {.*}"
+  pegLineError = 
+    peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error'/'Warning') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError / pegSuccess
@@ -118,7 +119,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   while running(p) or not atEnd(outp):
     var x = outp.readLine().string
     if x =~ pegOfInterest:
-      # `s` should contain the last error message
+      # `s` should contain the last error/warning message
       s = x
   close(p)
   result.msg = ""
@@ -290,104 +291,7 @@ proc runSingleTest(r: var TResults, test, options: string) =
 proc run(r: var TResults, dir, options: string) =
   for test in os.walkFiles(dir / "t*.nim"): runSingleTest(r, test, options)
 
-# ---------------- ROD file tests ---------------------------------------------
-
-const
-  rodfilesDir = "tests/rodfiles"
-
-proc delNimCache() = removeDir(rodfilesDir / "nimcache")
-proc plusCache(options: string): string = return options & " --symbolFiles:on"
-
-proc runRodFiles(r: var TResults, options: string) =
-  template test(filename: expr): stmt =
-    runSingleTest(r, rodfilesDir / filename, options)
-  
-  var options = options.plusCache
-  delNimCache()
-  
-  # test basic recompilation scheme:
-  test "hallo"
-  test "hallo"
-  # test incremental type information:
-  test "hallo2"
-  delNimCache()
-  
-  # test type converters:
-  test "aconv"
-  test "bconv"
-  delNimCache()
-  
-  # test G, A, B example from the documentation; test init sections:
-  test "deada"
-  test "deada2"
-  delNimCache()
-  
-  # test method generation:
-  test "bmethods"
-  test "bmethods2"
-  delNimCache()
-  
-  # test generics:
-  test "tgeneric1"
-  test "tgeneric2"
-  delNimCache()
-
-proc compileRodFiles(r: var TResults, options: string) =
-  template test(filename: expr): stmt =
-    compileSingleTest(r, rodfilesDir / filename, options)
-    
-  var options = options.plusCache
-  delNimCache()
-  # test DLL interfacing:
-  test "gtkex1"
-  test "gtkex2"
-  delNimCache()
-
-# --------------------- DLL generation tests ----------------------------------
-
-proc runBasicDLLTest(c, r: var TResults, options: string) =
-  compileSingleTest c, "lib/nimrtl.nim", options & " --app:lib -d:createNimRtl"
-  compileSingleTest c, "tests/dll/server.nim", 
-    options & " --app:lib -d:useNimRtl"
-  
-  when defined(Windows): 
-    # windows looks in the dir of the exe (yay!):
-    var nimrtlDll = DynlibFormat % "nimrtl"
-    copyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
-  else:
-    # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    var libpath = getenv"LD_LIBRARY_PATH".string
-    if peg"\i '/nimrod' (!'/')* '/lib'" notin libpath:
-      echo "[Warning] insufficient LD_LIBRARY_PATH"
-    var serverDll = DynlibFormat % "server"
-    copyFile("tests/dll" / serverDll, "lib" / serverDll)
-  
-  runSingleTest r, "tests/dll/client.nim", options & " -d:useNimRtl"
-
-proc runDLLTests(r: var TResults, options: string) =
-  # dummy compile result:
-  var c = initResults()
-  
-  runBasicDLLTest c, r, options
-  runBasicDLLTest c, r, options & " -d:release"
-  runBasicDLLTest c, r, options & " --gc:boehm"
-  runBasicDLLTest c, r, options & " -d:release --gc:boehm"
-  
-# ------------------------------ GC tests -------------------------------------
-
-proc runGcTests(r: var TResults, options: string) =
-  template test(filename: expr): stmt =
-    runSingleTest(r, "tests/gc" / filename, options)
-    runSingleTest(r, "tests/gc" / filename, options & " -d:release")
-  
-  test "gcbench"
-  test "gcleak"
-  test "gcleak2"
-  test "gctest"
-  # disabled for now as it somehow runs very slowly ('delete' bug?) but works:
-  test "gcleak3"
-  
-# -----------------------------------------------------------------------------
+include specials
    
 proc compileExample(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): compileSingleTest(r, test, options)
@@ -440,9 +344,7 @@ proc main() =
   of "run":
     var runRes = initResults()
     run(runRes, "tests/accept/run", p.cmdLineRest.string)
-    runRodFiles(runRes, p.cmdLineRest.string)
-    runDLLTests(runRes, p.cmdLineRest.string)
-    runGCTests(runRes, p.cmdLineRest.string)
+    runSpecialTests(runRes, p.cmdLineRest.string)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
@@ -458,14 +360,14 @@ proc main() =
     var r = initResults()
     runGCTests(r, p.cmdLineRest.string)
     echo r.data, r
-  of "test":
+  of "test", "comp", "rej":
     var r = initResults()
     if p.kind != cmdArgument: quit usage
     var testFile = p.key.string
     p.next()
-    if peg"'/reject/'" in testFile:
+    if peg"'/reject/'" in testFile or action == "rej":
       rejectSingleTest(r, testFile, p.cmdLineRest.string)
-    elif peg"'/compile/'" in testFile:
+    elif peg"'/compile/'" in testFile or action == "comp":
       compileSingleTest(r, testFile, p.cmdLineRest.string)
     else:
       runSingleTest(r, testFile, p.cmdLineRest.string)
