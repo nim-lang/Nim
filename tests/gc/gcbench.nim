@@ -100,13 +100,12 @@ proc PrintDiagnostics() =
 proc TimeConstruction(depth: int) =
   var
     root, tempTree: PNode
-    t: int
     iNumIters: int
 
   iNumIters = NumIters(depth)
 
   echo("Creating " & $iNumIters & " trees of depth " & $depth)
-  t = epochTime()
+  var t = epochTime()
   for i in 0..iNumIters-1:
     new(tempTree)
     Populate(depth, tempTree)
@@ -124,13 +123,12 @@ type
 proc main() =
   var
     root, longLivedTree, tempTree: PNode
-    t: int
     myarray: tMyArray
 
   echo("Garbage Collector Test")
   echo(" Stretching memory with a binary tree of depth " & $kStretchTreeDepth)
   PrintDiagnostics()
-  t = epochTime()
+  var t = epochTime()
 
   # Stretch the memory space quickly
   tempTree = MakeTree(kStretchTreeDepth)

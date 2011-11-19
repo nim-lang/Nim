@@ -335,7 +335,7 @@ proc main() =
     writeResults(rejectJson, rejectRes)
   of "compile":
     var compileRes = initResults()
-    compile(compileRes, "tests/accept/compile/t*.nim", p.cmdLineRest.string)
+    compile(compileRes, "tests/compile/t*.nim", p.cmdLineRest.string)
     compile(compileRes, "tests/ecmas.nim", p.cmdLineRest.string)
     compileSpecialTests(compileRes, p.cmdLineRest.string)
     writeResults(compileJson, compileRes)
@@ -347,7 +347,7 @@ proc main() =
     writeResults(compileJson, compileRes)
   of "run":
     var runRes = initResults()
-    run(runRes, "tests/accept/run", p.cmdLineRest.string)
+    run(runRes, "tests/run", p.cmdLineRest.string)
     runSpecialTests(runRes, p.cmdLineRest.string)
     writeResults(runJson, runRes)
   of "merge":
