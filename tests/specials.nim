@@ -120,8 +120,12 @@ proc runThreadTests(r: var TResults, options: string) =
   #test "threadex"
   #test "threadring"
   #test "tthreadanalysis"
-  #test "tthreadanalysis2"
   #test "tthreadsort"
+
+proc rejectThreadTests(r: var TResults, options: string) =
+  rejectSingleTest(r, "tests/threads/tthreadanalysis2", options)
+  rejectSingleTest(r, "tests/threads/tthreadanalysis3", options)
+  rejectSingleTest(r, "tests/threads/tthreadheapviolation1", options)
 
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
@@ -131,8 +135,8 @@ proc runSpecialTests(r: var TResults, options: string) =
   runThreadTests(r, options & " --threads:on")
 
 proc rejectSpecialTests(r: var TResults, options: string) =
-  
+  rejectThreadTests(r, options)
 
 proc compileSpecialTests(r: var TResults, options: string) =
-  nil
+  compileRodFiles(r, options)
 

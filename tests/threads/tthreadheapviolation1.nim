@@ -1,6 +1,12 @@
+discard """
+  line: 12
+  errormsg: "write to foreign heap"
+  cmd: "nimrod cc --hints:on --threads:on $# $#"
+"""
+
 var 
   global: string = "test string"
-  t: TThread[string]
+  t: TThread[void]
 
 proc horrible() {.thread.} =
   global = "string in thread local heap!"

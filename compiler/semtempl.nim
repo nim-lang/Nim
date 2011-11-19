@@ -92,7 +92,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
     # appropriately
     result = newNodeIT(nkSymChoice, n.info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
-    while a != nil: 
+    while a != nil:
+      incl(a.flags, sfUsed)
       addSon(result, newSymNode(a))
       a = nextOverloadIter(o, c, n)
 
