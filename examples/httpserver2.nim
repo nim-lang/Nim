@@ -135,7 +135,7 @@ proc executeCgi(server: var TServer, client: TSocket, path, query: string,
       dealloc(buf)
       OSError()
     var inp = process.inputStream
-    inp.writeData(inp, buf, contentLength)
+    inp.writeData(buf, contentLength)
     dealloc(buf)
 
 proc animate(server: var TServer) =
