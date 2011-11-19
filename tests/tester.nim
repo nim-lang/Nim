@@ -108,32 +108,35 @@ var
     peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error'/'Warning') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
-  pegOfInterest = pegLineError / pegOtherError / pegSuccess
+  pegOfInterest = pegLineError / pegOtherError
 
 proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var c = parseCmdLine(cmdTemplate % [options, filename])
   var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
   var outp = p.outputStream
-  var s = ""
+  var suc = ""
+  var err = ""
   while running(p) or not atEnd(outp):
     var x = outp.readLine().string
     if x =~ pegOfInterest:
       # `s` should contain the last error/warning message
-      s = x
+      err = x
+    elif x =~ pegSuccess:
+      suc = x
   close(p)
   result.msg = ""
   result.file = ""
   result.outp = ""
   result.err = true
   result.line = -1
-  if s =~ pegLineError:
+  if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
     result.msg = matches[2]
-  elif s =~ pegOtherError:
+  elif err =~ pegOtherError:
     result.msg = matches[0]
-  elif s =~ pegSuccess:
+  elif suc =~ pegSuccess:
     result.err = false
 
 proc initResults: TResults =
@@ -328,12 +331,13 @@ proc main() =
   of "reject":
     var rejectRes = initResults()
     reject(rejectRes, "tests/reject", p.cmdLineRest.string)
+    rejectSpecialTests(rejectRes, p.cmdLineRest.string)
     writeResults(rejectJson, rejectRes)
   of "compile":
     var compileRes = initResults()
     compile(compileRes, "tests/accept/compile/t*.nim", p.cmdLineRest.string)
     compile(compileRes, "tests/ecmas.nim", p.cmdLineRest.string)
-    compileRodFiles(compileRes, p.cmdLineRest.string)
+    compileSpecialTests(compileRes, p.cmdLineRest.string)
     writeResults(compileJson, compileRes)
   of "examples":
     var compileRes = readResults(compileJson)

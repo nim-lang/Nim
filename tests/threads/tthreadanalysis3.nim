@@ -1,6 +1,6 @@
 discard """
-  file: "tthreadanalysis2.nim"
-  line: 42
+  file: "tthreadanalysis3.nim"
+  line: 35
   errormsg: "write to foreign heap"
   cmd: "nimrod cc --hints:on --threads:on $# $#"
 """
@@ -39,8 +39,7 @@ proc threadFunc(interval: tuple[a, b: int]) {.thread.} =
   for i in interval.a..interval.b: 
     var r = buildTree(i)
     echoLeTree(r) # for local data
-  root = buildTree(2) # BAD!
-  #echoLeTree(root) # and the same for foreign data :-)
+  echoLeTree(root) # and the same for foreign data :-)
 
 proc main =
   root = buildTree(5)

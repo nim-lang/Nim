@@ -857,11 +857,11 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyOpenArray, tyVarargs: 
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
   of tySequence: 
-    result = typeAllowedAux(marker, t.sons[0], skVar) or
-        t.sons[0].kind == tyEmpty
+    result = t.sons[0].kind == tyEmpty or 
+        typeAllowedAux(marker, t.sons[0], skVar)
   of tyArray:
-    result = typeAllowedAux(marker, t.sons[1], skVar) or
-        t.sons[1].kind == tyEmpty
+    result = t.sons[1].kind == tyEmpty or
+        typeAllowedAux(marker, t.sons[1], skVar)
   of tyPtr, tyRef:
     result = typeAllowedAux(marker, t.sons[0], skVar)
   of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter, tyProxy: 

@@ -127,16 +127,18 @@ template PutImpl() =
   else:
     AddImpl()
 
-template HasKeyOrPutImpl() =
-  var index = RawGet(t, key)
-  if index >= 0:
-    t.data[index].val = val
-    result = true
-  else:
-    if mustRehash(len(t.data), t.counter): Enlarge(t)
-    RawInsert(t, t.data, key, val)
-    inc(t.counter)
-    result = false
+when false:
+  # not yet used:
+  template HasKeyOrPutImpl() =
+    var index = RawGet(t, key)
+    if index >= 0:
+      t.data[index].val = val
+      result = true
+    else:
+      if mustRehash(len(t.data), t.counter): Enlarge(t)
+      RawInsert(t, t.data, key, val)
+      inc(t.counter)
+      result = false
 
 proc `[]=`*[A, B](t: var TTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
