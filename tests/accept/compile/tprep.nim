@@ -3,19 +3,21 @@
 import
   times
 
-{.warning: "This is only a test warning!".}
+#{.warning: "This is only a test warning!".}
 
-{.define: case2.}
-{.define: case3.}
+const
+  case2 = true
+  case3 = true
+
 when defined(case1):
   {.hint: "Case 1".}
-  when defined(case3):
+  when case3:
     {.hint: "Case 1.3".}
-elif defined(case2):
+elif case2:
   {.hint: "Case 2".}
-  when defined(case3):
+  when case3:
     {.hint: "Case 2.3".}
-elif defined(case3):
+elif case3:
   {.hint: "Case 3".}
 else:
   {.hint: "unknown case".}

@@ -52,7 +52,7 @@ var testseq: seq[string] = @[
 echo(repr(testseq))
 
 var dummy = "hello"
-echo(copy(dummy, 2, 3))
+echo(substr(dummy, 2, 3))
 
 echo($meC)
 

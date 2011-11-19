@@ -110,7 +110,7 @@ proc executeCgi(server: var TServer, client: TSocket, path, query: string,
       if L.startsWith("content-length:"):
         var i = len("content-length:")
         while L[i] in Whitespace: inc(i)
-        contentLength = parseInt(copy(L, i))
+        contentLength = parseInt(substr(L, i))
 
     if contentLength < 0:
       badRequest(client)
@@ -176,7 +176,7 @@ proc acceptRequest(server: var TServer, client: TSocket) =
   # extract path
   if q >= 0:
     # strip "?..." from path, this may be found in both POST and GET
-    path = data[1].copy(0, q-1)
+    path = data[1].substr(0, q-1)
   else:
     path = data[1]
   # path starts with "/", by adding "." in front of it we serve files from cwd
@@ -187,7 +187,7 @@ proc acceptRequest(server: var TServer, client: TSocket) =
   if cmpIgnoreCase(data[0], "GET") == 0:
     if q >= 0:
       cgi = true
-      query = data[1].copy(q+1)
+      query = data[1].substr(q+1)
   elif cmpIgnoreCase(data[0], "POST") == 0:
     cgi = true
     meth = reqPost

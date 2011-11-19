@@ -106,17 +106,17 @@ proc TimeConstruction(depth: int) =
   iNumIters = NumIters(depth)
 
   echo("Creating " & $iNumIters & " trees of depth " & $depth)
-  t = getStartMilsecs()
+  t = epochTime()
   for i in 0..iNumIters-1:
     new(tempTree)
     Populate(depth, tempTree)
     tempTree = nil
-  echo("\tTop down construction took " & $(getStartMilsecs() - t) & "msecs")
-  t = getStartMilsecs()
+  echo("\tTop down construction took " & $(epochTime() - t) & "msecs")
+  t = epochTime()
   for i in 0..iNumIters-1:
     tempTree = MakeTree(depth)
     tempTree = nil
-  echo("\tBottom up construction took " & $(getStartMilsecs() - t) & "msecs")
+  echo("\tBottom up construction took " & $(epochTime() - t) & "msecs")
 
 type
   tMyArray = seq[float]
@@ -130,7 +130,7 @@ proc main() =
   echo("Garbage Collector Test")
   echo(" Stretching memory with a binary tree of depth " & $kStretchTreeDepth)
   PrintDiagnostics()
-  t = getStartMilsecs()
+  t = epochTime()
 
   # Stretch the memory space quickly
   tempTree = MakeTree(kStretchTreeDepth)
@@ -160,7 +160,7 @@ proc main() =
     # fake reference to LongLivedTree
     # and array to keep them from being optimized away
 
-  var elapsed = getStartMilsecs() - t
+  var elapsed = epochTime() - t
   PrintDiagnostics()
   echo("Completed in " & $elapsed & "ms. Success!")
 

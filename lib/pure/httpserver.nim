@@ -140,11 +140,11 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
       dealloc(buf)
       OSError()
     var inp = process.inputStream
-    inp.writeData(inp, buf, contentLength)
+    inp.writeData(buf, contentLength)
     dealloc(buf)
 
   var outp = process.outputStream
-  while running(process) or not outp.atEnd(outp):
+  while running(process) or not atEnd(outp):
     var line = outp.readLine()
     send(client, line.string)
     send(client, wwwNL)
