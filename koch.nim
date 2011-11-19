@@ -180,11 +180,11 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec("nimrod cc --taintMode:on tests/tester")
-  exec("tests/tester reject")
-  exec("tests/tester compile")
-  exec("tests/tester examples")
-  exec("tests/tester run")
-  exec("tests/tester merge")
+  exec(getCurrentDir() / "tests/tester".exe & " reject")
+  exec(getCurrentDir() / "tests/tester".exe & " compile")
+  exec(getCurrentDir() / "tests/tester".exe & " examples")
+  exec(getCurrentDir() / "tests/tester".exe & " run")
+  exec(getCurrentDir() / "tests/tester".exe & " merge")
 
 proc showHelp() = 
   quit(HelpText % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
