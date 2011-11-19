@@ -1,5 +1,5 @@
 import os
-# TODO: Rename this module to ``utils``
+
 type
   TStatusEnum* = enum
     sUnknown = -1, sBuildFailure, sBuildInProgress, sBuildSuccess,
@@ -51,5 +51,5 @@ proc `$`*(status: TStatusEnum): string =
     return "unknown"
     
 proc makeCommitPath*(platform, hash: string): string =
-  return platform / "nimrod_" & hash.copy(0, 11) # 11 Chars.
+  return platform / "nimrod_" & hash.substr(0, 11) # 11 Chars.
 

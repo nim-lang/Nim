@@ -27,7 +27,7 @@ import libcurl, streams
 proc curlwrapperWrite(p: pointer, size, nmemb: int, 
                       data: pointer): int {.cdecl.} = 
   var stream = cast[PStream](data)
-  stream.writeData(stream, p, size*nmemb)
+  stream.writeData(p, size*nmemb)
   return size*nmemb
 
 proc URLretrieveStream*(url: string): PStream = 

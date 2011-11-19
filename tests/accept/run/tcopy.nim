@@ -2,7 +2,7 @@ discard """
   file: "tcopy.nim"
   output: "TEMP=C:\\Programs\\xyz\\bin"
 """
-# tests the copy proc
+# tests the substr proc
 
 import
   strutils
@@ -14,8 +14,8 @@ proc main() =
     a, b: string
     p: int
   p = find(example, "=")
-  a = copy(example, 0, p-1)
-  b = copy(example, p+1)
+  a = substr(example, 0, p-1)
+  b = substr(example, p+1)
   writeln(stdout, a & '=' & b)
   #writeln(stdout, b)
 

@@ -1,7 +1,7 @@
 # Test wether the bindings at least compile...
 
 import
-  unicode, cgi, terminal, libcurl, web, 
+  unicode, cgi, terminal, libcurl, 
   parsexml, parseopt, parsecfg,
   osproc, complex,
   sdl, smpeg, sdl_gfx, sdl_net, sdl_mixer, sdl_ttf,

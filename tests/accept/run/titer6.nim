@@ -14,11 +14,11 @@ iterator tokenize2(s: string, seps: set[char] = Whitespace): tuple[
     if s[j] in seps:
       while j < s.len and s[j] in seps: inc(j)
       if j > i:
-        yield (copy(s, i, j-1), true)
+        yield (substr(s, i, j-1), true)
     else:
       while j < s.len and s[j] notin seps: inc(j)
       if j > i:
-        yield (copy(s, i, j-1), false)
+        yield (substr(s, i, j-1), false)
     i = j
 
 for word, isSep in tokenize2("ta da", whiteSpace):

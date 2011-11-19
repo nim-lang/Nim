@@ -7,7 +7,7 @@ var
   i: int
   params = paramCount()
 i = 0
-writeln(stdout, "This exe: " & getApplicationFilename())
+writeln(stdout, "This exe: " & getAppFilename())
 writeln(stdout, "Number of parameters: " & $params)
 while i <= params:
   writeln(stdout, paramStr(i))

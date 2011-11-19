@@ -749,7 +749,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     var (a, b) = c.matches[p.index]
     var n: TPeg
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef)) 
-    n.term = s.copy(a, b)
+    n.term = s.substr(a, b)
     result = rawMatch(s, n, start, c)
   of pkStartAnchor:
     if c.origStart == start: result = 0
@@ -767,7 +767,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   result = rawMatch(s, pattern, start, c) == len(s) -start
   if result:
     for i in 0..c.ml-1:
-      matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
+      matches[i] = substr(s, c.matches[i][0], c.matches[i][1])
 
 proc match*(s: string, pattern: TPeg, 
             start = 0): bool {.rtl, extern: "npegs$1".} =
@@ -787,7 +787,7 @@ proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
   result = rawMatch(s, pattern, start, c)
   if result >= 0:
     for i in 0..c.ml-1:
-      matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
+      matches[i] = substr(s, c.matches[i][0], c.matches[i][1])
 
 proc matchLen*(s: string, pattern: TPeg, 
                start = 0): int {.rtl, extern: "npegs$1".} =
@@ -916,7 +916,7 @@ proc replacef*(s: string, sub: TPeg, by: string): string {.
     else:
       addf(result, by, caps)
       inc(i, x)
-  add(result, copy(s, i))
+  add(result, substr(s, i))
 
 proc replace*(s: string, sub: TPeg, by = ""): string {.
   rtl, extern: "npegs$1".} =
@@ -933,7 +933,7 @@ proc replace*(s: string, sub: TPeg, by = ""): string {.
     else:
       addf(result, by, caps)
       inc(i, x)
-  add(result, copy(s, i))
+  add(result, substr(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: TPeg, repl: string]]): string {.
@@ -954,7 +954,7 @@ proc parallelReplace*(s: string, subs: openArray[
       add(result, s[i])
       inc(i)
   # copy the rest:
-  add(result, copy(s, i))  
+  add(result, substr(s, i))  
   
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: TPeg, repl: string]]) {.
@@ -1003,7 +1003,7 @@ iterator split*(s: string, sep: TPeg): string =
       x = matchLen(s, sep, last)
       if x > 0: break
     if first < last:
-      yield copy(s, first, last-1)
+      yield substr(s, first, last-1)
 
 proc split*(s: string, sep: TPeg): seq[string] {.
   rtl, extern: "npegs$1".} =
@@ -1701,7 +1701,7 @@ when isMainModule:
   assert rawMatch(s, expr.rule, 0, c) == len(s)
   var a = ""
   for i in 0..c.ml-1:
-    a.add(copy(s, c.matches[i][0], c.matches[i][1]))
+    a.add(substr(s, c.matches[i][0], c.matches[i][1]))
   assert a == "abcdef"
   #echo expr.rule
 
