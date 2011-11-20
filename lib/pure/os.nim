@@ -868,7 +868,8 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
 
 proc rawRemoveDir(dir: string) = 
   when defined(windows):
-    if RemoveDirectoryA(dir) == 0'i32 and GetLastError() != 3'i32: OSError()
+    if RemoveDirectoryA(dir) != 0'i32 and GetLastError() != 3'i32 and 
+        GetLastError() != 18'i32: OSError()
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: OSError()
 
