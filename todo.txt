@@ -3,11 +3,11 @@ Version 0.8.14
 
 - optimize unused constants away (affected by HLO)
 - fix thread tests
-- error message for imported procs in compiletime mode
 
 version 0.9.0
 =============
 
+- GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking
 - dead code elim for JS backend; 'of' operator for JS backend
 - test the sort implementation again
 - 'let x = y'
@@ -56,7 +56,6 @@ Bugs
 version 0.9.XX
 ==============
 
-- GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency; better: 
   proc specialization in the code gen
