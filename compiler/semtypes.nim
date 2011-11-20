@@ -351,31 +351,41 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
                       father: PNode, rectype: PSym) = 
-  var 
-    length: int
-    f: PSym                   # new field
-    a, it, e, branch: PNode
-    typ: PType
-  if n == nil: 
-    return                    # BUGFIX: nil is possible
+  if n == nil: return
   case n.kind
-  of nkRecWhen: 
-    branch = nil              # the branch to take
-    for i in countup(0, sonsLen(n) - 1): 
-      it = n.sons[i]
+  of nkRecWhen:
+    var branch: PNode = nil   # the branch to take
+    for i in countup(0, sonsLen(n) - 1):
+      var it = n.sons[i]
       if it == nil: illFormedAst(n)
+      var idx = 1
       case it.kind
-      of nkElifBranch: 
+      of nkElifBranch:
         checkSonsLen(it, 2)
-        e = semConstBoolExpr(c, it.sons[0])
-        if (e.kind != nkIntLit): InternalError(e.info, "semRecordNodeAux")
-        if (e.intVal != 0) and (branch == nil): branch = it.sons[1]
-      of nkElse: 
+        if c.InGenericContext == 0:
+          var e = semConstBoolExpr(c, it.sons[0])
+          if e.kind != nkIntLit: InternalError(e.info, "semRecordNodeAux")
+          if e.intVal != 0 and branch == nil: branch = it.sons[1]
+        else:
+          it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      of nkElse:
         checkSonsLen(it, 1)
         if branch == nil: branch = it.sons[0]
+        idx = 0
       else: illFormedAst(n)
-    if branch != nil: semRecordNodeAux(c, branch, check, pos, father, rectype)
-  of nkRecCase: 
+      if c.InGenericContext > 0:
+        # use a new check intset here for each branch:
+        var newCheck: TIntSet
+        assign(newCheck, check)
+        var newPos = pos
+        var newf = newNodeI(nkRecList, n.info)
+        semRecordNodeAux(c, it.sons[idx], newcheck, newpos, newf, rectype)
+        it.sons[idx] = if newf.len == 1: newf[0] else: newf
+    if c.InGenericContext > 0:
+      addSon(father, n)
+    elif branch != nil:
+      semRecordNodeAux(c, branch, check, pos, father, rectype)
+  of nkRecCase:
     semRecordCase(c, n, check, pos, father, rectype)
   of nkNilLit: 
     if father.kind != nkRecList: addSon(father, newNodeI(nkRecList, n.info))
@@ -385,20 +395,19 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     for i in countup(0, sonsLen(n) - 1): 
       semRecordNodeAux(c, n.sons[i], check, pos, a, rectype)
     if a != father: addSon(father, a)
-  of nkIdentDefs: 
+  of nkIdentDefs:
     checkMinSonsLen(n, 3)
-    length = sonsLen(n)
-    if (father.kind != nkRecList) and (length >= 4): 
-      a = newNodeI(nkRecList, n.info)
-    else: 
-      a = ast.emptyNode
-    if n.sons[length - 1].kind != nkEmpty: 
-      localError(n.sons[length - 1].info, errInitHereNotAllowed)
-    if n.sons[length - 2].kind == nkEmpty: 
+    var length = sonsLen(n)
+    var a: PNode
+    if father.kind != nkRecList and length >= 4: a = newNodeI(nkRecList, n.info)
+    else: a = ast.emptyNode
+    if n.sons[length-1].kind != nkEmpty: 
+      localError(n.sons[length-1].info, errInitHereNotAllowed)
+    if n.sons[length-2].kind == nkEmpty: 
       GlobalError(n.info, errTypeExpected)
-    typ = semTypeNode(c, n.sons[length-2], nil)
-    for i in countup(0, sonsLen(n) - 3): 
-      f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
+    var typ = semTypeNode(c, n.sons[length-2], nil)
+    for i in countup(0, sonsLen(n)-3): 
+      var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
       f.typ = typ
       f.position = pos
       if (rectype != nil) and ({sfImportc, sfExportc} * rectype.flags != {}) and

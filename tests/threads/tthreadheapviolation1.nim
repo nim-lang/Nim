@@ -14,7 +14,7 @@ proc horrible() {.thread.} =
   var mydata = (x, "my string too")
   echo global
 
-createThread(t, horrible)
+createThread[void](t, horrible)
 joinThread(t)
 
 

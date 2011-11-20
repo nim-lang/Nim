@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import ast, astalgo, msgs, types, semdata
+import ast, astalgo, msgs, types, semdata, renderer
 
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
@@ -63,21 +63,51 @@ type
 
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
 proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode = 
-  if n != nil: 
-    result = copyNode(n)
-    result.typ = ReplaceTypeVarsT(cl, n.typ)
-    case n.kind
-    of nkNone..pred(nkSym), succ(nkSym)..nkNilLit: 
-      nil
-    of nkSym: 
-      result.sym = ReplaceTypeVarsS(cl, n.sym)
-    else: 
-      var length = sonsLen(n)
-      if length > 0: 
-        newSons(result, length)
-        for i in countup(0, length - 1): 
-          result.sons[i] = ReplaceTypeVarsN(cl, n.sons[i])
+
+proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
+  result = copyNode(n)
+  result.typ = ReplaceTypeVarsT(cl, n.typ)
+  for i in 0 .. safeLen(n)-1: 
+    # XXX HACK: ``f(a, b)``, avoid to instantiate `f` 
+    if i == 0: result.add(n[i])
+    else: result.add(prepareNode(cl, n[i]))
+
+proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
+  if n == nil: return
+  result = copyNode(n)
+  result.typ = ReplaceTypeVarsT(cl, n.typ)
+  case n.kind
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
+    nil
+  of nkSym:
+    result.sym = ReplaceTypeVarsS(cl, n.sym)
+  of nkRecWhen:
+    var branch: PNode = nil              # the branch to take
+    for i in countup(0, sonsLen(n) - 1):
+      var it = n.sons[i]
+      if it == nil: illFormedAst(n)
+      case it.kind
+      of nkElifBranch:
+        checkSonsLen(it, 2)
+        var cond = prepareNode(cl, it.sons[0])
+        var e = cl.c.semConstExpr(cl.c, cond)
+        if e.kind != nkIntLit:
+          InternalError(e.info, "ReplaceTypeVarsN: when condition not a bool")
+        if e.intVal != 0 and branch == nil: branch = it.sons[1]
+      of nkElse:
+        checkSonsLen(it, 1)
+        if branch == nil: branch = it.sons[0]
+      else: illFormedAst(n)
+    if branch != nil:
+      result = ReplaceTypeVarsN(cl, branch)
+    else:
+      result = newNodeI(nkRecList, n.info)
+  else:
+    var length = sonsLen(n)
+    if length > 0:
+      newSons(result, length)
+      for i in countup(0, length - 1):
+        result.sons[i] = ReplaceTypeVarsN(cl, n.sons[i])
   
 proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym = 
   if s == nil: return nil

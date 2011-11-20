@@ -11,7 +11,7 @@
 ## sparse bit set.
 ## **Note**: Since Nimrod currently does not allow the assignment operator to
 ## be overloaded, ``=`` for int sets performs some rather meaningless shallow
-## copy.
+## copy; use ``assign`` to get a deep copy.
 
 import
   os, hashes, math
@@ -137,6 +137,30 @@ proc initIntSet*: TIntSet =
   result.counter = 0
   result.head = nil
 
+proc assign*(dest: var TIntSet, src: TIntSet) =
+  ## copies `src` to `dest`. `dest` does not need to be initialized by
+  ## `initIntSet`. 
+  dest.counter = src.counter
+  dest.max = src.max
+  newSeq(dest.data, src.data.len)
+  
+  var it = src.head
+  while it != nil:
+    
+    var h = it.key and dest.max
+    while dest.data[h] != nil: h = nextTry(h, dest.max)
+    assert(dest.data[h] == nil)
+
+    var n: PTrunk
+    new(n)
+    n.next = dest.head
+    n.key = it.key
+    n.bits = it.bits
+    dest.head = n
+    dest.data[h] = n
+
+    it = it.next
+
 template dollarImpl(): stmt =
   result = "{"
   for key in items(s):
@@ -174,4 +198,7 @@ when isMainModule:
   x.incl(1056)
   for e in items(x): echo e
 
+  var y: TIntSet
+  assign(y, x)
+  for e in items(y): echo e
 

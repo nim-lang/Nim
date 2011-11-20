@@ -527,8 +527,10 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # like: mydata.seq
       addSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
+      inc c.InGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
-      if body != nil: 
+      dec c.InGenericContext
+      if body != nil:
         body.sym = s
         body.size = -1 # could not be computed properly
       s.typ.sons[sonsLen(s.typ) - 1] = body

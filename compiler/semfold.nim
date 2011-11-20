@@ -436,7 +436,9 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = newIntNodeT(sonsLen(a), n)
         else:
           result = magicCall(m, n)
-      else: 
+      of mIs:
+        result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
+      else:
         result = magicCall(m, n)
     except EOverflow: 
       LocalError(n.info, errOverOrUnderflow)

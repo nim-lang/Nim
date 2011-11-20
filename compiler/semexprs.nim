@@ -222,11 +222,12 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc semIs(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3:
-    var a = semExprWithType(c, n.sons[1], {efAllowType})
-    var b = semExprWithType(c, n.sons[2], {efAllowType})
-    result = newIntNode(nkIntLit, ord(sameType(a.typ, b.typ)))
-    result.typ = getSysType(tyBool)
-    result.info = n.info
+    var a = semTypeNode(c, n[1], nil)
+    var b = semTypeNode(c, n[2], nil)
+    n.typ = getSysType(tyBool)
+    n.sons[1] = newNodeIT(nkType, n[1].info, a)
+    n.sons[2] = newNodeIT(nkType, n[2].info, b)
+    result = n
   else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")
 
