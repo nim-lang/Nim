@@ -309,7 +309,7 @@ const
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
     errTooManyIterations: "interpretation requires too many iterations", 
-    errCannotInterpretNodeX: "cannot interpret node kind \'$1\'", 
+    errCannotInterpretNodeX: "cannot evaluate \'$1\'", 
     errFieldXNotFound: "field \'$1\' cannot be found", 
     errInvalidConversionFromTypeX: "invalid conversion from type \'$1\'",
     errAssertionFailed: "assertion failed", 
