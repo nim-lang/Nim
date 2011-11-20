@@ -131,7 +131,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     var x = getenv("NUMBER_OF_PROCESSORS")
-    if x.len > 0: result = parseInt(x)
+    if x.len > 0: result = parseInt(x.string)
   elif defined(macosx) or defined(bsd):
     var
       mib: array[0..3, cint]
