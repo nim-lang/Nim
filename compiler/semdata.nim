@@ -49,25 +49,26 @@ type
   PGenericsCache* = ref TGenericsCache
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
-    module*: PSym             # the module sym belonging to the context
-    p*: PProcCon              # procedure context
-    generics*: PGenericsCache # may point to a global or module-local structure 
-    friendModule*: PSym       # current friend module; may access private data;
-                              # this is used so that generic instantiations can
-                              # access private object fields
-    InstCounter*: int         # to prevent endless instantiations
+    module*: PSym              # the module sym belonging to the context
+    p*: PProcCon               # procedure context
+    generics*: PGenericsCache  # may point to a global or module-local structure
+    friendModule*: PSym        # current friend module; may access private data;
+                               # this is used so that generic instantiations
+                               # can access private object fields
+    InstCounter*: int          # to prevent endless instantiations
    
-    threadEntries*: TSymSeq   # list of thread entries to check
-    tab*: TSymTab             # each module has its own symbol table
+    threadEntries*: TSymSeq    # list of thread entries to check
+    tab*: TSymTab              # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    converters*: TSymSeq      # sequence of converters
+    InGenericContext*: int     # > 0 if we are in a generic
+    converters*: TSymSeq       # sequence of converters
     optionStack*: TLinkedList
-    libs*: TLinkedList        # all libs used by this module
+    libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode # for the pragmas
     semExpr*: proc (c: PContext, n: PNode): PNode      # for the pragmas
-    includedFiles*: TIntSet   # used to detect recursive include files
-    filename*: string         # the module's filename
+    includedFiles*: TIntSet    # used to detect recursive include files
+    filename*: string          # the module's filename
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     slurpedFiles*: seq[string]
@@ -91,8 +92,7 @@ proc makePtrType*(c: PContext, baseType: PType): PType
 proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
-proc makeRangeType*(c: PContext, first, last: biggestInt, info: TLineInfo): PType
-  
+
 # owner handling:
 proc getCurrOwner*(): PSym
 proc PushOwner*(owner: PSym)
@@ -196,8 +196,8 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.owner = getCurrOwner()
   dest.size = - 1
 
-proc makeRangeType(c: PContext, first, last: biggestInt, 
-                   info: TLineInfo): PType = 
+proc makeRangeType*(c: PContext, first, last: biggestInt, 
+                    info: TLineInfo): PType = 
   var n = newNodeI(nkRange, info)
   addSon(n, newIntNode(nkIntLit, first))
   addSon(n, newIntNode(nkIntLit, last))

@@ -224,7 +224,7 @@ proc setStyle*(style: set[TStyle]) =
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard SetConsoleTextAttribute(conHandle, old or a)
+    discard SetConsoleTextAttribute(conHandle, a)
   else:
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')

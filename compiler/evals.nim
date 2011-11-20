@@ -747,7 +747,7 @@ proc evalConStrStr(c: PEvalContext, n: PNode): PNode =
   for i in countup(1, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i], {})
     if isSpecial(result): return 
-    a.strVal.add(getStrValue(result))
+    a.strVal.add(getStrOrChar(result))
   result = a
 
 proc evalAppendStrStr(c: PEvalContext, n: PNode): PNode = 
@@ -758,7 +758,7 @@ proc evalAppendStrStr(c: PEvalContext, n: PNode): PNode =
   if isSpecial(result): return 
   var b = result
   case a.kind
-  of nkStrLit..nkTripleStrLit: a.strVal = a.strVal & getStrValue(b)
+  of nkStrLit..nkTripleStrLit: a.strVal = a.strVal & getStrOrChar(b)
   else: InternalError(n.info, "evalAppendStrStr")
   result = emptyNode
 

@@ -3,6 +3,7 @@ Version 0.8.14
 
 - optimize unused constants away (affected by HLO)
 - fix thread tests
+- error message for imported procs in compiletime mode
 
 version 0.9.0
 =============
@@ -113,7 +114,10 @@ Low priority
 - resizing of strings/sequences could take into account the memory that
   is allocated
 - timeout for locks
-- adapt thread var emulation to care about the new merge operation
+- compilation cache:
+  - adapt thread var emulation to care about the new merge operation
+  - check for interface changes; if only the implemenation changes, no
+    need to recompile clients
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 
 
