@@ -1721,12 +1721,14 @@ when hasSpawnh:
     POSIX_SPAWN_SETSIGDEF* {.importc, header: "<spawn.h>".}: cint
     POSIX_SPAWN_SETSIGMASK* {.importc, header: "<spawn.h>".}: cint
 
-  when defined(macosx):
+  when defined(linux):
+    # better be safe than sorry; Linux has this flag, macosx doesn't, don't
+    # know about the other OSes
+    var POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
+  else:
     # macosx lacks this, so we define the constant to be 0 to not affect
     # OR'ing of flags:
     const POSIX_SPAWN_USEVFORK* = cint(0)
-  else:
-    var POSIX_SPAWN_USEVFORK* {.importc, header: "<spawn.h>".}: cint
     
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}

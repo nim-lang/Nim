@@ -517,6 +517,12 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
       # mark the cell:
       cell.refcount = cell.refcount +% rcIncrement
       add(gch.decStack, cell)
+    # care for string->cstring and seq->openArray conversions:
+    var b = cast[PCell](c -% sizeof(TGenericSeq))
+    if isAllocatedPtr(gch.region, b):
+      # mark the cell:
+      b.refcount = b.refcount +% rcIncrement
+      add(gch.decStack, b)
 
 proc markThreadStacks(gch: var TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
