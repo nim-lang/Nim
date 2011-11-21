@@ -10,9 +10,7 @@ template simpleTypeTempl: typeDesc =
   string
 
 macro typeFromMacro(s: expr): typeDesc =
-  result = newNimNode(nnkIdent)
-  result.ident = !"string"
-  # result = newIdentNode"string"
+  result = newIdentNode"string"
   
 proc t1*(x: int): simpleTypeTempl() =
   result = "test"
