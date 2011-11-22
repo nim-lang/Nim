@@ -1674,7 +1674,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
       expr(p, n.sons[i], arr)
 
 proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
-  genConstPrototype(p.module, sym)
+  requestConstImpl(p, sym)
   assert((sym.loc.r != nil) and (sym.loc.t != nil))
   putLocIntoDest(p, d, sym.loc)
 

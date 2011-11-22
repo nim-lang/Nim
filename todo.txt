@@ -1,7 +1,6 @@
 Version 0.8.14
 ==============
 
-- optimize unused constants away (affected by HLO)
 - fix thread tests
 
 version 0.9.0
@@ -116,7 +115,8 @@ Low priority
 - compilation cache:
   - adapt thread var emulation to care about the new merge operation
   - check for interface changes; if only the implemenation changes, no
-    need to recompile clients
+    need to recompile clients; er ... what about templates, macros or anything
+    that has inlining semantics?
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 
 
@@ -147,7 +147,6 @@ Version 2
   
     var x = myProc() # checks myProc() initializes every pointer explicitely
     
-- the two other parsers
 - generalized case statement (requires better transf)
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
