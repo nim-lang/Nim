@@ -53,6 +53,10 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   result = nil
   #InternalError(s.info, "no pending module found for: " & s.name.s)
 
+proc emitLazily(s: PSym): bool {.inline.} =
+  result = optDeadCodeElim in gGlobalOptions or
+           sfDeadCodeElim in getModule(s).flags
+
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) = 
   result.k = k
   result.s = s
@@ -82,11 +86,10 @@ proc useHeader(m: BModule, sym: PSym) =
 proc cgsym(m: BModule, name: string): PRope
 
 proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope = 
-  var i, j, length, start, num: int
-  i = 0
-  length = len(frmt)
+  var i = 0
+  var length = len(frmt)
   result = nil
-  num = 0
+  var num = 0
   while i < length: 
     if frmt[i] == '$': 
       inc(i)                  # skip '$'
@@ -99,17 +102,17 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
         app(result, args[num])
         inc(num)
       of '0'..'9': 
-        j = 0
+        var j = 0
         while true: 
           j = (j * 10) + Ord(frmt[i]) - ord('0')
           inc(i)
           if i >= length or not (frmt[i] in {'0'..'9'}): break 
         num = j
         if j > high(args) + 1: 
-          internalError("ropes: invalid format string $" & $(j))
-        app(result, args[j - 1])
+          internalError("ropes: invalid format string $" & $j)
+        app(result, args[j-1])
       of 'n':
-        if not (optLineDir in gOptions): app(result, tnl)
+        if optLineDir notin gOptions: app(result, tnl)
         inc(i)
       of 'N': 
         app(result, tnl)
@@ -129,7 +132,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
         j = (j * 10) + Ord(frmt[i]) - ord('0')
         inc(i)
       app(result, cgsym(m, args[j-1].ropeToStr))
-    start = i
+    var start = i
     while i < length: 
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
       else: break 
@@ -382,7 +385,7 @@ proc fixLabel(p: BProc, labl: TLabel) =
   appf(p.s[cpsStmts], "$1: ;$n", [labl])
 
 proc genVarPrototype(m: BModule, sym: PSym)
-proc genConstPrototype(m: BModule, sym: PSym)
+proc requestConstImpl(p: BProc, sym: PSym)
 proc genProc(m: BModule, prc: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc genProcPrototype(m: BModule, sym: PSym)
@@ -619,7 +622,25 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     var q = findPendingModule(m, prc)
     if q != nil and not ContainsOrIncl(q.declaredThings, prc.id): 
       genProcAux(q, prc)
-  
+
+proc requestConstImpl(p: BProc, sym: PSym) =
+  var m = p.module
+  useHeader(m, sym)
+  if sym.loc.k == locNone:
+    fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown)
+  if lfNoDecl in sym.loc.Flags: return
+  # declare implementation:
+  var q = findPendingModule(m, sym)
+  if q != nil and not ContainsOrIncl(q.declaredThings, sym.id):
+    assert q.initProc.module == q
+    appf(q.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+        [getTypeDesc(q, sym.typ), sym.loc.r, genConstExpr(q.initProc, sym.ast)])
+  # declare header:
+  if q != m and not ContainsOrIncl(m.declaredThings, sym.id):
+    assert(sym.loc.r != nil)
+    appf(m.s[cfsData], "extern NIM_CONST $1 $2;$n",
+        [getTypeDesc(m, sym.loc.t), sym.loc.r])
+
 proc genProc(m: BModule, prc: PSym) = 
   if sfBorrow in prc.flags: return 
   fillProcLoc(prc)
@@ -643,20 +664,6 @@ proc genVarPrototype(m: BModule, sym: PSym) =
       if sfRegister in sym.flags: app(m.s[cfsVars], " register")
       if sfVolatile in sym.flags: app(m.s[cfsVars], " volatile")
       appf(m.s[cfsVars], " $1;$n", [sym.loc.r])
-
-proc genConstPrototype(m: BModule, sym: PSym) = 
-  useHeader(m, sym)
-  if sym.loc.k == locNone: 
-    fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown)
-  if (lfNoDecl in sym.loc.Flags) or
-      ContainsOrIncl(m.declaredThings, sym.id): 
-    return 
-  if sym.owner.id != m.module.id: 
-    # else we already have the symbol generated!
-    assert(sym.loc.r != nil)
-    appff(m.s[cfsData], "extern NIM_CONST $1 $2;$n", 
-          "$1 = linkonce constant $2 zeroinitializer", 
-          [getTypeDesc(m, sym.loc.t), sym.loc.r])
 
 proc getFileHeader(cfilenoext: string): PRope = 
   if optCompileOnly in gGlobalOptions: 
