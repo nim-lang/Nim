@@ -272,7 +272,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
       of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
       of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
       of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
-      of nnkIdent: res.add(" " & $n.ident)
+      of nnkIdent: res.add(" !\"" & $n.ident & '"')
       of nnkSym, nnkNone: assert false
       else:
         for j in 0..n.len-1:
@@ -298,7 +298,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
-  of nnkIdent: add(result, $n.ident)
+  of nnkIdent: add(result, "!\"" & $n.ident & '"')
   of nnkSym, nnkNone: assert false
   else:
     add(result, lispRepr(n[0]))
