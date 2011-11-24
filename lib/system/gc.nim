@@ -31,6 +31,8 @@ const
   rcWhite = 0b010  # member of a garbage cycle
   rcPurple = 0b011 # possible root of a cycle
   rcZct = 0b100    # in ZCT
+  rcMarked = 0b101 # dummy write to keep C code generator from
+                   # eliminating the root
   rcRed = 0b101    # Candidate cycle undergoing sigma-computation
   rcOrange = 0b110 # Candidate cycle awaiting epoch boundary
   rcShift = 3      # shift by rcShift to get the reference counter
@@ -517,12 +519,19 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
       # mark the cell:
       cell.refcount = cell.refcount +% rcIncrement
       add(gch.decStack, cell)
-    # care for string->cstring and seq->openArray conversions:
-    var b = cast[PCell](c -% sizeof(TGenericSeq))
-    if isAllocatedPtr(gch.region, b):
-      # mark the cell:
-      b.refcount = b.refcount +% rcIncrement
-      add(gch.decStack, b)
+    when false:
+      # Care for string->cstring and seq->openArray conversions.
+      # Now the codegen deals with it, it generated ``nimKeepAlive`` calls.
+      var b = cast[PCell](c -% sizeof(TGenericSeq))
+      if isAllocatedPtr(gch.region, b):
+        # mark the cell:
+        b.refcount = b.refcount +% rcIncrement
+        add(gch.decStack, b)
+
+proc nimKeepAlive(p: PGenericSeq) {.compilerRtl, noinline.} =
+  var c = usrToCell(p)
+  if isAllocatedPtr(gch.region, c):
+    c.refcount = c.refcount or rcMarked
 
 proc markThreadStacks(gch: var TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:

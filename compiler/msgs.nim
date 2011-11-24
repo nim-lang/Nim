@@ -564,18 +564,18 @@ var
   lastError = UnknownLineInfo()
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
-               eh: TErrorHandling) = 
+               eh: TErrorHandling) =
   var frmt: string
   var ignoreMsg = false
   case msg
-  of errMin..errMax: 
+  of errMin..errMax:
     writeContext(info)
     frmt = posErrorFormat
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
     ignoreMsg = lastError == info and eh != doAbort
     lastError = info
-  of warnMin..warnMax: 
+  of warnMin..warnMax:
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
     frmt = posWarningFormat

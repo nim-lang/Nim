@@ -18,6 +18,8 @@ Bugfixes
 - Bugfix c2nim, c2pas: the ``--out`` option has never worked properly.
 - Bugfix: forwarding of generic procs never worked.
 - Some more bugfixes for macros and compile-time evaluation.
+- The compiler now generates code that tries to keep the C compiler from
+  optimizing stack allocated GC roots away.
 
 
 Changes affecting backwards compatibility

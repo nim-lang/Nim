@@ -1,4 +1,4 @@
-Version 0.8.14
+version 0.8.14
 ==============
 
 - fix thread tests
@@ -20,7 +20,7 @@ version 0.9.0
 - change overloading resolution
 - implement closures; implement proper coroutines
 - implement ``partial`` pragma for partial evaluation
-- implicit invokation of `items` seems nice
+- implicit invokation of `items`/`pairs` seems nice
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - ``=`` should be overloadable; requires specialization for ``=``
@@ -68,6 +68,7 @@ version 0.9.XX
   per default?
 - fix implicit generic routines
 - improve docgen to use the semantic pass
+- 'export' feature (requires improved docgen)
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:
   o.p(x) --> p(o, x) -->  myMacro(o, p, x)
