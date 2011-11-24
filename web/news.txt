@@ -51,6 +51,7 @@ Changes affecting backwards compatibility
 - The fields in ``TStream`` have been renamed to have an ``Impl`` suffix 
   because they should not be used directly anymore. 
   Wrapper procs have been created that should be used instead.
+- ``export`` is now a keyword.
 
 
 Language Additions

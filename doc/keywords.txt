@@ -2,7 +2,7 @@ addr and as asm atomic
 bind block break
 case cast const continue converter
 discard distinct div
-elif else end enum except
+elif else end enum except export
 finally for from generic
 if import in include is isnot iterator
 lambda let
