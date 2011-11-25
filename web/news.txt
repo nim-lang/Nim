@@ -65,6 +65,8 @@ Language Additions
   a compile-time error.
 - There is a new ``discardable`` pragma that can be used to mark a routine 
   so that its result can be discarded implicitely.
+- Added a new ``noinit`` pragma to prevent automatic initialization to zero
+  of variables.
 - Constants can now have the type ``seq``.
 - There is a new user-definable syntactic construct ``a{i, ...}``
   that has no semantics yet for built-in types and so can be overloaded to your

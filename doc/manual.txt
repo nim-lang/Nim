@@ -1526,6 +1526,14 @@ T = enum                        cast[T](0); this may be an invalid value
 ============================    ==============================================
 
 
+The implicit initialization can be avoided for optimization reasons with the
+`noinit`:idx: pragma: 
+
+.. code-block:: nimrod
+  var
+    a {.noInit.}: array [0..1023, char] 
+
+
 Const section
 ~~~~~~~~~~~~~
 
@@ -1780,6 +1788,7 @@ sugar for:
 .. code-block:: nimrod
   result = expr
   return result
+
 
 ``return`` without an expression is a short notation for ``return result`` if
 the proc has a return type. The `result`:idx: variable is always the return
