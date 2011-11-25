@@ -11,10 +11,9 @@ tests/nimcache
 tests/accept/run/nimcache
 tests/accept/compile/nimcache
 tests/reject/nimcache
-rod/nimcache
-rod/c2nim/nimcache
-rod/pas2nim/nimcache
-rod/tinyc
+compiler/nimcache
+compiler/c2nim/nimcache
+compiler/pas2nim/nimcache
 misc
 doc/*.html
 web/upload/*.html
