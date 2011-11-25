@@ -717,6 +717,58 @@ i-th *unichar*. The iterator ``runes`` from the ``unicode``
 module can be used for iteration over all Unicode characters.
 
 
+CString type
+~~~~~~~~~~~~
+The `cstring`:idx: type represents a pointer to a zero-terminated char array
+compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
+interfacing with C. The index operation ``s[i]`` means the i-th *char* of 
+``s``; however no bounds checking for ``cstring`` is performed making the
+index operation unsafe.
+
+A Nimrod ``string`` is implicitely convertible 
+to ``cstring`` for convenience. If a Nimrod string is passed to a C-style
+variadic proc, it is implicitely converted to ``cstring`` too:
+
+.. code-block:: nimrod
+  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+  
+  printf("This works %s", "as expected")
+
+Even though the conversion is implict, it is not *safe*: The garbage collector
+does not consider a ``cstring`` to be a root and may collect the underlying 
+memory:
+
+.. code-block:: nimrod
+  var nimStr = "example"
+  var cStr: cstring = nimStr
+  var i = 0
+  while cStr[i] != '\0':
+    # since `nimStr`'s lifetime ended here the GC is allowed to free
+    # the memory occupied by "example":
+    GC_collect()
+    # now cStr points to garbage:
+    echo cStr[i]
+    inc i
+
+However this a very contrived example; in practice this almost never happens.
+One can use the builtin procs ``GC_ref`` and ``GC_unref`` to make this code
+safe:
+
+.. code-block:: nimrod
+  var nimStr = "example"
+  GC_ref(nimStr) # keep GC from freeing 'nimStr'
+  var cStr: cstring = nimStr
+  var i = 0
+  while cStr[i] != '\0':
+    # since `nimStr`'s lifetime ended here the GC is allowed to free
+    # the memory occupied by "example":
+    GC_collect()
+    # now cStr points to garbage:
+    echo cStr[i]
+    inc i
+  GC_unref(nimStr) # GC is allowed to free 'nimStr'
+
+
 Structured types
 ~~~~~~~~~~~~~~~~
 A variable of a `structured type`:idx: can hold multiple values at the same
