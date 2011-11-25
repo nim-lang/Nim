@@ -2,11 +2,13 @@ version 0.8.14
 ==============
 
 - fix thread tests
+- deprecate endOfFile and readline
 
 version 0.9.0
 =============
 
-- GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking
+- GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking;
+  escape analysis for string/seq seems to be easy to do too
 - dead code elim for JS backend; 'of' operator for JS backend
 - test the sort implementation again
 - 'let x = y'
