@@ -39,29 +39,26 @@ var
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   raise newException(EIO, msg)
 
-proc rawReadLine(f: TFile, result: var string) =
+proc readLine(f: TFile, line: var TaintedString): bool =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
-  setLen(result, 0) # reuse the buffer!
+  setLen(line, 0) # reuse the buffer!
   while True:
     var c = fgetc(f)
     if c < 0'i32:
-      if result.len > 0: break
-      else: raiseEIO("EOF reached")
+      if line.len > 0: break
+      else: return false
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
       c = fgetc(f) # is the next char LF?
       if c != 10'i32: ungetc(c, f) # no, put the character back
       break
-    add result, chr(int(c))
+    add line.string, chr(int(c))
+  result = true
 
 proc readLine(f: TFile): TaintedString =
-  when taintMode:
-    result = TaintedString""
-    rawReadLine(f, result.string)
-  else:
-    result = ""
-    rawReadLine(f, result)
+  result = TaintedString(newStringOfCap(80))
+  if not readLine(f, result): raiseEIO("EOF reached")
 
 proc write(f: TFile, i: int) = 
   when sizeof(int) == 8:

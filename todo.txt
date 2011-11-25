@@ -1,7 +1,7 @@
 version 0.8.14
 ==============
 
-- deprecate endOfFile and readline
+- stdlib and compiler should not use deprecated endOfFile and readline
 
 version 0.9.0
 =============

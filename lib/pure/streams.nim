@@ -43,9 +43,10 @@ proc close*(s, unused: PStream) {.deprecated.} =
   ## closes the stream `s`.
   s.closeImpl(s)
 
-proc atEnd*(s: PStream): bool =
+proc atEnd*(s: PStream): bool {.deprecated.} =
   ## checks if more data can be read from `f`. Returns true if all data has
   ## been read.
+  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
   result = s.atEndImpl(s)
 
 proc atEnd*(s, unused: PStream): bool {.deprecated.} =
@@ -149,9 +150,10 @@ proc readStr*(s: PStream, length: int): TaintedString =
   var L = readData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
 
-proc readLine*(s: PStream): TaintedString =
+proc readLine*(s: PStream): TaintedString {.deprecated.} =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occured.
+  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
   result = TaintedString""
   while not atEnd(s): 
     var c = readChar(s)
@@ -160,6 +162,26 @@ proc readLine*(s: PStream): TaintedString =
       break
     elif c == '\L' or c == '\0': break
     result.string.add(c)
+
+proc readLine*(s: PStream, line: var TaintedString): bool =
+  ## reads a line of text from the stream `s` into `line`. `line` must not be
+  ## ``nil``! May throw an IO exception.
+  ## A line of text may be delimited by ``CR``, ``LF`` or
+  ## ``CRLF``. The newline character(s) are not part of the returned string.
+  ## Returns ``false`` if the end of the file has been reached, ``true``
+  ## otherwise. If ``false`` is returned `line` contains no new data.
+  line.setLen(0)
+  while true:
+    var c = readChar(s)
+    if c == '\c': 
+      c = readChar(s)
+      break
+    elif c == '\L': break
+    elif c == '\0':
+      if line.len > 0: break
+      else: return false
+    line.string.add(c)
+  result = true
 
 type
   PStringStream* = ref TStringStream ## a stream that encapsulates a string

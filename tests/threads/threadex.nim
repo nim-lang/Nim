@@ -25,10 +25,10 @@ proc consume() {.thread.} =
 proc produce() {.thread.} =
   var m: TMsg
   var input = open("readme.txt")
-  while not endOfFile(input):
-    if chan.ready:
-      m.data = input.readLine()
-      chan.send(m)
+  var line = ""
+  while input.readLine(line):
+    m.data = line
+    chan.send(m)
   close(input)
   m.k = mEof
   chan.send(m)
