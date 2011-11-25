@@ -46,6 +46,7 @@ Changes affecting backwards compatibility
   raise hooks.
 - Changed exception handling/error reporting for ``os.removeFile`` and
   ``os.removeDir``.
+- The algorithm for searching and loading configuration files have been changed
 - Operators now have diffent precedence rules: Assignment-like operators 
   (like ``*=``) are now special-cased. 
 - The fields in ``TStream`` have been renamed to have an ``Impl`` suffix 
@@ -85,6 +86,15 @@ Compiler Additions
   and Objective C somewhat easier.
 - Added a ``--nimcache:PATH`` configuration option for control over the output
   directory for generated code.
+- Added ``--cincludes:dir``, ``--clibdir:lib`` configuration options for 
+  modifying the C compiler's header/library search path in cross-platform way.
+- Added ``--clib:lib`` configuration options for specifying additional
+  C libraries to be linked.
+- Added ``--mainmodule:file`` configuration options for specifying the main
+  project file. This is intended to be used in project configuration files to
+  allow commands like ``nimrod c`` or ``nimrod check`` to be executed anywhere
+  within the project's directory structure
+- Added a ``--app:staticlib`` option for creating static libraries
 - Added a ``--tlsEmulation:on|off`` switch for control over thread local
   storage emulation.
 - The compiler and standard library now support a *taint mode*. Input strings
@@ -94,6 +104,9 @@ Compiler Additions
 - The compiler now supports the compilation cache via ``--symbolFiles:on``. 
   This potentially speeds up compilations by an order of magnitude, but is
   still highly experimental!
+- Added ``--import:file`` and ``--include:file`` configuration options
+  for specifying modules that will be automatically imported/incluced.
+- ``nimrod i`` can now optionally be given a module to execute.
 
 
 Library Additions
@@ -110,7 +123,8 @@ Library Additions
 - Added ``system.running`` for threads.
 - Added ``system.program_result``.
 - Added ``xmltree.innerText``.
-- Added ``os.isAbsolute``, ``os.dynLibFormat``.
+- Added ``os.isAbsolute``, ``os.dynLibFormat``, ``os.isRootDir``,
+   ``os.parentDirs``.
 - Added ``parseutils.interpolatedFragments``.
 - Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``, 
   ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``, 

@@ -244,6 +244,10 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "out", "o": 
     expectArg(switch, arg, pass, info)
     options.outFile = arg
+  of "mainmodule", "m":
+    expectArg(switch, arg, pass, info)
+    projectName = arg
+    projectFullPath = projectPath/projectName
   of "define", "d": 
     expectArg(switch, arg, pass, info)
     DefineSymbol(arg)
@@ -333,15 +337,24 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "app": 
     expectArg(switch, arg, pass, info)
     case arg.normalize
-    of "gui": 
+    of "gui":
       incl(gGlobalOptions, optGenGuiApp)
+      defineSymbol("executable")
       defineSymbol("guiapp")
-    of "console": 
+    of "console":
       excl(gGlobalOptions, optGenGuiApp)
-    of "lib": 
+      defineSymbol("executable")
+      defineSymbol("consoleapp")
+    of "lib":
       incl(gGlobalOptions, optGenDynLib)
       excl(gGlobalOptions, optGenGuiApp)
       defineSymbol("library")
+      defineSymbol("dll")
+    of "staticlib":
+      incl(gGlobalOptions, optGenStaticLib)
+      excl(gGlobalOptions, optGenGuiApp)
+      defineSymbol("library")
+      defineSymbol("staticlib")
     else: LocalError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   of "passc", "t": 
     expectArg(switch, arg, pass, info)
@@ -349,12 +362,24 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "passl", "l": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
+  of "cincludes":
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: cIncludes.add arg
+  of "clibdir":
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: cLibs.add arg
+  of "clib":
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: cLinkedLibs.add arg
   of "index": 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: gIndexFile = arg
-  of "import": 
+  of "import":
     expectArg(switch, arg, pass, info)
-    options.addImplicitMod(arg)
+    if pass in {passCmd2, passPP}: implicitImports.add arg
+  of "include":
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: implicitIncludes.add arg
   of "listcmd": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optListCmd)
@@ -405,6 +430,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "skipprojcfg": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipProjConfigFile)
+  of "skipusercfg":
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optSkipUserConfigFile)
   of "genscript": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)

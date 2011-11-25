@@ -408,6 +408,36 @@ proc parentDir*(path: string): string {.
   else:
     result = path
 
+proc isRootDir*(path: string): bool {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Checks whether a given `path` is a root directory 
+  var p = parentDir(path)
+  result = p == path or p.len == 0
+
+iterator parentDirs*(path: string, fromRoot = false, inclusive = true): string =
+  ## Walks over all parent directories of a given `path`
+  ##
+  ## If `fromRoot` is set, the traversal will start from the file system root
+  ## diretory. If `inclusive` is set, the original argument will be included
+  ## in the traversal.
+  ##
+  ## Relative paths won't be expanded by this proc. Instead, it will traverse
+  ## only the directories appearing in the relative path.
+  if not fromRoot:
+    var current = path
+    if inclusive: yield path
+    while true:
+      if current.isRootDir: break
+      current = current.parentDir
+      yield current
+  else:
+    for i in countup(0, path.len - 2): # ignore the last /
+      # deal with non-normalized paths such as /foo//bar//baz
+      if path[i] in {dirsep, altsep} and (i == 0 or path[i-1] notin {dirsep, altsep}):
+        yield path.substr(0, i)
+
+    if inclusive: yield path
+
 proc `/../` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``parentDir(head) / tail``
   return parentDir(head) / tail
@@ -522,7 +552,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     result = cmpIgnoreCase(pathA, pathB)
 
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
-  ## Checks whether a given path is absolute.
+  ## Checks whether a given `path` is absolute.
   ##
   ## on Windows, network paths are considered absolute too.
   when doslike:
