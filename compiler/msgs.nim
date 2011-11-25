@@ -377,7 +377,7 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
-
+ 
 type 
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
@@ -392,6 +392,7 @@ type
     
   ERecoverableError* = object of EInvalidValue
 
+proc newLineInfo*(filename: string, line, col: int): TLineInfo
 proc raiseRecoverableError*() {.noinline, noreturn.} =
   raise newException(ERecoverableError, "")
 
@@ -401,7 +402,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
-
+  
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
@@ -420,6 +421,7 @@ proc UnknownLineInfo*(): TLineInfo =
 var 
   filenames: seq[tuple[filename: string, fullpath: string]] = @[]
   msgContext: seq[TLineInfo] = @[]
+  gCmdLineInfo* = newLineInfo("command line", -1, -1)
 
 proc pushInfoContext*(info: TLineInfo) = 
   msgContext.add(info)

@@ -20,9 +20,8 @@ when hasTinyCBackend:
 var 
   arguments: string = ""      # the arguments to be passed to the program that
                               # should be run
-  cmdLineInfo: TLineInfo
 
-proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) = 
+proc ProcessCmdLine(pass: TCmdLinePass) = 
   var p = parseopt.initOptParser()
   while true: 
     parseopt.next(p)
@@ -35,15 +34,19 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
       if bracketLe >= 0: 
         var key = substr(p.key, 0, bracketLe - 1)
         var val = substr(p.key, bracketLe + 1) & ':' & p.val
-        ProcessSwitch(key, val, pass, cmdLineInfo)
+        ProcessSwitch(key, val, pass, gCmdLineInfo)
       else: 
-        ProcessSwitch(p.key, p.val, pass, cmdLineInfo)
+        ProcessSwitch(p.key, p.val, pass, gCmdLineInfo)
     of cmdArgument: 
-      if command == "": 
-        command = p.key
-      elif filename == "": 
-        filename = unixToNativePath(p.key) # BUGFIX for portable build scripts
-        break 
+      if pass == passCmd1:
+        if options.command == "":
+          options.command = p.key
+        else:
+          options.commandArgs.add p.key
+
+          if options.projectName == "":
+            options.projectName = unixToNativePath(p.key) # BUGFIX for portable build scripts
+          
   if pass == passCmd2: 
     arguments = cmdLineRest(p)
     if optRun notin gGlobalOptions and arguments != "": 
@@ -55,33 +58,30 @@ proc prependCurDir(f: string): string =
     else: result = "./" & f
   else:
     result = f
-  
+
 proc HandleCmdLine() = 
   var start = epochTime()
   if paramCount() == 0: 
     writeCommandLineUsage()
   else: 
     # Process command line arguments:
-    var command = ""
-    var filename = ""
-    ProcessCmdLine(passCmd1, command, filename)
-    if filename != "": 
-      var fullpath: string
+    ProcessCmdLine(passCmd1)
+    if projectName != "":
       try:
-        fullPath = expandFilename(filename)
-      except EOS: 
-        fullpath = filename
-      var p = splitFile(fullPath)
-      options.projectPath = p.dir
-      options.projectName = p.name
-    nimconf.LoadConfig(filename) # load the right config file
+        projectFullPath = expandFilename(projectName)
+      except EOS:
+        projectFullPath = projectName
+      var p = splitFile(projectFullPath)
+      projectPath = p.dir
+      projectName = p.name
+    else:
+      projectPath = getCurrentDir()
+    LoadConfigs() # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    command = ""
-    filename = ""
-    ProcessCmdLine(passCmd2, command, filename)
-    MainCommand(command, filename)
+    ProcessCmdLine(passCmd2)
+    MainCommand()
     if gVerbosity >= 2: echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
@@ -91,11 +91,10 @@ proc HandleCmdLine() =
         rawMessage(hintSuccessX, [$gLinesCompiled, 
                    formatFloat(epochTime() - start, ffDecimal, 3)])
       if optRun in gGlobalOptions: 
-        var ex = quoteIfContainsWhite(changeFileExt(filename, "").prependCurDir)
+        var ex = quoteIfContainsWhite(changeFileExt(projectName, "").prependCurDir)
         execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
-cmdLineInfo = newLineInfo("command line", -1, -1)
 condsyms.InitDefines()
 HandleCmdLine()
 quit(options.gExitcode)

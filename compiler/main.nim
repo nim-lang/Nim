@@ -23,7 +23,7 @@ const
 when has_LLVM_Backend:
   import llvmgen
 
-proc MainCommand*(cmd, filename: string)
+proc MainCommand*()
 
 # ------------------ module handling -----------------------------------------
 
@@ -68,7 +68,7 @@ proc importModule(filename: string): PSym =
   elif sfSystemModule in result.flags: 
     LocalError(result.info, errAttemptToRedefine, result.Name.s)
   
-proc CompileModule(filename: string, flags: TSymFlags): PSym = 
+proc CompileModule(filename: string, flags: TSymFlags): PSym =
   var rd: PRodReader = nil
   var f = addFileExt(filename, nimExt)
   result = newModule(filename)
@@ -81,57 +81,56 @@ proc CompileModule(filename: string, flags: TSymFlags): PSym =
     result.id = getID()
   processModule(result, f, nil, rd)
 
-proc CompileProject(filename: string) = 
-  discard CompileModule(options.libpath / addFileExt("system", nimExt),
-                        {sfSystemModule})
-  discard CompileModule(addFileExt(filename, nimExt), {sfMainModule})
+proc CompileProject(projectFile = projectFullPath) =
+  discard CompileModule(options.libpath / "system", {sfSystemModule})
+  discard CompileModule(projectFile, {sfMainModule})
 
-proc semanticPasses() = 
+proc semanticPasses =
   registerPass(verbosePass())
   registerPass(sem.semPass())
   registerPass(transf.transfPass())
 
-proc CommandGenDepend(filename: string) = 
+proc CommandGenDepend =
   semanticPasses()
   registerPass(genDependPass())
   registerPass(cleanupPass())
-  compileProject(filename)
-  generateDot(filename)
-  execExternalProgram("dot -Tpng -o" & changeFileExt(filename, "png") & ' ' &
-      changeFileExt(filename, "dot"))
+  compileProject()
+  generateDot(projectFullPath)
+  execExternalProgram("dot -Tpng -o" & changeFileExt(projectFullPath, "png") & ' ' &
+      changeFileExt(projectFullPath, "dot"))
 
-proc CommandCheck(filename: string) = 
+proc CommandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
   registerPass(rodwrite.rodwritePass())
-  compileProject(filename)
+  compileProject(mainCommandArg())
 
-proc CommandCompileToC(filename: string) = 
+proc CommandCompileToC =
   semanticPasses()
   registerPass(cgen.cgenPass())
   registerPass(rodwrite.rodwritePass())
   #registerPass(cleanupPass())
-  compileProject(filename)
+  compileProject()
   if gCmd != cmdRun:
-    extccomp.CallCCompiler(changeFileExt(filename, ""))
+    extccomp.CallCCompiler(changeFileExt(projectFullPath, ""))
 
 when has_LLVM_Backend:
-  proc CommandCompileToLLVM(filename: string) = 
+  proc CommandCompileToLLVM =
     semanticPasses()
     registerPass(llvmgen.llvmgenPass())
     registerPass(rodwrite.rodwritePass())
     #registerPass(cleanupPass())
-    compileProject(filename)
+    compileProject()
 
-proc CommandCompileToEcmaScript(filename: string) = 
+proc CommandCompileToEcmaScript =
   incl(gGlobalOptions, optSafeCode)
   setTarget(osEcmaScript, cpuEcmaScript)
   initDefines()
   semanticPasses()
   registerPass(ecmasgenPass())
-  compileProject(filename)
+  compileProject()
 
-proc CommandInteractive() = 
+proc CommandInteractive =
   msgs.gErrorMax = high(int)  # do not stop after first error
   incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
@@ -140,20 +139,22 @@ proc CommandInteractive() =
   registerPass(verbosePass())
   registerPass(sem.semPass())
   registerPass(evals.evalPass()) # load system module:
-  discard CompileModule(options.libpath / addFileExt("system", nimExt),
-                        {sfSystemModule})
-  var m = newModule("stdin")
-  m.id = getID()
-  incl(m.flags, sfMainModule)
-  processModule(m, "stdin", LLStreamOpenStdIn(), nil)
+  discard CompileModule(options.libpath /"system", {sfSystemModule})
+  if commandArgs.len > 0:
+    discard CompileModule(mainCommandArg(), {})
+  else:
+    var m = newModule("stdin")
+    m.id = getID()
+    incl(m.flags, sfMainModule)
+    processModule(m, "stdin", LLStreamOpenStdIn(), nil)
 
-proc CommandPretty(filename: string) = 
-  var module = parseFile(addFileExt(filename, NimExt))
+proc CommandPretty =
+  var module = parseFile(addFileExt(mainCommandArg(), NimExt))
   if module != nil: 
-    renderModule(module, getOutFile(filename, "pretty." & NimExt))
+    renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
   
-proc CommandScan(filename: string) = 
-  var f = addFileExt(filename, nimExt)
+proc CommandScan =
+  var f = addFileExt(mainCommandArg(), nimExt)
   var stream = LLStreamOpen(f, fmRead)
   if stream != nil: 
     var 
@@ -169,107 +170,107 @@ proc CommandScan(filename: string) =
   else: 
     rawMessage(errCannotOpenFile, f)
   
-proc CommandSuggest(filename: string) = 
+proc CommandSuggest =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(rodwrite.rodwritePass())
-  compileProject(filename)
+  compileProject()
 
-proc WantFile(filename: string) = 
-  if filename.len == 0: 
+proc wantMainModule =
+  if projectFullPath.len == 0:
     Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
   
-proc MainCommand(cmd, filename: string) = 
+proc MainCommand =
   appendStr(searchPaths, options.libpath)
-  if filename.len != 0:
-    # current path is always looked first for modules
-    prependStr(searchPaths, splitFile(filename).dir)
+  if projectFullPath.len != 0:
+    # current path is dalways looked first for modules
+    prependStr(searchPaths, projectPath)
   setID(100)
   passes.gIncludeFile = syntaxes.parseFile
   passes.gImportModule = importModule
-  case cmd.normalize
+  case command.normalize
   of "c", "cc", "compile", "compiletoc": 
     # compile means compileToC currently
     gCmd = cmdCompileToC
-    wantFile(filename)
-    CommandCompileToC(filename)
+    wantMainModule()
+    CommandCompileToC()
   of "cpp", "compiletocpp": 
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
-    wantFile(filename)
+    wantMainModule()
     DefineSymbol("cpp")
-    CommandCompileToC(filename)
+    CommandCompileToC()
   of "objc", "compiletooc":
     extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
-    wantFile(filename)
+    wantMainModule()
     DefineSymbol("objc")
-    CommandCompileToC(filename)
+    CommandCompileToC()
   of "run":
     gCmd = cmdRun
-    wantFile(filename)
+    wantMainModule()
     when hasTinyCBackend:
       extccomp.setCC("tcc")
-      CommandCompileToC(filename)
+      CommandCompileToC()
     else: 
-      rawMessage(errInvalidCommandX, cmd)
+      rawMessage(errInvalidCommandX, command)
   of "js", "compiletoecmascript": 
     gCmd = cmdCompileToEcmaScript
-    wantFile(filename)
-    CommandCompileToEcmaScript(filename)
+    wantMainModule()
+    CommandCompileToEcmaScript()
   of "compiletollvm": 
     gCmd = cmdCompileToLLVM
-    wantFile(filename)
+    wantMainModule()
     when has_LLVM_Backend:
-      CommandCompileToLLVM(filename)
+      CommandCompileToLLVM()
     else:
-      rawMessage(errInvalidCommandX, cmd)
+      rawMessage(errInvalidCommandX, command)
   of "pretty":
     gCmd = cmdPretty
-    wantFile(filename)
-    CommandPretty(filename)
+    wantMainModule()
+    CommandPretty()
   of "doc": 
     gCmd = cmdDoc
-    LoadSpecialConfig(DocConfig)
-    wantFile(filename)
-    CommandDoc(filename)
+    LoadConfigs(DocConfig)
+    wantMainModule()
+    CommandDoc()
   of "rst2html": 
     gCmd = cmdRst2html
-    LoadSpecialConfig(DocConfig)
-    wantFile(filename)
-    CommandRst2Html(filename)
+    LoadConfigs(DocConfig)
+    wantMainModule()
+    CommandRst2Html()
   of "rst2tex": 
     gCmd = cmdRst2tex
-    LoadSpecialConfig(DocTexConfig)
-    wantFile(filename)
-    CommandRst2TeX(filename)
+    LoadConfigs(DocTexConfig)
+    wantMainModule()
+    CommandRst2TeX()
   of "gendepend": 
     gCmd = cmdGenDepend
-    wantFile(filename)
-    CommandGenDepend(filename)
+    wantMainModule()
+    CommandGenDepend()
   of "dump": 
     gCmd = cmdDump
     condsyms.ListSymbols()
     for it in iterSearchPath(): MsgWriteln(it)
   of "check": 
     gCmd = cmdCheck
-    wantFile(filename)
-    CommandCheck(filename)
+    wantMainModule()
+    CommandCheck()
   of "parse": 
     gCmd = cmdParse
-    wantFile(filename)
-    discard parseFile(addFileExt(filename, nimExt))
+    wantMainModule()
+    discard parseFile(addFileExt(projectFullPath, nimExt))
   of "scan": 
     gCmd = cmdScan
-    wantFile(filename)
-    CommandScan(filename)
+    wantMainModule()
+    CommandScan()
     MsgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
   of "i": 
     gCmd = cmdInteractive
     CommandInteractive()
   of "idetools":
     gCmd = cmdIdeTools
-    wantFile(filename)
-    CommandSuggest(filename)
-  else: rawMessage(errInvalidCommandX, cmd)
+    wantMainModule()
+    CommandSuggest()
+  else: rawMessage(errInvalidCommandX, command)
 
