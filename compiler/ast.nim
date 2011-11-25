@@ -236,7 +236,8 @@ type
 
 const
   sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
-  sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher 
+  sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
+  sfNoInit* = sfMainModule       # don't generate code to init the variable
 
 type
   TTypeKind* = enum  # order is important!

@@ -32,12 +32,13 @@ const
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable}
-  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
-    wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
-    wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
-    wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop, wBreakpoint, 
-    wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
-    wInfChecks, wNanChecks, wPragma, wEmit, wUnroll, wLinearScanEnd}
+  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
+    wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
+    wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
+    wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
+    wBreakpoint, wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
+    wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
+    wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
@@ -48,7 +49,7 @@ const
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
-    wImportcpp, wImportobjc, wError}
+    wImportcpp, wImportobjc, wError, wNoInit}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportcpp, wImportobjc, wError}
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
@@ -556,6 +557,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wDiscardable:
             noVal(it)
             if sym != nil: incl(sym.flags, sfDiscardable)
+          of wNoInit:
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfNoInit)
           of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
              wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
              wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef,

@@ -74,9 +74,9 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) =
     a.s = s
     if a.r == nil: a.r = r
   
-proc isSimpleConst(typ: PType): bool = 
-  result = not (skipTypes(typ, abstractVar).kind in
-      {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence})
+proc isSimpleConst(typ: PType): bool =
+  result = skipTypes(typ, abstractVar).kind notin
+      {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence}
 
 proc useHeader(m: BModule, sym: PSym) = 
   if lfHeader in sym.loc.Flags: 
@@ -263,10 +263,11 @@ proc zeroTemp(p: BProc, loc: TLoc) =
       appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
            [addrLoc(loc), genTypeInfo(p.module, loc.t)])
 
-proc initVariable(p: BProc, v: PSym) = 
-  var b = containsGarbageCollectedRef(v.typ)
-  if b or v.ast == nil: 
-    zeroVar(p, v.loc, b)
+proc initVariable(p: BProc, v: PSym) =
+  if sfNoInit notin v.flags:
+    var b = containsGarbageCollectedRef(v.typ)
+    if b or v.ast == nil:
+      zeroVar(p, v.loc, b)
     
 proc initTemp(p: BProc, tmp: var TLoc) = 
   if containsGarbageCollectedRef(tmp.t) or isInvalidReturnType(tmp.t):
