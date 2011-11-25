@@ -349,7 +349,7 @@ proc createThread*[TArg](t: var TThread[TArg],
     if t.sys <= 0:
       raise newException(EResourceExhausted, "cannot create thread")
   else:
-    var a: Tpthread_attr
+    var a {.noinit.}: Tpthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
@@ -363,9 +363,10 @@ proc myThreadId*[TArg](): TThreadId[TArg] =
   ## returns the thread ID of the thread that calls this proc.
   result = cast[TThreadId[TArg]](ThreadVarGetValue(globalsSlot))
 
-proc mainThreadId*[TArg](): TThreadId[TArg] =
-  ## returns the thread ID of the main thread.
-  result = cast[TThreadId[TArg]](addr(mainThread))
+when false:
+  proc mainThreadId*[TArg](): TThreadId[TArg] =
+    ## returns the thread ID of the main thread.
+    result = cast[TThreadId[TArg]](addr(mainThread))
 
 when useStackMaskHack:
   proc runMain(tp: proc () {.thread.}) {.compilerproc.} =

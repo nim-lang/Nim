@@ -117,7 +117,7 @@ proc runThreadTests(r: var TResults, options: string) =
     runSingleTest(r, "tests/threads" / filename, options & " -tlsEmulation:on")
   
   test "tactors"
-  #test "threadex"
+  test "threadex"
   #test "threadring"
   #test "tthreadanalysis"
   #test "tthreadsort"

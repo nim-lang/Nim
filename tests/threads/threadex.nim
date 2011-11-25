@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  outputsub: "All rights reserved."
 """
 
 type
@@ -7,39 +7,38 @@ type
     mLine, mEof
   TMsg = object {.pure, final.}
     case k: TMsgKind
-    of mEof: backTo: TThreadId[int]
+    of mEof: nil
     of mLine: data: string
 
 var
-  consumer: TThread[TMsg]
+  producer, consumer: TThread[void]
+  chan: TChannel[TMsg]
   printedLines = 0
 
 proc consume() {.thread.} =
   while true:
-    var x = recv[TMsg]()
-    if x.k == mEof: 
-      x.backTo.send(printedLines)
-      break
+    var x = recv(chan)
+    if x.k == mEof: break
     echo x.data
     atomicInc(printedLines)
 
-proc produce() =
+proc produce() {.thread.} =
   var m: TMsg
   var input = open("readme.txt")
   while not endOfFile(input):
-    if consumer.ready:
+    if chan.ready:
       m.data = input.readLine()
-      consumer.send(m)
+      chan.send(m)
   close(input)
   m.k = mEof
-  m.backTo = mainThreadId[int]()
-  consumer.send(m)
-  var result = recv[int]()
-  echo result
+  chan.send(m)
   
-createThread(consumer, consume)
-produce()
+open(chan)
+createThread[void](consumer, consume)
+createThread[void](producer, produce)
 joinThread(consumer)
+joinThread(producer)
 
+close(chan)
 echo printedLines
 
