@@ -42,7 +42,7 @@ proc raiseEIO(msg: string) {.noinline, noreturn.} =
 proc readLine(f: TFile, line: var TaintedString): bool =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
-  setLen(line, 0) # reuse the buffer!
+  setLen(line.string, 0) # reuse the buffer!
   while True:
     var c = fgetc(f)
     if c < 0'i32:
