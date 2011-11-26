@@ -151,10 +151,24 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
       s = stream
     while true: 
       openParsers(p, filename, s)
+
+      if sfSystemModule notin module.flags:
+        template processImplicits(implicits, nodeKind: expr): stmt =
+          for module in items(implicits):
+            var importStmt = newNodeI(nodeKind, gCmdLineInfo)
+            var str = newStrNode(nkStrLit, module)
+            str.info = gCmdLineInfo
+            importStmt.addSon str
+            processTopLevelStmt importStmt, a
+        
+        processImplicits implicitImports, nkImportStmt
+        processImplicits implicitIncludes, nkIncludeStmt
+
       while true: 
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break 
         processTopLevelStmt(n, a)
+
       closeParsers(p)
       if s.kind != llsStdIn: break 
     closePasses(a)

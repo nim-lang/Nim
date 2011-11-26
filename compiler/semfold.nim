@@ -285,14 +285,16 @@ proc magicCall(m: PSym, n: PNode): PNode =
     b = nil
   result = evalOp(s.magic, n, a, b, c)
   
-proc getAppType(n: PNode): PNode = 
+proc getAppType(n: PNode): PNode =
   if gGlobalOptions.contains(optGenDynLib):
     result = newStrNodeT("lib", n)
+  elif gGlobalOptions.contains(optGenStaticLib):
+    result = newStrNodeT("staticlib", n)
   elif gGlobalOptions.contains(optGenGuiApp):
     result = newStrNodeT("gui", n)
   else:
     result = newStrNodeT("console", n)
-  
+
 proc foldConv*(n, a: PNode): PNode = 
   case skipTypes(n.typ, abstractRange).kind
   of tyInt..tyInt64: 
