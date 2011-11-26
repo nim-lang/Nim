@@ -170,7 +170,7 @@ proc readLine*(s: PStream, line: var TaintedString): bool =
   ## ``CRLF``. The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
-  line.setLen(0)
+  line.string.setLen(0)
   while true:
     var c = readChar(s)
     if c == '\c': 
