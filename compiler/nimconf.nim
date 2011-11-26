@@ -204,21 +204,17 @@ proc readConfigFile(filename: string) =
     if len(condStack) > 0: lexMessage(L, errTokenExpected, "@end")
     closeLexer(L)
     if gVerbosity >= 1: rawMessage(hintConf, filename)
-  
-proc getConfigPath(filename: string): string = 
-  # try local configuration file:
-  result = joinPath(getConfigDir(), filename)
-  if not ExistsFile(result): 
-    # try standard configuration file (installation did not distribute files
-    # the UNIX way)
-    result = joinPath([getPrefixDir(), "config", filename])
-    if not ExistsFile(result): result = "/etc/" & filename
 
-proc LoadSpecialConfig*(configfilename: string) = 
-  if optSkipConfigFile notin gGlobalOptions:
-    readConfigFile(getConfigPath(configfilename))
-  
-proc LoadConfig*(project: string) = 
+proc getUserConfigPath(filename: string): string =
+  result = joinPath(getConfigDir(), filename)
+
+proc getSystemConfigPath(filename: string): string =
+  # try standard configuration file (installation did not distribute files
+  # the UNIX way)
+  result = joinPath([getPrefixDir(), "config", filename])
+  if not ExistsFile(result): result = "/etc/" & filename
+
+proc LoadConfigs*(cfg = "nimrod.cfg") =
   # set default value (can be overwritten):
   if libpath == "": 
     # choose default libpath:
@@ -226,8 +222,14 @@ proc LoadConfig*(project: string) =
     if (prefix == "/usr"): libpath = "/usr/lib/nimrod"
     elif (prefix == "/usr/local"): libpath = "/usr/local/lib/nimrod"
     else: libpath = joinPath(prefix, "lib")
-  LoadSpecialConfig("nimrod.cfg") # read project config file:
-  if optSkipProjConfigFile notin gGlobalOptions and project != "": 
-    var conffile = changeFileExt(project, "cfg")
-    if existsFile(conffile): readConfigFile(conffile)
-  
+
+  if optSkipConfigFile notin gGlobalOptions:
+    readConfigFile getSystemConfigPath(cfg)
+
+  if optSkipUserConfigFile notin gGlobalOptions:
+    readConfigFile getUserConfigPath(cfg)
+
+  if optSkipProjConfigFile notin gGlobalOptions and projectPath != "":
+    for dir in parentDirs(projectPath, fromRoot = true):
+      readConfigFile(dir/cfg)
+    

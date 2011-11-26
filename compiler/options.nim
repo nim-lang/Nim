@@ -33,6 +33,7 @@ type                          # please make sure we have under 32 options
     optSafeCode,              # only allow safe code
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
+    optGenStaticLib,          # generate a static library
     optGenGuiApp,             # generate a GUI application
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
@@ -40,6 +41,7 @@ type                          # please make sure we have under 32 options
     optSymbolFiles,           # use symbol files for speeding up compilation
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
+    optSkipUserConfigFile,    # skip the users's config file
     optNoMain,                # do not generate a "main" proc
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
@@ -98,11 +100,24 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   libpath* = ""
-  projectPath* = ""
-  projectName* = ""
+  projectName* = "" # holds a name like `nimrod'
+  projectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
+  projectFullPath* = "" # projectPath/projectName
   nimcacheDir* = ""
+  command* = "" # the main command (e.g. cc, check, scan, etc)
+  commandArgs*: seq[string] = @[] # any arguments after the main command
   gKeepComments*: bool = true # whether the parser needs to keep comments
-  gImplicitMods*: TStringSeq = @[] # modules that are to be implicitly imported
+  implicitImports*: seq[string] = @[] # modules that are to be implicitly imported
+  implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
+  
+proc mainCommandArg*: string =
+  ## This is intended for commands like check or parse
+  ## which will work on the main project file unless
+  ## explicitly given a specific file argument
+  if commandArgs.len > 0:
+    result = commandArgs[0]
+  else:
+    result = projectName
 
 proc existsConfigVar*(key: string): bool = 
   result = hasKey(gConfigVars, key)
@@ -117,11 +132,6 @@ proc getOutFile*(filename, ext: string): string =
   if options.outFile != "": result = options.outFile
   else: result = changeFileExt(filename, ext)
   
-proc addImplicitMod*(filename: string) = 
-  var length = len(gImplicitMods)
-  setlen(gImplicitMods, length + 1)
-  gImplicitMods[length] = filename
-
 proc getPrefixDir*(): string = 
   ## gets the application directory
   result = SplitPath(getAppDir()).head

@@ -15,9 +15,9 @@ import
   ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
   wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite
 
-proc CommandDoc*(filename: string)
-proc CommandRst2Html*(filename: string)
-proc CommandRst2TeX*(filename: string)
+proc CommandDoc*()
+proc CommandRst2Html*()
+proc CommandRst2TeX*()
 # implementation
 
 type 
@@ -870,14 +870,14 @@ proc writeOutput(d: PDoc, filename, outExt: string) =
   else:
     writeRope(content, getOutFile(filename, outExt))
 
-proc CommandDoc(filename: string) = 
-  var ast = parseFile(addFileExt(filename, nimExt))
+proc CommandDoc =
+  var ast = parseFile(addFileExt(projectFullPath, nimExt))
   if ast == nil: return 
-  var d = newDocumentor(filename)
+  var d = newDocumentor(projectFullPath)
   initIndexFile(d)
   d.hasToc = true
   generateDoc(d, ast)
-  writeOutput(d, filename, HtmlExt)
+  writeOutput(d, projectFullPath, HtmlExt)
   generateIndex(d)
 
 proc CommandRstAux(filename, outExt: string) = 
@@ -889,9 +889,10 @@ proc CommandRstAux(filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc CommandRst2Html(filename: string) = 
-  CommandRstAux(filename, HtmlExt)
+proc CommandRst2Html =
+  CommandRstAux(projectFullPath, HtmlExt)
 
-proc CommandRst2TeX(filename: string) = 
+proc CommandRst2TeX =
   splitter = "\\-"
-  CommandRstAux(filename, TexExt)
+  CommandRstAux(projectFullPath, TexExt)
+
