@@ -74,6 +74,11 @@ version 0.9.XX
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:
   o.p(x) --> p(o, x) -->  myMacro(o, p, x)
+  
+  This is really the opposite of ``tyExpr``:
+  * For parameter ``tyExpr`` any argument matches.
+  * Argument ``tyProxy`` matches any parameter.
+  
 - nice idea:
 
   p(a, b): 
