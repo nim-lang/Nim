@@ -1,6 +1,7 @@
 version 0.8.14
 ==============
 
+- argument passing with --run option is broken
 - stdlib and compiler should not use deprecated endOfFile and readline
 
 version 0.9.0

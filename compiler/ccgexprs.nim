@@ -1484,20 +1484,14 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     if d.k == locNone: getTemp(p, t, d)
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
-      if it.kind == nkExprColonExpr:
-        initLoc(rec, locExpr, it.sons[1].typ, d.s)
-        if (t.n.sons[i].kind != nkSym): InternalError(n.info, "genTupleConstr")
-        rec.r = ropef("$1.$2",
-                      [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)])
-        expr(p, it.sons[1], rec)
-      elif t.n == nil:
+      if it.kind == nkExprColonExpr: it = it.sons[1]
+      if t.n == nil:
         initLoc(rec, locExpr, it.typ, d.s)
         rec.r = ropef("$1.Field$2", [rdLoc(d), toRope(i)])
         expr(p, it, rec)
       else:
         initLoc(rec, locExpr, it.typ, d.s)
-        if (t.n.sons[i].kind != nkSym):
-          InternalError(n.info, "genTupleConstr: 2")
+        if (t.n.sons[i].kind != nkSym): InternalError(n.info, "genTupleConstr")
         rec.r = ropef("$1.$2",
                       [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)])
         expr(p, it, rec)

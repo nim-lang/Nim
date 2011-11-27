@@ -49,6 +49,7 @@ proc ProcessCmdLine(pass: TCmdLinePass) =
           
   if pass == passCmd2: 
     arguments = cmdLineRest(p)
+    echo "Setting args to ", arguments
     if optRun notin gGlobalOptions and arguments != "": 
       rawMessage(errArgsNeedRunOption, [])
   
@@ -91,7 +92,8 @@ proc HandleCmdLine() =
         rawMessage(hintSuccessX, [$gLinesCompiled, 
                    formatFloat(epochTime() - start, ffDecimal, 3)])
       if optRun in gGlobalOptions: 
-        var ex = quoteIfContainsWhite(changeFileExt(projectName, "").prependCurDir)
+        var ex = quoteIfContainsWhite(
+            changeFileExt(projectFullPath, "").prependCurDir)
         execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
