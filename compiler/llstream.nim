@@ -16,11 +16,11 @@ when not defined(windows) and defined(useGnuReadline):
   import rdstdin
 
 type 
-  TLLStreamKind* = enum       # stream encapsulates stdin
+  TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
     llsFile,                  # stream encapsulates a file
-    llsStdIn
+    llsStdIn                  # stream encapsulates stdin
   TLLStream* = object of TObject
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
     f*: tfile
@@ -37,13 +37,12 @@ proc LLStreamOpen*(): PLLStream
 proc LLStreamOpenStdIn*(): PLLStream
 proc LLStreamClose*(s: PLLStream)
 proc LLStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int
-proc LLStreamReadLine*(s: PLLStream): string
+proc LLStreamReadLine*(s: PLLStream, line: var string): bool
 proc LLStreamReadAll*(s: PLLStream): string
 proc LLStreamWrite*(s: PLLStream, data: string)
 proc LLStreamWrite*(s: PLLStream, data: Char)
 proc LLStreamWrite*(s: PLLStream, buf: pointer, buflen: int)
 proc LLStreamWriteln*(s: PLLStream, data: string)
-proc LLStreamAtEnd*(s: PLLStream): bool
 # implementation
 
 proc LLStreamOpen(data: string): PLLStream = 
@@ -80,9 +79,9 @@ proc LLStreamClose(s: PLLStream) =
 
 when not defined(ReadLineFromStdin): 
   # fallback implementation:
-  proc ReadLineFromStdin(prompt: string): string = 
+  proc ReadLineFromStdin(prompt: string, line: var string): bool =
     stdout.write(prompt)
-    result = readLine(stdin)
+    result = readLine(stdin, line)
 
 proc endsWith*(x: string, s: set[char]): bool =
   var i = x.len-1
@@ -95,8 +94,8 @@ const
                           '|', '%', '&', '$', '@', '~', ','}
   AdditionalLineContinuationOprs = {'#', ':', '='}
 
-proc endsWithOpr*(x: string): bool = 
-  # also used be the standard template filter:
+proc endsWithOpr*(x: string): bool =
+  # also used by the standard template filter:
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
@@ -105,15 +104,11 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
       line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
 
 proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int = 
-  var 
-    line: string
-    L: int
-    inTripleString = false
+  var inTripleString = false
   s.s = ""
   s.rd = 0
-  while true: 
-    line = ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ")
-    L = len(line)
+  var line = newStringOfCap(120)
+  while ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
     add(s.s, line)
     add(s.s, "\n")
     if line.contains("\"\"\""):
@@ -139,36 +134,30 @@ proc LLStreamRead(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsStdIn: 
     result = LLreadFromStdin(s, buf, bufLen)
   
-proc LLStreamReadLine(s: PLLStream): string = 
+proc LLStreamReadLine(s: PLLStream, line: var string): bool =
+  setLen(line, 0)
   case s.kind
-  of llsNone: 
-    result = ""
-  of llsString: 
-    result = ""
-    while s.rd < len(s.s): 
-      case s.s[s.rd + 0]
-      of '\x0D': 
+  of llsNone:
+    result = true
+  of llsString:
+    while s.rd < len(s.s):
+      case s.s[s.rd]
+      of '\x0D':
         inc(s.rd)
-        if s.s[s.rd + 0] == '\x0A': inc(s.rd)
-        break 
-      of '\x0A': 
+        if s.s[s.rd] == '\x0A': inc(s.rd)
+        break
+      of '\x0A':
         inc(s.rd)
-        break 
-      else: 
-        add(result, s.s[s.rd + 0])
+        break
+      else:
+        add(line, s.s[s.rd])
         inc(s.rd)
-  of llsFile: 
-    result = readLine(s.f)
-  of llsStdIn: 
-    result = readLine(stdin)
-  
-proc LLStreamAtEnd(s: PLLStream): bool = 
-  case s.kind
-  of llsNone: result = true
-  of llsString: result = s.rd >= len(s.s)
-  of llsFile: result = endOfFile(s.f)
-  of llsStdIn: result = false
-  
+    result = line.len > 0 or s.rd < len(s.s)
+  of llsFile:
+    result = readLine(s.f, line)
+  of llsStdIn:
+    result = readLine(stdin, line)
+    
 proc LLStreamWrite(s: PLLStream, data: string) = 
   case s.kind
   of llsNone, llsStdIn: 

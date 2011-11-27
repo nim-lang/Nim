@@ -23,7 +23,7 @@ when debugIds:
 
 proc registerID*(id: PIdObj) = 
   when debugIDs: 
-    if (id.id == - 1) or ContainsOrIncl(usedIds, id.id): 
+    if id.id == -1 or ContainsOrIncl(usedIds, id.id): 
       InternalError("ID already used: " & $id.id)
   
 proc getID*(): int {.inline.} = 
@@ -55,9 +55,12 @@ proc saveMaxIds*(project: string) =
 proc loadMaxIds*(project: string) =
   var f: TFile
   if open(f, project.toGid, fmRead):
-    var frontEndId = parseInt(f.readLine)
-    var backEndId = parseInt(f.readLine)
-    gFrontEndId = max(gFrontEndId, frontEndId)
-    gBackEndId = max(gBackEndId, backEndId)
+    var line = newStringOfCap(20)
+    if f.readLine(line):
+      var frontEndId = parseInt(line)
+      if f.readLine(line):
+        var backEndId = parseInt(line)
+        gFrontEndId = max(gFrontEndId, frontEndId)
+        gBackEndId = max(gBackEndId, backEndId)
     f.close()
 

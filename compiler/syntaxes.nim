@@ -89,12 +89,13 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
   result = ast.emptyNode
   var s = LLStreamOpen(filename, fmRead)
   if s != nil: 
-    var line = LLStreamReadLine(s)
+    var line = newStringOfCap(80)
+    discard LLStreamReadLine(s, line)
     var i = UTF8_Bom(line)
-    if containsShebang(line, i): 
-      line = LLStreamReadLine(s)
+    if containsShebang(line, i):
+      discard LLStreamReadLine(s, line)
       i = 0
-    if (line[i] == '#') and (line[i + 1] == '!'): 
+    if line[i] == '#' and line[i+1] == '!':
       inc(i, 2)
       while line[i] in WhiteSpace: inc(i)
       var q: TParser

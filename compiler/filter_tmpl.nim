@@ -206,8 +206,8 @@ proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   p.emit = strArg(call, "emit", 3, "result.add")
   p.conc = strArg(call, "conc", 4, " & ")
   p.toStr = strArg(call, "tostring", 5, "$")
-  while not LLStreamAtEnd(p.inp): 
-    p.x = LLStreamReadLine(p.inp)
+  p.x = newStringOfCap(120)
+  while LLStreamReadLine(p.inp, p.x):
     p.info.line = p.info.line + int16(1)
     parseLine(p)
   newLine(p)
