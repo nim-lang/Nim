@@ -59,8 +59,8 @@ proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   var leading = boolArg(call, "leading", 2, true)
   var trailing = boolArg(call, "trailing", 3, true)
   result = LLStreamOpen("")
-  while not LLStreamAtEnd(stdin): 
-    var line = LLStreamReadLine(stdin)
+  var line = newStringOfCap(80)
+  while LLStreamReadLine(stdin, line):
     var stripped = strip(line, leading, trailing)
     if (len(pattern) == 0) or startsWith(stripped, pattern): 
       LLStreamWriteln(result, stripped)
@@ -73,7 +73,7 @@ proc filterReplace(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   if len(sub) == 0: invalidPragma(call)
   var by = strArg(call, "by", 2, "")
   result = LLStreamOpen("")
-  while not LLStreamAtEnd(stdin): 
-    var line = LLStreamReadLine(stdin)
+  var line = newStringOfCap(80)
+  while LLStreamReadLine(stdin, line):
     LLStreamWriteln(result, replace(line, sub, by))
   LLStreamClose(stdin)

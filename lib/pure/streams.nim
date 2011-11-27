@@ -150,19 +150,6 @@ proc readStr*(s: PStream, length: int): TaintedString =
   var L = readData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
 
-proc readLine*(s: PStream): TaintedString {.deprecated.} =
-  ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
-  ## `EIO` if an error occured.
-  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
-  result = TaintedString""
-  while not atEnd(s): 
-    var c = readChar(s)
-    if c == '\c': 
-      c = readChar(s)
-      break
-    elif c == '\L' or c == '\0': break
-    result.string.add(c)
-
 proc readLine*(s: PStream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
@@ -182,6 +169,19 @@ proc readLine*(s: PStream, line: var TaintedString): bool =
       else: return false
     line.string.add(c)
   result = true
+
+proc readLine*(s: PStream): TaintedString {.deprecated.} =
+  ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
+  ## `EIO` if an error occured.
+  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
+  result = TaintedString""
+  while true:
+    var c = readChar(s)
+    if c == '\c': 
+      c = readChar(s)
+      break
+    elif c == '\L' or c == '\0': break
+    result.string.add(c)
 
 type
   PStringStream* = ref TStringStream ## a stream that encapsulates a string

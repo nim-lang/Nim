@@ -14,21 +14,41 @@
 ## wanted functionality.
 
 when defined(Windows):
-  proc ReadLineFromStdin*(prompt: string): TaintedString = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString {.deprecated.} = 
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
+  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool =
+    ## Reads a `line` from stdin. `line` must not be
+    ## ``nil``! May throw an IO exception.
+    ## A line of text may be delimited by ``CR``, ``LF`` or
+    ## ``CRLF``. The newline character(s) are not part of the returned string.
+    ## Returns ``false`` if the end of the file has been reached, ``true``
+    ## otherwise. If ``false`` is returned `line` contains no new data.
+    stdout.write(prompt)
+    result = readLine(stdin, line)
+
 else:
   import readline, history
     
-  proc ReadLineFromStdin*(prompt: string): TaintedString = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString {.deprecated.} = 
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     result = TaintedString($buffer)
     if result.string.len > 0:
       add_history(buffer)
     readline.free(buffer)
+
+  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool =
+    var buffer = readline.readLine(prompt)
+    if isNil(buffer): quit(0)
+    line = TaintedString($buffer)
+    if line.string.len > 0:
+      add_history(buffer)
+    readline.free(buffer)
+    # XXX how to determine CTRL+D?
+    result = true
 
   # initialization:
   # disable auto-complete: 

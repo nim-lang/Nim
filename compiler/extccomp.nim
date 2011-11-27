@@ -380,8 +380,8 @@ proc externalFileChanged(filename: string): bool =
   var currentCrc = int(footprint(filename))
   var f: TFile
   if open(f, crcFile, fmRead): 
-    var line = f.readLine()
-    if isNil(line) or line.len == 0: line = "0"
+    var line = newStringOfCap(40)
+    if not f.readLine(line): line = "0"
     close(f)
     var oldCrc = parseInt(line)
     result = oldCrc != currentCrc
