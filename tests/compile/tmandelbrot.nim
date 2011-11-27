@@ -1,3 +1,7 @@
+discard """
+  cmd: "nimrod cc --hints:on -d:release $# $#"
+"""
+
 # -*- nimrod -*-
 
 import math

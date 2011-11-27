@@ -11,6 +11,9 @@
 #            Garbage Collector
 #
 # The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+# This is achieved by combining a Deutsch-Bobrow garbage collector
+# together with Christoper's partial mark-sweep garbage collector.
+#
 # Special care has been taken to avoid recursion as far as possible to avoid
 # stack overflows when traversing deep datastructures. This is comparable to
 # an incremental and generational GC. It should be well-suited for soft real
