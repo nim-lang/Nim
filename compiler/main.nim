@@ -96,8 +96,8 @@ proc CommandGenDepend =
   registerPass(cleanupPass())
   compileProject()
   generateDot(projectFullPath)
-  execExternalProgram("dot -Tpng -o" & changeFileExt(projectFullPath, "png") & ' ' &
-      changeFileExt(projectFullPath, "dot"))
+  execExternalProgram("dot -Tpng -o" & changeFileExt(projectFullPath, "png") &
+      ' ' & changeFileExt(projectFullPath, "dot"))
 
 proc CommandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error

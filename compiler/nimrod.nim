@@ -45,12 +45,12 @@ proc ProcessCmdLine(pass: TCmdLinePass) =
           options.commandArgs.add p.key
 
           if options.projectName == "":
-            options.projectName = unixToNativePath(p.key) # BUGFIX for portable build scripts
+            # support UNIX style filenames anywhere for portable build scripts:
+            options.projectName = unixToNativePath(p.key)
+            arguments = cmdLineRest(p)
           
-  if pass == passCmd2: 
-    arguments = cmdLineRest(p)
-    echo "Setting args to ", arguments
-    if optRun notin gGlobalOptions and arguments != "": 
+  if pass == passCmd2:
+    if optRun notin gGlobalOptions and arguments != "":
       rawMessage(errArgsNeedRunOption, [])
   
 proc prependCurDir(f: string): string =
