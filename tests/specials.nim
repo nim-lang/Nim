@@ -140,3 +140,6 @@ proc rejectSpecialTests(r: var TResults, options: string) =
 proc compileSpecialTests(r: var TResults, options: string) =
   compileRodFiles(r, options)
 
+  compileSingleTest(r, "compiler/c2nim/c2nim.nim", options)
+  compileSingleTest(r, "compiler/pas2nim/pas2nim.nim", options)
+

@@ -836,7 +836,7 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
   if optSymbolFiles notin gGlobalOptions: 
     module.id = getID()
     return nil
-  idgen.loadMaxIds(options.projectPath / options.projectName)
+  idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
 
   discard checkDep(filename)
   var idx = getModuleIdx(filename)

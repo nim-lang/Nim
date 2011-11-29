@@ -52,8 +52,9 @@ Advanced options:
   --taintMode:on|off        turn taint mode on|off
   --symbolFiles:on|off      turn symbol files on|off (experimental)
   --skipCfg                 do not read the general configuration file
-  --skipProjCfg             do not read the project's configuration file
   --skipUserCfg             do not read the user's configuration file
+  --skipParentCfg           do not read the parent dirs' configuration files
+  --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
   --index:FILE              use FILE to generate a documentation index file
   --putenv:key=value        set an environment variable

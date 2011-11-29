@@ -576,7 +576,7 @@ proc myClose(c: PPassContext, n: PNode): PNode =
   result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)
-  idgen.saveMaxIds(options.projectPath / options.projectName)
+  idgen.saveMaxIds(options.gProjectPath / options.gProjectName)
 
 proc rodwritePass(): TPass = 
   initPass(result)

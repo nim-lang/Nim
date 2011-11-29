@@ -42,6 +42,7 @@ type                          # please make sure we have under 32 options
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
     optSkipUserConfigFile,    # skip the users's config file
+    optSkipParentConfigFiles, # skip parent dir's config files
     optNoMain,                # do not generate a "main" proc
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
@@ -93,6 +94,7 @@ const
   HtmlExt* = "html"
   TexExt* = "tex"
   IniExt* = "ini"
+  DefaultConfig* = "nimrod.cfg"
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
 
@@ -100,9 +102,9 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   libpath* = ""
-  projectName* = "" # holds a name like `nimrod'
-  projectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
-  projectFullPath* = "" # projectPath/projectName
+  gProjectName* = "" # holds a name like 'nimrod'
+  gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
+  gProjectFull* = "" # projectPath/projectName
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
   commandArgs*: seq[string] = @[] # any arguments after the main command
@@ -117,7 +119,7 @@ proc mainCommandArg*: string =
   if commandArgs.len > 0:
     result = commandArgs[0]
   else:
-    result = projectName
+    result = gProjectName
 
 proc existsConfigVar*(key: string): bool = 
   result = hasKey(gConfigVars, key)
@@ -136,7 +138,7 @@ proc getPrefixDir*(): string =
   ## gets the application directory
   result = SplitPath(getAppDir()).head
 
-proc shortenDir(dir: string): string = 
+proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
   if startsWith(dir, prefix): 
@@ -144,9 +146,8 @@ proc shortenDir(dir: string): string =
   prefix = getCurrentDir() & dirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
-  prefix = projectPath & dirSep #writeln(output, prefix);
-                                #writeln(output, dir);
-  if startsWith(dir, prefix): 
+  prefix = gProjectPath & dirSep
+  if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
 
@@ -157,7 +158,7 @@ proc removeTrailingDirSep*(path: string): string =
     result = path
   
 proc getGeneratedPath: string =
-  result = if nimcacheDir.len > 0: nimcacheDir else: projectPath.shortenDir /
+  result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
   
 proc toGeneratedFile*(path, ext: string): string = 

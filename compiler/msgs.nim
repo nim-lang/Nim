@@ -96,7 +96,7 @@ type
     errUser,
     warnCannotOpenFile, 
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit, 
-    warnDeprecated, 
+    warnDeprecated, warnConfigDeprecated,
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnXisPassedToProcVar, warnDerefDeprecated, warnAnalysisLoophole,
@@ -328,6 +328,7 @@ const
     warnXIsNeverRead: "\'$1\' is never read [XIsNeverRead]", 
     warnXmightNotBeenInit: "\'$1\' might not have been initialized [XmightNotBeenInit]", 
     warnDeprecated: "\'$1\' is deprecated [Deprecated]", 
+    warnConfigDeprecated: "config file '$1' is deprecated [ConfigDeprecated]",
     warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one) [SmallLshouldNotBeUsed]", 
     warnUnknownMagic: "unknown magic \'$1\' might crash the compiler [UnknownMagic]", 
     warnRedefinitionOfLabel: "redefinition of label \'$1\' [RedefinitionOfLabel]", 
@@ -356,9 +357,10 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..16, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..17, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
-    "Deprecated", "SmallLshouldNotBeUsed", "UnknownMagic", 
+    "Deprecated", "ConfigDeprecated",
+    "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "XisPassedToProcVar", "DerefDeprecated",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap", "User"]
@@ -443,7 +445,7 @@ proc includeFilename*(f: string): int =
 
   filenames.add((filename: f, fullpath: fullpath))
 
-proc newLineInfo*(filename: string, line, col: int): TLineInfo = 
+proc newLineInfo(filename: string, line, col: int): TLineInfo = 
   result.fileIndex = includeFilename(filename)
   result.line = int16(line)
   result.col = int16(col)

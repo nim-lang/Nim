@@ -34,7 +34,7 @@ interpretation you will have to look harder.
 Why yet another programming language?
 -------------------------------------
 
-Nimrod is one of the very few *programmable* strongly typed languages, and 
+Nimrod is one of the very few *programmable* statically typed languages, and 
 one of the even fewer that will produce native binaries that require no 
 runtime or interpreter.
 
@@ -49,12 +49,14 @@ license of Nimrod to the BSD license.
 How stable is Nimrod?
 ---------------------
 
-The compiler is in development and some important features are still missing. 
+The compiler is in development and some important features are still missing.
 However, the compiler is quite stable already: It is able to compile itself 
-and a substantial body of other code. Until version 1.0.0 is released, 
+and a substantial body of other code. Until version 1.0.0 is released,
 incompatibilities with older versions of the compiler will be introduced. The 
 semantic details of overloading, macros/templates/generics and iterators 
-and their interactions are subject to change.
+and their interactions are subject to change. Changes to the syntax
+are also planned; gone will be the distinction between expressions and
+statements.
 
 
 How fast is Nimrod?

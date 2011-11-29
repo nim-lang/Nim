@@ -1,11 +1,10 @@
 version 0.8.14
 ==============
 
-- bug: compiler uses full file names again
-- implicit invokation of `items`/`pairs` seems nice
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
+- implicit invokation of `items`/`pairs` seems nice
 
 version 0.9.0
 =============

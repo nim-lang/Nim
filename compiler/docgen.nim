@@ -865,13 +865,13 @@ proc writeOutput(d: PDoc, filename, outExt: string) =
     writeRope(content, getOutFile(filename, outExt))
 
 proc CommandDoc =
-  var ast = parseFile(addFileExt(projectFullPath, nimExt))
+  var ast = parseFile(addFileExt(gProjectFull, nimExt))
   if ast == nil: return 
-  var d = newDocumentor(projectFullPath)
+  var d = newDocumentor(gProjectFull)
   initIndexFile(d)
   d.hasToc = true
   generateDoc(d, ast)
-  writeOutput(d, projectFullPath, HtmlExt)
+  writeOutput(d, gProjectFull, HtmlExt)
   generateIndex(d)
 
 proc CommandRstAux(filename, outExt: string) = 
@@ -884,9 +884,9 @@ proc CommandRstAux(filename, outExt: string) =
   generateIndex(d)
 
 proc CommandRst2Html =
-  CommandRstAux(projectFullPath, HtmlExt)
+  CommandRstAux(gProjectFull, HtmlExt)
 
 proc CommandRst2TeX =
   splitter = "\\-"
-  CommandRstAux(projectFullPath, TexExt)
+  CommandRstAux(gProjectFull, TexExt)
 
