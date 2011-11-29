@@ -114,7 +114,7 @@ proc runThreadTests(r: var TResults, options: string) =
   template test(filename: expr): stmt =
     runSingleTest(r, "tests/threads" / filename, options)
     runSingleTest(r, "tests/threads" / filename, options & " -d:release")
-    runSingleTest(r, "tests/threads" / filename, options & " -tlsEmulation:on")
+    runSingleTest(r, "tests/threads" / filename, options & " --tlsEmulation:on")
   
   test "tactors"
   test "threadex"

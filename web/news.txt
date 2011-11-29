@@ -53,8 +53,6 @@ Changes affecting backwards compatibility
   because they should not be used directly anymore. 
   Wrapper procs have been created that should be used instead.
 - ``export`` is now a keyword.
-- ``system.endOfFile``, ``system.readLine`` and their stream equivalents
-  are deprecated because Posix supports it poorly.
 
 
 Language Additions

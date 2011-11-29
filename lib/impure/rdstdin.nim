@@ -14,7 +14,7 @@
 ## wanted functionality.
 
 when defined(Windows):
-  proc ReadLineFromStdin*(prompt: string): TaintedString {.deprecated.} = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString = 
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
@@ -32,7 +32,7 @@ when defined(Windows):
 else:
   import readline, history
     
-  proc ReadLineFromStdin*(prompt: string): TaintedString {.deprecated.} = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString = 
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     result = TaintedString($buffer)

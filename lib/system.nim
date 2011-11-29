@@ -1672,9 +1672,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc Close*(f: TFile) {.importc: "fclose", nodecl.}
     ## Closes the file.
 
-  proc EndOfFile*(f: TFile): Bool {.deprecated.}
+  proc EndOfFile*(f: TFile): Bool
     ## Returns true iff `f` is at the end.
-    ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
     
   proc readChar*(f: TFile): char {.importc: "fgetc", nodecl.}
     ## Reads a single character from the stream `f`. If the stream
@@ -1704,13 +1703,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc write*(f: TFile, a: openArray[string])
     ## Writes a value to the file `f`. May throw an IO exception.
 
-  proc readLine*(f: TFile): TaintedString {.deprecated.}
+  proc readLine*(f: TFile): TaintedString
     ## reads a line of text from the file `f`. May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
     ## ``CRLF``. The newline character(s) are not part of the returned string.
-    ##
-    ## **Deprecated since 0.8.14**: Use the `readLine` that takes a ``var``
-    ## parameter instead.
   
   proc readLine*(f: TFile, line: var TaintedString): bool
     ## reads a line of text from the file `f` into `line`. `line` must not be
@@ -1719,7 +1715,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## ``CRLF``. The newline character(s) are not part of the returned string.
     ## Returns ``false`` if the end of the file has been reached, ``true``
     ## otherwise. If ``false`` is returned `line` contains no new data.
-
   proc writeln*[Ty](f: TFile, x: Ty) {.inline.}
     ## writes a value `x` to `f` and then writes "\n".
     ## May throw an IO exception.
