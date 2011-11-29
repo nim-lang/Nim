@@ -134,6 +134,15 @@ proc closePassesCached(a: var TPassContextArray) =
       m = gPasses[i].close(a[i], m)
     a[i] = nil                # free the memory here
   
+proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
+                      a: var TPassContextArray) =
+  for module in items(implicits):
+    var importStmt = newNodeI(nodeKind, gCmdLineInfo)
+    var str = newStrNode(nkStrLit, module)
+    str.info = gCmdLineInfo
+    importStmt.addSon str
+    processTopLevelStmt importStmt, a
+  
 proc processModule(module: PSym, filename: string, stream: PLLStream, 
                    rd: PRodReader) = 
   var 
@@ -153,16 +162,12 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
       openParsers(p, filename, s)
 
       if sfSystemModule notin module.flags:
-        template processImplicits(implicits, nodeKind: expr): stmt =
-          for module in items(implicits):
-            var importStmt = newNodeI(nodeKind, gCmdLineInfo)
-            var str = newStrNode(nkStrLit, module)
-            str.info = gCmdLineInfo
-            importStmt.addSon str
-            processTopLevelStmt importStmt, a
-        
-        processImplicits implicitImports, nkImportStmt
-        processImplicits implicitIncludes, nkIncludeStmt
+        # XXX what about caching? no processing then? what if I change the 
+        # modules to include between compilation runs? we'd need to track that
+        # in ROD files. I think we should enable this feature only
+        # for the interactive mode.
+        processImplicits implicitImports, nkImportStmt, a
+        processImplicits implicitIncludes, nkIncludeStmt, a
 
       while true: 
         var n = parseTopLevelStmt(p)
@@ -174,7 +179,7 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
     closePasses(a)
     # id synchronization point for more consistent code generation:
     IDsynchronizationPoint(1000)
-  else: 
+  else:
     openPassesCached(a, module, filename, rd)
     var n = loadInitSection(rd)
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
