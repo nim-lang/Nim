@@ -862,7 +862,7 @@ proc newModule(module: PSym, filename: string): BModule =
 proc registerTypeInfoModule() = 
   const moduleName = "nim__dat"
   var s = NewSym(skModule, getIdent(moduleName), nil)
-  gNimDat = rawNewModule(s, (options.projectPath / moduleName) & ".nim")
+  gNimDat = rawNewModule(s, (options.gProjectPath / moduleName) & ".nim")
   gNimDat.PreventStackTrace = true
   addPendingModule(gNimDat)
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 

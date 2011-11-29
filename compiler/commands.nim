@@ -37,36 +37,27 @@ proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.os[platform.hostOS].name, 
                            cpu[platform.hostCPU].name]) & Usage
 
-var 
-  helpWritten: bool           # BUGFIX 19
-  versionWritten: bool
-  advHelpWritten: bool
-
 proc HelpOnError(pass: TCmdLinePass) = 
-  if (pass == passCmd1) and not helpWritten: 
-    # BUGFIX 19
+  if pass == passCmd1:
     MsgWriteln(getCommandLineDesc())
-    helpWritten = true
     quit(0)
 
 proc writeAdvancedUsage(pass: TCmdLinePass) = 
-  if (pass == passCmd1) and not advHelpWritten: 
-    # BUGFIX 19
+  if pass == passCmd1:
     MsgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]) & AdvancedUsage)
-    advHelpWritten = true
-    helpWritten = true
     quit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) = 
-  if (pass == passCmd1) and not versionWritten: 
-    versionWritten = true
-    helpWritten = true
+  if pass == passCmd1:
     MsgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]))
     quit(0)
+
+var
+  helpWritten: bool
 
 proc writeCommandLineUsage() = 
   if not helpWritten: 
@@ -197,8 +188,8 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 proc processPath(path: string): string = 
   result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
-    "projectname", options.projectName,
-    "projectpath", options.projectPath])
+    "projectname", options.gProjectName,
+    "projectpath", options.gProjectPath])
 
 proc addPath(path: string, info: TLineInfo) = 
   if not contains(options.searchPaths, path): 
@@ -246,8 +237,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     options.outFile = arg
   of "mainmodule", "m":
     expectArg(switch, arg, pass, info)
-    projectName = arg
-    projectFullPath = projectPath/projectName
+    gProjectName = arg
+    gProjectFull = gProjectPath / gProjectName
   of "define", "d": 
     expectArg(switch, arg, pass, info)
     DefineSymbol(arg)
@@ -433,6 +424,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "skipusercfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipUserConfigFile)
+  of "skipparentcfg":
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optSkipParentConfigFiles)
   of "genscript": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)

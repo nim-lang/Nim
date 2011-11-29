@@ -305,16 +305,14 @@ var
   cExt* = "c" # extension of generated C/C++ files
               # (can be changed to .cpp later)
   
-  cIncludes*: seq[string] = @[] # list of directories to search for included files
-  cLibs*: seq[string] = @[] # list of directories to search for lib files
-  cLinkedLibs*: seq[string] = @[] # list of libraries to link
+  cIncludes*: seq[string] = @[]   # directories to search for included files
+  cLibs*: seq[string] = @[]       # directories to search for lib files
+  cLinkedLibs*: seq[string] = @[] # libraries to link
 
 # implementation
 
-when defined(windows):
-  var libNameTmpl = "$1.lib"
-else:
-  var libNameTmpl = "lib$1.a"
+proc libNameTmpl(): string {.inline.} =
+  result = if targetOS == osWindows: "$1.lib" else: "lib$1.a"
 
 var 
   toLink, toCompile, externalToCompile: TLinkedList
@@ -431,43 +429,41 @@ const
 var fileCounter: int
 
 proc add(s: var string, many: openarray[string]) =
-  # XXX: is there something like C++'s reserve?
-  # We can use it here to avoid multiple reallocations
-  for x in items(many): s.add x
+  s.add many.join
 
-proc getCompileCFileCmd*(cfilename: string, isExternal: bool = false): string = 
-  var 
-    cfile, objfile, options, includeCmd, compilePattern, key, trunk, exe: string
-  var c = ccompiler
-  options = compileOptions
-  trunk = splitFile(cfilename).name
+proc CFileSpecificOptions(cfilename: string): string =
+  result = compileOptions
+  var trunk = splitFile(cfilename).name
   if optCDebug in gGlobalOptions: 
-    key = trunk & ".debug"
-    if existsConfigVar(key): addOpt(options, getConfigVar(key))
-    else: addOpt(options, getDebug(c))
-  if (optOptimizeSpeed in gOptions): 
-    #if ((fileCounter >= specialFileA) and (fileCounter <= specialFileB)) then
-    key = trunk & ".speed"
-    if existsConfigVar(key): addOpt(options, getConfigVar(key))
-    else: addOpt(options, getOptSpeed(c))
-  elif optOptimizeSize in gOptions: 
-    key = trunk & ".size"
-    if existsConfigVar(key): addOpt(options, getConfigVar(key))
-    else: addOpt(options, getOptSize(c))
-  key = trunk & ".always"
-  if existsConfigVar(key): addOpt(options, getConfigVar(key))
-  exe = cc[c].compilerExe
-  key = cc[c].name & ".exe"
+    var key = trunk & ".debug"
+    if existsConfigVar(key): addOpt(result, getConfigVar(key))
+    else: addOpt(result, getDebug(ccompiler))
+  if optOptimizeSpeed in gOptions:
+    var key = trunk & ".speed"
+    if existsConfigVar(key): addOpt(result, getConfigVar(key))
+    else: addOpt(result, getOptSpeed(ccompiler))
+  elif optOptimizeSize in gOptions:
+    var key = trunk & ".size"
+    if existsConfigVar(key): addOpt(result, getConfigVar(key))
+    else: addOpt(result, getOptSize(ccompiler))
+  var key = trunk & ".always"
+  if existsConfigVar(key): addOpt(result, getConfigVar(key))
+
+proc getCompileCFileCmd*(cfilename: string, isExternal = false): string = 
+  var c = ccompiler
+  var options = CFileSpecificOptions(cfilename)
+  var exe = cc[c].compilerExe
+  var key = cc[c].name & ".exe"
   if existsConfigVar(key): exe = getConfigVar(key)
   if targetOS == osWindows: exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
       ospNeedsPIC in platform.OS[targetOS].props: 
     add(options, ' ' & cc[c].pic)
+  
+  var includeCmd, compilePattern: string
   if targetOS == platform.hostOS: 
     # compute include paths:
-    includeCmd = cc[c].includeCmd # this is more complex than needed, but
-                                  # a workaround of a FPC bug...
-    add(includeCmd, quoteIfContainsWhite(libpath))
+    includeCmd = cc[c].includeCmd & quoteIfContainsWhite(libpath)
 
     for includeDir in items(cIncludes):
       includeCmd.add cc[c].includeCmd, includeDir.quoteIfContainsWhite
@@ -476,15 +472,17 @@ proc getCompileCFileCmd*(cfilename: string, isExternal: bool = false): string =
   else: 
     includeCmd = ""
     compilePattern = cc[c].compilerExe
-  if targetOS == platform.hostOS: cfile = cfilename
-  else: cfile = extractFileName(cfilename)
-  if not isExternal or targetOS != platform.hostOS: objfile = toObjFile(cfile)
-  else: objfile = completeCFilePath(toObjFile(cfile))
+  
+  # XXX fix the grammar finally, we need multi-line if expressions:
+  var cfile = if targetOS == platform.hostOS: cfilename else: extractFileName(
+                                                                     cfilename)
+  var objfile = if not isExternal or targetOS != platform.hostOS: toObjFile(
+                      cfile) else: completeCFilePath(toObjFile(cfile))
   cfile = quoteIfContainsWhite(AddFileExt(cfile, cExt))
   objfile = quoteIfContainsWhite(objfile)
-  result = quoteIfContainsWhite(`%`(compilePattern, ["file", cfile, "objfile", 
-      objfile, "options", options, "include", includeCmd, "nimrod", 
-      getPrefixDir(), "lib", libpath]))
+  result = quoteIfContainsWhite(compilePattern % [
+    "file", cfile, "objfile", objfile, "options", options, 
+    "include", includeCmd, "nimrod", getPrefixDir(), "lib", libpath])
   add(result, ' ')
   addf(result, cc[c].compileTmpl, [
     "file", cfile, "objfile", objfile, 
@@ -498,9 +496,9 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
   while it != nil: 
     inc(fileCounter)          # call the C compiler for the .c file:
     var compileCmd = getCompileCFileCmd(it.data, isExternal)
-    if not (optCompileOnly in gGlobalOptions): 
+    if optCompileOnly notin gGlobalOptions: 
       add(cmds, compileCmd)
-    if (optGenScript in gGlobalOptions): 
+    if optGenScript in gGlobalOptions: 
       app(script, compileCmd)
       app(script, tnl)
     it = PStrEntry(it.next)
@@ -522,7 +520,7 @@ proc CallCCompiler*(projectfile: string) =
     var res = 0
     if gNumberOfProcessors <= 1: 
       for i in countup(0, high(cmds)): res = max(execCmd(cmds[i]), res)
-    elif (optListCmd in gGlobalOptions) or (gVerbosity > 0): 
+    elif optListCmd in gGlobalOptions or gVerbosity > 0: 
       res = execProcesses(cmds, {poEchoCmd, poUseShell, poParentStreams}, 
                           gNumberOfProcessors)
     else: 
@@ -535,26 +533,25 @@ proc CallCCompiler*(projectfile: string) =
     var objfiles = ""
     while it != nil:
       add(objfiles, ' ')
-      if targetOS == platform.hostOS:
-        add(objfiles, quoteIfContainsWhite(addFileExt(it.data, cc[ccompiler].objExt)))
-      else:
-        add(objfiles, quoteIfContainsWhite(addFileExt(it.data, cc[ccompiler].objExt)))
+      add(objfiles, quoteIfContainsWhite(
+          addFileExt(it.data, cc[ccompiler].objExt)))
       it = PStrEntry(it.next)
 
     if optGenStaticLib in gGlobalOptions:
-      linkcmd = cc[c].buildLib % ["libfile", (libNameTmpl % projectName), "objfiles", objfiles]
+      linkcmd = cc[c].buildLib % ["libfile", (libNameTmpl() % gProjectName),
+                                  "objfiles", objfiles]
       if optCompileOnly notin gGlobalOptions: execExternalProgram(linkCmd)
     else:
       var linkerExe = getConfigVar(cc[c].name & ".linkerexe")
       if len(linkerExe) == 0: linkerExe = cc[c].linkerExe
       if targetOS == osWindows: linkerExe = addFileExt(linkerExe, "exe")
-      if (platform.hostOS != targetOS): linkCmd = quoteIfContainsWhite(linkerExe)
+      if platform.hostOS != targetOS: linkCmd = quoteIfContainsWhite(linkerExe)
       else: linkCmd = quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe))
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
       else: buildGui = ""
       var exefile: string
       if optGenDynLib in gGlobalOptions:
-        exefile = `%`(platform.os[targetOS].dllFrmt, [splitFile(projectFile).name])
+        exefile = platform.os[targetOS].dllFrmt % [splitFile(projectFile).name]
         buildDll = cc[c].buildDll
       else:
         exefile = splitFile(projectFile).name & platform.os[targetOS].exeExt
@@ -596,4 +593,5 @@ proc writeMapping*(gSymbolMapping: PRope) =
   app(code, genMappingFiles(toCompile))
   app(code, genMappingFiles(externalToCompile))
   appf(code, "[Symbols]$n$1", [gSymbolMapping])
-  WriteRope(code, joinPath(projectPath, "mapping.txt"))
+  WriteRope(code, joinPath(gProjectPath, "mapping.txt"))
+  

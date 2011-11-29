@@ -81,7 +81,7 @@ proc CompileModule(filename: string, flags: TSymFlags): PSym =
     result.id = getID()
   processModule(result, f, nil, rd)
 
-proc CompileProject(projectFile = projectFullPath) =
+proc CompileProject(projectFile = gProjectFull) =
   discard CompileModule(options.libpath / "system", {sfSystemModule})
   discard CompileModule(projectFile, {sfMainModule})
 
@@ -95,9 +95,9 @@ proc CommandGenDepend =
   registerPass(genDependPass())
   registerPass(cleanupPass())
   compileProject()
-  generateDot(projectFullPath)
-  execExternalProgram("dot -Tpng -o" & changeFileExt(projectFullPath, "png") &
-      ' ' & changeFileExt(projectFullPath, "dot"))
+  generateDot(gProjectFull)
+  execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
+      ' ' & changeFileExt(gProjectFull, "dot"))
 
 proc CommandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
@@ -112,7 +112,7 @@ proc CommandCompileToC =
   #registerPass(cleanupPass())
   compileProject()
   if gCmd != cmdRun:
-    extccomp.CallCCompiler(changeFileExt(projectFullPath, ""))
+    extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
 
 when has_LLVM_Backend:
   proc CommandCompileToLLVM =
@@ -177,14 +177,14 @@ proc CommandSuggest =
   compileProject()
 
 proc wantMainModule =
-  if projectFullPath.len == 0:
+  if gProjectFull.len == 0:
     Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
   
 proc MainCommand =
   appendStr(searchPaths, options.libpath)
-  if projectFullPath.len != 0:
-    # current path is dalways looked first for modules
-    prependStr(searchPaths, projectPath)
+  if gProjectFull.len != 0:
+    # current path is always looked first for modules
+    prependStr(searchPaths, gProjectPath)
   setID(100)
   passes.gIncludeFile = syntaxes.parseFile
   passes.gImportModule = importModule
@@ -259,7 +259,7 @@ proc MainCommand =
   of "parse": 
     gCmd = cmdParse
     wantMainModule()
-    discard parseFile(addFileExt(projectFullPath, nimExt))
+    discard parseFile(addFileExt(gProjectFull, nimExt))
   of "scan": 
     gCmd = cmdScan
     wantMainModule()

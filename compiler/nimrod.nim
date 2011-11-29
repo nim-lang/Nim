@@ -44,9 +44,9 @@ proc ProcessCmdLine(pass: TCmdLinePass) =
         else:
           options.commandArgs.add p.key
 
-          if options.projectName == "":
+          if options.gProjectName == "":
             # support UNIX style filenames anywhere for portable build scripts:
-            options.projectName = unixToNativePath(p.key)
+            options.gProjectName = unixToNativePath(p.key)
             arguments = cmdLineRest(p)
           
   if pass == passCmd2:
@@ -64,20 +64,20 @@ proc HandleCmdLine() =
   var start = epochTime()
   if paramCount() == 0: 
     writeCommandLineUsage()
-  else: 
+  else:
     # Process command line arguments:
     ProcessCmdLine(passCmd1)
-    if projectName != "":
+    if gProjectName != "":
       try:
-        projectFullPath = expandFilename(projectName)
+        gProjectFull = expandFilename(gProjectName)
       except EOS:
-        projectFullPath = projectName
-      var p = splitFile(projectFullPath)
-      projectPath = p.dir
-      projectName = p.name
+        gProjectFull = gProjectName
+      var p = splitFile(gProjectFull)
+      gProjectPath = p.dir
+      gProjectName = p.name
     else:
-      projectPath = getCurrentDir()
-    LoadConfigs() # load all config files
+      gProjectPath = getCurrentDir()      
+    LoadConfigs(DefaultConfig) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
@@ -91,9 +91,9 @@ proc HandleCmdLine() =
       if gCmd notin {cmdInterpret, cmdRun}: 
         rawMessage(hintSuccessX, [$gLinesCompiled, 
                    formatFloat(epochTime() - start, ffDecimal, 3)])
-      if optRun in gGlobalOptions: 
+      if optRun in gGlobalOptions:
         var ex = quoteIfContainsWhite(
-            changeFileExt(projectFullPath, "").prependCurDir)
+            changeFileExt(gProjectFull, "").prependCurDir)
         execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()

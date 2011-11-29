@@ -91,13 +91,13 @@ Compiler Additions
   directory for generated code.
 - Added ``--cincludes:dir``, ``--clibdir:lib`` configuration options for 
   modifying the C compiler's header/library search path in cross-platform way.
-- Added ``--clib:lib`` configuration options for specifying additional
+- Added ``--clib:lib`` configuration option for specifying additional
   C libraries to be linked.
 - Added ``--mainmodule:file`` configuration options for specifying the main
   project file. This is intended to be used in project configuration files to
   allow commands like ``nimrod c`` or ``nimrod check`` to be executed anywhere
-  within the project's directory structure
-- Added a ``--app:staticlib`` option for creating static libraries
+  within the project's directory structure.
+- Added a ``--app:staticlib`` option for creating static libraries.
 - Added a ``--tlsEmulation:on|off`` switch for control over thread local
   storage emulation.
 - The compiler and standard library now support a *taint mode*. Input strings

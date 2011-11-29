@@ -189,14 +189,14 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
       confTok(L, tok)
   processSwitch(s, val, passPP, info)
 
-proc readConfigFile(filename: string) = 
-  var 
+proc readConfigFile(filename: string) =
+  var
     L: TLexer
     tok: TToken
     stream: PLLStream
-  initToken(tok)
   stream = LLStreamOpen(filename, fmRead)
-  if stream != nil: 
+  if stream != nil:
+    initToken(tok)
     openLexer(L, filename, stream)
     tok.tokType = tkEof       # to avoid a pointless warning
     confTok(L, tok)           # read in the first token
@@ -214,7 +214,7 @@ proc getSystemConfigPath(filename: string): string =
   result = joinPath([getPrefixDir(), "config", filename])
   if not ExistsFile(result): result = "/etc/" & filename
 
-proc LoadConfigs*(cfg = "nimrod.cfg") =
+proc LoadConfigs*(cfg: string) =
   # set default value (can be overwritten):
   if libpath == "": 
     # choose default libpath:
@@ -224,12 +224,21 @@ proc LoadConfigs*(cfg = "nimrod.cfg") =
     else: libpath = joinPath(prefix, "lib")
 
   if optSkipConfigFile notin gGlobalOptions:
-    readConfigFile getSystemConfigPath(cfg)
+    readConfigFile(getSystemConfigPath(cfg))
 
   if optSkipUserConfigFile notin gGlobalOptions:
-    readConfigFile getUserConfigPath(cfg)
+    readConfigFile(getUserConfigPath(cfg))
 
-  if optSkipProjConfigFile notin gGlobalOptions and projectPath != "":
-    for dir in parentDirs(projectPath, fromRoot = true):
-      readConfigFile(dir/cfg)
+  var pd = if gProjectPath.len > 0: gProjectPath else: getCurrentDir()
+  if optSkipParentConfigFiles notin gGlobalOptions:
+    for dir in parentDirs(pd, fromRoot=true, inclusive=false):
+      readConfigFile(dir / cfg)
     
+  if optSkipProjConfigFile notin gGlobalOptions and gProjectName.len != 0:
+    readConfigFile(pd / cfg)
+    
+    var conffile = changeFileExt(gProjectFull, "cfg")
+    if conffile != pd / cfg and existsFile(conffile):
+      readConfigFile(conffile)
+      rawMessage(warnConfigDeprecated, conffile)
+      
