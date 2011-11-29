@@ -81,7 +81,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
-  of skVar, skResult:
+  of skVar, skLet, skResult:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags: incl(c.p.owner.flags, sfSideEffect)
@@ -372,6 +372,7 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   result = arNone
   case n.kind
   of nkSym:
+    # don't list 'skLet' here:
     if n.sym.kind in {skVar, skResult, skTemp}:
       if c.p.owner.id == n.sym.owner.id: result = arLocalLValue
       else: result = arLValue

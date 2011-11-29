@@ -144,11 +144,11 @@ type
     nkForStmt,            # a for statement
     nkWhileStmt,          # a while statement
     nkCaseStmt,           # a case statement
+    nkTypeSection,        # a type section (consists of type definitions)
     nkVarSection,         # a var section
     nkLetSection,         # a let section
     nkConstSection,       # a const section
     nkConstDef,           # a const definition
-    nkTypeSection,        # a type section (consists of type definitions)
     nkTypeDef,            # a type definition
     nkYieldStmt,          # the yield statement as a tree
     nkTryStmt,            # a try statement
@@ -315,8 +315,9 @@ type
     skTemp,               # a temporary variable (introduced by compiler)
     skModule,             # module identifier
     skType,               # a type
-    skConst,              # a constant
     skVar,                # a variable
+    skLet,                # a 'let' symbol
+    skConst,              # a constant
     skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
@@ -580,7 +581,7 @@ const
   ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
                                     tyTuple, tySequence}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
-    skMacro, skTemplate, skConverter, skEnumField, skStub}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}
   namePos* = 0
   genericParamsPos* = 1

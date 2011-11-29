@@ -666,7 +666,7 @@ proc genStmts(p: BProc, t: PNode) =
   of nkBlockStmt: genBlock(p, t, a)
   of nkIfStmt: genIfStmt(p, t)
   of nkWhileStmt: genWhileStmt(p, t)
-  of nkVarSection: genVarStmt(p, t)
+  of nkVarSection, nkLetSection: genVarStmt(p, t)
   of nkConstSection: genConstStmt(p, t)
   of nkForStmt: internalError(t.info, "for statement not eliminated")
   of nkCaseStmt: genCaseStmt(p, t)

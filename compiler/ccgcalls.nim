@@ -53,7 +53,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
   # this does not work reliably because of forwarding + inlining can break it
   case n.kind
   of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp} and p.prc != nil:
+    if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
       result = p.prc.id == n.sym.owner.id
   of nkDotExpr, nkBracketExpr:
     if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyPtr,tyRef}:

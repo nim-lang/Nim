@@ -339,6 +339,7 @@ proc assignLocalVar(p: BProc, s: PSym) =
   # for each module that uses them!
   if s.loc.k == locNone: 
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
+    if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
   if sfRegister in s.flags: app(p.s[cpsLocals], " register")
   if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
@@ -473,7 +474,7 @@ proc cgsym(m: BModule, name: string): PRope =
   if sym != nil: 
     case sym.kind
     of skProc, skMethod, skConverter: genProc(m, sym)
-    of skVar, skResult: genVarPrototype(m, sym)
+    of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: InternalError("cgsym: " & name)
   else:

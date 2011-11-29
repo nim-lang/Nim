@@ -452,7 +452,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   case s.kind
   of skProc, skConverter, skMacro: 
     result = s.getBody
-  of skVar, skForVar, skTemp, skResult:
+  of skVar, skLet, skForVar, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
     else:
@@ -1195,7 +1195,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkWhenStmt, nkIfStmt, nkIfExpr: result = evalIf(c, n)
   of nkWhileStmt: result = evalWhile(c, n)
   of nkCaseStmt: result = evalCase(c, n)
-  of nkVarSection: result = evalVar(c, n)
+  of nkVarSection, nkLetSection: result = evalVar(c, n)
   of nkTryStmt: result = evalTry(c, n)
   of nkRaiseStmt: result = evalRaise(c, n)
   of nkReturnStmt: result = evalReturn(c, n)

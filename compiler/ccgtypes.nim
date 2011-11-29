@@ -37,7 +37,7 @@ proc mangleName(s: PSym): PRope =
       case s.kind
       of skProc, skMethod, skConverter, skConst: 
         result = toRope("@")
-      of skVar, skResult: 
+      of skVar, skResult, skLet: 
         if sfGlobal in s.flags: result = toRope("@")
         else: result = toRope("%")
       of skForVar, skTemp, skParam, skType, skEnumField, skModule: 

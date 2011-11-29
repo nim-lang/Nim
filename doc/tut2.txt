@@ -580,13 +580,13 @@ via a special ``:`` syntax:
 .. code-block:: nimrod
 
   template withFile(f: expr, filename: string, mode: TFileMode,
-                    actions: stmt): stmt =
+                    body: stmt): stmt =
     block:
-      var fn = filename
+      let fn = filename
       var f: TFile
       if open(f, fn, mode):
         try:
-          actions
+          body
         finally:
           close(f)
       else:
@@ -596,10 +596,10 @@ via a special ``:`` syntax:
     txt.writeln("line 1")
     txt.writeln("line 2")
   
-In the example the two ``writeln`` statements are bound to the ``actions``
+In the example the two ``writeln`` statements are bound to the ``body``
 parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
-``var fn = filename`` statement ensures that ``filename`` is evaluated only
+``let fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
 
 

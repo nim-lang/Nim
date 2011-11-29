@@ -213,6 +213,17 @@ constants:
     z = y + 5 # computations are possible
 
 
+The let statement
+=================
+The ``let`` statement works like the ``var`` statement but the declared 
+symbols are *single assignment* variables: After the initialization their
+value cannot change:
+
+.. code-block::
+  let x = "abc" # introduces a new variable `x` and binds a value to it
+  x = "xyz"     # Illegal: assignment to `x`
+
+
 Control flow statements
 =======================
 
@@ -227,7 +238,7 @@ If statement
 The if statement is one way to branch the control flow:
 
 .. code-block:: nimrod
-  var name = readLine(stdin)
+  let name = readLine(stdin)
   if name == "":
     echo("Poor soul, you lost your name?")
   elif name == "name":
@@ -247,7 +258,7 @@ Another way to branch is provided by the case statement. A case statement is
 a multi-branch:
 
 .. code-block:: nimrod
-  var name = readLine(stdin)
+  let name = readLine(stdin)
   case name
   of "":
     echo("Poor soul, you lost your name?")
@@ -270,7 +281,7 @@ For integers or other ordinal types value ranges are also possible:
   from strutils import parseInt
 
   Echo("A number please: ")
-  var n = parseInt(readLine(stdin))
+  let n = parseInt(readLine(stdin))
   case n
   of 0..2, 4..7: Echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
   of 3, 8: Echo("The number is 3 or 8")
@@ -410,7 +421,7 @@ the next iteration immediately:
 
 .. code-block:: nimrod
   while true:
-    var x = readLine(stdin)
+    let x = readLine(stdin)
     if x == "": continue
     Echo(x)
 
@@ -717,8 +728,8 @@ However, this cannot be done for mutually recursive procedures:
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
-such a `forward declaration` is simple: just omit the ``=`` and the procedure's
-body.
+such a `forward declaration`:idx: is simple: just omit the ``=`` and the
+procedure's body.
 
 
 Iterators
@@ -846,7 +857,7 @@ to mark them to be of another integer type:
 
 
 .. code-block:: nimrod
-  var
+  let
     x = 0     # x is of type ``int``
     y = 0'i8  # y is of type ``int8``
     z = 0'i64 # z is of type ``int64``

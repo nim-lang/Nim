@@ -139,7 +139,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     case n.sym.kind
     of skParam, skForVar, skTemp:
       result = OnStack
-    of skVar, skResult:
+    of skVar, skResult, skLet:
       if sfGlobal in n.sym.flags: result = OnHeap
       else: result = OnStack
     of skConst: 
@@ -1607,7 +1607,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
         genComplexConst(p, sym, d)
     of skEnumField:
       putIntoDest(p, d, e.typ, toRope(sym.position))
-    of skVar, skResult:
+    of skVar, skResult, skLet:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: var not init " & sym.name.s)

@@ -835,7 +835,7 @@ proc genAddr(p: var TProc, n: PNode, r: var TCompRes) =
     s = n.sons[0].sym
     if s.loc.r == nil: InternalError(n.info, "genAddr: 3")
     case s.kind
-    of skVar, skResult: 
+    of skVar, skLet, skResult: 
       if mapType(n.typ) == etyObject: 
         # make addr() a no-op:
         r.kind = etyNone
@@ -866,7 +866,7 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
   if s.loc.r == nil: 
     InternalError(n.info, "symbol has no generated name: " & s.name.s)
   case s.kind
-  of skVar, skParam, skTemp, skResult: 
+  of skVar, skLet, skParam, skTemp, skResult: 
     var k = mapType(s.typ)
     if k == etyBaseIndex: 
       r.kind = etyBaseIndex
@@ -1339,7 +1339,7 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkBlockStmt: genBlock(p, n, r)
   of nkIfStmt: genIfStmt(p, n, r)
   of nkWhileStmt: genWhileStmt(p, n, r)
-  of nkVarSection: genVarStmt(p, n, r)
+  of nkVarSection, nkLetSection: genVarStmt(p, n, r)
   of nkConstSection: genConstStmt(p, n, r)
   of nkForStmt: internalError(n.info, "for statement not eliminated")
   of nkCaseStmt: genCaseStmt(p, n, r)

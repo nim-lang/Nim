@@ -531,17 +531,10 @@ proc process(c: PPassContext, n: PNode): PNode =
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
-  of nkVarSection:
+  of nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
-      if a.kind == nkCommentStmt: continue 
-      if a.kind != nkIdentDefs: InternalError(a.info, "rodwrite.process")
-      addInterfaceSym(w, a.sons[0].sym)
-  of nkConstSection: 
-    for i in countup(0, sonsLen(n) - 1): 
-      var a = n.sons[i]
-      if a.kind == nkCommentStmt: continue 
-      if a.kind != nkConstDef: InternalError(a.info, "rodwrite.process")
+      if a.kind == nkCommentStmt: continue
       addInterfaceSym(w, a.sons[0].sym)
   of nkTypeSection: 
     for i in countup(0, sonsLen(n) - 1): 

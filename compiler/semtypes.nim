@@ -242,9 +242,10 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
       # process pragmas later, because result.typ has not been set yet
     of skField: pragma(c, result, n.sons[1], fieldPragmas)
     of skVar:   pragma(c, result, n.sons[1], varPragmas)
+    of skLet:   pragma(c, result, n.sons[1], letPragmas)
     of skConst: pragma(c, result, n.sons[1], constPragmas)
     else: nil
-  else: 
+  else:
     result = semIdentVis(c, kind, n, allowed)
   
 proc checkForOverlap(c: PContext, t, ex: PNode, branchIndex: int) = 
