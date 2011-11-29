@@ -46,7 +46,7 @@ Changes affecting backwards compatibility
   raise hooks.
 - Changed exception handling/error reporting for ``os.removeFile`` and
   ``os.removeDir``.
-- The algorithm for searching and loading configuration files have been changed
+- The algorithm for searching and loading configuration files has been changed.
 - Operators now have diffent precedence rules: Assignment-like operators 
   (like ``*=``) are now special-cased. 
 - The fields in ``TStream`` have been renamed to have an ``Impl`` suffix 

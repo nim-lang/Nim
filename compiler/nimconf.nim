@@ -219,8 +219,8 @@ proc LoadConfigs*(cfg = "nimrod.cfg") =
   if libpath == "": 
     # choose default libpath:
     var prefix = getPrefixDir()
-    if (prefix == "/usr"): libpath = "/usr/lib/nimrod"
-    elif (prefix == "/usr/local"): libpath = "/usr/local/lib/nimrod"
+    if prefix == "/usr": libpath = "/usr/lib/nimrod"
+    elif prefix == "/usr/local": libpath = "/usr/local/lib/nimrod"
     else: libpath = joinPath(prefix, "lib")
 
   if optSkipConfigFile notin gGlobalOptions:

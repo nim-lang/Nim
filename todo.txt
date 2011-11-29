@@ -1,6 +1,7 @@
 version 0.8.14
 ==============
 
+- bug: compiler uses full file names again
 - stdlib and compiler should not use deprecated endOfFile and readline
 
 version 0.9.0

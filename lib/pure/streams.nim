@@ -113,7 +113,7 @@ proc read[T](s: PStream, result: var T) =
 proc readChar*(s: PStream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occured.
   ## Returns '\0' as an EOF marker.
-  discard readData(s, addr(result), sizeof(result))
+  if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: PStream): bool = 
   ## reads a bool from the stream `s`. Raises `EIO` if an error occured.
@@ -238,7 +238,9 @@ type
 
 proc fsClose(s: PStream) = close(PFileStream(s).f)
 proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
+{.push warning[Deprecated]: off.}
 proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
+{.pop.}
 proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
 proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
 

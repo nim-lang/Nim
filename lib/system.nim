@@ -797,6 +797,8 @@ when taintMode:
                                         ## turned on. Use the ``-d:taintMode``
                                         ## command line switch to turn the taint
                                         ## mode on.
+  
+  proc len*(s: TaintedString): int {.borrow.}
 else:
   type TaintedString* = string
 

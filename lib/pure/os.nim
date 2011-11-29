@@ -414,7 +414,7 @@ proc isRootDir*(path: string): bool {.
   var p = parentDir(path)
   result = p == path or p.len == 0
 
-iterator parentDirs*(path: string, fromRoot = false, inclusive = true): string =
+iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## Walks over all parent directories of a given `path`
   ##
   ## If `fromRoot` is set, the traversal will start from the file system root
