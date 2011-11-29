@@ -144,10 +144,12 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
     dealloc(buf)
 
   var outp = process.outputStream
-  while running(process) or not atEnd(outp):
-    var line = outp.readLine()
-    send(client, line.string)
-    send(client, wwwNL)
+  var line = newStringOfCap(120).TaintedString
+  while true:
+    if outp.readLine(line):
+      send(client, line.string)
+      send(client, wwwNL)
+    elif not running(process): break
 
 # --------------- Server Setup -----------------------------------------------
 

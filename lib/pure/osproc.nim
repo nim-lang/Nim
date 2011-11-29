@@ -160,7 +160,7 @@ proc execProcesses*(cmds: openArray[string],
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
   when defined(posix):
-    # poParentStreams causes problems on Posix, so we disable it simply:
+    # poParentStreams causes problems on Posix, so we simply disable it:
     var options = options - {poParentStreams}
   
   assert n > 0
@@ -218,11 +218,15 @@ when not defined(useNimRtl):
     var p = startCmd(command, options=options)
     var outp = outputStream(p)
     result = TaintedString""
-    while running(p) or not atEnd(outp):
-      result.string.add(outp.readLine().string)
-      result.string.add("\n")
+    var line = newStringOfCap(120).TaintedString
+    while true:
+      if outp.readLine(line):
+        result.string.add(line.string)
+        result.string.add("\n")
+      elif not running(p): break
     close(outp)
     close(p)
+
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -718,11 +722,14 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
   var p = startCmd(command, options)
   var outp = outputStream(p)
   result = (TaintedString"", -1)
+  var line = newStringOfCap(120).TaintedString
   while true:
-    if result[1] == -1: result[1] = peekExitCode(p)
-    if result[1] != -1 and atEnd(outp): break
-    result[0].string.add(outp.readLine().string)
-    result[0].string.add("\n")
+    if outp.readLine(line):
+      result[0].string.add(line.string)
+      result[0].string.add("\n")
+    else:
+      result[1] = peekExitCode(p)
+      if result[1] != -1: break
   close(outp)
   close(p)
 

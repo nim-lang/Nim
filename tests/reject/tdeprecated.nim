@@ -1,6 +1,6 @@
 discard """
   line: 9
-  errmsg: "'a' is deprecated [Deprecated]"
+  errormsg: "'a' is deprecated [Deprecated]"
 """
 
 var

@@ -117,8 +117,8 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var outp = p.outputStream
   var suc = ""
   var err = ""
-  while running(p) or not atEnd(outp):
-    var x = outp.readLine().string
+  var x = newStringOfCap(120)
+  while outp.readLine(x.TaintedString) or running(p):
     if x =~ pegOfInterest:
       # `s` should contain the last error/warning message
       err = x
