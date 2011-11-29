@@ -74,6 +74,7 @@ Language Additions
   heart's content.
 - ``bind`` (used for symbol binding in templates and generics) is now a
   declarative statement.
+- Nimrod now supports single assignment variables via the ``let`` statement.
 - The slice assignment ``a[i..j] = b`` where ``a`` is a sequence or string
   now supports *splicing*.
 
@@ -114,7 +115,6 @@ Compiler Additions
 Library Additions
 -----------------
 
-- Added ``system.mainThreadId``.
 - Added ``system.allocShared``, ``system.allocShared0``, 
   ``system.deallocShared``, ``system.reallocShared``.
 - Slicing as implemented by the system module now supports *splicing*.

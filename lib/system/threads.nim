@@ -360,7 +360,8 @@ proc threadId*[TArg](t: var TThread[TArg]): TThreadId[TArg] {.inline.} =
   result = addr(t)
 
 proc myThreadId*[TArg](): TThreadId[TArg] =
-  ## returns the thread ID of the thread that calls this proc.
+  ## returns the thread ID of the thread that calls this proc. This is unsafe
+  ## because the type ``TArg`` is not checked for consistency!
   result = cast[TThreadId[TArg]](ThreadVarGetValue(globalsSlot))
 
 when false:

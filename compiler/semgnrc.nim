@@ -163,7 +163,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       for j in countup(0, L-2): 
         a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, toBind)
       a.sons[L-1] = semGenericStmtScope(c, a.sons[L-1], flags, toBind)
-  of nkVarSection: 
+  of nkVarSection, nkLetSection: 
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 

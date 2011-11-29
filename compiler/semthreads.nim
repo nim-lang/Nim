@@ -107,7 +107,7 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   result = c.mapping[v.id]
   if result != toUndefined: return
   case v.kind
-  of skVar, skResult:
+  of skVar, skLet, skResult:
     result = toNil
     if sfGlobal in v.flags:
       if sfThread in v.flags: 
@@ -348,7 +348,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     var a = analyse(c, n.sons[0])
     if a != toMine: Message(n.info, warnDifferentHeaps)
     result = toVoid
-  of nkVarSection: result = analyseVarSection(c, n)
+  of nkVarSection, nkLetSection: result = analyseVarSection(c, n)
   of nkConstSection: result = analyseConstSection(c, n)
   of nkTypeSection, nkCommentStmt: result = toVoid
   of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt, 

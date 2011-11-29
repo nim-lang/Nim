@@ -816,7 +816,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
   result = a.kind == last
   
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
-  assert(kind in {skVar, skConst, skParam, skResult})
+  assert(kind in {skVar, skLet, skConst, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = true

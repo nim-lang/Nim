@@ -222,15 +222,15 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else: 
     result = semIdentWithPragma(c, kind, n, {})
-    
-proc semVar(c: PContext, n: PNode): PNode = 
+
+proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode = 
   var b: PNode
   result = copyNode(n)
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue 
-    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
+    if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: IllFormedAst(a)
     checkMinSonsLen(a, 3)
     var length = sonsLen(a)
     var typ: PType
@@ -247,22 +247,24 @@ proc semVar(c: PContext, n: PNode): PNode =
       else: typ = def.typ
     else: 
       def = ast.emptyNode
+      if symkind == skLet: GlobalError(a.info, errLetNeedsInit)
+      
     # this can only happen for errornous var statements:
     if typ == nil: continue
-    if not typeAllowed(typ, skVar): 
+    if not typeAllowed(typ, symkind): 
       GlobalError(a.info, errXisNoType, typeToString(typ))
     var tup = skipTypes(typ, {tyGenericInst})
     if a.kind == nkVarTuple: 
       if tup.kind != tyTuple: GlobalError(a.info, errXExpected, "tuple")
-      if length - 2 != sonsLen(tup): 
+      if length-2 != sonsLen(tup): 
         GlobalError(a.info, errWrongNumberOfVariables)
       b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
-      b.sons[length - 2] = ast.emptyNode # no type desc
-      b.sons[length - 1] = def
+      b.sons[length-2] = ast.emptyNode # no type desc
+      b.sons[length-1] = def
       addSon(result, b)
-    for j in countup(0, length-3): 
-      var v = semIdentDef(c, a.sons[j], skVar)
+    for j in countup(0, length-3):
+      var v = semIdentDef(c, a.sons[j], symkind)
       addInterfaceDecl(c, v)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
@@ -277,7 +279,7 @@ proc semVar(c: PContext, n: PNode): PNode =
       else: 
         v.typ = tup.sons[j]
         b.sons[j] = newSymNode(v)
-
+    
 proc semConst(c: PContext, n: PNode): PNode = 
   result = copyNode(n)
   for i in countup(0, sonsLen(n) - 1): 
@@ -823,7 +825,8 @@ proc SemStmt(c: PContext, n: PNode): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
   of nkRaiseStmt: result = semRaise(c, n)
-  of nkVarSection: result = semVar(c, n)
+  of nkVarSection: result = semVarOrLet(c, n, skVar)
+  of nkLetSection: result = semVarOrLet(c, n, skLet)
   of nkConstSection: result = semConst(c, n)
   of nkTypeSection: result = SemTypeSection(c, n)
   of nkIfStmt: result = SemIf(c, n)

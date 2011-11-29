@@ -103,7 +103,7 @@ proc parseSpec(filename: string): TSpec =
 
 # ----------------------------------------------------------------------------
 
-var
+let
   pegLineError = 
     peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error'/'Warning') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
@@ -111,10 +111,10 @@ var
   pegOfInterest = pegLineError / pegOtherError
 
 proc callCompiler(cmdTemplate, filename, options: string): TSpec =
-  var c = parseCmdLine(cmdTemplate % [options, filename])
+  let c = parseCmdLine(cmdTemplate % [options, filename])
   var p = startProcess(command=c[0], args=c[1.. -1],
                        options={poStdErrToStdOut, poUseShell})
-  var outp = p.outputStream
+  let outp = p.outputStream
   var suc = ""
   var err = ""
   var x = newStringOfCap(120)
@@ -222,7 +222,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) =
     inc(r.passed)
 
 proc rejectSingleTest(r: var TResults, test, options: string) =
-  var test = test.addFileExt(".nim")
+  let test = test.addFileExt(".nim")
   var t = extractFilename(test)
   inc(r.total)
   echo t
@@ -240,10 +240,10 @@ proc reject(r: var TResults, dir, options: string) =
 
 proc compile(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern):
-    var t = extractFilename(test)
+    let t = extractFilename(test)
     echo t
     inc(r.total)
-    var expected = parseSpec(test)
+    let expected = parseSpec(test)
     if expected.disabled:
       r.addResult(t, "", reIgnored)
       inc(r.skipped)
@@ -253,11 +253,11 @@ proc compile(r: var TResults, pattern, options: string) =
       if not given.err: inc(r.passed)
 
 proc compileSingleTest(r: var TResults, test, options: string) =
-  var test = test.addFileExt(".nim")
-  var t = extractFilename(test)
+  let test = test.addFileExt(".nim")
+  let t = extractFilename(test)
   inc(r.total)
   echo t
-  var given = callCompiler(cmdTemplate, test, options)
+  let given = callCompiler(cmdTemplate, test, options)
   r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
   if not given.err: inc(r.passed)
 

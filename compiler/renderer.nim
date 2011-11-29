@@ -385,7 +385,7 @@ proc lsub(n: PNode): int =
   of nkProcTy: result = lsons(n) + len("proc_")
   of nkEnumTy: result = lsub(n.sons[0]) + lcomma(n, 1) + len("enum_")
   of nkEnumFieldDef: result = lsons(n) + 3
-  of nkVarSection: 
+  of nkVarSection, nkLetSection: 
     if sonsLen(n) > 1: result = maxLineLen + 1
     else: result = lsons(n) + len("var_")
   of nkReturnStmt: result = lsub(n.sons[0]) + len("return_")
@@ -650,7 +650,7 @@ proc gident(g: var TSrcGen, n: PNode) =
   else: 
     t = tkOpr
   put(g, t, s)
-  if (n.kind == nkSym) and (renderIds in g.flags): put(g, tkIntLit, $(n.sym.id))
+  if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
   
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) = 
   var 
@@ -825,7 +825,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkDerefExpr: 
     gsub(g, n.sons[0])
     putWithSpace(g, tkOpr, "^") 
-    # unfortunately this requires a space, because ^. would be only one operator
+    # unfortunately this requires a space, because ^. would be only one opr
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n.sons[0])
@@ -960,10 +960,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext(a)
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
-  of nkVarSection: 
+  of nkVarSection, nkLetSection:
     L = sonsLen(n)
-    if L == 0: return 
-    putWithSpace(g, tkVar, "var")
+    if L == 0: return
+    if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
+    else: putWithSpace(g, tkLet, "let")
     if L > 1: 
       gcoms(g)
       indentNL(g)
@@ -1084,21 +1085,23 @@ proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
   gsub(g, n)
   result = g.buf
 
-proc renderModule(n: PNode, filename: string, renderFlags: TRenderFlags = {}) = 
-  var 
+proc renderModule(n: PNode, filename: string, 
+                  renderFlags: TRenderFlags = {}) =
+  var
     f: tfile
     g: TSrcGen
   initSrcGen(g, renderFlags)
-  for i in countup(0, sonsLen(n) - 1): 
+  for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
     optNL(g)
     case n.sons[i].kind
-    of nkTypeSection, nkConstSection, nkVarSection, nkCommentStmt: putNL(g)
+    of nkTypeSection, nkConstSection, nkVarSection, nkLetSection,
+       nkCommentStmt: putNL(g)
     else: nil
   gcoms(g)
-  if optStdout in gGlobalOptions: 
+  if optStdout in gGlobalOptions:
     write(stdout, g.buf)
-  elif open(f, filename, fmWrite): 
+  elif open(f, filename, fmWrite):
     write(f, g.buf)
     close(f)
   else:

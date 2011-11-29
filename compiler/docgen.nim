@@ -785,18 +785,12 @@ proc generateDoc(d: PDoc, n: PNode) =
   of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
   of nkConverterDef: genItem(d, n, n.sons[namePos], skConverter)
-  of nkVarSection: 
-    for i in countup(0, sonsLen(n) - 1): 
+  of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
+    for i in countup(0, sonsLen(n) - 1):
       if n.sons[i].kind != nkCommentStmt: 
-        genItem(d, n.sons[i], n.sons[i].sons[0], skVar)
-  of nkConstSection: 
-    for i in countup(0, sonsLen(n) - 1): 
-      if n.sons[i].kind != nkCommentStmt: 
-        genItem(d, n.sons[i], n.sons[i].sons[0], skConst)
-  of nkTypeSection: 
-    for i in countup(0, sonsLen(n) - 1): 
-      if n.sons[i].kind != nkCommentStmt: 
-        genItem(d, n.sons[i], n.sons[i].sons[0], skType)
+        # order is always 'type var let const':
+        genItem(d, n.sons[i], n.sons[i].sons[0], 
+                succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i])
   of nkWhenStmt: 
@@ -810,7 +804,7 @@ proc generateDoc(d: PDoc, n: PNode) =
 
 proc genSection(d: PDoc, kind: TSymKind) = 
   const sectionNames: array[skModule..skTemplate, string] = [
-    "Imports", "Types", "Consts", "Vars", "Vars", "Procs", "Methods", 
+    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods", 
     "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return 

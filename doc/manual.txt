@@ -1555,7 +1555,6 @@ variables of the same type:
 
 If an initializer is given the type can be omitted: the variable is then of the
 same type as the initializing expression. Variables are always initialized
-
 with a default value if there is no initializing expression. The default
 value depends on the type and is always a zero in binary.
 
@@ -1584,6 +1583,19 @@ The implicit initialization can be avoided for optimization reasons with the
 .. code-block:: nimrod
   var
     a {.noInit.}: array [0..1023, char] 
+
+
+
+let statement
+~~~~~~~~~~~~~
+
+A `Let`:idx: statement declares new local and global `single assignment`:idx:
+variables and binds a value to them. The syntax is the of the ``var`` 
+statement, except that the keyword ``var`` is replaced by the keyword ``let``.
+Let variables are not l-values and can thus not be passed to ``var`` parameters
+nor can their address be taken. They cannot be assigned new values.
+
+For let variables the same pragmas are available as for ordinary variables.
 
 
 Const section

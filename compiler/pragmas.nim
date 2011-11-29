@@ -52,6 +52,7 @@ const
     wImportcpp, wImportobjc, wError, wNoInit}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportcpp, wImportobjc, wError}
+  letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
                       wThread}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas

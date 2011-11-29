@@ -2,7 +2,10 @@ version 0.8.14
 ==============
 
 - bug: compiler uses full file names again
-- stdlib and compiler should not use deprecated endOfFile and readline
+- implicit invokation of `items`/`pairs` seems nice
+- warning for implicit openArray -> varargs convention
+- implement explicit varargs; **but** ``len(varargs)`` problem remains! 
+  --> solve by implicit conversion from varargs to openarray
 
 version 0.9.0
 =============
@@ -11,18 +14,13 @@ version 0.9.0
   escape analysis for string/seq seems to be easy to do too
 - dead code elim for JS backend; 'of' operator for JS backend
 - test the sort implementation again
-- 'let x = y'
 - const ptr/ref
 - unsigned ints and bignums; requires abstract integer literal type: 
   use tyInt+node for that
 - implement the high level optimizer
-- warning for implicit openArray -> varargs convention
-- implement explicit varargs; **but** ``len(varargs)`` problem remains! 
-  --> solve by implicit conversion from varargs to openarray
 - change overloading resolution
 - implement closures; implement proper coroutines
 - implement ``partial`` pragma for partial evaluation
-- implicit invokation of `items`/`pairs` seems nice
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - ``=`` should be overloadable; requires specialization for ``=``
@@ -52,7 +50,6 @@ Bugs
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
-- bug: osproc.execProcess() should raise an exception if the exit code is not 0
 
 
 version 0.9.XX

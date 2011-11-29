@@ -294,7 +294,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
     # nothing to be done for leaves:
     result = PTransNode(n)
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     result = transformVarSection(c, n)
   else:
     result = newTransNode(n)
@@ -518,7 +518,7 @@ proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym,
     var s = n.sym
     var found = false
     case s.kind
-    of skVar: found = sfGlobal notin s.flags
+    of skVar, skLet: found = sfGlobal notin s.flags
     of skTemp, skForVar, skParam, skResult: found = true
     else: nil
     if found and owner.id != s.owner.id and not ContainsOrIncl(marked, s.id): 
@@ -714,7 +714,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkVarSection: 
+  of nkVarSection, nkLetSection:
     if c.inlining > 0: 
       # we need to copy the variables for multiple yield statements:
       result = transformVarSection(c, n)
