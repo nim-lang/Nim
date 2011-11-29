@@ -222,9 +222,12 @@ proc createDir*(ftp: var TFTPClient, dir: string, recursive: bool = false) =
     assertReply ftp.send("MKD " & dir), "257"
   else:
     var reply = TaintedString""
+    var previousDirs = ""
     for p in split(dir, {os.dirSep, os.altSep}):
       if p != "":
-        reply = ftp.send("MKD " & p)
+        previousDirs.add(p)
+        reply = ftp.send("MKD " & previousDirs)
+        previousDirs.add('/')
     assertReply reply, "257"
 
 proc list*(ftp: var TFTPClient, dir: string = "", async = false): string =
