@@ -43,10 +43,9 @@ proc close*(s, unused: PStream) {.deprecated.} =
   ## closes the stream `s`.
   s.closeImpl(s)
 
-proc atEnd*(s: PStream): bool {.deprecated.} =
+proc atEnd*(s: PStream): bool =
   ## checks if more data can be read from `f`. Returns true if all data has
   ## been read.
-  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
   result = s.atEndImpl(s)
 
 proc atEnd*(s, unused: PStream): bool {.deprecated.} =
@@ -170,10 +169,9 @@ proc readLine*(s: PStream, line: var TaintedString): bool =
     line.string.add(c)
   result = true
 
-proc readLine*(s: PStream): TaintedString {.deprecated.} =
+proc readLine*(s: PStream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occured.
-  ## **Deprecated since version 0.8.14**: Because Posix supports it poorly.
   result = TaintedString""
   while true:
     var c = readChar(s)
