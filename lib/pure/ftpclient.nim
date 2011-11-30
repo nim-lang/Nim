@@ -230,6 +230,27 @@ proc createDir*(ftp: var TFTPClient, dir: string, recursive: bool = false) =
         previousDirs.add('/')
     assertReply reply, "257"
 
+proc chmod*(ftp: var TFTPClient, path: string,
+            permissions: set[TFilePermission]) =
+  ## Changes permission of ``path`` to ``permissions``.
+  var userOctal = 0
+  var groupOctal = 0
+  var otherOctal = 0
+  for i in items(permissions):
+    case i
+    of fpUserExec: userOctal.inc(1)
+    of fpUserWrite: userOctal.inc(2)
+    of fpUserRead: userOctal.inc(4)
+    of fpGroupExec: groupOctal.inc(1)
+    of fpGroupWrite: groupOctal.inc(2)
+    of fpGroupRead: groupOctal.inc(4)
+    of fpOthersExec: otherOctal.inc(1)
+    of fpOthersWrite: otherOctal.inc(2)
+    of fpOthersRead: otherOctal.inc(4)
+
+  var perm = $userOctal & $groupOctal & $otherOctal
+  assertReply ftp.send("SITE CHMOD " & perm & " " & path), "200"
+
 proc list*(ftp: var TFTPClient, dir: string = "", async = false): string =
   ## Lists all files in ``dir``. If ``dir`` is ``""``, uses the current
   ## working directory. If ``async`` is true, this function will return
@@ -314,7 +335,7 @@ proc asyncUpload(ftp: var TFTPClient, timeout: int): bool =
         ftp.job.dsockClosed = true
         return
 
-      if ftp.dsock.send(addr(buffer), len) != len: 
+      if ftp.dsock.send(addr(buffer), len) != len:
         raise newException(EIO, "could not 'send' all data.")
       
       ftp.job.progress.inc(len)
