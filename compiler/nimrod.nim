@@ -37,17 +37,18 @@ proc ProcessCmdLine(pass: TCmdLinePass) =
         ProcessSwitch(key, val, pass, gCmdLineInfo)
       else: 
         ProcessSwitch(p.key, p.val, pass, gCmdLineInfo)
-    of cmdArgument: 
-      if pass == passCmd1:
-        if options.command == "":
-          options.command = p.key
-        else:
-          options.commandArgs.add p.key
+    of cmdArgument:
+      if pass != passCmd1: break
+      if options.command == "":
+        options.command = p.key
+      else:
+        options.commandArgs.add p.key
 
-          if options.gProjectName == "":
-            # support UNIX style filenames anywhere for portable build scripts:
-            options.gProjectName = unixToNativePath(p.key)
-            arguments = cmdLineRest(p)
+        if options.gProjectName == "":
+          # support UNIX style filenames anywhere for portable build scripts:
+          options.gProjectName = unixToNativePath(p.key)
+          arguments = cmdLineRest(p)
+          break
           
   if pass == passCmd2:
     if optRun notin gGlobalOptions and arguments != "":

@@ -349,8 +349,7 @@ input management. To start Nimrod in interactive mode use the command
 ``nimrod i``. To quit use the ``quit()`` command. To determine whether an input
 line is an incomplete statement to be continued these rules are used:
 
-1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol 
-   followed by optional whitespace).
+1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol  followed by optional whitespace).
 2. The line starts with a space (indentation).
 3. The line is within a triple quoted string literal. However, the detection 
    does not work if the line contains more than one ``"""``.
@@ -401,6 +400,12 @@ However it is not efficient to do:
 
 .. code-block:: Nimrod
   var s = varA    # assignment has to copy the whole string into a new buffer!
+
+For ``let`` symbols a copy is not always necessary:
+
+.. code-block:: Nimrod
+  let s = varA    # may only copy a pointer if it safe to do so
+
 
 The compiler optimizes string case statements: A hashing scheme is used for them
 if several different string constants are used. So code like this is reasonably
