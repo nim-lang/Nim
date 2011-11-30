@@ -134,6 +134,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut2.txt
   cp doc/intern.html $docdir/intern.html || exit 1
   chmod 644 $docdir/intern.html
+  cp doc/manual.html $docdir/manual.html || exit 1
+  chmod 644 $docdir/manual.html
   cp doc/nimrodc.html $docdir/nimrodc.html || exit 1
   chmod 644 $docdir/nimrodc.html
   cp doc/mytest.cfg $docdir/mytest.cfg || exit 1
@@ -242,6 +244,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/encodings.nim
   cp lib/pure/events.nim $libdir/pure/events.nim || exit 1
   chmod 644 $libdir/pure/events.nim
+  cp lib/pure/ftpclient.nim $libdir/pure/ftpclient.nim || exit 1
+  chmod 644 $libdir/pure/ftpclient.nim
   cp lib/pure/gentabs.nim $libdir/pure/gentabs.nim || exit 1
   chmod 644 $libdir/pure/gentabs.nim
   cp lib/pure/hashes.nim $libdir/pure/hashes.nim || exit 1

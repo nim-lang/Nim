@@ -265,7 +265,8 @@ type
                                  # current document. 
                                  # This is for single underline adornments.
     overlineToLevel*: TLevelMap  # Saves for each possible title adornment 
-                                 # character its level in the current document. 
+                                 # character its level in the current
+                                 # document. 
                                  # This is for over-underline adornments.
   
   PSharedState = ref TSharedState
@@ -819,8 +820,8 @@ proc parseComment(p: var TRstParser): PRstNode =
 
 type 
   TDirKind = enum             # must be ordered alphabetically!
-    dkNone, dkAuthor, dkAuthors, dkCodeBlock, dkContainer, dkContents, dkFigure, 
-    dkImage, dkInclude, dkIndex, dkRaw, dkTitle
+    dkNone, dkAuthor, dkAuthors, dkCodeBlock, dkContainer, dkContents,
+    dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
 
 const 
   DirIds: array[0..11, string] = ["", "author", "authors", "code-block", 
@@ -1103,7 +1104,7 @@ proc parseSimpleTable(p: var TRstParser): PRstNode =
       getColumns(p, cols)
       setlen(row, len(cols))
       if a != nil: 
-        for j in countup(0, rsonsLen(a) - 1): a.sons[j].kind = rnTableHeaderCell
+        for j in 0..rsonsLen(a)-1: a.sons[j].kind = rnTableHeaderCell
     if p.tok[p.idx].kind == tkEof: break 
     for j in countup(0, high(row)): row[j] = ""
     # the following while loop iterates over the lines a single cell may span:
@@ -1236,8 +1237,8 @@ proc parseDefinitionList(p: var TRstParser): PRstNode =
       if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col): 
         inc(p.idx)
         j = tokenAfterNewLine(p) - 1
-        if (j >= 1) and (p.tok[j].kind == tkIndent) and (p.tok[j].ival > col) and
-            (p.tok[j - 1].symbol != "::") and (p.tok[j + 1].kind != tkIndent): 
+        if j >= 1 and p.tok[j].kind == tkIndent and p.tok[j].ival > col and
+            p.tok[j-1].symbol != "::" and p.tok[j+1].kind != tkIndent: 
           nil
         else: 
           break 
