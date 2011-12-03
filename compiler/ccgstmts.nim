@@ -117,7 +117,7 @@ proc genIfStmt(p: BProc, n: PNode) =
     else: internalError(n.info, "genIfStmt()")
   if sonsLen(n) > 1: fixLabel(p, Lend)
   
-proc popSafePoints(p: BProc, howMany: int) = 
+proc blockLeaveActions(p: BProc, howMany: int) = 
   var L = p.nestedTryStmts.len
   # danger of endless recursion! we workaround this here by a temp stack
   var stack: seq[PNode]
@@ -134,10 +134,12 @@ proc popSafePoints(p: BProc, howMany: int) =
   # push old elements again:
   for i in countdown(howMany-1, 0): 
     p.nestedTryStmts.add(stack[i])
+  for i in countdown(p.popCurrExc-1, 0):
+    appcg(p, cpsStmts, "#popCurrentException();$n", [])
 
 proc genReturnStmt(p: BProc, t: PNode) = 
   p.beforeRetNeeded = true
-  popSafePoints(p, min(1, p.nestedTryStmts.len))
+  blockLeaveActions(p, min(1, p.nestedTryStmts.len))
   genLineDir(p, t)
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
   appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
@@ -196,7 +198,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
     assert(sym.loc.k == locOther)
     idx = sym.loc.a
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  popSafePoints(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
+  blockLeaveActions(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
   genLineDir(p, t)
   appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.blocks[idx].id)])
 
@@ -510,16 +512,20 @@ proc genTryStmt(p: BProc, t: PNode) =
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   appcg(p, cpsStmts, "#popSafePoint();$n} else {$n#popSafePoint();$n")
+  discard pop(p.nestedTryStmts)
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
     var blen = sonsLen(t.sons[i])
     if blen == 1: 
       # general except section:
       if i > 1: appf(p.s[cpsStmts], "else {$n")
+      inc p.popCurrExc
       genStmts(p, t.sons[i].sons[0])
+      dec p.popCurrExc
       appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();$n", [safePoint])
       if i > 1: appf(p.s[cpsStmts], "}$n")
-    else: 
+    else:
+      inc p.popCurrExc
       var orExpr: PRope = nil
       for j in countup(0, blen - 2): 
         assert(t.sons[i].sons[j].kind == nkType)
@@ -529,13 +535,13 @@ proc genTryStmt(p: BProc, t: PNode) =
               [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: app(p.s[cpsStmts], "else ")
       appf(p.s[cpsStmts], "if ($1) {$n", [orExpr])
-      genStmts(p, t.sons[i].sons[blen-1]) 
+      genStmts(p, t.sons[i].sons[blen-1])
+      dec p.popCurrExc
       # code to clear the exception:
       appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();}$n",
            [safePoint])
     inc(i)
   appf(p.s[cpsStmts], "}$n") # end of if statement
-  discard pop(p.nestedTryStmts)
   if i < length and t.sons[i].kind == nkFinally: 
     genStmts(p, t.sons[i].sons[0])
   appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
