@@ -60,6 +60,8 @@ type
     ThreadVarAccessed*: bool  # true if the proc already accessed some threadvar
     nestedTryStmts*: seq[PNode] # in how many nested try statements we are
                                 # (the vars must be volatile then)
+    popCurrExc*: Natural      # how often to emit 'popCurrentException()'
+                              # before 'break'|'return'
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
     options*: TOptions        # options that should be used for code

@@ -221,7 +221,7 @@ when not defined(useNimRtl):
       t.prev = nil
       t.next = threadList
       if threadList != nil: 
-        sysAssert(threadList.prev == nil)
+        sysAssert(threadList.prev == nil, "threadList.prev == nil")
         threadList.prev = t
       threadList = t
       ReleaseSys(HeapLock)
@@ -315,7 +315,7 @@ proc joinThreads*[TArg](t: openArray[TThread[TArg]]) =
   ## waits for every thread in `t` to finish.
   when hostOS == "windows":
     var a: array[0..255, TSysThread]
-    sysAssert a.len >= t.len
+    sysAssert a.len >= t.len, "a.len >= t.len"
     for i in 0..t.high: a[i] = t[i].sys
     discard WaitForMultipleObjects(t.len, cast[ptr TSysThread](addr(a)), 1, -1)
   else:

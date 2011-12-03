@@ -62,14 +62,14 @@ proc storeAux(dest, src: Pointer, n: ptr TNimNode, t: PRawChannel,
             n.typ.size)
     var m = selectBranch(src, n)
     if m != nil: storeAux(dest, src, m, t, mode)
-  of nkNone: sysAssert(false)
+  of nkNone: sysAssert(false, "storeAux")
 
 proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel, 
               mode: TLoadStoreMode) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
-  sysAssert(mt != nil)
+  sysAssert(mt != nil, "mt == nil")
   case mt.Kind
   of tyString:
     if mode == mStore:
@@ -100,7 +100,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel,
       else:
         unsureAsgnRef(x, nil)
     else:
-      sysAssert(dest != nil)
+      sysAssert(dest != nil, "dest == nil")
       if mode == mStore:
         x[] = Alloc(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
