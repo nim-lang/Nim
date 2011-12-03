@@ -47,9 +47,9 @@ elif defined(windows):
   
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
-    type TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int64
+    type TTimeImpl {.importc: "time_t", header: "<time.h>".} = int64
   else:
-    type TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int32
+    type TTimeImpl {.importc: "time_t", header: "<time.h>".} = int32
   
   type
     TTime* = distinct TTimeImpl

@@ -158,7 +158,7 @@ when not defined(useNimRtl):
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
                      cl: var TReprClosure) =
     case n.kind
-    of nkNone: sysAssert(false)
+    of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:
       add result, $n.name
       add result, " = "
@@ -206,7 +206,7 @@ when not defined(useNimRtl):
       var t = cast[ptr PNimType](p)[]
       reprRecord(result, p, t, cl)
     of tyRef, tyPtr:
-      sysAssert(p != nil)
+      sysAssert(p != nil, "reprAux")
       if cast[ppointer](p)[] == nil: add result, "nil"
       else: reprRef(result, cast[ppointer](p)[], typ, cl)
     of tySequence:

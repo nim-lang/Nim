@@ -73,7 +73,7 @@ proc CompileModule(filename: string, flags: TSymFlags): PSym =
   var f = addFileExt(filename, nimExt)
   result = newModule(filename)
   result.flags = result.flags + flags
-  if gCmd in {cmdCompileToC, cmdCompileToCpp}: 
+  if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}: 
     rd = handleSymbolFile(result, f)
     if result.id < 0: 
       InternalError("handleSymbolFile should have set the module\'s ID")
