@@ -79,10 +79,10 @@ __TINYC__
 
 /* --------------- how int64 constants should be declared: ----------- */
 #if defined(__GNUC__) || defined(__LCC__) || \
-    defined(__POCC__) || defined(__DMC__)
+    defined(__POCC__) || defined(__DMC__) || defined(_MSC_VER)
 #  define IL64(x) x##LL
 #else /* works only without LL */
-#  define IL64(x) x
+#  define IL64(x) ((NI64)x)
 #endif
 
 /* ---------------- casting without correct aliasing rules ----------- */

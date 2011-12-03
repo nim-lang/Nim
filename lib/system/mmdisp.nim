@@ -207,7 +207,7 @@ else:
   include "system/alloc"
 
   include "system/cellsets"
-  sysAssert(sizeof(TCell) == sizeof(TFreeCell))
+  sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
   include "system/gc"
   
 {.pop.}

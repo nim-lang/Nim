@@ -808,8 +808,9 @@ when hasThreadSupport:
 else:
   {.pragma: rtlThreadVar.}
 
-template sysAssert(cond: expr) =
+template sysAssert(cond, msg: expr) =
   # change this to activate system asserts
+  #if not cond: echo msg
   nil
 
 include "system/inclrtl"
@@ -1821,14 +1822,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}
 
   proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
-    sysAssert(n.kind == nkCase)
+    sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
     var d: int
     var a = cast[TAddress](aa)
     case n.typ.size
     of 1: d = ze(cast[ptr int8](a +% n.offset)[])
     of 2: d = ze(cast[ptr int16](a +% n.offset)[])
     of 4: d = int(cast[ptr int32](a +% n.offset)[])
-    else: sysAssert(false)
+    else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
     return d
 
   proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =

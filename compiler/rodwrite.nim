@@ -423,6 +423,7 @@ proc writeRod(w: PRodWriter) =
   var f: TFile
   if not open(f, completeGeneratedFilePath(changeFileExt(w.filename, "rod")),
               fmWrite):
+    #echo "couldn't write rod file for: ", w.filename
     return
   # write header:
   f.write("NIM:")

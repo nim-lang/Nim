@@ -643,6 +643,10 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
 proc newRodReader(modfilename: string, crc: TCrc32, 
                   readerIndex: int): PRodReader = 
   new(result)
+  try:
+    result.memFile = memfiles.open(modfilename)
+  except EOS:
+    return nil
   result.files = @[]
   result.modDeps = @[]
   result.methods = @[]
@@ -653,10 +657,6 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   r.readerIndex = readerIndex
   r.filename = modfilename
   InitIdTable(r.syms)
-  try:
-    r.memFile = memfiles.open(modfilename)
-  except EOS:
-    return nil
   # we terminate the file explicitely with ``\0``, so the cast to `cstring`
   # is safe:
   r.s = cast[cstring](r.memFile.mem)
@@ -793,6 +793,7 @@ proc getModuleIdx(filename: string): int =
   setlen(gMods, result + 1)
 
 proc checkDep(filename: string): TReasonForRecompile = 
+  assert(not isNil(filename)) 
   var idx = getModuleIdx(filename)
   if gMods[idx].reason != rrEmpty: 
     # reason has already been computed for this module:
@@ -804,30 +805,28 @@ proc checkDep(filename: string): TReasonForRecompile =
   result = rrNone
   var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename, RodExt)
-  if ExistsFile(rodfile): 
-    r = newRodReader(rodfile, crc, idx)
-    if r == nil: 
-      result = rrRodInvalid
-    else: 
-      result = r.reason
-      if result == rrNone: 
-        # check modules it depends on
-        # NOTE: we need to process the entire module graph so that no ID will
-        # be used twice! However, compilation speed does not suffer much from
-        # this, since results are cached.
-        var res = checkDep(options.libpath / addFileExt("system", nimExt))
-        if res != rrNone: result = rrModDeps
-        for i in countup(0, high(r.modDeps)): 
-          res = checkDep(r.modDeps[i])
-          if res != rrNone: 
-            result = rrModDeps 
-            # we cannot break here, because of side-effects of `checkDep`
-  else: 
-    result = rrRodDoesNotExist
+  r = newRodReader(rodfile, crc, idx)
+  if r == nil: 
+    result = (if ExistsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
+  else:
+    result = r.reason
+    if result == rrNone: 
+      # check modules it depends on
+      # NOTE: we need to process the entire module graph so that no ID will
+      # be used twice! However, compilation speed does not suffer much from
+      # this, since results are cached.
+      var res = checkDep(options.libpath / addFileExt("system", nimExt))
+      if res != rrNone: result = rrModDeps
+      for i in countup(0, high(r.modDeps)): 
+        res = checkDep(r.modDeps[i])
+        if res != rrNone: 
+          result = rrModDeps 
+          # we cannot break here, because of side-effects of `checkDep`
   if result != rrNone and gVerbosity > 0:
     rawMessage(hintProcessing, reasonToFrmt[result] % filename)
-  if result != rrNone or optForceFullMake in gGlobalOptions: 
+  if result != rrNone or optForceFullMake in gGlobalOptions:
     # recompilation is necessary:
+    if r != nil: memfiles.close(r.memFile)
     r = nil
   gMods[idx].rd = r
   gMods[idx].reason = result  # now we know better
@@ -853,8 +852,12 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
     module.id = getID()
   
 proc GetCRC*(filename: string): TCrc32 = 
-  var idx = getModuleIdx(filename)
-  result = gMods[idx].crc
+  for i in countup(0, high(gMods)): 
+    if sameFile(gMods[i].filename, filename): return gMods[i].crc
+  
+  result = crcFromFile(filename)
+  #var idx = getModuleIdx(filename)
+  #result = gMods[idx].crc
 
 proc rawLoadStub(s: PSym) =
   if s.kind != skStub: InternalError("loadStub")
