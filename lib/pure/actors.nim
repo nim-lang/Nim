@@ -129,24 +129,24 @@ template setupTask =
 template schedule =
   # extremely simple scheduler: We always try the first thread first, so that
   # it remains 'hot' ;-). Round-robin hurts for keeping threads hot.
-  for i in 0..high(a.actors):
-    if a.actors[i].i.ready:
-      a.actors[i].i.send(t)
+  for i in 0..high(p.actors):
+    if p.actors[i].i.ready:
+      p.actors[i].i.send(t)
       return
   # no thread ready :-( --> send message to the thread which has the least
   # messages pending:
   var minIdx = 0
   var minVal = high(int)
-  for i in 0..high(a.actors):
-    var curr = a.actors[i].i.peek
+  for i in 0..high(p.actors):
+    var curr = p.actors[i].i.peek
     if curr == 0:
       # ok, is ready now:
-      a.actors[i].i.send(t)
+      p.actors[i].i.send(t)
       return
     if curr < minVal:
       minVal = curr
       minIdx = i
-  a.actors[minIdx].i.send(t)
+  p.actors[minIdx].i.send(t)
 
 proc spawn*[TIn, TOut](p: var TActorPool[TIn, TOut], input: TIn,
                        action: proc (input: TIn): TOut {.thread.}

@@ -5,9 +5,9 @@ discard """
 import actors
 
 var
-  a: TActorPool[int, void]
-createActorPool(a)
+  pool: TActorPool[int, void]
+createActorPool(pool)
 for i in 0 .. < 300:
-  a.spawn(i, proc (x: int) {.thread.} = echo x)
-a.join()
+  pool.spawn(i, proc (x: int) {.thread.} = echo x)
+pool.join()
 
