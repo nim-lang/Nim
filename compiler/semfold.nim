@@ -209,6 +209,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mParseExprToAst, mParseStmtToAst, mExpandToAst,
      mNLen..mNError, mEqRef: 
     nil
+  of mRand:
+    result = newIntNodeT(math.random(a.getInt.int), n)
   else: InternalError(a.info, "evalOp(" & $m & ')')
   
 proc getConstIfExpr(c: PSym, n: PNode): PNode = 
@@ -440,6 +442,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = magicCall(m, n)
       of mIs:
         result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
+      of mAstToStr:
+        result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
       else:
         result = magicCall(m, n)
     except EOverflow: 

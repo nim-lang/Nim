@@ -597,7 +597,7 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
   var f = 1 # iterates over formal parameters
   var a = 1 # iterates over the actual given arguments
   m.state = csMatch           # until proven otherwise
-  m.call = newNodeI(nkCall, n.info)
+  m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
   var formalLen = sonsLen(m.callee.n)
   addSon(m.call, copyTree(n.sons[0]))

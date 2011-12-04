@@ -412,6 +412,7 @@ const
   PosErrorFormat* = "$1($2, $3) Error: $4"
   PosWarningFormat* = "$1($2, $3) Warning: $4"
   PosHintFormat* = "$1($2, $3) Hint: $4"
+  PosContextFormat = "$1($2, $3) Info: $4"
   RawErrorFormat* = "Error: $1"
   RawWarningFormat* = "Warning: $1"
   RawHintFormat* = "Hint: $1"
@@ -536,10 +537,10 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastInfo
   for i in countup(0, len(msgContext) - 1): 
     if msgContext[i] != lastInfo and msgContext[i] != info: 
-      MsgWriteln(posErrorFormat % [toFilename(msgContext[i]), 
-                                   coordToStr(msgContext[i].line), 
-                                   coordToStr(msgContext[i].col), 
-                                   getMessageStr(errInstantiationFrom, "")])
+      MsgWriteln(posContextFormat % [toFilename(msgContext[i]), 
+                                     coordToStr(msgContext[i].line), 
+                                     coordToStr(msgContext[i].col), 
+                                     getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
 proc rawMessage*(msg: TMsgKind, args: openarray[string]) = 

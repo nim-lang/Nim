@@ -53,6 +53,8 @@ Changes affecting backwards compatibility
   because they should not be used directly anymore. 
   Wrapper procs have been created that should be used instead.
 - ``export`` is now a keyword.
+- ``assert`` is now implemented in pure Nimrod; it's easy to implement your
+  own assertion schemes now.
 
 
 Language Additions
@@ -140,6 +142,7 @@ Library Additions
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to
   the old implementation.
 - Added ``intsets.assign``.
+- Added ``system.astToStr`` and ``system.rand``.
 
 
 2011-07-10 Version 0.8.12 released
