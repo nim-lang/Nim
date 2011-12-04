@@ -1162,7 +1162,8 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkEmpty: result = n
   of nkSym: result = evalSym(c, n, flags)
   of nkType..nkNilLit: result = copyNode(n) # end of atoms
-  of nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit: 
+  of nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit, nkInfix,
+     nkPrefix, nkPostfix: 
     result = evalMagicOrCall(c, n)
   of nkCurly, nkBracket, nkRange: 
     # flags need to be passed here for mNAddMultiple :-(

@@ -404,7 +404,7 @@ proc semFor(c: PContext, n: PNode): PNode =
   openScope(c.tab)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
-  if call.kind != nkCall or call.sons[0].kind != nkSym or
+  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator: 
     GlobalError(n.sons[length - 2].info, errIteratorExpected)
   elif call.sons[0].sym.magic != mNone:

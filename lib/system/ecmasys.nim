@@ -410,7 +410,7 @@ proc NimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
 proc NimCopyAux(dest, src: Pointer, n: ptr TNimNode) {.exportc.} =
   case n.kind
-  of nkNone: sysAssert(false)
+  of nkNone: sysAssert(false, "NimCopyAux")
   of nkSlot:
     asm "`dest`[`n`.offset] = NimCopy(`src`[`n`.offset], `n`.typ);"
   of nkList:

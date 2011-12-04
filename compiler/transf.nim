@@ -468,7 +468,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     addVar(v, copyTree(n.sons[i])) # declare new vars
   add(result, v.ptransNode)
   var call = n.sons[length - 2]
-  if call.kind != nkCall or call.sons[0].kind != nkSym:
+  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym:
     InternalError(call.info, "transformFor")
   
   var newC = newTransCon(call.sons[0].sym)

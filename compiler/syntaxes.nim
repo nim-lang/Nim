@@ -117,7 +117,7 @@ proc getParser(ident: PIdent): TParserKind =
   rawMessage(errInvalidDirectiveX, ident.s)
 
 proc getCallee(n: PNode): PIdent = 
-  if (n.kind == nkCall) and (n.sons[0].kind == nkIdent): 
+  if n.kind in nkCallKinds and n.sons[0].kind == nkIdent: 
     result = n.sons[0].ident
   elif n.kind == nkIdent: 
     result = n.ident

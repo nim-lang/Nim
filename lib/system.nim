@@ -1050,13 +1050,6 @@ proc deallocShared*(p: Pointer) {.noconv, rtl.}
   ## memory (or just freeing it twice!) a core dump may happen
   ## or other memory may be corrupted.
 
-proc assert*(cond: bool) {.magic: "Assert", noSideEffect.}
-  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
-  ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
-  ## raises an ``EAssertionFailure`` exception. However, the compiler may
-  ## not generate any code at all for ``assert`` if it is advised to do so.
-  ## Use ``assert`` for debugging purposes only.
-
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
@@ -2070,4 +2063,22 @@ proc `/=` *(x: var float, y:float) {.inline, noSideEffect.} =
   x = x / y
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc rand*(max: int): int {.magic: "Rand", sideEffect.}
+  ## compile-time `random` function. Useful for debugging.
+
+proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+  ## converts the AST of `x` into a string representation. This is very useful
+  ## for debugging.
+  
+template assert*(cond: expr, msg = "") =
+  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
+  ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
+  ## raises an ``EAssertionFailure`` exception. However, the compiler may
+  ## not generate any code at all for ``assert`` if it is advised to do so.
+  ## Use ``assert`` for debugging purposes only.
+  when compileOption("assertions"):
+    if not cond:
+      raise newException(EAssertionFailed, astToStr(cond) & ' ' & msg)
+
 

@@ -38,7 +38,7 @@ proc initRawChannel(p: pointer) =
 
 proc deinitRawChannel(p: pointer) =
   var c = cast[PRawChannel](p)
-  # we need to grab the lock to be save against sending threads!
+  # we need to grab the lock to be safe against sending threads!
   acquireSys(c.lock)
   c.mask = ChannelDeadMask
   deallocOsPages(c.region)
@@ -154,7 +154,7 @@ proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
   ## adds an `item` to the end of the queue `q`.
   var cap = q.mask+1
   if q.count >= cap:
-    # start with capicity for 2 entries in the queue:
+    # start with capacity for 2 entries in the queue:
     if cap == 0: cap = 1
     var n = cast[pbytes](Alloc0(q.region, cap*2*typ.size))
     var z = 0
@@ -175,7 +175,7 @@ proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
   q.wr = (q.wr + 1) and q.mask
 
 proc rawRecv(q: PRawChannel, data: pointer, typ: PNimType) =
-  assert q.count > 0
+  sysAssert q.count > 0, "rawRecv"
   dec q.count
   storeAux(data, addr(q.data[q.rd * typ.size]), typ, q, mLoad)
   q.rd = (q.rd + 1) and q.mask

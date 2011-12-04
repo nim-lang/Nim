@@ -993,6 +993,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = semDirectOp(c, n, flags)
   of mSlurp: result = semSlurp(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
+  of mAstToStr:
+    if sonsLen(n) == 2:
+      result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
+      result.typ = getSysType(tyString)
+    else:
+      result = semDirectOp(c, n, flags)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 

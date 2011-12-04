@@ -607,7 +607,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
       InternalError(e.info, "genCheckedRecordField") # generate the checks:
     for i in countup(1, sonsLen(e) - 1):
       it = e.sons[i]
-      assert(it.kind == nkCall)
+      assert(it.kind in nkCallKinds)
       assert(it.sons[0].kind == nkSym)
       op = it.sons[0].sym
       if op.magic == mNot: it = it.sons[1]
@@ -1403,7 +1403,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit:
+  of mNewString, mNewStringOfCap, mCopyStr, mCopyStrLast, mExit, mRand:
     var opr = e.sons[0].sym
     if lfNoDecl notin opr.loc.flags:
       discard cgsym(p.module, opr.loc.r.ropeToStr)
