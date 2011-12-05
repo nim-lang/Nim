@@ -720,7 +720,8 @@ proc generateHeader(p: var TProc, typ: PType): PRope =
 const 
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, 
     nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString, 
-    nkCStringToString, nkCall, nkCommand, nkHiddenCallConv, nkCallStrLit}
+    nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix, 
+    nkCommand, nkHiddenCallConv, nkCallStrLit}
 
 proc needsNoCopy(y: PNode): bool = 
   result = (y.kind in nodeKindsNeedNoCopy) or
@@ -1402,7 +1403,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
     else: r.res = toRope(f.ToStrMaxPrecision)
   of nkBlockExpr: genBlock(p, n, r)
   of nkIfExpr: genIfExpr(p, n, r)
-  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit: 
+  of nkCallKinds: 
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone): 
       genMagic(p, n, r)
     else: 

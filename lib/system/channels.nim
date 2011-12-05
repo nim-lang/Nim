@@ -222,11 +222,14 @@ proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
 
 proc peek*[TMsg](c: var TChannel[TMsg]): int =
-  ## returns the current number of messages in the channel `c`.
+  ## returns the current number of messages in the channel `c`. Returns -1
+  ## if the channel has been closed.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     lockChannel(q):
       result = q.count
+  else:
+    result = -1
 
 proc open*[TMsg](c: var TChannel[TMsg]) =
   ## opens a channel `c` for inter thread communication.
