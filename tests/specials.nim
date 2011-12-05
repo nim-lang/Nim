@@ -118,6 +118,7 @@ proc runThreadTests(r: var TResults, options: string) =
   
   test "tactors"
   test "threadex"
+  test "trecursive_actor"
   #test "threadring"
   #test "tthreadanalysis"
   #test "tthreadsort"
