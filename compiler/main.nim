@@ -15,7 +15,8 @@ import
   os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
-  platform, nimconf, importer, passaux, depends, transf, evals, types, idgen
+  platform, nimconf, importer, passaux, depends, transf, evals, types, idgen,
+  tables
 
 const
   has_LLVM_Backend = false
@@ -27,19 +28,16 @@ proc MainCommand*()
 
 # ------------------ module handling -----------------------------------------
 
-type 
-  TFileModuleRec = tuple[filename: string, module: PSym]
-  TFileModuleMap = seq[TFileModuleRec]
+var
+  compMods = initTable[string, PSym]() # all compiled modules
 
-var compMods: TFileModuleMap = @[] # all compiled modules
+# This expects a normalized module path
+proc registerModule(filename: string, module: PSym) =
+  compMods[filename] = module
 
-proc registerModule(filename: string, module: PSym) = 
-  compMods.add((filename, module))
-
-proc getModule(filename: string): PSym = 
-  for i in countup(0, high(compMods)): 
-    if sameFile(compMods[i].filename, filename): 
-      return compMods[i].module
+# This expects a normalized module path
+proc getModule(filename: string): PSym =
+  result = compMods[filename]
 
 proc newModule(filename: string): PSym = 
   # We cannot call ``newSym`` here, because we have to circumvent the ID

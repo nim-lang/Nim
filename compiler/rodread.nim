@@ -788,7 +788,7 @@ proc loadMethods(r: PRodReader) =
   
 proc getModuleIdx(filename: string): int = 
   for i in countup(0, high(gMods)): 
-    if sameFile(gMods[i].filename, filename): return i
+    if gMods[i].filename == filename: return i
   result = len(gMods)
   setlen(gMods, result + 1)
 
@@ -853,7 +853,7 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
   
 proc GetCRC*(filename: string): TCrc32 = 
   for i in countup(0, high(gMods)): 
-    if sameFile(gMods[i].filename, filename): return gMods[i].crc
+    if gMods[i].filename == filename: return gMods[i].crc
   
   result = crcFromFile(filename)
   #var idx = getModuleIdx(filename)
