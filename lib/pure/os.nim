@@ -567,26 +567,45 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '/'
 
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
-  ## Returns True if both pathname arguments refer to the same file or
-  ## directory (as indicated by device number and i-node number).
-  ## Raises an exception if an stat() call on either pathname fails.
+  ## Returns True if both pathname arguments refer to the same physical 
+  ## file or directory. Raises an exception if any of the files does not
+  ## exist or information about it can not be obtained.
+  ## 
+  ## This proc will return true if given two alternative hard-linked or
+  ## sym-linked paths to the same file or directory.
   when defined(Windows):
-    var
-      a, b: TWin32FindData
-    var resA = findfirstFileA(path1, a)
-    var resB = findfirstFileA(path2, b)
-    if resA != -1 and resB != -1:
-      result = $a.cFileName == $b.cFileName
-    else:
-      # work around some ``findfirstFileA`` bugs
-      result = cmpPaths(path1, path2) == 0
-    if resA != -1: findclose(resA)
-    if resB != -1: findclose(resB)
+    var success = true
+    
+    template OpenHandle(path: expr): expr =
+      CreateFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
+        FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
+
+    var f1 = OpenHandle(path1)
+    var f2 = OpenHandle(path2)
+
+    if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
+      var fi1, fi2: TBY_HANDLE_FILE_INFORMATION
+
+      if GetFileInformationByHandle(f1, addr(fi1)) != 0 and
+         GetFileInformationByHandle(f2, addr(fi2)) != 0:
+        result = fi1.dwVolumeSerialNumber == fi2.dwVolumeSerialNumber and
+                 fi1.nFileIndexHigh == fi2.nFileIndexHigh and
+                 fi1.nFileIndexLow == fi2.nFileIndexLow
+      else: success = false
+    else: success = false
+
+    discard CloseHandle(f1)
+    discard CloseHandle(f2)
+
+    if not success:
+      OSError()
+
   else:
     var
       a, b: TStat
     if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
-      result = cmpPaths(path1, path2) == 0 # be consistent with Windows
+      OSError()
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 

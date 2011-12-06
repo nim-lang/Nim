@@ -47,6 +47,22 @@ type
     dwProcessId*: int32
     dwThreadId*: int32
 
+  TFILETIME* {.final, pure.} = object ## CANNOT BE int64 BECAUSE OF ALIGNMENT
+    dwLowDateTime*: DWORD
+    dwHighDateTime*: DWORD
+  
+  TBY_HANDLE_FILE_INFORMATION* {.final, pure.} = object
+    dwFileAttributes*: DWORD
+    ftCreationTime*: TFILETIME
+    ftLastAccessTime*: TFILETIME
+    ftLastWriteTime*: TFILETIME
+    dwVolumeSerialNumber*: DWORD
+    nFileSizeHigh*: DWORD
+    nFileSizeLow*: DWORD
+    nNumberOfLinks*: DWORD
+    nFileIndexHigh*: DWORD
+    nFileIndexLow*: DWORD
+
 const
   STARTF_USESHOWWINDOW* = 1'i32
   STARTF_USESTDHANDLES* = 256'i32
@@ -149,14 +165,11 @@ const
 
   MAX_PATH* = 260
 type
-  FILETIME* {.final, pure.} = object ## CANNOT BE int64 BECAUSE OF ALIGNMENT
-    dwLowDateTime*: int32
-    dwHighDateTime*: int32
   TWIN32_FIND_DATA* {.pure.} = object
     dwFileAttributes*: int32
-    ftCreationTime*: FILETIME
-    ftLastAccessTime*: FILETIME
-    ftLastWriteTime*: FILETIME
+    ftCreationTime*: TFILETIME
+    ftLastAccessTime*: TFILETIME
+    ftLastWriteTime*: TFILETIME
     nFileSizeHigh*: int32
     nFileSizeLow*: int32
     dwReserved0: int32
@@ -192,13 +205,13 @@ proc FreeEnvironmentStringsA*(para1: cstring): int32 {.
 
 proc GetCommandLineA*(): CString {.importc, stdcall, dynlib: "kernel32".}
 
-proc rdFileTime*(f: FILETIME): int64 = 
+proc rdFileTime*(f: TFILETIME): int64 = 
   result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
 
 proc rdFileSize*(f: TWin32FindData): int64 = 
   result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
 
-proc GetSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FileTime) {.
+proc GetSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var TFILETIME) {.
   importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall.}
 
 proc Sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
@@ -209,12 +222,16 @@ proc ShellExecute*(HWND: THandle, lpOperation, lpFile,
                    nShowCmd: int32): THandle{.
     stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
 
+proc GetFileInformationByHandle*(hFile: THandle,
+  lpFileInformation: ptr TBY_HANDLE_FILE_INFORMATION): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "GetFileInformationByHandle".}
+
 const
   WSADESCRIPTION_LEN* = 256
   WSASYS_STATUS_LEN* = 128
   FD_SETSIZE* = 64
   MSG_PEEK* = 2
-  
+ 
   INADDR_ANY* = 0
   INADDR_LOOPBACK* = 0x7F000001
   INADDR_BROADCAST* = -1
@@ -410,6 +427,9 @@ const
   GENERIC_READ* = 0x80000000'i32
   GENERIC_ALL* = 0x10000000'i32
   FILE_SHARE_READ* = 1'i32
+  FILE_SHARE_DELETE* = 4'i32
+  FILE_SHARE_WRITE* = 2'i32
+ 
   CREATE_ALWAYS* = 2'i32
   OPEN_EXISTING* = 3'i32
   FILE_BEGIN* = 0'i32
@@ -420,6 +440,8 @@ const
   FILE_MAP_READ* = 4'i32
   FILE_MAP_WRITE* = 2'i32
   INVALID_FILE_SIZE* = -1'i32
+
+  FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
 
 proc CreateFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
                   lpSecurityAttributes: pointer,
