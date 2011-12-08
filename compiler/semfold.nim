@@ -204,7 +204,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newIntNodeT(Ord(
       testCompileOptionArg(getStr(a), getStr(b), n.info)), n)
   of mNewString, mNewStringOfCap, 
-     mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
+     mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mParseExprToAst, mParseStmtToAst, mExpandToAst,
      mNLen..mNError, mEqRef: 

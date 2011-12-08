@@ -1378,13 +1378,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr: expr(p, e.sons[1], d)
   of mEnumToStr: genRepr(p, e, d)
-  of mAssert:
-    if optAssert in p.Options:
-      expr(p, e.sons[1], d)
-      line = toRope(toLinenumber(e.info))
-      filen = makeCString(ToFilename(e.info))
-      appcg(p, cpsStmts, "#internalAssert($1, $2, $3);$n",
-           [filen, line, rdLoc(d)])
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)

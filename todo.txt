@@ -2,6 +2,7 @@ version 0.8.14
 ==============
 
 - find a proper bugfix for C compilers optimizing away stack roots
+- cleanup file path handling in the compiler
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
@@ -124,7 +125,6 @@ Low priority
     need to recompile clients; er ... what about templates, macros or anything
     that has inlining semantics?
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
-- remove unused mAssert magic
 
 Version 2
 =========
