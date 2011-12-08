@@ -1024,7 +1024,6 @@ proc computeSize(typ: PType): biggestInt =
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
   assert s.kind in {skProc, skTemplate, skMacro, skIterator}
-  # XXX ask Zahary if this change broke something
   result = s.typ.sons[0]
 
 proc getSize(typ: PType): biggestInt = 

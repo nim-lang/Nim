@@ -1132,14 +1132,6 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   of mLtStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
   of mIsNil: unaryExpr(p, n, r, "", "$1 == null")
   of mEnumToStr: genRepr(p, n, r)
-  of mAssert:
-    if (optAssert in p.Options):
-      useMagic(p, "internalAssert")
-      gen(p, n.sons[1], a)
-      line = toRope(toLinenumber(n.info))
-      filen = makeCString(ToFilename(n.info))
-      appf(r.com, "if (!($3)) internalAssert($1, $2)",
-           [filen, line, mergeExpr(a)])
   of mNew, mNewFinalize: genNew(p, n, r)
   of mSizeOf: r.res = toRope(getSize(n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do

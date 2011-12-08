@@ -453,6 +453,14 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
         skipTypes(t.sons[i], abstractInst).kind == tyVar:
       n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
+
+proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
+  result = c.semAndEvalConstExpr(n.sons[i+1])
+  if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+    GlobalError(result.info, errStringLiteralExpected)
+  
+include semmagic
+
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
                                  flags: TExprFlags): PNode =
   if efWantIterator in flags:
@@ -520,6 +528,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
                   renderTree(n, {renderNoComments}))
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
+  if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
+    result = magicsAfterOverloadResolution(c, result, flags)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
@@ -530,6 +540,8 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if result == nil: GlobalError(n.Info, errGenerated, getNotFoundError(c, n))
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
+  if result.sons[0].sym.magic != mNone:
+    result = magicsAfterOverloadResolution(c, result, flags)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and skipTypes(arg.typ, abstractInst).kind == tyString:
@@ -914,12 +926,6 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
-proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
-  result = c.semAndEvalConstExpr(n.sons[i+1])
-
-  if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    GlobalError(result.info, errStringLiteralExpected)
-
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
   ## The argument to the proc should be nkCall(...) or similar
   ## Returns the macro/template symbol
@@ -954,21 +960,6 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
   else:
     result = semDirectOp(c, n, flags)
 
-proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
-  if sonsLen(n) == 2:
-    var a = expectStringArg(c, n, 0)
-    try:
-      var filename = a.strVal.FindFile
-      var content = readFile(filename)
-      result = newStrNode(nkStrLit, content)
-      result.typ = getSysType(tyString)
-      result.info = n.info
-      c.slurpedFiles.add(filename)
-    except EIO:
-      GlobalError(a.info, errCannotOpenFile, a.strVal)
-  else:
-    result = semDirectOp(c, n, flags)
-
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
   result = n
@@ -991,7 +982,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = semAsgn(c, result)
     else:
       result = semDirectOp(c, n, flags)
-  of mSlurp: result = semSlurp(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   of mAstToStr:
     if sonsLen(n) == 2:
