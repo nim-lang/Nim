@@ -135,7 +135,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if n.sons[paramsPos].kind != nkEmpty: 
     removeDefaultParamValues(n.sons[ParamsPos])
     semParamList(c, n.sons[ParamsPos], nil, result)
-    addParams(c, result.typ.n)
+    # XXX: obsoleted - happens in semParamList # 
+    # addParams(c, result.typ.n)
   else: 
     result.typ = newTypeS(tyProc, c)
     addSon(result.typ, nil)

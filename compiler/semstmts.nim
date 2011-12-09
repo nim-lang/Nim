@@ -616,7 +616,8 @@ proc semLambda(c: PContext, n: PNode): PNode =
     illFormedAst(n)           # process parameters:
   if n.sons[paramsPos].kind != nkEmpty: 
     semParamList(c, n.sons[ParamsPos], nil, s)
-    addParams(c, s.typ.n)
+    # XXX: obsoleted - happens in semParamList
+    # addParams(c, s.typ.n)
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
@@ -665,7 +666,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[genericParamsPos] = gp
         # check for semantics again:
         semParamList(c, n.sons[ParamsPos], nil, s)
-    addParams(c, s.typ.n)
+    # XXX: obsoleted - happens in semParamList
+    # addParams(c, s.typ.n)
   else: 
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)
