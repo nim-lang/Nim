@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os
+  options, strutils, os, tables
 
 type 
   TMsgKind* = enum 
@@ -384,6 +384,11 @@ const
 type 
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
+
+  TFileInfo*{.final.} = object 
+    fullPath*: string          # This is a canonical full filesystem path
+    projPath*: string          # This is relative to the project's root
+
   TLineInfo*{.final.} = object # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We safe space here by using 
@@ -395,7 +400,37 @@ type
     
   ERecoverableError* = object of EInvalidValue
 
-proc newLineInfo*(filename: string, line, col: int): TLineInfo
+var
+  filenameToIndexTbl = initTable[string, int32]()
+  fileInfos: seq[TFileInfo] = @[]
+
+proc newFileInfo(fullPath, projPath: string): TFileInfo =
+  result.fullPath = fullPath
+  result.projPath = projPath
+
+proc fileInfoIdx*(filename: string): int32 =
+  var canonical = canonicalizePath(filename)
+
+  if filenameToIndexTbl.hasKey(canonical):
+    result = filenameToIndexTbl[canonical]
+  else:
+    result = fileInfos.len.int32
+    fileInfos.add(newFileInfo(canonical, canonical.shortenDir))
+    filenameToIndexTbl[canonical] = result
+
+proc newLineInfo*(filename: string, line, col: int): TLineInfo =
+  result.fileIndex = filename.fileInfoIdx
+  result.line = int16(line)
+  result.col = int16(col)
+
+proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
+  result.fileIndex = fileInfoIdx
+  result.line = int16(line)
+  result.col = int16(col)
+
+fileInfos.add(newFileInfo("command line", ""))
+var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
+
 proc raiseRecoverableError*() {.noinline, noreturn.} =
   raise newException(ERecoverableError, "")
 
@@ -423,9 +458,7 @@ proc UnknownLineInfo*(): TLineInfo =
   result.fileIndex = -1
 
 var 
-  filenames: seq[tuple[filename: string, fullpath: string]] = @[]
   msgContext: seq[TLineInfo] = @[]
-  gCmdLineInfo* = newLineInfo("command line", -1, -1)
 
 proc pushInfoContext*(info: TLineInfo) = 
   msgContext.add(info)
@@ -433,31 +466,13 @@ proc pushInfoContext*(info: TLineInfo) =
 proc popInfoContext*() = 
   setlen(msgContext, len(msgContext) - 1)
 
-proc includeFilename*(f: string): int = 
-  for i in countdown(high(filenames), low(filenames)): 
-    if filenames[i].filename == f:
-      return i
-  
-  result = len(filenames)
-  
-  var fullpath: string
-  try: fullpath = expandFilename(f)
-  except: fullpath = ""
-
-  filenames.add((filename: f, fullpath: fullpath))
-
-proc newLineInfo(filename: string, line, col: int): TLineInfo = 
-  result.fileIndex = includeFilename(filename)
-  result.line = int16(line)
-  result.col = int16(col)
-
-proc ToFilename*(info: TLineInfo): string = 
+proc ToFilename*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
-  else: result = filenames[info.fileIndex].filename
+  else: result = fileInfos[info.fileIndex].projPath
 
 proc toFullPath*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
-  else: result = filenames[info.fileIndex].fullpath
+  else: result = fileInfos[info.fileIndex].fullPath
   
 proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line

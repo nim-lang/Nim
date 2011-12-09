@@ -70,14 +70,14 @@ proc HandleCmdLine() =
     ProcessCmdLine(passCmd1)
     if gProjectName != "":
       try:
-        gProjectFull = expandFilename(gProjectName)
+        gProjectFull = canonicalizePath(gProjectName)
       except EOS:
         gProjectFull = gProjectName
       var p = splitFile(gProjectFull)
       gProjectPath = p.dir
       gProjectName = p.name
     else:
-      gProjectPath = getCurrentDir()      
+      gProjectPath = getCurrentDir()
     LoadConfigs(DefaultConfig) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
