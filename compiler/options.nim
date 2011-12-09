@@ -138,12 +138,13 @@ proc getPrefixDir*(): string =
   ## gets the application directory
   result = SplitPath(getAppDir()).head
 
+proc canonicalizePath*(path: string): string =
+  result = path.expandFilename
+  when not FileSystemCaseSensitive: result = result.toLower
+
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
-  if startsWith(dir, prefix): 
-    return substr(dir, len(prefix))
-  prefix = getCurrentDir() & dirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
   prefix = gProjectPath & dirSep

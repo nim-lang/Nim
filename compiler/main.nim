@@ -176,7 +176,7 @@ proc CommandSuggest =
 
 proc wantMainModule =
   if gProjectFull.len == 0:
-    Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
+    Fatal(gCmdLineInfo, errCommandExpectsFilename)
   
 proc MainCommand =
   appendStr(searchPaths, options.libpath)

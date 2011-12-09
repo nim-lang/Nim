@@ -96,7 +96,7 @@ type
                               # documentation comments are here too
   
   TLexer* = object of TBaseLexer
-    filename*: string
+    fileIdx*: int32
     indentStack*: seq[int]    # the indentation stack
     dedent*: int              # counter for DED token generation
     indentAhead*: int         # if > 0 an indendation has already been read
@@ -198,7 +198,7 @@ proc fillToken(L: var TToken) =
 proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
   lex.indentStack = @[0]
-  lex.filename = filename
+  lex.fileIdx = filename.fileInfoIdx
   lex.indentAhead = - 1
   inc(lex.Linenumber, inputstream.lineOffset) 
 
@@ -210,13 +210,13 @@ proc getColumn(L: TLexer): int =
   result = getColNumber(L, L.bufPos)
 
 proc getLineInfo(L: TLexer): TLineInfo = 
-  result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
+  result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
 
 proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
   msgs.Message(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
-  var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
+  var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
   msgs.Message(info, msg, arg)
 
 proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
