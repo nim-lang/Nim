@@ -31,6 +31,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mSlurp: result = semSlurp(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
+  of mAstToStr:
+    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
+    result.typ = getSysType(tyString)
   else: result = n
-  
 

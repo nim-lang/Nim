@@ -14,7 +14,7 @@ import
   options, intsets,
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
   times, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
-  rodutils, renderer, idgen, cgendata, ccgmerge, semfold
+  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases
 
 when options.hasTinyCBackend:
   import tccgen
@@ -235,16 +235,17 @@ proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) =
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
       appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
-  else: 
+  else:
     if containsGcref and p.WithInLoop > 0:
       appf(p.s[cpsInit], "memset((void*)$1, 0, sizeof($2));$n", 
            [addrLoc(loc), rdLoc(loc)])
+      genObjectInit(p, cpsInit, loc.t, loc, true)
       appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
            [addrLoc(loc), genTypeInfo(p.module, loc.t)])
     else:
       appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
            [addrLoc(loc), rdLoc(loc)])
-    genObjectInit(p, cpsInit, loc.t, loc, true)
+      genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc zeroTemp(p: BProc, loc: TLoc) = 
   if skipTypes(loc.t, abstractVarRange).Kind notin
@@ -259,15 +260,22 @@ proc zeroTemp(p: BProc, loc: TLoc) =
   else: 
     appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
          [addrLoc(loc), rdLoc(loc)])
+    # XXX no object init necessary for temporaries?
     when false:
       appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
            [addrLoc(loc), genTypeInfo(p.module, loc.t)])
 
-proc initVariable(p: BProc, v: PSym) =
+proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
   if sfNoInit notin v.flags:
-    var b = containsGarbageCollectedRef(v.typ)
-    if b or v.ast == nil:
-      zeroVar(p, v.loc, b)
+    # we know it is a local variable and thus on the stack!
+    # If ``not immediateAsgn`` it is not initialized in a binding like
+    # ``var v = X`` and thus we need to init it. 
+    # If ``v`` contains a GC-ref we may pass it to ``unsureAsgnRef`` somehow
+    # which requires initialization. However this can really only happen if
+    # ``var v = X()`` gets transformed into ``X(&v)``. 
+    # Nowadays the logic in ccgcalls deals with this case however.
+    if not immediateAsgn:
+      zeroVar(p, v.loc, containsGarbageCollectedRef(v.typ))
     
 proc initTemp(p: BProc, tmp: var TLoc) = 
   if containsGarbageCollectedRef(tmp.t) or isInvalidReturnType(tmp.t):
@@ -534,13 +542,14 @@ proc genProcAux(m: BModule, prc: PSym) =
   assert(prc.ast != nil)
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     var res = prc.ast.sons[resultPos].sym # get result symbol
-    if not isInvalidReturnType(prc.typ.sons[0]): 
+    if not isInvalidReturnType(prc.typ.sons[0]):
+      if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       # declare the result symbol:
       assignLocalVar(p, res)
       assert(res.loc.r != nil)
       returnStmt = ropeff("return $1;$n", "ret $1$n", [rdLoc(res.loc)])
-      initVariable(p, res)
-    else: 
+      initLocalVar(p, res, immediateAsgn=false)
+    else:
       fillResult(res)
       assignParam(p, res)
       if skipTypes(res.typ, abstractInst).kind == tyArray: 

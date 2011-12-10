@@ -1628,11 +1628,6 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
      nkCallStrLit:
     if e.sons[0].kind == nkSym and e.sons[0].sym.magic != mNone:
       genMagicExpr(p, e, d, e.sons[0].sym.magic)
-    elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
-        e.len >= 2:
-      genInfixCall(p, e, d)
-    elif e.sons[0].kind == nkSym and sfNamedParamCall in e.sons[0].sym.flags:
-      genNamedParamCall(p, e, d)
     else:
       genCall(p, e, d)
   of nkCurly:
