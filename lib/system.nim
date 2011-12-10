@@ -2071,14 +2071,24 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
   
+proc raiseAssert(msg: string) {.noinline.} =
+  raise newException(EAssertionFailed, msg)
+  
 template assert*(cond: expr, msg = "") =
   ## provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
+  bind raiseAssert
   when compileOption("assertions"):
     if not cond:
-      raise newException(EAssertionFailed, astToStr(cond) & ' ' & msg)
+      raiseAssert(astToStr(cond) & ' ' & msg)
 
+template doAssert*(cond: expr, msg = "") =
+  ## same as `assert' but is always turned on and not affected by the
+  ## ``--assertions`` command line switch.
+  bind raiseAssert
+  if not cond:
+    raiseAssert(astToStr(cond) & ' ' & msg)
 

@@ -1,7 +1,8 @@
 version 0.8.14
 ==============
 
-- find a proper bugfix for C compilers optimizing away stack roots
+- implement a proper bugfix for C compilers optimizing away stack roots
+
 - cleanup file path handling in the compiler
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
@@ -37,9 +38,6 @@ version 0.9.0
 Bugs
 ----
 - bug: generic assign still buggy
-  - Optimization: If we use a temporary for the result anyway the code gen
-    should make use of this fact to generate better code...
-  - bug: memset() without type field initialization?
   - special case the generic assign that needs to care about case objects
 
 - bug: returning a tyVar does not mean it is save to return it:

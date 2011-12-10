@@ -155,9 +155,7 @@ proc SameValue*(a, b: PNode): bool =
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
   of nkStrLit..nkTripleStrLit: 
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal == b.strVal
-  else: 
-    debug a
-    debug b
+  else:
     InternalError(a.info, "SameValue")
 
 proc leValue*(a, b: PNode): bool = 
