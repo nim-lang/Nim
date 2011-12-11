@@ -409,26 +409,34 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.projPath = projPath
 
 proc fileInfoIdx*(filename: string): int32 =
-  var canonical = canonicalizePath(filename)
+  var
+    canonical: string
+    pseudoPath = false
+
+  try:
+    canonical = canonicalizePath(filename)
+  except:
+    canonical = filename
+    # The compiler uses "filenames" such as `command line` or `stdin`
+    # This flag indicates that we are working with such a path here
+    pseudoPath = true
 
   if filenameToIndexTbl.hasKey(canonical):
     result = filenameToIndexTbl[canonical]
   else:
     result = fileInfos.len.int32
-    fileInfos.add(newFileInfo(canonical, canonical.shortenDir))
+    fileInfos.add(newFileInfo(canonical, if pseudoPath: "" else: canonical.shortenDir))
     filenameToIndexTbl[canonical] = result
-
-proc newLineInfo*(filename: string, line, col: int): TLineInfo =
-  result.fileIndex = filename.fileInfoIdx
-  result.line = int16(line)
-  result.col = int16(col)
 
 proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
   result.line = int16(line)
   result.col = int16(col)
 
-fileInfos.add(newFileInfo("command line", ""))
+proc newLineInfo*(filename: string, line, col: int): TLineInfo {.inline.} =
+  result = newLineInfo(filename.fileInfoIdx, line, col)
+
+fileInfos.add(newFileInfo("", "command line"))
 var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
 
 proc raiseRecoverableError*() {.noinline, noreturn.} =

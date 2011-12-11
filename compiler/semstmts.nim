@@ -797,7 +797,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
-    var f = getModuleFile(n.sons[i])
+    var f = checkModuleName(n.sons[i])
     var fileIndex = f.fileInfoIdx
     if ContainsOrIncl(c.includedFiles, fileIndex): 
       GlobalError(n.info, errRecursiveDependencyX, f)

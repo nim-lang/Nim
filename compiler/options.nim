@@ -188,19 +188,28 @@ iterator iterSearchPath*(): string =
     yield it.data
     it = PStrEntry(it.Next)  
 
-proc rawFindFile(f: string): string = 
+proc rawFindFile(f: string): string =
+  template ret(e: expr) =
+    result = e.canonicalizePath
+    return
+
   if ExistsFile(f): 
-    result = f
+    ret f
   else: 
     for it in iterSearchPath():
       result = JoinPath(it, f)
-      if ExistsFile(result): return
+      if ExistsFile(result):
+        ret result
     result = ""
 
 proc FindFile*(f: string): string = 
   result = rawFindFile(f)
   if len(result) == 0: result = rawFindFile(toLower(f))
-  
+
+proc findModule*(modulename: string): string {.inline.} =
+  # returns path to module
+  result = FindFile(AddFileExt(modulename, nimExt))
+
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1
