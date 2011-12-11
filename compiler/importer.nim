@@ -16,25 +16,13 @@ import
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
 proc importAllSymbols*(c: PContext, fromMod: PSym)
-proc getModuleFile*(n: PNode): string
-# implementation
 
-proc findModule(info: TLineInfo, modulename: string): string = 
-  # returns path to module
-  result = options.FindFile(AddFileExt(modulename, nimExt))
-  if result == "": Fatal(info, errCannotOpenFile, modulename)
-  
-proc getModuleFile(n: PNode): string = 
-  case n.kind
-  of nkStrLit, nkRStrLit, nkTripleStrLit: 
-    result = findModule(n.info, UnixToNativePath(n.strVal))
-  of nkIdent: 
-    result = findModule(n.info, n.ident.s)
-  of nkSym: 
-    result = findModule(n.info, n.sym.name.s)
-  else: 
-    internalError(n.info, "getModuleFile()")
-    result = ""
+proc checkModuleName*(n: PNode): string =
+  # This returns the full canonical path for a given module import
+  var modulename = n.getModuleName
+  result = findModule(modulename)
+  if result.len == 0:
+    Fatal(n.info, errCannotOpenFile, modulename)
 
 proc rawImportSymbol(c: PContext, s: PSym) = 
   # This does not handle stubs, because otherwise loading on demand would be
@@ -103,7 +91,7 @@ proc importAllSymbols(c: PContext, fromMod: PSym) =
 proc evalImport(c: PContext, n: PNode): PNode = 
   result = n
   for i in countup(0, sonsLen(n) - 1): 
-    var f = getModuleFile(n.sons[i])
+    var f = checkModuleName(n.sons[i])
     var m = gImportModule(f)
     if sfDeprecated in m.flags: 
       Message(n.sons[i].info, warnDeprecated, m.name.s) 
@@ -114,7 +102,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
 proc evalFrom(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 2)
-  var f = getModuleFile(n.sons[0])
+  var f = checkModuleName(n.sons[0])
   var m = gImportModule(f)
   n.sons[0] = newSymNode(m)
   addDecl(c, m)               # add symbol to symbol table of module

@@ -69,7 +69,7 @@ proc importModule(filename: string): PSym =
 proc CompileModule(filename: string, flags: TSymFlags): PSym =
   var rd: PRodReader = nil
   var f = addFileExt(filename, nimExt)
-  result = newModule(filename)
+  result = newModule(f)
   result.flags = result.flags + flags
   if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}: 
     rd = handleSymbolFile(result, f)
