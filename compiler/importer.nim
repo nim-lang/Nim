@@ -17,6 +17,21 @@ proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
 proc importAllSymbols*(c: PContext, fromMod: PSym)
 
+proc getModuleName*(n: PNode): string =
+  # This returns a short relative module name without the nim extension
+  # e.g. like "system", "importer" or "somepath/module"
+  # The proc won't perform any checks that the path is actually valid
+  case n.kind
+  of nkStrLit, nkRStrLit, nkTripleStrLit:
+    result = UnixToNativePath(n.strVal)
+  of nkIdent:
+    result = n.ident.s
+  of nkSym:
+    result = n.sym.name.s
+  else:
+    internalError(n.info, "getModuleName")
+    result = ""
+
 proc checkModuleName*(n: PNode): string =
   # This returns the full canonical path for a given module import
   var modulename = n.getModuleName

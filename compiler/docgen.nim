@@ -13,7 +13,7 @@
 
 import 
   ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
-  wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite
+  wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite, importer
 
 proc CommandDoc*()
 proc CommandRst2Html*()
