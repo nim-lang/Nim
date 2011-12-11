@@ -29,7 +29,7 @@ Changes affecting backwards compatibility
   ``os.iterOverEnvironment``, ``os.pcDirectory``, ``os.pcLinkToDirectory``,
   ``os.SplitPath``, ``os.extractDir``, ``os.SplitFilename``, 
   ``os.extractFileTrunk``, ``os.extractFileExt``, ``osproc.executeProcess``,
-  ``osproc.executeCommand``. 
+  ``osproc.executeCommand``.
 - Removed deprecated ``parseopt.init``, ``parseopt.getRestOfCommandLine``.
 - Moved ``strutils.validEmailAddress`` to ``matchers.validEmailAddress``.
 - The pointer dereference operator ``^`` has been removed, so that ``^``
@@ -53,8 +53,8 @@ Changes affecting backwards compatibility
   because they should not be used directly anymore. 
   Wrapper procs have been created that should be used instead.
 - ``export`` is now a keyword.
-- ``assert`` is now implemented in pure Nimrod; it's easy to implement your
-  own assertion schemes now.
+- ``assert`` is now implemented in pure Nimrod as a template; it's easy 
+  to implement your own assertion templates with ``system.astToStr``.
 
 
 Language Additions
@@ -112,6 +112,7 @@ Compiler Additions
 - Added ``--import:file`` and ``--include:file`` configuration options
   for specifying modules that will be automatically imported/incluced.
 - ``nimrod i`` can now optionally be given a module to execute.
+- The compiler now performs a simple aliases analysis to generate better code.
 
 
 Library Additions
@@ -128,7 +129,7 @@ Library Additions
 - Added ``system.program_result``.
 - Added ``xmltree.innerText``.
 - Added ``os.isAbsolute``, ``os.dynLibFormat``, ``os.isRootDir``,
-   ``os.parentDirs``.
+  ``os.parentDirs``.
 - Added ``parseutils.interpolatedFragments``.
 - Added ``macros.treeRepr``, ``macros.lispRepr``, ``macros.dumpTree``, 
   ``macros.dumpLisp``, ``macros.parseExpr``, ``macros.parseStmt``, 
@@ -142,7 +143,7 @@ Library Additions
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to
   the old implementation.
 - Added ``intsets.assign``.
-- Added ``system.astToStr`` and ``system.rand``.
+- Added ``system.astToStr`` and ``system.rand``, ``system.doAssert``.
 
 
 2011-07-10 Version 0.8.12 released

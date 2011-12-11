@@ -1584,6 +1584,11 @@ The implicit initialization can be avoided for optimization reasons with the
   var
     a {.noInit.}: array [0..1023, char] 
 
+If a proc is annotated with the ``noinit`` pragma this refers to its implicit
+``result`` variable:
+
+.. code-block:: nimrod
+  proc returnUndefinedValue: int {.noinit.} = nil
 
 
 let statement
@@ -2849,6 +2854,7 @@ exported.
 The algorithm for compiling modules is:
 
 - compile the whole module as usual, following import statements recursively
+
 - if there is a cycle only import the already parsed symbols (that are
   exported); if an unknown identifier occurs then abort
 

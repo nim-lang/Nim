@@ -1669,25 +1669,25 @@ proc escapePeg*(s: string): string =
   if inQuote: result.add('\'')
 
 when isMainModule:
-  assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
-  #assert match("(a b c)", peg"'(' @ ')'")
-  assert match("W_HI_Le", peg"\y 'while'")
-  assert(not match("W_HI_L", peg"\y 'while'"))
-  assert(not match("W_HI_Le", peg"\y v'while'"))
-  assert match("W_HI_Le", peg"y'while'")
+  doAssert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
+  #doAssert match("(a b c)", peg"'(' @ ')'")
+  doAssert match("W_HI_Le", peg"\y 'while'")
+  doAssert(not match("W_HI_L", peg"\y 'while'"))
+  doAssert(not match("W_HI_Le", peg"\y v'while'"))
+  doAssert match("W_HI_Le", peg"y'while'")
   
-  assert($ +digits == $peg"\d+")
-  assert "0158787".match(peg"\d+")
-  assert "ABC 0232".match(peg"\w+\s+\d+")
-  assert "ABC".match(peg"\d+ / \w+")
+  doAssert($ +digits == $peg"\d+")
+  doAssert "0158787".match(peg"\d+")
+  doAssert "ABC 0232".match(peg"\w+\s+\d+")
+  doAssert "ABC".match(peg"\d+ / \w+")
 
   for word in split("00232this02939is39an22example111", peg"\d+"):
     writeln(stdout, word)
 
-  assert matchLen("key", ident) == 3
+  doAssert matchLen("key", ident) == 3
 
   var pattern = sequence(ident, *whitespace, term('='), *whitespace, ident)
-  assert matchLen("key1=  cal9", pattern) == 11
+  doAssert matchLen("key1=  cal9", pattern) == 11
   
   var ws = newNonTerminal("ws", 1, 1)
   ws.rule = *whitespace
@@ -1698,24 +1698,24 @@ when isMainModule:
   
   var c: TCaptures
   var s = "a+b +  c +d+e+f"
-  assert rawMatch(s, expr.rule, 0, c) == len(s)
+  doAssert rawMatch(s, expr.rule, 0, c) == len(s)
   var a = ""
   for i in 0..c.ml-1:
     a.add(substr(s, c.matches[i][0], c.matches[i][1]))
-  assert a == "abcdef"
+  doAssert a == "abcdef"
   #echo expr.rule
 
   #const filename = "lib/devel/peg/grammar.txt"
   #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
   #echo "a <- [abc]*?".match(grammar)
-  assert find("_____abc_______", term("abc"), 2) == 5
-  assert match("_______ana", peg"A <- 'ana' / . A")
-  assert match("abcs%%%", peg"A <- ..A / .A / '%'")
+  doAssert find("_____abc_______", term("abc"), 2) == 5
+  doAssert match("_______ana", peg"A <- 'ana' / . A")
+  doAssert match("abcs%%%", peg"A <- ..A / .A / '%'")
 
   if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
-    assert matches[0] == "abc"
+    doAssert matches[0] == "abc"
   else:
-    assert false
+    doAssert false
   
   var g2 = peg"""S <- A B / C D
                  A <- 'a'+
@@ -1723,44 +1723,44 @@ when isMainModule:
                  C <- 'c'+
                  D <- 'd'+
               """
-  assert($g2 == "((A B) / (C D))")
-  assert match("cccccdddddd", g2)
-  assert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+  doAssert($g2 == "((A B) / (C D))")
+  doAssert match("cccccdddddd", g2)
+  doAssert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
-  assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
+  doAssert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
   if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
-    assert matches[0] == "a"
+    doAssert matches[0] == "a"
   else:
-    assert false
+    doAssert false
     
   var matches: array[0..5, string]
   if match("abcdefg", peg"c {d} ef {g}", matches, 2): 
-    assert matches[0] == "d"
-    assert matches[1] == "g"
+    doAssert matches[0] == "d"
+    doAssert matches[1] == "g"
   else:
-    assert false
+    doAssert false
 
   for x in findAll("abcdef", peg"{.}", 3):
     echo x
     
   if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
-    assert matches[0] == "f"
-    assert matches[1] == "a, b"
+    doAssert matches[0] == "f"
+    doAssert matches[1] == "a, b"
   else:
-    assert false
+    doAssert false
   
-  assert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+  doAssert match("eine übersicht und außerdem", peg"(\letter \white*)+")
   # ß is not a lower cased letter?!
-  assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
-  assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
-  assert(not match("456678", peg"(\letter)+"))
+  doAssert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+  doAssert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
+  doAssert(not match("456678", peg"(\letter)+"))
 
-  assert("var1 = key; var2 = key2".replacef(
+  doAssert("var1 = key; var2 = key2".replacef(
     peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey;var2<-key2key2")
 
-  assert match("prefix/start", peg"^start$", 7)
+  doAssert match("prefix/start", peg"^start$", 7)
   
   # tricky test to check for false aliasing:
   block:

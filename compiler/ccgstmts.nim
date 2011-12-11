@@ -18,16 +18,16 @@ proc genVarTuple(p: BProc, n: PNode) =
   if n.kind != nkVarTuple: InternalError(n.info, "genVarTuple")
   var L = sonsLen(n)
   genLineDir(p, n)
-  initLocExpr(p, n.sons[L - 1], tup)
+  initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t
-  for i in countup(0, L - 3): 
+  for i in countup(0, L-3): 
     var v = n.sons[i].sym
     if sfGlobal in v.flags: 
       assignGlobalVar(p, v)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
-    else: 
+    else:
       assignLocalVar(p, v)
-      initVariable(p, v)
+      initLocalVar(p, v, immediateAsgn=true)
     initLoc(field, locExpr, t.sons[i], tup.s)
     if t.n == nil: 
       field.r = ropef("$1.Field$2", [rdLoc(tup), toRope(i)])
@@ -37,17 +37,25 @@ proc genVarTuple(p: BProc, n: PNode) =
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
 
+proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
+  if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
+                                 ri.sons[0].sym.magic == mNone):
+    genAsgnCall(p, le, ri, a)
+  else:
+    expr(p, ri, a)
+
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
+  var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags: 
     assignGlobalVar(p, v)
     genObjectInit(p, cpsInit, v.typ, v.loc, true)
-  else: 
+  else:
     assignLocalVar(p, v)
-    initVariable(p, v)
-  if a.sons[2].kind != nkEmpty: 
+    initLocalVar(p, v, immediateAsgn)
+  if immediateAsgn:
     genLineDir(p, a)
-    expr(p, a.sons[2], v.loc)
+    loadInto(p, a.sons[0], a.sons[2], v.loc)
 
 proc genVarStmt(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
@@ -658,7 +666,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     InitLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
-    expr(p, e.sons[1], a)
+    loadInto(p, e.sons[0], e.sons[1], a)
   else:
     asgnFieldDiscriminant(p, e)
 
