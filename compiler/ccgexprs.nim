@@ -1378,13 +1378,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr: expr(p, e.sons[1], d)
   of mEnumToStr: genRepr(p, e, d)
-  of mAssert:
-    if optAssert in p.Options:
-      expr(p, e.sons[1], d)
-      line = toRope(toLinenumber(e.info))
-      filen = makeCString(ToFilename(e.info))
-      appcg(p, cpsStmts, "#internalAssert($1, $2, $3);$n",
-           [filen, line, rdLoc(d)])
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)
@@ -1635,11 +1628,6 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
      nkCallStrLit:
     if e.sons[0].kind == nkSym and e.sons[0].sym.magic != mNone:
       genMagicExpr(p, e, d, e.sons[0].sym.magic)
-    elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
-        e.len >= 2:
-      genInfixCall(p, e, d)
-    elif e.sons[0].kind == nkSym and sfNamedParamCall in e.sons[0].sym.flags:
-      genNamedParamCall(p, e, d)
     else:
       genCall(p, e, d)
   of nkCurly:

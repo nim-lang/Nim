@@ -695,13 +695,7 @@ proc evalNewSeq(c: PEvalContext, n: PNode): PNode =
   for i in countup(0, L-1): 
     a.sons[i] = getNullValue(t.sons[0], n.info)
   result = emptyNode
-
-proc evalAssert(c: PEvalContext, n: PNode): PNode = 
-  result = evalAux(c, n.sons[1], {})
-  if isSpecial(result): return 
-  if getOrdValue(result) != 0: result = emptyNode
-  else: stackTrace(c, n, errAssertionFailed)
-  
+ 
 proc evalIncl(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[1], {efLValue})
   if isSpecial(result): return 
@@ -876,7 +870,6 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mOf: result = evalOf(c, n)
   of mSizeOf: result = raiseCannotEval(c, n)
   of mHigh: result = evalHigh(c, n)
-  of mAssert: result = evalAssert(c, n)
   of mExit: result = evalExit(c, n)
   of mNew, mNewFinalize: result = evalNew(c, n)
   of mNewSeq: result = evalNewSeq(c, n)

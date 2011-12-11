@@ -10,16 +10,30 @@
 type
   TAfterCallActions = tuple[p: BProc, actions: PRope]
 
-proc fixupCall(p: BProc, t: PNode, d: var TLoc, pl: PRope) =
+proc leftAppearsOnRightSide(le, ri: PNode): bool =
+  if le != nil:
+    for i in 1 .. <ri.len:
+      if le.isPartOf(ri[i]) != arNo: return true
+
+proc hasNoInit(call: PNode): bool {.inline.} =
+  result = call.sons[0].kind == nkSym and sfNoInit in call.sons[0].sym.flags
+
+proc resetLoc(p: BProc, d: var TLoc) =
+  zeroVar(p, d, containsGarbageCollectedRef(d.t))
+
+proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
   var pl = pl
-  var typ = t.sons[0].typ # getUniqueType() is too expensive here!
+  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(t) > 1: app(pl, ", ")
-      # beware of 'result = p(result)'. We always allocate a temporary:
-      if d.k in {locTemp, locNone}:
-        # We already got a temp. Great, special case it:
+      if sonsLen(ri) > 1: app(pl, ", ")
+      # beware of 'result = p(result)'. We may need to allocate a temporary:
+      if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
+        # Great, we can use 'd':
         if d.k == locNone: getTemp(p, typ.sons[0], d)
+        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+          # reset before pass as 'result' var:
+          resetLoc(p, d)
         app(pl, addrLoc(d))
         app(pl, ")")
         app(p.s[cpsStmts], pl)
@@ -117,40 +131,40 @@ proc genArgNoParam(aca: var TAfterCallActions, n: PNode): PRope =
     initLocExpr(aca.p, n, a)
     result = rdLoc(a)
 
-proc genCall(p: BProc, t: PNode, d: var TLoc) =
+proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   var aca: TAfterCallActions
   aca.p = p
   # this is a hotspot in the compiler
-  initLocExpr(p, t.sons[0], op)
+  initLocExpr(p, ri.sons[0], op)
   var pl = con(op.r, "(")
-  var typ = t.sons[0].typ # getUniqueType() is too expensive here!
+  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
   assert(typ.kind == tyProc)
-  var length = sonsLen(t)
+  var length = sonsLen(ri)
   for i in countup(1, length - 1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(aca, t.sons[i], typ.n.sons[i].sym))
+      app(pl, genArg(aca, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(aca, t.sons[i]))
+      app(pl, genArgNoParam(aca, ri.sons[i]))
     if i < length - 1: app(pl, ", ")
-  fixupCall(p, t, d, pl)
+  fixupCall(p, le, ri, d, pl)
   emitAfterCallActions(aca)
 
-proc genInfixCall(p: BProc, t: PNode, d: var TLoc) =
+proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   var aca: TAfterCallActions
   aca.p = p
-  initLocExpr(p, t.sons[0], op)
+  initLocExpr(p, ri.sons[0], op)
   var pl: PRope = nil
-  var typ = t.sons[0].typ # getUniqueType() is too expensive here!
+  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
   assert(typ.kind == tyProc)
-  var length = sonsLen(t)
+  var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   var param = typ.n.sons[1].sym
-  app(pl, genArg(aca, t.sons[1], param))
+  app(pl, genArg(aca, ri.sons[1], param))
   
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, "->")
   else: app(pl, ".")
@@ -160,45 +174,45 @@ proc genInfixCall(p: BProc, t: PNode, d: var TLoc) =
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(aca, t.sons[i], typ.n.sons[i].sym))
+      app(pl, genArg(aca, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(aca, t.sons[i]))
+      app(pl, genArgNoParam(aca, ri.sons[i]))
     if i < length - 1: app(pl, ", ")
-  fixupCall(p, t, d, pl)
+  fixupCall(p, le, ri, d, pl)
   emitAfterCallActions(aca)
 
-proc genNamedParamCall(p: BProc, t: PNode, d: var TLoc) =
+proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
   var op, a: TLoc
   var aca: TAfterCallActions
   aca.p = p
-  initLocExpr(p, t.sons[0], op)
+  initLocExpr(p, ri.sons[0], op)
   var pl = toRope"["
-  var typ = t.sons[0].typ # getUniqueType() is too expensive here!
+  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
   assert(typ.kind == tyProc)
-  var length = sonsLen(t)
+  var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   if length > 1:
-    app(pl, genArg(aca, t.sons[1], typ.n.sons[1].sym))
+    app(pl, genArg(aca, ri.sons[1], typ.n.sons[1].sym))
     app(pl, " ")
   app(pl, op.r)
   if length > 2:
     app(pl, ": ")
-    app(pl, genArg(aca, t.sons[2], typ.n.sons[2].sym))
+    app(pl, genArg(aca, ri.sons[2], typ.n.sons[2].sym))
   for i in countup(3, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
-      InternalError(t.info, "varargs for objective C method?")
+      InternalError(ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     app(pl, " ")
     app(pl, param.name.s)
     app(pl, ": ")
-    app(pl, genArg(aca, t.sons[i], param))
+    app(pl, genArg(aca, ri.sons[i], param))
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(t) > 1: app(pl, " ")
+      if sonsLen(ri) > 1: app(pl, " ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
@@ -229,4 +243,22 @@ proc genNamedParamCall(p: BProc, t: PNode, d: var TLoc) =
     app(p.s[cpsStmts], pl)
     appf(p.s[cpsStmts], ";$n")
   emitAfterCallActions(aca)
+
+proc genCall(p: BProc, e: PNode, d: var TLoc) =
+  if e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
+      e.len >= 2:
+    genInfixCall(p, nil, e, d)
+  elif e.sons[0].kind == nkSym and sfNamedParamCall in e.sons[0].sym.flags:
+    genNamedParamCall(p, e, d)
+  else:
+    genPrefixCall(p, nil, e, d)
+
+proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
+  if ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags and
+      ri.len >= 2:
+    genInfixCall(p, le, ri, d)
+  elif ri.sons[0].kind == nkSym and sfNamedParamCall in ri.sons[0].sym.flags:
+    genNamedParamCall(p, ri, d)
+  else:
+    genPrefixCall(p, le, ri, d)
 

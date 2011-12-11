@@ -146,6 +146,30 @@ proc IITablePut*(t: var TIITable, key, val: int)
 
 # implementation
 
+proc SameValue*(a, b: PNode): bool = 
+  result = false
+  case a.kind
+  of nkCharLit..nkInt64Lit: 
+    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal == b.intVal
+  of nkFloatLit..nkFloat64Lit: 
+    if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
+  of nkStrLit..nkTripleStrLit: 
+    if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal == b.strVal
+  else:
+    InternalError(a.info, "SameValue")
+
+proc leValue*(a, b: PNode): bool = 
+  # a <= b?
+  result = false
+  case a.kind
+  of nkCharLit..nkInt64Lit: 
+    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal <= b.intVal
+  of nkFloatLit..nkFloat64Lit: 
+    if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
+  of nkStrLit..nkTripleStrLit: 
+    if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
+  else: InternalError(a.info, "leValue")
+
 proc lookupInRecord(n: PNode, field: PIdent): PSym = 
   result = nil
   case n.kind

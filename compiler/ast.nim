@@ -371,7 +371,7 @@ type
     mFields, mFieldPairs,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq, 
-    mAssert, mAstToStr, mRand,
+    mIsPartOf, mAstToStr, mRand, 
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast, 
     mNewString, mNewStringOfCap,
     mReset,
@@ -669,36 +669,7 @@ const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0
 
-proc SameValue*(a, b: PNode): bool
-  # a, b are literals
-proc leValue*(a, b: PNode): bool
-  # a <= b? a, b are literals
-proc ValueToString*(a: PNode): string
- 
-proc leValue(a, b: PNode): bool = 
-  # a <= b?
-  result = false
-  case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal <= b.intVal
-  of nkFloatLit..nkFloat64Lit: 
-    if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
-  of nkStrLit..nkTripleStrLit: 
-    if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
-  else: InternalError(a.info, "leValue")
-  
-proc SameValue(a, b: PNode): bool = 
-  result = false
-  case a.kind
-  of nkCharLit..nkInt64Lit: 
-    if b.kind in {nkCharLit..nkInt64Lit}: result = a.intVal == b.intVal
-  of nkFloatLit..nkFloat64Lit: 
-    if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
-  of nkStrLit..nkTripleStrLit: 
-    if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal == b.strVal
-  else: InternalError(a.info, "SameValue")
-  
-proc ValueToString(a: PNode): string = 
+proc ValueToString*(a: PNode): string = 
   case a.kind
   of nkCharLit..nkInt64Lit: result = $(a.intVal)
   of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result = $(a.floatVal)

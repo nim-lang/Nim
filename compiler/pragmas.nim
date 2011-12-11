@@ -23,7 +23,7 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable}
+    wNoStackFrame, wError, wDiscardable, wNoInit}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
