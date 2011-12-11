@@ -186,21 +186,14 @@ iterator iterSearchPath*(): string =
   var it = PStrEntry(SearchPaths.head)
   while it != nil: 
     yield it.data
-    it = PStrEntry(it.Next)  
+    it = PStrEntry(it.Next)
 
 proc rawFindFile(f: string): string =
-  template ret(e: expr) =
-    result = e.canonicalizePath
-    return
-
-  if ExistsFile(f): 
-    ret f
-  else: 
-    for it in iterSearchPath():
-      result = JoinPath(it, f)
-      if ExistsFile(result):
-        ret result
-    result = ""
+  for it in iterSearchPath():
+    result = JoinPath(it, f)
+    if ExistsFile(result):
+      return result.canonicalizePath
+  result = ""
 
 proc FindFile*(f: string): string = 
   result = rawFindFile(f)

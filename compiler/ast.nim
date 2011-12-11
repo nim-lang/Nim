@@ -11,7 +11,7 @@
 
 import 
   msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
-  intsets, idgen, os
+  intsets, idgen
 
 const
   ImportTablePos* = 0         # imported symbols are at level 0
@@ -999,20 +999,5 @@ proc getStrOrChar*(a: PNode): string =
   of nkCharLit: result = $chr(int(a.intVal))
   else: 
     internalError(a.info, "getStrOrChar")
-    result = ""
-
-proc getModuleName*(n: PNode): string =
-  # This returns a short relative module name without the nim extension
-  # e.g. like "system", "importer" or "somepath/module"
-  # The proc won't perform any checks that the path is actually valid
-  case n.kind
-  of nkStrLit, nkRStrLit, nkTripleStrLit:
-    result = UnixToNativePath(n.strVal)
-  of nkIdent:
-    result = n.ident.s
-  of nkSym:
-    result = n.sym.name.s
-  else:
-    internalError(n.info, "getModuleName")
     result = ""
 
