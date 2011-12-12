@@ -301,7 +301,16 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
   of nkList:
-    for i in 0..n.len-1: forAllSlotsAux(dest, n.sons[i], op)
+    for i in 0..n.len-1:
+      # inlined for speed
+      if n.sons[i].kind == nkSlot:
+        if n.sons[i].typ.kind in {tyRef, tyString, tySequence}:
+          doOperation(cast[ppointer](d +% n.sons[i].offset)[], op)
+        else:
+          forAllChildrenAux(cast[pointer](d +% n.sons[i].offset), 
+                            n.sons[i].typ, op)
+      else:
+        forAllSlotsAux(dest, n.sons[i], op)
   of nkCase:
     var m = selectBranch(dest, n)
     if m != nil: forAllSlotsAux(dest, m, op)
@@ -507,6 +516,7 @@ proc collectCycles(gch: var TGcHeap) =
   for c in elements(gch.cycleRoots):
     inc(tabSize)
     forallChildren(c, waCycleDecRef)
+  if tabSize == 0: return
   gch.stat.cycleTableSize = max(gch.stat.cycleTableSize, tabSize)
 
   # restore reference counts (a depth-first traversal is needed):
