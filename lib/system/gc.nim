@@ -230,6 +230,7 @@ proc decRef(c: PCell) {.inline.} =
   if --c.refcount:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
+    # XXX if 'incRef' does this check, it should be unnecessary in 'decRef'
     rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
