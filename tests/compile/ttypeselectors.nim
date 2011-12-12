@@ -35,3 +35,6 @@ var y*: type(t2(100)) = "test"
 proc t6*(x: type(t3(0))): type(t1(0)) =
   result = $x
 
+proc t7*(x: int): type($x) =
+  result = "test"
+

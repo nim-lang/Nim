@@ -138,12 +138,13 @@ proc getPrefixDir*(): string =
   ## gets the application directory
   result = SplitPath(getAppDir()).head
 
+proc canonicalizePath*(path: string): string =
+  result = path.expandFilename
+  when not FileSystemCaseSensitive: result = result.toLower
+
 proc shortenDir*(dir: string): string = 
   ## returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
-  if startsWith(dir, prefix): 
-    return substr(dir, len(prefix))
-  prefix = getCurrentDir() & dirSep
   if startsWith(dir, prefix): 
     return substr(dir, len(prefix))
   prefix = gProjectPath & dirSep
@@ -185,21 +186,23 @@ iterator iterSearchPath*(): string =
   var it = PStrEntry(SearchPaths.head)
   while it != nil: 
     yield it.data
-    it = PStrEntry(it.Next)  
+    it = PStrEntry(it.Next)
 
-proc rawFindFile(f: string): string = 
-  if ExistsFile(f): 
-    result = f
-  else: 
-    for it in iterSearchPath():
-      result = JoinPath(it, f)
-      if ExistsFile(result): return
-    result = ""
+proc rawFindFile(f: string): string =
+  for it in iterSearchPath():
+    result = JoinPath(it, f)
+    if ExistsFile(result):
+      return result.canonicalizePath
+  result = ""
 
 proc FindFile*(f: string): string = 
   result = rawFindFile(f)
   if len(result) == 0: result = rawFindFile(toLower(f))
-  
+
+proc findModule*(modulename: string): string {.inline.} =
+  # returns path to module
+  result = FindFile(AddFileExt(modulename, nimExt))
+
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0
   var b = len(x) - 1

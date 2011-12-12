@@ -459,9 +459,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)
   
-proc ProcessCommand(switch: string, pass: TCmdLinePass) = 
-  var
-    cmd, arg: string
-  var info = newLineInfo("command line", 1, 1)
-  splitSwitch(switch, cmd, arg, pass, info)
-  ProcessSwitch(cmd, arg, pass, info)
+proc ProcessCommand(switch: string, pass: TCmdLinePass) =
+  var cmd, arg: string
+  splitSwitch(switch, cmd, arg, pass, gCmdLineInfo)
+  processSwitch(cmd, arg, pass, gCmdLineInfo)

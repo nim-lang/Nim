@@ -97,7 +97,7 @@ type
     next*: ref TToken         # for C we need arbitrary look-ahead :-(
   
   TLexer* = object of TBaseLexer
-    filename*: string
+    fileIdx*: int32
     inDirective: bool
   
 proc getTok*(L: var TLexer, tok: var TToken)
@@ -117,7 +117,7 @@ proc fillToken(L: var TToken) =
   
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
-  lex.filename = filename
+  lex.fileIdx = filename.fileInfoIdx
 
 proc closeLexer*(lex: var TLexer) = 
   inc(gLinesCompiled, lex.LineNumber)
@@ -127,13 +127,13 @@ proc getColumn*(L: TLexer): int =
   result = getColNumber(L, L.bufPos)
 
 proc getLineInfo*(L: TLexer): TLineInfo = 
-  result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
+  result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
 
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") = 
   msgs.GenericMessage(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
-  var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
+  var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
   msgs.GenericMessage(info, msg, arg)
 
 proc TokKindToStr*(k: TTokKind): string =
