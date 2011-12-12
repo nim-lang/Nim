@@ -218,14 +218,16 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 type
   TAssignmentFlag = enum
     needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil
+    afSrcIsNotNil, needToKeepAlive
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
+const
+  complexValueType = {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}
+
 proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) = 
-  if skipTypes(loc.t, abstractVarRange).Kind notin
-      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
+  if skipTypes(loc.t, abstractVarRange).Kind notin ComplexValueType: 
     if containsGcref and p.WithInLoop > 0:
       appf(p.s[cpsInit], "$1 = 0;$n", [rdLoc(loc)])
       var nilLoc: TLoc
@@ -248,8 +250,7 @@ proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc zeroTemp(p: BProc, loc: TLoc) = 
-  if skipTypes(loc.t, abstractVarRange).Kind notin
-      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
+  if skipTypes(loc.t, abstractVarRange).Kind notin complexValueType: 
     appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
     when false:
       var nilLoc: TLoc
@@ -257,7 +258,7 @@ proc zeroTemp(p: BProc, loc: TLoc) =
       nilLoc.r = toRope("NIM_NIL")
       # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
-  else: 
+  else:
     appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
          [addrLoc(loc), rdLoc(loc)])
     # XXX no object init necessary for temporaries?
@@ -294,6 +295,25 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.s = OnStack
   result.flags = {}
   initTemp(p, result)
+
+proc keepAlive(p: BProc, toKeepAlive: TLoc) =
+  if optRefcGC notin gGlobalOptions: return
+  var result: TLoc
+  inc(p.labels)
+  result.r = con("LOC", toRope(p.labels))
+  appf(p.s[cpsLocals], "volatile $1 $2;$n",
+      [getTypeDesc(p.module, toKeepAlive.t), result.r])
+  result.k = locTemp
+  result.a = -1
+  result.t = toKeepAlive.t
+  result.s = OnStack
+  result.flags = {}
+  if skipTypes(toKeepAlive.t, abstractVarRange).Kind notin complexValueType:
+    appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
+  else:
+    appcg(p, cpsStmts,
+         "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+         [addrLoc(result), addrLoc(toKeepAlive), rdLoc(result)])
 
 proc cstringLit(p: BProc, r: var PRope, s: string): PRope = 
   if gCmd == cmdCompileToLLVM: 

@@ -15,7 +15,7 @@ proc lenField: PRope {.inline.} =
 proc intLiteral(i: biggestInt): PRope =
   if (i > low(int32)) and (i <= high(int32)):
     result = toRope(i)
-  elif i == low(int32):       
+  elif i == low(int32):
     # Nimrod has the same bug for the same reasons :-)
     result = toRope("(-2147483647 -1)")
   elif i > low(int64):
@@ -159,6 +159,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if dest.s == OnStack or optRefcGC notin gGlobalOptions:
     appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    if needToKeepAlive in flags: keepAlive(p, dest)
   elif dest.s == OnHeap:
     # location is on heap
     # now the writer barrier is inlined for performance:
@@ -185,6 +186,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   else:
     appcg(p.module, p.s[cpsStmts], "#unsureAsgnRef((void**) $1, $2);$n",
          [addrLoc(dest), rdLoc(src)])
+    if needToKeepAlive in flags: keepAlive(p, dest)
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # Consider: 
@@ -199,6 +201,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       appcg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            [addrLoc(dest), addrLoc(src), rdLoc(dest)])
+      if needToKeepAlive in flags: keepAlive(p, dest)
     else:
       appcg(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
            [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
@@ -229,12 +232,14 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       if dest.s == OnStack or optRefcGC notin gGlobalOptions:
         appcg(p, cpsStmts, "$1 = #copyString($2);$n", [rdLoc(dest), rdLoc(src)])
+        if needToKeepAlive in flags: keepAlive(p, dest)
       elif dest.s == OnHeap:
         appcg(p, cpsStmts, "#asgnRefNoCycle((void**) $1, #copyString($2));$n",
              [addrLoc(dest), rdLoc(src)])
       else:
         appcg(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
              [addrLoc(dest), rdLoc(src)])
+        if needToKeepAlive in flags: keepAlive(p, dest)
   of tyTuple, tyObject:
     # XXX: check for subtyping?
     if needsComplexAssignment(dest.t):
@@ -302,11 +307,11 @@ proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     d.a = -1
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
-  var a, b: TLoc
+  var b: TLoc
   if d.k != locNone: InternalError(e.info, "binaryStmt")
-  InitLocExpr(p, e.sons[1], a)
+  InitLocExpr(p, e.sons[1], d)
   InitLocExpr(p, e.sons[2], b)
-  appcg(p, cpsStmts, frmt, [rdLoc(a), rdLoc(b)])
+  appcg(p, cpsStmts, frmt, [rdLoc(d), rdLoc(b)])
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -824,8 +829,9 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   app(p.s[cpsStmts], appends)
   if d.k == locNone:
     d = tmp
+    keepAlive(p, tmp)
   else:
-    genAssignment(p, d, tmp, {}) # no need for deep copying
+    genAssignment(p, d, tmp, {needToKeepAlive}) # no need for deep copying
 
 proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  <Nimrod code>
@@ -841,12 +847,9 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #  }
   var
     a, dest: TLoc
-    L: int
     appends, lens: PRope
   assert(d.k == locNone)
-  L = 0
-  appends = nil
-  lens = nil
+  var L = 0
   initLocExpr(p, e.sons[1], dest)
   for i in countup(0, sonsLen(e) - 3):
     # compute the length expression:
@@ -864,6 +867,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
             [rdLoc(dest), rdLoc(a)])
   appcg(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
        [rdLoc(dest), lens, toRope(L)])
+  keepAlive(p, dest)
   app(p.s[cpsStmts], appends)
 
 proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
@@ -877,6 +881,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
       rdLoc(a),
       getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
       getTypeDesc(p.module, skipTypes(e.sons[2].Typ, abstractVar))])
+  keepAlive(p, a)
   initLoc(dest, locExpr, b.t, OnHeap)
   dest.r = ropef("$1->data[$1->$2-1]", [rdLoc(a), lenField()])
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
@@ -898,7 +903,7 @@ proc genNew(p: BProc, e: PNode) =
       "($1) #newObj($2, sizeof($3))", [getTypeDesc(p.module, reftype),
       genTypeInfo(p.module, refType),
       getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
-  genAssignment(p, a, b, {})  # set the object type:
+  genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
 
@@ -912,7 +917,7 @@ proc genNewSeq(p: BProc, e: PNode) =
   c.r = ropecg(p.module, "($1) #newSeq($2, $3)", [
                getTypeDesc(p.module, seqtype),
                genTypeInfo(p.module, seqType), rdLoc(b)])
-  genAssignment(p, a, c, {})
+  genAssignment(p, a, c, {needToKeepAlive})
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -960,11 +965,12 @@ proc genNewFinalize(p: BProc, e: PNode) =
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
       ti, getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
-  genAssignment(p, a, b, {})  # set the object type:
+  genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
+  # XXX we don't generate keep alive info for now here
   var a: TLoc
   InitLocExpr(p, e.sons[1], a)
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
@@ -1019,7 +1025,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   InitLocExpr(p, n.sons[1], a)
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
   if d.k == locNone: getTemp(p, n.typ, d)
-  genAssignment(p, d, a, {})
+  genAssignment(p, d, a, {needToKeepAlive})
 
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var a = e.sons[1]
@@ -1055,9 +1061,11 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
       "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n", [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       getTypeDesc(p.module, t.sons[0])])
+  keepAlive(p, a)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
   binaryStmt(p, e, d, "$1 = #setLengthStr($1, $2);$n")
+  keepAlive(P, d)
 
 proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # swap(a, b) -->
@@ -1246,6 +1254,7 @@ proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
       [rdLoc(a)]))
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
+  # XXX we don't generate keep alive info here
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   putIntoDest(p, d, skipTypes(n.typ, abstractVar),
@@ -1277,7 +1286,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   newSeq.r = ropecg(p.module, "($1) #newSeq($2, $3)", 
       [getTypeDesc(p.module, t.typ),
       genTypeInfo(p.module, t.typ), intLiteral(sonsLen(t))])
-  genAssignment(p, d, newSeq, {afSrcIsNotNil})
+  genAssignment(p, d, newSeq, {afSrcIsNotNil, needToKeepAlive})
   for i in countup(0, sonsLen(t) - 1):
     initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
     arr.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
@@ -1298,7 +1307,7 @@ proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
   newSeq.r = ropecg(p.module, "($1) #newSeq($2, $3)", 
       [getTypeDesc(p.module, t.typ),
       genTypeInfo(p.module, t.typ), intLiteral(L)])
-  genAssignment(p, d, newSeq, {afSrcIsNotNil})
+  genAssignment(p, d, newSeq, {afSrcIsNotNil, needToKeepAlive})
   initLocExpr(p, t.sons[1], a)
   for i in countup(0, L - 1):
     initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
@@ -1363,7 +1372,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       binaryStmt(p, e, d, "$1 = #subInt($1, $2);$n")
   of mConStrStr: genStrConcat(p, e, d)
-  of mAppendStrCh: binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
+  of mAppendStrCh:
+    binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
+    # strictly speaking we need to generate "keepAlive" here too, but this
+    # very likely not needed and would slow down the code too much I fear
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem: genSeqElemAppend(p, e, d)
   of mEqStr: genStrEquals(p, e, d)

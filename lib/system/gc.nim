@@ -374,13 +374,12 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
         return
     add(gch.zct, res)
 
-proc newObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
+proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   acquire(gch)
   sysAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
-  zeroMem(res, size+sizeof(TCell))
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
@@ -398,7 +397,8 @@ proc newObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   result = cellToUsr(res)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
-  result = newObj(typ, size, gch)
+  result = rawNewObj(typ, size, gch)
+  zeroMem(result, size)
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
@@ -406,6 +406,32 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).space = len
 
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  # generates a new object and sets its reference counter to 1
+  acquire(gch)
+  sysAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
+  collectCT(gch)
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
+  sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  # now it is buffered in the ZCT
+  res.typ = typ
+  when debugGC and not hasThreadSupport:
+    if framePtr != nil and framePtr.prev != nil:
+      res.filename = framePtr.prev.filename
+      res.line = framePtr.prev.line
+  res.refcount = rcIncrement # refcount is 1  
+  sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
+  when logGC: writeCell("new cell", res)
+  gcTrace(res, csAllocated)
+  release(gch)
+  result = cellToUsr(res)
+  zeroMem(result, size)
+
+proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  result = newObjRC1(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+  cast[PGenericSeq](result).len = len
+  cast[PGenericSeq](result).space = len
+  
 proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   acquire(gch)
   collectCT(gch)
