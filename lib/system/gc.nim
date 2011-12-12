@@ -230,7 +230,8 @@ proc decRef(c: PCell) {.inline.} =
   if --c.refcount:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
-    # XXX if 'incRef' does this check, it should be unnecessary in 'decRef'
+    # unfortunately this is necessary here too, because a cycle might just
+    # have been broken up and we could recycle it.
     rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
@@ -240,6 +241,11 @@ proc incRef(c: PCell) {.inline.} =
 
 proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
 proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
+
+proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+  var c = usrToCell(p)
+  if --c.refcount:
+    rtlAddZCT(c)
 
 proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
@@ -252,7 +258,7 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
 proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc if it is known at compile time that no 
   # cycle is possible.
-  if src != nil: 
+  if src != nil:
     var c = usrToCell(src)
     ++c.refcount
   if dest[] != nil: 
@@ -761,7 +767,7 @@ proc collectCT(gch: var TGcHeap) =
     inc(gch.stat.stackScans)
     collectZCT(gch)
     when cycleGC:
-      if getOccupiedMem() >= gch.cycleThreshold or stressGC:
+      if getOccupiedMem(gch.region) >= gch.cycleThreshold or stressGC:
         collectCycles(gch)
         collectZCT(gch)
         inc(gch.stat.cycleCollections)

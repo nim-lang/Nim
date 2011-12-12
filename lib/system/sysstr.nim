@@ -72,6 +72,20 @@ proc copyString(src: NimString): NimString {.compilerProc.} =
     result.len = src.len
     c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
 
+proc copyStringRC1(src: NimString): NimString {.compilerProc.} =
+  if src != nil:
+    var s = src.space
+    if s < 8: s = 7
+    when defined(newObjRC1):
+      result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
+                               (s+1) * sizeof(char)))
+    else:
+      result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
+                               (s+1) * sizeof(char)))
+    result.space = s
+    result.len = src.len
+    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
+
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
