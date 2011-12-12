@@ -420,7 +420,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
-  res.refcount = rcIncrement # refcount is 1  
+  res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)

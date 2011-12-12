@@ -410,23 +410,23 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
 
 proc fileInfoIdx*(filename: string): int32 =
   var
-    canonical: string
+    canon: string
     pseudoPath = false
 
   try:
-    canonical = canonicalizePath(filename)
+    canon = canonicalizePath(filename)
   except:
-    canonical = filename
+    canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  if filenameToIndexTbl.hasKey(canonical):
-    result = filenameToIndexTbl[canonical]
+  if filenameToIndexTbl.hasKey(canon):
+    result = filenameToIndexTbl[canon]
   else:
     result = fileInfos.len.int32
-    fileInfos.add(newFileInfo(canonical, if pseudoPath: "" else: canonical.shortenDir))
-    filenameToIndexTbl[canonical] = result
+    fileInfos.add(newFileInfo(canon, if pseudoPath: "" else: canon.shortenDir))
+    filenameToIndexTbl[canon] = result
 
 proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
@@ -477,6 +477,10 @@ proc popInfoContext*() =
 proc ToFilename*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
   else: result = fileInfos[info.fileIndex].projPath
+
+proc ToFilename*(fileIdx: int32): string =
+  if fileIdx < 0: result = "???"
+  else: result = fileInfos[fileIdx].projPath
 
 proc toFullPath*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"

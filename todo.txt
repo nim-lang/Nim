@@ -5,6 +5,7 @@ version 0.8.14
   - compiler should optimize string creation
   - marker procs for the GC
   - need to generate code to prevent tail call optimization
+  - write barrier specialization
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
