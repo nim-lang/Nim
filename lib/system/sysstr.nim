@@ -52,7 +52,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
     c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
     result.data[len] = '\0'
   else:
-    result = mnewString(0)
+    result = rawNewString(len)
 
 proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
   result = copyStrLast(s, start, s.len-1)
