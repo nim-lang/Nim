@@ -899,25 +899,96 @@ proc genNew(p: BProc, e: PNode) =
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   InitLocExpr(p, e.sons[1], a)
   initLoc(b, locExpr, a.t, OnHeap)
-  b.r = ropecg(p.module,
-      "($1) #newObj($2, sizeof($3))", [getTypeDesc(p.module, reftype),
-      genTypeInfo(p.module, refType),
-      getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
-  genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
+  let args = [getTypeDesc(p.module, reftype),
+              genTypeInfo(p.module, refType),
+              getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))]
+  if a.s == OnHeap and optRefcGc in gGlobalOptions:
+    # use newObjRC1 as an optimization; and we don't need 'keepAlive' either
+    appcg(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
+    b.r = ropecg(p.module, "($1) #newObjRC1($2, sizeof($3))", args)
+    appcg(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
+  else:
+    b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", args)
+    genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
 
+proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
+  let seqtype = skipTypes(dest.t, abstractVarRange)
+  let args = [getTypeDesc(p.module, seqtype),
+              genTypeInfo(p.module, seqType), length]
+  var call: TLoc
+  initLoc(call, locExpr, dest.t, OnHeap)
+  if dest.s == OnHeap and optRefcGc in gGlobalOptions:
+    appcg(p, cpsStmts, "if ($1) #nimGCunref($1);$n", dest.rdLoc)
+    call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
+    appcg(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
+  else:
+    call.r = ropecg(p.module, "($1) #newSeq($2, $3)", args)
+    genAssignment(p, dest, call, {needToKeepAlive})
+  
 proc genNewSeq(p: BProc, e: PNode) =
-  var
-    a, b, c: TLoc
-  var seqType = skipTypes(e.sons[1].typ, abstractVarRange)
+  var a, b: TLoc
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  initLoc(c, locExpr, a.t, OnHeap)
-  c.r = ropecg(p.module, "($1) #newSeq($2, $3)", [
-               getTypeDesc(p.module, seqtype),
-               genTypeInfo(p.module, seqType), rdLoc(b)])
-  genAssignment(p, a, c, {needToKeepAlive})
+  genNewSeqAux(p, a, b.rdLoc)
+  
+proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
+  var arr: TLoc
+  if d.k == locNone:
+    getTemp(p, t.typ, d)
+  # generate call to newSeq before adding the elements per hand:
+  genNewSeqAux(p, d, intLiteral(sonsLen(t)))
+  for i in countup(0, sonsLen(t) - 1):
+    initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
+    arr.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
+    arr.s = OnHeap            # we know that sequences are on the heap
+    expr(p, t.sons[i], arr)
+
+proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
+  var elem, a, arr: TLoc
+  if t.kind == nkBracket:
+    t.sons[1].typ = t.typ
+    genSeqConstr(p, t.sons[1], d)
+    return
+  if d.k == locNone:
+    getTemp(p, t.typ, d)
+  # generate call to newSeq before adding the elements per hand:
+  var L = int(lengthOrd(t.sons[1].typ))
+  
+  genNewSeqAux(p, d, intLiteral(L))
+  initLocExpr(p, t.sons[1], a)
+  for i in countup(0, L - 1):
+    initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
+    elem.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
+    elem.s = OnHeap # we know that sequences are on the heap
+    initLoc(arr, locExpr, elemType(skipTypes(t.sons[1].typ, abstractInst)), a.s)
+    arr.r = ropef("$1[$2]", [rdLoc(a), intLiteral(i)])
+    genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+  
+proc genNewFinalize(p: BProc, e: PNode) =
+  var
+    a, b, f: TLoc
+    refType, bt: PType
+    ti: PRope
+    oldModule: BModule
+  refType = skipTypes(e.sons[1].typ, abstractVarRange)
+  InitLocExpr(p, e.sons[1], a)
+  # This is a little hack:
+  # XXX this is also a bug, if the finalizer expression produces side-effects
+  oldModule = p.module
+  p.module = gNimDat
+  InitLocExpr(p, e.sons[2], f)
+  p.module = oldModule
+  initLoc(b, locExpr, a.t, OnHeap)
+  ti = genTypeInfo(p.module, refType)
+  appf(gNimDat.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
+  b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
+      getTypeDesc(p.module, refType),
+      ti, getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
+  genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
+  bt = skipTypes(refType.sons[0], abstractRange)
+  genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -944,30 +1015,6 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
 
 proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
-
-proc genNewFinalize(p: BProc, e: PNode) =
-  var
-    a, b, f: TLoc
-    refType, bt: PType
-    ti: PRope
-    oldModule: BModule
-  refType = skipTypes(e.sons[1].typ, abstractVarRange)
-  InitLocExpr(p, e.sons[1], a)
-  # This is a little hack:
-  # XXX this is also a bug, if the finalizer expression produces side-effects
-  oldModule = p.module
-  p.module = gNimDat
-  InitLocExpr(p, e.sons[2], f)
-  p.module = oldModule
-  initLoc(b, locExpr, a.t, OnHeap)
-  ti = genTypeInfo(p.module, refType)
-  appf(gNimDat.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
-  b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
-      getTypeDesc(p.module, refType),
-      ti, getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
-  genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
-  bt = skipTypes(refType.sons[0], abstractRange)
-  genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   # XXX we don't generate keep alive info for now here
@@ -1276,46 +1323,6 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
       ropef("(($1) && ($1)->$2 == 0)", [rdLoc(x), lenField()]))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
-
-proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
-  var newSeq, arr: TLoc
-  if d.k == locNone:
-    getTemp(p, t.typ, d)
-  # generate call to newSeq before adding the elements per hand:
-  initLoc(newSeq, locExpr, t.typ, OnHeap)
-  newSeq.r = ropecg(p.module, "($1) #newSeq($2, $3)", 
-      [getTypeDesc(p.module, t.typ),
-      genTypeInfo(p.module, t.typ), intLiteral(sonsLen(t))])
-  genAssignment(p, d, newSeq, {afSrcIsNotNil, needToKeepAlive})
-  for i in countup(0, sonsLen(t) - 1):
-    initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
-    arr.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
-    arr.s = OnHeap            # we know that sequences are on the heap
-    expr(p, t.sons[i], arr)
-
-proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
-  var newSeq, elem, a, arr: TLoc
-  if t.kind == nkBracket:
-    t.sons[1].typ = t.typ
-    genSeqConstr(p, t.sons[1], d)
-    return
-  if d.k == locNone:
-    getTemp(p, t.typ, d)
-  # generate call to newSeq before adding the elements per hand:
-  var L = int(lengthOrd(t.sons[1].typ))
-  initLoc(newSeq, locExpr, t.typ, OnHeap)
-  newSeq.r = ropecg(p.module, "($1) #newSeq($2, $3)", 
-      [getTypeDesc(p.module, t.typ),
-      genTypeInfo(p.module, t.typ), intLiteral(L)])
-  genAssignment(p, d, newSeq, {afSrcIsNotNil, needToKeepAlive})
-  initLocExpr(p, t.sons[1], a)
-  for i in countup(0, L - 1):
-    initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
-    elem.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
-    elem.s = OnHeap # we know that sequences are on the heap
-    initLoc(arr, locExpr, elemType(skipTypes(t.sons[1].typ, abstractInst)), a.s)
-    arr.r = ropef("$1[$2]", [rdLoc(a), intLiteral(i)])
-    genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
 
 proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   if {optNanCheck, optInfCheck} * p.options != {}:
