@@ -302,7 +302,7 @@ when not defined(ECMAScript):
         posix_gettimeofday(a)
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
-        var f: winlean.Filetime
+        var f: winlean.TFiletime
         GetSystemTimeAsFileTime(f)
         var i64 = rdFileTime(f) - epochDiff
         var secs = i64 div rateDiff

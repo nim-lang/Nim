@@ -576,7 +576,9 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       L = 0
       while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
         setlen(r.files, L + 1)
-        r.files[L] = decodeStr(r.s, r.pos)
+        var relativePath = decodeStr(r.s, r.pos)
+        var resolvedPath = relativePath.findModule
+        r.files[L] = if resolvedPath.len > 0: resolvedPath else: relativePath
         inc(r.pos)            # skip #10
         inc(r.line)
         inc(L)
@@ -628,7 +630,8 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       r.initIdx = r.pos + 2   # "(\10"
       skipSection(r)
     else: 
-      MsgWriteln("skipping section: " & $r.pos)
+      MsgWriteln("skipping section: " & section &
+                 " at " & $r.pos & " in " & r.filename)
       skipSection(r)
     if r.s[r.pos] == '\x0A': 
       inc(r.pos)
@@ -788,11 +791,11 @@ proc loadMethods(r: PRodReader) =
   
 proc getModuleIdx(filename: string): int = 
   for i in countup(0, high(gMods)): 
-    if sameFile(gMods[i].filename, filename): return i
+    if gMods[i].filename == filename: return i
   result = len(gMods)
   setlen(gMods, result + 1)
 
-proc checkDep(filename: string): TReasonForRecompile = 
+proc checkDep(filename: string): TReasonForRecompile =
   assert(not isNil(filename)) 
   var idx = getModuleIdx(filename)
   if gMods[idx].reason != rrEmpty: 
@@ -853,7 +856,7 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
   
 proc GetCRC*(filename: string): TCrc32 = 
   for i in countup(0, high(gMods)): 
-    if sameFile(gMods[i].filename, filename): return gMods[i].crc
+    if gMods[i].filename == filename: return gMods[i].crc
   
   result = crcFromFile(filename)
   #var idx = getModuleIdx(filename)

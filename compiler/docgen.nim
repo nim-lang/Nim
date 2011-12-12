@@ -13,7 +13,7 @@
 
 import 
   ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
-  wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite
+  wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite, importer
 
 proc CommandDoc*()
 proc CommandRst2Html*()
@@ -760,21 +760,12 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
 proc checkForFalse(n: PNode): bool = 
   result = n.kind == nkIdent and IdentEq(n.ident, "false")
   
-proc getModuleFile(n: PNode): string = 
-  case n.kind
-  of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.strVal
-  of nkIdent: result = n.ident.s
-  of nkSym: result = n.sym.name.s
-  else: 
-    internalError(n.info, "getModuleFile()")
-    result = ""
-  
 proc traceDeps(d: PDoc, n: PNode) = 
   const k = skModule
   if d.section[k] != nil: app(d.section[k], ", ")
   dispA(d.section[k], 
         "<a class=\"reference external\" href=\"$1.html\">$1</a>", 
-        "$1", [toRope(getModuleFile(n))])
+        "$1", [toRope(getModuleName(n))])
 
 proc generateDoc(d: PDoc, n: PNode) = 
   case n.kind

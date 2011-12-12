@@ -185,7 +185,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       # use ``stmt`` as implicit result type
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
-  addParams(c, s.typ.n)       # resolve parameters:
+  # XXX: obsoleted - happens in semParamList # 
+  # addParams(c, s.typ.n)       # resolve parameters:
   var toBind = initIntSet()
   n.sons[bodyPos] = resolveTemplateParams(c, n.sons[bodyPos], false, toBind)
   if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:

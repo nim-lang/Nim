@@ -713,7 +713,7 @@ proc matches*(c: PContext, n: PNode, m: var TCandidate) =
 
   when false:
     if sfSystemModule notin c.module.flags:
-      if includeFilename("temp.nim") == c.module.info.fileIndex:
+      if fileInfoIdx("temp.nim") == c.module.info.fileIndex:
         echo "########################"
         echo m.call.renderTree
         for i in 1..m.call.len-1:

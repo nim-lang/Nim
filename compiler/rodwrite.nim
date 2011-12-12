@@ -87,17 +87,18 @@ proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter =
   result.init = ""
   result.data = newStringOfCap(12_000)
   
-proc addModDep(w: PRodWriter, dep: string) = 
+proc addModDep(w: PRodWriter, dep: string) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
   encodeVInt(fileIdx(w, dep), w.modDeps)
 
 const 
   rodNL = "\x0A"
 
-proc addInclDep(w: PRodWriter, dep: string) = 
+proc addInclDep(w: PRodWriter, dep: string) =
+  var resolved = dep.findModule
   encodeVInt(fileIdx(w, dep), w.inclDeps)
   add(w.inclDeps, " ")
-  encodeVInt(crcFromFile(dep), w.inclDeps)
+  encodeVInt(crcFromFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
 
 proc pushType(w: PRodWriter, t: PType) =
@@ -555,21 +556,21 @@ proc process(c: PPassContext, n: PNode): PNode =
       #            addInterfaceSym(w, a.sons[j].sym);        
       #        end 
   of nkImportStmt: 
-    for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleFile(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleName(n.sons[i]))
     addStmt(w, n)
   of nkFromStmt: 
-    addModDep(w, getModuleFile(n.sons[0]))
+    addModDep(w, getModuleName(n.sons[0]))
     addStmt(w, n)
   of nkIncludeStmt: 
-    for i in countup(0, sonsLen(n) - 1): addInclDep(w, getModuleFile(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1): addInclDep(w, getModuleName(n.sons[i]))
   of nkPragma: 
     addStmt(w, n)
   else: 
     nil
 
-proc myOpen(module: PSym, filename: string): PPassContext = 
+proc myOpen(module: PSym, filename: string): PPassContext =
   if module.id < 0: InternalError("rodwrite: module ID not set")
-  var w = newRodWriter(filename, rodread.GetCRC(filename), module)
+  var w = newRodWriter(filename, rodread.GetCRC(module.info.toFullPath), module)
   rawAddInterfaceSym(w, module)
   result = w
 

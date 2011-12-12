@@ -616,7 +616,8 @@ proc semLambda(c: PContext, n: PNode): PNode =
     illFormedAst(n)           # process parameters:
   if n.sons[paramsPos].kind != nkEmpty: 
     semParamList(c, n.sons[ParamsPos], nil, s)
-    addParams(c, s.typ.n)
+    # XXX: obsoleted - happens in semParamList
+    # addParams(c, s.typ.n)
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
@@ -665,7 +666,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[genericParamsPos] = gp
         # check for semantics again:
         semParamList(c, n.sons[ParamsPos], nil, s)
-    addParams(c, s.typ.n)
+    # XXX: obsoleted - happens in semParamList
+    # addParams(c, s.typ.n)
   else: 
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)
@@ -795,8 +797,8 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
-    var f = getModuleFile(n.sons[i])
-    var fileIndex = includeFilename(f)
+    var f = checkModuleName(n.sons[i])
+    var fileIndex = f.fileInfoIdx
     if ContainsOrIncl(c.includedFiles, fileIndex): 
       GlobalError(n.info, errRecursiveDependencyX, f)
     addSon(result, semStmt(c, gIncludeFile(f)))

@@ -569,6 +569,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
       addSon(result, typ)
+      addDecl(c, arg)
+
   if n.sons[0].kind != nkEmpty: 
     var r = paramType(c, n.sons[0], genericParams, cl)
     # turn explicit 'void' return type into 'nil' because the rest of the 
@@ -711,11 +713,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkProcTy: 
     checkSonsLen(n, 2)
-    result = semProcTypeNode(c, n.sons[0], nil, prev) 
+    openScope(c.tab)
+    result = semProcTypeNode(c, n.sons[0], nil, prev)
     # dummy symbol for `pragma`:
     var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[1], procTypePragmas)
+    closeScope(c.tab)    
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)

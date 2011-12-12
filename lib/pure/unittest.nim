@@ -70,6 +70,10 @@ template test*(name: expr, body: stmt): stmt =
       TestSetupIMPL()
       body
 
+    except:
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
+      fail()
+
     finally:
       TestTeardownIMPL()
       testDone name, TestStatusIMPL
