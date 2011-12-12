@@ -1,11 +1,9 @@
 version 0.8.14
 ==============
 
-- compiler should generate better code wrt GC
-  - compiler should optimize string creation
-  - marker procs for the GC
-  - need to generate code to prevent tail call optimization
-  - write barrier specialization
+- compiler/GC interaction need to generate code to prevent tail call
+  optimization
+
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
@@ -15,7 +13,8 @@ version 0.9.0
 =============
 
 - GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking;
-  escape analysis for string/seq seems to be easy to do too
+  escape analysis for string/seq seems to be easy to do too;
+  even further write barrier specialization
 - dead code elim for JS backend; 'of' operator for JS backend
 - test the sort implementation again
 - const ptr/ref

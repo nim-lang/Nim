@@ -231,11 +231,15 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       genRefAssign(p, dest, src, flags)
     else:
       if dest.s == OnStack or optRefcGC notin gGlobalOptions:
-        appcg(p, cpsStmts, "$1 = #copyString($2);$n", [rdLoc(dest), rdLoc(src)])
+        appcg(p, cpsStmts, "$1 = #copyString($2);$n", [dest.rdLoc, src.rdLoc])
         if needToKeepAlive in flags: keepAlive(p, dest)
       elif dest.s == OnHeap:
-        appcg(p, cpsStmts, "#asgnRefNoCycle((void**) $1, #copyString($2));$n",
-             [addrLoc(dest), rdLoc(src)])
+        # we use a temporary to care for the dreaded self assignment:
+        var tmp: TLoc
+        getTemp(p, ty, tmp)
+        appcg(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
+             [dest.rdLoc, src.rdLoc, tmp.rdLoc])
+        appcg(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", tmp.rdLoc)
       else:
         appcg(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
              [addrLoc(dest), rdLoc(src)])
@@ -340,7 +344,7 @@ proc binaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   assert(e.sons[2].typ != nil)
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [rdCharLoc(a), rdCharLoc(b)]))
+  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [a.rdCharLoc, b.rdCharLoc]))
 
 proc unaryExpr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -904,7 +908,10 @@ proc genNew(p: BProc, e: PNode) =
               getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))]
   if a.s == OnHeap and optRefcGc in gGlobalOptions:
     # use newObjRC1 as an optimization; and we don't need 'keepAlive' either
-    appcg(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
+    if canFormAcycle(a.t):
+      appcg(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
+    else:
+      appcg(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", a.rdLoc)
     b.r = ropecg(p.module, "($1) #newObjRC1($2, sizeof($3))", args)
     appcg(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
   else:
@@ -920,7 +927,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
   var call: TLoc
   initLoc(call, locExpr, dest.t, OnHeap)
   if dest.s == OnHeap and optRefcGc in gGlobalOptions:
-    appcg(p, cpsStmts, "if ($1) #nimGCunref($1);$n", dest.rdLoc)
+    appcg(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", dest.rdLoc)
     call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
     appcg(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
   else:
