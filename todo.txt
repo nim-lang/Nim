@@ -1,9 +1,6 @@
 version 0.8.14
 ==============
 
-- implement a proper bugfix for C compilers optimizing away stack roots
-
-- cleanup file path handling in the compiler
 - warning for implicit openArray -> varargs convention
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
