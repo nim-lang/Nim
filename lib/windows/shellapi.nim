@@ -105,7 +105,7 @@ proc ShellAbout*(HWND: hWnd, szApp: LPCSTR, szOtherStuff: LPCSTR, HICON: hIcon):
     stdcall, dynlib: "shell32.dll", importc: "ShellAboutA".}
 proc ShellAbout*(HWND: hWnd, szApp: LPCWSTR, szOtherStuff: LPCWSTR, HICON: hIcon): int32{.
     stdcall, dynlib: "shell32.dll", importc: "ShellAboutW".}
-proc DuplicateIcon*(hinst: HINST, HICON: hIcon): HIcon{.stdcall,
+proc DuplicateIcon*(inst: HINST, icon: HICON): HIcon{.stdcall,
     dynlib: "shell32.dll", importc: "DuplicateIcon".}
 proc ExtractAssociatedIconA*(hInst: HINST, lpIconPath: LPSTR, lpiIcon: LPWORD): HICON{.
     stdcall, dynlib: "shell32.dll", importc: "ExtractAssociatedIconA".}
