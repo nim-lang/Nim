@@ -17,6 +17,7 @@ import
 type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
+
   TCandidate* {.final.} = object 
     exactMatches*: int
     subtypeMatches: int
@@ -35,7 +36,7 @@ type
     isNone, isConvertible, isIntConv, isSubtype, 
     isGeneric, 
     isEqual
-
+  
 proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
   c.exactMatches = 0
   c.subtypeMatches = 0
@@ -101,10 +102,10 @@ proc writeMatches(c: TCandidate) =
   Writeln(stdout, "intconv matches: " & $c.intConvMatches)
   Writeln(stdout, "generic matches: " & $c.genericMatches)
 
-proc getNotFoundError*(c: PContext, n: PNode): string = 
-  # Gives a detailed error message; this is separated from semDirectCall,
-  # as semDirectCall is already pretty slow (and we need this information only
-  # in case of an error).
+proc getNotFoundError*(c: PContext, n: PNode): string =
+  # Gives a detailed error message; this is separated from semOverloadedCall,
+  # as semOverlodedCall is already pretty slow (and we need this information
+  # only in case of an error).
   result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1): 
     #debug(n.sons[i].typ)
@@ -507,7 +508,10 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       return 
 
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
-                        arg: PNode): PNode = 
+                        arg, argOrig: PNode): PNode =
+  if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate} and 
+     f.kind in {tyExpr, tyStmt, tyTypeDesc}:
+    return argOrig
   var r = typeRel(m.bindings, f, a)
   case r
   of isConvertible: 
@@ -547,9 +551,9 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         result = userConvMatch(c, m, base(f), a, arg)
 
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                     arg: PNode): PNode = 
+                     arg, argOrig: PNode): PNode = 
   if arg == nil or arg.kind != nkSymChoice: 
-    result = ParamTypesMatchAux(c, m, f, a, arg)
+    result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is
     # incorrect to simply use the first fitting match. However, to implement
@@ -591,29 +595,29 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
     else: 
       # only one valid interpretation found:
       markUsed(arg, arg.sons[best].sym)
-      result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best])
+      result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best], argOrig)
 
 proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode = 
   var m: TCandidate
   initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, arg)
+  result = paramTypesMatch(c, m, f, a, arg, nil)
 
 proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
   var m: TCandidate
   initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, n.typ, n)
+  result = paramTypesMatch(c, m, f, n.typ, n, nil)
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool = 
   var m: TCandidate
   initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, ast.emptyNode) != nil  
+  result = paramTypesMatch(c, m, f, a, ast.emptyNode, nil) != nil  
 
 proc setSon(father: PNode, at: int, son: PNode) = 
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
   father.sons[at] = son
 
-proc matchesAux*(c: PContext, n: PNode, m: var TCandidate, 
-                 marker: var TIntSet) = 
+proc matchesAux*(c: PContext, n, nOrig: PNode,
+                 m: var TCandidate, marker: var TIntSet) = 
   var f = 1 # iterates over formal parameters
   var a = 1 # iterates over the actual given arguments
   m.state = csMatch           # until proven otherwise
@@ -623,7 +627,7 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
   addSon(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
   var formal: PSym = nil
-  while a < sonsLen(n): 
+  while a < n.len:
     if n.sons[a].kind == nkExprEqExpr: 
       # named param
       # check if m.callee has such a param:
@@ -642,8 +646,8 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
         m.state = csNoMatch
         return 
       m.baseTypeMatch = false
-      var arg = ParamTypesMatch(c, m, formal.typ, 
-                                      n.sons[a].typ, n.sons[a].sons[1])
+      var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+                                n.sons[a].sons[1], nOrig.sons[a].sons[1])
       if arg == nil: 
         m.state = csNoMatch
         return 
@@ -666,9 +670,10 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
                                         copyTree(n.sons[a]), m, c))
           else: 
             addSon(m.call, copyTree(n.sons[a]))
-        elif formal != nil: 
+        elif formal != nil:
           m.baseTypeMatch = false
-          var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ, n.sons[a])
+          var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+                                    n.sons[a], nOrig.sons[a])
           if (arg != nil) and m.baseTypeMatch and (container != nil): 
             addSon(container, arg)
           else: 
@@ -687,7 +692,8 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
           m.state = csNoMatch
           return 
         m.baseTypeMatch = false
-        var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ, n.sons[a])
+        var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
+                                  n.sons[a], nOrig.sons[a])
         if arg == nil: 
           m.state = csNoMatch
           return 
@@ -703,14 +709,14 @@ proc matchesAux*(c: PContext, n: PNode, m: var TCandidate,
     inc(a)
     inc(f)
 
-proc partialMatch*(c: PContext, n: PNode, m: var TCandidate) = 
+proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
   var marker = initIntSet()
-  matchesAux(c, n, m, marker)  
+  matchesAux(c, n, nOrig, m, marker)
 
-proc matches*(c: PContext, n: PNode, m: var TCandidate) = 
+proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   var marker = initIntSet()
-  matchesAux(c, n, m, marker)
+  matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   var f = 1

@@ -8,6 +8,7 @@
 #
 
 # this module does the semantic checking for expressions
+# included from sem.nim
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
@@ -103,7 +104,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if s.ast == nil: InternalError(n.info, "no default for")
     result = semExpr(c, s.ast)
   of skType:
-    if efAllowType notin flags: GlobalError(n.info, errATypeHasNoValue)
+    if efAllowType notin flags:
+      GlobalError(n.info, errATypeHasNoValue)
     markUsed(n, s)
     result = newSymNode(s, n.info)
   else:
@@ -245,17 +247,31 @@ proc semIs(c: PContext, n: PNode): PNode =
   else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")
 
-proc semOpAux(c: PContext, n: PNode) = 
-  for i in countup(1, sonsLen(n) - 1): 
+proc semOpAux2(c: PContext, n: PNode): PNode =
+  result = n.shallowCopy
+  result.sons[0] = n.sons[0]
+  for i in countup(1, n.len - 1):
+    let a = n.sons[i]
+    if a.kind == nkExprEqExpr and a.len == 2:
+      var arg = a.shallowCopy
+      arg.sons[0] = newIdentNode(considerAcc(a.sons[0]), a.sons[0].info)
+      arg.sons[1] = semExprWithType(c, a.sons[1])
+      arg.typ = a.sons[1].typ
+      result.sons[i] = arg
+    else:
+      result.sons[i] = semExprWithType(c, a)
+
+proc semOpAux(c: PContext, n: PNode) =
+  for i in countup(1, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
       a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
-      a.sons[1] = semExprWithType(c, a.sons[1])
+      a.sons[1] = semExprWithType(c, a.sons[1], {efAllowType})
       a.typ = a.sons[1].typ
-    else: 
-      n.sons[i] = semExprWithType(c, a)
-  
+    else:
+      n.sons[i] = semExprWithType(c, a, {efAllowType})
+    
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
   var par = getIdent("()")
@@ -475,25 +491,32 @@ proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
   
 include semmagic
 
-proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
-                                 flags: TExprFlags): PNode =
+proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, orig: PNode,
+                                     flags: TExprFlags): PNode =
   if efWantIterator in flags:
-    result = semDirectCall(c, n, {skIterator})
+    result = semOverloadedCall(c, n, orig, {skIterator})
   elif efInTypeOf in flags:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
-    result = semDirectCall(c, n, {skIterator, skProc, skMethod, skConverter})
+    result = semOverloadedCall(c, n, orig, {skIterator, skProc, skMethod, skConverter, skMacro, skTemplate})
   else:
-    result = semDirectCall(c, n, {skProc, skMethod, skConverter})
+    result = semOverloadedCall(c, n, orig, {skProc, skMethod, skConverter, skMacro, skTemplate})
   if result != nil:
     if result.sons[0].kind != nkSym: 
       InternalError("semDirectCallAnalyseEffects")
-    var callee = result.sons[0].sym
-    if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
-      GlobalError(n.info, errRecursiveDependencyX, callee.name.s)
-    if sfNoSideEffect notin callee.flags: 
-      if {sfImportc, sfSideEffect} * callee.flags != {}:
-        incl(c.p.owner.flags, sfSideEffect)
-  
+    let callee = result.sons[0].sym
+    case callee.kind
+    of skMacro, skTemplate: nil
+    else:
+      if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
+        GlobalError(n.info, errRecursiveDependencyX, callee.name.s)
+      if sfNoSideEffect notin callee.flags: 
+        if {sfImportc, sfSideEffect} * callee.flags != {}:
+          incl(c.p.owner.flags, sfSideEffect)
+
+proc semDirectCallAnalyseEffects(c: PContext, n: PNode, orig: PNode,
+                                 flags: TExprFlags): PNode =
+  result = semOverloadedCallAnalyseEffects(c, n, orig, flags)
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = nil
   var prc = n.sons[0]
@@ -509,13 +532,14 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return semExpr(c, result, flags)
   else: 
     n.sons[0] = semExpr(c, n.sons[0])
+  let orig = n.copySons
   semOpAux(c, n)
   var t: PType = nil
   if (n.sons[0].typ != nil): t = skipTypes(n.sons[0].typ, abstractInst)
   if (t != nil) and (t.kind == tyProc): 
     var m: TCandidate
     initCandidate(m, t)
-    matches(c, n, m)
+    matches(c, n, orig, m)
     if m.state != csMatch: 
       var msg = msgKindToString(errTypeMismatch)
       for i in countup(1, sonsLen(n) - 1): 
@@ -536,7 +560,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
     if result == nil: 
       n.sons[0] = prc
-      result = semDirectCallAnalyseEffects(c, n, flags)
+      result = semOverloadedCallAnalyseEffects(c, n, orig, flags)
     if result == nil: 
       GlobalError(n.info, errExprXCannotBeCalled, 
                   renderTree(n, {renderNoComments}))
@@ -547,15 +571,21 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
+  let nOrig = n.copySons
   semOpAux(c, n)
-  result = semDirectCallAnalyseEffects(c, n, flags)
+  result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result == nil: 
     result = overloadedCallOpr(c, n)
     if result == nil: GlobalError(n.Info, errGenerated, getNotFoundError(c, n))
-  fixAbstractType(c, result)
-  analyseIfAddressTakenInCall(c, result)
-  if result.sons[0].sym.magic != mNone:
-    result = magicsAfterOverloadResolution(c, result, flags)
+  let callee = result.sons[0].sym
+  case callee.kind
+  of skMacro: result = semMacroExpr(c, nOrig, callee)
+  of skTemplate: result = semTemplateExpr(c, nOrig, callee)
+  else:
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+    if callee.magic != mNone:
+      result = magicsAfterOverloadResolution(c, result, flags)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and skipTypes(arg.typ, abstractInst).kind == tyString:
@@ -693,7 +723,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result.typ = ty
         markUsed(n, f)
         return 
-    elif efAllowType notin flags: 
+    elif efAllowType notin flags:
       GlobalError(n.sons[0].info, errATypeHasNoValue)
       return
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
@@ -820,7 +850,11 @@ proc propertyWriteAccess(c: PContext, n, a: PNode): PNode =
   # nodes?
   addSon(result, a[0])
   addSon(result, semExpr(c, n[1]))
-  result = semDirectCallAnalyseEffects(c, result, {})
+  # XXX: @@ Revisit this
+  var orig = newNodeI(nkCall, n.info)
+  orig.addSon(a[0])
+  orig.addSon(n[1])
+  result = semDirectCallAnalyseEffects(c, result, result, {})
   if result != nil:
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -1234,8 +1268,18 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     if s != nil: 
       case s.kind
-      of skMacro: result = semMacroExpr(c, n, s)
-      of skTemplate: result = semTemplateExpr(c, n, s)
+      of skMacro:
+        echo c.filename
+        if c.filename.endsWith("hello.nim") and sfImmediate notin s.flags:
+          result = semDirectOp(c, n, flags)
+        else:
+          result = semMacroExpr(c, n, s)
+      of skTemplate:
+        var hello = c.filename.endsWith("hello.nim")
+        if sfImmediate notin s.flags:
+          result = semDirectOp(c, n, flags)
+        else:
+          result = semTemplateExpr(c, n, s)
       of skType: 
         # XXX think about this more (``set`` procs)
         if n.len == 2:
