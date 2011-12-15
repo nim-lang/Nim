@@ -225,6 +225,9 @@ type
     sfInnerProc,      # proc is an inner proc
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
+    sfInline          # forced-inline procs
+    sfImmediate,      # macro or template is immediately expanded without
+                      # considering any possible overloads
     sfCompileTime,    # proc can be evaluated at compile time
     sfMerge,          # proc can be merged with itself
     sfDeadCodeElim,   # dead code elimination for the module is turned on
@@ -570,7 +573,8 @@ type
 # the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter, skModule}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter,
+    skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
@@ -918,6 +922,12 @@ proc delSon(father: PNode, idx: int) =
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setlen(father.sons, length - 1)
 
+proc hasSons*(n: PNode): bool {.inline.} =
+  result = n.kind notin { nkCharLit..nkInt64Lit,
+                          nkFloatLit..nkFloat64Lit,
+                          nkStrLit..nkTripleStrLit,
+                          nkSym, nkIdent }
+
 proc copyNode(src: PNode): PNode = 
   # does not copy its sons!
   if src == nil: 
@@ -948,6 +958,18 @@ proc shallowCopy*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: newSeq(result.sons, sonsLen(src))
+
+proc copySons*(src: PNode): Pnode =
+  # copies a node and its immediate sons
+  if src == nil: return nil
+  assert src.hasSons
+  result = newNode(src.kind)
+  result.info = src.info
+  result.typ = src.typ
+  result.flags = src.flags * PersistentNodeFlags
+  newSeq(result.sons, src.len)
+  for i in countup(0, src.len - 1):
+    result.sons[i] = src.sons[i]
 
 proc copyTree(src: PNode): PNode = 
   # copy a whole syntax tree; performs deep copying

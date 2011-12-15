@@ -73,7 +73,7 @@ type
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     slurpedFiles*: seq[string]
-  
+
 var
   gGenericsCache: PGenericsCache # save for modularity
 

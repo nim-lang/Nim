@@ -46,7 +46,7 @@ proc suggestField(s: PSym) =
   if filterSym(s):
     OutWriteln(SymToStr(s, isLocal=true, sectionSuggest))
 
-template wholeSymTab(cond, section: expr) = 
+template wholeSymTab(cond, section: expr) {.immediate.} = 
   for i in countdown(c.tab.tos-1, 0): 
     for it in items(c.tab.stack[i]): 
       if cond:
@@ -79,20 +79,18 @@ proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   else: return false
   result = opr.id == s.name.id
 
-proc argsFit(c: PContext, candidate: PSym, n: PNode): bool = 
+proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool = 
   case candidate.kind 
-  of skProc, skIterator, skMethod:
+  of OverloadableSyms:
     var m: TCandidate
     initCandidate(m, candidate, nil)
-    sigmatch.partialMatch(c, n, m)
+    sigmatch.partialMatch(c, n, nOrig, m)
     result = m.state != csNoMatch
-  of skTemplate, skMacro:
-    result = true
   else:
     result = false
 
-proc suggestCall(c: PContext, n: PNode) = 
-  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n),
+proc suggestCall(c: PContext, n, nOrig: PNode) = 
+  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               sectionContext)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
@@ -227,7 +225,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
         var x = safeSemExpr(c, n.sons[i])
         if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
-      suggestCall(c, a)
+      suggestCall(c, a, n)
   
   if optDef in gGlobalOptions:
     var n = findClosestSym(fuzzySemCheck(c, node))

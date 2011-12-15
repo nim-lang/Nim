@@ -10,7 +10,8 @@
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
     for i in 1 .. <ri.len:
-      if le.isPartOf(ri[i]) != arNo: return true
+      let r = ri[i]
+      if isPartOf(le, r) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call.sons[0].kind == nkSym and sfNoInit in call.sons[0].sym.flags

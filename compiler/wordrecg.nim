@@ -36,7 +36,7 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
-    wImportCpp, wImportObjC,
+    wImmediate, wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wExtern, wIncompleteStruct,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
@@ -83,7 +83,7 @@ const
     "*", "-",
     "magic", "thread", "final", "profiler", "objchecks", 
     
-    "importcpp", "importobjc",
+    "immediate", "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "extern", "incompletestruct",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 

@@ -168,8 +168,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   pushOwner(s)
   openScope(c.tab)
   n.sons[namePos] = newSymNode(s) # check that no pragmas exist:
-  if n.sons[pragmasPos].kind != nkEmpty: 
-    LocalError(n.info, errNoPragmasAllowedForX, "template") 
+  if n.sons[pragmasPos].kind != nkEmpty:
+    pragma(c, s, n.sons[pragmasPos], templatePragmas)
   # check that no generic parameters exist:
   if n.sons[genericParamsPos].kind != nkEmpty: 
     LocalError(n.info, errNoGenericParamsAllowedForX, "template")

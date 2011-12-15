@@ -10,11 +10,11 @@
 # This module implements the semantic checking pass.
 
 import
-  strutils, hashes, lists, options, lexer, ast, astalgo, trees, treetab,
+  ast, strutils, hashes, lists, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, semdata, nimsets, semfold, importer,
-  procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest,
-  semthreads, intsets, transf, evals, idgen, aliases
+  magicsys, parser, nversion, nimsets, semfold, importer,
+  procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
+  suggest, semthreads, intsets, transf, evals, idgen, aliases
 
 proc semPass*(): TPass
 # implementation
@@ -75,24 +75,27 @@ proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 
 include semtempl
 
-proc semConstExpr(c: PContext, n: PNode): PNode = 
-  var e = semExprWithType(c, n)
-  if e == nil: 
-    GlobalError(n.info, errConstExprExpected)
-    return nil
+proc evalTypedExpr(c: PContext, e: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result == nil:
     result = evalConstExpr(c.module, e)
-    if result == nil or result.kind == nkEmpty: 
-      GlobalError(n.info, errConstExprExpected)
+    if result == nil or result.kind == nkEmpty:
+      GlobalError(e.info, errConstExprExpected)
   when false:
     result = semExprWithType(c, n)
-    if result == nil: 
+    if result == nil:
       GlobalError(n.info, errConstExprExpected)
       return 
     result = getConstExpr(c.module, result)
     if result == nil: GlobalError(n.info, errConstExprExpected)
-  
+
+proc semConstExpr(c: PContext, n: PNode): PNode =
+  var e = semExprWithType(c, n)
+  if e == nil:
+    GlobalError(n.info, errConstExprExpected)
+    return nil
+  result = evalTypedExpr(c, e)
+
 proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
   result = semConstExpr(c, n)
   
