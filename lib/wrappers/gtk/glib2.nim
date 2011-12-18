@@ -4507,3 +4507,9 @@ proc g_thread_init*(vtable: pointer) {.
 
 proc g_timeout_add*(interval: guint, function, data: gpointer): guint {.
   cdecl, dynlib: gliblib, importc: "g_timeout_add".}
+
+proc g_idle_add*(function, data: gpointer): guint {.
+  cdecl, dynlib: gliblib, importc: "g_idle_add".}
+
+proc g_source_remove*(tag: guint): gboolean {.
+  cdecl, dynlib: gliblib, importc: "g_source_remove".}
