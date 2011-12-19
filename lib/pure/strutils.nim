@@ -468,6 +468,16 @@ proc ParseHexInt*(s: string): int {.noSideEffect, procvar,
     of '\0': break
     else: raise newException(EInvalidValue, "invalid integer: " & s)
 
+proc parseBool*(s: string): bool =
+  ## Parses a value into a `bool`. If ``s`` is one of the following values:
+  ## ``y, yes, true, 1, on``, then returns `true`. If ``s`` is one of the
+  ## following values: ``n, no, false, 0, off``, then returns `false`.
+  ## If ``s`` is something else a ``EInvalidValue`` exception is raised.
+  case normalize(s)
+  of "y", "yes", "true", "1", "on": result = true
+  of "n", "no", "false", "0", "off": result = false
+  else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
+
 proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
