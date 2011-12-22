@@ -252,7 +252,8 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
     genNamedParamCall(p, e, d)
   else:
     genPrefixCall(p, nil, e, d)
-  if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
+  when false:
+    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags and
@@ -262,5 +263,6 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genNamedParamCall(p, ri, d)
   else:
     genPrefixCall(p, le, ri, d)
-  if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
+  when false:
+    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 

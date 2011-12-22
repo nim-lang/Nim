@@ -207,7 +207,7 @@ proc addPathRec(dir: string, info: TLineInfo) =
 
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')
-  if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLMUN")
+  if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLUMN")
   var line, column: int
   if parseUtils.parseInt(a[1], line) <= 0:
     LocalError(info, errInvalidNumber, a[1])

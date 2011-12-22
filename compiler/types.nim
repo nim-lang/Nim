@@ -277,7 +277,7 @@ proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
   result = analyseObjectWithTypeFieldAux(t, marker)
 
 proc isGBCRef(t: PType): bool = 
-  result = t.kind in {tyRef, tySequence, tyString}
+  result = t.kind in GcTypeKinds
 
 proc containsGarbageCollectedRef(typ: PType): bool = 
   # returns true if typ contains a reference, sequence or string (all the

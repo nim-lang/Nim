@@ -72,6 +72,8 @@ type
     receiveClosure*: PType    # closure record type that we get
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
+    gcFrameId*: natural       # for the GC stack marking
+    gcFrameType*: PRope       # the struct {} we put the GC markers into
   
   TTypeSeq* = seq[PType]
   TCGen = object of TPassContext # represents a C source file

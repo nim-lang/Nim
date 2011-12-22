@@ -273,6 +273,7 @@ type
 
 const
   tyPureObject* = tyTuple
+  GcTypeKinds* = {tyRef, tySequence, tyString}
 
 type
   TTypeKinds* = set[TTypeKind]

@@ -579,6 +579,13 @@ proc nimKeepAlive(p: PGenericSeq) {.compilerRtl, noinline.} =
   if isAllocatedPtr(gch.region, c):
     c.refcount = c.refcount or rcMarked
 
+proc nimGCFrame(p: pointer) {.compilerRtl, noinline.} =
+  # 'cast' is correct here! no offset to add:
+  var c = cast[PCell](p)
+  var x = cast[TAddress](c)
+  if x <% PageSize and (x and (MemAlign-1)) == 0:
+    c.refcount = c.refcount or rcMarked
+
 proc markThreadStacks(gch: var TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
     {.error: "not fully implemented".}

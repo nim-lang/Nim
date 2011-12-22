@@ -21,7 +21,8 @@ type
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
     hasCpp,                   # CC is/contains a C++ compiler
-    hasAssume                 # CC has __assume (Visual C extension)
+    hasAssume,                # CC has __assume (Visual C extension)
+    hasGcGuard                # CC supports GC_GUARD to keep stack roots
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -71,7 +72,7 @@ compiler gcc:
     debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
-    props: {hasSwitchRange, hasComputedGoto, hasCpp})
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard})
     
 compiler gpp:
   result = gcc()
@@ -79,11 +80,10 @@ compiler gpp:
   result.name = "gpp"
   result.compilerExe = "g++"
   result.linkerExe = "g++"  
-  
-  result.debug.add " -g " # XXX: Why is this default for g++, but not for gcc?
 
-  result.buildDll = " -mdll" # XXX: Hmm, I'm keeping this from the previos version, 
-                             # but my gcc doesn't even have such an option (is this mingw?)
+  result.buildDll = " -mdll" 
+  # XXX: Hmm, I'm keeping this from the previos version, 
+  # but my gcc doesn't even have such an option (is this mingw?)
 
 compiler llvmGcc:
   result = gcc()
