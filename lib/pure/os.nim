@@ -554,7 +554,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Checks whether a given `path` is absolute.
   ##
-  ## on Windows, network paths are considered absolute too.
+  ## On Windows, network paths are considered absolute too.
   when doslike:
     var len = len(path)
     result = (len > 1 and path[0] in {'/', '\\'}) or
@@ -694,8 +694,8 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
 # iterator depends on ``environment``.
 
 var
-  envComputed: bool = false
-  environment: seq[string] = @[]
+  envComputed {.threadvar.}: bool = false
+  environment {.threadvar.}: seq[string] = @[]
 
 when defined(windows):
   # because we support Windows GUI applications, things get really
