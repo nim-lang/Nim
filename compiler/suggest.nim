@@ -10,7 +10,8 @@
 ## This file implements features required for IDE support.
 
 import 
-  lexer, idents, ast, astalgo, semdata, msgs, types, sigmatch, options
+  lexer, idents, ast, astalgo, semdata, msgs, types, sigmatch, options, 
+  renderer
 
 const
   sep = '\t'
@@ -150,27 +151,25 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
     else:
       suggestOperations(c, n, typ)
 
-proc findClosestDot(n: PNode): PNode = 
-  if msgs.inCheckpoint(n.info) == cpExact: 
+proc findClosestDot(n: PNode): PNode =
+  if n.kind == nkDotExpr and msgs.inCheckpoint(n.info) == cpExact:
     result = n
-  elif n.kind notin {nkNone..nkNilLit}:
-    for i in 0.. <sonsLen(n):
-      if n.sons[i].kind == nkDotExpr:
-        result = findClosestDot(n.sons[i])
-        if result != nil: return
+  else:
+    for i in 0.. <safeLen(n):
+      result = findClosestDot(n.sons[i])
+      if result != nil: return
 
 const
   CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit,
                nkMacroStmt}
 
 proc findClosestCall(n: PNode): PNode = 
-  if msgs.inCheckpoint(n.info) == cpExact: 
+  if n.kind in callNodes and msgs.inCheckpoint(n.info) == cpExact: 
     result = n
-  elif n.kind notin {nkNone..nkNilLit}:
-    for i in 0.. <sonsLen(n):
-      if n.sons[i].kind in callNodes:
-        result = findClosestCall(n.sons[i])
-        if result != nil: return
+  else:
+    for i in 0.. <safeLen(n):
+      result = findClosestCall(n.sons[i])
+      if result != nil: return
 
 proc findClosestSym(n: PNode): PNode = 
   if n.kind == nkSym and msgs.inCheckpoint(n.info) == cpExact: 

@@ -263,15 +263,16 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     optInd(p, a)
   eat(p, endTok)
 
+proc newDotExpr(p: var TParser, a: PNode): PNode =
+  getTok(p)
+  optInd(p, a)
+  result = newNodeI(nkDotExpr, a.info)
+  addSon(result, a)
+  addSon(result, parseSymbol(p))
+
 proc qualifiedIdent(p: var TParser): PNode = 
   result = parseSymbol(p)     #optInd(p, result);
-  if p.tok.tokType == tkDot: 
-    getTok(p)
-    optInd(p, result)
-    var a = result
-    result = newNodeI(nkDotExpr, a.info)
-    addSon(result, a)
-    addSon(result, parseSymbol(p))
+  if p.tok.tokType == tkDot: result = newDotExpr(p, result)
 
 proc qualifiedIdentListAux(p: var TParser, endTok: TTokType, result: PNode) = 
   getTok(p)
@@ -465,13 +466,8 @@ proc primary(p: var TParser): PNode =
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
-    of tkDot: 
-      var a = result
-      result = newNodeP(nkDotExpr, p)
-      addSon(result, a)
-      getTok(p)               # skip '.'
-      optInd(p, result)
-      addSon(result, parseSymbol(p))
+    of tkDot:
+      result = newDotExpr(p, result)
       result = parseGStrLit(p, result)
     of tkBracketLe: 
       result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
