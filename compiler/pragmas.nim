@@ -147,9 +147,6 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
       s.magic = m
       break
   if s.magic == mNone: Message(n.info, warnUnknownMagic, v)
-  # magics don't need an implementation, so we
-  # treat them as imported, instead of modifing a lot of working code:
-  incl(s.flags, sfImportc)
 
 proc wordToCallConv(sw: TSpecialWord): TCallingConvention = 
   # this assumes that the order of special words and calling conventions is

@@ -53,7 +53,7 @@ proc CloseScope*(tab: var TSymTab) =
   var it: TTabIter
   var s = InitTabIter(it, tab.stack[tab.tos-1])
   while s != nil:
-    if sfForward in s.flags: 
+    if sfForward in s.flags:
       LocalError(s.info, errImplOfXexpected, getSymRepr(s))
     elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options: 
       # BUGFIX: check options in s!
