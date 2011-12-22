@@ -772,6 +772,14 @@ proc NewType(kind: TTypeKind, owner: PSym): PType =
   #if result.id < 2000 then
   #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
+proc mergeLoc(a: var TLoc, b: TLoc) =
+  if a.k == low(a.k): a.k = b.k
+  if a.s == low(a.s): a.s = b.s
+  a.flags = a.flags + b.flags
+  if a.t == nil: a.t = b.t
+  if a.r == nil: a.r = b.r
+  if a.a == 0: a.a = b.a
+  
 proc assignType(dest, src: PType) = 
   dest.kind = src.kind
   dest.flags = src.flags
@@ -780,6 +788,14 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.containerID = src.containerID
+  # this fixes 'type TLock = TSysLock':
+  if src.sym != nil:
+    if dest.sym != nil:
+      dest.sym.flags = dest.sym.flags + src.sym.flags
+      if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
+      mergeLoc(dest.sym.loc, src.sym.loc)
+    else:
+      dest.sym = src.sym
   newSons(dest, sonsLen(src))
   for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
   

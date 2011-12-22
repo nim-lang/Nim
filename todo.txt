@@ -2,6 +2,7 @@ version 0.8.14
 ==============
 
 - GC should care about interior pointers on the stack
+- BUG: absolute paths in compiler generated scripts
 - BUG: type TX = TTable[string, int]
 - warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 

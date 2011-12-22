@@ -733,7 +733,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       n.sons[bodyPos] = ast.emptyNode
   else: 
     if proto != nil: LocalError(n.info, errImplOfXexpected, proto.name.s)
-    if {sfImportc, sfBorrow} * s.flags == {}: incl(s.flags, sfForward)
+    if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone: 
+      incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
   closeScope(c.tab)           # close scope for parameters
