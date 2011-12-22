@@ -699,7 +699,7 @@ proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` starting at position `start`. Searching is
   ## case-sensitive. If `sub` is not in `s`, -1 is returned.
-  var a: TSkipTable
+  var a {.noinit.}: TSkipTable
   preprocessSub(sub, a)
   result = findAux(s, sub, start, a)
 
@@ -742,7 +742,7 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
 proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
-  var a: TSkipTable
+  var a {.noinit.}: TSkipTable
   result = ""
   preprocessSub(sub, a)
   var i = 0
@@ -989,7 +989,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   ## after the decimal point for Nimrod's ``biggestFloat`` type.
   const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
   var
-    frmtstr: array[0..5, char]
+    frmtstr {.noinit.}: array[0..5, char]
     buf: array[0..80, char]
   frmtstr[0] = '%'
   frmtstr[1] = '#'
@@ -1018,16 +1018,41 @@ proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
   ## after the decimal point for Nimrod's ``float`` type.
   result = formatBiggestFloat(f, format, precision)
 
+proc formatSize*(bytes: biggestInt, decimalSep = '.'): string =
+  ## Rounds and formats `bytes`. Examples:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##    formatSize(1'i64 shl 31 + 300'i64) == "4GB"
+  ##    formatSize(4096) == "4KB"
+  ##
+  template frmt(a, b, c: expr): expr =
+    let bs = $b
+    insertSep($a) & decimalSep & bs.substr(0, 2) & c
+  let gigabytes = bytes shr 30
+  let megabytes = bytes shr 20
+  let kilobytes = bytes shr 10
+  if gigabytes != 0:
+    result = frmt(gigabytes, megabytes, "GB")
+  elif megabytes != 0:
+    result = frmt(megabytes, kilobytes, "MB")
+  elif kilobytes != 0:
+    result = frmt(kilobytes, bytes, "KB")
+  else:
+    result = insertSep($bytes) & "B"
+
 {.pop.}
 
 when isMainModule:
-  assert align("abc", 4) == " abc"
-  assert align("a", 0) == "a"
-  assert align("1232", 6) == "  1232"
+  doAssert align("abc", 4) == " abc"
+  doAssert align("a", 0) == "a"
+  doAssert align("1232", 6) == "  1232"
   echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
                    it goes""", 10, false)
-  assert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-  assert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
+  doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
+  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
 
-  assert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
+  doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
+  echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
+  echo formatSize(1'i64 shl 31)
 

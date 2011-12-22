@@ -297,23 +297,36 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   initTemp(p, result)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
-  if optRefcGC notin gGlobalOptions: return
-  var result: TLoc
-  inc(p.labels)
-  result.r = con("LOC", toRope(p.labels))
-  appf(p.s[cpsLocals], "volatile $1 $2;$n",
-      [getTypeDesc(p.module, toKeepAlive.t), result.r])
-  result.k = locTemp
-  result.a = -1
-  result.t = toKeepAlive.t
-  result.s = OnStack
-  result.flags = {}
-  if skipTypes(toKeepAlive.t, abstractVarRange).Kind notin complexValueType:
-    appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
-  else:
-    appcg(p, cpsStmts,
-         "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-         [addrLoc(result), addrLoc(toKeepAlive), rdLoc(result)])
+  when false:
+    # deactivated because of the huge slowdown this causes; GC will take care
+    # of interior pointers instead
+    if optRefcGC notin gGlobalOptions: return
+    var result: TLoc
+    var fid = toRope(p.gcFrameId)
+    result.r = con("GCFRAME.F", fid)
+    appf(p.gcFrameType, "  $1 F$2;$n",
+        [getTypeDesc(p.module, toKeepAlive.t), fid])
+    inc(p.gcFrameId)
+    result.k = locTemp
+    result.a = -1
+    result.t = toKeepAlive.t
+    result.s = OnStack
+    result.flags = {}
+
+    if skipTypes(toKeepAlive.t, abstractVarRange).Kind notin complexValueType:
+      appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
+    else:
+      appcg(p, cpsStmts,
+           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           [addrLoc(result), addrLoc(toKeepAlive), rdLoc(result)])
+
+proc initGCFrame(p: BProc): PRope =
+  if p.gcFrameId > 0: result = ropef("struct {$1} GCFRAME;$n", p.gcFrameType)
+
+proc deinitGCFrame(p: BProc): PRope =
+  if p.gcFrameId > 0:
+    result = ropecg(p.module,
+                    "if (((NU)&GCFRAME) < 4096) #nimGCFrame(&GCFRAME);$n")
 
 proc cstringLit(p: BProc, r: var PRope, s: string): PRope = 
   if gCmd == cmdCompileToLLVM: 
@@ -370,6 +383,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
   if sfRegister in s.flags: app(p.s[cpsLocals], " register")
+  elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
+    app(p.s[cpsLocals], " GC_GUARD")
   if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
     app(p.s[cpsLocals], " volatile")
   appf(p.s[cpsLocals], " $1;$n", [s.loc.r])
@@ -428,7 +443,7 @@ include "ccgexprs.nim", "ccgstmts.nim"
 proc libCandidates(s: string, dest: var TStringSeq) = 
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le: 
+  if le >= 0 and ri > le:
     var prefix = substr(s, 0, le - 1)
     var suffix = substr(s, ri + 1)
     for middle in split(substr(s, le + 1, ri - 1), '|'):
@@ -583,8 +598,9 @@ proc genProcAux(m: BModule, prc: PSym) =
   if sfPure in prc.flags: 
     generatedProc = ropeff("$1 {$n$2$3$4}$n", "define $1 {$n$2$3$4}$n",
         [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
-  else: 
+  else:
     generatedProc = ropeff("$1 {$n", "define $1 {$n", [header])
+    app(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options: 
       getFrameDecl(p)
       app(generatedProc, p.s[cpsLocals])
@@ -608,6 +624,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     app(generatedProc, p.s[cpsInit])
     app(generatedProc, p.s[cpsStmts])
     if p.beforeRetNeeded: appf(generatedProc, "BeforeRet: $n;")
+    app(generatedProc, deinitGCFrame(p))
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
       appf(generatedProc, 
@@ -816,6 +833,8 @@ proc genInitCode(m: BModule) =
     m.FrameDeclared = true
     getFrameDecl(m.initProc)
   
+  app(prc, initGCFrame(m.initProc))
+  
   app(prc, genSectionStart(cpsLocals))
   app(prc, m.initProc.s[cpsLocals])
   app(prc, genSectionEnd(cpsLocals))
@@ -842,6 +861,7 @@ proc genInitCode(m: BModule) =
   if optStackTrace in m.initProc.options and not m.PreventStackTrace:
     app(prc, deinitFrame(m.initProc))
   app(prc, genSectionEnd(cpsStmts))
+  app(prc, deinitGCFrame(m.initProc))
   appf(prc, "}$n$n")
   # we cannot simply add the init proc to ``m.s[cfsProcs]`` anymore because
   # that would lead to a *nesting* of merge sections which the merger does

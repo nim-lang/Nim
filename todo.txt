@@ -1,10 +1,9 @@
 version 0.8.14
 ==============
 
-- compiler/GC interaction need to generate code to prevent tail call
-  optimization
-
-- warning for implicit openArray -> varargs convention
+- GC should care about interior pointers on the stack
+- BUG: type TX = TTable[string, int]
+- warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
 - implicit invokation of `items`/`pairs` seems nice
@@ -93,7 +92,7 @@ Library
 -------
 
 - wrappers for poppler; libharu
-- radix tree for strings; maybe suffix tree
+- suffix trees
 - locale support
 - bignums
 

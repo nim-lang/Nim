@@ -171,7 +171,7 @@ proc getMaxMem(a: var TMemRegion): int =
   # Since we update maxPagesCount only when freeing pages, 
   # maxPagesCount may not be up to date. Thus we use the
   # maximum of these both values here:
-  return max(a.currMem, a.maxMem)
+  result = max(a.currMem, a.maxMem)
   
 proc llAlloc(a: var TMemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
@@ -549,6 +549,23 @@ proc isAllocatedPtr(a: TMemRegion, p: pointer): bool =
       else:
         var c = cast[PBigChunk](c)
         result = p == addr(c.data) and cast[ptr TFreeCell](p).zeroField >% 1
+
+proc interiorAllocatedPtr(a: TMemRegion, p: pointer): pointer =
+  if isAccessible(a, p):
+    var c = pageAddr(p)
+    if not chunkUnused(c):
+      if isSmallChunk(c):
+        var c = cast[PSmallChunk](c)
+        var offset = (cast[TAddress](p) and (PageSize-1)) -% 
+                     smallChunkOverhead()
+        if c.acc >% offset:
+          var d = cast[ptr TFreeCell](cast[TAddress](addr(c.data)) +% 
+                    offset -% (offset %% c.size))
+          if d.zeroField >% 1: result = d
+      else:
+        var c = cast[PBigChunk](c)
+        var d = addr(c.data)
+        if p >= d and cast[ptr TFreeCell](d).zeroField >% 1: result = d
 
 proc ptrSize(p: pointer): int =
   var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
