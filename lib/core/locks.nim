@@ -15,7 +15,7 @@
 ## to release its locks should it be part of a deadlock. This thread then
 ## re-acquires its locks and proceeds.
 
-include "lib/system/syslocks"
+include "system/syslocks"
 
 type
   TLock* = TSysLock ## Nimrod lock; whether this is re-entrant

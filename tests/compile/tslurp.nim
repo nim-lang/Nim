@@ -1,6 +1,6 @@
 
 const
-  myRes = slurp"readme.txt"
+  myRes = slurp"../../readme.txt"
   
 echo myRes
 

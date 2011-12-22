@@ -16880,3 +16880,6 @@ proc nimrod_init*() =
     cmdLine{.importc: "cmdLine".}: array[0..255, cstring]
     cmdCount{.importc: "cmdCount".}: cint
   init(addr(cmdLine), addr(cmdCount))
+
+proc set_tooltip_text*(w: PWidget, t: cstring){.cdecl,
+  dynlib: lib, importc: "gtk_widget_set_tooltip_text".}
