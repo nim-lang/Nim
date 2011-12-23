@@ -16,6 +16,7 @@ __GNUC__
 __DMC__
 __POCC__
 __TINYC__
+__clang__
 */
 
 
@@ -435,6 +436,13 @@ __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
 #else
 #  define likely(x) (x)
 #  define unlikely(x) (x)
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
+#  define GC_GUARD __attribute__ ((cleanup(GCGuard)))
+#else
+#  define GC_GUARD
 #endif
 
 #endif

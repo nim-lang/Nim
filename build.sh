@@ -109,6 +109,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strtabs.c -o build/1_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/hashes.c -o build/1_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/hashes.c -o build/1_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/condsyms.c -o build/1_1/condsyms.o"
@@ -125,8 +129,6 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/intsets.c -o build/1_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/intsets.c -o build/1_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o"
@@ -183,8 +185,6 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/bitsets.c -o build/1_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/semthreads.c -o build/1_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/semthreads.c -o build/1_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/importer.c -o build/1_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/importer.c -o build/1_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lookups.c -o build/1_1/lookups.o"
@@ -213,6 +213,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rst.c -o build/1_1/rst.o"
@@ -250,6 +252,8 @@ build/1_1/options.o \
 build/1_1/lists.o \
 build/1_1/strtabs.o \
 build/1_1/hashes.o \
+build/1_1/tables.o \
+build/1_1/math.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -258,7 +262,6 @@ build/1_1/ropes.o \
 build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/intsets.o \
-build/1_1/math.o \
 build/1_1/idgen.o \
 build/1_1/astalgo.o \
 build/1_1/rodutils.o \
@@ -287,7 +290,6 @@ build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
 build/1_1/semthreads.o \
-build/1_1/tables.o \
 build/1_1/importer.o \
 build/1_1/lookups.o \
 build/1_1/semdata.o \
@@ -302,6 +304,7 @@ build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/suggest.o \
+build/1_1/aliases.o \
 build/1_1/docgen.o \
 build/1_1/rst.o \
 build/1_1/highlite.o \
@@ -328,6 +331,8 @@ build/1_1/options.o \
 build/1_1/lists.o \
 build/1_1/strtabs.o \
 build/1_1/hashes.o \
+build/1_1/tables.o \
+build/1_1/math.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -336,7 +341,6 @@ build/1_1/ropes.o \
 build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/intsets.o \
-build/1_1/math.o \
 build/1_1/idgen.o \
 build/1_1/astalgo.o \
 build/1_1/rodutils.o \
@@ -365,7 +369,6 @@ build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
 build/1_1/semthreads.o \
-build/1_1/tables.o \
 build/1_1/importer.o \
 build/1_1/lookups.o \
 build/1_1/semdata.o \
@@ -380,6 +383,7 @@ build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/suggest.o \
+build/1_1/aliases.o \
 build/1_1/docgen.o \
 build/1_1/rst.o \
 build/1_1/highlite.o \
@@ -421,6 +425,10 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/strtabs.c -o build/1_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/hashes.c -o build/1_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/hashes.c -o build/1_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/condsyms.c -o build/1_2/condsyms.o"
@@ -437,8 +445,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o"
@@ -495,8 +501,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/bitsets.c -o build/1_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semthreads.c -o build/1_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semthreads.c -o build/1_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/importer.c -o build/1_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/importer.c -o build/1_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lookups.c -o build/1_2/lookups.o"
@@ -525,6 +529,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rst.c -o build/1_2/rst.o"
@@ -562,6 +568,8 @@ build/1_2/options.o \
 build/1_2/lists.o \
 build/1_2/strtabs.o \
 build/1_2/hashes.o \
+build/1_2/tables.o \
+build/1_2/math.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -570,7 +578,6 @@ build/1_2/ropes.o \
 build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
-build/1_2/math.o \
 build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
@@ -599,7 +606,6 @@ build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
 build/1_2/semthreads.o \
-build/1_2/tables.o \
 build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
@@ -614,6 +620,7 @@ build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/suggest.o \
+build/1_2/aliases.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
 build/1_2/highlite.o \
@@ -640,6 +647,8 @@ build/1_2/options.o \
 build/1_2/lists.o \
 build/1_2/strtabs.o \
 build/1_2/hashes.o \
+build/1_2/tables.o \
+build/1_2/math.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -648,7 +657,6 @@ build/1_2/ropes.o \
 build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
-build/1_2/math.o \
 build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
@@ -677,7 +685,6 @@ build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
 build/1_2/semthreads.o \
-build/1_2/tables.o \
 build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
@@ -692,6 +699,7 @@ build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/suggest.o \
+build/1_2/aliases.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
 build/1_2/highlite.o \
@@ -733,6 +741,10 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/strtabs.c -o build/1_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/hashes.c -o build/1_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/hashes.c -o build/1_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/condsyms.c -o build/1_2/condsyms.o"
@@ -749,8 +761,6 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/intsets.c -o build/1_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idgen.c -o build/1_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o"
@@ -807,8 +817,6 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/bitsets.c -o build/1_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semthreads.c -o build/1_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/semthreads.c -o build/1_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/importer.c -o build/1_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/importer.c -o build/1_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lookups.c -o build/1_2/lookups.o"
@@ -837,6 +845,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rst.c -o build/1_2/rst.o"
@@ -874,6 +884,8 @@ build/1_2/options.o \
 build/1_2/lists.o \
 build/1_2/strtabs.o \
 build/1_2/hashes.o \
+build/1_2/tables.o \
+build/1_2/math.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -882,7 +894,6 @@ build/1_2/ropes.o \
 build/1_3/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
-build/1_2/math.o \
 build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
@@ -911,7 +922,6 @@ build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
 build/1_2/semthreads.o \
-build/1_2/tables.o \
 build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
@@ -926,6 +936,7 @@ build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/suggest.o \
+build/1_2/aliases.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
 build/1_2/highlite.o \
@@ -952,6 +963,8 @@ build/1_2/options.o \
 build/1_2/lists.o \
 build/1_2/strtabs.o \
 build/1_2/hashes.o \
+build/1_2/tables.o \
+build/1_2/math.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -960,7 +973,6 @@ build/1_2/ropes.o \
 build/1_3/platform.o \
 build/1_2/idents.o \
 build/1_2/intsets.o \
-build/1_2/math.o \
 build/1_2/idgen.o \
 build/1_2/astalgo.o \
 build/1_2/rodutils.o \
@@ -989,7 +1001,6 @@ build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
 build/1_2/semthreads.o \
-build/1_2/tables.o \
 build/1_2/importer.o \
 build/1_2/lookups.o \
 build/1_2/semdata.o \
@@ -1004,6 +1015,7 @@ build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/suggest.o \
+build/1_2/aliases.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
 build/1_2/highlite.o \
@@ -1053,6 +1065,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/strtabs.c -o build/2_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/condsyms.c -o build/2_1/condsyms.o"
@@ -1069,8 +1085,6 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/idgen.c -o build/2_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idgen.c -o build/2_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o"
@@ -1127,8 +1141,6 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/semthreads.c -o build/2_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/semthreads.c -o build/2_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/importer.c -o build/2_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/importer.c -o build/2_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lookups.c -o build/2_1/lookups.o"
@@ -1157,6 +1169,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sigmatch.c -o build/2_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/suggest.c -o build/2_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/suggest.c -o build/2_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rst.c -o build/2_1/rst.o"
@@ -1194,6 +1208,8 @@ build/2_1/options.o \
 build/2_1/lists.o \
 build/2_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -1202,7 +1218,6 @@ build/2_1/ropes.o \
 build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/2_1/idgen.o \
 build/2_1/astalgo.o \
 build/2_1/rodutils.o \
@@ -1231,7 +1246,6 @@ build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
 build/2_1/semthreads.o \
-build/2_1/tables.o \
 build/2_1/importer.o \
 build/2_1/lookups.o \
 build/2_1/semdata.o \
@@ -1246,6 +1260,7 @@ build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/suggest.o \
+build/2_1/aliases.o \
 build/2_1/docgen.o \
 build/2_1/rst.o \
 build/2_1/highlite.o \
@@ -1272,6 +1287,8 @@ build/2_1/options.o \
 build/2_1/lists.o \
 build/2_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -1280,7 +1297,6 @@ build/2_1/ropes.o \
 build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/2_1/idgen.o \
 build/2_1/astalgo.o \
 build/2_1/rodutils.o \
@@ -1309,7 +1325,6 @@ build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
 build/2_1/semthreads.o \
-build/2_1/tables.o \
 build/2_1/importer.o \
 build/2_1/lookups.o \
 build/2_1/semdata.o \
@@ -1324,6 +1339,7 @@ build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/suggest.o \
+build/2_1/aliases.o \
 build/2_1/docgen.o \
 build/2_1/rst.o \
 build/2_1/highlite.o \
@@ -1365,6 +1381,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/strtabs.c -o build/2_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o"
@@ -1381,8 +1401,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
@@ -1439,8 +1457,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semthreads.c -o build/2_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semthreads.c -o build/2_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/importer.c -o build/2_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/importer.c -o build/2_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lookups.c -o build/2_2/lookups.o"
@@ -1469,6 +1485,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rst.c -o build/2_2/rst.o"
@@ -1506,6 +1524,8 @@ build/2_2/options.o \
 build/2_2/lists.o \
 build/2_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -1514,7 +1534,6 @@ build/2_2/ropes.o \
 build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
@@ -1543,7 +1562,6 @@ build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
 build/2_2/semthreads.o \
-build/2_2/tables.o \
 build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
@@ -1558,6 +1576,7 @@ build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/suggest.o \
+build/2_2/aliases.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
 build/2_2/highlite.o \
@@ -1584,6 +1603,8 @@ build/2_2/options.o \
 build/2_2/lists.o \
 build/2_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -1592,7 +1613,6 @@ build/2_2/ropes.o \
 build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
@@ -1621,7 +1641,6 @@ build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
 build/2_2/semthreads.o \
-build/2_2/tables.o \
 build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
@@ -1636,6 +1655,7 @@ build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/suggest.o \
+build/2_2/aliases.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
 build/2_2/highlite.o \
@@ -1677,6 +1697,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/strtabs.c -o build/2_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o"
@@ -1693,8 +1717,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idgen.c -o build/2_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
@@ -1751,8 +1773,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semthreads.c -o build/2_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/semthreads.c -o build/2_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/importer.c -o build/2_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/importer.c -o build/2_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lookups.c -o build/2_2/lookups.o"
@@ -1781,6 +1801,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rst.c -o build/2_2/rst.o"
@@ -1818,6 +1840,8 @@ build/2_2/options.o \
 build/2_2/lists.o \
 build/2_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -1826,7 +1850,6 @@ build/2_2/ropes.o \
 build/2_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
@@ -1855,7 +1878,6 @@ build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
 build/2_2/semthreads.o \
-build/2_2/tables.o \
 build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
@@ -1870,6 +1892,7 @@ build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/suggest.o \
+build/2_2/aliases.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
 build/2_2/highlite.o \
@@ -1896,6 +1919,8 @@ build/2_2/options.o \
 build/2_2/lists.o \
 build/2_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -1904,7 +1929,6 @@ build/2_2/ropes.o \
 build/2_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/2_2/idgen.o \
 build/2_2/astalgo.o \
 build/2_2/rodutils.o \
@@ -1933,7 +1957,6 @@ build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
 build/2_2/semthreads.o \
-build/2_2/tables.o \
 build/2_2/importer.o \
 build/2_2/lookups.o \
 build/2_2/semdata.o \
@@ -1948,6 +1971,7 @@ build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/suggest.o \
+build/2_2/aliases.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
 build/2_2/highlite.o \
@@ -1997,6 +2021,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/strtabs.c -o build/3_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/condsyms.c -o build/3_1/condsyms.o"
@@ -2013,8 +2041,6 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -2071,8 +2097,6 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semthreads.c -o build/3_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/semthreads.c -o build/3_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/importer.c -o build/3_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/importer.c -o build/3_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lookups.c -o build/3_1/lookups.o"
@@ -2101,6 +2125,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/sigmatch.c -o build/3_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/suggest.c -o build/3_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/suggest.c -o build/3_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rst.c -o build/3_1/rst.o"
@@ -2138,6 +2164,8 @@ build/3_1/options.o \
 build/2_1/lists.o \
 build/3_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -2146,7 +2174,6 @@ build/3_1/ropes.o \
 build/3_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
@@ -2175,7 +2202,6 @@ build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
 build/3_1/semthreads.o \
-build/2_1/tables.o \
 build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
@@ -2190,6 +2216,7 @@ build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/suggest.o \
+build/3_1/aliases.o \
 build/3_1/docgen.o \
 build/3_1/rst.o \
 build/3_1/highlite.o \
@@ -2216,6 +2243,8 @@ build/3_1/options.o \
 build/2_1/lists.o \
 build/3_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -2224,7 +2253,6 @@ build/3_1/ropes.o \
 build/3_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
@@ -2253,7 +2281,6 @@ build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
 build/3_1/semthreads.o \
-build/2_1/tables.o \
 build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
@@ -2268,6 +2295,7 @@ build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/suggest.o \
+build/3_1/aliases.o \
 build/3_1/docgen.o \
 build/3_1/rst.o \
 build/3_1/highlite.o \
@@ -2309,6 +2337,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strtabs.c -o build/3_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o"
@@ -2325,8 +2357,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -2383,8 +2413,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semthreads.c -o build/3_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semthreads.c -o build/3_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/importer.c -o build/3_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/importer.c -o build/3_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lookups.c -o build/3_2/lookups.o"
@@ -2413,6 +2441,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rst.c -o build/3_2/rst.o"
@@ -2450,6 +2480,8 @@ build/3_2/options.o \
 build/2_2/lists.o \
 build/3_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -2458,7 +2490,6 @@ build/3_2/ropes.o \
 build/3_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
@@ -2487,7 +2518,6 @@ build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
 build/3_2/semthreads.o \
-build/2_2/tables.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
@@ -2502,6 +2532,7 @@ build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/suggest.o \
+build/3_2/aliases.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
 build/3_2/highlite.o \
@@ -2528,6 +2559,8 @@ build/3_2/options.o \
 build/2_2/lists.o \
 build/3_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -2536,7 +2569,6 @@ build/3_2/ropes.o \
 build/3_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
@@ -2565,7 +2597,6 @@ build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
 build/3_2/semthreads.o \
-build/2_2/tables.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
@@ -2580,6 +2611,7 @@ build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/suggest.o \
+build/3_2/aliases.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
 build/3_2/highlite.o \
@@ -2621,6 +2653,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strtabs.c -o build/3_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o"
@@ -2637,8 +2673,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -2695,8 +2729,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semthreads.c -o build/3_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semthreads.c -o build/3_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/importer.c -o build/3_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/importer.c -o build/3_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lookups.c -o build/3_2/lookups.o"
@@ -2725,6 +2757,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rst.c -o build/3_2/rst.o"
@@ -2762,6 +2796,8 @@ build/3_2/options.o \
 build/2_2/lists.o \
 build/3_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -2770,7 +2806,6 @@ build/3_2/ropes.o \
 build/3_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
@@ -2799,7 +2834,6 @@ build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
 build/3_2/semthreads.o \
-build/2_2/tables.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
@@ -2814,6 +2848,7 @@ build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/suggest.o \
+build/3_2/aliases.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
 build/3_2/highlite.o \
@@ -2840,6 +2875,8 @@ build/3_2/options.o \
 build/2_2/lists.o \
 build/3_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -2848,7 +2885,6 @@ build/3_2/ropes.o \
 build/3_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
@@ -2877,7 +2913,6 @@ build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
 build/3_2/semthreads.o \
-build/2_2/tables.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
@@ -2892,6 +2927,7 @@ build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/suggest.o \
+build/3_2/aliases.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
 build/3_2/highlite.o \
@@ -2941,6 +2977,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/strtabs.c -o build/4_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -2957,8 +2997,6 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
@@ -3015,8 +3053,6 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lookups.c -o build/4_1/lookups.o"
@@ -3045,6 +3081,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rst.c -o build/4_1/rst.o"
@@ -3082,6 +3120,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -3090,7 +3130,6 @@ build/4_1/ropes.o \
 build/4_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -3119,7 +3158,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -3134,6 +3172,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -3160,6 +3199,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -3168,7 +3209,6 @@ build/4_1/ropes.o \
 build/4_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -3197,7 +3237,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -3212,6 +3251,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -3253,6 +3293,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -3269,8 +3313,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -3327,8 +3369,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -3357,6 +3397,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -3394,6 +3436,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -3402,7 +3446,6 @@ build/4_2/ropes.o \
 build/4_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -3431,7 +3474,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -3446,6 +3488,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -3472,6 +3515,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -3480,7 +3525,6 @@ build/4_2/ropes.o \
 build/4_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -3509,7 +3553,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -3524,6 +3567,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -3565,6 +3609,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -3581,8 +3629,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -3639,8 +3685,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -3669,6 +3713,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -3706,6 +3752,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -3714,7 +3762,6 @@ build/4_2/ropes.o \
 build/4_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -3743,7 +3790,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -3758,6 +3804,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -3784,6 +3831,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -3792,7 +3841,6 @@ build/4_2/ropes.o \
 build/4_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -3821,7 +3869,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -3836,6 +3883,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -3885,6 +3933,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/strtabs.c -o build/4_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -3901,8 +3953,6 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
@@ -3959,8 +4009,6 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lookups.c -o build/4_1/lookups.o"
@@ -3989,6 +4037,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rst.c -o build/4_1/rst.o"
@@ -4026,6 +4076,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -4034,7 +4086,6 @@ build/4_1/ropes.o \
 build/5_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -4063,7 +4114,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -4078,6 +4128,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -4104,6 +4155,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -4112,7 +4165,6 @@ build/4_1/ropes.o \
 build/5_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -4141,7 +4193,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -4156,6 +4207,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -4197,6 +4249,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -4213,8 +4269,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -4271,8 +4325,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -4301,6 +4353,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -4338,6 +4392,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4346,7 +4402,6 @@ build/4_2/ropes.o \
 build/5_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -4375,7 +4430,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -4390,6 +4444,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -4416,6 +4471,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4424,7 +4481,6 @@ build/4_2/ropes.o \
 build/5_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -4453,7 +4509,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -4468,6 +4523,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -4509,6 +4565,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -4525,8 +4585,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -4583,8 +4641,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -4613,6 +4669,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -4650,6 +4708,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4658,7 +4718,6 @@ build/4_2/ropes.o \
 build/5_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -4687,7 +4746,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -4702,6 +4760,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -4728,6 +4787,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4736,7 +4797,6 @@ build/4_2/ropes.o \
 build/5_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -4765,7 +4825,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -4780,6 +4839,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -4829,6 +4889,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/strtabs.c -o build/4_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -4845,8 +4909,6 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
@@ -4903,8 +4965,6 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lookups.c -o build/4_1/lookups.o"
@@ -4933,6 +4993,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rst.c -o build/4_1/rst.o"
@@ -4970,6 +5032,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -4978,7 +5042,6 @@ build/4_1/ropes.o \
 build/6_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -5007,7 +5070,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -5022,6 +5084,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -5048,6 +5111,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5056,7 +5121,6 @@ build/4_1/ropes.o \
 build/6_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -5085,7 +5149,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -5100,6 +5163,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -5141,6 +5205,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -5157,8 +5225,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -5215,8 +5281,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -5245,6 +5309,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -5282,6 +5348,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5290,7 +5358,6 @@ build/4_2/ropes.o \
 build/6_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -5319,7 +5386,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -5334,6 +5400,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -5360,6 +5427,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5368,7 +5437,6 @@ build/4_2/ropes.o \
 build/6_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -5397,7 +5465,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -5412,6 +5479,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -5453,6 +5521,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -5469,8 +5541,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -5527,8 +5597,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -5557,6 +5625,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -5594,6 +5664,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5602,7 +5674,6 @@ build/4_2/ropes.o \
 build/6_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -5631,7 +5702,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -5646,6 +5716,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -5672,6 +5743,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5680,7 +5753,6 @@ build/4_2/ropes.o \
 build/6_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -5709,7 +5781,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -5724,6 +5795,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -5773,6 +5845,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/strtabs.c -o build/4_1/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/hashes.c -o build/2_1/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -5789,8 +5865,6 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/idgen.c -o build/4_1/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
@@ -5847,8 +5921,6 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/bitsets.c -o build/2_1/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/semthreads.c -o build/4_1/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/importer.c -o build/4_1/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lookups.c -o build/4_1/lookups.o"
@@ -5877,6 +5949,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rst.c -o build/4_1/rst.o"
@@ -5914,6 +5988,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5922,7 +5998,6 @@ build/4_1/ropes.o \
 build/7_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -5951,7 +6026,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -5966,6 +6040,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -5992,6 +6067,8 @@ build/4_1/options.o \
 build/2_1/lists.o \
 build/4_1/strtabs.o \
 build/2_1/hashes.o \
+build/2_1/tables.o \
+build/2_1/math.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -6000,7 +6077,6 @@ build/4_1/ropes.o \
 build/7_1/platform.o \
 build/2_1/idents.o \
 build/2_1/intsets.o \
-build/2_1/math.o \
 build/4_1/idgen.o \
 build/4_1/astalgo.o \
 build/4_1/rodutils.o \
@@ -6029,7 +6105,6 @@ build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
 build/4_1/semthreads.o \
-build/2_1/tables.o \
 build/4_1/importer.o \
 build/4_1/lookups.o \
 build/4_1/semdata.o \
@@ -6044,6 +6119,7 @@ build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/suggest.o \
+build/4_1/aliases.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
 build/4_1/highlite.o \
@@ -6085,6 +6161,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -6101,8 +6181,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -6159,8 +6237,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -6189,6 +6265,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -6226,6 +6304,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6234,7 +6314,6 @@ build/4_2/ropes.o \
 build/7_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -6263,7 +6342,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -6278,6 +6356,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -6304,6 +6383,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6312,7 +6393,6 @@ build/4_2/ropes.o \
 build/7_2/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -6341,7 +6421,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -6356,6 +6435,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -6397,6 +6477,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/strtabs.c -o build/4_2/strtabs.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/hashes.c -o build/2_2/hashes.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -6413,8 +6497,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/idgen.c -o build/4_2/idgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
@@ -6471,8 +6553,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/bitsets.c -o build/2_2/bitsets.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/semthreads.c -o build/4_2/semthreads.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/importer.c -o build/4_2/importer.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lookups.c -o build/4_2/lookups.o"
@@ -6501,6 +6581,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rst.c -o build/4_2/rst.o"
@@ -6538,6 +6620,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6546,7 +6630,6 @@ build/4_2/ropes.o \
 build/7_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -6575,7 +6658,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -6590,6 +6672,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \
@@ -6616,6 +6699,8 @@ build/4_2/options.o \
 build/2_2/lists.o \
 build/4_2/strtabs.o \
 build/2_2/hashes.o \
+build/2_2/tables.o \
+build/2_2/math.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6624,7 +6709,6 @@ build/4_2/ropes.o \
 build/7_3/platform.o \
 build/2_2/idents.o \
 build/2_2/intsets.o \
-build/2_2/math.o \
 build/4_2/idgen.o \
 build/4_2/astalgo.o \
 build/4_2/rodutils.o \
@@ -6653,7 +6737,6 @@ build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
 build/4_2/semthreads.o \
-build/2_2/tables.o \
 build/4_2/importer.o \
 build/4_2/lookups.o \
 build/4_2/semdata.o \
@@ -6668,6 +6751,7 @@ build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/suggest.o \
+build/4_2/aliases.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
 build/4_2/highlite.o \

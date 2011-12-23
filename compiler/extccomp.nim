@@ -422,6 +422,13 @@ proc getOptSize(c: TSystemCC): string =
   if result == "": 
     result = cc[c].optSize    # use default settings from this file
 
+proc noAbsolutePaths: bool {.inline.} =
+  # We used to check current OS != specified OS, but this makes no sense
+  # really: Cross compilation from Linux to Linux for example is entirely
+  # reasonable.
+  # `optGenMapping` is included here for niminst.
+  result = gGlobalOptions * {optGenScript, optGenMapping} != {}
+
 const 
   specialFileA = 42
   specialFileB = 42
@@ -461,7 +468,7 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     add(options, ' ' & cc[c].pic)
   
   var includeCmd, compilePattern: string
-  if targetOS == platform.hostOS: 
+  if not noAbsolutePaths(): 
     # compute include paths:
     includeCmd = cc[c].includeCmd & quoteIfContainsWhite(libpath)
 
@@ -474,9 +481,8 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     compilePattern = cc[c].compilerExe
   
   # XXX fix the grammar finally, we need multi-line if expressions:
-  var cfile = if targetOS == platform.hostOS: cfilename else: extractFileName(
-                                                                     cfilename)
-  var objfile = if not isExternal or targetOS != platform.hostOS: toObjFile(
+  var cfile = if noAbsolutePaths(): extractFileName(cfilename) else: cfilename
+  var objfile = if not isExternal or noAbsolutePaths(): toObjFile(
                       cfile) else: completeCFilePath(toObjFile(cfile))
   cfile = quoteIfContainsWhite(AddFileExt(cfile, cExt))
   objfile = quoteIfContainsWhite(objfile)
@@ -532,9 +538,10 @@ proc CallCCompiler*(projectfile: string) =
     var it = PStrEntry(toLink.head)
     var objfiles = ""
     while it != nil:
+      let objFile = if noAbsolutePaths(): it.data.extractFilename else: it.data
       add(objfiles, ' ')
       add(objfiles, quoteIfContainsWhite(
-          addFileExt(it.data, cc[ccompiler].objExt)))
+          addFileExt(objFile, cc[ccompiler].objExt)))
       it = PStrEntry(it.next)
 
     if optGenStaticLib in gGlobalOptions:
@@ -545,18 +552,18 @@ proc CallCCompiler*(projectfile: string) =
       var linkerExe = getConfigVar(cc[c].name & ".linkerexe")
       if len(linkerExe) == 0: linkerExe = cc[c].linkerExe
       if targetOS == osWindows: linkerExe = addFileExt(linkerExe, "exe")
-      if platform.hostOS != targetOS: linkCmd = quoteIfContainsWhite(linkerExe)
+      if noAbsolutePaths(): linkCmd = quoteIfContainsWhite(linkerExe)
       else: linkCmd = quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe))
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
       else: buildGui = ""
       var exefile: string
       if optGenDynLib in gGlobalOptions:
-        exefile = platform.os[targetOS].dllFrmt % [splitFile(projectFile).name]
+        exefile = platform.os[targetOS].dllFrmt % splitFile(projectFile).name
         buildDll = cc[c].buildDll
       else:
         exefile = splitFile(projectFile).name & platform.os[targetOS].exeExt
         buildDll = ""
-      if targetOS == platform.hostOS:
+      if not noAbsolutePaths():
         exefile = joinPath(splitFile(projectFile).dir, exefile)
       exefile = quoteIfContainsWhite(exefile)
       for linkedLib in items(cLinkedLibs):

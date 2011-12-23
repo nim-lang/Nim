@@ -35,6 +35,10 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/strtabs.c -o build/1_1/strtabs.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/strtabs.c -o build/1_1/strtabs.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/hashes.c -o build/1_1/hashes.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/hashes.c -o build/1_1/hashes.o
+ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
+%CC% %COMP_FLAGS% -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
+ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/math.c -o build/1_1/math.o
+%CC% %COMP_FLAGS% -Ibuild -c build/1_1/math.c -o build/1_1/math.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/condsyms.c -o build/1_1/condsyms.o
@@ -51,8 +55,6 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/intsets.c -o build/1_1/intsets.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/intsets.c -o build/1_1/intsets.o
-ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/math.c -o build/1_1/math.o
-%CC% %COMP_FLAGS% -Ibuild -c build/1_1/math.c -o build/1_1/math.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/idgen.c -o build/1_1/idgen.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o
@@ -109,8 +111,6 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/bitsets.c -o build/1_1/bitsets.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/bitsets.c -o build/1_1/bitsets.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/semthreads.c -o build/1_1/semthreads.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/semthreads.c -o build/1_1/semthreads.o
-ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
-%CC% %COMP_FLAGS% -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/importer.c -o build/1_1/importer.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/importer.c -o build/1_1/importer.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/lookups.c -o build/1_1/lookups.o
@@ -139,6 +139,8 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o
+ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o
+%CC% %COMP_FLAGS% -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/rst.c -o build/1_1/rst.o
@@ -162,8 +164,8 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o
 ECHO %CC% %COMP_FLAGS% -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o
 %CC% %COMP_FLAGS% -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o
 
-ECHO %LINKER% %LINK_FLAGS% -o bin\nimrod.exe  build/1_1/nim__dat.o build/1_1/system.o build/1_1/nimrod.o build/1_1/times.o build/1_1/strutils.o build/1_1/parseutils.o build/1_1/winlean.o build/1_1/commands.o build/1_1/os.o build/1_1/msgs.o build/1_1/options.o build/1_1/lists.o build/1_1/strtabs.o build/1_1/hashes.o build/1_1/nversion.o build/1_1/condsyms.o build/1_1/ast.o build/1_1/crc.o build/1_1/ropes.o build/1_1/platform.o build/1_1/idents.o build/1_1/intsets.o build/1_1/math.o build/1_1/idgen.o build/1_1/astalgo.o build/1_1/rodutils.o build/1_1/extccomp.o build/1_1/osproc.o build/1_1/streams.o build/1_1/wordrecg.o build/1_1/lexer.o build/1_1/lexbase.o build/1_1/llstream.o build/1_1/nimconf.o build/1_1/main.o build/1_1/syntaxes.o build/1_1/parser.o build/1_1/pbraces.o build/1_1/filters.o build/1_1/renderer.o build/1_1/filter_tmpl.o build/1_1/rodread.o build/1_1/memfiles.o build/1_1/rodwrite.o build/1_1/passes.o build/1_1/types.o build/1_1/trees.o build/1_1/magicsys.o build/1_1/nimsets.o build/1_1/bitsets.o build/1_1/semthreads.o build/1_1/tables.o build/1_1/importer.o build/1_1/lookups.o build/1_1/semdata.o build/1_1/treetab.o build/1_1/evals.o build/1_1/semfold.o build/1_1/transf.o build/1_1/cgmeth.o build/1_1/sem.o build/1_1/procfind.o build/1_1/pragmas.o build/1_1/semtypinst.o build/1_1/sigmatch.o build/1_1/suggest.o build/1_1/docgen.o build/1_1/rst.o build/1_1/highlite.o build/1_1/cgen.o build/1_1/ccgutils.o build/1_1/cgendata.o build/1_1/ccgmerge.o build/1_1/ecmasgen.o build/1_1/passaux.o build/1_1/depends.o build/1_1/parseopt.o
-%LINKER% %LINK_FLAGS% -o bin\nimrod.exe  build/1_1/nim__dat.o build/1_1/system.o build/1_1/nimrod.o build/1_1/times.o build/1_1/strutils.o build/1_1/parseutils.o build/1_1/winlean.o build/1_1/commands.o build/1_1/os.o build/1_1/msgs.o build/1_1/options.o build/1_1/lists.o build/1_1/strtabs.o build/1_1/hashes.o build/1_1/nversion.o build/1_1/condsyms.o build/1_1/ast.o build/1_1/crc.o build/1_1/ropes.o build/1_1/platform.o build/1_1/idents.o build/1_1/intsets.o build/1_1/math.o build/1_1/idgen.o build/1_1/astalgo.o build/1_1/rodutils.o build/1_1/extccomp.o build/1_1/osproc.o build/1_1/streams.o build/1_1/wordrecg.o build/1_1/lexer.o build/1_1/lexbase.o build/1_1/llstream.o build/1_1/nimconf.o build/1_1/main.o build/1_1/syntaxes.o build/1_1/parser.o build/1_1/pbraces.o build/1_1/filters.o build/1_1/renderer.o build/1_1/filter_tmpl.o build/1_1/rodread.o build/1_1/memfiles.o build/1_1/rodwrite.o build/1_1/passes.o build/1_1/types.o build/1_1/trees.o build/1_1/magicsys.o build/1_1/nimsets.o build/1_1/bitsets.o build/1_1/semthreads.o build/1_1/tables.o build/1_1/importer.o build/1_1/lookups.o build/1_1/semdata.o build/1_1/treetab.o build/1_1/evals.o build/1_1/semfold.o build/1_1/transf.o build/1_1/cgmeth.o build/1_1/sem.o build/1_1/procfind.o build/1_1/pragmas.o build/1_1/semtypinst.o build/1_1/sigmatch.o build/1_1/suggest.o build/1_1/docgen.o build/1_1/rst.o build/1_1/highlite.o build/1_1/cgen.o build/1_1/ccgutils.o build/1_1/cgendata.o build/1_1/ccgmerge.o build/1_1/ecmasgen.o build/1_1/passaux.o build/1_1/depends.o build/1_1/parseopt.o
+ECHO %LINKER% %LINK_FLAGS% -o bin\nimrod.exe  build/1_1/nim__dat.o build/1_1/system.o build/1_1/nimrod.o build/1_1/times.o build/1_1/strutils.o build/1_1/parseutils.o build/1_1/winlean.o build/1_1/commands.o build/1_1/os.o build/1_1/msgs.o build/1_1/options.o build/1_1/lists.o build/1_1/strtabs.o build/1_1/hashes.o build/1_1/tables.o build/1_1/math.o build/1_1/nversion.o build/1_1/condsyms.o build/1_1/ast.o build/1_1/crc.o build/1_1/ropes.o build/1_1/platform.o build/1_1/idents.o build/1_1/intsets.o build/1_1/idgen.o build/1_1/astalgo.o build/1_1/rodutils.o build/1_1/extccomp.o build/1_1/osproc.o build/1_1/streams.o build/1_1/wordrecg.o build/1_1/lexer.o build/1_1/lexbase.o build/1_1/llstream.o build/1_1/nimconf.o build/1_1/main.o build/1_1/syntaxes.o build/1_1/parser.o build/1_1/pbraces.o build/1_1/filters.o build/1_1/renderer.o build/1_1/filter_tmpl.o build/1_1/rodread.o build/1_1/memfiles.o build/1_1/rodwrite.o build/1_1/passes.o build/1_1/types.o build/1_1/trees.o build/1_1/magicsys.o build/1_1/nimsets.o build/1_1/bitsets.o build/1_1/semthreads.o build/1_1/importer.o build/1_1/lookups.o build/1_1/semdata.o build/1_1/treetab.o build/1_1/evals.o build/1_1/semfold.o build/1_1/transf.o build/1_1/cgmeth.o build/1_1/sem.o build/1_1/procfind.o build/1_1/pragmas.o build/1_1/semtypinst.o build/1_1/sigmatch.o build/1_1/suggest.o build/1_1/aliases.o build/1_1/docgen.o build/1_1/rst.o build/1_1/highlite.o build/1_1/cgen.o build/1_1/ccgutils.o build/1_1/cgendata.o build/1_1/ccgmerge.o build/1_1/ecmasgen.o build/1_1/passaux.o build/1_1/depends.o build/1_1/parseopt.o
+%LINKER% %LINK_FLAGS% -o bin\nimrod.exe  build/1_1/nim__dat.o build/1_1/system.o build/1_1/nimrod.o build/1_1/times.o build/1_1/strutils.o build/1_1/parseutils.o build/1_1/winlean.o build/1_1/commands.o build/1_1/os.o build/1_1/msgs.o build/1_1/options.o build/1_1/lists.o build/1_1/strtabs.o build/1_1/hashes.o build/1_1/tables.o build/1_1/math.o build/1_1/nversion.o build/1_1/condsyms.o build/1_1/ast.o build/1_1/crc.o build/1_1/ropes.o build/1_1/platform.o build/1_1/idents.o build/1_1/intsets.o build/1_1/idgen.o build/1_1/astalgo.o build/1_1/rodutils.o build/1_1/extccomp.o build/1_1/osproc.o build/1_1/streams.o build/1_1/wordrecg.o build/1_1/lexer.o build/1_1/lexbase.o build/1_1/llstream.o build/1_1/nimconf.o build/1_1/main.o build/1_1/syntaxes.o build/1_1/parser.o build/1_1/pbraces.o build/1_1/filters.o build/1_1/renderer.o build/1_1/filter_tmpl.o build/1_1/rodread.o build/1_1/memfiles.o build/1_1/rodwrite.o build/1_1/passes.o build/1_1/types.o build/1_1/trees.o build/1_1/magicsys.o build/1_1/nimsets.o build/1_1/bitsets.o build/1_1/semthreads.o build/1_1/importer.o build/1_1/lookups.o build/1_1/semdata.o build/1_1/treetab.o build/1_1/evals.o build/1_1/semfold.o build/1_1/transf.o build/1_1/cgmeth.o build/1_1/sem.o build/1_1/procfind.o build/1_1/pragmas.o build/1_1/semtypinst.o build/1_1/sigmatch.o build/1_1/suggest.o build/1_1/aliases.o build/1_1/docgen.o build/1_1/rst.o build/1_1/highlite.o build/1_1/cgen.o build/1_1/ccgutils.o build/1_1/cgendata.o build/1_1/ccgmerge.o build/1_1/ecmasgen.o build/1_1/passaux.o build/1_1/depends.o build/1_1/parseopt.o
 
 ECHO SUCCESS
 
