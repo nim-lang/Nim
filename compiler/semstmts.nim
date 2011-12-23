@@ -269,7 +269,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
-      if a.kind != nkVarTuple: 
+        if sfThread in v.flags: LocalError(def.info, errThreadvarCannotInit)
+      if a.kind != nkVarTuple:
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
         addSon(b, newSymNode(v))
