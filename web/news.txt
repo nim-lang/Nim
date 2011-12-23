@@ -91,6 +91,8 @@ Compiler Additions
   and Objective C somewhat easier.
 - Added a ``--nimcache:PATH`` configuration option for control over the output
   directory for generated code.
+- The ``--genScript`` option now produces different compilation scripts 
+  which do not contain absolute paths.
 - Added ``--cincludes:dir``, ``--clibdir:lib`` configuration options for 
   modifying the C compiler's header/library search path in cross-platform way.
 - Added ``--clib:lib`` configuration option for specifying additional
