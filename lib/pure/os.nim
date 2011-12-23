@@ -694,8 +694,8 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
 # iterator depends on ``environment``.
 
 var
-  envComputed {.threadvar.}: bool = false
-  environment {.threadvar.}: seq[string] = @[]
+  envComputed {.threadvar.}: bool
+  environment {.threadvar.}: seq[string]
 
 when defined(windows):
   # because we support Windows GUI applications, things get really
@@ -705,6 +705,7 @@ when defined(windows):
 
   proc getEnvVarsC() =
     if not envComputed:
+      environment = @[]
       var
         env = getEnvironmentStringsA()
         e = env
@@ -738,6 +739,7 @@ else:
   proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
+      environment = @[]
       when useNSGetEnviron:
         var gEnv = NSGetEnviron()[]
       var i = 0
