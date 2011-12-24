@@ -11,7 +11,9 @@ when defined(gcc) and defined(windows):
   {.link: "icons/koch.res".}
 
 import
-  os, strutils, parseopt
+  os, strutils, parseopt, osproc, httpclient
+when defined(haveZipLib):
+  import zipfiles
 
 const
   HelpText = """
@@ -80,20 +82,49 @@ proc web(args: string) =
        NimrodVersion)
 
 proc update(args: string) =
-  if ExistFile("./.git"):
+  var thisDir = getAppDir()
+  echo("Checking for git repo...")
+  if existsDir(thisDir & "/.git"):
+    echo("Git repo found!")
     # use git to download latest source
-    exec("git pull")
-  else:
-    # use dom96's httpclient to download zip
-    import httpclient
-    import zipfiles
-    downloadFile("https://github.com/Araq/Nimrod/zipball/master","./update.zip")
+    var output = execProcess("git diff origin/master master")
+    if output == "\r\n":
+      # No changes
+      echo("No update. Exiting..")
+      return
+    else:
+      echo("Fetching updates from repo...")
+      var pullout = execCmdEx("git pull origin master")
+      if pullout[1] != 0:
+        echo("An error has occured.")
+        return
+      else:
+        if pullout[0] == "Already up-to-date.\r\n":
+           echo("No new changes fetched from the repo. Local branch must be ahead of it. Exiting...")
+           return
     
-    var zip :TZipArchive
-    discard open(zip,fmRead) # will add error checking later
-    extractAll(zip,"./")
-
+  else:
+    
+    when defined(haveZipLib):
+      echo("Falling back.. Downloading source code from repo...")
+      # use dom96's httpclient to download zip
+      downloadFile("https://github.com/Araq/Nimrod/zipball/master",thisDir & "/update.zip")
+    
+      try:
+        echo("Extracting source code from archive...")
+        var zip :TZipArchive
+        discard open(zip,thisDir & "/update.zip", fmRead) # will add error checking later
+        extractAll(zip, thisDir & "/")
+      except:
+        echo("Error reading archive.")
+        return
+    else:
+      echo("No failback available. Exiting...")
+      return
+  
+  echo("Starting update...")
   exec("./koch boot -d:release")
+  echo("Update complete!")
 
 
 
@@ -223,7 +254,7 @@ of cmdArgument:
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
-  of "update", "up": update(op.cmdLineRest)
+  of "update": update(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 
