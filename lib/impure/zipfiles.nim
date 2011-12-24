@@ -142,3 +142,25 @@ iterator walkFiles*(z: var TZipArchive): string =
   while i < num:
     yield $zip_get_name(z.w, i, 0'i32)
     inc(i)
+
+
+proc extractFile*(z: var TZipArchive, srcFile: string, dest: PStream) =
+  var strm = getStream(z, srcFile)
+  while true:
+    if not strm.atEnd:
+        dest.write(strm.readStr(1))
+    else: break
+  dest.flush()
+  strm.close()
+  dest.close()
+
+proc extractFile*(z: var TZipArchive, srcFile: string, dest: string) =
+  var file = newFileStream(dest, fmReadWrite)
+  extractFile(z, srcFile, file)
+
+proc extractAll*(z: var TZipArchive, dest: string) =
+  for file in walkFiles(z):
+    extractFile(z, file, dest & "/" & extractFilename(file))
+
+   
+   

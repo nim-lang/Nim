@@ -34,6 +34,7 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
   tests                    run the testsuite
+  update                   updates nimrod to the latest version from the repo.	
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -77,6 +78,24 @@ proc install(args: string) =
 proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
+
+proc update(args: string) =
+  if ExistFile("./.git"):
+    # use git to download latest source
+    exec("git pull")
+  else:
+    # use dom96's httpclient to download zip
+    import httpclient
+    import zipfiles
+    downloadFile("https://github.com/Araq/Nimrod/zipball/master","./update.zip")
+    
+    var zip :TZipArchive
+    discard open(zip,fmRead) # will add error checking later
+    extractAll(zip,"./")
+
+  exec("./koch boot -d:release")
+
+
 
 # -------------- boot ---------------------------------------------------------
 
@@ -204,6 +223,7 @@ of cmdArgument:
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
+  of "update", "up": update(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 
