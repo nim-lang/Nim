@@ -11,7 +11,7 @@ when defined(gcc) and defined(windows):
   {.link: "icons/koch.res".}
 
 import
-  os, strutils, parseopt, osproc, httpclient
+  os, strutils, parseopt, osproc, httpclient, streams
 when defined(haveZipLib):
   import zipfiles
 
@@ -44,6 +44,8 @@ Boot options:
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
 """
+
+proc boot(args: string) # Forward declaration
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
@@ -82,26 +84,39 @@ proc web(args: string) =
        NimrodVersion)
 
 proc update(args: string) =
+  when defined(windows):
+    echo("Windows Users: Make sure to be running this in Bash. If you aren't, press CTRL+C now.")
+
+
   var thisDir = getAppDir()
+  var git = findExe("git")
   echo("Checking for git repo...")
-  if existsDir(thisDir & "/.git"):
+  if existsDir(thisDir & "/.git") and git != "":
     echo("Git repo found!")
     # use git to download latest source
-    var output = execProcess("git diff origin/master master")
-    if output == "\r\n":
-      # No changes
-      echo("No update. Exiting..")
-      return
-    else:
-      echo("Fetching updates from repo...")
-      var pullout = execCmdEx("git pull origin master")
-      if pullout[1] != 0:
-        echo("An error has occured.")
+    discard startCmd(git & " fetch origin master")
+    var procs = startCmd(git & " diff origin/master master")
+    var errcode = procs.waitForExit()
+    var output = readLine(procs.outputStream)
+    echo(output)
+    if errcode == 0:
+      if output == "":
+        # No changes
+        echo("No update. Exiting..")
         return
       else:
-        if pullout[0] == "Already up-to-date.\r\n":
-           echo("No new changes fetched from the repo. Local branch must be ahead of it. Exiting...")
-           return
+        echo("Fetching updates from repo...")
+        var pullout = execCmdEx(git & " pull origin master")
+        if pullout[1] != 0:
+          echo("An error has occured.")
+          return
+        else:
+          if pullout[0] == "Already up-to-date.\r\n":
+             echo("No new changes fetched from the repo. Local branch must be ahead of it. Exiting...")
+             return
+    else:
+        echo("An error has occured.")
+        return
     
   else:
     
@@ -123,7 +138,7 @@ proc update(args: string) =
       return
   
   echo("Starting update...")
-  exec("./koch boot -d:release")
+  boot(args)
   echo("Update complete!")
 
 
