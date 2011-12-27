@@ -382,8 +382,11 @@ when defined(Windows) and not defined(useNimRtl):
     if running(p):
       discard TerminateProcess(p.FProcessHandle, 0)
 
-  proc waitForExit(p: PProcess): int =
-    discard WaitForSingleObject(p.FProcessHandle, Infinite)
+  proc waitForExit(p: PProcess, timeout: int = -1): int =
+    if timeout is -1:
+    	discard WaitForSingleObject(p.FProcessHandle, Infinite)
+    else: discard WaitForSingleObject(p.FProcessHandle, timeout)
+
     var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
     result = res
