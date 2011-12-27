@@ -145,6 +145,7 @@ iterator walkFiles*(z: var TZipArchive): string =
 
 
 proc extractFile*(z: var TZipArchive, srcFile: string, dest: PStream) =
+  ## extracts a file from the zip archive 'z' to the destination stream.
   var strm = getStream(z, srcFile)
   while true:
     if not strm.atEnd:
@@ -152,13 +153,15 @@ proc extractFile*(z: var TZipArchive, srcFile: string, dest: PStream) =
     else: break
   dest.flush()
   strm.close()
-  dest.close()
 
 proc extractFile*(z: var TZipArchive, srcFile: string, dest: string) =
+  ## extracts a file from the zip archive 'z' to the destination filename.
   var file = newFileStream(dest, fmReadWrite)
   extractFile(z, srcFile, file)
+  file.close()
 
 proc extractAll*(z: var TZipArchive, dest: string) =
+  ## extracts all files from archive 'z' to the destination directory.
   for file in walkFiles(z):
     extractFile(z, file, dest & "/" & extractFilename(file))
 
