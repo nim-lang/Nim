@@ -140,105 +140,6 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 
 {.pop.}
 
-proc findNormalized(x: string, inArray: openarray[string]): int =
-  var i = 0
-  while i < high(inArray):
-    if cmpIgnoreStyle(x, inArray[i]) == 0: return i
-    inc(i, 2) # incrementing by 1 would probably lead to a
-              # security hole...
-  return -1
-
-proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
-  noSideEffect, rtl, extern: "nsuAddf".} =
-  ## The same as ``add(s, formatstr % a)``, but more efficient.
-  const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
-  var i = 0
-  var num = 0
-  while i < len(formatstr):
-    if formatstr[i] == '$':
-      case formatstr[i+1] # again we use the fact that strings
-                          # are zero-terminated here
-      of '#':
-        add s, a[num]
-        inc i, 2
-        inc num
-      of '$':
-        add s, '$'
-        inc(i, 2)
-      of '1'..'9':
-        var j = 0
-        inc(i) # skip $
-        while formatstr[i] in Digits:
-          j = j * 10 + ord(formatstr[i]) - ord('0')
-          inc(i)
-        add s, a[j - 1]
-      of '{':
-        var j = i+1
-        while formatstr[j] notin {'\0', '}'}: inc(j)
-        var x = findNormalized(substr(formatstr, i+2, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
-        i = j+1
-      of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
-        var j = i+1
-        while formatstr[j] in PatternChars: inc(j)
-        var x = findNormalized(substr(formatstr, i+1, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
-        i = j
-      else: raise newException(EInvalidValue, "invalid format string")
-    else:
-      add s, formatstr[i]
-      inc(i)
-
-proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
-  rtl, extern: "nsuFormatOpenArray".} =
-  ## The `substitution`:idx: operator performs string substitutions in
-  ## `formatstr` and returns a modified `formatstr`. This is often called
-  ## `string interpolation`:idx:.
-  ##
-  ## This is best explained by an example:
-  ##
-  ## .. code-block:: nimrod
-  ##   "$1 eats $2." % ["The cat", "fish"]
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nimrod
-  ##   "The cat eats fish."
-  ##
-  ## The substitution variables (the thing after the ``$``) are enumerated
-  ## from 1 to ``a.len``.
-  ## To produce a verbatim ``$``, use ``$$``.
-  ## The notation ``$#`` can be used to refer to the next substitution variable:
-  ##
-  ## .. code-block:: nimrod
-  ##   "$# eats $#." % ["The cat", "fish"]
-  ##
-  ## Substitution variables can also be words (that is
-  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
-  ## indices are keys and with odd indices are the corresponding values.
-  ## An example:
-  ##
-  ## .. code-block:: nimrod
-  ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nimrod
-  ##   "The cat eats fish."
-  ##
-  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
-  ## raised if an ill-formed format string has been passed to the `%` operator.
-  result = newStringOfCap(formatstr.len + a.len shl 4)
-  addf(result, formatstr, a)
-
-proc `%` *(formatstr, a: string): string {.noSideEffect,
-  rtl, extern: "nsuFormatSingleElem".} =
-  ## This is the same as ``formatstr % [a]``.
-  result = newStringOfCap(formatstr.len + a.len)
-  addf(result, formatstr, [a])
-
 proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
   rtl, extern: "nsuStrip".} =
   ## Strips whitespace from `s` and returns the resulting string.
@@ -921,7 +822,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   inc(len2)
   var half = len1 shr 1
   # initalize first row:
-  #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2 * sizeof(int)))
+  #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)
   var e = s + len2 - 1 # end marker
@@ -1033,7 +934,7 @@ proc formatSize*(bytes: biggestInt, decimalSep = '.'): string =
   ##
   ## .. code-block:: nimrod
   ##
-  ##    formatSize(1'i64 shl 31 + 300'i64) == "4GB"
+  ##    formatSize(1'i64 shl 31 + 300'i64) == "2.204GB"
   ##    formatSize(4096) == "4KB"
   ##
   template frmt(a, b, c: expr): expr =
@@ -1051,6 +952,112 @@ proc formatSize*(bytes: biggestInt, decimalSep = '.'): string =
   else:
     result = insertSep($bytes) & "B"
 
+proc findNormalized(x: string, inArray: openarray[string]): int =
+  var i = 0
+  while i < high(inArray):
+    if cmpIgnoreStyle(x, inArray[i]) == 0: return i
+    inc(i, 2) # incrementing by 1 would probably lead to a
+              # security hole...
+  return -1
+
+proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
+  noSideEffect, rtl, extern: "nsuAddf".} =
+  ## The same as ``add(s, formatstr % a)``, but more efficient.
+  const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
+  var i = 0
+  var num = 0
+  while i < len(formatstr):
+    if formatstr[i] == '$':
+      case formatstr[i+1] # again we use the fact that strings
+                          # are zero-terminated here
+      of '#':
+        add s, a[num]
+        inc i, 2
+        inc num
+      of '$':
+        add s, '$'
+        inc(i, 2)
+      of '1'..'9', '-':
+        var j = 0
+        inc(i) # skip $
+        var negative = formatstr[i] == '-'
+        if negative: inc i
+        while formatstr[i] in Digits:
+          j = j * 10 + ord(formatstr[i]) - ord('0')
+          inc(i)
+        if not negative:
+          add s, a[j - 1]
+        else:
+          add s, a[a.len - j]
+      of '{':
+        var j = i+1
+        while formatstr[j] notin {'\0', '}'}: inc(j)
+        var x = findNormalized(substr(formatstr, i+2, j-1), a)
+        if x >= 0 and x < high(a): add s, a[x+1]
+        else: raise newException(EInvalidValue, "invalid format string")
+        i = j+1
+      of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
+        var j = i+1
+        while formatstr[j] in PatternChars: inc(j)
+        var x = findNormalized(substr(formatstr, i+1, j-1), a)
+        if x >= 0 and x < high(a): add s, a[x+1]
+        else: raise newException(EInvalidValue, "invalid format string")
+        i = j
+      else:
+        raise newException(EInvalidValue, "invalid format string")
+    else:
+      add s, formatstr[i]
+      inc(i)
+
+proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
+  rtl, extern: "nsuFormatOpenArray".} =
+  ## The `substitution`:idx: operator performs string substitutions in
+  ## `formatstr` and returns a modified `formatstr`. This is often called
+  ## `string interpolation`:idx:.
+  ##
+  ## This is best explained by an example:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$1 eats $2." % ["The cat", "fish"]
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "The cat eats fish."
+  ##
+  ## The substitution variables (the thing after the ``$``) are enumerated
+  ## from 1 to ``a.len``.
+  ## To produce a verbatim ``$``, use ``$$``.
+  ## The notation ``$#`` can be used to refer to the next substitution
+  ## variable:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$# eats $#." % ["The cat", "fish"]
+  ##
+  ## Substitution variables can also be words (that is
+  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
+  ## indices are keys and with odd indices are the corresponding values.
+  ## An example:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "The cat eats fish."
+  ##
+  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
+  ## raised if an ill-formed format string has been passed to the `%` operator.
+  result = newStringOfCap(formatstr.len + a.len shl 4)
+  addf(result, formatstr, a)
+
+proc `%` *(formatstr, a: string): string {.noSideEffect,
+  rtl, extern: "nsuFormatSingleElem".} =
+  ## This is the same as ``formatstr % [a]``.
+  result = newStringOfCap(formatstr.len + a.len)
+  addf(result, formatstr, [a])
+
 {.pop.}
 
 when isMainModule:
@@ -1065,4 +1072,7 @@ when isMainModule:
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
   echo formatSize(1'i64 shl 31)
+
+  doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
+           "The cat eats fish."
 

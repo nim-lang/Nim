@@ -1,6 +1,7 @@
 version 0.8.14
 ==============
 
+- document subexes; i18n module
 - GC should care about interior pointers on the stack
 - BUG: type TX = TTable[string, int]
 - warning for implicit openArray -> varargs conversion

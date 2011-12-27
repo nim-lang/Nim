@@ -108,6 +108,9 @@ String handling
 * `matchers <matchers.html>`_
   This module contains various string matchers for email addresses, etc.
 
+* `subexes <subexes.html>`_
+  This module implements advanted string substitution operations.
+
 
 Generic Operating System Services
 ---------------------------------
