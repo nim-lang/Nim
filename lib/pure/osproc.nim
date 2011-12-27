@@ -102,7 +102,7 @@ proc processID*(p: PProcess): int {.rtl, extern: "nosp$1".} =
   ## returns `p`'s process ID.
   return p.id
 
-proc waitForExit*(p: PProcess): int {.rtl, extern: "nosp$1".}
+proc waitForExit*(p: PProcess, timeout: int = -1): int {.rtl, extern: "nosp$1".}
   ## waits for the process to finish and returns `p`'s error code.
 
 proc peekExitCode*(p: PProcess): int
@@ -382,8 +382,9 @@ when defined(Windows) and not defined(useNimRtl):
     if running(p):
       discard TerminateProcess(p.FProcessHandle, 0)
 
-  proc waitForExit(p: PProcess): int =
-    discard WaitForSingleObject(p.FProcessHandle, Infinite)
+  proc waitForExit(p: PProcess, timeout: int = -1): int =
+    discard WaitForSingleObject(p.FProcessHandle, timeout)
+
     var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
     result = res
@@ -640,7 +641,7 @@ elif not defined(useNimRtl):
         if kill(-p.id, SIGKILL) != 0'i32: OSError()
     else: OSError()
 
-  proc waitForExit(p: PProcess): int =
+  proc waitForExit(p: PProcess, timeout: int = -1): int =
     #if waitPid(p.id, p.exitCode, 0) == int(p.id):
     # ``waitPid`` fails if the process is not running anymore. But then
     # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is

@@ -11,7 +11,9 @@ when defined(gcc) and defined(windows):
   {.link: "icons/koch.res".}
 
 import
-  os, strutils, parseopt
+  os, strutils, parseopt, osproc, httpclient, streams
+when defined(haveZipLib):
+  import zipfiles
 
 const
   HelpText = """
@@ -34,6 +36,7 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
   tests                    run the testsuite
+  update                   updates nimrod to the latest version from the repo.	
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -41,6 +44,8 @@ Boot options:
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
 """
+
+proc boot(args: string) # Forward declaration
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
@@ -77,6 +82,68 @@ proc install(args: string) =
 proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
+
+proc update(args: string) =
+  when defined(windows):
+    echo("Windows Users: Make sure to be running this in Bash. If you aren't, press CTRL+C now.")
+
+
+  var thisDir = getAppDir()
+  var git = findExe("git")
+  echo("Checking for git repo and git executable...")
+  if existsDir(thisDir & "/.git") and git != "":
+    echo("Git repo found!")
+    # use git to download latest source
+    echo("Checking for updates...")
+    discard startCmd(git & " fetch origin master")
+    var procs = startCmd(git & " diff origin/master master")
+    var errcode = procs.waitForExit()
+    var output = readLine(procs.outputStream)
+    echo(output)
+    if errcode == 0:
+      if output == "":
+        # No changes
+        echo("No update. Exiting..")
+        return
+      else:
+        echo("Fetching updates from repo...")
+        var pullout = execCmdEx(git & " pull origin master")
+        if pullout[1] != 0:
+          echo("An error has occured.")
+          return
+        else:
+          if pullout[0] == "Already up-to-date.\r\n":
+             echo("No new changes fetched from the repo. Local branch must be ahead of it. Exiting...")
+             return
+    else:
+        echo("An error has occured.")
+        return
+    
+  else:
+    echo("No repo or executable found!")
+    when defined(haveZipLib):
+      echo("Falling back.. Downloading source code from repo...")
+      # use dom96's httpclient to download zip
+      downloadFile("https://github.com/Araq/Nimrod/zipball/master",thisDir & "/update.zip")
+    
+      try:
+        echo("Extracting source code from archive...")
+        var zip :TZipArchive
+        discard open(zip,thisDir & "/update.zip", fmRead) # will add error checking later
+        extractAll(zip, thisDir & "/")
+      except:
+        echo("Error reading archive.")
+        return
+    else:
+      echo("No failback available. Exiting...")
+      return
+  
+  echo("Starting update...")
+  boot(args)
+  echo("Update complete!")
+
+
+
 
 # -------------- boot ---------------------------------------------------------
 
@@ -204,6 +271,7 @@ of cmdArgument:
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
+  of "update": update(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
 
