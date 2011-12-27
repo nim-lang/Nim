@@ -90,10 +90,11 @@ proc update(args: string) =
 
   var thisDir = getAppDir()
   var git = findExe("git")
-  echo("Checking for git repo...")
+  echo("Checking for git repo and git executable...")
   if existsDir(thisDir & "/.git") and git != "":
     echo("Git repo found!")
     # use git to download latest source
+    echo("Checking for updates...")
     discard startCmd(git & " fetch origin master")
     var procs = startCmd(git & " diff origin/master master")
     var errcode = procs.waitForExit()
@@ -119,7 +120,7 @@ proc update(args: string) =
         return
     
   else:
-    
+    echo("No repo or executable found!")
     when defined(haveZipLib):
       echo("Falling back.. Downloading source code from repo...")
       # use dom96's httpclient to download zip
@@ -140,6 +141,7 @@ proc update(args: string) =
   echo("Starting update...")
   boot(args)
   echo("Update complete!")
+
 
 
 
