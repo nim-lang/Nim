@@ -57,6 +57,11 @@ proc removeHandler*(handler: var TEventHandler, func: proc(e: TEventArgs)) =
       handler.handlers.del(i)
       break
     
+proc containsHandler*(handler: var TEventHandler, func: proc(e: TEventArgs)): bool =
+  ## Checks if a callback is registered to this event handler.
+  return handler.handlers.contains(func)
+
+
 proc clearHandlers*(handler: var TEventHandler) =
   ## Clears all of the callbacks from the event handler.
   setLen(handler.handlers, 0)
