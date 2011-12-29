@@ -12,25 +12,27 @@
 ## This module implements an event system that is not dependant on external
 ## graphical toolkits. It was originally called ``NimEE`` because 
 ## it was inspired by Python's PyEE module. There are two ways you can use events: one is a python-inspired way; the other is more of a C-style way.
-## .. code-block:: Nimrod
-##   var ee = initEventEmitter()
-##   var genericargs: TEventArgs
-##   proc handleevent(e: TEventArgs) =
-##       echo("Handled!")
 ##
-##   # Python way
-##   ee.on("EventName", handleevent)
-##   ee.emit("EventName", genericargs)
+## .. code-block:: Nimrod
+##    var ee = initEventEmitter()
+##    var genericargs: TEventArgs
+##    proc handleevent(e: TEventArgs) =
+##        echo("Handled!")
+##
+##    # Python way
+##    ee.on("EventName", handleevent)
+##    ee.emit("EventName", genericargs)
 ## 
-##   # C/Java way
-##   # Declare a type
-##   type
-##       TSomeObject = object of TObject
-##           SomeEvent: TEventHandler
-##   var myobj: TSomeObject
-##   myobj.SomeEvent = initEventHandler("SomeEvent")
-##   myobj.SomeEvent.addHandler(handleevent)
-##   ee.emit(myobj.SomeEvent, genericargs)
+##    # C/Java way
+##    # Declare a type
+##    type
+##        TSomeObject = object of TObject
+##            SomeEvent: TEventHandler
+##    var myobj: TSomeObject
+##    myobj.SomeEvent = initEventHandler("SomeEvent")
+##    myobj.SomeEvent.addHandler(handleevent)
+##    ee.emit(myobj.SomeEvent, genericargs)
+
 type
   TEventArgs* = object of TObject ## Base object for event arguments that are passed to callback functions.
   TEventHandler* = tuple[name: string, handlers: seq[proc(e:TEventArgs)]] ## An eventhandler for an event.
