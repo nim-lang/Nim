@@ -34,7 +34,6 @@ version 0.9.0
   changes that people want; may turn out to be a bad idea
 - activate more thread tests
 
-
 Bugs
 ----
 - bug: generic assign still buggy
@@ -93,7 +92,7 @@ Library
 
 - wrappers for poppler; libharu
 - suffix trees
-- locale support
+- locale support; i18n module
 - bignums
 
 - pdcurses bindings

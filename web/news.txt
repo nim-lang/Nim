@@ -140,6 +140,7 @@ Library Additions
 - Added ``irc`` module.
 - Added ``ftpclient`` module.
 - Added ``memfiles`` module.
+- Added ``subexes`` module.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 - The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to
