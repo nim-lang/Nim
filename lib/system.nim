@@ -1557,6 +1557,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   {.push stack_trace: off.}
 
   proc initGC()
+  when not defined(boehmgc):
+    proc initAllocator() {.inline.}
 
   proc initStackBottom() {.inline.} = 
     # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -1792,7 +1794,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       prev: PSafePoint # points to next safe point ON THE STACK
       status: int
       context: C_JmpBuf
-
+  
+  when defined(initAllocator):
+    initAllocator()
   when hasThreadSupport:
     include "system/syslocks"
     include "system/threads"

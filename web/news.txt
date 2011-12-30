@@ -18,8 +18,8 @@ Bugfixes
 - Bugfix c2nim, c2pas: the ``--out`` option has never worked properly.
 - Bugfix: forwarding of generic procs never worked.
 - Some more bugfixes for macros and compile-time evaluation.
-- The compiler now generates code that tries to keep the C compiler from
-  optimizing stack allocated GC roots away.
+- The GC now takes into account interior pointers on the stack which may be
+  introduced by aggressive C optimizers.
 
 
 Changes affecting backwards compatibility
@@ -114,7 +114,7 @@ Compiler Additions
 - Added ``--import:file`` and ``--include:file`` configuration options
   for specifying modules that will be automatically imported/incluced.
 - ``nimrod i`` can now optionally be given a module to execute.
-- The compiler now performs a simple aliases analysis to generate better code.
+- The compiler now performs a simple alias analysis to generate better code.
 
 
 Library Additions
@@ -141,6 +141,7 @@ Library Additions
 - Added ``ftpclient`` module.
 - Added ``memfiles`` module.
 - Added ``subexes`` module.
+- Added ``critbits`` module.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 - The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to
