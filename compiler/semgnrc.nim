@@ -144,13 +144,15 @@ proc semGenericStmt(c: PContext, n: PNode,
     var L = sonsLen(n)
     openScope(c.tab)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, toBind)
-    for i in countup(0, L - 3): addDecl(c, newSymS(skUnknown, n.sons[i], c))
+    for i in countup(0, L - 3):
+      addPrelimDecl(c, newSymS(skUnknown, n.sons[i], c))
     n.sons[L - 1] = semGenericStmt(c, n.sons[L-1], flags, toBind)
     closeScope(c.tab)
   of nkBlockStmt, nkBlockExpr, nkBlockType: 
     checkSonsLen(n, 2)
     openScope(c.tab)
-    if n.sons[0].kind != nkEmpty: addDecl(c, newSymS(skUnknown, n.sons[0], c))
+    if n.sons[0].kind != nkEmpty: 
+      addPrelimDecl(c, newSymS(skUnknown, n.sons[0], c))
     n.sons[1] = semGenericStmt(c, n.sons[1], flags, toBind)
     closeScope(c.tab)
   of nkTryStmt: 
@@ -174,7 +176,7 @@ proc semGenericStmt(c: PContext, n: PNode,
                                    toBind)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, toBind)
       for j in countup(0, L-3):
-        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
+        addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkGenericParams: 
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
@@ -185,14 +187,14 @@ proc semGenericStmt(c: PContext, n: PNode,
                                    toBind) 
       # do not perform symbol lookup for default expressions 
       for j in countup(0, L-3): 
-        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
+        addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkConstSection: 
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkConstDef): IllFormedAst(a)
       checkSonsLen(a, 3)
-      addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[0]), c))
+      addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[0]), c))
       a.sons[1] = semGenericStmt(c, a.sons[1], flags+{withinTypeDesc}, toBind)
       a.sons[2] = semGenericStmt(c, a.sons[2], flags, toBind)
   of nkTypeSection: 
@@ -201,7 +203,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkTypeDef): IllFormedAst(a)
       checkSonsLen(a, 3)
-      addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[0]), c))
+      addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[0]), c))
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
@@ -240,17 +242,17 @@ proc semGenericStmt(c: PContext, n: PNode,
                                    toBind)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, toBind)
       for j in countup(0, L-3): 
-        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
+        addPrelimDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef, nkLambda: 
     checkSonsLen(n, bodyPos + 1)
-    addDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
+    addPrelimDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
     openScope(c.tab)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos], 
                                               flags, toBind)
     if n.sons[paramsPos].kind != nkEmpty: 
       if n.sons[paramsPos].sons[0].kind != nkEmpty: 
-        addDecl(c, newSym(skUnknown, getIdent("result"), nil))
+        addPrelimDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, toBind)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, toBind)
     var body: PNode
