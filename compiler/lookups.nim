@@ -68,7 +68,10 @@ proc AddSym*(t: var TStrTable, n: PSym) =
 proc addDecl*(c: PContext, sym: PSym) = 
   if SymTabAddUnique(c.tab, sym) == Failure: 
     LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
-  
+
+proc addPrelimDecl*(c: PContext, sym: PSym) =
+  discard SymTabAddUnique(c.tab, sym)
+
 proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
   if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
     LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
