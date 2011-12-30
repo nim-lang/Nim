@@ -549,14 +549,12 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling) =
     assert(false)             # we want a stack trace here
   if (msg >= fatalMin) and (msg <= fatalMax): 
     if gVerbosity >= 3: assert(false)
-    assert false
     quit(1)
   if (msg >= errMin) and (msg <= errMax): 
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax or eh == doAbort: 
       if gVerbosity >= 3: assert(false)
-      assert false
       quit(1)                 # one error stops the compiler
     elif eh == doRaise:
       raiseRecoverableError()
