@@ -344,7 +344,7 @@ const
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
-    hintSuccessX: "operation successful ($1 lines compiled; $2 sec total) [SuccessX]", 
+    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
     hintLineTooLong: "line too long [LineTooLong]", 
     hintXDeclaredButNotUsed: "\'$1\' is declared but not used [XDeclaredButNotUsed]", 
     hintConvToBaseNotNeeded: "conversion to base object is not needed [ConvToBaseNotNeeded]", 

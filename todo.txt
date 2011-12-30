@@ -1,8 +1,9 @@
 version 0.8.14
 ==============
 
-- GC should care about interior pointers on the stack
+- add critbits module to stdlib
 - BUG: type TX = TTable[string, int]
+- BUG: c2nim: int x[20];
 - warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
@@ -33,6 +34,7 @@ version 0.9.0
 - optional indentation for 'case' statement; hm, keep in mind other syntax
   changes that people want; may turn out to be a bad idea
 - activate more thread tests
+- optimize method dispatchers
 
 Bugs
 ----

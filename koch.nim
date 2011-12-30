@@ -36,7 +36,7 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
   tests                    run the testsuite
-  update                   updates nimrod to the latest version from the repo.	
+  update                   updates nimrod to the latest version from the repo
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
