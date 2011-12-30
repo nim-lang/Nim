@@ -61,9 +61,9 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc HandleCmdLine() = 
+proc HandleCmdLine() =
   var start = epochTime()
-  if paramCount() == 0: 
+  if paramCount() == 0:
     writeCommandLineUsage()
   else:
     # Process command line arguments:
@@ -85,13 +85,15 @@ proc HandleCmdLine() =
     ProcessCmdLine(passCmd2)
     MainCommand()
     if gVerbosity >= 2: echo(GC_getStatistics())
+    #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
         if gCmd == cmdRun:
           tccgen.run()
-      if gCmd notin {cmdInterpret, cmdRun}: 
-        rawMessage(hintSuccessX, [$gLinesCompiled, 
-                   formatFloat(epochTime() - start, ffDecimal, 3)])
+      if gCmd notin {cmdInterpret, cmdRun}:
+        rawMessage(hintSuccessX, [$gLinesCompiled,
+                   formatFloat(epochTime() - start, ffDecimal, 3),
+                   formatSize(getTotalMem())])
       if optRun in gGlobalOptions:
         var ex = quoteIfContainsWhite(
             changeFileExt(gProjectFull, "").prependCurDir)

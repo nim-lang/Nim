@@ -561,18 +561,17 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   var c = cast[TAddress](cell)
   if c >% PageSize and (c and (MemAlign-1)) == 0:
     # fast check: does it look like a cell?
-    if isAllocatedPtr(gch.region, cell): 
+    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
+    if objStart != nil:
       # mark the cell:
-      cell.refcount = cell.refcount +% rcIncrement
-      add(gch.decStack, cell)
+      objStart.refcount = objStart.refcount +% rcIncrement
+      add(gch.decStack, objStart)
     when false:
-      # Care for string->cstring and seq->openArray conversions.
-      # Now the codegen deals with it, it generated ``nimKeepAlive`` calls.
-      var b = cast[PCell](c -% sizeof(TGenericSeq))
-      if isAllocatedPtr(gch.region, b):
+      if isAllocatedPtr(gch.region, cell):
+        sysAssert false, "allocated pointer but not interior?"
         # mark the cell:
-        b.refcount = b.refcount +% rcIncrement
-        add(gch.decStack, b)
+        cell.refcount = cell.refcount +% rcIncrement
+        add(gch.decStack, cell)
 
 proc nimKeepAlive(p: PGenericSeq) {.compilerRtl, noinline.} =
   var c = usrToCell(p)
@@ -778,6 +777,7 @@ proc collectCT(gch: var TGcHeap) =
       gch.recGcLock == 0:
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
     sysAssert(gch.decStack.len == 0, "collectCT")
+    prepareForInteriorPointerChecking(gch.region)
     markStackAndRegisters(gch)
     markThreadStacks(gch)
     gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)

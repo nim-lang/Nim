@@ -1594,7 +1594,7 @@ proc parseSwitch(p: var TParser): PNode =
   eat(p, pxCurlyRi)
 
 proc addStmt(sl, a: PNode) = 
-  # merge type sections is possible:
+  # merge type sections if possible:
   if a.kind != nkTypeSection or sonsLen(sl) == 0 or
       lastSon(sl).kind != nkTypeSection:
     addSon(sl, a)
