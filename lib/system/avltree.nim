@@ -92,13 +92,13 @@ proc find(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while it != nil:
     if it.key == key: return it
-    it = it.link[ord(it.key < key)]
+    it = it.link[ord(it.key <% key)]
 
 proc inRange(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while it != nil:
-    if it.key <= key and key <= it.upperBound: return it
-    it = it.link[ord(it.key < key)]
+    if it.key <=% key and key <=% it.upperBound: return it
+    it = it.link[ord(it.key <% key)]
 
 proc contains(root: PAvlNode, key: int): bool {.inline.} =
   result = find(root, key) != nil
@@ -140,7 +140,7 @@ proc add(a: var TMemRegion, key, upperBound: int) =
     s = t.link[1]
     p = s
     while true:
-      dir = ord(p.key < key)
+      dir = ord(p.key <% key)
       q = p.link[dir]
       if q == nil: break 
       if q.balance != 0:
@@ -152,7 +152,7 @@ proc add(a: var TMemRegion, key, upperBound: int) =
     # Update balance factors
     p = s
     while p != q:
-      dir = ord(p.key < key)
+      dir = ord(p.key <% key)
       if dir == 0: dec p.balance
       else: inc p.balance
       p = p.link[dir]
@@ -160,7 +160,7 @@ proc add(a: var TMemRegion, key, upperBound: int) =
     # Save rebalance point for parent fix 
     # Rebalance if necessary 
     if abs(s.balance) > 1:
-      dir = ord(s.key < key)
+      dir = ord(s.key <% key)
       insertBalance(s, dir)
     # Fix parent
     if q == head.link[1]: a.root = s
@@ -178,7 +178,7 @@ proc del(a: var TMemRegion, key: int) =
     if it == nil: return
     elif it.key == key: break 
     # Push direction and node onto stack 
-    upd[top] = ord(it.key < key)
+    upd[top] = ord(it.key <% key)
     up[top] = it
     it = it.link[upd[top]]
     inc top
