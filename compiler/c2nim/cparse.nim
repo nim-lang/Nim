@@ -94,7 +94,7 @@ proc OpenParser(p: var TParser, filename: string,
   new(p.tok)
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") = 
-  #assert false
+  assert false
   lexMessage(p.lex, msg, arg)
 
 proc CloseParser(p: var TParser) = CloseLexer(p.lex)
@@ -930,10 +930,8 @@ proc declaration(p: var TParser): PNode =
       parMessage(p, errTokenExpected, ";")
     if sonsLen(result.sons[pragmasPos]) == 0: 
       result.sons[pragmasPos] = ast.emptyNode
-  of pxAsgn, pxSemicolon, pxComma:
-    result = parseVarDecl(p, baseTyp, rettyp, origName)
   else:
-    parMessage(p, errTokenExpected, ";")
+    result = parseVarDecl(p, baseTyp, rettyp, origName)
   assert result != nil
 
 proc createConst(name, typ, val: PNode, p: TParser): PNode =
