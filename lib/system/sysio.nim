@@ -44,7 +44,7 @@ var
   IONBF {.importc: "_IONBF", nodecl.}: cint
 
 const
-  BUF_SIZE = 4000
+  buf_size = 4000
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   raise newException(EIO, msg)
@@ -96,40 +96,45 @@ proc readAllBuffer(file: TFile): string =
   # This proc is for TFile we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
   result = ""
-  var buffer = newString(BUF_SIZE)
-  var bytesRead = BUF_SIZE
-  while bytesRead == BUF_SIZE:
-    bytesRead = readBuffer(file, addr(buffer[0]), BUF_SIZE)
+  var buffer = newString(buf_size)
+  var bytesRead = buf_size
+  while bytesRead == buf_size:
+    bytesRead = readBuffer(file, addr(buffer[0]), buf_size)
     result.add(buffer)
   
-proc readAllFile(file: TFile): string =
+proc rawFileSize(file: TFile): int = 
+  # this does not raise an error opposed to `getFileSize`
+  var oldPos = ftell(file)
+  discard fseek(file, 0, 2) # seek the end of the file
+  result = ftell(file)
+  discard fseek(file, clong(oldPos), 0)
+
+proc readAllFile(file: TFile, len: int): string =
   # We aquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  var len = getFileSize(file)
   if len >= high(int):
     raiseEIO("file too big to fit in memory")
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:
     raiseEIO("error while reading from file")
 
-proc hasDefinedLength(file: TFile): bool = 
-  var oldPos = getFilePos(file)
-  discard fseek(file, 0, 2) # seek the end of the file
-  result = ftell(file) >= 0
-  setFilePos(file, oldPos)
-
+proc readAllFile(file: TFile): string =
+  var len = rawFileSize(file)
+  result = readAllFile(file, len)
+  
 proc readAll(file: TFile): TaintedString = 
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the TFile.
-  if hasDefinedLength(file):
-    result = readAllBuffer(file).TaintedSTring
+  var len = rawFileSize(file)
+  if len >= 0:
+    result = readAllFile(file, len).TaintedSTring
   else:
-    result = readAllFile(file).TaintedString
+    result = readAllBuffer(file).TaintedString
   
 proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
-    result = readAllFile(f)
+    result = readAllFile(f).TaintedString
   finally:
     close(f)
 

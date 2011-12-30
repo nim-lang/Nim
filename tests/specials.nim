@@ -128,12 +128,19 @@ proc rejectThreadTests(r: var TResults, options: string) =
   rejectSingleTest(r, "tests/threads/tthreadanalysis3", options)
   rejectSingleTest(r, "tests/threads/tthreadheapviolation1", options)
 
+# ------------------------- IO tests -----------------------------------
+
+proc runIOTests(r: var TResults, options: string) =
+  discard callCompiler(r"nimrod cc --hints:on $# $#", "tests/system/helpers/readall_echo", options)
+  runSingleTest(r, "tests/system/io", options)
+
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
   runRodFiles(r, options)
   runDLLTests(r, options)
   runGCTests(r, options)
   runThreadTests(r, options & " --threads:on")
+  runIOTests(r, options)
 
 proc rejectSpecialTests(r: var TResults, options: string) =
   rejectThreadTests(r, options)
