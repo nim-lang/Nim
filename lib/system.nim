@@ -1677,10 +1677,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc readAll*(file: TFile): TaintedString
     ## Reads all data from the stream `file`. Raises an IO exception
-    ## in case of an Error
+    ## in case of an error
   
   proc readFile*(filename: string): TaintedString
-    ## Opens a file named `filename` for reading. Then calls readAll
+    ## Opens a file named `filename` for reading. Then calls `readAll`
     ## and closes the file afterwards. Returns the string. 
     ## Raises an IO exception in case of an error.
 
