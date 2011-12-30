@@ -131,7 +131,7 @@ proc rejectThreadTests(r: var TResults, options: string) =
 # ------------------------- IO tests -----------------------------------
 
 proc runIOTests(r: var TResults, options: string) =
-  discard callCompiler(r"nimrod cc --hints:on $# $#", "tests/system/helpers/readall_echo", options)
+  compileSingleTest(r, "tests/system/helpers/readall_echo.nim", options)
   runSingleTest(r, "tests/system/io", options)
 
 # ------------------------- register special tests here -----------------------
