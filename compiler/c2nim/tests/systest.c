@@ -351,7 +351,7 @@ HWBType;
 static HWBType *
 RGB_to_HWB (RGBType RGB, HWBType * HWB)
 {
-
+  HWBType* myArray[20];
   /*
    * RGB are each on [0, 1]. W and B are returned on [0, 1] and H is  
    * returned on [0, 6]. Exception: H is returned UNDEFINED if W == 1 - B.  
