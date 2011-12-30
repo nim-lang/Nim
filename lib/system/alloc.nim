@@ -156,7 +156,7 @@ type
   TAvlNode {.pure, final.} = object 
     link: array[0..1, PAvlNode] # Left (0) and right (1) links 
     key, upperBound: int
-    balance: int            # Balance factor 
+    level: int
     
   TMemRegion {.final, pure.} = object
     minLargeObj, maxLargeObj: int
@@ -166,8 +166,18 @@ type
     lastSize: int # needed for the case that OS gives us pages linearly 
     freeChunksList: PBigChunk # XXX make this a datastructure with O(1) access
     chunkStarts: TIntSet
-    root, freeAvlNodes: PAvlNode
+    root, deleted, last, freeAvlNodes: PAvlNode
   
+# shared:
+var
+  bottomData: TAvlNode
+  bottom: PAvlNode
+
+proc initAllocator() =
+  bottom = addr(bottomData)
+  bottom.link[0] = bottom
+  bottom.link[1] = bottom
+
 proc incCurrMem(a: var TMemRegion, bytes: int) {.inline.} = 
   inc(a.currMem, bytes)
 
@@ -204,13 +214,13 @@ proc allocAvlNode(a: var TMemRegion, key, upperBound: int): PAvlNode =
   if a.freeAvlNodes != nil:
     result = a.freeAvlNodes
     a.freeAvlNodes = a.freeAvlNodes.link[0]
-    result.link[0] = nil
-    result.link[1] = nil
-    result.balance = 0
   else:
     result = cast[PAvlNode](llAlloc(a, sizeof(TAvlNode)))
   result.key = key
   result.upperBound = upperBound
+  result.link[0] = bottom
+  result.link[1] = bottom
+  result.level = 0
 
 proc deallocAvlNode(a: var TMemRegion, n: PAvlNode) {.inline.} =
   n.link[0] = a.freeAvlNodes
@@ -523,7 +533,8 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
     sysAssert c.size == size, "rawAlloc 12"
     result = addr(c.data)
     sysAssert((cast[TAddress](result) and (MemAlign-1)) == 0, "rawAlloc 13")
-    add(a, cast[TAddress](result), cast[TAddress](result)+%size)
+    if a.root == nil: a.root = bottom
+    add(a, a.root, cast[TAddress](result), cast[TAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
 
 proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
@@ -562,7 +573,8 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
     # free big chunk
     var c = cast[PBigChunk](c)
-    del(a, cast[int](addr(c.data)))
+    a.deleted = bottom
+    del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
 
 proc isAllocatedPtr(a: TMemRegion, p: pointer): bool = 
@@ -592,13 +604,19 @@ proc interiorAllocatedPtr(a: TMemRegion, p: pointer): pointer =
         var offset = (cast[TAddress](p) and (PageSize-1)) -% 
                      smallChunkOverhead()
         if c.acc >% offset:
+          sysAssert(cast[TAddress](addr(c.data)) +% offset ==
+                    cast[TAddress](p), "offset is not what you think it is")
           var d = cast[ptr TFreeCell](cast[TAddress](addr(c.data)) +% 
                     offset -% (offset %% c.size))
-          if d.zeroField >% 1: result = d
+          if d.zeroField >% 1:
+            result = d
+            sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
       else:
         var c = cast[PBigChunk](c)
         var d = addr(c.data)
-        if p >= d and cast[ptr TFreeCell](d).zeroField >% 1: result = d
+        if p >= d and cast[ptr TFreeCell](d).zeroField >% 1:
+          result = d
+          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
   else:
     var q = cast[int](p)
     if q >=% a.minLargeObj and q <=% a.maxLargeObj:
@@ -611,6 +629,7 @@ proc interiorAllocatedPtr(a: TMemRegion, p: pointer): pointer =
         sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
         if cast[ptr TFreeCell](k).zeroField >% 1:
           result = k
+          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
 
 proc ptrSize(p: pointer): int =
   var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
