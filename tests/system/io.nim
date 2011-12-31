@@ -9,7 +9,7 @@ const TEST_FILE = "tests/testdata/string"
 
 proc echoLoop(str: string): string =
   result = ""
-  var process = startProcess(os.addFileExt("tests/system/helpers/readall_echo", ExeExt))
+  var process = startProcess(findExe("tests/system/helpers/readall_echo"))
   var input = process.inputStream
   input.write(str)
   input.close()
