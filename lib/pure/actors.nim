@@ -119,15 +119,25 @@ proc createActorPool*[TIn, TOut](a: var TActorPool[TIn, TOut], poolSize = 4) =
 
 proc sync*[TIn, TOut](a: var TActorPool[TIn, TOut], polling=50) =
   ## waits for every actor of `a` to finish with its work. Currently this is
-  ## implemented as polling every `polling` ms. This will change in a later
+  ## implemented as polling every `polling` ms and has a slight chance 
+  ## of failing since we check for every actor to be in `ready` state and not
+  ## for messages still in ether. This will change in a later
   ## version, however.
+  var allReadyCount = 0
   while true:
     var wait = false
     for i in 0..high(a.actors):
       if not a.actors[i].i.ready: 
         wait = true
+        allReadyCount = 0
         break
-    if not wait: break
+    if not wait:
+      # it's possible that some actor sent a message to some other actor but
+      # both appeared to be non-working as the message takes some time to
+      # arrive. We assume that this won't take longer than `polling` and
+      # simply attempt a second time and declare victory then. ;-)
+      inc allReadyCount
+      if allReadyCount > 1: break
     sleep(polling)
 
 proc terminate*[TIn, TOut](a: var TActorPool[TIn, TOut]) =
