@@ -92,7 +92,16 @@ proc runDLLTests(r: var TResults, options: string) =
   runBasicDLLTest c, r, options & " -d:release"
   runBasicDLLTest c, r, options & " --gc:boehm"
   runBasicDLLTest c, r, options & " -d:release --gc:boehm"
+
+proc compileDLLTests(r: var TResults, options: string) =
+  # dummy run result:
+  var c = initResults()
   
+  runBasicDLLTest r, c, options
+  runBasicDLLTest r, c, options & " -d:release"
+  runBasicDLLTest r, c, options & " --gc:boehm"
+  runBasicDLLTest r, c, options & " -d:release --gc:boehm"
+
 # ------------------------------ GC tests -------------------------------------
 
 proc runGcTests(r: var TResults, options: string) =
@@ -118,7 +127,8 @@ proc runThreadTests(r: var TResults, options: string) =
   
   test "tactors"
   test "threadex"
-  test "trecursive_actor"
+  # deactivated because output capturing still causes problems sometimes:
+  #test "trecursive_actor"
   #test "threadring"
   #test "tthreadanalysis"
   #test "tthreadsort"
@@ -139,7 +149,7 @@ proc runIOTests(r: var TResults, options: string) =
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
   runRodFiles(r, options)
-  runDLLTests(r, options)
+  #runDLLTests(r, options)
   runGCTests(r, options)
   runThreadTests(r, options & " --threads:on")
   runIOTests(r, options)
@@ -154,4 +164,5 @@ proc compileSpecialTests(r: var TResults, options: string) =
   compileSingleTest(r, "compiler/pas2nim/pas2nim.nim", options)
 
   compileIOTests(r, options)
+  compileDLLTests(r, options)
 

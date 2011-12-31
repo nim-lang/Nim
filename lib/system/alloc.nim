@@ -20,15 +20,14 @@ when defined(posix):
     PROT_WRITE = 2             # page can be written 
     MAP_PRIVATE = 2            # Changes are private 
   
-  when defined(linux) or defined(aix):
-    const MAP_ANONYMOUS = 0x20       # don't use a file
-  elif defined(macosx) or defined(bsd):
+  when defined(macosx) or defined(bsd):
     const MAP_ANONYMOUS = 0x1000
   elif defined(solaris): 
     const MAP_ANONYMOUS = 0x100
   else:
-    {.error: "Port memory manager to your platform".}
-
+    var
+      MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
+    
   proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
