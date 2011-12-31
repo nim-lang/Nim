@@ -1677,10 +1677,13 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc FlushFile*(f: TFile) {.importc: "fflush", noDecl.}
     ## Flushes `f`'s buffer.
 
+  proc readAll*(file: TFile): TaintedString
+    ## Reads all data from the stream `file`. Raises an IO exception
+    ## in case of an error
+  
   proc readFile*(filename: string): TaintedString
-    ## Opens a file named `filename` for reading. Then reads the
-    ## file's content completely into a string and
-    ## closes the file afterwards. Returns the string. 
+    ## Opens a file named `filename` for reading. Then calls `readAll`
+    ## and closes the file afterwards. Returns the string. 
     ## Raises an IO exception in case of an error.
 
   proc writeFile*(filename, content: string)
