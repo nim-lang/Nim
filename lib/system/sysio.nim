@@ -24,6 +24,13 @@ proc putc(c: Char, stream: TFile) {.importc: "putc", nodecl.}
 proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", nodecl, varargs.}
 proc strlen(c: cstring): int {.importc: "strlen", nodecl.}
 
+
+# C routine that is used here:
+proc fread(buf: Pointer, size, n: int, f: TFile): int {.
+  importc: "fread", noDecl.}
+proc fseek(f: TFile, offset: clong, whence: int): int {.
+  importc: "fseek", noDecl.}
+proc ftell(f: TFile): int {.importc: "ftell", noDecl.}
 proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
   importc, nodecl.}
 
@@ -35,6 +42,9 @@ proc write(f: TFile, c: cstring) = fputs(c, f)
 var
   IOFBF {.importc: "_IOFBF", nodecl.}: cint
   IONBF {.importc: "_IONBF", nodecl.}: cint
+
+const
+  buf_size = 4000
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   raise newException(EIO, msg)
@@ -82,21 +92,49 @@ proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: openArray[string]) =
   for x in items(a): write(f, x)
 
+proc readAllBuffer(file: TFile): string = 
+  # This proc is for TFile we want to read but don't know how many
+  # bytes we need to read before the buffer is empty.
+  result = ""
+  var buffer = newString(buf_size)
+  var bytesRead = buf_size
+  while bytesRead == buf_size:
+    bytesRead = readBuffer(file, addr(buffer[0]), buf_size)
+    result.add(buffer)
+  
+proc rawFileSize(file: TFile): int = 
+  # this does not raise an error opposed to `getFileSize`
+  var oldPos = ftell(file)
+  discard fseek(file, 0, 2) # seek the end of the file
+  result = ftell(file)
+  discard fseek(file, clong(oldPos), 0)
+
+proc readAllFile(file: TFile, len: int): string =
+  # We aquire the filesize beforehand and hope it doesn't change.
+  # Speeds things up.
+  if len >= high(int):
+    raiseEIO("file too big to fit in memory")
+  result = newString(int(len))
+  if readBuffer(file, addr(result[0]), int(len)) != len:
+    raiseEIO("error while reading from file")
+
+proc readAllFile(file: TFile): string =
+  var len = rawFileSize(file)
+  result = readAllFile(file, len)
+  
+proc readAll(file: TFile): TaintedString = 
+  # Separate handling needed because we need to buffer when we
+  # don't know the overall length of the TFile.
+  var len = rawFileSize(file)
+  if len >= 0:
+    result = readAllFile(file, len).TaintedSTring
+  else:
+    result = readAllBuffer(file).TaintedString
+  
 proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
-    var len = getFileSize(f)
-    if len < high(int):
-      when taintMode:
-        result = newString(int(len)).TaintedString
-        if readBuffer(f, addr(string(result)[0]), int(len)) != len:
-          raiseEIO("error while reading from file")
-      else:
-        result = newString(int(len))
-        if readBuffer(f, addr(result[0]), int(len)) != len:
-          raiseEIO("error while reading from file")
-    else:
-      raiseEIO("file too big to fit in memory")
+    result = readAllFile(f).TaintedString
   finally:
     close(f)
 
@@ -156,13 +194,6 @@ proc fdopen(filehandle: TFileHandle, mode: cstring): TFile {.
 proc open(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
   f = fdopen(filehandle, FormatOpen[mode])
   result = f != nil
-
-# C routine that is used here:
-proc fread(buf: Pointer, size, n: int, f: TFile): int {.
-  importc: "fread", noDecl.}
-proc fseek(f: TFile, offset: clong, whence: int): int {.
-  importc: "fseek", noDecl.}
-proc ftell(f: TFile): int {.importc: "ftell", noDecl.}
 
 proc fwrite(buf: Pointer, size, n: int, f: TFile): int {.
   importc: "fwrite", noDecl.}
