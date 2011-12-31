@@ -309,7 +309,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
 
-proc len*[T](x: openArray[T]): int {.magic: "LengthOpenArray", noSideEffect.}
+when defined(newOpenArrayLen):
+  proc len*[T: openArray](x: T): int {.magic: "LengthOpenArray", noSideEffect.}
+else:
+  proc len*[T](x: openArray[T]): int {.magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
