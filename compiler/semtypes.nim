@@ -781,7 +781,11 @@ proc semGenericConstraints(c: PContext, n: PNode, result: PType) =
     semGenericConstraints(c, n.sons[1], result)
     semGenericConstraints(c, n.sons[2], result)
   else:
-    result.addSon(semTypeNode(c, n, nil))
+    var x = semTypeNode(c, n, nil)
+    if x.kind in StructuralEquivTypes and sonsLen(x) == 0:
+      x = newConstraint(c, x.kind)
+      #echo "came here for: ", typeToString(x)
+    result.addSon(x)
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
   result = copyNode(n)

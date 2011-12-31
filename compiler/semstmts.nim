@@ -802,7 +802,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     var f = checkModuleName(n.sons[i])
     var fileIndex = f.fileInfoIdx
     if ContainsOrIncl(c.includedFiles, fileIndex): 
-      GlobalError(n.info, errRecursiveDependencyX, f)
+      GlobalError(n.info, errRecursiveDependencyX, f.shortenDir)
     addSon(result, semStmt(c, gIncludeFile(f)))
     Excl(c.includedFiles, fileIndex)
   

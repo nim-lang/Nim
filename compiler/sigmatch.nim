@@ -388,7 +388,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyGenericInst: 
     result = typeRel(mapping, lastSon(f), a)
   of tyGenericBody: 
-    result = typeRel(mapping, lastSon(f), a)
+    let ff = lastSon(f)
+    if ff != nil: result = typeRel(mapping, ff, a)
   of tyGenericInvokation: 
     assert(f.sons[0].kind == tyGenericBody)
     if a.kind == tyGenericInvokation: 
