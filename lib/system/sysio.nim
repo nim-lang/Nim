@@ -112,8 +112,6 @@ proc rawFileSize(file: TFile): int =
 proc readAllFile(file: TFile, len: int): string =
   # We aquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  if len >= high(int):
-    raiseEIO("file too big to fit in memory")
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:
     raiseEIO("error while reading from file")
