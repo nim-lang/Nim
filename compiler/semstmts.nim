@@ -512,7 +512,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # symbol lookup needs to be done here.
       openScope(c.tab)
       pushOwner(s)
-      s.typ.kind = tyGenericBody
+      if s.magic == mNone: s.typ.kind = tyGenericBody
       if s.typ.containerID != 0: 
         InternalError(a.info, "semTypeSection: containerID")
       s.typ.containerID = s.typ.id

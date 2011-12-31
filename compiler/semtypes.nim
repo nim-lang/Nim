@@ -760,7 +760,12 @@ proc processMagicType(c: PContext, m: PSym) =
   of mStmt: setMagicType(m, tyStmt, 0)
   of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
   of mVoidType: setMagicType(m, tyEmpty, 0)
-  of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: nil 
+  of mArray: setMagicType(m, tyArray, 0)
+  of mOpenArray: setMagicType(m, tyOpenArray, 0) 
+  of mRange: setMagicType(m, tyRange, 0)
+  of mSet: setMagicType(m, tySet, 0) 
+  of mSeq: setMagicType(m, tySequence, 0) 
+  of mOrdinal: nil
   else: GlobalError(m.info, errTypeExpected)
   
 proc newConstraint(c: PContext, k: TTypeKind): PType = 
@@ -782,9 +787,9 @@ proc semGenericConstraints(c: PContext, n: PNode, result: PType) =
     semGenericConstraints(c, n.sons[2], result)
   else:
     var x = semTypeNode(c, n, nil)
-    if x.kind in StructuralEquivTypes and sonsLen(x) == 0:
+    if x.kind in StructuralEquivTypes and (
+        sonsLen(x) == 0 or x.sons[0].kind == tyEmpty):
       x = newConstraint(c, x.kind)
-      #echo "came here for: ", typeToString(x)
     result.addSon(x)
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
