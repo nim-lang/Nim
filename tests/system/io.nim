@@ -1,6 +1,7 @@
 discard """output: '''[OK] stdin
 
 [OK] file'''
+disabled: true
 """
 
 import
