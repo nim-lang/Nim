@@ -361,6 +361,7 @@ type
     RASP_Amb = 0x00010000
   SECURITY_IMPERSONATION_LEVEL* = enum
 
+
     SecurityAnonymous, SecurityIdentification, SecurityImpersonation,
     SecurityDelegation
   SID_NAME_USE* = enum
@@ -2193,6 +2194,7 @@ const
   WS_SYSMENU* = 0x00080000
   WS_TABSTOP* = 0x00010000
   WS_THICKFRAME* = 0x00040000
+
   WS_TILED* = 0
   WS_TILEDWINDOW* = 0x00CF0000
   WS_VISIBLE* = 0x10000000
@@ -4061,6 +4063,7 @@ const
   SPI_GETDRAGFULLWINDOWS* = 38
   SPI_GETNONCLIENTMETRICS* = 41
   SPI_SETNONCLIENTMETRICS* = 42
+
   SPI_GETMINIMIZEDMETRICS* = 43
   SPI_SETMINIMIZEDMETRICS* = 44
   SPI_GETICONMETRICS* = 45
@@ -7683,7 +7686,7 @@ when defined(i386):
       Esp*: DWORD
       SegSs*: DWORD
 
-when defined(x86_64):
+elif defined(x86_64):
   #
   # Define 128-bit 16-byte aligned xmm register type.
   #
@@ -7780,7 +7783,7 @@ when defined(x86_64):
       LastExceptionToRip*: DWORD64
       LastExceptionFromRip*: DWORD64
 
-when defined(powerpc32):
+elif defined(powerpc32):
   # ppc
   # Floating point registers returned when CONTEXT_FLOATING_POINT is set
   # Integer registers returned when CONTEXT_INTEGER is set.
@@ -7884,6 +7887,12 @@ when defined(powerpc32):
       Dr5*: DWORD
       Dr6*: DWORD
       Dr7*: DWORD
+
+else:
+  # dummy CONTEXT so that it compiles:
+  type
+    CONTEXT* {.final, pure.} = object
+      data: array [0..255, float64]
 
 type
   LPCONTEXT* = ptr CONTEXT
@@ -9201,6 +9210,7 @@ type
   PEMRSCALEWINDOWEXTEX* = ptr EMRSCALEVIEWPORTEXTEX
   EMRSELECTCOLORSPACE* {.final, pure.} = object
     emr*: EMR
+
     ihCS*: DWORD
 
   TEMRSELECTCOLORSPACE* = EMRSELECTCOLORSPACE
@@ -14133,6 +14143,7 @@ proc GetDiskFreeSpaceA*(lpRootPathName: LPCSTR, lpSectorsPerCluster: LPDWORD,
                         lpTotalNumberOfClusters: LPDWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetDiskFreeSpaceA".}
 proc CreateDirectoryA*(lpPathName: LPCSTR,
+
                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreateDirectoryA".}
 proc CreateDirectoryExA*(lpTemplateDirectory: LPCSTR, lpNewDirectory: LPCSTR,
@@ -16966,6 +16977,7 @@ when defined(winUnicode):
   proc GetICMProfile*(para1: HDC, para2: DWORD, para3: LPWSTR): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "GetICMProfileW".}
   proc SetICMProfile*(para1: HDC, para2: LPWSTR): WINBOOL{.stdcall,
+
       dynlib: "gdi32", importc: "SetICMProfileW".}
   proc UpdateICMRegKey*(para1: DWORD, para2: DWORD, para3: LPWSTR, para4: UINT): WINBOOL{.
       stdcall, dynlib: "gdi32", importc: "UpdateICMRegKeyW".}
@@ -20817,6 +20829,7 @@ proc TabCtrl_SetImageList*(wnd: HWND, himl: HIMAGELIST): LRESULT
 proc TabCtrl_GetItemCount*(wnd: HWND): LRESULT
 proc TabCtrl_GetItem*(wnd: HWND, iItem: int32, item: var TC_ITEM): LRESULT
 proc TabCtrl_SetItem*(wnd: HWND, iItem: int32, item: var TC_ITEM): LRESULT
+
 proc TabCtrl_InsertItem*(wnd: HWND, iItem: int32, item: var TC_ITEM): LRESULT
 proc TabCtrl_DeleteItem*(wnd: HWND, i: int32): LRESULT
 proc TabCtrl_DeleteAllItems*(wnd: HWND): LRESULT
@@ -21954,6 +21967,7 @@ proc MakeAbsoluteSD*(pSelfRelativeSecurityDescriptor: PSecurityDescriptor,
                      pAbsoluteSecurityDescriptor: PSecurityDescriptor,
                      lpdwAbsoluteSecurityDescriptorSi: var DWORD,
                      pDacl: var TACL, lpdwDaclSize: var DWORD, pSacl: var TACL,
+
                      lpdwSaclSize: var DWORD, pOwner: PSID,
                      lpdwOwnerSize: var DWORD, pPrimaryGroup: Pointer,
                      lpdwPrimaryGroupSize: var DWORD): WINBOOL{.stdcall,
