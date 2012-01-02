@@ -50,7 +50,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
     result = rawNewString(len)
     result.len = len
     c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
-    result.data[len] = '\0'
+    #result.data[len] = '\0'
   else:
     result = rawNewString(len)
 
@@ -61,7 +61,7 @@ proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
   result.len = len
   c_memcpy(result.data, str, (len+1) * sizeof(Char))
-  result.data[len] = '\0' # readline relies on this!
+  #result.data[len] = '\0' # readline relies on this!
 
 proc cstrToNimstr(str: CString): NimString {.compilerProc.} =
   result = toNimstr(str, c_strlen(str))
@@ -146,10 +146,10 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerproc.} =
-  if dest.len + addLen + 1 <= dest.space:
+  if dest.len + addLen <= dest.space:
     result = dest
   else: # slow path:
-    var sp = max(resize(dest.space), dest.len + addLen + 1)
+    var sp = max(resize(dest.space), dest.len + addLen)
     result = cast[NimString](growObj(dest, sizeof(TGenericSeq) +
                            (sp+1) * sizeof(Char)))
     result.space = sp
