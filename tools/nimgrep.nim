@@ -127,8 +127,7 @@ proc processFile(filename: string) =
     pegp = peg(pattern)
     
   if optReplace in options:
-    result = newString(buffer.len)
-    setLen(result, 0)
+    result = newStringOfCap(buffer.len)
     
   var line = 1
   var i = 0

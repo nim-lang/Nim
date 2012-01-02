@@ -1,7 +1,7 @@
 #
 #
 #      Pas2nim - Pascal to Nimrod source converter
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.

@@ -9,7 +9,7 @@ discard """
 ## Nimrod version
 
 ## Author: Philippe Lhoste <PhiLho(a)GMX.net> http://Phi.Lho.free.fr
-# 2009-11-25
+# 2012-11-25
 # Loosely based on my old Lua version... Updated to current official lyrics.
 
 proc GetBottleNumber(n: int): string =

@@ -1,6 +1,6 @@
 =======================================================
                   The Nimrod Runtime Library
-             Copyright (C) 2004-2011  Andreas Rumpf
+             Copyright (C) 2004-2012  Andreas Rumpf
 =======================================================
 
 This is the file copying.txt, it applies to the Nimrod Run-Time Library
