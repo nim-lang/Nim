@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -813,7 +813,7 @@ else:
 
 template sysAssert(cond, msg: expr) =
   # change this to activate system asserts
-  #if not cond: echo msg
+  #if not cond: echo "[SYSASSERT] ", msg
   nil
 
 include "system/inclrtl"

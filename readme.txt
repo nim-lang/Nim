@@ -17,5 +17,5 @@ priority).
 See the file ``install.txt`` for installation instructions. See the file
 ``doc/intern.txt`` for the internal documentation for developers.
 
-Copyright (c) 2004-2011 Andreas Rumpf.
+Copyright (c) 2004-2012 Andreas Rumpf.
 All rights reserved.

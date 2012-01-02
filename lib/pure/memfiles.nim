@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2011 Nimrod Contributors
+#        (c) Copyright 2012 Nimrod Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.

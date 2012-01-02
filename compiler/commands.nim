@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -27,7 +27,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
 
 const
   HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]\n" &
-      "Copyright (c) 2004-2011 by Andreas Rumpf\n"
+      "Copyright (c) 2004-2012 by Andreas Rumpf\n"
 
 const 
   Usage = slurp"doc/basicopt.txt".replace("//", "")

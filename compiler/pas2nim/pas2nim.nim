@@ -1,7 +1,7 @@
 #
 #
 #      Pas2nim - Pascal to Nimrod source converter
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,7 +15,7 @@ const
   Version = "0.8"
   Usage = """
 pas2nim - Pascal to Nimrod source converter
-  (c) 2010 Andreas Rumpf
+  (c) 2012 Andreas Rumpf
 Usage: pas2nim [options] inputfile [options]
 Options:
   -o, --out:FILE         set output filename
