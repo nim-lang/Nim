@@ -2,7 +2,7 @@
 News
 ====
 
-2011-XX-XX Version 0.8.14 released
+2012-XX-XX Version 0.8.14 released
 ==================================
 
 Version 0.8.14 has been released! Get it `here <download.html>`_. 
