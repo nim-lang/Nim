@@ -5,7 +5,7 @@ version 0.8.14
 - BUG: type TX = TTable[string, int]
 - BUG: len(openArray) breaks symbol files
 - BUG: temp3.nim triggers weird compiler bug
-- BUG: --debugger:on does not work the talloc.nim
+- BUG: --debugger:on does not work with talloc.nim
 - warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray

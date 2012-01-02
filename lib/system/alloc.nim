@@ -219,7 +219,10 @@ proc allocAvlNode(a: var TMemRegion, key, upperBound: int): PAvlNode =
   result.upperBound = upperBound
   result.link[0] = bottom
   result.link[1] = bottom
-  result.level = 0
+  result.level = 1
+  sysAssert(bottom == addr(bottomData), "bottom data")
+  sysAssert(bottom.link[0] == bottom, "bottom link[0]")
+  sysAssert(bottom.link[1] == bottom, "bottom link[1]")
 
 proc deallocAvlNode(a: var TMemRegion, n: PAvlNode) {.inline.} =
   n.link[0] = a.freeAvlNodes
@@ -632,7 +635,11 @@ proc interiorAllocatedPtr(a: TMemRegion, p: pointer): pointer =
 
 proc ptrSize(p: pointer): int =
   var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-  result = pageAddr(x).size - sizeof(TFreeCell)
+  var c = pageAddr(p)
+  sysAssert(not chunkUnused(c), "ptrSize")
+  result = c.size -% sizeof(TFreeCell)
+  if not isSmallChunk(c):
+    dec result, bigChunkOverhead()
 
 proc alloc(allocator: var TMemRegion, size: int): pointer =
   result = rawAlloc(allocator, size+sizeof(TFreeCell))
@@ -652,7 +659,7 @@ proc dealloc(allocator: var TMemRegion, p: pointer) =
 
 proc realloc(allocator: var TMemRegion, p: pointer, newsize: int): pointer =
   if newsize > 0:
-    result = alloc(allocator, newsize)
+    result = alloc0(allocator, newsize)
     if p != nil:
       copyMem(result, p, ptrSize(p))
       dealloc(allocator, p)
