@@ -2,13 +2,10 @@ version 0.8.14
 ==============
 
 - BUG: type TX = TTable[string, int]
-- BUG: len(openArray) breaks symbol files
 - BUG: temp3.nim triggers weird compiler bug
 - BUG: --debugger:on does not work with talloc.nim
-- warning for implicit openArray -> varargs conversion
-- implement explicit varargs; **but** ``len(varargs)`` problem remains! 
-  --> solve by implicit conversion from varargs to openarray
-- implicit invokation of `items`/`pairs` seems nice
+- implicit invokation of `items`/`pairs` seems nice; ensure items(23) does
+  not compile though
 
 version 0.9.0
 =============
@@ -125,6 +122,9 @@ Low priority
     need to recompile clients; er ... what about templates, macros or anything
     that has inlining semantics?
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
+- warning for implicit openArray -> varargs conversion
+- implement explicit varargs; **but** ``len(varargs)`` problem remains! 
+  --> solve by implicit conversion from varargs to openarray
 
 Version 2
 =========

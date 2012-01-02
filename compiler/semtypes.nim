@@ -764,8 +764,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mOpenArray: setMagicType(m, tyOpenArray, 0) 
   of mRange: setMagicType(m, tyRange, 0)
   of mSet: setMagicType(m, tySet, 0) 
-  of mSeq: setMagicType(m, tySequence, 0) 
-  of mOrdinal: nil
+  of mSeq: setMagicType(m, tySequence, 0)
+  of mOrdinal: setMagicType(m, tyOrdinal, 0)
   else: GlobalError(m.info, errTypeExpected)
   
 proc newConstraint(c: PContext, k: TTypeKind): PType = 

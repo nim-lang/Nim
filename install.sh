@@ -124,6 +124,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/regexprs.txt
   cp doc/rst.txt $docdir/rst.txt || exit 1
   chmod 644 $docdir/rst.txt
+  cp doc/subexes.txt $docdir/subexes.txt || exit 1
+  chmod 644 $docdir/subexes.txt
   cp doc/theindex.txt $docdir/theindex.txt || exit 1
   chmod 644 $docdir/theindex.txt
   cp doc/tools.txt $docdir/tools.txt || exit 1
@@ -176,6 +178,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/assign.nim
   cp lib/system/atomics.nim $libdir/system/atomics.nim || exit 1
   chmod 644 $libdir/system/atomics.nim
+  cp lib/system/avltree.nim $libdir/system/avltree.nim || exit 1
+  chmod 644 $libdir/system/avltree.nim
   cp lib/system/cellsets.nim $libdir/system/cellsets.nim || exit 1
   chmod 644 $libdir/system/cellsets.nim
   cp lib/system/cgprocs.nim $libdir/system/cgprocs.nim || exit 1
@@ -312,6 +316,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/strtabs.nim
   cp lib/pure/strutils.nim $libdir/pure/strutils.nim || exit 1
   chmod 644 $libdir/pure/strutils.nim
+  cp lib/pure/subexes.nim $libdir/pure/subexes.nim || exit 1
+  chmod 644 $libdir/pure/subexes.nim
   cp lib/pure/terminal.nim $libdir/pure/terminal.nim || exit 1
   chmod 644 $libdir/pure/terminal.nim
   cp lib/pure/times.nim $libdir/pure/times.nim || exit 1
@@ -328,6 +334,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/xmlparser.nim
   cp lib/pure/xmltree.nim $libdir/pure/xmltree.nim || exit 1
   chmod 644 $libdir/pure/xmltree.nim
+  cp lib/pure/collections/critbits.nim $libdir/pure/collections/critbits.nim || exit 1
+  chmod 644 $libdir/pure/collections/critbits.nim
   cp lib/pure/collections/intsets.nim $libdir/pure/collections/intsets.nim || exit 1
   chmod 644 $libdir/pure/collections/intsets.nim
   cp lib/pure/collections/lists.nim $libdir/pure/collections/lists.nim || exit 1
