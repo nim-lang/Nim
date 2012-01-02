@@ -140,10 +140,9 @@ proc rejectThreadTests(r: var TResults, options: string) =
 
 # ------------------------- IO tests -----------------------------------
 
-proc compileIOTests(r: var TResults, options: string) =
-  compileSingleTest(r, "tests/system/helpers/readall_echo.nim", options)
-
 proc runIOTests(r: var TResults, options: string) =
+  # We need readall_echo to be compiled for this test to run.
+  compileSingleTest(r, "tests/system/helpers/readall_echo", options)
   runSingleTest(r, "tests/system/io", options)
 
 # ------------------------- register special tests here -----------------------
@@ -163,6 +162,5 @@ proc compileSpecialTests(r: var TResults, options: string) =
   compileSingleTest(r, "compiler/c2nim/c2nim.nim", options)
   compileSingleTest(r, "compiler/pas2nim/pas2nim.nim", options)
 
-  compileIOTests(r, options)
   compileDLLTests(r, options)
 
