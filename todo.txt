@@ -1,7 +1,6 @@
 version 0.8.14
 ==============
 
-- check resizeString and fix +1 bug
 - BUG: type TX = TTable[string, int]
 - BUG: len(openArray) breaks symbol files
 - BUG: temp3.nim triggers weird compiler bug
