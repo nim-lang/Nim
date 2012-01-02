@@ -1,1 +1,2 @@
-echo(stdin.readAll)
+when isMainModule:
+  echo(stdin.readAll)
