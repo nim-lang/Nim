@@ -142,7 +142,9 @@ proc rejectThreadTests(r: var TResults, options: string) =
 
 proc runIOTests(r: var TResults, options: string) =
   # We need readall_echo to be compiled for this test to run.
-  compileSingleTest(r, "tests/system/helpers/readall_echo", options)
+  # dummy compile result:
+  var c = initResults()
+  compileSingleTest(c, "tests/system/helpers/readall_echo", options)
   runSingleTest(r, "tests/system/io", options)
 
 # ------------------------- register special tests here -----------------------
