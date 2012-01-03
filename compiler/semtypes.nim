@@ -788,7 +788,7 @@ proc semGenericConstraints(c: PContext, n: PNode, result: PType) =
   else:
     var x = semTypeNode(c, n, nil)
     if x.kind in StructuralEquivTypes and (
-        sonsLen(x) == 0 or x.sons[0].kind == tyEmpty):
+        sonsLen(x) == 0 or x.sons[0].kind in {tyGenericParam, tyEmpty}):
       x = newConstraint(c, x.kind)
     result.addSon(x)
 
