@@ -1,6 +1,6 @@
 discard """
   line: 8
-  msg: "Error: type mismatch: got (int)"
+  msg: "type mismatch: got (int)"
 """
 
 # please finally disallow Len(3)
