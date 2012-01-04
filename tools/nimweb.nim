@@ -1,7 +1,7 @@
 #
 #
 #           Nimrod Website Generator
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -44,7 +44,7 @@ const
   Version = "0.7"
   Usage = "nimweb - Nimrod Website Generator Version " & version & """
 
-  (c) 2011 Andreas Rumpf
+  (c) 2012 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:

@@ -241,8 +241,8 @@ proc typeNameOrLiteral(t: PType, literal: string): PRope =
   
 proc getSimpleTypeDesc(m: BModule, typ: PType): PRope = 
   const 
-    NumericalTypeToStr: array[tyInt..tyFloat128, string] = ["NI", "NI8", "NI16", 
-      "NI32", "NI64", "NF", "NF32", "NF64", "NF128"]
+    NumericalTypeToStr: array[tyInt..tyFloat128, string] = ["NI", "NI8",
+      "NI16", "NI32", "NI64", "NF", "NF32", "NF64", "NF128"]
   case typ.Kind
   of tyPointer: 
     result = typeNameOrLiteral(typ, "void*")
@@ -301,7 +301,8 @@ proc mangleRecFieldName(field: PSym, rectype: PType): PRope =
     result = toRope(mangle(field.name.s))
   if result == nil: InternalError(field.info, "mangleRecFieldName")
   
-proc genRecordFieldsAux(m: BModule, n: PNode, accessExpr: PRope, rectype: PType, 
+proc genRecordFieldsAux(m: BModule, n: PNode, 
+                        accessExpr: PRope, rectype: PType, 
                         check: var TIntSet): PRope = 
   var 
     ae, uname, sname, a: PRope
@@ -560,9 +561,13 @@ proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) =
     nimtypeKind = ord(tyPureObject)
   else:
     nimtypeKind = ord(typ.kind)
+  
+  var size: PRope
+  if tfIncompleteStruct in typ.flags: size = toRope"void*"
+  else: size = getTypeDesc(m, typ)
   appf(m.s[cfsTypeInit3], 
        "$1->size = sizeof($2);$n" & "$1->kind = $3;$n" & "$1->base = $4;$n", 
-       [name, getTypeDesc(m, typ), toRope(nimtypeKind), base])     
+       [name, size, toRope(nimtypeKind), base])     
   # compute type flags for GC optimization
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1

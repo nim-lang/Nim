@@ -339,6 +339,7 @@ type
 const
   routineKinds* = {skProc, skMethod, skIterator, skConverter,
     skMacro, skTemplate}
+  tfIncompleteStruct* = tfVarargs
 
 type
   TMagic* = enum # symbols that require compiler magic:

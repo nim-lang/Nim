@@ -90,7 +90,7 @@ proc GetUniqueType*(key: PType): PType =
     result = GetUniqueType(lastSon(key))
   of tyArrayConstr, tyGenericInvokation, tyGenericBody, tyGenericParam,
      tyOpenArray, tyArray, tyTuple, tySet, tyRange, 
-     tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy:
+     tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
     if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
@@ -121,8 +121,8 @@ proc GetUniqueType*(key: PType): PType =
     if result == nil: 
       IdTablePut(gTypeTable[k], key, key)
       result = key
-  of tyProc, tyVar: 
-    # tyVar is not 100% correct, but speeds things up a little:
+  of tyProc:
+    # tyVar is not 100% correct, but would speeds things up a little:
     result = key
 
 proc TableGetType*(tab: TIdTable, key: PType): PObject = 

@@ -383,8 +383,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
   if sfRegister in s.flags: app(p.s[cpsLocals], " register")
-  elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
-    app(p.s[cpsLocals], " GC_GUARD")
+  #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
+  #  app(p.s[cpsLocals], " GC_GUARD")
   if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
     app(p.s[cpsLocals], " volatile")
   appf(p.s[cpsLocals], " $1;$n", [s.loc.r])

@@ -683,6 +683,10 @@ proc getOccupiedMem(a: TMemRegion): int {.inline.} =
 # ---------------------- thread memory region -------------------------------
 
 template InstantiateForRegion(allocator: expr) =
+  when false:
+    proc interiorAllocatedPtr*(p: pointer): pointer =
+      result = interiorAllocatedPtr(allocator, p)
+
   proc deallocOsPages = deallocOsPages(allocator)
 
   proc alloc(size: int): pointer =

@@ -44,7 +44,7 @@ const
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
-    wImportcpp, wImportobjc, wError}
+    wImportcpp, wImportobjc, wError, wIncompleteStruct}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -571,6 +571,10 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wEmit: PragmaEmit(c, it)
           of wUnroll: PragmaUnroll(c, it)
           of wLinearScanEnd: PragmaLinearScanEnd(c, it)
+          of wIncompleteStruct:
+            noVal(it)
+            if sym.typ == nil: invalidPragma(it)
+            incl(sym.typ.flags, tfIncompleteStruct)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

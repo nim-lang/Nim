@@ -85,8 +85,8 @@ proc web(args: string) =
 
 proc update(args: string) =
   when defined(windows):
-    echo("Windows Users: Make sure to be running this in Bash. If you aren't, press CTRL+C now.")
-
+    echo("Windows users: Make sure to be running this in Bash. ",
+         "If you aren't, press CTRL+C now.")
 
   var thisDir = getAppDir()
   var git = findExe("git")
@@ -109,40 +109,34 @@ proc update(args: string) =
         echo("Fetching updates from repo...")
         var pullout = execCmdEx(git & " pull origin master")
         if pullout[1] != 0:
-          echo("An error has occured.")
-          return
+          quit("An error has occured.")
         else:
-          if pullout[0] == "Already up-to-date.\r\n":
-             echo("No new changes fetched from the repo. Local branch must be ahead of it. Exiting...")
-             return
+          if pullout[0].startsWith("Already up-to-date."):
+            quit("No new changes fetched from the repo. " &
+                 "Local branch must be ahead of it. Exiting...")
     else:
-        echo("An error has occured.")
-        return
+      quit("An error has occured.")
     
   else:
     echo("No repo or executable found!")
     when defined(haveZipLib):
       echo("Falling back.. Downloading source code from repo...")
       # use dom96's httpclient to download zip
-      downloadFile("https://github.com/Araq/Nimrod/zipball/master",thisDir & "/update.zip")
-    
+      downloadFile("https://github.com/Araq/Nimrod/zipball/master",
+                   thisDir / "update.zip")
       try:
         echo("Extracting source code from archive...")
-        var zip :TZipArchive
-        discard open(zip,thisDir & "/update.zip", fmRead) # will add error checking later
+        var zip: TZipArchive
+        discard open(zip, thisDir & "/update.zip", fmRead)
         extractAll(zip, thisDir & "/")
       except:
-        echo("Error reading archive.")
-        return
+        quit("Error reading archive.")
     else:
-      echo("No failback available. Exiting...")
-      return
+      quit("No failback available. Exiting...")
   
   echo("Starting update...")
   boot(args)
   echo("Update complete!")
-
-
 
 
 # -------------- boot ---------------------------------------------------------
