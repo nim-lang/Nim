@@ -167,6 +167,17 @@ encloses the header file in ``""`` in the generated C code.
 **Note**: This will not work for the LLVM backend.
 
 
+IncompleteStruct pragma
+-----------------------
+The `incompleteStruct`:idx: pragma tells the compiler to not use the 
+underlying C ``struct`` in a ``sizeof`` expression:
+
+.. code-block:: Nimrod
+type
+  TDIR* {.importc: "DIR", header: "<dirent.h>", 
+          final, pure, incompleteStruct.} = object
+
+
 Compile pragma
 --------------
 The `compile`:idx: pragma can be used to compile and link a C/C++ source file 

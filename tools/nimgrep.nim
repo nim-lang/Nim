@@ -1,7 +1,7 @@
 #
 #
 #           Nimrod Grep Utility
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,7 +14,7 @@ const
   Version = "0.8"
   Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
 
-  (c) 2011 Andreas Rumpf
+  (c) 2012 Andreas Rumpf
 Usage:
   nimgrep [options] [pattern] [replacement] (file/directory)*
 Options:

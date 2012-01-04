@@ -89,6 +89,8 @@ Compiler Additions
   Objective C.
 - The new pragmas ``importcpp`` and ``importobjc`` make interfacing with C++
   and Objective C somewhat easier.
+- Added a new pragma ``incompleteStruct`` to deal with incomplete C struct
+  definitions.
 - Added a ``--nimcache:PATH`` configuration option for control over the output
   directory for generated code.
 - The ``--genScript`` option now produces different compilation scripts 

@@ -138,7 +138,7 @@ proc rejectThreadTests(r: var TResults, options: string) =
   rejectSingleTest(r, "tests/threads/tthreadanalysis3", options)
   rejectSingleTest(r, "tests/threads/tthreadheapviolation1", options)
 
-# ------------------------- IO tests -----------------------------------
+# ------------------------- IO tests ------------------------------------------
 
 proc runIOTests(r: var TResults, options: string) =
   # We need readall_echo to be compiled for this test to run.
@@ -146,6 +146,12 @@ proc runIOTests(r: var TResults, options: string) =
   var c = initResults()
   compileSingleTest(c, "tests/system/helpers/readall_echo", options)
   runSingleTest(r, "tests/system/io", options)
+  
+# ------------------------- debugger tests ------------------------------------
+
+proc compileDebuggerTests(r: var TResults, options: string) =
+  compileSingleTest(r, "tools/nimgrep", options & 
+                    " --debugger:on")
 
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
@@ -165,4 +171,5 @@ proc compileSpecialTests(r: var TResults, options: string) =
   compileSingleTest(r, "compiler/pas2nim/pas2nim.nim", options)
 
   compileDLLTests(r, options)
+  compileDebuggerTests(r, options)
 

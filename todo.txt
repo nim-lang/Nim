@@ -2,8 +2,7 @@ version 0.8.14
 ==============
 
 - BUG: type TX = TTable[string, int]
-- BUG: temp3.nim triggers weird compiler bug
-- BUG: --debugger:on does not work with talloc.nim
+- BUG: temp2.nim triggers weird compiler bug
 - implicit invokation of `items`/`pairs` seems nice; ensure items(23) does
   not compile though
 

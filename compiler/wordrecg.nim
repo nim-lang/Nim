@@ -36,7 +36,7 @@ type
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wExtern,
+    wImportc, wExportc, wExtern, wIncompleteStruct,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
@@ -80,7 +80,7 @@ const
     "magic", "thread", "final", "profiler", "objchecks", 
     
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "extern",
+    "importcompilerproc", "importc", "exportc", "extern", "incompletestruct",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 

@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Installation Generator
-#        (c) Copyright 2011 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -104,7 +104,7 @@ const
   Version = "0.9"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
-  (c) 2010 Andreas Rumpf
+  (c) 2012 Andreas Rumpf
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:

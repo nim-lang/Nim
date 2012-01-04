@@ -1,7 +1,7 @@
 /*
 
             Nimrod's Runtime Library
-        (c) Copyright 2011 Andreas Rumpf
+        (c) Copyright 2012 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -438,7 +438,9 @@ __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
 #  define unlikely(x) (x)
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+#if 0 // defined(__GNUC__) || defined(__clang__)
+// not needed anymore because the stack marking cares about
+// interior pointers now
 static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD __attribute__ ((cleanup(GCGuard)))
 #else
