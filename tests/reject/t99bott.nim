@@ -1,8 +1,8 @@
 discard """
   file: "t99bott.nim"
-  line: 25
-  errormsg: "constant expression expected"
-  disabled: true
+  line: 26
+  errormsg: "cannot evaluate 'GetBottleNumber(bn)'"
+  disabled: false
 """
 ## 99 Bottles of Beer
 ## http://www.99-bottles-of-beer.net/
@@ -23,7 +23,7 @@ proc GetBottleNumber(n: int): string =
   return bs & " of beer"
 
 for bn in countdown(99, 1):
-  const cur = GetBottleNumber(bn) #ERROR_MSG constant expression expected
+  const cur = GetBottleNumber(bn)
   echo(cur, " on the wall, ", cur, ".")
   echo("Take one down and pass it around, ", GetBottleNumber(bn-1), 
        " on the wall.\n")
