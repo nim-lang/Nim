@@ -97,7 +97,7 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
   result = semConstExpr(c, n)
   
 include seminst, semcall
-    
+
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
   case s.typ.sons[0].kind
