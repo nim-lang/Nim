@@ -32,6 +32,9 @@ proc isDefined*(symbol: PIdent): bool =
   var sym = StrTableGet(gSymbols, symbol)
   result = sym != nil and sym.position == 1
 
+proc isDefined*(symbol: string): bool = 
+  result = isDefined(getIdent(symbol))
+
 proc ListSymbols*() = 
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)

@@ -116,9 +116,9 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           result.add(explicitGenericSym(c, n, candidate))
-    # get rid of nkSymChoice if not ambigious:
+    # get rid of nkSymChoice if not ambiguous:
     if result.len == 1: result = result[0]
     # candidateCount != 1: return explicitGenericInstError(n)
   else:
-    assert false
+    result = explicitGenericInstError(n)
 

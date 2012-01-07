@@ -36,7 +36,7 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer (for Windows)
   tests                    run the testsuite
-  update                   updates nimrod to the latest version from the repo
+  update                   updates nimrod to the latest version from github
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -82,62 +82,6 @@ proc install(args: string) =
 proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
-
-proc update(args: string) =
-  when defined(windows):
-    echo("Windows users: Make sure to be running this in Bash. ",
-         "If you aren't, press CTRL+C now.")
-
-  var thisDir = getAppDir()
-  var git = findExe("git")
-  echo("Checking for git repo and git executable...")
-  if existsDir(thisDir & "/.git") and git != "":
-    echo("Git repo found!")
-    # use git to download latest source
-    echo("Checking for updates...")
-    discard startCmd(git & " fetch origin master")
-    var procs = startCmd(git & " diff origin/master master")
-    var errcode = procs.waitForExit()
-    var output = readLine(procs.outputStream)
-    echo(output)
-    if errcode == 0:
-      if output == "":
-        # No changes
-        echo("No update. Exiting..")
-        return
-      else:
-        echo("Fetching updates from repo...")
-        var pullout = execCmdEx(git & " pull origin master")
-        if pullout[1] != 0:
-          quit("An error has occured.")
-        else:
-          if pullout[0].startsWith("Already up-to-date."):
-            quit("No new changes fetched from the repo. " &
-                 "Local branch must be ahead of it. Exiting...")
-    else:
-      quit("An error has occured.")
-    
-  else:
-    echo("No repo or executable found!")
-    when defined(haveZipLib):
-      echo("Falling back.. Downloading source code from repo...")
-      # use dom96's httpclient to download zip
-      downloadFile("https://github.com/Araq/Nimrod/zipball/master",
-                   thisDir / "update.zip")
-      try:
-        echo("Extracting source code from archive...")
-        var zip: TZipArchive
-        discard open(zip, thisDir & "/update.zip", fmRead)
-        extractAll(zip, thisDir & "/")
-      except:
-        quit("Error reading archive.")
-    else:
-      quit("No failback available. Exiting...")
-  
-  echo("Starting update...")
-  boot(args)
-  echo("Update complete!")
-
 
 # -------------- boot ---------------------------------------------------------
 
@@ -236,6 +180,65 @@ proc clean(args: string) =
     if kind == pcDir: 
       echo "removing dir: ", path
       RemoveDir(path)
+
+# -------------- update -------------------------------------------------------
+
+proc update(args: string) =
+  when defined(windows):
+    echo("Windows users: Make sure to be running this in Bash. ",
+         "If you aren't, press CTRL+C now.")
+
+  var thisDir = getAppDir()
+  var git = findExe("git")
+  echo("Checking for git repo and git executable...")
+  if existsDir(thisDir & "/.git") and git != "":
+    echo("Git repo found!")
+    # use git to download latest source
+    echo("Checking for updates...")
+    discard startCmd(git & " fetch origin master")
+    var procs = startCmd(git & " diff origin/master master")
+    var errcode = procs.waitForExit()
+    var output = readLine(procs.outputStream)
+    echo(output)
+    if errcode == 0:
+      if output == "":
+        # No changes
+        echo("No update. Exiting..")
+        return
+      else:
+        echo("Fetching updates from repo...")
+        var pullout = execCmdEx(git & " pull origin master")
+        if pullout[1] != 0:
+          quit("An error has occured.")
+        else:
+          if pullout[0].startsWith("Already up-to-date."):
+            quit("No new changes fetched from the repo. " &
+                 "Local branch must be ahead of it. Exiting...")
+    else:
+      quit("An error has occured.")
+    
+  else:
+    echo("No repo or executable found!")
+    when defined(haveZipLib):
+      echo("Falling back.. Downloading source code from repo...")
+      # use dom96's httpclient to download zip
+      downloadFile("https://github.com/Araq/Nimrod/zipball/master",
+                   thisDir / "update.zip")
+      try:
+        echo("Extracting source code from archive...")
+        var zip: TZipArchive
+        discard open(zip, thisDir & "/update.zip", fmRead)
+        extractAll(zip, thisDir & "/")
+      except:
+        quit("Error reading archive.")
+    else:
+      quit("No failback available. Exiting...")
+  
+  echo("Starting update...")
+  boot(args)
+  echo("Update complete!")
+
+# -------------- tests --------------------------------------------------------
 
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic

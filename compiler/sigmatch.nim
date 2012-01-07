@@ -12,7 +12,7 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
-  magicsys
+  magicsys, condsyms, idents
 
 type
   TCandidateState* = enum 
@@ -27,7 +27,7 @@ type
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
     call*: PNode             # modified call
-    bindings*: TIdTable      # maps sym-ids to types
+    bindings*: TIdTable      # maps types to types
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
   
@@ -52,6 +52,12 @@ proc initCandidate*(c: var TCandidate, callee: PType) =
   c.calleeSym = nil
   initIdTable(c.bindings)
 
+proc put(t: var TIdTable, key, val: PType) {.inline.} =
+  IdTablePut(t, key, val)
+  if val.kind == tyObject and isDefined"testme" and 
+      IdentEq(val.sym.name, "TTable"):
+    assert false
+
 proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode) = 
   initCandidateAux(c, callee.typ)
   c.calleeSym = callee
@@ -61,7 +67,7 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode) =
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
       #debug(formalTypeParam)
-      IdTablePut(c.bindings, formalTypeParam, binding[i].typ)
+      put(c.bindings, formalTypeParam, binding[i].typ)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
   a.exactMatches = b.exactMatches
@@ -100,7 +106,7 @@ proc getNotFoundError*(c: PContext, n: PNode): string =
   # in case of an error).
   result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1): 
-    #debug(n.sons[i].typ);
+    #debug(n.sons[i].typ)
     if n.sons[i].kind == nkExprEqExpr: 
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
@@ -225,7 +231,7 @@ proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       result = isNone
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
-      # noSideEffect implies ``tfThread``!
+      # noSideEffect implies ``tfThread``! XXX really?
       result = isNone
   else: nil
 
@@ -236,7 +242,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   assert(a != nil)
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
-        tyGenericBody, tyGenericInvokation, tyGenericParam}: 
+        tyGenericBody, tyGenericInvokation, tyGenericParam}:
     return typeRel(mapping, f, lastSon(a))
   if a.kind == tyVar and f.kind != tyVar: 
     return typeRel(mapping, f, a.sons[0])
@@ -413,7 +419,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           var x = PType(idTableGet(mapping, f.sons[0].sons[i - 1]))
           if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
             InternalError("wrong instantiated type!")
-          idTablePut(mapping, f.sons[i], x)
+          put(mapping, f.sons[i], x)
   of tyGenericParam: 
     var x = PType(idTableGet(mapping, f))
     if x == nil: 
@@ -421,7 +427,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         # no constraints
         var concrete = concreteType(mapping, a)
         if concrete != nil:
-          idTablePut(mapping, f, concrete)
+          put(mapping, f, concrete)
           result = isGeneric
       else: 
         # check constraints:
@@ -429,7 +435,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           if typeRel(mapping, f.sons[i], a) >= isSubtype: 
             var concrete = concreteType(mapping, a)
             if concrete != nil: 
-              idTablePut(mapping, f, concrete)
+              put(mapping, f, concrete)
               result = isGeneric
             break 
     elif a.kind == tyEmpty: 
