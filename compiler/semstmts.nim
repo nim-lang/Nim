@@ -417,7 +417,10 @@ proc semFor(c: PContext, n: PNode): PNode =
     if iter.kind != tyTuple or length == 3: 
       if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
       var v = newSymS(skForVar, n.sons[0], c)
-      v.typ = iter
+      # BUGFIX: don't use `iter` here as that would strip away
+      # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
+      # for an example:
+      v.typ = n.sons[length-2].typ
       n.sons[0] = newSymNode(v)
       addDecl(c, v)
     else: 
