@@ -1,8 +1,7 @@
 version 0.8.14
 ==============
 
-- BUG: type TX = TTable[string, int]
-- BUG: temp2.nim triggers weird compiler bug
+- fix remaining generics bugs
 - fix line info in assertions
 - implicit invokation of `items`/`pairs` seems nice; ensure items(23) does
   not compile though
@@ -48,6 +47,7 @@ Bugs
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
+- BUG: temp2.nim triggers weird compiler and except.nim bug
 
 
 version 0.9.XX

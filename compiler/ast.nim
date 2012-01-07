@@ -877,8 +877,10 @@ proc len*(n: PType): int =
   else: result = len(n.sons)
   
 proc newSons(father: PType, length: int) = 
-  if isNil(father.sons): father.sons = @[]
-  setlen(father.sons, len(father.sons) + length)
+  if isNil(father.sons): 
+    newSeq(father.sons, length)
+  else:
+    setlen(father.sons, length)
 
 proc addSon(father, son: PType) = 
   if isNil(father.sons): father.sons = @[]
@@ -890,8 +892,10 @@ proc sonsLen(n: PNode): int =
   else: result = len(n.sons)
   
 proc newSons(father: PNode, length: int) = 
-  if isNil(father.sons): father.sons = @[]
-  setlen(father.sons, len(father.sons) + length)
+  if isNil(father.sons): 
+    newSeq(father.sons, length)
+  else:
+    setlen(father.sons, length)
 
 proc addSon(father, son: PNode) = 
   assert son != nil
@@ -937,7 +941,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSons(result, sonsLen(src))
+  else: newSeq(result.sons, sonsLen(src))
 
 proc copyTree(src: PNode): PNode = 
   # copy a whole syntax tree; performs deep copying
@@ -954,8 +958,7 @@ proc copyTree(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: 
-    result.sons = nil
-    newSons(result, sonsLen(src))
+    newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1): 
       result.sons[i] = copyTree(src.sons[i])
   
