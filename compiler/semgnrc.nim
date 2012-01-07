@@ -246,7 +246,8 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef, nkLambda: 
     checkSonsLen(n, bodyPos + 1)
-    addPrelimDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
+    if n.kind != nkLambda:
+      addPrelimDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
     openScope(c.tab)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos], 
                                               flags, toBind)

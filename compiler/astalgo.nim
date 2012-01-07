@@ -583,6 +583,7 @@ proc StrTableIncl*(t: var TStrTable, n: PSym): bool =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
+  assert n.name != nil
   var h: THash = n.name.h and high(t.data)
   while true: 
     var it = t.data[h]
