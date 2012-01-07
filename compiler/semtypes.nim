@@ -625,14 +625,18 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
-  if s.typ == nil or s.typ.kind != tyGenericBody: 
-    GlobalError(n.info, errCannotInstantiateX, s.name.s)
   result = newOrPrevType(tyGenericInvokation, prev, c)
-  if s.typ.containerID == 0: InternalError(n.info, "semtypes.semGeneric")
-  if sonsLen(n) != sonsLen(s.typ): 
+  var isConcrete = true
+  if s.typ == nil:
+    GlobalError(n.info, errCannotInstantiateX, s.name.s)
+  elif s.typ.kind != tyGenericBody:
+    isConcrete = false
+  elif s.typ.containerID == 0: 
+    InternalError(n.info, "semtypes.semGeneric")
+  elif sonsLen(n) != sonsLen(s.typ): 
     GlobalError(n.info, errWrongNumberOfArguments)
   addSon(result, s.typ)
-  var isConcrete = true # iterate over arguments:
+  # iterate over arguments:
   for i in countup(1, sonsLen(n)-1):
     var elem = semGenericParamInInvokation(c, n.sons[i])
     if containsGenericType(elem): isConcrete = false

@@ -547,10 +547,11 @@ type
 proc handleError(msg: TMsgKind, eh: TErrorHandling) = 
   if msg == errInternal: 
     assert(false)             # we want a stack trace here
-  if (msg >= fatalMin) and (msg <= fatalMax): 
+  if msg >= fatalMin and msg <= fatalMax: 
     if gVerbosity >= 3: assert(false)
     quit(1)
-  if (msg >= errMin) and (msg <= errMax): 
+  if msg >= errMin and msg <= errMax: 
+    if gVerbosity >= 3: assert(false)
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax or eh == doAbort: 
