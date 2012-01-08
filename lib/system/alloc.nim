@@ -479,14 +479,6 @@ proc getSmallChunk(a: var TMemRegion): PSmallChunk =
 
 # -----------------------------------------------------------------------------
 
-proc getCellSize(p: pointer): int {.inline.} = 
-  var c = pageAddr(p)
-  result = c.size
-  
-proc memSize(a: TMemRegion, p: pointer): int {.inline.} =
-  var c = pageAddr(p)
-  result = c.size
-    
 proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
   sysAssert(roundup(65, 8) == 72, "rawAlloc 1")
   sysAssert requestedSize >= sizeof(TFreeCell), "rawAlloc 2"
@@ -526,6 +518,8 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
       sysAssert((cast[TAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
     if c.free < size:
       ListRemove(a.freeSmallChunks[s], c)
+    sysAssert(((cast[TAddress](result) and PageMask) -% smallChunkOverhead()) %%
+               size == 0, "rawAlloc 21")
   else:
     size = roundup(requestedSize+bigChunkOverhead(), PageSize)
     # allocate a large block
@@ -549,6 +543,8 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
     var s = c.size
+    sysAssert(((cast[TAddress](p) and PageMask) -% smallChunkOverhead()) %%
+               s == 0, "rawDealloc 3")
     var f = cast[ptr TFreeCell](p)
     #echo("setting to nil: ", $cast[TAddress](addr(f.zeroField)))
     sysAssert(f.zeroField != 0, "rawDealloc 1")
@@ -570,6 +566,8 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
         ListRemove(a.freeSmallChunks[s div memAlign], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
+    sysAssert(((cast[TAddress](p) and PageMask) -% smallChunkOverhead()) %%
+               s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
@@ -686,6 +684,9 @@ template InstantiateForRegion(allocator: expr) =
   when false:
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
+
+    proc isAllocatedPtr*(p: pointer): bool = 
+      result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)
 

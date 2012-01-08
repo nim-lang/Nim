@@ -808,9 +808,34 @@ when hasThreadSupport:
 else:
   {.pragma: rtlThreadVar.}
 
+const
+  QuitSuccess* = 0
+    ## is the value that should be passed to ``quit`` to indicate
+    ## success.
+
+  QuitFailure* = 1
+    ## is the value that should be passed to ``quit`` to indicate
+    ## failure.
+
+var program_result* {.exportc: "nim_$1".} = QuitSuccess
+  ## modify this varialbe to specify the exit code of the program
+  ## under normal circumstances. when the program is terminated
+  ## prematurelly using ``quit``, this value is ignored.
+
+proc quit*(errorcode: int = QuitSuccess) {.
+  magic: "Exit", importc: "exit", noDecl, noReturn.}
+  ## stops the program immediately; before stopping the program the
+  ## "quit procedures" are called in the opposite order they were added
+  ## with ``addQuitProc``. ``quit`` never returns and ignores any
+  ## exception that may have been raised by the quit procedures.
+  ## It does *not* call the garbage collector to free all the memory,
+  ## unless a quit procedure calls ``GC_collect``.
+
 template sysAssert(cond, msg: expr) =
   # change this to activate system asserts
-  #if not cond: echo "[SYSASSERT] ", msg
+  #if not cond: 
+  #  echo "[SYSASSERT] ", msg
+  #  quit 1
   nil
 
 include "system/inclrtl"
@@ -1529,29 +1554,6 @@ template newException*(exceptn, message: expr): expr =
     new(e)
     e.msg = message
     e
-
-const
-  QuitSuccess* = 0
-    ## is the value that should be passed to ``quit`` to indicate
-    ## success.
-
-  QuitFailure* = 1
-    ## is the value that should be passed to ``quit`` to indicate
-    ## failure.
-
-var program_result* {.exportc: "nim_$1".} = QuitSuccess
-  ## modify this varialbe to specify the exit code of the program
-  ## under normal circumstances. when the program is terminated
-  ## prematurelly using ``quit``, this value is ignored.
-
-proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", noDecl, noReturn.}
-  ## stops the program immediately; before stopping the program the
-  ## "quit procedures" are called in the opposite order they were added
-  ## with ``addQuitProc``. ``quit`` never returns and ignores any
-  ## exception that may have been raised by the quit procedures.
-  ## It does *not* call the garbage collector to free all the memory,
-  ## unless a quit procedure calls ``GC_collect``.
 
 when not defined(EcmaScript) and not defined(NimrodVM):
   {.push stack_trace: off.}

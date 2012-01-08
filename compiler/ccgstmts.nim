@@ -319,8 +319,14 @@ proc genStringCase(p: BProc, t: PNode) =
         # but we reserved a label, which we use later
     appcg(p, cpsStmts, "switch (#hashString($1) & $2) {$n", 
          [rdLoc(a), toRope(bitMask)])
-    for j in countup(0, high(branches)): 
-      if branches[j] != nil: 
+    for j in countup(0, high(branches)):
+      when false:
+        let interior = cast[int](interiorAllocatedPtr(addr(branches[0])))+
+                                 2*sizeof(pointer)
+        let brn = cast[int](cast[pointer](branches))
+        if interior != brn:
+          echo "BUG! ", interior, "-", brn
+      if branches[j] != nil:
         appf(p.s[cpsStmts], "case $1: $n$2break;$n", 
              [intLiteral(j), branches[j]])
     appf(p.s[cpsStmts], "}$n") # else statement:
