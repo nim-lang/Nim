@@ -10,7 +10,6 @@ Version 0.8.14 has been released! Get it `here <download.html>`_.
 Bugfixes
 --------
 
-- Boehm GC now works with ``--threads:on``.
 - Fixed a serious memory corruption concerning message passing.
 - Fixed a serious bug concerning different instantiations of a generic proc.
 - Fixed a newly introduced bug where a wrong ``EIO`` exception was raised for
@@ -20,6 +19,7 @@ Bugfixes
 - Some more bugfixes for macros and compile-time evaluation.
 - The GC now takes into account interior pointers on the stack which may be
   introduced by aggressive C optimizers.
+- Lots of other bugfixes: Too many to list them all.
 
 
 Changes affecting backwards compatibility
@@ -77,6 +77,8 @@ Language Additions
 - ``bind`` (used for symbol binding in templates and generics) is now a
   declarative statement.
 - Nimrod now supports single assignment variables via the ``let`` statement.
+- Iterators named ``items`` and ``pairs`` are implicitly invoked when 
+  an explicit iterator is missing.
 - The slice assignment ``a[i..j] = b`` where ``a`` is a sequence or string
   now supports *splicing*.
 

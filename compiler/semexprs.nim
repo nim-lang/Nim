@@ -178,7 +178,8 @@ proc semCast(c: PContext, n: PNode): PNode =
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   if not isCastable(result.typ, result.sons[1].Typ): 
-    GlobalError(result.info, errExprCannotBeCastedToX, typeToString(result.Typ))
+    GlobalError(result.info, errExprCannotBeCastedToX, 
+                typeToString(result.Typ))
   
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode = 
   const 

@@ -398,6 +398,39 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   b.add(ast.emptyNode)
   stmts.add(b)
 
+proc semForVars(c: PContext, n: PNode): PNode =
+  result = n
+  var length = sonsLen(n)
+  var iter = skipTypes(n.sons[length-2].typ, {tyGenericInst})
+  # length == 3 means that there is one for loop variable
+  # and thus no tuple unpacking:
+  if iter.kind != tyTuple or length == 3: 
+    if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
+    var v = newSymS(skForVar, n.sons[0], c)
+    # BUGFIX: don't use `iter` here as that would strip away
+    # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
+    # for an example:
+    v.typ = n.sons[length-2].typ
+    n.sons[0] = newSymNode(v)
+    addDecl(c, v)
+  else: 
+    if length-2 != sonsLen(iter):
+      GlobalError(n.info, errWrongNumberOfVariables)
+    for i in countup(0, length - 3): 
+      var v = newSymS(skForVar, n.sons[i], c)
+      v.typ = iter.sons[i]
+      n.sons[i] = newSymNode(v)
+      addDecl(c, v)
+  Inc(c.p.nestedLoopCounter)
+  n.sons[length-1] = SemStmt(c, n.sons[length-1])
+  Dec(c.p.nestedLoopCounter)
+
+proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
+  result = newNodeI(nkCall, arg.info)
+  result.add(newIdentNode(it.getIdent, arg.info))
+  result.add(arg)
+  result = semExprNoDeref(c, result, {efWantIterator})
+
 proc semFor(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 3)
@@ -407,33 +440,18 @@ proc semFor(c: PContext, n: PNode): PNode =
   var call = n.sons[length-2]
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator: 
-    GlobalError(n.sons[length - 2].info, errIteratorExpected)
+    if length == 3:
+      n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])
+      result = semForVars(c, n)
+    elif length == 4:
+      n.sons[length-2] = implicitIterator(c, "pairs", n.sons[length-2])
+      result = semForVars(c, n)
+    else:
+      GlobalError(n.sons[length - 2].info, errIteratorExpected)
   elif call.sons[0].sym.magic != mNone:
     result = semForFields(c, n, call.sons[0].sym.magic)
   else:
-    var iter = skipTypes(n.sons[length-2].typ, {tyGenericInst})
-    # length == 3 means that there is one for loop variable
-    # and thus no tuple unpacking:
-    if iter.kind != tyTuple or length == 3: 
-      if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
-      var v = newSymS(skForVar, n.sons[0], c)
-      # BUGFIX: don't use `iter` here as that would strip away
-      # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
-      # for an example:
-      v.typ = n.sons[length-2].typ
-      n.sons[0] = newSymNode(v)
-      addDecl(c, v)
-    else: 
-      if length-2 != sonsLen(iter):
-        GlobalError(n.info, errWrongNumberOfVariables)
-      for i in countup(0, length - 3): 
-        var v = newSymS(skForVar, n.sons[i], c)
-        v.typ = iter.sons[i]
-        n.sons[i] = newSymNode(v)
-        addDecl(c, v)
-    Inc(c.p.nestedLoopCounter)
-    n.sons[length-1] = SemStmt(c, n.sons[length-1])
-    Dec(c.p.nestedLoopCounter)
+    result = semForVars(c, n)
   closeScope(c.tab)
 
 proc semRaise(c: PContext, n: PNode): PNode = 

@@ -2328,7 +2328,7 @@ Iterators and the for statement
 
 Syntax::
 
-  forStmt ::= 'for' symbol (comma symbol)* [comma] 'in' expr ['..' expr] ':' stmt
+  forStmt ::= 'for' symbol (comma symbol)* [comma] 'in' expr ':' stmt
 
   param ::= symbol (comma symbol)* [comma] ':' typeDesc
   paramList ::= ['(' [param (comma param)* [comma]] ')'] [':' typeDesc]
@@ -2384,6 +2384,24 @@ convention ``inline``.
 If the iterator yields a tuple, there have to be as many iteration variables
 as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component.
+
+
+Implict items/pairs invokations
++++++++++++++++++++++++++++++++
+
+If the for loop expression ``e`` does not denote an iterator and the for loop
+has exactly 1 variable, the for loop expression is rewritten to ``items(e)``;
+ie. an ``items`` iterator is implicitely invoked:
+
+.. code-block:: nimrod
+  for x in [1,2,3]: echo x
+  
+If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitely
+invoked.
+
+Symbol lookup of the identifiers ``items``/``pairs`` is performed after 
+the rewriting step, so that all overloadings of ``items``/``pairs`` are taken
+into account.
 
 
 Type sections
@@ -3322,6 +3340,7 @@ strings automatically:
 Dynlib pragma for import
 ------------------------
 With the `dynlib`:idx: pragma a procedure can be imported from
+
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
 non-optional argument has to be the name of the dynamic library:
 
