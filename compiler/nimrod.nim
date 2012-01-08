@@ -23,6 +23,7 @@ var
 
 proc ProcessCmdLine(pass: TCmdLinePass) = 
   var p = parseopt.initOptParser()
+  var argsCount = 0
   while true: 
     parseopt.next(p)
     case p.kind
@@ -38,17 +39,16 @@ proc ProcessCmdLine(pass: TCmdLinePass) =
       else: 
         ProcessSwitch(p.key, p.val, pass, gCmdLineInfo)
     of cmdArgument:
-      if pass != passCmd1: break
-      if options.command == "":
+      if argsCount == 0:
         options.command = p.key
       else:
-        options.commandArgs.add p.key
-
-        if options.gProjectName == "":
+        if pass == passCmd1: options.commandArgs.add p.key
+        if argsCount == 1:
           # support UNIX style filenames anywhere for portable build scripts:
           options.gProjectName = unixToNativePath(p.key)
           arguments = cmdLineRest(p)
           break
+      inc argsCount
           
   if pass == passCmd2:
     if optRun notin gGlobalOptions and arguments != "":
