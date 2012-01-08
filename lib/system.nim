@@ -817,7 +817,7 @@ const
     ## is the value that should be passed to ``quit`` to indicate
     ## failure.
 
-var program_result* {.exportc: "nim_$1".} = QuitSuccess
+var programResult* {.exportc: "nim_program_result".}: int
   ## modify this varialbe to specify the exit code of the program
   ## under normal circumstances. when the program is terminated
   ## prematurelly using ``quit``, this value is ignored.
