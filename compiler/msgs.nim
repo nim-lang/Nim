@@ -100,7 +100,7 @@ type
     warnDeprecated, warnConfigDeprecated,
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
-    warnXisPassedToProcVar, warnDerefDeprecated, warnAnalysisLoophole,
+    warnXisPassedToProcVar, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap,
     warnUser, 
     hintSuccess, hintSuccessX, 
@@ -338,7 +338,6 @@ const
     warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnXisPassedToProcVar: "\'$1\' is passed to a procvar; deprecated [XisPassedToProcVar]", 
-    warnDerefDeprecated: "p^ is deprecated; use p[] instead [DerefDeprecated]",
     warnAnalysisLoophole: "thread analysis incomplete due to unkown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
@@ -359,12 +358,12 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..17, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..16, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
-    "CommentXIgnored", "XisPassedToProcVar", "DerefDeprecated",
+    "CommentXIgnored", "XisPassedToProcVar",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap", "User"]
 
   HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 

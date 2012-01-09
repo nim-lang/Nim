@@ -819,7 +819,7 @@ const
 
 var programResult* {.exportc: "nim_program_result".}: int
   ## modify this varialbe to specify the exit code of the program
-  ## under normal circumstances. when the program is terminated
+  ## under normal circumstances. When the program is terminated
   ## prematurelly using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
