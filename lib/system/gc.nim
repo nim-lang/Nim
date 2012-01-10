@@ -559,7 +559,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)
-  if c >% PageSize and (c and (MemAlign-1)) == 0:
+  if c >% PageSize:
     # fast check: does it look like a cell?
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
     if objStart != nil:
@@ -576,13 +576,6 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
 proc nimKeepAlive(p: PGenericSeq) {.compilerRtl, noinline.} =
   var c = usrToCell(p)
   if isAllocatedPtr(gch.region, c):
-    c.refcount = c.refcount or rcMarked
-
-proc nimGCFrame(p: pointer) {.compilerRtl, noinline.} =
-  # 'cast' is correct here! no offset to add:
-  var c = cast[PCell](p)
-  var x = cast[TAddress](c)
-  if x <% PageSize and (x and (MemAlign-1)) == 0:
     c.refcount = c.refcount or rcMarked
 
 proc markThreadStacks(gch: var TGcHeap) = 
