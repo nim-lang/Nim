@@ -1,5 +1,5 @@
 discard """
-  disabled: true
+  disabled: false
 """
 
 ##
@@ -12,4 +12,6 @@ type
   TGen[T] = object
   TSpef = TGen[string]
   
+var
+  s: TSpef
 

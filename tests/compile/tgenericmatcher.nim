@@ -1,5 +1,5 @@
 discard """
-  disabled: true
+  disabled: false
 """
 
 type
