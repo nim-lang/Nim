@@ -54,9 +54,10 @@ proc initCandidate*(c: var TCandidate, callee: PType) =
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
   IdTablePut(t, key, val)
-  if val.kind == tyObject and isDefined"testme" and 
-      IdentEq(val.sym.name, "TTable"):
-    assert false
+  when false:
+    if val.kind == tyObject and isDefined"testme" and 
+        IdentEq(val.sym.name, "TTable"):
+      assert false
 
 proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode) = 
   initCandidateAux(c, callee.typ)
@@ -120,6 +121,7 @@ proc getNotFoundError*(c: PContext, n: PNode): string =
     if sym.kind in {skProc, skMethod, skIterator, skConverter}: 
       add(candidates, getProcHeader(sym))
       add(candidates, "\n")
+      #debug(sym.typ)
     sym = nextOverloadIter(o, c, n.sons[0])
   if candidates != "": 
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
@@ -169,7 +171,12 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
   
 proc isObjectSubtype(a, f: PType): bool =
   var t = a
-  while t != nil and not sameObjectTypes(f, t): t = t.sons[0]
+  assert t.kind == tyObject
+  while t != nil and not sameObjectTypes(f, t): 
+    assert t.kind == tyObject
+    t = t.sons[0]
+    if t == nil: break
+    t = skipTypes(t, {tyGenericInst})
   result = t != nil
 
 proc minRel(a, b: TTypeRelation): TTypeRelation = 
@@ -402,15 +409,15 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
       # simply no match for now:
       nil
-    elif a.kind == tyGenericInst:
-      if (f.sons[0].containerID == a.sons[0].containerID) and
+    elif a.kind == tyGenericInst and 
+          (f.sons[0].containerID == a.sons[0].containerID) and
           (sonsLen(a) - 1 == sonsLen(f)): 
-        assert(a.sons[0].kind == tyGenericBody)
-        for i in countup(1, sonsLen(f) - 1): 
-          if a.sons[i].kind == tyGenericParam: 
-            InternalError("wrong instantiated type!")
-          if typeRel(mapping, f.sons[i], a.sons[i]) < isGeneric: return 
-        result = isGeneric
+      assert(a.sons[0].kind == tyGenericBody)
+      for i in countup(1, sonsLen(f) - 1): 
+        if a.sons[i].kind == tyGenericParam: 
+          InternalError("wrong instantiated type!")
+        if typeRel(mapping, f.sons[i], a.sons[i]) <= isSubtype: return 
+      result = isGeneric
     else:
       result = typeRel(mapping, f.sons[0], a)
       if result != isNone:

@@ -1,8 +1,12 @@
 version 0.8.14
 ==============
 
-- fix memory corruption bug triggered by visual c++ in release mode
+- fix memory corruption bug triggered by visual c++ in release mode:
+  * sysasserts in incref
+  * force full collection in ccgstmts.nim
 - fix line info in assertions
+- fix remaining generics bugs
+
 
 version 0.9.0
 =============
