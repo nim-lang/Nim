@@ -16,7 +16,8 @@ type
 proc `*`*(x: int, order: TSortOrder): int {.inline.} = 
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
-  ## `x` is supposed to be the result of a comparator.
+  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for 
+  ## *less than*, ``== 0`` for *equal*, ``> 0`` for *greater than*.
   var y = order.ord - 1
   result = (x xor y) - y
 
@@ -80,14 +81,22 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   else:
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
-proc sort*[T](a: var openArray[T], 
-              cmp: proc (x, y: T): int = cmp,
+proc sort*[T](a: var openArray[T],
+              cmp: proc (x, y: T): int,
               order = TSortOrder.Ascending) =
   ## Default Nimrod sort. The sorting is guaranteed to be stable and 
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of 
-  ## length ``a.len div 2``.
+  ## length ``a.len div 2``. Currently Nimrod does not support a
+  ## sensible default argument for ``cmp``, so you have to provide one
+  ## of your own. However, the ``system.cmp`` procs can be used:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##    sort(myIntArray, system.cmp[int])
+  ##    sort(myStrArray, system.cmp)
+  ##
   var n = a.len
   var b: seq[T]
   newSeq(b, n div 2)
