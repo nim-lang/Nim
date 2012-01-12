@@ -222,11 +222,8 @@ proc rtlAddZCT(c: PCell) {.rtl, inl.} =
     ReleaseSys(HeapLock)
 
 proc decRef(c: PCell) {.inline.} =
-  when stressGC:
-    if c.refcount <% rcIncrement:
-      writeCell("broken cell", c)
+  sysAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
   sysAssert(c.refcount >=% rcIncrement, "decRef")
-  #if c.refcount <% rcIncrement: quit("leck mich")
   if --c.refcount:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
@@ -235,6 +232,7 @@ proc decRef(c: PCell) {.inline.} =
     rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
+  sysAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   ++c.refcount
   if canBeCycleRoot(c):
     rtlAddCycleRoot(c)
@@ -500,6 +498,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
   sysAssert(c != nil, "doOperation: 1")
   case op # faster than function pointers because of easy prediction
   of waZctDecRef:
+    sysAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     sysAssert(c.refcount >=% rcIncrement, "doOperation 2")
     c.refcount = c.refcount -% rcIncrement
     when logGC: writeCell("decref (from doOperation)", c)
@@ -727,8 +726,10 @@ proc CollectZCT(gch: var TGcHeap) =
   var L = addr(gch.zct.len)
   while L[] > 0:
     var c = gch.zct.d[0]
+    sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
     # remove from ZCT:
     sysAssert((c.refcount and rcZct) == rcZct, "collectZCT")
+    
     c.refcount = c.refcount and not colorMask
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])

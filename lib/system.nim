@@ -833,7 +833,7 @@ proc quit*(errorcode: int = QuitSuccess) {.
 
 template sysAssert(cond, msg: expr) =
   # change this to activate system asserts
-  #if not cond: 
+  #if not cond:
   #  echo "[SYSASSERT] ", msg
   #  quit 1
   nil

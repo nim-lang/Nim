@@ -146,6 +146,7 @@ Library Additions
 - Added ``memfiles`` module.
 - Added ``subexes`` module.
 - Added ``critbits`` module.
+- Added ``algorithm`` module for generic ``sort``, ``reverse`` etc. operations.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 - The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 
   and ``exec`` on Posix systems. Define the symbol ``useFork`` to revert to

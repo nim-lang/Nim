@@ -478,6 +478,7 @@ proc getSmallChunk(a: var TMemRegion): PSmallChunk =
   result = cast[PSmallChunk](res)
 
 # -----------------------------------------------------------------------------
+proc isAllocatedPtr(a: TMemRegion, p: pointer): bool
 
 proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
   sysAssert(roundup(65, 8) == 72, "rawAlloc 1")
@@ -537,7 +538,8 @@ proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
 
-proc rawDealloc(a: var TMemRegion, p: pointer) = 
+proc rawDealloc(a: var TMemRegion, p: pointer) =
+  sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer!")
   var c = pageAddr(p)
   if isSmallChunk(c):
     # `p` is within a small chunk:
