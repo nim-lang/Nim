@@ -16881,5 +16881,24 @@ proc nimrod_init*() =
     cmdCount{.importc: "cmdCount".}: cint
   init(addr(cmdLine), addr(cmdCount))
 
+type
+  TTooltip* {.pure, final.} = object
+  PTooltip* = ptr TTooltip
+
 proc set_tooltip_text*(w: PWidget, t: cstring){.cdecl,
   dynlib: lib, importc: "gtk_widget_set_tooltip_text".}
+
+proc set_tooltip_column*(w: PTreeview, column: gint){.cdecl,
+  dynlib: lib, importc: "gtk_tree_view_set_tooltip_column".}
+
+proc trigger_tooltip_query*(widg: PWidget){.cdecl, dynlib: lib, 
+  importc: "gtk_widget_trigger_tooltip_query".}
+
+proc trigger_tooltip_query*(widg: PTooltip){.cdecl, dynlib: lib, 
+  importc: "gtk_tooltip_trigger_tooltip_query".}
+
+proc set_has_tooltip*(widget: PWidget, b: gboolean){.cdecl, dynlib: lib, 
+  importc: "gtk_widget_set_has_tooltip".}
+
+proc set_markup*(tp: PTooltip, mk: cstring){.cdecl, dynlib: lib, 
+  importc: "gtk_tooltip_set_markup".}
