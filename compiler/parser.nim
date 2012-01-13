@@ -503,12 +503,15 @@ proc parseIfExpr(p: var TParser): PNode =
     var branch = newNodeP(nkElifExpr, p)
     addSon(branch, parseExpr(p))
     eat(p, tkColon)
+    optInd(p, branch)
     addSon(branch, parseExpr(p))
+    optInd(p, branch)
     addSon(result, branch)
     if p.tok.tokType != tkElif: break 
   var branch = newNodeP(nkElseExpr, p)
   eat(p, tkElse)
   eat(p, tkColon)
+  optInd(p, branch)
   addSon(branch, parseExpr(p))
   addSon(result, branch)
 
@@ -1368,7 +1371,9 @@ proc parseStmt(p: var TParser): PNode =
         break 
       else: 
         var a = complexOrSimpleStmt(p)
-        if a.kind == nkEmpty: break 
+        if a.kind == nkEmpty:
+          parMessage(p, errInvalidIndentation)
+          break 
         addSon(result, a)
     popInd(p.lex)
   else: 
