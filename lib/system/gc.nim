@@ -465,14 +465,14 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   sysAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
   sysAssert(allocInv(gch.region), "growObj begin")
 
-  var res = cast[PCell](rawAlloc0(gch.region, newsize + sizeof(TCell)))
+  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(TCell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
   
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(TCell))
-  #zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
-  #        newsize-oldsize)
+  zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
+          newsize-oldsize)
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   sysAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
   #if res.refcount <% rcIncrement:
