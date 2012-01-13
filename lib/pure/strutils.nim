@@ -677,7 +677,7 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
     inc(i)
 
 proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
-  rtl, extern: "nsuReplaceStr".} =
+  rtl, extern: "nsuReplaceWord".} =
   ## Replaces `sub` in `s` by the string `by`. Each occurance of `sub`
   ## has to be surrounded by word boundaries (comparable to ``\\w`` in
   ## regular expressions), otherwise it is not replaced.

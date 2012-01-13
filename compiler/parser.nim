@@ -1372,7 +1372,8 @@ proc parseStmt(p: var TParser): PNode =
       else: 
         var a = complexOrSimpleStmt(p)
         if a.kind == nkEmpty:
-          parMessage(p, errInvalidIndentation)
+          # XXX this needs a proper analysis;
+          if isKeyword(p.tok.tokType): parMessage(p, errInvalidIndentation)
           break 
         addSon(result, a)
     popInd(p.lex)
