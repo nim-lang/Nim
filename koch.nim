@@ -62,11 +62,11 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc csource(args: string) = 
-  exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource compiler/nimrod.ini $1" %
+  exec("nimrod cc $1 -r tools/niminst/niminst --var:version=$2 csource compiler/nimrod.ini $1" %
        [args, NimrodVersion])
 
 proc zip(args: string) = 
-  exec("nimrod cc -r tools/niminst --var:version=$# zip compiler/nimrod.ini" %
+  exec("nimrod cc -r tools/niminst/niminst --var:version=$# zip compiler/nimrod.ini" %
        NimrodVersion)
   
 proc buildTool(toolname, args: string) = 
@@ -75,9 +75,9 @@ proc buildTool(toolname, args: string) =
 
 proc inno(args: string) =
   # make sure we have generated the c2nim and niminst executables:
-  buildTool("tools/niminst", args)
+  buildTool("tools/niminst/niminst", args)
   buildTool("compiler/c2nim/c2nim", args)
-  exec("tools" / "niminst --var:version=$# inno compiler/nimrod" % 
+  exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nimrod" % 
        NimrodVersion)
 
 proc install(args: string) = 

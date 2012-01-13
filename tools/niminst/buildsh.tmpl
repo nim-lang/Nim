@@ -5,8 +5,8 @@
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 CC="gcc"
 LINKER="gcc"
-COMP_FLAGS="-w -O3 -fno-strict-aliasing"
-LINK_FLAGS=""
+COMP_FLAGS="?{c.ccompiler.flags}"
+LINK_FLAGS="?{c.linker.flags}"
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`

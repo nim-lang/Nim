@@ -4,7 +4,7 @@
 # To regenerate run ``niminst csource`` or ``koch csource``
 CC="gcc"
 LINKER="gcc"
-COMP_FLAGS="-w -O3 -fno-strict-aliasing"
+COMP_FLAGS=" -w -O3 -fno-strict-aliasing"
 LINK_FLAGS=""
 # platform detection
 ucpu=`uname -m`

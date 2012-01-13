@@ -1,6 +1,7 @@
 version 0.8.14
 ==============
 
+- improve niminst
 - fix line info in assertions
 
 version 0.9.0

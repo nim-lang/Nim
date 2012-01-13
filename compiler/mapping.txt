@@ -77,4 +77,11 @@
 --file:r"compiler/nimcache/passaux.c"
 --file:r"compiler/nimcache/depends.c"
 --file:r"compiler/nimcache/parseopt.c"
+
+[C_Compiler]
+Flags=" -w -O3 -fno-strict-aliasing"
+[Linker]
+Flags=" -ldl -lm"
+[Environment]
+libpath="/home/andreas/projects/nimrod/lib"
 [Symbols]

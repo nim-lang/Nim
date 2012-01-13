@@ -676,6 +676,31 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
     else: result[i] = s[i]
     inc(i)
 
+proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
+  rtl, extern: "nsuReplaceStr".} =
+  ## Replaces `sub` in `s` by the string `by`. Each occurance of `sub`
+  ## has to be surrounded by word boundaries (comparable to ``\\w`` in
+  ## regular expressions), otherwise it is not replaced.
+  const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
+  var a {.noinit.}: TSkipTable
+  result = ""
+  preprocessSub(sub, a)
+  var i = 0
+  while true:
+    var j = findAux(s, sub, i, a)
+    if j < 0: break
+    # word boundary?
+    if (j == 0 or s[j-1] notin wordChars) and 
+        (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
+      add result, substr(s, i, j - 1)
+      add result, by
+      i = j + len(sub)
+    else:
+      add result, substr(s, i, j)
+      i = j + 1
+    # copy the rest:
+  add result, substr(s, i)
+
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
   ## Deletes in `s` the characters at position `first` .. `last`. This modifies
@@ -960,6 +985,9 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
               # security hole...
   return -1
 
+proc invalidFormatString() {.noinline.} =
+  raise newException(EInvalidValue, "invalid format string")  
+
 proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
@@ -971,6 +999,7 @@ proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '#':
+        if num >% a.high: invalidFormatString()
         add s, a[num]
         inc i, 2
         inc num
@@ -985,26 +1014,25 @@ proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
         while formatstr[i] in Digits:
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
-        if not negative:
-          add s, a[j - 1]
-        else:
-          add s, a[a.len - j]
+        let idx = if not negative: j-1 else: a.len-j
+        if idx >% a.high: invalidFormatString()
+        add s, a[idx]
       of '{':
         var j = i+1
         while formatstr[j] notin {'\0', '}'}: inc(j)
         var x = findNormalized(substr(formatstr, i+2, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
+        else: invalidFormatString()
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
+        else: invalidFormatString()
         i = j
       else:
-        raise newException(EInvalidValue, "invalid format string")
+        invalidFormatString()
     else:
       add s, formatstr[i]
       inc(i)
@@ -1076,3 +1104,7 @@ when isMainModule:
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
 
+  doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
+  doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+  
+  
