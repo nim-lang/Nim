@@ -99,6 +99,10 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
 include seminst, semcall
 
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
+  inc(evalTemplateCounter)
+  if evalTemplateCounter > 100:
+    GlobalError(s.info, errTemplateInstantiationTooNested)
+
   result = n
   case s.typ.sons[0].kind
   of tyExpr:
@@ -115,6 +119,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     result = semExpr(c, result)
     result = fitNode(c, s.typ.sons[0], result)
     #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+  dec(evalTemplateCounter)
 
 proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 

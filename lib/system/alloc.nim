@@ -562,7 +562,6 @@ proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
 
 proc rawDealloc(a: var TMemRegion, p: pointer) =
   sysAssert(allocInv(a), "rawDealloc: begin")
-  sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer!")
   var c = pageAddr(p)
   if isSmallChunk(c):
     # `p` is within a small chunk:
