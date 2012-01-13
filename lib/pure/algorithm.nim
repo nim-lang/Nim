@@ -95,6 +95,9 @@ proc sort*[T](a: var openArray[T],
   ## .. code-block:: nimrod
   ##
   ##    sort(myIntArray, system.cmp[int])
+  ##
+  ##    # do not use cmp[string] here as we want to use the specialized
+  ##    # overload:
   ##    sort(myStrArray, system.cmp)
   ##
   var n = a.len
