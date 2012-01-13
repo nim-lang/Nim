@@ -49,8 +49,9 @@ type
     cat: array[TFileCategory, seq[string]]
     binPaths, authors, oses, cpus: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
-    ccompiler, innosetup: tuple[path, flags: string]
+    ccompiler, linker, innosetup: tuple[path, flags: string]
     name, displayName, version, description, license, infile, outdir: string
+    libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
     vars: PStringTable
     app: TAppType
@@ -69,6 +70,7 @@ proc initConfigData(c: var TConfigData) =
   c.oses = @[]
   c.cpus = @[]
   c.ccompiler = ("", "")
+  c.linker = ("", "")
   c.innosetup = ("", "")
   c.name = ""
   c.displayName = ""
@@ -78,6 +80,7 @@ proc initConfigData(c: var TConfigData) =
   c.infile = ""
   c.outdir = ""
   c.nimrodArgs = ""
+  c.libpath = ""
   c.innoSetupFlag = false
   c.installScript = false
   c.uninstallScript = false
@@ -255,6 +258,7 @@ proc parseIniFile(c: var TConfigData) =
         of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
         of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
+        of "linker": pathFlags(p, k.key, v, c.linker)
         else: quit(errorStr(p, "invalid section: " & section))
 
       of cfgOption: quit(errorStr(p, "syntax error"))
@@ -268,26 +272,36 @@ proc parseIniFile(c: var TConfigData) =
 # ------------------------- generate source based installation ---------------
 
 proc readCFiles(c: var TConfigData, osA, cpuA: int) =
-  var cfg: TCfgParser
-  var cfilesSection = false
+  var p: TCfgParser
   var f = splitFile(c.infile).dir / "mapping.txt"
   c.cfiles[osA][cpuA] = @[]
   var input = newFileStream(f, fmRead)
+  var section = ""
   if input != nil:
-    open(cfg, input, f)
+    open(p, input, f)
     while true:
-      var k = next(cfg)
+      var k = next(p)
       case k.kind
       of cfgEof: break
       of cfgSectionStart:
-        if cfilesSection: break
-        cfilesSection = cmpIgnoreStyle(k.section, "cfiles") == 0
-      of cfgKeyValuePair: nil
+        section = normalize(k.section)
+      of cfgKeyValuePair:
+        case section
+        of "ccompiler": pathFlags(p, k.key, k.value, c.ccompiler)
+        of "linker": 
+          pathFlags(p, k.key, k.value, c.linker)
+          # HACK: we conditionally add ``-lm -ldl``, so remove them from the
+          # linker flags:
+          c.linker.flags = c.linker.flags.replaceWord("-lm").replaceWord(
+                           "-ldl").strip
+        else:
+          if cmpIgnoreStyle(k.key, "libpath") == 0:
+            c.libpath = k.value
       of cfgOption:
-        if cfilesSection and cmpIgnoreStyle(k.key, "file") == 0:
+        if section == "cfiles" and cmpIgnoreStyle(k.key, "file") == 0:
           add(c.cfiles[osA][cpuA], k.value)
-      of cfgError: quit(errorStr(cfg, k.msg))
-    close(cfg)
+      of cfgError: quit(errorStr(p, k.msg))
+    close(p)
   else:
     quit("Cannot open: " & f)
 
@@ -321,7 +335,7 @@ proc removeDuplicateFiles(c: var TConfigData) =
                 c.cfiles[osA][cpuA][i] = orig
 
 proc srcdist(c: var TConfigData) =
-  for x in walkFiles("lib/*.h"):
+  for x in walkFiles(c.libpath / "lib/*.h"):
     CopyFile(dest="build" / extractFilename(x), source=x)
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
@@ -380,7 +394,7 @@ when haveZipLib:
       addFile(z, proj / buildShFile, buildShFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
-      for f in walkFiles("lib/*.h"):
+      for f in walkFiles(c.libpath / "lib/*.h"):
         addFile(z, proj / "build" / extractFilename(f), f)
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:

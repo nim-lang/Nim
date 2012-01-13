@@ -46,13 +46,6 @@ proc mangleName(s: PSym): PRope =
     app(result, toRope(mangle(s.name.s)))
     app(result, "_")
     app(result, toRope(s.id))
-    when false:
-      # deactivated to make mapping file smaller which is currently only used
-      # for the list of generated C files
-      if optGenMapping in gGlobalOptions: 
-        if s.owner != nil: 
-          appf(gMapping, "r\"$1.$2\": $3$n", 
-               [toRope(s.owner.Name.s), toRope(s.name.s), result])
     s.loc.r = result
 
 proc getTypeName(typ: PType): PRope = 

@@ -294,9 +294,9 @@ const
     pcc(),
     ucc(),
     icc(),
-    gpp() ]
+    gpp()]
 
-const               
+const
   hExt* = "h"
 
 var
@@ -336,7 +336,7 @@ proc setCC*(ccname: string) =
   defineSymbol(CC[ccompiler].name)
 
 proc addOpt(dest: var string, src: string) = 
-  if len(dest) == 0 or dest[len(dest) - 1 + 0] != ' ': add(dest, " ")
+  if len(dest) == 0 or dest[len(dest)-1] != ' ': add(dest, " ")
   add(dest, src)
 
 proc addLinkOption*(option: string) = 
@@ -456,6 +456,16 @@ proc CFileSpecificOptions(cfilename: string): string =
   var key = trunk & ".always"
   if existsConfigVar(key): addOpt(result, getConfigVar(key))
 
+proc getCompileOptions: string =
+  result = CFileSpecificOptions("__dummy__")
+
+proc getLinkOptions: string =
+  result = linkOptions
+  for linkedLib in items(cLinkedLibs):
+    result.add(cc[ccompiler].linkLibCmd % linkedLib.quoteIfContainsWhite)
+  for libDir in items(cLibs):
+    result.add cc[ccompiler].linkDirCmd, libDir.quoteIfContainsWhite
+
 proc getCompileCFileCmd*(cfilename: string, isExternal = false): string = 
   var c = ccompiler
   var options = CFileSpecificOptions(cfilename)
@@ -566,11 +576,7 @@ proc CallCCompiler*(projectfile: string) =
       if not noAbsolutePaths():
         exefile = joinPath(splitFile(projectFile).dir, exefile)
       exefile = quoteIfContainsWhite(exefile)
-      for linkedLib in items(cLinkedLibs):
-        linkOptions.add(cc[c].linkLibCmd % linkedLib.quoteIfContainsWhite)
-      for libDir in items(cLibs):
-        linkOptions.add cc[c].linkDirCmd, libDir.quoteIfContainsWhite
-
+      let linkOptions = getLinkOptions()
       linkCmd = quoteIfContainsWhite(linkCmd % ["builddll", builddll,
           "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
           "exefile", exefile, "nimrod", getPrefixDir(), "lib", libpath])
@@ -599,6 +605,15 @@ proc writeMapping*(gSymbolMapping: PRope) =
   var code = toRope("[C_Files]\n")
   app(code, genMappingFiles(toCompile))
   app(code, genMappingFiles(externalToCompile))
-  appf(code, "[Symbols]$n$1", [gSymbolMapping])
+  app(code, "\n[C_Compiler]\nFlags=")
+  app(code, strutils.escape(getCompileOptions()))
+  
+  app(code, "\n[Linker]\nFlags=")
+  app(code, strutils.escape(getLinkOptions()))
+
+  app(code, "\n[Environment]\nlibpath=")
+  app(code, strutils.escape(libpath))
+  
+  appf(code, "\n[Symbols]$n$1", [gSymbolMapping])
   WriteRope(code, joinPath(gProjectPath, "mapping.txt"))
   

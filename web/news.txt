@@ -129,7 +129,8 @@ Library Additions
 - Slicing as implemented by the system module now supports *splicing*.
 - Added explicit channels for thread communication.
 - Added ``matchers`` module for email address etc. matching.
-- Added ``strutils.unindent``, ``strutils.countLines``.
+- Added ``strutils.unindent``, ``strutils.countLines``,
+  ``strutils.replaceWord``.
 - Added ``system.slurp`` for easy resource embedding.
 - Added ``system.running`` for threads.
 - Added ``system.programResult``.
