@@ -58,6 +58,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         smoduleId != c.module.id and smoduleId != c.friendModule.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
+    if result.kind == nkSym and isGenericRoutine(result.sym):
+      LocalError(n.info, errInstantiateXExplicitely, s.name.s)
   of skConst:
     markUsed(n, s)
     case skipTypes(s.typ, abstractInst).kind

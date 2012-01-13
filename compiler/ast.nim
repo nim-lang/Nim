@@ -1022,3 +1022,9 @@ proc getStrOrChar*(a: PNode): string =
     internalError(a.info, "getStrOrChar")
     result = ""
 
+proc isGenericRoutine*(s: PSym): bool = 
+  case s.kind
+  of skProc, skTemplate, skMacro, skIterator:
+    result = s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty
+  else: nil
+
