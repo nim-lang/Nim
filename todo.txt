@@ -39,13 +39,14 @@ Bugs
   proc forward[T](x: var T): var T = result = x
   proc p(): var int = 
     var x: int
+    # reject this call via alias analysis:
     result = forward(x)
 
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
 - bug: temp2.nim triggers weird compiler and except.nim bug
-- bug: tsortdev does not run
+- bug: tsortdev does not run with native GC
 
 
 version 0.9.XX
