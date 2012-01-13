@@ -44,7 +44,7 @@ Bugs
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
-- BUG: temp2.nim triggers weird compiler and except.nim bug
+- bug: temp2.nim triggers weird compiler and except.nim bug
 - bug: tsortdev does not run
 
 

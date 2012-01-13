@@ -85,7 +85,7 @@ type
     errInvalidIndexValueForTuple, errCommandExpectsFilename, errXExpected, 
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
-    errCannotRenderX, errVarVarTypeNotAllowed, 
+    errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
     
     errXExpectsTwoArguments, 
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
@@ -306,6 +306,7 @@ const
     errXisNoValidIndexFile: "\'$1\' is no valid index file", 
     errCannotRenderX: "cannot render reStructuredText element \'$1\'", 
     errVarVarTypeNotAllowed: "type \'var var\' is not allowed",
+    errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
