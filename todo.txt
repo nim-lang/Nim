@@ -1,7 +1,6 @@
 version 0.8.14
 ==============
 
-- fix tsortdev bugs
 - fix line info in assertions
 
 version 0.9.0
@@ -46,6 +45,7 @@ Bugs
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
 - BUG: temp2.nim triggers weird compiler and except.nim bug
+- bug: tsortdev does not run
 
 
 version 0.9.XX

@@ -25,46 +25,35 @@ proc bubbleSort[T](a: var openArray[T],
 when isMainModule:
   proc main() =
     const order = Ascending
-    var data: seq[string] = @[]
+    var data: seq[string]
 
     for i in 0..10_000: 
-      var L = 59 #random(59)
-      setLen(data, L)
-      for j in 0 .. L-1: 
-        data[j] = "" #$(math.random(90) - 10)
-    when false:
-      #var copy = data
-      var copy: seq[string]
-      newSeq(copy, data.len)
-      for i in 0..data.high: copy[i] = data[i]
-      bubblesort(data, cmp, order)
+      var L = random(59)
+      newSeq(data, L)
+      for j in 0 .. L-1:
+        data[j] = $(math.random(90) - 10)
+      var copy = data
+      bubblesort(data, system.cmp, order)
       if not sorted(data, order):
-        #for x in items(data): echo x
-        break
-      else:
-        echo "SUCCESS!"
-      bubblesort(copy, cmp, order)
+        quit "bubblesort failed"
+      sort(copy, cmp, order)
       if copy.len != data.len: 
         quit "lengths differ!"
       for i in 0 .. copy.high:
         if copy[i] != data[i]:
           quit "algorithms differ!"
 
-  when false:
-    for i in 0..10_000: 
-      var data: seq[int] = @[]
+    for i in 0..10_000:
+      var data: seq[int]
       var L = random(59)
-      setLen(data, L)
+      newSeq(data, L)
       for j in 0 .. L-1: 
         data[j] = (math.random(90) - 10)
       var copy = data
       sort(data, cmp[int], order)
       if not sorted(data, order):
-        #for x in items(data): echo x
-        break
-      else:
-        echo "SUCCESS!"
-      bubblesort(copy, cmp[int])
+        quit "sort for seq[int] failed"
+      bubblesort(copy, system.cmp[int], order)
       if copy.len != data.len: 
         quit "lengths differ!"
       for i in 0 .. copy.high:

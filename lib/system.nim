@@ -832,10 +832,10 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## unless a quit procedure calls ``GC_collect``.
 
 template sysAssert(cond, msg: expr) =
-  # change this to activate system asserts
-  #if not cond:
-  #  echo "[SYSASSERT] ", msg
-  #  quit 1
+  when defined(useSysAssert):
+    if not cond:
+      echo "[SYSASSERT] ", msg
+      quit 1
   nil
 
 include "system/inclrtl"

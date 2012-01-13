@@ -241,9 +241,13 @@ proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
 proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
 
 proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+  sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
   var c = usrToCell(p)
+  sysAssert(isAllocatedPtr(gch.region, c), "nimGCunrefNoCycle: isAllocatedPtr")
   if --c.refcount:
     rtlAddZCT(c)
+    sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
+  sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
 proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
@@ -393,6 +397,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   acquire(gch)
   sysAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
+  sysAssert(allocInv(gch.region), "rawNewObj begin")
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -409,6 +414,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   gcTrace(res, csAllocated)
   release(gch)
   result = cellToUsr(res)
+  sysAssert(allocInv(gch.region), "rawNewObj end")
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
@@ -422,10 +428,14 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
+  sysAssert(allocInv(gch.region), "newObjRC1 begin")
   acquire(gch)
   sysAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
+  sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
+  
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
+  sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
@@ -440,6 +450,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   release(gch)
   result = cellToUsr(res)
   zeroMem(result, size)
+  sysAssert(allocInv(gch.region), "newObjRC1 end")
 
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   result = newObjRC1(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
@@ -452,14 +463,16 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
   sysAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
-  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(TCell)))
+  sysAssert(allocInv(gch.region), "growObj begin")
+
+  var res = cast[PCell](rawAlloc0(gch.region, newsize + sizeof(TCell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
   
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(TCell))
-  zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
-          newsize-oldsize)
+  #zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
+  #        newsize-oldsize)
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   sysAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
   #if res.refcount <% rcIncrement:
@@ -486,6 +499,7 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
     zeroMem(ol, sizeof(TCell))
   release(gch)
   result = cellToUsr(res)
+  sysAssert(allocInv(gch.region), "growObj end")
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(old, newsize, gch)
@@ -556,6 +570,7 @@ proc collectCycles(gch: var TGcHeap) =
 
 proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
+  sysAssert(allocInv(gch.region), "gcMark begin")
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)
   if c >% PageSize:
@@ -571,6 +586,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
         # mark the cell:
         cell.refcount = cell.refcount +% rcIncrement
         add(gch.decStack, cell)
+  sysAssert(allocInv(gch.region), "gcMark end")
 
 proc nimKeepAlive(p: PGenericSeq) {.compilerRtl, noinline.} =
   var c = usrToCell(p)
@@ -769,6 +785,8 @@ proc collectCT(gch: var TGcHeap) =
   if (gch.zct.len >= ZctThreshold or (cycleGC and
       getOccupiedMem(gch.region) >= gch.cycleThreshold) or stressGC) and 
       gch.recGcLock == 0:
+    sysAssert(allocInv(gch.region), "collectCT: begin")
+    
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
     sysAssert(gch.decStack.len == 0, "collectCT")
     prepareForInteriorPointerChecking(gch.region)
@@ -786,6 +804,7 @@ proc collectCT(gch: var TGcHeap) =
                                  cycleIncrease)
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
     unmarkStackAndRegisters(gch)
+    sysAssert(allocInv(gch.region), "collectCT: end")
 
 when not defined(useNimRtl):
   proc GC_disable() = 

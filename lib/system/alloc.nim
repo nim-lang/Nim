@@ -480,7 +480,22 @@ proc getSmallChunk(a: var TMemRegion): PSmallChunk =
 # -----------------------------------------------------------------------------
 proc isAllocatedPtr(a: TMemRegion, p: pointer): bool
 
+proc allocInv(a: TMemRegion): bool =
+  ## checks some (not all yet) invariants of the allocator's data structures.
+  for s in low(a.freeSmallChunks)..high(a.freeSmallChunks):
+    var c = a.freeSmallChunks[s]
+    while c != nil:
+      if c.next == c: return false
+      if c.size != s * MemAlign: return false
+      var it = c.freeList
+      while it != nil:
+        if it.zeroField != 0: return false
+        it = it.next
+      c = c.next
+  result = true
+
 proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
+  sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc 1")
   sysAssert requestedSize >= sizeof(TFreeCell), "rawAlloc 2"
   var size = roundup(requestedSize, MemAlign)
@@ -502,6 +517,7 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
       result = addr(c.data)
       sysAssert((cast[TAddress](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
+      sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert c.next != c, "rawAlloc 5"
       #if c.size != size:
       #  c_fprintf(c_stdout, "csize: %lld; size %lld\n", c.size, size)
@@ -517,10 +533,15 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
         c.freeList = c.freeList.next
       dec(c.free, size)
       sysAssert((cast[TAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
+      sysAssert(allocInv(a), "rawAlloc: end c != nil")
+    sysAssert(allocInv(a), "rawAlloc: before c.free < size")
     if c.free < size:
+      sysAssert(allocInv(a), "rawAlloc: before listRemove test")
       ListRemove(a.freeSmallChunks[s], c)
+      sysAssert(allocInv(a), "rawAlloc: end listRemove test")
     sysAssert(((cast[TAddress](result) and PageMask) -% smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
+    sysAssert(allocInv(a), "rawAlloc: end small size")
   else:
     size = roundup(requestedSize+bigChunkOverhead(), PageSize)
     # allocate a large block
@@ -533,12 +554,14 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
     if a.root == nil: a.root = bottom
     add(a, a.root, cast[TAddress](result), cast[TAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
+  sysAssert(allocInv(a), "rawAlloc: end")
 
 proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var TMemRegion, p: pointer) =
+  sysAssert(allocInv(a), "rawDealloc: begin")
   sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer!")
   var c = pageAddr(p)
   if isSmallChunk(c):
@@ -578,6 +601,7 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     a.deleted = bottom
     del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
+  sysAssert(allocInv(a), "rawDealloc: end")
 
 proc isAllocatedPtr(a: TMemRegion, p: pointer): bool = 
   if isAccessible(a, p):
