@@ -90,8 +90,8 @@ case $myos in
     $CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")} || exit 1
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for    
-    echo "$LINKER $LINK_FLAGS -o ?{c.binPaths[0]}/?{toLower(c.name)} ?linkCmd"
-    $LINKER $LINK_FLAGS -o ?{c.binPaths[0]}/?{toLower(c.name)} ?linkCmd || exit 1
+    echo "$LINKER $LINK_FLAGS -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd"
+    $LINKER $LINK_FLAGS -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd || exit 1
     ;;
 #    end for
   *)

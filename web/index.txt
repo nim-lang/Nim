@@ -106,8 +106,14 @@ Roadmap to 1.0
 ==============
 
 Version 0.9.0
-  * closures and anonymous procs
+  * closures
   * recursive iterators/coroutines
+
+Version 0.9.x
   * 2-phase type system for better interaction between macros, templates
     and overloading
+  * term rewriting macros
+  * the syntactic distinction between statements and expressions will be
+    removed
+  * forward declarations will likely be removed
 

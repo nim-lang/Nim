@@ -86,6 +86,13 @@ proc initConfigData(c: var TConfigData) =
   c.uninstallScript = false
   c.vars = newStringTable(modeStyleInsensitive)
 
+proc firstBinPath(c: TConfigData): string =
+  if c.binPaths.len > 0: result = c.binPaths[0]
+  else: result = ""
+
+proc `\`(a, b: string): string =
+  result = if a.len == 0: b else: a & '\\' & b
+
 proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
   var i = 0
