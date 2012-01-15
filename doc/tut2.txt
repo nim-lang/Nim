@@ -387,17 +387,17 @@ The `try`:idx: statement handles exceptions:
     f: TFile
   if open(f, "numbers.txt"):
     try:
-      var a = readLine(f)
-      var b = readLine(f)
-      echo("sum: " & $(parseInt(a) + parseInt(b)))
+      let a = readLine(f)
+      let b = readLine(f)
+      echo "sum: ", parseInt(a) + parseInt(b)
     except EOverflow:
-      echo("overflow!")
+      echo "overflow!"
     except EInvalidValue:
-      echo("could not convert string to integer")
+      echo "could not convert string to integer"
     except EIO:
-      echo("IO error!")
+      echo "IO error!"
     except:
-      echo("Unknown exception!")
+      echo "Unknown exception!"
       # reraise the unknown exception:
       raise
     finally:

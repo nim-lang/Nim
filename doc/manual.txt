@@ -736,37 +736,10 @@ variadic proc, it is implicitely converted to ``cstring`` too:
 
 Even though the conversion is implict, it is not *safe*: The garbage collector
 does not consider a ``cstring`` to be a root and may collect the underlying 
-memory:
-
-.. code-block:: nimrod
-  var nimStr = "example"
-  var cStr: cstring = nimStr
-  var i = 0
-  while cStr[i] != '\0':
-    # since `nimStr`'s lifetime ended here the GC is allowed to free
-    # the memory occupied by "example":
-    GC_collect()
-    # now cStr points to garbage:
-    echo cStr[i]
-    inc i
-
-However this a very contrived example; in practice this almost never happens.
-One can use the builtin procs ``GC_ref`` and ``GC_unref`` to make this code
-safe:
-
-.. code-block:: nimrod
-  var nimStr = "example"
-  GC_ref(nimStr) # keep GC from freeing 'nimStr'
-  var cStr: cstring = nimStr
-  var i = 0
-  while cStr[i] != '\0':
-    # since `nimStr`'s lifetime ended here the GC is allowed to free
-    # the memory occupied by "example":
-    GC_collect()
-    # now cStr points to garbage:
-    echo cStr[i]
-    inc i
-  GC_unref(nimStr) # GC is allowed to free 'nimStr'
+memory. However in practice this almost never happens as the GC considers
+stack roots conservatively. One can use the builtin procs ``GC_ref`` and
+``GC_unref`` to keep the string data alive for the rare cases where it does
+not work.
 
 
 Structured types
