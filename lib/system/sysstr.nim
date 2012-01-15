@@ -32,11 +32,17 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   return a.len == b.len and
     c_memcmp(a.data, b.data, a.len * sizeof(char)) == 0'i32
 
+when defined(allocAtomic):
+  template allocStr(size: expr): expr =
+    cast[NimString](allocAtomic(size))
+else:
+  template allocStr(size: expr): expr =
+    cast[NimString](newObj(addr(strDesc), size))
+
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 8: s = 7
-  result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
-                           (s+1) * sizeof(char)))
+  result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.space = s
 
 proc mnewString(len: int): NimString {.compilerProc.} =
@@ -78,13 +84,12 @@ proc copyStringRC1(src: NimString): NimString {.compilerProc.} =
     if s < 8: s = 7
     when defined(newObjRC1):
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
-                               (s+1) * sizeof(char)))
+                               s+1))
     else:
-      result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
-                               (s+1) * sizeof(char)))
+      result = allocStr(sizeof(TGenericSeq) + s + 1)
     result.space = s
     result.len = src.len
-    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
+    c_memcpy(result.data, src.data, src.len + 1)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -150,15 +155,14 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerproc.} =
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addLen)
-    result = cast[NimString](growObj(dest, sizeof(TGenericSeq) +
-                           (sp+1) * sizeof(Char)))
+    result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.space = sp
     #result = rawNewString(sp)
     #copyMem(result, dest, dest.len * sizeof(char) + sizeof(TGenericSeq))
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, (src.len + 1) * sizeof(Char))
+  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =

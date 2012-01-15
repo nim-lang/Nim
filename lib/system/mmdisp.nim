@@ -79,6 +79,23 @@ when defined(boehmgc):
     importc: "GC_realloc", dynlib: boehmLib.}
   proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
   
+  proc boehmGetHeapSize: int {.importc: "GC_get_heap_size", dynlib: boehmLib.}
+    ## Return the number of bytes in the heap.  Excludes collector private
+    ## data structures. Includes empty blocks and fragmentation loss.
+    ## Includes some pages that were allocated but never written.
+
+  proc boehmGetFreeBytes: int {.importc: "GC_get_free_bytes", dynlib: boehmLib.}
+    ## Return a lower bound on the number of free bytes in the heap.
+
+  proc boehmGetBytesSinceGC: int {.importc: "GC_get_bytes_since_gc",
+    dynlib: boehmLib.}
+    ## Return the number of bytes allocated since the last collection.
+
+  proc boehmGetTotalBytes: int {.importc: "GC_get_total_bytes",
+    dynlib: boehmLib.}
+    ## Return the total number of bytes allocated in this process.
+    ## Never decreases.
+
   when not defined(useNimRtl):
     
     proc alloc(size: int): pointer =
@@ -91,6 +108,10 @@ when defined(boehmgc):
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: Pointer) = boehmDealloc(p)
+    
+    proc allocAtomic(size: int): pointer =
+      result = boehmAllocAtomic(size)
+      zeroMem(result, size)
 
     proc allocShared(size: int): pointer =
       result = boehmAlloc(size)
@@ -113,9 +134,9 @@ when defined(boehmgc):
     proc GC_disableMarkAndSweep() = nil
     proc GC_getStatistics(): string = return ""
     
-    proc getOccupiedMem(): int = return -1
-    proc getFreeMem(): int = return -1
-    proc getTotalMem(): int = return -1
+    proc getOccupiedMem(): int = return boehmGetHeapSize()-boehmGetFreeBytes()
+    proc getFreeMem(): int = return boehmGetFreeBytes()
+    proc getTotalMem(): int = return boehmGetHeapSize()
 
     proc setStackBottom(theStackBottom: pointer) = nil
 
@@ -123,7 +144,8 @@ when defined(boehmgc):
     when defined(macosx): boehmGCinit()
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc(size)
+    if ntfNoRefs in typ.flags: result = allocAtomic(size)
+    else: result = alloc(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
