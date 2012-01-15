@@ -241,4 +241,7 @@ proc LoadConfigs*(cfg: string) =
     if conffile != pd / cfg and existsFile(conffile):
       readConfigFile(conffile)
       rawMessage(warnConfigDeprecated, conffile)
-      
+    
+    # new project wide config file:
+    readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
+ 

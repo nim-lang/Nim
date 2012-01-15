@@ -43,14 +43,15 @@ Configuration files
 **Note:** The *project file name* is the name of the ``.nim`` file that is 
 passed as a command line argument to the compiler.
 
-All configuration files have the name ``nimrod.cfg``. The ``nimrod`` 
-executable processes configuration files in the following directories 
-(in this order; later files overwrite previous settings):
+
+The ``nimrod`` executable processes configuration files in the following
+directories (in this order; later files overwrite previous settings):
 
 1) ``$nimrod/config/nimrod.cfg``, ``/etc/nimrod.cfg`` (UNIX) or ``%NIMROD%/config/nimrod.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
 2) ``/home/$user/.config/nimrod.cfg`` (UNIX) or  ``%APPDATA%/nimrod.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nimrod.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nimrod.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
+5) A project can also have a project specific configuration file named ``$project.nimrod.cfg`` that resides in the same directory as ``$project.nim``. This file can be skipped with the ``--skipProjCfg`` command line option.
 
 
 Command line settings have priority over configuration file settings.
