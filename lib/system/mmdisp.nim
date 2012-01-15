@@ -96,6 +96,10 @@ when defined(boehmgc):
     ## Return the total number of bytes allocated in this process.
     ## Never decreases.
 
+  proc allocAtomic(size: int): pointer =
+    result = boehmAllocAtomic(size)
+    zeroMem(result, size)
+
   when not defined(useNimRtl):
     
     proc alloc(size: int): pointer =
@@ -109,10 +113,6 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc dealloc(p: Pointer) = boehmDealloc(p)
     
-    proc allocAtomic(size: int): pointer =
-      result = boehmAllocAtomic(size)
-      zeroMem(result, size)
-
     proc allocShared(size: int): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
