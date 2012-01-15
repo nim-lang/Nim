@@ -7,9 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-type
-  TAfterCallActions = tuple[p: BProc, actions: PRope]
-
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
     for i in 1 .. <ri.len:
@@ -59,9 +56,6 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
     app(p.s[cpsStmts], pl)
     appf(p.s[cpsStmts], ";$n")
 
-proc emitAfterCallActions(aca: TAfterCallActions) {.inline.} =
-  app(aca.p.s[cpsStmts], aca.actions)
-
 proc isInCurrentFrame(p: BProc, n: PNode): bool =
   # checks if `n` is an expression that refers to the current frame;
   # this does not work reliably because of forwarding + inlining can break it
@@ -82,59 +76,48 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: nil
 
-proc genKeepAlive(aca: var TAfterCallActions, n: PNode, a: TLoc) {.inline.} =
-  if a.s == onStack and optRefcGC in gGlobalOptions:
-    aca.p.module.appcg(aca.actions,
-                       "#nimKeepAlive((#TGenericSeq*)$1);$n", [a.rdLoc])
-
-proc openArrayLoc(aca: var TAfterCallActions, n: PNode): PRope =
+proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc
-  initLocExpr(aca.p, n, a)
+  initLocExpr(p, n, a)
   case skipTypes(a.t, abstractVar).kind
   of tyOpenArray:
     result = ropef("$1, $1Len0", [rdLoc(a)])
   of tyString, tySequence:
     result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
-    genKeepAlive(aca, n, a)
   of tyArray, tyArrayConstr:
     result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
   else: InternalError("openArrayLoc: " & typeToString(a.t))
 
-proc genArgStringToCString(aca: var TAfterCallActions, 
+proc genArgStringToCString(p: BProc, 
                            n: PNode): PRope {.inline.} =
   var a: TLoc
-  initLocExpr(aca.p, n.sons[0], a)
+  initLocExpr(p, n.sons[0], a)
   result = ropef("$1->data", [a.rdLoc])
-  # we don't guarantee save string->cstring conversions anyway, so we use
-  # an additional check to improve performance:
-  if isInCurrentFrame(aca.p, n): genKeepAlive(aca, n, a)
   
-proc genArg(aca: var TAfterCallActions, n: PNode, param: PSym): PRope =
+proc genArg(p: BProc, n: PNode, param: PSym): PRope =
   var a: TLoc
   if n.kind == nkStringToCString:
-    result = genArgStringToCString(aca, n)
+    result = genArgStringToCString(p, n)
   elif skipTypes(param.typ, abstractVar).kind == tyOpenArray:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
-    result = openArrayLoc(aca, n)
+    result = openArrayLoc(p, n)
   elif ccgIntroducedPtr(param):
-    initLocExpr(aca.p, n, a)
+    initLocExpr(p, n, a)
     result = addrLoc(a)
   else:
-    initLocExpr(aca.p, n, a)
+    initLocExpr(p, n, a)
     result = rdLoc(a)
 
-proc genArgNoParam(aca: var TAfterCallActions, n: PNode): PRope =
+proc genArgNoParam(p: BProc, n: PNode): PRope =
   var a: TLoc
   if n.kind == nkStringToCString:
-    result = genArgStringToCString(aca, n)
+    result = genArgStringToCString(p, n)
   else:
-    initLocExpr(aca.p, n, a)
+    initLocExpr(p, n, a)
     result = rdLoc(a)
 
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
-  var aca: TAfterCallActions
-  aca.p = p
   # this is a hotspot in the compiler
   initLocExpr(p, ri.sons[0], op)
   var pl = con(op.r, "(")
@@ -145,17 +128,14 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(aca, ri.sons[i], typ.n.sons[i].sym))
+      app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(aca, ri.sons[i]))
+      app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ", ")
   fixupCall(p, le, ri, d, pl)
-  emitAfterCallActions(aca)
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
-  var aca: TAfterCallActions
-  aca.p = p
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope = nil
   var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
@@ -164,7 +144,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   var param = typ.n.sons[1].sym
-  app(pl, genArg(aca, ri.sons[1], param))
+  app(pl, genArg(p, ri.sons[1], param))
   
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, "->")
   else: app(pl, ".")
@@ -174,18 +154,15 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(aca, ri.sons[i], typ.n.sons[i].sym))
+      app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(aca, ri.sons[i]))
+      app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ", ")
   fixupCall(p, le, ri, d, pl)
-  emitAfterCallActions(aca)
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
   var op, a: TLoc
-  var aca: TAfterCallActions
-  aca.p = p
   initLocExpr(p, ri.sons[0], op)
   var pl = toRope"["
   var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
@@ -194,12 +171,12 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   
   if length > 1:
-    app(pl, genArg(aca, ri.sons[1], typ.n.sons[1].sym))
+    app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym))
     app(pl, " ")
   app(pl, op.r)
   if length > 2:
     app(pl, ": ")
-    app(pl, genArg(aca, ri.sons[2], typ.n.sons[2].sym))
+    app(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym))
   for i in countup(3, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
@@ -209,7 +186,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     app(pl, " ")
     app(pl, param.name.s)
     app(pl, ": ")
-    app(pl, genArg(aca, ri.sons[i], param))
+    app(pl, genArg(p, ri.sons[i], param))
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
       if sonsLen(ri) > 1: app(pl, " ")
@@ -242,7 +219,6 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     app(pl, "]")
     app(p.s[cpsStmts], pl)
     appf(p.s[cpsStmts], ";$n")
-  emitAfterCallActions(aca)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
