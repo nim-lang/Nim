@@ -32,6 +32,7 @@ const
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable}
+  exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
@@ -394,6 +395,23 @@ proc PragmaUnroll(c: PContext, n: PNode) =
 proc PragmaLinearScanEnd(c: PContext, n: PNode) =
   noVal(n)
 
+proc PragmaLine(c: PContext, n: PNode) =
+  if n.kind == nkExprColonExpr:
+    n.sons[1] = c.semConstExpr(c, n.sons[1])
+    let a = n.sons[1]
+    if a.kind != nkPar: GlobalError(n.info, errXExpected, "tuple")
+    var x = a.sons[0]
+    var y = a.sons[1]
+    if x.kind == nkExprColonExpr: x = x.sons[1]
+    if y.kind == nkExprColonExpr: y = y.sons[1]
+    if x.kind != nkStrLit: GlobalError(n.info, errStringLiteralExpected)
+    if y.kind != nkIntLit: GlobalError(n.info, errIntLiteralExpected)
+    n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
+    n.info.line = int16(y.intVal)
+  else:
+    # sensible default:
+    n.info = getInfoContext(-1)
+
 proc processPragma(c: PContext, n: PNode, i: int) = 
   var it = n.sons[i]
   if it.kind != nkExprColonExpr: invalidPragma(n)
@@ -575,6 +593,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
             incl(sym.typ.flags, tfIncompleteStruct)
+          of wLine: PragmaLine(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

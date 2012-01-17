@@ -1213,6 +1213,8 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkMetaNode:
     result = copyTree(n.sons[0])
     result.typ = n.typ
+  of nkPragmaBlock:
+    result = evalAux(c, n.sons[1], flags)
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
      nkLambda, nkContinueStmt, nkIdent: 
     result = raiseCannotEval(c, n.info)

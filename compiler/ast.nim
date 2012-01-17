@@ -139,6 +139,7 @@ type
     nkMacroStmt,          # a macro statement
     nkAsmStmt,            # an assembler block
     nkPragma,             # a pragma statement
+    nkPragmaBlock,        # a pragma with a block
     nkIfStmt,             # an if statement
     nkWhenStmt,           # a when statement
     nkForStmt,            # a for statement
@@ -390,7 +391,8 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, 
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
-    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError, mGetTypeInfo
+    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError, 
+    mInstantiationInfo, mGetTypeInfo
 
 type 
   PNode* = ref TNode

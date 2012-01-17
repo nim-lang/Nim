@@ -26,6 +26,23 @@ proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   except EIO:
     GlobalError(a.info, errCannotOpenFile, a.strVal)
 
+proc expectIntLit(c: PContext, n: PNode): int =
+  let x = c.semConstExpr(c, n)
+  case x.kind
+  of nkIntLit..nkInt64Lit: result = int(x.intVal)
+  else: GlobalError(n.info, errIntLiteralExpected)
+
+proc semInstantiationInfo(c: PContext, n: PNode): PNode =
+  result = newNodeIT(nkPar, n.info, n.typ)
+  let idx = expectIntLit(c, n.sons[1])
+  let info = getInfoContext(idx)
+  var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
+  filename.strVal = ToFilename(info)
+  var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
+  line.intVal = ToLinenumber(info)
+  result.add(filename)
+  result.add(line)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -34,5 +51,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mAstToStr:
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
+  of mInstantiationInfo: result = semInstantiationInfo(c, n)
   else: result = n
 

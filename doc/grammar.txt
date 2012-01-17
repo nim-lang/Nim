@@ -35,7 +35,6 @@ primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '(' optInd namedExprList optPar ')'
                 | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
                 | '{' optInd [indexExpr (comma indexExpr)* [comma]] optPar '}'
-                | pragma
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 
                             constructor | castExpr | addrExpr)
@@ -84,13 +83,15 @@ macroStmt ::= ':' [stmt] ('of' [exprList] ':' stmt
                          |'except' exceptList ':' stmt )*
                          ['else' ':' stmt]
 
+pragmaBlock ::= pragma [':' stmt]
+
 simpleStmt ::= returnStmt
              | yieldStmt
              | discardStmt
              | raiseStmt
              | breakStmt
              | continueStmt
-             | pragma
+             | pragmaBlock
              | importStmt
              | fromStmt
              | includeStmt

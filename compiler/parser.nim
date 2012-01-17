@@ -1316,6 +1316,15 @@ proc parseBind(p: var TParser): PNode =
     optInd(p, a)
   expectNl(p)
   
+proc parseStmtPragma(p: var TParser): PNode =
+  result = parsePragma(p)
+  if p.tok.tokType == tkColon:
+    let a = result
+    result = newNodeI(nkPragmaBlock, a.info)
+    getTok(p)
+    result.add a
+    result.add parseStmt(p)
+
 proc simpleStmt(p: var TParser): PNode = 
   case p.tok.tokType
   of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
@@ -1324,7 +1333,7 @@ proc simpleStmt(p: var TParser): PNode =
   of tkDiscard: result = parseYieldOrDiscard(p, nkDiscardStmt)
   of tkBreak: result = parseBreakOrContinue(p, nkBreakStmt)
   of tkContinue: result = parseBreakOrContinue(p, nkContinueStmt)
-  of tkCurlyDotLe: result = parsePragma(p)
+  of tkCurlyDotLe: result = parseStmtPragma(p)
   of tkImport: result = parseImportOrIncludeStmt(p, nkImportStmt)
   of tkFrom: result = parseFromStmt(p)
   of tkInclude: result = parseImportOrIncludeStmt(p, nkIncludeStmt)

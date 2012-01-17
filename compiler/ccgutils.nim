@@ -11,11 +11,7 @@
 
 import 
   ast, astalgo, ropes, lists, hashes, strutils, types, msgs, wordrecg, 
-  platform
-
-proc whichPragma*(n: PNode): TSpecialWord = 
-  var key = if n.kind == nkExprColonExpr: n.sons[0] else: n
-  if key.kind == nkIdent: result = whichKeyword(key.ident)
+  platform, trees
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind

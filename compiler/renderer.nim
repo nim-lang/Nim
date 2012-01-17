@@ -537,6 +537,16 @@ proc gwhile(g: var TSrcGen, n: PNode) =
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[1], c)
 
+proc gpragmaBlock(g: var TSrcGen, n: PNode) = 
+  var c: TContext
+  gsub(g, n.sons[0])
+  putWithSpace(g, tkColon, ":")
+  initContext(c)
+  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen):
+    incl(c.flags, rfLongMode)
+  gcoms(g)                    # a good place for comments
+  gstmts(g, n.sons[1], c)
+
 proc gtry(g: var TSrcGen, n: PNode) = 
   var c: TContext
   put(g, tkTry, "try")
@@ -933,6 +943,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkWhen, "when")
     gif(g, n)
   of nkWhileStmt: gwhile(g, n)
+  of nkPragmaBlock: gpragmaBlock(g, n)
   of nkCaseStmt, nkRecCase: gcase(g, n)
   of nkMacroStmt: gmacro(g, n)
   of nkTryStmt: gtry(g, n)
