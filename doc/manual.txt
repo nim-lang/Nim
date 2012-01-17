@@ -2570,10 +2570,11 @@ occuring in a generic:
   
   echo a == b # works!
 
-In the example the generic ``==`` for tuples uses the ``==`` operators of the 
-tuple's components. However, the ``==`` for the ``TIndex`` type is 
-defined *after* the ``==`` for tuples; yet the example compiles as the
-instantiation takes the currently defined symbols into account too.
+In the example the generic ``==`` for tuples (as defined in the system module)
+uses the ``==`` operators of the tuple's components. However, the ``==`` for
+the ``TIndex`` type is defined *after* the ``==`` for tuples; yet the example
+compiles as the instantiation takes the currently defined symbols into account
+too.
 
 
 Templates
@@ -2679,7 +2680,8 @@ Syntax::
   
   bindStmt ::= 'bind' IDENT (comma IDENT)*
 
-Exporting a template is a often a leaky abstraction. However, to compensate for
+Exporting a template is a often a leaky abstraction as it can depend on 
+symbols that are not visible from a client module. However, to compensate for
 this case, a `bind`:idx: statement can be used: It declares all identifiers
 that should be bound early (i.e. when the template is parsed):
 
@@ -3096,6 +3098,23 @@ hint pragma
 The `hint`:idx: pragma is used to make the compiler output a hint message with
 the given content. Compilation continues after the hint.
 
+line pragma
+-----------
+The `line`:idx: pragma can be used to affect line information of the annotated
+statement as seen in stack backtraces:
+
+.. code-bock:: nimrod
+  
+  template myassert*(cond: expr, msg = "") =
+    if not cond:
+      # change run-time line information of the 'raise' statement:
+      {.line: InstantiationInfo().}:
+        raise newException(EAssertionFailed, msg)
+
+If the ``line`` pragma is used with a parameter, the parameter needs be a
+``tuple[filename: string, line: int]``. If it is used without a parameter,
+``system.InstantiationInfo()`` is used.
+
 
 linearScanEnd pragma
 --------------------
@@ -3315,6 +3334,7 @@ Dynlib pragma for import
 With the `dynlib`:idx: pragma a procedure can be imported from
 
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
+
 non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nimrod

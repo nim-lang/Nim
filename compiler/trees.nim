@@ -146,3 +146,7 @@ proc IsRange*(n: PNode): bool {.inline.} =
         n[0].kind == nkSymChoice and n[0][1].sym.name.id == ord(wDotDot):
       result = true
 
+proc whichPragma*(n: PNode): TSpecialWord = 
+  let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
+  if key.kind == nkIdent: result = whichKeyword(key.ident)
+

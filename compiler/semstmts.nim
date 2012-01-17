@@ -827,6 +827,18 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     addSon(result, semStmt(c, gIncludeFile(f)))
     Excl(c.includedFiles, fileIndex)
   
+proc setLine(n: PNode, info: TLineInfo) =
+  for i in 0 .. <safeLen(n): setLine(n.sons[i], info)
+  n.info = info
+  
+proc semPragmaBlock(c: PContext, n: PNode): PNode =
+  let pragmaList = n.sons[0]
+  pragma(c, nil, pragmaList, exprPragmas)
+  result = semStmt(c, n.sons[1])
+  for i in 0 .. <pragmaList.len:
+    if whichPragma(pragmaList.sons[i]) == wLine:
+      setLine(result, pragmaList.sons[i].info)
+
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
@@ -881,6 +893,8 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   of nkIncludeStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
+  of nkPragmaBlock:
+    result = semPragmaBlock(c, n)
   else: 
     # in interactive mode, we embed the expression in an 'echo':
     if gCmd == cmdInteractive:

@@ -35,7 +35,7 @@ type
     nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef, 
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
     nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
-    nnkAsmStmt, nnkPragma, nnkIfStmt, nnkWhenStmt, 
+    nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt, 
     nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection, 
     nnkConstDef, nnkTypeDef, 

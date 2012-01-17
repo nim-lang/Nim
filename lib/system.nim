@@ -2080,6 +2080,12 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
   
+proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
+  magic: "InstantiationInfo", noSideEffect.}
+  ## provides access to the compiler's instantiation stack line information.
+  ## This is only useful for advanced meta programming. See the implementation
+  ## of `assert` for an example.
+  
 proc raiseAssert(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
   
@@ -2089,15 +2095,17 @@ template assert*(cond: expr, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind raiseAssert
+  bind raiseAssert, InstantiationInfo
   when compileOption("assertions"):
     if not cond:
-      raiseAssert(astToStr(cond) & ' ' & msg)
+      {.line.}:
+        raiseAssert(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: expr, msg = "") =
-  ## same as `assert' but is always turned on and not affected by the
+  ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
-  bind raiseAssert
+  bind raiseAssert, InstantiationInfo
   if not cond:
-    raiseAssert(astToStr(cond) & ' ' & msg)
+    {.line: InstantiationInfo().}:
+      raiseAssert(astToStr(cond) & ' ' & msg)
 

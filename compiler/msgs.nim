@@ -476,6 +476,12 @@ proc pushInfoContext*(info: TLineInfo) =
 proc popInfoContext*() = 
   setlen(msgContext, len(msgContext) - 1)
 
+proc getInfoContext*(index: int): TLineInfo =
+  let L = msgContext.len
+  let i = if index < 0: L + index else: index
+  if i >=% L: result = UnknownLineInfo()
+  else: result = msgContext[i]
+
 proc ToFilename*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
   else: result = fileInfos[info.fileIndex].projPath
