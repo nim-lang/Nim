@@ -166,8 +166,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/prelude.nim
   cp lib/system.nim $libdir/system.nim || exit 1
   chmod 644 $libdir/system.nim
-  cp lib/nimrtl.cfg $libdir/nimrtl.cfg || exit 1
-  chmod 644 $libdir/nimrtl.cfg
+  cp lib/nimrtl.nimrod.cfg $libdir/nimrtl.nimrod.cfg || exit 1
+  chmod 644 $libdir/nimrtl.nimrod.cfg
   cp lib/system/alloc.nim $libdir/system/alloc.nim || exit 1
   chmod 644 $libdir/system/alloc.nim
   cp lib/system/ansi_c.nim $libdir/system/ansi_c.nim || exit 1
