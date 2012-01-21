@@ -428,6 +428,11 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   if not success: OSError()
 
 
+proc timeValFromMilliseconds(timeout = 500): TTimeVal =
+  if timeout != -1:
+    var seconds = timeout div 1000
+    result.tv_sec = seconds
+    result.tv_usec = (timeout - seconds * 1000) * 1000
 #proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
 #               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
 
@@ -460,9 +465,7 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
   ## You can determine whether a socket is ready by checking if it's still
   ## in one of the TSocket sequences.
 
-  var tv: TTimeVal
-  tv.tv_sec = 0
-  tv.tv_usec = timeout * 1000
+  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
   
   var rd, wr, ex: TFdSet
   var m = 0
@@ -480,10 +483,8 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
   pruneSocketSet(exceptfds, (ex))
 
 proc select*(readfds, writefds: var seq[TSocket], 
-             timeout = 500): int = 
-  var tv: TTimeVal
-  tv.tv_sec = 0
-  tv.tv_usec = timeout * 1000
+             timeout = 500): int =
+  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
   
   var rd, wr: TFdSet
   var m = 0
@@ -499,10 +500,8 @@ proc select*(readfds, writefds: var seq[TSocket],
   pruneSocketSet(writefds, (wr))
 
 proc selectWrite*(writefds: var seq[TSocket], 
-                  timeout = 500): int = 
-  var tv: TTimeVal
-  tv.tv_sec = 0
-  tv.tv_usec = timeout * 1000
+                  timeout = 500): int =
+  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
   
   var wr: TFdSet
   var m = 0
@@ -515,11 +514,8 @@ proc selectWrite*(writefds: var seq[TSocket],
   
   pruneSocketSet(writefds, (wr))
 
-
-proc select*(readfds: var seq[TSocket], timeout = 500): int = 
-  var tv: TTimeVal
-  tv.tv_sec = 0
-  tv.tv_usec = timeout * 1000
+proc select*(readfds: var seq[TSocket], timeout = 500): int =
+  var tv {.noInit.}: TTimeVal = timeValFromMilliseconds(timeout)
   
   var rd: TFdSet
   var m = 0
