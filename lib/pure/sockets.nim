@@ -625,7 +625,7 @@ proc skip*(socket: TSocket) =
 
 proc send*(socket: TSocket, data: pointer, size: int): int =
   ## sends data to a socket.
-  when defined(windows):
+  when defined(windows) or defined(macosx):
     result = send(cint(socket), data, size, 0'i32)
   else:
     result = send(cint(socket), data, size, int32(MSG_NOSIGNAL))
