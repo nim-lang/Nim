@@ -142,9 +142,11 @@ proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   else:
     result = TSocket(posix.socket(ToInt(domain), ToInt(typ), ToInt(protocol)))
 
-proc listen*(socket: TSocket, attempts = 5) =
-  ## listens to socket.
-  if listen(cint(socket), cint(attempts)) < 0'i32: OSError()
+proc listen*(socket: TSocket, backlog = SOMAXCONN) =
+  ## Marks ``socket`` as accepting connections. 
+  ## ``Backlog`` specifies the maximum length of the 
+  ## queue of pending connections.
+  if listen(cint(socket), cint(backlog)) < 0'i32: OSError()
 
 proc invalidIp4(s: string) {.noreturn, noinline.} =
   raise newException(EInvalidValue, "invalid ip4 address: " & s)
@@ -239,22 +241,35 @@ proc getSockName*(socket: TSocket): TPort =
     OSError()
   result = TPort(sockets.ntohs(name.sin_port))
 
-proc accept*(server: TSocket): TSocket =
-  ## waits for a client and returns its socket. ``InvalidSocket`` is returned
-  ## if an error occurs, or if ``server`` is non-blocking and there are no 
-  ## clients connecting.
-  var client: Tsockaddr_in
-  var clientLen: cint = sizeof(client)
-  result = TSocket(accept(cint(server), cast[ptr TSockAddr](addr(client)),
-                          addr(clientLen)))
-
 proc acceptAddr*(server: TSocket): tuple[sock: TSocket, address: string] =
-  ## waits for a client and returns its socket and IP address
+  ## Blocks until a connection is being made from a client. When a connection
+  ## is made returns the client socket and address of the connecting client.
+  ## If ``server`` is non-blocking then this function returns immediately, and
+  ## if there are no connections queued the returned socket will be
+  ## ``InvalidSocket``.
+  ## This function will raise EOS if an error occurs.
   var address: Tsockaddr_in
   var addrLen: cint = sizeof(address)
-  var sock = TSocket(accept(cint(server), cast[ptr TSockAddr](addr(address)),
-                          addr(addrLen)))
-  return (sock, $inet_ntoa(address.sin_addr))
+  var sock = accept(cint(server), cast[ptr TSockAddr](addr(address)),
+                    addr(addrLen))
+  if sock < 0:
+    # TODO: Test on Windows.
+    when defined(windows):
+      var err = WSAGetLastError()
+      if err == WSAEINPROGRESS:
+        return (InvalidSocket, "")
+      else: OSError()
+    else:
+      if errno == EAGAIN or errno == EWOULDBLOCK:
+        return (InvalidSocket, "")
+      else: OSError()
+  else: return (TSocket(sock), $inet_ntoa(address.sin_addr))
+
+proc accept*(server: TSocket): TSocket =
+  ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
+  ## socket.
+  var (client, a) = acceptAddr(server)
+  return client
 
 proc close*(socket: TSocket) =
   ## closes a socket.
@@ -537,11 +552,14 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool =
   ## returns false if no further data is available. `Line` must be initialized
   ## and not nil! This does not throw an EOS exception, therefore
   ## it can be used in both blocking and non-blocking sockets.
+  ## If ``socket`` is disconnected, ``true`` will be returned and line will be
+  ## set to ``""``.
   setLen(line.string, 0)
   while true:
     var c: char
     var n = recv(cint(socket), addr(c), 1, 0'i32)
-    if n <= 0: return
+    if n < 0: return
+    elif n == 0: return true
     if c == '\r':
       n = recv(cint(socket), addr(c), 1, MSG_PEEK)
       if n > 0 and c == '\L':
@@ -634,19 +652,20 @@ proc send*(socket: TSocket, data: string) =
   ## sends data to a socket.
   if send(socket, cstring(data), data.len) != data.len: OSError()
 
-proc sendAsync*(socket: TSocket, data: string) =
-  ## sends data to a non-blocking socket.
+proc sendAsync*(socket: TSocket, data: string): bool =
+  ## sends data to a non-blocking socket. Returns whether ``data`` was sent.
+  result = true
   var bytesSent = send(socket, cstring(data), data.len)
   if bytesSent == -1:
     when defined(windows):
       var err = WSAGetLastError()
       # TODO: Test on windows.
       if err == WSAEINPROGRESS:
-        return
+        return false
       else: OSError()
     else:
       if errno == EAGAIN or errno == EWOULDBLOCK:
-        return
+        return false
       else: OSError()
 
 when defined(Windows):
