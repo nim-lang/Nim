@@ -487,13 +487,6 @@ elif not defined(useNimRtl):
       result[i] = cast[cstring](alloc(x.len+1))
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
-
-  proc deallocCStringArray(a: cstringArray) =
-    var i = 0
-    while a[i] != nil:
-      dealloc(a[i])
-      inc(i)
-    dealloc(a)
     
   proc startProcess(command: string,
                  workingDir: string = "",
