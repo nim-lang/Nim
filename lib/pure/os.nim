@@ -151,6 +151,10 @@ else: # UNIX-like operating system
     ScriptExt* = ""
     DynlibFormat* = "lib$1.so"
 
+when defined(macosx):
+  var
+    pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
+
 const
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
@@ -505,6 +509,12 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
     var L = GetFullPathNameA(filename, 3072'i32, result, unused)
     if L <= 0'i32 or L >= 3072'i32: OSError()
     setLen(result, L)
+  when defined(macosx):
+    # On Mac OS X 10.5, realpath does not allocate the buffer on its own
+    var pathBuffer: cstring = newString(pathMax)
+    var resultBuffer = realpath(filename, pathBuffer)
+    if resultBuffer == nil: OSError()
+    result = $resultBuffer
   else:
     var res = realpath(filename, nil)
     if res == nil: OSError()
