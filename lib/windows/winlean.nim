@@ -321,6 +321,9 @@ type
 
   Tsocklen* = cint
 
+var
+  SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
+
 proc getservbyname*(name, proto: cstring): ptr TServent {.
   stdcall, importc: "getservbyname", dynlib: ws2dll.}
 
@@ -474,4 +477,3 @@ proc CreateFileMapping*(hFile: THANDLE,
 
 proc UnmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
-
