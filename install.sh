@@ -228,6 +228,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/actors.nim
   cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim || exit 1
   chmod 644 $libdir/pure/algorithm.nim
+  cp lib/pure/asyncio.nim $libdir/pure/asyncio.nim || exit 1
+  chmod 644 $libdir/pure/asyncio.nim
   cp lib/pure/base64.nim $libdir/pure/base64.nim || exit 1
   chmod 644 $libdir/pure/base64.nim
   cp lib/pure/browsers.nim $libdir/pure/browsers.nim || exit 1
