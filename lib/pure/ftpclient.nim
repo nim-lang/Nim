@@ -159,6 +159,9 @@ proc pasv(ftp: var TFTPClient) =
     ftp.dsock.connect(ip.join("."), TPort(properPort.toU16))
     ftp.dsockStatus = SockConnected
 
+proc normalizePathSep(path: string): string =
+  return replace(path, '\\', '/')
+
 proc connect*(ftp: var TFTPClient) =
   ## Connect to the FTP server specified by ``ftp``.
   ftp.csock = socket()
@@ -181,7 +184,7 @@ proc pwd*(ftp: var TFTPClient): string =
 
 proc cd*(ftp: var TFTPClient, dir: string) =
   ## Changes the current directory on the remote FTP server to ``dir``.
-  assertReply ftp.send("CWD " & dir), "250"
+  assertReply ftp.send("CWD " & dir.normalizePathSep), "250"
 
 proc cdup*(ftp: var TFTPClient) =
   ## Changes the current directory to the parent of the current directory.
@@ -216,7 +219,7 @@ proc listDirs*(ftp: var TFTPClient, dir: string = "",
   ftp.createJob(getLines, JRetrText)
   ftp.pasv()
 
-  assertReply ftp.send("NLST " & dir), ["125", "150"]
+  assertReply ftp.send("NLST " & dir.normalizePathSep), ["125", "150"]
 
   if not async:
     while not ftp.job.prc(ftp, false): nil
@@ -231,7 +234,7 @@ proc fileExists*(ftp: var TFTPClient, file: string): bool =
   ## files, because a full list of file names must be retrieved.
   var files = ftp.listDirs()
   for f in items(files):
-    if f == file: return true
+    if f.normalizePathSep == file.normalizePathSep: return true
 
 proc createDir*(ftp: var TFTPClient, dir: string, recursive: bool = false) =
   ## Creates a directory ``dir``. If ``recursive`` is true, the topmost
@@ -239,7 +242,7 @@ proc createDir*(ftp: var TFTPClient, dir: string, recursive: bool = false) =
   ## etc. this allows you to give a full path as the ``dir`` without worrying
   ## about subdirectories not existing.
   if not recursive:
-    assertReply ftp.send("MKD " & dir), "257"
+    assertReply ftp.send("MKD " & dir.normalizePathSep), "257"
   else:
     var reply = TaintedString""
     var previousDirs = ""
@@ -269,7 +272,8 @@ proc chmod*(ftp: var TFTPClient, path: string,
     of fpOthersRead: otherOctal.inc(4)
 
   var perm = $userOctal & $groupOctal & $otherOctal
-  assertReply ftp.send("SITE CHMOD " & perm & " " & path), "200"
+  assertReply ftp.send("SITE CHMOD " & perm &
+                       " " & path.normalizePathSep), "200"
 
 proc list*(ftp: var TFTPClient, dir: string = "", async = false): string =
   ## Lists all files in ``dir``. If ``dir`` is ``""``, uses the current
@@ -279,7 +283,7 @@ proc list*(ftp: var TFTPClient, dir: string = "", async = false): string =
   ftp.createJob(getLines, JRetrText)
   ftp.pasv()
 
-  assertReply(ftp.send("LIST" & " " & dir), ["125", "150"])
+  assertReply(ftp.send("LIST" & " " & dir.normalizePathSep), ["125", "150"])
 
   if not async:
     while not ftp.job.prc(ftp, false): nil
@@ -294,7 +298,7 @@ proc retrText*(ftp: var TFTPClient, file: string, async = false): string =
   ## it will be your job to call ``poll`` to progress this operation.
   ftp.createJob(getLines, JRetrText)
   ftp.pasv()
-  assertReply ftp.send("RETR " & file), ["125", "150"]
+  assertReply ftp.send("RETR " & file.normalizePathSep), ["125", "150"]
   
   if not async:
     while not ftp.job.prc(ftp, false): nil
@@ -333,7 +337,7 @@ proc retrFile*(ftp: var TFTPClient, file, dest: string, async = false) =
   ftp.createJob(getFile, JRetr)
   ftp.job.file = open(dest, mode = fmWrite)
   ftp.pasv()
-  var reply = ftp.send("RETR " & file)
+  var reply = ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
   if {'(', ')'} notin reply.string:
     raise newException(EInvalidReply, "Reply has no file size.")
@@ -343,7 +347,7 @@ proc retrFile*(ftp: var TFTPClient, file, dest: string, async = false) =
     
   ftp.job.total = fileSize
   ftp.job.lastProgressReport = epochTime()
-  ftp.job.filename = file
+  ftp.job.filename = file.normalizePathSep
 
   if not async:
     while not ftp.job.prc(ftp, false): nil
@@ -394,7 +398,7 @@ proc store*(ftp: var TFTPClient, file, dest: string, async = false) =
   ftp.job.filename = file
   ftp.pasv()
   
-  assertReply ftp.send("STOR " & dest), ["125", "150"]
+  assertReply ftp.send("STOR " & dest.normalizePathSep), ["125", "150"]
 
   if not async:
     while not ftp.job.prc(ftp, false): nil
