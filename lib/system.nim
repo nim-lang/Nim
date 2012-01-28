@@ -14,8 +14,6 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 
-{.push hints: off.}
-
 type
   int* {.magic: Int.} ## default integer type; bitwidth depends on
                       ## architecture, but is always the same as a pointer
@@ -35,9 +33,15 @@ type
   string* {.magic: String.} ## built-in string type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type
-  Ordinal* {.magic: Ordinal.}[T]
+
+const
+  on* = true    ## alias for ``true``
+  off* = false  ## alias for ``false``
+
+{.push hints: off.}
 
 type
+  Ordinal* {.magic: Ordinal.}[T]
   `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
@@ -831,10 +835,16 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## It does *not* call the garbage collector to free all the memory,
   ## unless a quit procedure calls ``GC_collect``.
 
+proc WriteStackTrace()
+
+var checkDisabled: bool
+
 template sysAssert(cond, msg: expr) =
   when defined(useSysAssert):
-    if not cond:
+    if not checkDisabled and not cond:
+      checkDisabled = true
       echo "[SYSASSERT] ", msg
+      WriteStackTrace()
       quit 1
   nil
 
@@ -1124,8 +1134,10 @@ proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
+proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
+proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
-  ## value is implementation-dependant.
+  ## value is implementation-dependent.
 
 # new constants:
 const
@@ -1459,7 +1471,7 @@ template accumulateResult*(iter: expr) =
 # we have to compute this here before turning it off in except.nim anyway ...
 const nimrodStackTrace = compileOption("stacktrace")
 
-{.push checks: off, debugger: off.}
+{.push checks: off.}
 # obviously we cannot generate checking operations here :-)
 # because it would yield into an endless recursion
 # however, stack-traces are available for most parts
@@ -1516,8 +1528,8 @@ type
     len: int  # length of slots (when not debugging always zero)
 
 when not defined(ECMAScript):
-  {.push stack_trace:off}
-  proc add*(x: var string, y: cstring) =
+  {.push stack_trace:off.}
+  proc add*(x: var string, y: cstring) {.noStackFrame.} =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
@@ -1600,7 +1612,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when defined(endb):
     proc endbStep()
 
-  # ----------------- IO Part --------------------------------------------------
+  # ----------------- IO Part ------------------------------------------------
 
   type
     CFile {.importc: "FILE", nodecl, final.} = object  # empty record for
@@ -1783,7 +1795,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     while a[L] != nil: inc(L)
     result = cstringArrayToSeq(a, L)
 
-  # ----------------------------------------------------------------------------
+  # -------------------------------------------------------------------------
 
   proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
     ## atomic increment of `memLoc`. Returns the value after the operation.
@@ -1809,10 +1821,12 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     initStackBottom()
     initGC()
     
+  {.push stack_trace: off.}
   include "system/excpt"
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
   include "system/arithm"
+  {.pop.} # stack trace
   {.pop.} # stack trace
       
   include "system/dyncalls"
@@ -1843,8 +1857,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  {.push stack_trace: off.}
   include "system/mmdisp"
+  {.push stack_trace: off.}
   include "system/sysstr"
   {.pop.}
 
@@ -2108,4 +2122,8 @@ template doAssert*(cond: expr, msg = "") =
   if not cond:
     {.line: InstantiationInfo().}:
       raiseAssert(astToStr(cond) & ' ' & msg)
+
+
+when defined(initDebugger):
+  initDebugger()
 

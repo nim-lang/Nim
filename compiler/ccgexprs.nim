@@ -662,7 +662,7 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
              [rdCharLoc(b), first, intLiteral(lastOrd(ty))])
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
-              ropef("$1[($2)-$3]", [rdLoc(a), rdCharLoc(b), first]))
+              ropef("$1[($2)- $3]", [rdLoc(a), rdCharLoc(b), first]))
 
 proc genCStringElem(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -691,7 +691,7 @@ proc genSeqElem(p: BPRoc, e: PNode, d: var TLoc) =
   var ty = skipTypes(a.t, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.sons[0], abstractVarRange) # emit range check:
-  if (optBoundsCheck in p.options):
+  if optBoundsCheck in p.options:
     if ty.kind == tyString:
       appcg(p, cpsStmts,
            "if ((NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",

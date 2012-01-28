@@ -8,10 +8,7 @@
 .. contents::
 
 
-**Note:** ENDB has not been maintained/tested since several versions. Help if
-you want this debugger to survive.
-
-Nimrod comes with a platform independant debugger -
+Nimrod comes with a platform independent debugger -
 the `Embedded Nimrod Debugger`:idx: (`ENDB`:idx:). The debugger is
 *embedded* into your executable if it has been
 compiled with the ``--debugger:on`` command line option.
@@ -102,8 +99,8 @@ and again because they are lost when you restart your program. This is not
 necessary: A special pragma has been defined for this:
 
 
-The ``{.breakpoint.}`` pragma
------------------------------
+The ``breakpoint`` pragma
+-------------------------
 
 The `breakpoint`:idx: pragma is syntactically a statement. It can be used
 to mark the *following line* as a breakpoint:
@@ -120,6 +117,32 @@ if you leave it out.
 Code for the ``breakpoint`` pragma is only generated if the debugger
 is turned on, so you don't need to remove it from your source code after
 debugging.
+
+
+The ``watchpoint`` pragma
+-------------------------
+
+The `watchpoint`:idx: pragma is syntactically a statement. It can be used
+to mark a location as a watchpoint:
+
+.. code-block:: Nimrod
+  var a: array [0..20, int]
+  
+  {.watchpoint: a[3].}
+  for i in 0 .. 20: a[i] = i
+
+ENDB then writes a stack trace whenever the content of the location ``a[3]``
+changes. The current implementation only tracks a hash value of the location's
+contents and so locations that are not word sized may encounter false
+negatives in very rare cases.
+
+Code for the ``watchpoint`` pragma is only generated if the debugger
+is turned on, so you don't need to remove it from your source code after
+debugging.
+
+Due to the primitive implementation watchpoints are even slower than
+breakpoints: After *every* executed Nimrod code line it is checked whether the
+location changed.
 
 
 Data Display Commands

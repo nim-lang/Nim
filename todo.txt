@@ -2,6 +2,8 @@ version 0.8.14
 ==============
 
 - bug: tsortdev does not run with native GC
+- object {.pure, final.} does not work again!
+
 
 version 0.9.0
 =============

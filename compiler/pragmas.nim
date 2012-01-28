@@ -37,7 +37,7 @@ const
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
-    wBreakpoint, wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
+    wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
@@ -59,17 +59,16 @@ const
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
-proc pragmaAsm*(c: PContext, n: PNode): char
 # implementation
 
 proc invalidPragma(n: PNode) = 
   LocalError(n.info, errInvalidPragmaX, renderTree(n, {renderNoComments}))
 
-proc pragmaAsm(c: PContext, n: PNode): char = 
+proc pragmaAsm*(c: PContext, n: PNode): char = 
   result = '\0'
   if n != nil: 
     for i in countup(0, sonsLen(n) - 1): 
-      var it = n.sons[i]
+      let it = n.sons[i]
       if (it.kind == nkExprColonExpr) and (it.sons[0].kind == nkIdent): 
         case whichKeyword(it.sons[0].ident)
         of wSubsChar: 
@@ -155,13 +154,11 @@ proc wordToCallConv(sw: TSpecialWord): TCallingConvention =
   result = TCallingConvention(ord(ccDefault) + ord(sw) - ord(wNimcall))
 
 proc IsTurnedOn(c: PContext, n: PNode): bool = 
-  if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
-    case whichKeyword(n.sons[1].ident)
-    of wOn: result = true
-    of wOff: result = false
-    else: LocalError(n.info, errOnOrOffExpected)
-  else: 
-    LocalError(n.info, errOnOrOffExpected)
+  if n.kind == nkExprColonExpr:
+    let x = c.semConstBoolExpr(c, n.sons[1])
+    n.sons[1] = x
+    if x.kind == nkIntLit: return x.intVal != 0
+  LocalError(n.info, errOnOrOffExpected)
 
 proc onOff(c: PContext, n: PNode, op: TOptions) = 
   if IsTurnedOn(c, n): gOptions = gOptions + op
@@ -211,28 +208,29 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   else: 
     incl(sym.loc.flags, lfExportLib)
   
-proc processNote(c: PContext, n: PNode) = 
+proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
       (n.sons[0].sons[1].kind == nkIdent) and
-      (n.sons[0].sons[0].kind == nkIdent) and (n.sons[1].kind == nkIdent): 
+      (n.sons[0].sons[0].kind == nkIdent) and (n.sons[1].kind == nkIdent):
     var nk: TNoteKind
     case whichKeyword(n.sons[0].sons[0].ident)
-    of wHint: 
+    of wHint:
       var x = findStr(msgs.HintsToStr, n.sons[0].sons[1].ident.s)
       if x >= 0: nk = TNoteKind(x + ord(hintMin))
       else: invalidPragma(n)
-    of wWarning: 
+    of wWarning:
       var x = findStr(msgs.WarningsToStr, n.sons[0].sons[1].ident.s)
       if x >= 0: nk = TNoteKind(x + ord(warnMin))
       else: InvalidPragma(n)
-    else: 
+    else:
       invalidPragma(n)
-      return 
-    case whichKeyword(n.sons[1].ident)
-    of wOn: incl(gNotes, nk)
-    of wOff: excl(gNotes, nk)
-    else: LocalError(n.info, errOnOrOffExpected)
+      return
+
+    let x = c.semConstBoolExpr(c, n.sons[1])
+    n.sons[1] = x
+    if x.kind == nkIntLit and x.intVal != 0: incl(gNotes, nk)
+    else: excl(gNotes, nk)
   else: 
     invalidPragma(n)
   
@@ -335,8 +333,8 @@ proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   if found == "": found = f # use the default
   case feature
   of linkNormal: extccomp.addFileToLink(found)
-  of linkSys: 
-    extccomp.addFileToLink(joinPath(libpath, completeCFilePath(found, false)))
+  of linkSys:
+    extccomp.addFileToLink(libpath / completeCFilePath(found, false))
   else: internalError(n.info, "processCommonLink")
   
 proc PragmaBreakpoint(c: PContext, n: PNode) = 
@@ -347,6 +345,12 @@ proc PragmaCheckpoint(c: PContext, n: PNode) =
   var info = n.info
   inc(info.line)              # next line is affected!
   msgs.addCheckpoint(info)
+
+proc PragmaWatchpoint(c: PContext, n: PNode) =
+  if n.kind == nkExprColonExpr:
+    n.sons[1] = c.semExpr(c, n.sons[1])
+  else:
+    invalidPragma(n)
 
 proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n.sons[1].kind
@@ -562,7 +566,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wPassL: extccomp.addLinkOption(expectStrLit(c, it))
           of wPassC: extccomp.addCompileOption(expectStrLit(c, it))
           of wBreakpoint: PragmaBreakpoint(c, it)
-          of wCheckpoint: PragmaCheckpoint(c, it)
+          of wWatchpoint: PragmaWatchpoint(c, it)
           of wPush: 
             processPush(c, n, i + 1)
             break 

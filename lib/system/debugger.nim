@@ -8,15 +8,18 @@
 #
 
 # This file implements the embedded debugger that can be linked
-# with the application. We should not use dynamic memory here as that
+# with the application. Mostly we do not use dynamic memory here as that
 # would interfere with the GC and trigger ON/OFF errors if the
 # user program corrupts memory. Unfortunately, for dispaying
 # variables we use the ``system.repr()`` proc which uses Nimrod
 # strings and thus allocates memory from the heap. Pity, but
-# I do not want to implement ``repr()`` twice. We also cannot deactivate
-# the GC here as that might run out of memory too quickly...
+# I do not want to implement ``repr()`` twice.
 
 type
+  TStaticStr {.pure, final.} = object
+    len: int
+    data: array[0..100, char]
+
   TDbgState = enum
     dbOff,        # debugger is turned off
     dbStepInto,   # debugger is in tracing mode
@@ -29,8 +32,8 @@ type
     low, high: int   # range from low to high; if disabled
                      # both low and high are set to their negative values
                      # this makes the check faster and safes memory
-    filename: string
-    name: string     # name of breakpoint
+    filename: cstring
+    name: TStaticStr     # name of breakpoint
 
   TVarSlot {.compilerproc, final.} = object # variable slots used for debugger:
     address: pointer
@@ -47,12 +50,10 @@ type
     slots: array[0..10_000, TVarSlot]
 
 var
-  dbgInSignal: bool # wether the debugger is in the signal handler
-  dbgIn: TFile # debugger input stream
-  dbgUser: string = "s" # buffer for user input; first command is ``step_into``
+  dbgUser: TStaticStr   # buffer for user input; first command is ``step_into``
                         # needs to be global cause we store the last command
                         # in it
-  dbgState: TDbgState = dbStepInto # state of debugger
+  dbgState: TDbgState   # state of debugger
   dbgBP: array[0..127, TDbgBreakpoint] # breakpoints
   dbgBPlen: int = 0
 
@@ -63,7 +64,36 @@ var
 
   maxDisplayRecDepth: int = 5 # do not display too much data!
 
-proc findBreakpoint(name: string): int =
+proc setLen(s: var TStaticStr, newLen=0) =
+  s.len = newLen
+  s.data[newLen] = '\0'
+
+proc add(s: var TStaticStr, c: char) =
+  if s.len < high(s.data)-1:
+    s.data[s.len] = c
+    s.data[s.len+1] = '\0'
+    inc s.len
+
+proc add(s: var TStaticStr, c: cstring) =
+  var i = 0
+  while c[i] != '\0':
+    add s, c[i]
+    inc i
+
+proc assign(s: var TStaticStr, c: cstring) =
+  setLen(s)
+  add s, c
+
+proc `==`(a, b: TStaticStr): bool =
+  if a.len == b.len:
+    for i in 0 .. a.len-1:
+      if a.data[i] != b.data[i]: return false
+    return true
+
+proc `==`(a: TStaticStr, b: cstring): bool =
+  result = c_strcmp(a.data, b) == 0
+
+proc findBreakpoint(name: TStaticStr): int =
   # returns -1 if not found
   for i in countdown(dbgBPlen-1, 0):
     if name == dbgBP[i].name: return i
@@ -72,16 +102,22 @@ proc findBreakpoint(name: string): int =
 proc ListBreakPoints() =
   write(stdout, "*** endb| Breakpoints:\n")
   for i in 0 .. dbgBPlen-1:
-    write(stdout, dbgBP[i].name & ": " & $abs(dbgBP[i].low) & ".." &
-                  $abs(dbgBP[i].high) & dbgBP[i].filename)
+    write(stdout, dbgBP[i].name.data)
+    write(stdout, ": ")
+    write(stdout, abs(dbgBP[i].low))
+    write(stdout, "..")
+    write(stdout, abs(dbgBP[i].high))
+    write(stdout, dbgBP[i].filename)
     if dbgBP[i].low < 0:
       write(stdout, " [disabled]\n")
     else:
       write(stdout, "\n")
   write(stdout, "***\n")
 
-proc openAppend(filename: string): TFile =
-  if open(result, filename, fmAppend):
+proc openAppend(filename: cstring): TFile =
+  var p: pointer = fopen(filename, "ab")
+  if p != nil:
+    result = cast[TFile](p)
     write(result, "----------------------------------------\n")
 
 proc dbgRepr(p: pointer, typ: PNimType): string =
@@ -101,13 +137,17 @@ proc writeVariable(stream: TFile, slot: TVarSlot) =
   writeln(stream, dbgRepr(slot.address, slot.typ))
 
 proc ListFrame(stream: TFile, f: PExtendedFrame) =
-  write(stream, "*** endb| Frame (" & $f.f.len &  " slots):\n")
+  write(stream, "*** endb| Frame (")
+  write(stream, f.f.len)
+  write(stream, " slots):\n")
   for i in 0 .. f.f.len-1:
     writeVariable(stream, f.slots[i])
   write(stream, "***\n")
 
 proc ListVariables(stream: TFile, f: PExtendedFrame) =
-  write(stream, "*** endb| Frame (" & $f.f.len & " slots):\n")
+  write(stream, "*** endb| Frame (")
+  write(stream, f.f.len)
+  write(stream, " slots):\n")
   for i in 0 .. f.f.len-1:
     writeln(stream, f.slots[i].name)
   write(stream, "***\n")
@@ -135,14 +175,19 @@ proc dbgShowCurrentProc(dbgFramePointer: PFrame) =
     write(stdout, dbgFramePointer.procname)
     write(stdout, " ***\n")
   else:
-    write(stdout, "*** endb| (procedure name not available) ***\n")
+    write(stdout, "*** endb| (proc name not available) ***\n")
 
 proc dbgShowExecutionPoint() =
-  write(stdout, "*** endb| " & $framePtr.filename & 
-                "(" & $framePtr.line & ") " & $framePtr.procname & " ***\n")
+  write(stdout, "*** endb| ")
+  write(stdout, framePtr.filename)
+  write(stdout, "(")
+  write(stdout, framePtr.line)
+  write(stdout, ") ")
+  write(stdout, framePtr.procname)
+  write(stdout, " ***\n")
 
-when defined(windows) or defined(dos) or defined(os2):
-  {.define: FileSystemCaseInsensitive.}
+const
+  FileSystemCaseInsensitive = defined(windows) or defined(dos) or defined(os2)
 
 proc fileMatches(c, bp: cstring): bool =
   # bp = breakpoint filename
@@ -162,7 +207,7 @@ proc fileMatches(c, bp: cstring): bool =
     var x, y: char
     x = bp[i]
     y = c[i+clen-blen]
-    when defined(FileSystemCaseInsensitive):
+    when FileSystemCaseInsensitive:
       if x >= 'A' and x <= 'Z': x = chr(ord(x) - ord('A') + ord('a'))
       if y >= 'A' and y <= 'Z': y = chr(ord(y) - ord('A') + ord('a'))
     if x != y: return false
@@ -175,7 +220,7 @@ proc dbgBreakpointReached(line: int): int =
         fileMatches(framePtr.filename, dbgBP[i].filename): return i
   return -1
 
-proc scanAndAppendWord(src: string, a: var string, start: int): int =
+proc scanAndAppendWord(src: cstring, a: var TStaticStr, start: int): int =
   result = start
   # skip whitespace:
   while src[result] in {'\t', ' '}: inc(result)
@@ -187,20 +232,20 @@ proc scanAndAppendWord(src: string, a: var string, start: int): int =
     else: break
     inc(result)
 
-proc scanWord(src: string, a: var string, start: int): int =
-  a = ""
+proc scanWord(src: cstring, a: var TStaticStr, start: int): int =
+  setlen(a)
   result = scanAndAppendWord(src, a, start)
 
-proc scanFilename(src: string, a: var string, start: int): int =
+proc scanFilename(src: cstring, a: var TStaticStr, start: int): int =
   result = start
-  a = ""
+  setLen a
   # skip whitespace:
   while src[result] in {'\t', ' '}: inc(result)
   while src[result] notin {'\t', ' ', '\0'}:
     add(a, src[result])
     inc(result)
 
-proc scanNumber(src: string, a: var int, start: int): int =
+proc scanNumber(src: cstring, a: var int, start: int): int =
   result = start
   a = 0
   while src[result] in {'\t', ' '}: inc(result)
@@ -222,7 +267,7 @@ q, quit                 quit the debugger and the program
 s, step                 single step, stepping into routine calls
 n, next                 single step, without stepping into routine calls
 f, skipcurrent          continue execution until the current routine finishes
-c, continue             continue execution until the next breakpoint
+c, continue, r, run     continue execution until the next breakpoint
 i, ignore               continue execution, ignore all breakpoints
               BREAKPOINTS
 b, break <name> [fromline [toline]] [file]
@@ -247,14 +292,15 @@ maxdisplay <integer>    set the display's recursion maximum
 proc InvalidCommand() =
   debugOut("[Warning] invalid command ignored (type 'h' for help) ")
 
-proc hasExt(s: string): bool =
+proc hasExt(s: cstring): bool =
   # returns true if s has a filename extension
-  for i in countdown(len(s)-1, 0):
+  var i = 0
+  while s[i] != '\0':
     if s[i] == '.': return true
-  return false
+    inc i
 
-proc setBreakPoint(s: string, start: int) =
-  var dbgTemp: string
+proc setBreakPoint(s: cstring, start: int) =
+  var dbgTemp: TStaticStr
   var i = scanWord(s, dbgTemp, start)
   if i <= start:
     InvalidCommand()
@@ -273,19 +319,22 @@ proc setBreakPoint(s: string, start: int) =
   if dbgBP[x].high == 0: # set to low:
     dbgBP[x].high = dbgBP[x].low
   i = scanFilename(s, dbgTemp, i)
-  if not (dbgTemp.len == 0):
-    if not hasExt(dbgTemp): add(dbgTemp, ".nim")
-    dbgBP[x].filename = dbgTemp
+  if dbgTemp.len != 0:
+    debugOut("[Warning] explicit filename for breakpoint not supported")
+    when false:
+      if not hasExt(dbgTemp.data): add(dbgTemp, ".nim")
+      dbgBP[x].filename = dbgTemp
+    dbgBP[x].filename = framePtr.filename
   else: # use current filename
-    dbgBP[x].filename = $framePtr.filename
+    dbgBP[x].filename = framePtr.filename
   # skip whitespace:
   while s[i] in {' ', '\t'}: inc(i)
   if s[i] != '\0':
     dec(dbgBPLen) # remove buggy breakpoint
     InvalidCommand()
 
-proc BreakpointSetEnabled(s: string, start, enabled: int) =
-  var dbgTemp: string
+proc BreakpointSetEnabled(s: cstring, start, enabled: int) =
+  var dbgTemp: TStaticStr
   var i = scanWord(s, dbgTemp, start)
   if i <= start:
     InvalidCommand()
@@ -296,9 +345,9 @@ proc BreakpointSetEnabled(s: string, start, enabled: int) =
     dbgBP[x].low = -dbgBP[x].low
     dbgBP[x].high = -dbgBP[x].high
 
-proc dbgEvaluate(stream: TFile, s: string, start: int,
+proc dbgEvaluate(stream: TFile, s: cstring, start: int,
                  currFrame: PExtendedFrame) =
-  var dbgTemp: string
+  var dbgTemp: tstaticstr
   var i = scanWord(s, dbgTemp, start)
   while s[i] in {' ', '\t'}: inc(i)
   var f = currFrame
@@ -311,92 +360,108 @@ proc dbgEvaluate(stream: TFile, s: string, start: int,
   if s[i] != '\0':
     debugOut("[Warning] could not parse expr ")
     return
-  var j = findVariable(f, dbgTemp)
+  var j = findVariable(f, dbgTemp.data)
   if j < 0:
     debugOut("[Warning] could not find variable ")
     return
   writeVariable(stream, f.slots[j])
 
-proc dbgOut(s: string, start: int, currFrame: PExtendedFrame) =
-  var dbgTemp: string
+proc dbgOut(s: cstring, start: int, currFrame: PExtendedFrame) =
+  var dbgTemp: tstaticstr
   var i = scanFilename(s, dbgTemp, start)
   if dbgTemp.len == 0:
     InvalidCommand()
     return
-  var stream = openAppend(dbgTemp)
+  var stream = openAppend(dbgTemp.data)
   if stream == nil:
     debugOut("[Warning] could not open or create file ")
     return
   dbgEvaluate(stream, s, i, currFrame)
   close(stream)
 
-proc dbgStackFrame(s: string, start: int, currFrame: PExtendedFrame) =
-  var dbgTemp: string
+proc dbgStackFrame(s: cstring, start: int, currFrame: PExtendedFrame) =
+  var dbgTemp: TStaticStr
   var i = scanFilename(s, dbgTemp, start)
   if dbgTemp.len == 0:
     # just write it to stdout:
     ListFrame(stdout, currFrame)
   else:
-    var stream = openAppend(dbgTemp)
+    var stream = openAppend(dbgTemp.data)
     if stream == nil:
       debugOut("[Warning] could not open or create file ")
       return
     ListFrame(stream, currFrame)
     close(stream)
 
+proc readLine(f: TFile, line: var TStaticStr): bool =
+  while True:
+    var c = fgetc(f)
+    if c < 0'i32:
+      if line.len > 0: break
+      else: return false
+    if c == 10'i32: break # LF
+    if c == 13'i32:  # CR
+      c = fgetc(f) # is the next char LF?
+      if c != 10'i32: ungetc(c, f) # no, put the character back
+      break
+    add line, chr(int(c))
+  result = true
+
+proc dbgWriteStackTrace(f: PFrame)
 proc CommandPrompt() =
   # if we return from this routine, user code executes again
   var
     again = True
     dbgFramePtr = framePtr # for going down and up the stack
     dbgDown = 0 # how often we did go down
+    dbgTemp: TStaticStr
 
   while again:
     write(stdout, "*** endb| >>")
-    var tmp = readLine(stdin)
-    if tmp.len > 0: dbgUser = tmp
+    let oldLen = dbgUser.len
+    dbgUser.len = 0
+    if not readLine(stdin, dbgUser): break
+    if dbgUser.len == 0: dbgUser.len = oldLen
     # now look what we have to do:
-    var dbgTemp: string
-    var i = scanWord(dbgUser, dbgTemp, 0)
-    case dbgTemp
-    of "": InvalidCommand()
-    of "s", "step":
+    var i = scanWord(dbgUser.data, dbgTemp, 0)
+    template `?`(x: expr): expr = dbgTemp == cstring(x)
+    if ?"s" or ?"step":
       dbgState = dbStepInto
       again = false
-    of "n", "next":
+    elif ?"n" or ?"next":
       dbgState = dbStepOver
       dbgSkipToFrame = framePtr
       again = false
-    of "f", "skipcurrent":
+    elif ?"f" or ?"skipcurrent":
       dbgState = dbSkipCurrent
       dbgSkipToFrame = framePtr.prev
       again = false
-    of "c", "continue":
+    elif ?"c" or ?"continue" or ?"r" or ?"run":
       dbgState = dbBreakpoints
       again = false
-    of "i", "ignore":
+    elif ?"i" or ?"ignore":
       dbgState = dbOff
       again = false
-    of "h", "help":
+    elif ?"h" or ?"help":
       dbgHelp()
-    of "q", "quit":
+    elif ?"q" or ?"quit":
       dbgState = dbQuiting
       dbgAborting = True
       again = false
       quit(1) # BUGFIX: quit with error code > 0
-    of "e", "eval":
-      dbgEvaluate(stdout, dbgUser, i, cast[PExtendedFrame](dbgFramePtr))
-    of "o", "out":
-      dbgOut(dbgUser, i, cast[PExtendedFrame](dbgFramePtr))
-    of "stackframe":
-      dbgStackFrame(dbgUser, i, cast[PExtendedFrame](dbgFramePtr))
-    of "w", "where":
+    elif ?"e" or ?"eval":
+      dbgEvaluate(stdout, dbgUser.data, i, cast[PExtendedFrame](dbgFramePtr))
+    elif ?"o" or ?"out":
+      dbgOut(dbgUser.data, i, cast[PExtendedFrame](dbgFramePtr))
+    elif ?"stackframe":
+      dbgStackFrame(dbgUser.data, i, cast[PExtendedFrame](dbgFramePtr))
+    elif ?"w" or ?"where":
       dbgShowExecutionPoint()
-    of "l", "locals":
+    elif ?"l" or ?"locals":
       ListVariables(stdout, cast[PExtendedFrame](dbgFramePtr))
-    of "g", "globals":
+    elif ?"g" or ?"globals":
       ListVariables(stdout, addr(dbgGlobalData))
-    of "u", "up":
+    elif ?"u" or ?"up":
       if dbgDown <= 0:
         debugOut("[Warning] cannot go up any further ")
       else:
@@ -405,33 +470,32 @@ proc CommandPrompt() =
           dbgFramePtr = dbgFramePtr.prev
         dec(dbgDown)
       dbgShowCurrentProc(dbgFramePtr)
-    of "d", "down":
+    elif ?"d" or ?"down":
       if dbgFramePtr != nil:
         inc(dbgDown)
         dbgFramePtr = dbgFramePtr.prev
         dbgShowCurrentProc(dbgFramePtr)
       else:
         debugOut("[Warning] cannot go down any further ")
-    of "bt", "backtrace":
-      WriteStackTrace()
-    of "b", "break":
-      setBreakPoint(dbgUser, i)
-    of "breakpoints":
+    elif ?"bt" or ?"backtrace":
+      dbgWriteStackTrace(framePtr)
+    elif ?"b" or ?"break":
+      setBreakPoint(dbgUser.data, i)
+    elif ?"breakpoints":
       ListBreakPoints()
-    of "disable":
-      BreakpointSetEnabled(dbgUser, i, -1)
-    of "enable":
-      BreakpointSetEnabled(dbgUser, i, +1)
-    of "maxdisplay":
+    elif ?"disable":
+      BreakpointSetEnabled(dbgUser.data, i, -1)
+    elif ?"enable":
+      BreakpointSetEnabled(dbgUser.data, i, +1)
+    elif ?"maxdisplay":
       var parsed: int
-      i = scanNumber(dbgUser, parsed, i)
-      if dbgUser[i-1] in {'0'..'9'}:
+      i = scanNumber(dbgUser.data, parsed, i)
+      if dbgUser.data[i-1] in {'0'..'9'}:
         if parsed == 0: maxDisplayRecDepth = -1
         else: maxDisplayRecDepth = parsed
       else:
         InvalidCommand()
-    else:
-      InvalidCommand()
+    else: InvalidCommand()
 
 proc endbStep() =
   # we get into here if an unhandled exception has been raised
@@ -441,10 +505,10 @@ proc endbStep() =
   CommandPrompt()
 
 proc checkForBreakpoint() =
-  var i = dbgBreakpointReached(framePtr.line)
+  let i = dbgBreakpointReached(framePtr.line)
   if i >= 0:
     write(stdout, "*** endb| reached ")
-    write(stdout, dbgBP[i].name)
+    write(stdout, dbgBP[i].name.data)
     write(stdout, " in ")
     write(stdout, framePtr.filename)
     write(stdout, "(")
@@ -458,16 +522,19 @@ proc checkForBreakpoint() =
 
 proc dbgRegisterBreakpoint(line: int,
                            filename, name: cstring) {.compilerproc.} =
-  var x = dbgBPlen
+  let x = dbgBPlen
+  if x >= high(dbgBP):
+    debugOut("[Warning] cannot register breakpoint")
+    return
   inc(dbgBPlen)
-  dbgBP[x].name = $name
-  dbgBP[x].filename = $filename
+  dbgBP[x].name.assign(name)
+  dbgBP[x].filename = filename
   dbgBP[x].low = line
   dbgBP[x].high = line
 
 proc dbgRegisterGlobal(name: cstring, address: pointer,
                        typ: PNimType) {.compilerproc.} =
-  var i = dbgGlobalData.f.len
+  let i = dbgGlobalData.f.len
   if i >= high(dbgGlobalData.slots):
     debugOut("[Warning] cannot register global ")
     return
@@ -476,14 +543,179 @@ proc dbgRegisterGlobal(name: cstring, address: pointer,
   dbgGlobalData.slots[i].address = address
   inc(dbgGlobalData.f.len)
 
+type
+  THash = int
+  TWatchpoint {.pure, final.} = object
+    name: cstring
+    address: pointer
+    typ: PNimType
+    oldValue: THash
+
+var
+  Watchpoints: array [0..99, TWatchpoint]
+  WatchpointsLen: int
+
+proc `!&`(h: THash, val: int): THash {.inline.} =
+  result = h +% val
+  result = result +% result shl 10
+  result = result xor (result shr 6)
+
+proc `!$`(h: THash): THash {.inline.} =
+  result = h +% h shl 3
+  result = result xor (result shr 11)
+  result = result +% result shl 15
+
+proc hash(Data: Pointer, Size: int): THash =
+  var h: THash = 0
+  var p = cast[cstring](Data)
+  var i = 0
+  var s = size
+  while s > 0:
+    h = h !& ord(p[i])
+    Inc(i)
+    Dec(s)
+  result = !$h
+
+proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
+                    h: THash): THash
+proc genericHashAux(dest: Pointer, n: ptr TNimNode, shallow: bool,
+                    h: THash): THash =
+  var d = cast[TAddress](dest)
+  case n.kind
+  of nkSlot:
+    result = genericHashAux(cast[pointer](d +% n.offset), n.typ, shallow, h)
+  of nkList:
+    result = h
+    for i in 0..n.len-1: 
+      result = result !& genericHashAux(dest, n.sons[i], shallow, result)
+  of nkCase:
+    result = h !& hash(cast[pointer](d +% n.offset), n.typ.size)
+    var m = selectBranch(dest, n)
+    if m != nil: result = genericHashAux(dest, m, shallow, result)
+  of nkNone: sysAssert(false, "genericHashAux")
+
+proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool, 
+                    h: THash): THash =
+  sysAssert(mt != nil, "genericHashAux 2")
+  case mt.Kind
+  of tyString:
+    var x = cast[ppointer](dest)[]
+    result = h
+    if x != nil:
+      let s = cast[NimString](x)
+      let y = cast[pointer](cast[int](x) -% 2*sizeof(int))
+      result = result !& hash(x, s.len + 2*sizeof(int))
+  of tySequence:
+    var x = cast[ppointer](dest)
+    var dst = cast[taddress](cast[ppointer](dest)[])
+    result = h
+    if dst != 0:
+      for i in 0..cast[pgenericseq](dst).len-1:
+        result = result !& genericHashAux(
+          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
+          mt.Base, shallow, result)
+  of tyObject, tyTuple:
+    # we don't need to copy m_type field for tyObject, as they are equal anyway
+    result = genericHashAux(dest, mt.node, shallow, h)
+  of tyArray, tyArrayConstr:
+    let d = cast[TAddress](dest)
+    result = h
+    for i in 0..(mt.size div mt.base.size)-1:
+      result = result !& genericHashAux(cast[pointer](d +% i*% mt.base.size),
+                                        mt.base, shallow, result)
+  of tyRef:
+    if shallow:
+      result = h !& hash(dest, mt.size)
+    else:
+      var s = cast[ppointer](dest)[]
+      if s != nil: result = genericHashAux(s, mt.base, shallow, h)
+  else:
+    result = h !& hash(dest, mt.size) # hash raw bits
+
+proc genericHash(dest: Pointer, mt: PNimType): int =
+  result = genericHashAux(dest, mt, false, 0)
+  
+proc dbgRegisterWatchpoint(address: pointer, name: cstring,
+                           typ: PNimType) {.compilerproc.} =
+  let L = WatchpointsLen
+  for i in 0.. <L:
+    if Watchpoints[i].name == name:
+      # address may have changed:
+      Watchpoints[i].address = address
+      return
+  if L >= watchPoints.high:
+    debugOut("[Warning] cannot register watchpoint")
+    return
+  Watchpoints[L].name = name
+  Watchpoints[L].address = address
+  Watchpoints[L].typ = typ
+  Watchpoints[L].oldValue = genericHash(address, typ)
+  inc WatchpointsLen
+
+proc dbgWriteStackTrace(f: PFrame) =
+  const
+    firstCalls = 32
+  var
+    it = f
+    i = 0
+    total = 0
+    tempFrames: array [0..127, PFrame]
+  while it != nil and i <= high(tempFrames)-(firstCalls-1):
+    # the (-1) is for a nil entry that marks where the '...' should occur
+    tempFrames[i] = it
+    inc(i)
+    inc(total)
+    it = it.prev
+  var b = it
+  while it != nil:
+    inc(total)
+    it = it.prev
+  for j in 1..total-i-(firstCalls-1): 
+    if b != nil: b = b.prev
+  if total != i:
+    tempFrames[i] = nil
+    inc(i)
+  while b != nil and i <= high(tempFrames):
+    tempFrames[i] = b
+    inc(i)
+    b = b.prev
+  for j in countdown(i-1, 0):
+    if tempFrames[j] == nil: 
+      write(stdout, "(")
+      write(stdout, (total-i-1))
+      write(stdout, " calls omitted) ...")
+    else:
+      write(stdout, tempFrames[j].filename)
+      if tempFrames[j].line > 0:
+        write(stdout, '(')
+        write(stdout, tempFrames[j].line)
+        write(stdout, ')')
+      write(stdout, ' ')
+      write(stdout, tempFrames[j].procname)
+    write(stdout, "\n")
+  
+proc checkWatchpoints =
+  let L = WatchpointsLen
+  for i in 0.. <L:
+    let newHash = genericHash(Watchpoints[i].address, Watchpoints[i].typ)
+    if newHash != Watchpoints[i].oldValue:
+      dbgWriteStackTrace(framePtr)
+      debugOut(Watchpoints[i].name)
+      Watchpoints[i].oldValue = newHash
+      
 proc endb(line: int) {.compilerproc.} =
   # This proc is called before every Nimrod code line!
   # Thus, it must have as few parameters as possible to keep the
   # code size small!
   # Check if we are at an enabled breakpoint or "in the mood"
+  if framePtr == nil: return
+  let oldState = dbgState
+  #dbgState = dbOff
+  #if oldState != dbOff: 
+  checkWatchpoints()
   framePtr.line = line # this is done here for smaller code size!
   if dbgLineHook != nil: dbgLineHook()
-  case dbgState
+  case oldState
   of dbStepInto:
     # we really want the command prompt here:
     dbgShowExecutionPoint()
@@ -497,3 +729,9 @@ proc endb(line: int) {.compilerproc.} =
   of dbBreakpoints: # debugger is only interested in breakpoints
     checkForBreakpoint()
   else: nil
+
+proc initDebugger {.inline.} =
+  dbgState = dbStepInto
+  dbgUser.len = 1
+  dbgUser.data[0] = 's'
+

@@ -391,13 +391,6 @@ proc modInt64(a, b: int): int {.noStackFrame, compilerproc.} =
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
-proc internalAssert(file: cstring, line: int) {.noStackFrame, compilerproc.} =
-  var
-    e: ref EAssertionFailed
-  new(e)
-  asm """`e`.message = "[Assertion failure] file: "+`file`+", line: "+`line`"""
-  raise e
-
 include "system/hti"
 
 proc isFatPointer(ti: PNimType): bool =

@@ -13,7 +13,7 @@ type
   TCell {.pure.} = object
     refcount: int  # the refcount and some flags
     typ: PNimType
-    when debugGC:
+    when leakDetector:
       filename: cstring
       line: int
 

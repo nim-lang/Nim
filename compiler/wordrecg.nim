@@ -53,7 +53,7 @@ type
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
     wFieldChecks, 
-    wCheckPoint, wSubsChar, 
+    wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame
     
@@ -98,7 +98,7 @@ const
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
-    "checkpoint",
+    "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
     "nostackframe"]

@@ -125,7 +125,7 @@ proc readAll(file: TFile): TaintedString =
   # don't know the overall length of the TFile.
   var len = rawFileSize(file)
   if len >= 0:
-    result = readAllFile(file, len).TaintedSTring
+    result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
   
