@@ -26,21 +26,26 @@
 ##       of EvMsg:
 ##         # Where all the magic happens. 
 
-import sockets, strutils, parseutils, times
+import sockets, strutils, parseutils, times, asyncio
 
 type
-  TIRC* = object
+  TIRC* = object of TObject
     address: string
     port: TPort
     nick, user, realname, serverPass: string
     sock: TSocket
-    connected: bool
+    status: TInfo
     lastPing: float
     lastPong: float
     lag: float
     channelsToJoin: seq[string]
     msgLimit: bool
     messageBuffer: seq[tuple[timeToSend: float, m: string]]
+
+  PAsyncIRC* = ref TAsyncIRC
+  TAsyncIRC* = object of TIRC
+    userArg: PObject
+    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent, userArg: PObject)
 
   TIRCMType* = enum
     MUnknown,
@@ -89,7 +94,7 @@ proc send*(irc: var TIRC, message: string, sendImmediately = false) =
     except EOS:
       # Assuming disconnection of every EOS could be bad,
       # but I can't exactly check for EBrokenPipe.
-      irc.connected = false
+      irc.status = SockClosed
 
 proc privmsg*(irc: var TIRC, target, message: string) =
   ## Sends ``message`` to ``target``. ``Target`` can be a channel, or a user.
@@ -188,7 +193,7 @@ proc connect*(irc: var TIRC) =
   irc.sock = socket()
   irc.sock.connect(irc.address, irc.port)
  
-  irc.connected = true
+  irc.status = SockConnected
   
   # Greet the server :)
   if irc.serverPass != "": irc.send("PASS " & irc.serverPass, true)
@@ -201,7 +206,7 @@ proc irc*(address: string, port: TPort = 6667.TPort,
          realname = "NimrodBot", serverPass = "",
          joinChans: seq[string] = @[],
          msgLimit: bool = true): TIRC =
-  ## This function calls `connect`, so you don't need to.
+  ## Creates a ``TIRC`` object.
   result.address = address
   result.port = port
   result.nick = nick
@@ -214,45 +219,33 @@ proc irc*(address: string, port: TPort = 6667.TPort,
   result.channelsToJoin = joinChans
   result.msgLimit = msgLimit
   result.messageBuffer = @[]
+  result.status = SockIdle
 
-  result.connect()
-  
-proc poll*(irc: var TIRC, ev: var TIRCEvent,
-           timeout: int = 500): bool =
-  ## This function parses a single message from the IRC server and returns 
-  ## a TIRCEvent.
-  ##
-  ## This function should be called often as it also handles pinging
-  ## the server.
-  if not irc.connected: ev.typ = EvDisconnected
-  var line = TaintedString""
-  var socks = @[irc.sock]
-  var ret = socks.select(timeout)
-  if socks.len() == 0 and ret == 1:
-    if irc.sock.recvLine(line):
-      if line.string.len == 0:
-        ev.typ = EvDisconnected
-      else:
-        ev = parseMessage(line.string)
-        # Get the origin
-        ev.origin = ev.params[0]
-        if ev.origin == irc.nick: ev.origin = ev.nick
+proc processLine(irc: var TIRC, line: string): TIRCEvent =
+  if line.len == 0:
+    result.typ = EvDisconnected
+  else:
+    result = parseMessage(line)
+    # Get the origin
+    result.origin = result.params[0]
+    if result.origin == irc.nick: result.origin = result.nick
 
-        if ev.cmd == MError:
-          ev.typ = EvDisconnected
-          return
+    if result.cmd == MError:
+      result.typ = EvDisconnected
+      return
 
-        if ev.cmd == MPing:
-          irc.send("PONG " & ev.params[0])
-        if ev.cmd == MPong:
-          irc.lag = epochTime() - parseFloat(ev.params[ev.params.high])
-          irc.lastPong = epochTime()
-        if ev.cmd == MNumeric:
-          if ev.numeric == "001":
-            for chan in items(irc.channelsToJoin):
-              irc.join(chan)
-      result = true
+    if result.cmd == MPing:
+      irc.send("PONG " & result.params[0])
+    if result.cmd == MPong:
+      irc.lag = epochTime() - parseFloat(result.params[result.params.high])
+      irc.lastPong = epochTime()
+    if result.cmd == MNumeric:
+      if result.numeric == "001":
+        for chan in items(irc.channelsToJoin):
+          irc.join(chan)
 
+proc processOther(irc: var TIRC, ev: var TIRCEvent): bool =
+  result = false
   if epochTime() - irc.lastPing >= 20.0:
     irc.lastPing = epochTime()
     irc.send("PING :" & formatFloat(irc.lastPing), true)
@@ -260,7 +253,6 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
   if epochTime() - irc.lastPong >= 120.0 and irc.lastPong != -1.0:
     ev.typ = EvDisconnected # TODO: EvTimeout?
     return true
-
   
   for i in 0..irc.messageBuffer.len-1:
     if epochTime() >= irc.messageBuffer[0][0]:
@@ -270,6 +262,30 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
       break # messageBuffer is guaranteed to be from the quickest to the
             # later-est.
 
+proc poll*(irc: var TIRC, ev: var TIRCEvent,
+           timeout: int = 500): bool =
+  ## This function parses a single message from the IRC server and returns 
+  ## a TIRCEvent.
+  ##
+  ## This function should be called often as it also handles pinging
+  ## the server.
+  ##
+  ## This function provides a somewhat asynchronous IRC implementation, although
+  ## it should only be used for simple things for example an IRC bot which does
+  ## not need to be running many time critical tasks in the background. If you
+  ## require this, use the asyncio implementation.
+  
+  if not (irc.status == SockConnected): ev.typ = EvDisconnected
+  var line = TaintedString""
+  var socks = @[irc.sock]
+  var ret = socks.select(timeout)
+  if socks.len() == 0 and ret != 0:
+    if irc.sock.recvLine(line):
+      ev = irc.processLine(line)
+      result = true
+  
+  if processOther(irc, ev): result = true
+
 proc getLag*(irc: var TIRC): float =
   ## Returns the latency between this client and the IRC server in seconds.
   ## 
@@ -278,8 +294,88 @@ proc getLag*(irc: var TIRC): float =
 
 proc isConnected*(irc: var TIRC): bool =
   ## Returns whether this IRC client is connected to an IRC server.
-  return irc.connected
+  return irc.status == SockConnected
 
+# -- Asyncio dispatcher
+
+proc connect*(irc: PAsyncIRC) =
+  ## Equivalent of connect for ``TIRC`` but specifically created for asyncio.
+  assert(irc.address != "")
+  assert(irc.port != TPort(0))
+  
+  irc.sock = socket()
+  irc.sock.setBlocking(false)
+  irc.sock.connectAsync(irc.address, irc.port)
+  irc.status = SockConnecting
+
+proc handleConnect(h: PObject) =
+  var irc = PAsyncIRC(h)
+  
+  # Greet the server :)
+  if irc.serverPass != "": irc[].send("PASS " & irc.serverPass, true)
+  irc[].send("NICK " & irc.nick, true)
+  irc[].send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
+
+  irc.status = SockConnected
+
+proc handleRead(h: PObject) =
+  var irc = PAsyncIRC(h)
+  var line = ""
+  if irc.sock.recvLine(line):
+    var ev = irc[].processLine(line)
+    irc.handleEvent(irc[], ev, irc.userArg)
+
+proc handleTask(h: PObject) =
+  var irc = PAsyncIRC(h)
+  var ev: TIRCEvent
+  if PAsyncIRC(h)[].processOther(ev):
+    irc.handleEvent(irc[], ev, irc.userArg)
+
+proc asyncIRC*(address: string, port: TPort = 6667.TPort,
+              nick = "NimrodBot",
+              user = "NimrodBot",
+              realname = "NimrodBot", serverPass = "",
+              joinChans: seq[string] = @[],
+              msgLimit: bool = true,
+              ircEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent,
+                  userArg: PObject),
+              userArg: PObject = nil): PAsyncIRC =
+  ## Use this function if you want to use asyncio's dispatcher.
+  ## 
+  ## **Note:** Do **NOT** use this if you're writing a simple IRC bot which only
+  ## requires one task to be run, i.e. this should not be used if you want a
+  ## synchronous IRC client implementation, use ``irc`` for that.
+  
+  new(result)
+  result.address = address
+  result.port = port
+  result.nick = nick
+  result.user = user
+  result.realname = realname
+  result.serverPass = serverPass
+  result.lastPing = epochTime()
+  result.lastPong = -1.0
+  result.lag = -1.0
+  result.channelsToJoin = joinChans
+  result.msgLimit = msgLimit
+  result.messageBuffer = @[]
+  result.handleEvent = ircEvent
+  result.userArg = userArg
+
+proc register*(d: PDispatcher, irc: PAsyncIRC) =
+  ## Registers ``irc`` with dispatcher ``d``.
+  var dele = newDelegate()
+  dele.deleVal = irc
+  dele.getSocket = (proc (h: PObject): tuple[info: TInfo, sock: TSocket] =
+                      if PAsyncIRC(h).status == SockConnecting or
+                            PAsyncIRC(h).status == SockConnected:
+                        return (PAsyncIRC(h).status, PAsyncIRC(h).sock)
+                      else: return (SockIdle, PAsyncIRC(h).sock))
+  dele.handleConnect = handleConnect
+  dele.handleRead = handleRead
+  dele.task = handleTask
+  d.register(dele)
+  
 when isMainModule:
   #var m = parseMessage("ERROR :Closing Link: dom96.co.cc (Ping timeout: 252 seconds)")
   #echo(repr(m))
@@ -288,6 +384,7 @@ when isMainModule:
   
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
+  client.connect()
   while True:
     var event: TIRCEvent
     if client.poll(event):
@@ -305,3 +402,4 @@ when isMainModule:
         #echo( repr(event) )
       #echo("Lag: ", formatFloat(client.getLag()))
   #"""
+    

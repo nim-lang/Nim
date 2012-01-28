@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements helper procs for SCGI applictions. Example:
+## This module implements helper procs for SCGI applications. Example:
 ## 
 ## .. code-block:: Nimrod
 ##
@@ -24,7 +24,7 @@
 ##    run(handleRequest)
 ##
 
-import sockets, strutils, os, strtabs
+import sockets, strutils, os, strtabs, asyncio
 
 type
   EScgi* = object of EIO ## the exception that is raised, if a SCGI error occurs
@@ -58,12 +58,18 @@ proc recvChar(s: TSocket): char =
     result = c
   
 type
-  TScgiState* {.final.} = object ## SCGI state object
+  TScgiState* = object of TObject ## SCGI state object
     server: TSocket
     bufLen: int
     client*: TSocket ## the client socket to send data to
     headers*: PStringTable ## the parsed headers
     input*: string  ## the input buffer
+  
+  TAsyncScgiState* = object of TScgiState
+    handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
+                         input: string, headers: PStringTable,userArg: PObject)
+    userArg: PObject
+  PAsyncScgiState* = ref TAsyncScgiState
     
 proc recvBuffer(s: var TScgiState, L: int) =
   if L > s.bufLen: 
@@ -130,6 +136,48 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
       stop = handleRequest(s.client, s.input, s.headers)
       s.client.close()
   s.close()
+
+proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
+                                input: string, headers: PStringTable,
+                                userArg: PObject),
+           port = TPort(4000), address = "127.0.0.1",
+           userArg: PObject = nil): PAsyncScgiState =
+  ## Alternative of ``open`` for asyncio compatible SCGI.
+  new(result)
+  open(result[], port, address)
+  result.handleRequest = handleRequest
+  result.userArg = userArg
+
+proc getSocket(h: PObject): tuple[info: TInfo, sock: TSocket] =
+  var s = PAsyncScgiState(h)
+  return (SockListening, s.server)
+
+proc handleAccept(h: PObject) =
+  var s = PAsyncScgiState(h)
+  
+  s.client = accept(s.server)
+  var L = 0
+  while true:
+    var d = s.client.recvChar()
+    if d notin strutils.digits: 
+      if d != ':': scgiError("':' after length expected")
+      break
+    L = L * 10 + ord(d) - ord('0')  
+  recvBuffer(s[], L+1)
+  s.headers = parseHeaders(s.input, L)
+  if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
+  L = parseInt(s.headers["CONTENT_LENGTH"])
+  recvBuffer(s[], L)
+
+  s.handleRequest(s[], s.client, s.input, s.headers, s.userArg)
+
+proc register*(d: PDispatcher, s: PAsyncScgiState) =
+  ## Registers ``s`` with dispatcher ``d``.
+  var dele = newDelegate()
+  dele.deleVal = s
+  dele.getSocket = getSocket
+  dele.handleAccept = handleAccept
+  d.register(dele)
 
 when false:
   var counter = 0
