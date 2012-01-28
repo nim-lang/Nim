@@ -17,13 +17,16 @@ const
   debugGC = false # we wish to debug the GC...
   logGC = false
   traceGC = false # extensive debugging
-  reallyDealloc = true # for debugging purposes this can be set to false
+  alwaysCycleGC = false
+  alwaysGC = false # collect after every memory allocation (for debugging)
+  leakDetector = false
+  overwriteFree = false
+  
   cycleGC = true # (de)activate the cycle GC
-  stressGC = false
+  reallyDealloc = true # for debugging purposes this can be set to false
   reallyOsDealloc = true
   coalescRight = true
   coalescLeft = true
-  overwriteFree = false
 
 type
   PPointer = ptr pointer
@@ -229,7 +232,8 @@ else:
   include "system/alloc"
 
   include "system/cellsets"
-  sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
+  when not leakDetector:
+    sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
   include "system/gc"
   
 {.pop.}

@@ -160,6 +160,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   if (c.p != nil): InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExprNoFlags
+  c.semConstBoolExpr = semConstBoolExpr
   pushProcCon(c, module)
   pushOwner(c.module)
   openScope(c.tab)            # scope for imported symbols

@@ -125,8 +125,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   var a = semConstExpr(c, n[1])
   var b = semConstExpr(c, n[2])
   if not sameType(a.typ, b.typ): GlobalError(n.info, errPureTypeMismatch)
-  if not (a.typ.kind in
-      {tyInt..tyInt64, tyEnum, tyBool, tyChar, tyFloat..tyFloat128}): 
+  if a.typ.kind notin {tyInt..tyInt64,tyEnum,tyBool,tyChar,tyFloat..tyFloat128}:
     GlobalError(n.info, errOrdinalTypeExpected)
   if enumHasHoles(a.typ): 
     GlobalError(n.info, errEnumXHasHoles, a.typ.sym.name.s)

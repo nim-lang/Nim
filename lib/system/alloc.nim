@@ -499,6 +499,7 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
   sysAssert(roundup(65, 8) == 72, "rawAlloc 1")
   sysAssert requestedSize >= sizeof(TFreeCell), "rawAlloc 2"
   var size = roundup(requestedSize, MemAlign)
+  sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead(): 
     # allocate a small block: for small chunks, we use only its next pointer
@@ -561,6 +562,7 @@ proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var TMemRegion, p: pointer) =
+  #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
   if isSmallChunk(c):

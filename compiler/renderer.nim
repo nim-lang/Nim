@@ -322,6 +322,7 @@ proc lsons(n: PNode, start: int = 0, theEnd: int = - 1): int =
   
 proc lsub(n: PNode): int = 
   # computes the length of a tree
+  if isNil(n): return 0
   if n.comment != nil: return maxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
@@ -663,6 +664,7 @@ proc gident(g: var TSrcGen, n: PNode) =
   if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
   
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) = 
+  if isNil(n): return
   var 
     L: int
     a: TContext

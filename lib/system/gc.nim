@@ -111,7 +111,7 @@ when debugGC:
   proc writeCell(msg: CString, c: PCell) =
     var kind = -1
     if c.typ != nil: kind = ord(c.typ.kind)
-    when debugGC:
+    when leakDetector:
       c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
                 msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
     else:
@@ -277,6 +277,10 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
     # the test for '!= nil' is correct, but I got tired of the segfaults
     # resulting from the crappy stack checking:
     if cast[int](dest[]) >=% PageSize: decRef(usrToCell(dest[]))
+  else:
+    # can't be an interior pointer if it's a stack location!
+    sysAssert(interiorAllocatedPtr(gch.region, dest)==nil, 
+              "stack loc AND interior pointer")
   dest[] = src
 
 proc initGC() =
@@ -400,7 +404,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when debugGC and not hasThreadSupport:
+  when leakDetector and not hasThreadSupport:
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
@@ -437,7 +441,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when debugGC and not hasThreadSupport:
+  when leakDetector and not hasThreadSupport:
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
@@ -510,6 +514,9 @@ proc doOperation(p: pointer, op: TWalkOp) =
   sysAssert(c != nil, "doOperation: 1")
   case op # faster than function pointers because of easy prediction
   of waZctDecRef:
+    #if not isAllocatedPtr(gch.region, c):
+    #  return
+    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c) 
     sysAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     sysAssert(c.refcount >=% rcIncrement, "doOperation 2")
     c.refcount = c.refcount -% rcIncrement
@@ -776,7 +783,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
 
 proc collectCT(gch: var TGcHeap) =
   if (gch.zct.len >= ZctThreshold or (cycleGC and
-      getOccupiedMem(gch.region) >= gch.cycleThreshold) or stressGC) and 
+      getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and 
       gch.recGcLock == 0:
     sysAssert(allocInv(gch.region), "collectCT: begin")
     
@@ -789,7 +796,7 @@ proc collectCT(gch: var TGcHeap) =
     inc(gch.stat.stackScans)
     collectZCT(gch)
     when cycleGC:
-      if getOccupiedMem(gch.region) >= gch.cycleThreshold or stressGC:
+      if getOccupiedMem(gch.region) >= gch.cycleThreshold or alwaysCycleGC:
         collectCycles(gch)
         collectZCT(gch)
         inc(gch.stat.cycleCollections)

@@ -17,7 +17,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # the correct branch. Otherwise the AST will be passed through semStmt.
   result = nil
   
-  template set_result(e: expr) =
+  template setResult(e: expr) =
     if semCheck: result = semStmt(c, e) # do not open a new scope!
     else: result = e
 
@@ -27,17 +27,17 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     of nkElifBranch: 
       checkSonsLen(it, 2)
       var e = semAndEvalConstExpr(c, it.sons[0])
-      if (e.kind != nkIntLit): InternalError(n.info, "semWhen")
-      if (e.intVal != 0) and (result == nil):
-        set_result(it.sons[1]) 
-    of nkElse: 
+      if e.kind != nkIntLit: InternalError(n.info, "semWhen")
+      if e.intVal != 0 and result == nil:
+        setResult(it.sons[1]) 
+    of nkElse:
       checkSonsLen(it, 1)
       if result == nil: 
-        set_result(it.sons[0])
+        setResult(it.sons[0])
     else: illFormedAst(n)
   if result == nil: 
     result = newNodeI(nkNilLit, n.info) 
-  # The ``when`` statement implements the mechanism for platform dependant
+  # The ``when`` statement implements the mechanism for platform dependent
   # code. Thus we try to ensure here consistent ID allocation after the
   # ``when`` statement.
   IDsynchronizationPoint(200)

@@ -238,18 +238,6 @@ proc reraiseException() {.compilerRtl.} =
   else:
     raiseException(currException, currException.name)
 
-proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
-  if not cond:
-    var gAssertionFailed: ref EAssertionFailed
-    new(gAssertionFailed)
-    gAssertionFailed.msg = newStringOfCap(200)
-    add(gAssertionFailed.msg, "[Assertion failure] file: ")
-    add(gAssertionFailed.msg, file)
-    add(gAssertionFailed.msg, " line: ")
-    add(gAssertionFailed.msg, $line)
-    add(gAssertionFailed.msg, "\n")
-    raise gAssertionFailed
-
 proc WriteStackTrace() =
   when hasSomeStackTrace:
     var s = ""

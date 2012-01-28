@@ -119,6 +119,11 @@ Compiler Additions
   for specifying modules that will be automatically imported/incluced.
 - ``nimrod i`` can now optionally be given a module to execute.
 - The compiler now performs a simple alias analysis to generate better code.
+- The compiler and ENDB now support *watchpoints*.
+- The compiler now supports proper compile time expressions of type ``bool``
+  for ``on|off`` switches in pragmas. In order to not break existing code,
+  ``on`` and ``off`` are now aliases for ``true`` and ``false`` and declared
+  in the system module.
 
 
 Library Additions

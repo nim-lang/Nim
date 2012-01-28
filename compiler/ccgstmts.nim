@@ -615,6 +615,15 @@ proc genBreakPoint(p: BProc, t: PNode) =
         toRope(toLinenumber(t.info)), makeCString(toFilename(t.info)), 
         makeCString(name)])
 
+proc genWatchpoint(p: BProc, n: PNode) =
+  if optEndb notin p.Options: return
+  var a: TLoc
+  initLocExpr(p, n.sons[1], a)
+  let typ = skipTypes(n.sons[1].typ, abstractVarRange)
+  appcg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
+        [a.addrLoc, makeCString(renderTree(n.sons[1])),
+        genTypeInfo(p.module, typ)])
+
 proc genPragma(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
@@ -628,6 +637,8 @@ proc genPragma(p: BProc, n: PNode) =
         # we need to keep track of ``deadCodeElim`` pragma
         if (sfDeadCodeElim in p.module.module.flags): 
           addPendingModule(p.module)
+    of wWatchpoint:
+      genWatchpoint(p, it)
     else: nil
 
 proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 

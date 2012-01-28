@@ -67,6 +67,7 @@ type
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode # for the pragmas
     semExpr*: proc (c: PContext, n: PNode): PNode      # for the pragmas
+    semConstBoolExpr*: proc (c: PContext, n: PNode): PNode # XXX bite the bullet
     includedFiles*: TIntSet    # used to detect recursive include files
     filename*: string          # the module's filename
     userPragmas*: TStrTable
