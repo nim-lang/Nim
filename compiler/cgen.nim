@@ -641,7 +641,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
   if lfNoDecl in sym.loc.Flags: return 
   if lfDynamicLib in sym.loc.Flags:
-    if sym.owner.id != m.module.id and
+    if getModule(sym).id != m.module.id and
         not ContainsOrIncl(m.declaredThings, sym.id): 
       appf(m.s[cfsVars], "extern $1 $2;$n", 
            [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
