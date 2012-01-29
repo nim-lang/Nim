@@ -28,7 +28,7 @@ when isMainModule:
     var data: seq[string] = @[]
     
     var L = random(59)
-    for i in 0..10_000: 
+    for i in 0..2:
       #echo "loop: ", i
       #newSeq(data, L)
       setLen(data, L)
@@ -45,7 +45,7 @@ when isMainModule:
       if not sorted(data, order):
         quit "bubblesort failed"
 
-      #sort(copy, cmp, order)
+      sort(copy, cmp, order)
       for j in 0 .. L-1:
         let rc = getRefcount(data[j])
         if rc != 1:

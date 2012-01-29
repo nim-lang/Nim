@@ -55,7 +55,7 @@ var
                         # in it
   dbgState: TDbgState   # state of debugger
   dbgBP: array[0..127, TDbgBreakpoint] # breakpoints
-  dbgBPlen: int = 0
+  dbgBPlen: int
 
   dbgSkipToFrame: PFrame # frame to be skipped to
 
