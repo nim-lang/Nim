@@ -1,5 +1,5 @@
 discard """
-  output: 'done'
+  output: done
 """
 
 for i in 0 .. 1:

@@ -1,9 +1,10 @@
 version 0.8.14
 ==============
 
+- fix powerpc64 crashes
 - bug: tsortdev does not run with native GC
 - object {.pure, final.} does not work again!
-
+- ``=`` should be overloadable; requires specialization for ``=``?
 
 version 0.9.0
 =============
@@ -22,7 +23,6 @@ version 0.9.0
 - implement ``partial`` pragma for partial evaluation
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
-- ``=`` should be overloadable; requires specialization for ``=``
 - 'const' objects including case objects
 - os module should use Windows Unicode versions
 - 64bit build for Windows
