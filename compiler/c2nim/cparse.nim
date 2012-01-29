@@ -94,7 +94,6 @@ proc OpenParser(p: var TParser, filename: string,
   new(p.tok)
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") = 
-  assert false
   lexMessage(p.lex, msg, arg)
 
 proc CloseParser(p: var TParser) = CloseLexer(p.lex)
