@@ -83,7 +83,10 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
   of tyOpenArray:
     result = ropef("$1, $1Len0", [rdLoc(a)])
   of tyString, tySequence:
-    result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
+    if skipTypes(n.typ, abstractInst).kind == tyVar:
+      result = ropef("(*$1)->data, (*$1)->$2", [a.rdLoc, lenField()])
+    else:
+      result = ropef("$1->data, $1->$2", [a.rdLoc, lenField()])
   of tyArray, tyArrayConstr:
     result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
   else: InternalError("openArrayLoc: " & typeToString(a.t))
