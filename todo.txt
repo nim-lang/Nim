@@ -48,6 +48,7 @@ Bugs
   without ``-d:release`` leaks memory; good way to figure out how a 
   fixed amount of stack can hold an arbitrary number of GC roots!
 - bug: temp2.nim triggers weird compiler and except.nim bug
+- bug: negative array indexes fail to index check
 
 
 version 0.9.XX

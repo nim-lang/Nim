@@ -405,6 +405,9 @@ proc assignGlobalVar(p: BProc, s: PSym) =
     if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
     if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
     appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
+  if p.withinLoop > 0:
+    # fixes tests/run/tzeroarray:
+    initLocalVar(p, s, false)
   if p.module.module.options * {optStackTrace, optEndb} ==
                                {optStackTrace, optEndb}: 
     appcg(p.module, p.module.s[cfsDebugInit], 
