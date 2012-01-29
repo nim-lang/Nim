@@ -835,16 +835,10 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## It does *not* call the garbage collector to free all the memory,
   ## unless a quit procedure calls ``GC_collect``.
 
-proc WriteStackTrace()
-
-var checkDisabled: bool
-
 template sysAssert(cond, msg: expr) =
   when defined(useSysAssert):
-    if not checkDisabled and not cond:
-      checkDisabled = true
+    if not cond:
       echo "[SYSASSERT] ", msg
-      WriteStackTrace()
       quit 1
   nil
 
