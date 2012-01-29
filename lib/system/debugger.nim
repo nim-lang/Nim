@@ -603,8 +603,11 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
     result = h
     if x != nil:
       let s = cast[NimString](x)
-      let y = cast[pointer](cast[int](x) -% 2*sizeof(int))
-      result = result !& hash(x, s.len + 2*sizeof(int))
+      when true:
+        result = result !& hash(x, s.len)
+      else:
+        let y = cast[pointer](cast[int](x) -% 2*sizeof(int))
+        result = result !& hash(y, s.len + 2*sizeof(int))
   of tySequence:
     var x = cast[ppointer](dest)
     var dst = cast[taddress](cast[ppointer](dest)[])
@@ -627,8 +630,9 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
     if shallow:
       result = h !& hash(dest, mt.size)
     else:
+      result = h
       var s = cast[ppointer](dest)[]
-      if s != nil: result = genericHashAux(s, mt.base, shallow, h)
+      if s != nil: result = genericHashAux(s, mt.base, shallow, result)
   else:
     result = h !& hash(dest, mt.size) # hash raw bits
 
