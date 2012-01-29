@@ -28,8 +28,8 @@ when isMainModule:
     var data: seq[string] = @[]
     
     var L = random(59)
-    for i in 0..1: 
-      echo "loop: ", i
+    for i in 0..10_000: 
+      #echo "loop: ", i
       #newSeq(data, L)
       setLen(data, L)
       for j in 0 .. L-1:
@@ -39,13 +39,13 @@ when isMainModule:
       var copy = data
       for j in 0 .. L-1:
         assert getRefcount(copy[j]) == 1
-        assert(cast[pointer](copy[j]) != cast[pointer](data[i]))
+        assert(cast[pointer](copy[j]) != cast[pointer](data[j]))
       
       bubblesort(data, system.cmp, order)
       if not sorted(data, order):
         quit "bubblesort failed"
 
-      sort(copy, cmp, order)
+      #sort(copy, cmp, order)
       for j in 0 .. L-1:
         let rc = getRefcount(data[j])
         if rc != 1:

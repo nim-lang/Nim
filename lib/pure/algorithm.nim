@@ -35,12 +35,12 @@ proc reverse*[T](a: var openArray[T]) =
   reverse(a, 0, a.high)
 
 const
-  onlySafeCode = true
+  onlySafeCode = false
 
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
               cmp: proc (x, y: T): int, order: TSortOrder) =
   template `<-` (a, b: expr) = 
-    when true:
+    when false:
       a = b
     elif onlySafeCode:
       shallowCopy(a, b)
