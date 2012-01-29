@@ -172,10 +172,12 @@ var
   bottomData: TAvlNode
   bottom: PAvlNode
 
+{.push stack_trace: off.}
 proc initAllocator() =
   bottom = addr(bottomData)
   bottom.link[0] = bottom
   bottom.link[1] = bottom
+{.pop.}
 
 proc incCurrMem(a: var TMemRegion, bytes: int) {.inline.} = 
   inc(a.currMem, bytes)
