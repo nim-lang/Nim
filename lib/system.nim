@@ -2129,16 +2129,16 @@ template assert*(cond: expr, msg = "") =
   ## Use ``assert`` for debugging purposes only.
   bind raiseAssert, InstantiationInfo
   when compileOption("assertions"):
-    if not cond:
-      {.line.}:
+    {.line.}:
+      if not cond:
         raiseAssert(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: expr, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
   bind raiseAssert, InstantiationInfo
-  if not cond:
-    {.line: InstantiationInfo().}:
+  {.line: InstantiationInfo().}:
+    if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
 
 
