@@ -1256,6 +1256,38 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+
+iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  var i = 0
+  while i < len(a):
+    yield (i, a[i])
+    inc(i)
+
+iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  var i = low(IX)
+  if i <= high(IX):
+    while true:
+      yield (i, a[i])
+      if i >= high(IX): break
+      inc(i)
+
+iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  var i = 0
+  while i < len(a):
+    yield (i, a[i])
+    inc(i)
+
+iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
+  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  var i = 0
+  while i < len(a):
+    yield (i, a[i])
+    inc(i)
+
+
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}

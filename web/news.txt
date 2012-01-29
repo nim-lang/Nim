@@ -159,6 +159,7 @@ Library Additions
   the old implementation.
 - Added ``intsets.assign``.
 - Added ``system.astToStr`` and ``system.rand``, ``system.doAssert``.
+- Added ``system.pairs`` for built-in types like arrays and strings.
 
 
 2011-07-10 Version 0.8.12 released
