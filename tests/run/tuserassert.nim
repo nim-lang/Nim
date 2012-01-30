@@ -3,7 +3,7 @@ discard """
 """
 
 template myAssert(cond: expr) = 
-  when rand(3) < 2:
+  when rand(3) < 3:
     let c = cond.astToStr
     if not cond:
       echo c, "ugh"
