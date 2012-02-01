@@ -14,6 +14,11 @@
 
 # ------------ platform specific chunk allocation code -----------------------
 
+# some platforms have really weird unmap behaviour: unmap(blockStart, PageSize)
+# really frees the whole block. Happens for Linux/PowerPC for example. Amd64
+# and x86 are safe though:
+const weirdUnmap = not (defined(amd64) or defined(i386))
+
 when defined(posix): 
   const
     PROT_READ  = 1             # page can be read 
@@ -425,7 +430,7 @@ proc freeBigChunk(a: var TMemRegion, c: PBigChunk) =
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
 
-  if c.size < ChunkOsReturn: 
+  if c.size < ChunkOsReturn or weirdUnmap:
     incl(a, a.chunkStarts, pageIndex(c))
     updatePrevSize(a, c, c.size)
     ListAdd(a.freeChunksList, c)
@@ -697,8 +702,16 @@ proc deallocOsPages(a: var TMemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   for p in elements(a.chunkStarts):
     var page = cast[PChunk](p shl pageShift)
-    var size = if page.size < PageSize: PageSize else: page.size
-    osDeallocPages(page, size)
+    when not weirdUnmap:
+      var size = if page.size < PageSize: PageSize else: page.size
+      osDeallocPages(page, size)
+    else:
+      # Linux on PowerPC for example frees MORE than asked if 'munmap'
+      # receives the start of an originally mmap'ed memory block. This is not
+      # too bad, but we must not access 'page.size' then as that could trigger
+      # a segfault. But we don't need to access 'page.size' here anyway,
+      # because calling munmap with PageSize suffices:
+      osDeallocPages(page, PageSize)
   # And then we free the pages that are in use for the page bits:
   llDeallocAll(a)
 
