@@ -1,8 +1,7 @@
 version 0.8.14
 ==============
 
-- fix powerpc64 crashes
-- bug: tsortdev does not run with native GC
+- bug: tsortdev does not run with native GC?
 - object {.pure, final.} does not work again!
 - ``=`` should be overloadable; requires specialization for ``=``?
 
