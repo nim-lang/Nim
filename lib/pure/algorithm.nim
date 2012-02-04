@@ -34,6 +34,24 @@ proc reverse*[T](a: var openArray[T]) =
   ## reverses the array `a`.
   reverse(a, 0, a.high)
 
+proc binarySearch*[T](a: openarray[T], key: T): int =
+  ## binary search for `key` in `a`. Returns -1 if not found.
+  var b = len(a)
+  while result < b:
+    var mid = (result + b) div 2
+    if a[mid] < key: result = mid + 1
+    else: b = mid
+  if result >= len(x) or a[result] != key: result = -1
+
+proc smartBinarySearch*[T](a: openArray[T], key: T): int =
+  ## ``a.len`` must be a power of 2 for this to work.
+  var step = a.len div 2
+  while step > 0:
+    if a[result or step] <= key:
+      result = result or step
+    step = step shr 1
+  if a[result] != key: result = -1
+
 const
   onlySafeCode = false
 
