@@ -19,6 +19,7 @@ Bugfixes
 - Some more bugfixes for macros and compile-time evaluation.
 - The GC now takes into account interior pointers on the stack which may be
   introduced by aggressive C optimizers.
+- Nimrod's native allocator/GC now works on PowerPC.
 - Lots of other bugfixes: Too many to list them all.
 
 

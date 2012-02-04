@@ -45,7 +45,8 @@ type
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
     blocksyms: seq[PSym]
-  
+    procToEnv: TIdTable      # mapping from a proc to its generated explicit
+                             # 'env' var (for closure generation)
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} = 
@@ -502,77 +503,14 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   popTransCon(c)
   #echo "transformed: ", renderTree(n)
   
-
 proc getMagicOp(call: PNode): TMagic = 
   if call.sons[0].kind == nkSym and
       call.sons[0].sym.kind in {skProc, skMethod, skConverter}: 
     result = call.sons[0].sym.magic
   else:
     result = mNone
-  
-proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym, 
-                container: PNode) = 
-  # gather used vars for closure generation
-  case n.kind
-  of nkSym:
-    var s = n.sym
-    var found = false
-    case s.kind
-    of skVar, skLet: found = sfGlobal notin s.flags
-    of skTemp, skForVar, skParam, skResult: found = true
-    else: nil
-    if found and owner.id != s.owner.id and not ContainsOrIncl(marked, s.id): 
-      incl(s.flags, sfInClosure)
-      addSon(container, copyNode(n)) # DON'T make a copy of the symbol!
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
-    nil
-  else: 
-    for i in countup(0, sonsLen(n) - 1): 
-      gatherVars(c, n.sons[i], marked, owner, container)
-  
-proc addFormalParam(routine: PSym, param: PSym) = 
-  addSon(routine.typ, param.typ)
-  addSon(routine.ast.sons[paramsPos], newSymNode(param))
 
-proc indirectAccess(a, b: PSym): PNode = 
-  # returns a[].b as a node
-  var x = newSymNode(a)
-  var y = newSymNode(b)
-  var deref = newNodeI(nkHiddenDeref, x.info)
-  deref.typ = x.typ.sons[0]
-  addSon(deref, x)
-  result = newNodeI(nkDotExpr, x.info)
-  addSon(result, deref)
-  addSon(result, y)
-  result.typ = y.typ
-
-proc transformLambda(c: PTransf, n: PNode): PNode = 
-  var marked = initIntSet()
-  result = n
-  if n.sons[namePos].kind != nkSym: InternalError(n.info, "transformLambda")
-  var s = n.sons[namePos].sym
-  var closure = newNodeI(nkRecList, n.info)
-  var body = s.getBody
-  gatherVars(c, body, marked, s, closure) 
-  # add closure type to the param list (even if closure is empty!):
-  var cl = newType(tyObject, s)
-  cl.n = closure
-  addSon(cl, nil)             # no super class
-  var p = newType(tyRef, s)
-  addSon(p, cl)
-  var param = newSym(skParam, getIdent(genPrefix & "Cl"), s)
-  param.typ = p
-  addFormalParam(s, param) 
-  # all variables that are accessed should be accessed by the new closure
-  # parameter:
-  if sonsLen(closure) > 0: 
-    var newC = newTransCon(c.transCon.owner)
-    for i in countup(0, sonsLen(closure) - 1): 
-      IdNodeTablePut(newC.mapping, closure.sons[i].sym, 
-                     indirectAccess(param, closure.sons[i].sym))
-    pushTransCon(c, newC)
-    n.sons[bodyPos] = transform(c, body).pnode
-    popTransCon(c)
+include lambdalifting
 
 proc transformCase(c: PTransf, n: PNode): PTransNode = 
   # removes `elif` branches of a case stmt
@@ -670,23 +608,10 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
     # nothing to be done for leaves:
     result = PTransNode(n)
-  of nkBracketExpr: 
-    result = transformArrayAccess(c, n)
-  of nkLambda: 
-    var s = n.sons[namePos].sym
-    n.sons[bodyPos] = PNode(transform(c, s.getBody))
-    result = PTransNode(n)
-    when false: result = transformLambda(c, n)
-  of nkForStmt: 
-    result = transformFor(c, n)
-  of nkCaseStmt: 
-    result = transformCase(c, n)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkConverterDef: 
-    if n.sons[genericParamsPos].kind == nkEmpty: 
-      var s = n.sons[namePos].sym
-      n.sons[bodyPos] = PNode(transform(c, s.getBody))
-      if n.kind == nkMethodDef: methodDef(s, false)
-    result = PTransNode(n)
+  of nkBracketExpr: result = transformArrayAccess(c, n)
+  of procDefs: result = transformProc(c, n)
+  of nkForStmt: result = transformFor(c, n)
+  of nkCaseStmt: result = transformCase(c, n)
   of nkContinueStmt:
     result = PTransNode(newNode(nkBreakStmt))
     var labl = c.blockSyms[c.blockSyms.high]
@@ -748,6 +673,7 @@ proc openTransf(module: PSym, filename: string): PPassContext =
   new(n)
   n.blocksyms = @[]
   n.module = module
+  initIdTable(n.procToEnv)
   result = n
 
 proc openTransfCached(module: PSym, filename: string, 

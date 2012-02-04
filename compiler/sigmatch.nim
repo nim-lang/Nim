@@ -212,8 +212,8 @@ proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
 
   case a.kind
   of tyNil: result = isSubtype
-  of tyProc: 
-    if sonsLen(f) != sonsLen(a) or f.callconv != a.callconv: return
+  of tyProc:
+    if sonsLen(f) != sonsLen(a): return
     # Note: We have to do unification for the parameters before the
     # return type!
     result = isEqual      # start with maximum; also correct for no
@@ -240,6 +240,12 @@ proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
       # noSideEffect implies ``tfThread``! XXX really?
       result = isNone
+    elif f.callconv != a.callconv:
+      # valid to pass a 'nimcall' thingie to 'closure':
+      if f.callconv == ccClosure and a.callconv == ccDefault:
+        result = isConvertible
+      else:
+        result = isNone
   else: nil
 
 proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 

@@ -220,7 +220,7 @@ type
     sfDiscriminant,   # field is a discriminant in a record/object
     sfDeprecated,     # symbol is deprecated
     sfError,          # usage of symbol should trigger a compile-time error
-    sfInClosure,      # variable is accessed by a closure
+    sfInnerProc,      # proc is an inner proc
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
     sfCompileTime,    # proc can be evaluated at compile time
@@ -976,6 +976,13 @@ proc hasSonWith(n: PNode, kind: TNodeKind): bool =
       return true
   result = false
 
+proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  case n.kind
+  of nkEmpty..nkNilLit: result = n.kind in kinds
+  else:
+    for i in countup(0, sonsLen(n) - 1):
+      if containsNode(n.sons[i], kinds): return true
+
 proc hasSubnodeWith(n: PNode, kind: TNodeKind): bool = 
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
@@ -1029,4 +1036,7 @@ proc isGenericRoutine*(s: PSym): bool =
   of skProc, skTemplate, skMacro, skIterator, skMethod, skConverter:
     result = s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty
   else: nil
+
+iterator items*(n: PNode): PNode =
+  for i in 0.. <n.len: yield n.sons[i]
 
