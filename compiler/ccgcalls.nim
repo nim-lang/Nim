@@ -48,7 +48,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
-      initLoc(list, locCall, nil, OnUnknown)
+      initLoc(list, locCall, d.t, OnUnknown)
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -137,6 +137,67 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if i < length - 1: app(pl, ", ")
   fixupCall(p, le, ri, d, pl)
 
+proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
+
+  proc getRawProcType(p: BProc, t: PType): PRope = 
+    var d = copyType(t, t.owner, false)
+    d.callConv = ccDefault
+    result = getTypeDesc(p.module, d)
+
+  proc addComma(r: PRope): PRope =
+    result = if r == nil: r else: con(r, ", ")
+
+  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2)"
+  var op: TLoc
+  initLocExpr(p, ri.sons[0], op)
+  var pl: PRope
+  var typ = ri.sons[0].typ
+  assert(typ.kind == tyProc)
+  var length = sonsLen(ri)
+  for i in countup(1, length - 1):
+    assert(sonsLen(typ) == sonsLen(typ.n))
+    if i < sonsLen(typ):
+      assert(typ.n.sons[i].kind == nkSym)
+      app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
+    else:
+      app(pl, genArgNoParam(p, ri.sons[i]))
+    if i < length - 1: app(pl, ", ")
+  
+  template genCallPattern =
+    appf(p.s[cpsStmts], CallPattern, op.r, pl, pl.addComma, rawProc)
+
+  let rawProc = getRawProcType(p, typ)
+  if typ.sons[0] != nil:
+    if isInvalidReturnType(typ.sons[0]):
+      if sonsLen(ri) > 1: app(pl, ", ")
+      # beware of 'result = p(result)'. We may need to allocate a temporary:
+      if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
+        # Great, we can use 'd':
+        if d.k == locNone: getTemp(p, typ.sons[0], d)
+        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+          # reset before pass as 'result' var:
+          resetLoc(p, d)
+        app(pl, addrLoc(d))
+        genCallPattern()
+        appf(p.s[cpsStmts], ";$n")
+      else:
+        var tmp: TLoc
+        getTemp(p, typ.sons[0], tmp)
+        app(pl, addrLoc(tmp))        
+        genCallPattern()
+        appf(p.s[cpsStmts], ";$n")
+        genAssignment(p, d, tmp, {}) # no need for deep copying
+    else:
+      if d.k == locNone: getTemp(p, typ.sons[0], d)
+      assert(d.t != nil)        # generate an assignment to d:
+      var list: TLoc
+      initLoc(list, locCall, d.t, OnUnknown)
+      list.r = ropef(CallPattern, op.r, pl, pl.addComma, rawProc)
+      genAssignment(p, d, list, {}) # no need for deep copying
+  else:
+    genCallPattern()
+    appf(p.s[cpsStmts], ";$n")
+  
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
@@ -224,7 +285,9 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     appf(p.s[cpsStmts], ";$n")
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
+  if e.sons[0].typ.callConv == ccClosure:
+    genClosureCall(p, nil, e, d)
+  elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags and
       e.len >= 2:
     genInfixCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfNamedParamCall in e.sons[0].sym.flags:
@@ -235,7 +298,9 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags and
+  if ri.sons[0].typ.callConv == ccClosure:
+    genClosureCall(p, le, ri, d)
+  elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags and
       ri.len >= 2:
     genInfixCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfNamedParamCall in ri.sons[0].sym.flags:

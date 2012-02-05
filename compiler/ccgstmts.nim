@@ -57,13 +57,24 @@ proc genSingleVar(p: BProc, a: PNode) =
     genLineDir(p, a)
     loadInto(p, a.sons[0], a.sons[2], v.loc)
 
+proc genClosureVar(p: BProc, a: PNode) =
+  var immediateAsgn = a.sons[2].kind != nkEmpty
+  if immediateAsgn:
+    var v: TLoc
+    initLocExpr(p, a.sons[0], v)
+    genLineDir(p, a)
+    loadInto(p, a.sons[0], a.sons[2], v)
+
 proc genVarStmt(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
-    if a.kind == nkIdentDefs: 
-      assert(a.sons[0].kind == nkSym)
-      genSingleVar(p, a)
+    if a.kind == nkIdentDefs:
+      # can be a lifted var nowadays ...
+      if a.sons[0].kind == nkSym:
+        genSingleVar(p, a)
+      else:
+        genClosureVar(p, a)
     else:
       genVarTuple(p, a)
 
@@ -704,7 +715,7 @@ proc genStmts(p: BProc, t: PNode) =
   of nkReturnStmt: genReturnStmt(p, t)
   of nkBreakStmt: genBreakStmt(p, t)
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand, 
-     nkCallStrLit: 
+     nkCallStrLit, nkClosure: 
     genLineDir(p, t)
     initLocExpr(p, t, a)
   of nkAsgn: genAsgn(p, t, fastAsgn=false)

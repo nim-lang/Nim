@@ -373,13 +373,25 @@ Design
 
 A ``closure`` proc var can call ordinary procs of the default Nimrod calling
 convention. But not the other way round! A closure is implemented as a
-``tuple[prc, data]``. ``data`` can be nil implying a call without a closure.
+``tuple[prc, env]``. ``env`` can be nil implying a call without a closure.
 This means that a call through a closure generates an ``if`` but the 
 interoperability is worth the cost of the ``if``. Thunk generation would be
 possible too, but it's slightly more effort to implement.
 
 Tests with GCC on Amd64 showed that it's really beneficical if the
 'environment' pointer is passed as the last argument, not as the first argument.
+
+Proper thunk generation is harder because the proc that is to wrap
+could stem from a complex expression: 
+
+.. code-block:: nimrod
+  receivesClosure(returnsDefaultCC[i])
+
+A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
+an *additional* closure generation... Ok, not really, but it requires to pass
+the function to call. So we'd end up with 2 indirect calls instead of one.
+Another much more severe problem which this solution is that it's not GC-safe 
+to pass a proc pointer around via a generic ``ref`` type.
 
 
 Example code:
@@ -490,5 +502,21 @@ Accumulator
     var a = accumulator(3)
     var b = accumulator(4)
     echo a() + b()
+
+
+Internals
+---------
+
+Lambda lifting is implemented as part of the ``transf`` pass. The ``transf``
+pass generates code to setup the environment and to pass it around. However,
+this pass does not change the types! So we have some kind of mismatch here; on
+the one hand the proc expression becomes an explicit tuple, on the other hand
+the tyProc(ccClosure) type is not changed. For C code generation it's also
+important the hidden formal param is ``void*`` and not something more 
+specialized. However the more specialized env type needs to passed to the
+backend somehow. We deal with this by modifying ``s.ast[paramPos]`` to contain
+the formal hidden parameter, but not ``s.typ``!
+
+
 
 

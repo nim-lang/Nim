@@ -244,7 +244,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         appcg(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
              [addrLoc(dest), rdLoc(src)])
         if needToKeepAlive in flags: keepAlive(p, dest)
-  of tyTuple, tyObject:
+  of tyTuple, tyObject, tyProc:
     # XXX: check for subtyping?
     if needsComplexAssignment(dest.t):
       genGenericAsgn(p, dest, src, flags)
@@ -274,7 +274,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            [rdLoc(dest), rdLoc(src), toRope(getSize(dest.t))])
     else:
       appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
-  of tyPtr, tyPointer, tyChar, tyBool, tyProc, tyEnum, tyCString,
+  of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
      tyInt..tyFloat128, tyRange:
     appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: InternalError("genAssignment(" & $ty.kind & ')')
@@ -1308,7 +1308,6 @@ proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
       [rdLoc(a)]))
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
-  # XXX we don't generate keep alive info here
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   putIntoDest(p, d, skipTypes(n.typ, abstractVar),
@@ -1515,6 +1514,28 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
                       [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)])
         expr(p, it, rec)
 
+proc IsConstClosure(n: PNode): bool {.inline.} =
+  result = n.sons[0].kind == nkSym and isRoutine(n.sons[0].sym) and
+      n.sons[1].kind == nkNilLit
+      
+proc genClosure(p: BProc, n: PNode, d: var TLoc) =
+  assert n.kind == nkClosure
+  
+  if IsConstClosure(n):
+    inc(p.labels)
+    var tmp = con("LOC", toRope(p.labels))
+    appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+        [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
+    putIntoDest(p, d, n.typ, tmp)
+  else:
+    var tmp, a, b: TLoc
+    initLocExpr(p, n.sons[0], a)
+    initLocExpr(p, n.sons[1], b)
+    getTemp(p, n.typ, tmp)
+    appcg(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
+          tmp.rdLoc, a.rdLoc, b.rdLoc)
+    putLocIntoDest(p, d, tmp)
+
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
@@ -1705,6 +1726,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     if sym.loc.r == nil or sym.loc.t == nil:
       InternalError(e.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
+  of nkClosure: genClosure(p, e, d)
   of nkMetaNode: expr(p, e.sons[0], d)
   else: InternalError(e.info, "expr(" & $e.kind & "); unknown node kind")
 
@@ -1751,7 +1773,7 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
-  of nkBracket, nkPar:
+  of nkBracket, nkPar, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, t)

@@ -75,8 +75,10 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: PRope, s: TStorageLoc) =
     if a.r == nil: a.r = r
   
 proc isSimpleConst(typ: PType): bool =
-  result = skipTypes(typ, abstractVar).kind notin
-      {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence}
+  let t = skipTypes(typ, abstractVar)
+  result = t.kind notin
+      {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence} and not
+      (t.kind == tyProc and t.callConv == ccClosure)
 
 proc useHeader(m: BModule, sym: PSym) = 
   if lfHeader in sym.loc.Flags: 
@@ -187,7 +189,7 @@ proc rdLoc(a: TLoc): PRope =
 
 proc addrLoc(a: TLoc): PRope =
   result = a.r
-  if lfIndirect notin a.flags and mapType(a.t) != ctArray: 
+  if lfIndirect notin a.flags and mapType(a.t) != ctArray:
     result = con("&", result)
 
 proc rdCharLoc(a: TLoc): PRope =
@@ -196,7 +198,7 @@ proc rdCharLoc(a: TLoc): PRope =
   if skipTypes(a.t, abstractRange).kind == tyChar:
     result = ropef("((NU8)($1))", [result])
 
-proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc, 
+proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
   case analyseObjectWithTypeField(t)
   of frNone:
@@ -223,11 +225,12 @@ type
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
-const
-  complexValueType = {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}
+proc isComplexValueType(t: PType): bool {.inline.} =
+  result = t.kind in {tyArray, tyArrayConstr, tySet, tyTuple, tyObject} or
+    (t.kind == tyProc and t.callConv == ccClosure)
 
 proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) = 
-  if skipTypes(loc.t, abstractVarRange).Kind notin ComplexValueType: 
+  if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
     if containsGcref and p.WithInLoop > 0:
       appf(p.s[cpsInit], "$1 = 0;$n", [rdLoc(loc)])
       var nilLoc: TLoc
@@ -249,8 +252,8 @@ proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) =
            [addrLoc(loc), rdLoc(loc)])
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
-proc zeroTemp(p: BProc, loc: TLoc) = 
-  if skipTypes(loc.t, abstractVarRange).Kind notin complexValueType: 
+proc zeroTemp(p: BProc, loc: TLoc) =
+  if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
     appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
     when false:
       var nilLoc: TLoc
@@ -313,7 +316,7 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     result.s = OnStack
     result.flags = {}
 
-    if skipTypes(toKeepAlive.t, abstractVarRange).Kind notin complexValueType:
+    if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
       appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
     else:
       appcg(p, cpsStmts,
@@ -571,6 +574,15 @@ proc initFrame(p: BProc, procname, filename: PRope): PRope =
 proc deinitFrame(p: BProc): PRope =
   result = ropecg(p.module, "#popFrame();$n")
 
+proc closureSetup(p: BProc, prc: PSym) =
+  if prc.typ.callConv != ccClosure: return
+  # prc.ast[paramsPos].last contains the type we're after:
+  var env = lastSon(prc.ast[paramsPos]).sym
+  assignLocalVar(p, env)
+  # generate cast assignment:
+  appcg(p, cpsStmts, "$1 = ($2) ClEnv;$n", rdLoc(env.loc), 
+        getTypeDesc(p.module, env.typ))
+
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
@@ -594,6 +606,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
     var param = prc.typ.n.sons[i].sym
     assignParam(p, param)
+  closureSetup(p, prc)
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags: 

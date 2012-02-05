@@ -339,7 +339,7 @@ proc lsub(n: PNode): int =
   of nkHiddenAddr, nkHiddenDeref: result = lsub(n.sons[0])
   of nkCommand: result = lsub(n.sons[0]) + lcomma(n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(n) + 3
-  of nkPar, nkCurly, nkBracket: result = lcomma(n) + 2
+  of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(n) + 2
   of nkTableConstr:
     result = if n.len > 0: lcomma(n) + 2 else: len("{:}")
   of nkSymChoice: result = lsons(n) + len("()") + sonsLen(n) - 1
@@ -759,7 +759,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       if i > 0: put(g, tkOpr, "|")
       gsub(g, n.sons[i], c)
     put(g, tkParRi, ")")
-  of nkPar: 
+  of nkPar, nkClosure: 
     put(g, tkParLe, "(")
     gcomma(g, n, c)
     put(g, tkParRi, ")")

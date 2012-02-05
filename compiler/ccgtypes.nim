@@ -94,7 +94,7 @@ proc mapType(typ: PType): TCTypeKind =
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
-  of tyProc: result = ctProc
+  of tyProc: result = if typ.callConv != ccClosure: ctProc else: ctStruct
   of tyString: result = ctNimStr
   of tyCString: result = ctCString
   of tyInt..tyFloat128:
@@ -215,7 +215,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     appff(params, " Result", " @Result", [])
   if t.callConv == ccClosure: 
     if params != nil: app(params, ", ")
-    app(params, "void* ClPart")
+    app(params, "void* ClEnv")
   if tfVarargs in t.flags: 
     if params != nil: app(params, ", ")
     app(params, "...")
@@ -331,7 +331,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     appf(result, "} $1;$n", [uname])
   of nkSym: 
     field = n.sym
-    assert(field.ast == nil)
+    #assert(field.ast == nil)
     sname = mangleRecFieldName(field, rectype)
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, sname])
     else: ae = sname
@@ -436,9 +436,10 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
       if t.callConv != ccClosure: # procedure vars may need a closure!
         appf(m.s[cfsTypes], "typedef $1_PTR($2, $3) $4;$n", 
              [toRope(CallingConvToStr[t.callConv]), rettype, result, desc])
-      else: 
-        appf(m.s[cfsTypes], "typedef struct $1 {$n" &
-            "N_CDECL_PTR($2, PrcPart) $3;$n" & "void* ClPart;$n};$n", 
+      else:
+        appf(m.s[cfsTypes], "typedef struct {$n" &
+            "N_CDECL_PTR($2, ClPrc) $3;$n" & 
+            "void* ClEnv;$n} $1;$n",
              [result, rettype, desc])
   of tySequence: 
     # we cannot use getTypeForward here because then t would be associated
@@ -673,7 +674,8 @@ proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
       var tmp2 = getNimNode(m)
       appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, toRope(i), tmp2])
       appf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
-          "$1.offset = offsetof($2, Field$3);$n" & "$1.typ = $4;$n" &
+          "$1.offset = offsetof($2, Field$3);$n" & 
+          "$1.typ = $4;$n" &
           "$1.name = \"Field$3\";$n", 
            [tmp2, getTypeDesc(m, typ), toRope(i), genTypeInfo(m, a)])
     appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n", 
@@ -736,6 +738,14 @@ proc genSetInfo(m: BModule, typ: PType, name: PRope) =
 proc genArrayInfo(m: BModule, typ: PType, name: PRope) = 
   genTypeInfoAuxBase(m, typ, name, genTypeInfo(m, typ.sons[1]))
 
+proc fakeClosureType(owner: PSym): PType =
+  # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
+  result = newType(tyTuple, owner)
+  result.addSon(newType(tyPointer, owner))
+  var r = newType(tyRef, owner)
+  r.addSon(newType(tyTuple, owner))
+  result.addSon(r)
+
 proc genTypeInfo(m: BModule, typ: PType): PRope = 
   var t = getUniqueType(typ)
   # gNimDat contains all the type information nowadays:
@@ -750,9 +760,13 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
   if dataGenerated: return 
   case t.kind
   of tyEmpty: result = toRope"0"
-  of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyFloat128, 
-     tyVar: 
+  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyFloat128, tyVar:
     genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
+  of tyProc:
+    if t.callConv != ccClosure:
+      genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
+    else:
+      genTupleInfo(gNimDat, fakeClosureType(t.owner), result)
   of tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gNimDat, t, result)
   of tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result)
   of tySet: genSetInfo(gNimDat, t, result)

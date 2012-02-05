@@ -2,6 +2,13 @@ version 0.8.14
 ==============
 
 - implement closures
+  - test evals.nim with closures
+  - deactivate lambda lifting for JS backend
+  - Test that iterators within closures work etc; test generics; 
+    test recursion
+  - test constant closures
+  - 'closureEnv' magic for easy interfacing with C
+  
 - object {.pure, final.} does not work again!
 - bug: tsortdev does not run with native GC?
 - ``=`` should be overloadable; requires specialization for ``=``?
@@ -45,8 +52,7 @@ Bugs
     result = forward(x)
 
 - bug: stress testing basic method example (eval example) 
-  without ``-d:release`` leaks memory; good way to figure out how a 
-  fixed amount of stack can hold an arbitrary number of GC roots!
+  without ``-d:release`` leaks memory?
 - bug: temp2.nim triggers weird compiler and except.nim bug
 - bug: negative array indexes fail to index check
 
@@ -131,6 +137,8 @@ Low priority
 - warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
+- implement closures that support nesting > 1
+
 
 Version 2
 =========
@@ -166,6 +174,4 @@ Version 2
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
   people also want ``inc a; inc b``
-  --> solved by providing an expr version of most control structures?
-
 
