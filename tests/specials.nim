@@ -65,6 +65,12 @@ proc compileRodFiles(r: var TResults, options: string) =
 
 # --------------------- DLL generation tests ----------------------------------
 
+proc safeCopyFile(src, dest: string) =
+  try:
+    copyFile(src, dest)
+  except EOS:
+    echo "[Warning] could not copy: ", src, " to ", dest
+
 proc runBasicDLLTest(c, r: var TResults, options: string) =
   compileSingleTest c, "lib/nimrtl.nim", options & " --app:lib -d:createNimRtl"
   compileSingleTest c, "tests/dll/server.nim", 
@@ -73,14 +79,14 @@ proc runBasicDLLTest(c, r: var TResults, options: string) =
   when defined(Windows): 
     # windows looks in the dir of the exe (yay!):
     var nimrtlDll = DynlibFormat % "nimrtl"
-    copyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
+    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getenv"LD_LIBRARY_PATH".string
     if peg"\i '/nimrod' (!'/')* '/lib'" notin libpath:
       echo "[Warning] insufficient LD_LIBRARY_PATH"
     var serverDll = DynlibFormat % "server"
-    copyFile("tests/dll" / serverDll, "lib" / serverDll)
+    safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
   
   runSingleTest r, "tests/dll/client.nim", options & " -d:useNimRtl"
 
