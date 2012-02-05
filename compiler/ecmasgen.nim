@@ -1359,6 +1359,9 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
         discard mangleName(prc)
   else: 
     genLineDir(p, n, r)
+    if n.sons[0].kind == nkSym:
+      if n.sons[0].sym.loc.r == nil:
+        n.sons[0].sym.loc.r = toRope(n.sons[0].sym.name.s)
     gen(p, n, r)
     app(r.res, ';' & tnl)
 
@@ -1419,6 +1422,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkStmtListExpr: genStmtListExpr(p, n, r)
   of nkEmpty: nil
   of nkMetaNode: gen(p, n.sons[0], r)
+  of nkType: r.res = genTypeInfo(p, n.typ)
   else: InternalError(n.info, "gen: unknown node type: " & $n.kind)
   
 var globals: PGlobals
