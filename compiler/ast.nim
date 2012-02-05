@@ -189,7 +189,8 @@ type
     nkProcTy,             # proc type
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
-    nkReturnToken         # token used for interpretation
+    nkReturnToken,        # token used for interpretation
+    nkClosure             # (prc, env)-pair (internally used for code gen)
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -977,11 +978,12 @@ proc hasSonWith(n: PNode, kind: TNodeKind): bool =
   result = false
 
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  if n == nil: return
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
     for i in countup(0, sonsLen(n) - 1):
-      if containsNode(n.sons[i], kinds): return true
+      if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith(n: PNode, kind: TNodeKind): bool = 
   case n.kind
@@ -1036,6 +1038,10 @@ proc isGenericRoutine*(s: PSym): bool =
   of skProc, skTemplate, skMacro, skIterator, skMethod, skConverter:
     result = s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty
   else: nil
+
+proc isRoutine*(s: PSym): bool {.inline.} =
+  result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
+                      skConverter}
 
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]

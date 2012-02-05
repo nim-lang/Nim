@@ -15,6 +15,7 @@
 # * performes contant folding
 # * converts "continue" to "break"
 # * introduces method dispatchers
+# * performs lambda lifting for closure support
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
@@ -355,6 +356,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
+
+include lambdalifting
   
 proc transformConv(c: PTransf, n: PNode): PTransNode = 
   # numeric types need range checks:
@@ -428,6 +431,11 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result[0] = transform(c, n.sons[1])
     else: 
       result = transform(c, n.sons[1])
+  of tyProc:
+    if dest.callConv == ccClosure and source.callConv == ccDefault:
+      result = generateThunk(c, n.sons[1], dest).ptransnode
+    else:
+      result = transformSons(c, n)    
   of tyGenericParam, tyOrdinal: 
     result = transform(c, n.sons[1])
     # happens sometimes for generated assignments, etc.
@@ -509,8 +517,6 @@ proc getMagicOp(call: PNode): TMagic =
     result = call.sons[0].sym.magic
   else:
     result = mNone
-
-include lambdalifting
 
 proc transformCase(c: PTransf, n: PNode): PTransNode = 
   # removes `elif` branches of a case stmt

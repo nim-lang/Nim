@@ -1037,7 +1037,7 @@ A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is
 an allowed value for variables of a procedural type. Nimrod uses procedural
 types to achieve `functional`:idx: programming techniques.
 
-Example:
+Examples:
 
 .. code-block:: nimrod
 
@@ -1051,12 +1051,30 @@ Example:
 
   forEach(printItem)  # this will NOT work because calling conventions differ
 
+  
+.. code-block:: nimrod
+
+  type
+    TOnMouseMove = proc (x, y: int) {.closure.}
+  
+  proc onMouseMove(mouseX, mouseY: int) =
+    # has default calling convention
+    echo "x: ", mouseX, " y: ", mouseY
+  
+  proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = nil
+  
+  # ok, 'onMouseMove' has the default calling convention, which is compatible
+  # to 'closure':
+  setOnMouseMove(onMouseMove)
+  
+
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only
-compatible if they have the same calling convention.
+compatible if they have the same calling convention. As a special extension,
+a procedure of the calling convention ``nimcall`` can be passed to a parameter
+that expects a proc of the calling convention ``closure``.
 
-Nimrod supports these `calling conventions`:idx:, which are all incompatible to
-each other:
+Nimrod supports these `calling conventions`:idx:\:
 
 `stdcall`:idx:
     This the stdcall convention as specified by Microsoft. The generated C
@@ -1089,8 +1107,10 @@ each other:
     same as ``fastcall``, but only for C compilers that support ``fastcall``.
 
 `closure`:idx:
-    indicates that the procedure expects a context, a closure that needs
-    to be passed to the procedure.
+    indicates that the procedure has a hidden implicit parameter
+    (an *environment*). Proc vars that have the calling convention ``closure``
+    take up two machine words: One for the proc pointer and another one for
+    the pointer to implicitely passed environment.
 
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for
@@ -1113,6 +1133,11 @@ of the following conditions hold:
 
 The rules' purpose is to prevent the case that extending a non-``procvar`` 
 procedure with default parameters breaks client code.
+
+The default calling convention is ``nimcall``, unless it is an inner proc (
+a proc inside of a proc). For an inner proc an analysis is performed wether it
+accesses its environment. If it does so, it has the calling convention
+``closure``, otherwise it has the calling convention ``nimcall``.
 
 
 Distinct type

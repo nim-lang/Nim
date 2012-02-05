@@ -83,6 +83,9 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
+proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
+  ## leaked implementation detail. Do not use.
+
 proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.
   magic: "NewFinalize", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)

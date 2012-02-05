@@ -50,6 +50,10 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result.typ = s.typ
   result.info = n.info
 
+proc illegalCapture(s: PSym): bool {.inline.} =
+  result = skipTypes(s.typ, abstractInst).kind in {tyVar, tyOpenArray} or
+      s.kind == skResult
+
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
@@ -83,10 +87,16 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
-  of skVar, skLet, skResult:
+  of skVar, skLet, skResult, skParam:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
-    if sfGlobal in s.flags: incl(c.p.owner.flags, sfSideEffect)
+    if sfGlobal in s.flags:
+      incl(c.p.owner.flags, sfSideEffect)
+    elif s.owner != c.p.owner and s.owner.kind != skModule:
+      c.p.owner.typ.callConv = ccClosure
+      if illegalCapture(s) or c.p.next.owner != s.owner:
+        # Currently captures are restricted to a single level of nesting:
+        GlobalError(n.info, errIllegalCaptureX, s.name.s)
     result = newSymNode(s, n.info)
   of skGenericParam:
     if s.ast == nil: InternalError(n.info, "no default for")

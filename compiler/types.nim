@@ -276,16 +276,17 @@ proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
   var marker = InitIntSet()
   result = analyseObjectWithTypeFieldAux(t, marker)
 
-proc isGBCRef(t: PType): bool = 
-  result = t.kind in GcTypeKinds
+proc isGCRef(t: PType): bool =
+  result = t.kind in GcTypeKinds or
+    (t.kind == tyProc and t.callConv == ccClosure)
 
 proc containsGarbageCollectedRef(typ: PType): bool = 
   # returns true if typ contains a reference, sequence or string (all the
   # things that are garbage-collected)
-  result = searchTypeFor(typ, isGBCRef)
+  result = searchTypeFor(typ, isGCRef)
 
 proc isTyRef(t: PType): bool =
-  result = t.kind == tyRef
+  result = t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure)
 
 proc containsTyRef*(typ: PType): bool = 
   # returns true if typ contains a 'ref'
@@ -332,6 +333,8 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
     nil
 
 proc canFormAcycle(typ: PType): bool = 
+  # XXX as I expect cycles introduced by closures are very rare, we pretend 
+  # they can't happen here.
   var marker = InitIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)
 
