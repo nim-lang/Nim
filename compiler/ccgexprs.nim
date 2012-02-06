@@ -1273,10 +1273,13 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
   # through its address:
   var a: TLoc
   InitLocExpr(p, e.sons[1], a)
-  if (skipTypes(e.typ, abstractRange).kind in ValueTypes) and
-      not (lfIndirect in a.flags):
+  let etyp = skipTypes(e.typ, abstractRange)
+  if etyp.kind in ValueTypes and lfIndirect notin a.flags:
     putIntoDest(p, d, e.typ, ropef("(*($1*) ($2))",
         [getTypeDesc(p.module, e.typ), addrLoc(a)]))
+  elif etyp.kind == tyProc and etyp.callConv == ccClosure:
+    putIntoDest(p, d, e.typ, ropef("(($1) ($2))",
+        [getClosureType(p.module, etyp, clHalfWithEnv), rdCharLoc(a)]))
   else:
     putIntoDest(p, d, e.typ, ropef("(($1) ($2))",
         [getTypeDesc(p.module, e.typ), rdCharLoc(a)]))
@@ -1660,11 +1663,11 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       else:
         putLocIntoDest(p, d, sym.loc)
     of skForVar, skTemp:
-      if ((sym.loc.r == nil) or (sym.loc.t == nil)):
+      if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: temp not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skParam:
-      if ((sym.loc.r == nil) or (sym.loc.t == nil)):
+      if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: param not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     else: InternalError(e.info, "expr(" & $sym.kind & "); unknown symbol")

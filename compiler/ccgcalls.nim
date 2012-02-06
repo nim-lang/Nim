@@ -139,10 +139,8 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
-  proc getRawProcType(p: BProc, t: PType): PRope = 
-    var d = copyType(t, t.owner, false)
-    d.callConv = ccDefault
-    result = getTypeDesc(p.module, d)
+  proc getRawProcType(p: BProc, t: PType): PRope =
+    result = getClosureType(p.module, t, clHalf)
 
   proc addComma(r: PRope): PRope =
     result = if r == nil: r else: con(r, ", ")

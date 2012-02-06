@@ -221,7 +221,8 @@ proc generateThunk(c: PTransf, prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
   ## a closure.
   
-  # XXX we hack around here by generating a 'cast' instead of a proper thunk.
+  # we cannot generate a proper thunk here for GC-safety reasons (see internal
+  # documentation):
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
   conv.add(emptyNode)
