@@ -433,7 +433,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result = transform(c, n.sons[1])
   of tyProc:
     if dest.callConv == ccClosure and source.callConv == ccDefault:
-      result = generateThunk(c, n.sons[1], dest).ptransnode
+      let x = transform(c, n.sons[1]).pnode
+      result = generateThunk(c, x, dest).ptransnode
     else:
       result = transformSons(c, n)    
   of tyGenericParam, tyOrdinal: 

@@ -179,7 +179,7 @@ proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
   result = getTypeDescAux(m, t, check)
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
-                   check: var TIntSet) = 
+                   check: var TIntSet, declareEnvironment=true) = 
   params = nil
   if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
     rettype = toRope("void")
@@ -213,7 +213,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if (mapReturnType(t.sons[0]) != ctArray) or (gCmd == cmdCompileToLLVM): 
       app(params, "*")
     appff(params, " Result", " @Result", [])
-  if t.callConv == ccClosure: 
+  if t.callConv == ccClosure and declareEnvironment: 
     if params != nil: app(params, ", ")
     app(params, "void* ClEnv")
   if tfVarargs in t.flags: 
@@ -438,7 +438,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
              [toRope(CallingConvToStr[t.callConv]), rettype, result, desc])
       else:
         appf(m.s[cfsTypes], "typedef struct {$n" &
-            "N_CDECL_PTR($2, ClPrc) $3;$n" & 
+            "N_NIMCALL_PTR($2, ClPrc) $3;$n" & 
             "void* ClEnv;$n} $1;$n",
              [result, rettype, desc])
   of tySequence: 
@@ -503,6 +503,26 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
 proc getTypeDesc(m: BModule, typ: PType): PRope = 
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check)
+
+type
+  TClosureTypeKind = enum
+    clHalf, clHalfWithEnv, clFull
+
+proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): PRope =
+  assert t.kind == tyProc
+  var check = initIntSet()
+  result = getTempName()
+  var rettype, desc: PRope
+  genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
+  if not isImportedType(t):
+    if t.callConv != ccClosure or kind != clFull:
+      appf(m.s[cfsTypes], "typedef $1_PTR($2, $3) $4;$n", 
+           [toRope(CallingConvToStr[t.callConv]), rettype, result, desc])
+    else:
+      appf(m.s[cfsTypes], "typedef struct {$n" &
+          "N_NIMCALL_PTR($2, ClPrc) $3;$n" & 
+          "void* ClEnv;$n} $1;$n",
+           [result, rettype, desc])
 
 proc getTypeDesc(m: BModule, magic: string): PRope = 
   var sym = magicsys.getCompilerProc(magic)

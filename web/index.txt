@@ -107,9 +107,9 @@ Roadmap to 1.0
 
 Version 0.9.0
   * closures
-  * recursive iterators/coroutines
 
 Version 0.9.x
+  * recursive iterators/coroutines
   * 2-phase type system for better interaction between macros, templates
     and overloading
   * term rewriting macros
