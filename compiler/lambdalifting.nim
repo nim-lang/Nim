@@ -10,7 +10,7 @@
 # This include file implements lambda lifting for the transformator.
 
 const
-  declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef,
+  declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef,
      nkConverterDef}
   procDefs = {nkLambda} + declarativeDefs
 
@@ -79,9 +79,10 @@ proc replaceVars(c: PTransf, n: PNode, outerProc, env: PSym) =
 proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
   let L = params.len-1
+  param.position = L
   if L >= 0:
     # update if we already added a hidden parameter:
-    if params.sons[L].kind == nkSym and params.sons[L].sym.kind == skTemp: 
+    if params.sons[L].kind == nkSym and params.sons[L].sym.kind == skParam: 
       params.sons[L].sym = param
       return
   addSon(params, newSymNode(param))
@@ -122,6 +123,7 @@ proc transformInnerProcs(c: PTransf, n: PNode, outerProc, env: PSym) =
       else:
         # inner proc could capture outer vars:
         var param = newTemp(c, env.typ, n.info)
+        param.kind = skParam
         
         # recursive calls go through (f, hiddenParam):
         IdNodeTablePut(c.transCon.mapping, innerProc, 
