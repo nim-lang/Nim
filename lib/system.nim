@@ -1954,6 +1954,20 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
     ## can be used to mark a condition to be unlikely. This is a hint for the 
     ## optimizer.
+    
+  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+    ## retrieves the raw proc pointer of the closure `x`. This is
+    ## useful for interfacing closures with C.
+    {.emit: """
+    `result` = `x`.ClPrc;
+    """.}
+
+  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+    ## retrieves the raw environment pointer of the closure `x`. This is
+    ## useful for interfacing closures with C.
+    {.emit: """
+    `result` = `x`.ClEnv;
+    """.}
 
 elif defined(ecmaScript) or defined(NimrodVM):
   # Stubs:

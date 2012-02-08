@@ -626,6 +626,13 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       if n.sons[namePos].kind == nkSym:
         let x = transformSym(c, n.sons[namePos])
         if x.pnode.kind == nkClosure: result = x
+  of nkMacroDef:
+    # XXX no proper closure support yet:
+    if n.sons[genericParamsPos].kind == nkEmpty:
+      var s = n.sons[namePos].sym
+      n.sons[bodyPos] = PNode(transform(c, s.getBody))
+      if n.kind == nkMethodDef: methodDef(s, false)
+    result = PTransNode(n)
   of nkForStmt: result = transformFor(c, n)
   of nkCaseStmt: result = transformCase(c, n)
   of nkContinueStmt:

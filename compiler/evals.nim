@@ -257,28 +257,57 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     assert(a.kind == nkIdentDefs)
-    assert(a.sons[0].kind == nkSym)
-    var v = a.sons[0].sym
+    #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.sons[2].kind != nkEmpty: 
       result = evalAux(c, a.sons[2], {})
       if isSpecial(result): return 
     else: 
       result = getNullValue(a.sons[0].typ, a.sons[0].info)
-    IdNodeTablePut(c.tos.mapping, v, result)
+    if a.sons[0].kind == nkSym:
+      var v = a.sons[0].sym
+      IdNodeTablePut(c.tos.mapping, v, result)
+    else:
+      # assign to a.sons[0]:
+      var x = result
+      result = evalAux(c, a.sons[0], {})
+      if isSpecial(result): return 
+      myreset(x)
+      x.kind = result.kind
+      x.typ = result.typ
+      case x.kind
+      of nkCharLit..nkInt64Lit: x.intVal = result.intVal
+      of nkFloatLit..nkFloat64Lit: x.floatVal = result.floatVal
+      of nkStrLit..nkTripleStrLit: x.strVal = result.strVal
+      of nkIdent: x.ident = result.ident
+      of nkSym: x.sym = result.sym
+      else:
+        if x.kind notin {nkEmpty..nkNilLit}:
+          discardSons(x)
+          for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
   result = emptyNode
 
 proc evalCall(c: PEvalContext, n: PNode): PNode = 
-  result = evalAux(c, n.sons[0], {})
-  if isSpecial(result): return 
-  var prc = result
-  # bind the actual params to the local parameter of a new binding
   var d = newStackFrame()
   d.call = n
+  var prc = n.sons[0]
+  let isClosure = prc.kind == nkClosure
+  setlen(d.params, sonsLen(n) + ord(isClosure))
+  if isClosure:
+    #debug prc
+    result = evalAux(c, prc.sons[1], {efLValue})
+    if isSpecial(result): return
+    d.params[sonsLen(n)] = result
+    result = evalAux(c, prc.sons[0], {})
+  else:
+    result = evalAux(c, prc, {})
+
+  if isSpecial(result): return 
+  prc = result
+  # bind the actual params to the local parameter of a new binding
   if prc.kind == nkSym: 
     d.prc = prc.sym
-    if not (prc.sym.kind in {skProc, skConverter}): 
+    if prc.sym.kind notin {skProc, skConverter}:
       InternalError(n.info, "evalCall")
-  setlen(d.params, sonsLen(n))
   for i in countup(1, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i], {})
     if isSpecial(result): return 
@@ -308,6 +337,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
       result = copyTree(result)
     if result != nil: return 
     x = x.next
+  internalError(sym.info, "cannot eval " & sym.name.s)
   result = raiseCannotEval(nil, sym.info)
   #result = emptyNode
 
@@ -455,7 +485,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       result = evalVariable(c.tos, s, flags)
     else:
       result = evalGlobalVar(c, s, flags)
-  of skParam: 
+  of skParam:
     # XXX what about LValue?
     result = c.tos.params[s.position + 1]
   of skConst: result = s.ast
@@ -1165,7 +1195,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       if isSpecial(result): return 
       addSon(a, result)
     result = a
-  of nkPar: 
+  of nkPar, nkClosure: 
     var a = copyTree(n)
     for i in countup(0, sonsLen(n) - 1): 
       var it = n.sons[i]
@@ -1218,6 +1248,8 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
      nkLambda, nkContinueStmt, nkIdent: 
     result = raiseCannotEval(c, n.info)
+  of nkRefTy:
+    result = evalAux(c, n.sons[0], flags)
   else: InternalError(n.info, "evalAux: " & $n.kind)
   if result == nil:
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
