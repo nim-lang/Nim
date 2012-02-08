@@ -578,6 +578,7 @@ proc closureSetup(p: BProc, prc: PSym) =
   if prc.typ.callConv != ccClosure: return
   # prc.ast[paramsPos].last contains the type we're after:
   var env = lastSon(prc.ast[paramsPos]).sym
+  #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, env)
   # generate cast assignment:
   appcg(p, cpsStmts, "$1 = ($2) ClEnv;$n", rdLoc(env.loc), 

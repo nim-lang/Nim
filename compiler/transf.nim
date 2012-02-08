@@ -45,9 +45,9 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
+    nestedProcs: int         # > 0 if we are in a nested proc
     blocksyms: seq[PSym]
-    procToEnv: TIdTable      # mapping from a proc to its generated explicit
-                             # 'env' var (for closure generation)
+    transformedInnerProcs: TIntSet
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} = 
@@ -616,7 +616,16 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
-  of procDefs: result = transformProc(c, n)
+  of procDefs: 
+    if c.nestedProcs == 0:
+      inc c.nestedProcs
+      result = transformProc(c, n)
+      dec c.nestedProcs
+    else:
+      result = PTransNode(n)
+      if n.sons[namePos].kind == nkSym:
+        let x = transformSym(c, n.sons[namePos])
+        if x.pnode.kind == nkClosure: result = x
   of nkForStmt: result = transformFor(c, n)
   of nkCaseStmt: result = transformCase(c, n)
   of nkContinueStmt:
@@ -680,7 +689,7 @@ proc openTransf(module: PSym, filename: string): PPassContext =
   new(n)
   n.blocksyms = @[]
   n.module = module
-  initIdTable(n.procToEnv)
+  n.transformedInnerProcs = initIntSet()
   result = n
 
 proc openTransfCached(module: PSym, filename: string, 

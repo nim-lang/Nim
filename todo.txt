@@ -2,9 +2,9 @@ version 0.8.14
 ==============
 
 - implement closures
-  - test evals.nim with closures
+  - fix evals.nim with closures
   - deactivate lambda lifting for JS backend
-  - Test capture of for loop vars; test generics; test recursion
+  - Test capture of for loop vars; test generics;
   - test constant closures
   - 'closureEnv' magic for easy interfacing with C
   
