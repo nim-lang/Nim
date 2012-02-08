@@ -92,7 +92,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
-    elif s.owner != c.p.owner and s.owner.kind != skModule:
+    elif s.owner != c.p.owner and s.owner.kind != skModule and 
+        c.p.owner.typ != nil and not IsGenericRoutine(s.owner):
       c.p.owner.typ.callConv = ccClosure
       if illegalCapture(s) or c.p.next.owner != s.owner:
         # Currently captures are restricted to a single level of nesting:

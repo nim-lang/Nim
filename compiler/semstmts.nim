@@ -658,6 +658,8 @@ proc semLambda(c: PContext, n: PNode): PNode =
   else: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
   sideEffectsCheck(c, s)
+  if s.typ.callConv == ccClosure and s.owner.kind == skModule:
+    localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   result.typ = s.typ
@@ -754,6 +756,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
+  if s.typ.callConv == ccClosure and s.owner.kind == skModule:
+    localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   
