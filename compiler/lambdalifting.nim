@@ -78,13 +78,7 @@ proc replaceVars(c: PTransf, n: PNode, outerProc, env: PSym) =
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
-  let L = params.len-1
-  param.position = L
-  if L >= 0:
-    # update if we already added a hidden parameter:
-    if params.sons[L].kind == nkSym and params.sons[L].sym.kind == skParam: 
-      params.sons[L].sym = param
-      return
+  param.position = params.len
   addSon(params, newSymNode(param))
   #echo "produced environment: ", param.id, " for ", routine.name.s
 
