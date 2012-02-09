@@ -1020,12 +1020,6 @@ Index
    `clonglong`:idx:
      `system.html#427 <system.html#427>`_
 
-   `Close`:idx:
-     * `system.html#560 <system.html#560>`_
-     * `db_postgres.html#117 <db_postgres.html#117>`_
-     * `db_mysql.html#116 <db_mysql.html#116>`_
-     * `db_sqlite.html#117 <db_sqlite.html#117>`_
-
    `close`:idx:
      * `inboxes.html#110 <inboxes.html#110>`_
      * `sockets.html#123 <sockets.html#123>`_
@@ -1050,6 +1044,12 @@ Index
      * `ftpclient.html#122 <ftpclient.html#122>`_
      * `memfiles.html#105 <memfiles.html#105>`_
      * `asyncio.html#109 <asyncio.html#109>`_
+
+   `Close`:idx:
+     * `system.html#560 <system.html#560>`_
+     * `db_postgres.html#117 <db_postgres.html#117>`_
+     * `db_mysql.html#116 <db_mysql.html#116>`_
+     * `db_sqlite.html#117 <db_sqlite.html#117>`_
 
    `closure`:idx:
      `manual.html#183 <manual.html#183>`_
@@ -3767,14 +3767,14 @@ Index
    `hSetNX`:idx:
      `redis.html#147 <redis.html#147>`_
 
+   `html`:idx:
+     * `xmlgen.html#139 <xmlgen.html#139>`_
+     * `htmlgen.html#139 <htmlgen.html#139>`_
+
    `HTML`:idx:
      * `xmlgen.html#102 <xmlgen.html#102>`_
      * `parsexml.html#102 <parsexml.html#102>`_
      * `htmlgen.html#102 <htmlgen.html#102>`_
-
-   `html`:idx:
-     * `xmlgen.html#139 <xmlgen.html#139>`_
-     * `htmlgen.html#139 <htmlgen.html#139>`_
 
    `htmlTag`:idx:
      * `htmlparser.html#105 <htmlparser.html#105>`_
@@ -5529,14 +5529,6 @@ Index
    `ONLY_KILL_QUERY`:idx:
      `mysql.html#189 <mysql.html#189>`_
 
-   `Open`:idx:
-     * `system.html#556 <system.html#556>`_
-     * `system.html#557 <system.html#557>`_
-     * `system.html#558 <system.html#558>`_
-     * `db_postgres.html#118 <db_postgres.html#118>`_
-     * `db_mysql.html#117 <db_mysql.html#117>`_
-     * `db_sqlite.html#118 <db_sqlite.html#118>`_
-
    `open`:idx:
      * `inboxes.html#109 <inboxes.html#109>`_
      * `channels.html#105 <channels.html#105>`_
@@ -5554,6 +5546,14 @@ Index
      * `sphinx.html#158 <sphinx.html#158>`_
      * `encodings.html#105 <encodings.html#105>`_
      * `memfiles.html#104 <memfiles.html#104>`_
+
+   `Open`:idx:
+     * `system.html#556 <system.html#556>`_
+     * `system.html#557 <system.html#557>`_
+     * `system.html#558 <system.html#558>`_
+     * `db_postgres.html#118 <db_postgres.html#118>`_
+     * `db_mysql.html#117 <db_mysql.html#117>`_
+     * `db_sqlite.html#118 <db_sqlite.html#118>`_
 
    `openarray`:idx:
      * `tut1.html#120 <tut1.html#120>`_
@@ -7106,7 +7106,11 @@ Index
      `cgi.html#143 <cgi.html#143>`_
 
    `shallow`:idx:
-     `manual.html#258 <manual.html#258>`_
+     * `manual.html#258 <manual.html#258>`_
+     * `system.html#633 <system.html#633>`_
+     * `system.html#634 <system.html#634>`_
+     * `system.html#635 <system.html#635>`_
+     * `system.html#636 <system.html#636>`_
 
    `shallow copy`:idx:
      `system.html#413 <system.html#413>`_
