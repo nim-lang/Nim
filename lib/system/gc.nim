@@ -426,7 +426,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
   result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
   cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).space = len
+  cast[PGenericSeq](result).reserved = len
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
@@ -457,7 +457,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   result = newObjRC1(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
   cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).space = len
+  cast[PGenericSeq](result).reserved = len
   
 proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   acquire(gch)

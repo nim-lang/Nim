@@ -38,7 +38,8 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
   of tyString:
     var x = cast[ppointer](dest)
     var s2 = cast[ppointer](s)[]
-    if s2 == nil or shallow:
+    if s2 == nil or shallow or (
+        cast[PGenericSeq](s2).reserved and seqShallowFlag) != 0:
       unsureAsgnRef(x, s2)
     else:
       unsureAsgnRef(x, copyString(cast[NimString](s2)))
@@ -46,7 +47,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
     var s2 = cast[ppointer](src)[]
     var seq = cast[PGenericSeq](s2)      
     var x = cast[ppointer](dest)
-    if s2 == nil or shallow:
+    if s2 == nil or shallow or (seq.reserved and seqShallowFlag) != 0:
       # this can happen! nil sequences are allowed
       unsureAsgnRef(x, s2)
       return
@@ -61,7 +62,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
         mt.Base, shallow)
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
-    dstseq.space = seq.len
+    dstseq.reserved = seq.len
   of tyObject, tyTuple:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
     genericAssignAux(dest, src, mt.node, shallow)

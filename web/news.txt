@@ -2,10 +2,26 @@
 News
 ====
 
+2012-XX-XX Version 0.8.XX released
+==================================
+
+Version 0.8.XX has been released! Get it `here <download.html>`_. 
+
+Bugfixes
+--------
+
+
+Library Additions
+-----------------
+
+- Added ``system.shallow`` that can be used to speed up string and sequence
+  assignments.
+
+
 2012-02-09 Version 0.8.14 released
 ==================================
 
-Version 0.8.14 has been released! Get it `here <download.html>`_. 
+Version 0.8.14 has been released!
 
 Bugfixes
 --------
