@@ -2189,7 +2189,7 @@ template doAssert*(cond: expr, msg = "") =
       raiseAssert(astToStr(cond) & ' ' & msg)
 
 
-proc shallow*[T](s: seq[T]) {.noSideEffect, inline.} =
+proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
@@ -2197,7 +2197,7 @@ proc shallow*[T](s: seq[T]) {.noSideEffect, inline.} =
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
-proc shallow*(s: string) {.noSideEffect, inline.} =
+proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
