@@ -157,6 +157,7 @@ Library Additions
 - Added ``subexes`` module.
 - Added ``critbits`` module.
 - Added ``asyncio`` module.
+- Added ``actors`` module.
 - Added ``algorithm`` module for generic ``sort``, ``reverse`` etc. operations.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 - The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 

@@ -48,6 +48,10 @@ Core
 * `typeinfo <typeinfo.html>`_
   Provides (unsafe) access to Nimrod's run time type information. 
   
+* `actors <actors.html>`_
+  Actor support for Nimrod; implemented as a layer on top of the threads and
+  channels modules.
+
 
 Collections and algorithms
 --------------------------
