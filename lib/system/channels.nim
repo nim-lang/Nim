@@ -114,7 +114,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel,
           mt.Base, t, mode)
       var dstseq = cast[PGenericSeq](dst)
       dstseq.len = seq.len
-      dstseq.space = seq.len
+      dstseq.reserved = seq.len
       if mode != mStore: Dealloc(t.region, s2)
   of tyObject:
     # copy type field:
