@@ -38,6 +38,20 @@ Nimrod is one of the very few *programmable* statically typed languages, and
 one of the even fewer that will produce native binaries that require no 
 runtime or interpreter.
 
+
+What is Nimrod's take on concurrency?
+-------------------------------------
+
+Nimrod primarily focusses on thread local (and garbage collected) heaps and 
+asynchronous message passing between threads. Each thread has its own GC, so no 
+"stop the world" mechanism is necessary. An unsafe shared memory heap is also
+provided. 
+
+Future versions will additionally include a GC "per thread group" 
+and Nimrod's type system will be enhanced to accurately model this shared
+memory heap.
+
+
 How is Nimrod licensed?
 -----------------------
 
@@ -61,10 +75,10 @@ statements.
 
 How fast is Nimrod?
 -------------------
-Benchmarks have not been ported yet and support for threads is missing. But in
-the worst case, you can get the same performance as in C if you decide 
-to write as low-level Nimrod code as C requires you to do. That said the only
-overhead Nimrod has over C is the GC which has been tuned for years.
+Benchmarks show it to be comparable to C. Some language features (methods, 
+closures, RTTI) are not yet as optimized as they could and will be.
+The only overhead Nimrod has over C is the GC which has been tuned 
+for years but still needs some work.
 
 
 What about JVM/CLR backends?

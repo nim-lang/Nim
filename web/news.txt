@@ -2,7 +2,7 @@
 News
 ====
 
-2012-02-XX Version 0.8.14 released
+2012-02-09 Version 0.8.14 released
 ==================================
 
 Version 0.8.14 has been released! Get it `here <download.html>`_. 
@@ -126,7 +126,8 @@ Compiler Additions
   ``on`` and ``off`` are now aliases for ``true`` and ``false`` and declared
   in the system module.
 - The compiler finally supports **closures**. This is a preliminary 
-  implementation, which does not yet support nestings deeper than 1 level.
+  implementation, which does not yet support nestings deeper than 1 level
+  and still has many known bugs.
 
 
 Library Additions
@@ -155,6 +156,7 @@ Library Additions
 - Added ``memfiles`` module.
 - Added ``subexes`` module.
 - Added ``critbits`` module.
+- Added ``asyncio`` module.
 - Added ``algorithm`` module for generic ``sort``, ``reverse`` etc. operations.
 - Added ``osproc.startCmd``, ``osproc.execCmdEx``.
 - The ``osproc`` module now uses ``posix_spawn`` instead of ``fork`` 
