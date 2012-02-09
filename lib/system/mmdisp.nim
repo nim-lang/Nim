@@ -152,7 +152,7 @@ when defined(boehmgc):
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
-    cast[PGenericSeq](result).space = len
+    cast[PGenericSeq](result).reserved = len
 
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
@@ -208,7 +208,7 @@ elif defined(nogc):
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
-    cast[PGenericSeq](result).space = len
+    cast[PGenericSeq](result).reserved = len
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 

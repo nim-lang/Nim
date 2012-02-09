@@ -35,7 +35,7 @@ Why yet another programming language?
 -------------------------------------
 
 Nimrod is one of the very few *programmable* statically typed languages, and 
-one of the even fewer that will produce native binaries that require no 
+one of the even fewer that produces native binaries that require no 
 runtime or interpreter.
 
 

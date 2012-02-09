@@ -87,7 +87,7 @@ generated; use the ``--symbolFiles:on`` command line switch to activate them.
 
 Unfortunately due to technical reasons the ``--symbolFiles:on`` needs 
 to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even in when dead code elimination is turned on. So
+might contain some cruft even when dead code elimination is turned on. So
 the final release build should be done with ``--symbolFiles:off``.
 
 Due to the aggregation of C code it is also recommended that each project
