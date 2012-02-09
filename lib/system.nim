@@ -145,12 +145,14 @@ proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
 when not defined(EcmaScript) and not defined(NimrodVM):
   type
     TGenericSeq {.compilerproc, pure.} = object
-      len, space: int
+      len, reserved: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: array[0..100_000_000, char]
     NimString = ptr NimStringDesc
+    
+  template space(s: PGenericSeq): int = s.reserved and not seqShallowFlag
 
   include "system/hti"
 
@@ -774,6 +776,8 @@ const
   appType* {.magic: "AppType"}: string = ""
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
+  
+  seqShallowFlag = 1 shl (sizeof(int)*8-1)
   
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -2183,6 +2187,23 @@ template doAssert*(cond: expr, msg = "") =
   {.line: InstantiationInfo().}:
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
+
+
+proc shallow*[T](s: seq[T]) {.noSideEffect, inline.} =
+  ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
+  ## perform deep copies of `s`. This is only useful for optimization 
+  ## purposes.
+  when not defined(EcmaScript) and not defined(NimrodVM):
+    var s = cast[PGenericSeq](s)
+    s.reserved = s.reserved or seqShallowFlag
+
+proc shallow*(s: string) {.noSideEffect, inline.} =
+  ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
+  ## perform deep copies of `s`. This is only useful for optimization 
+  ## purposes.
+  when not defined(EcmaScript) and not defined(NimrodVM):
+    var s = cast[PGenericSeq](s)
+    s.reserved = s.reserved or seqShallowFlag
 
 
 when defined(initDebugger):

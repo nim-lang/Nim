@@ -43,7 +43,7 @@ proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 8: s = 7
   result = allocStr(sizeof(TGenericSeq) + s + 1)
-  result.space = s
+  result.reserved = s
 
 proc mnewString(len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
@@ -73,7 +73,9 @@ proc cstrToNimstr(str: CString): NimString {.compilerProc.} =
   result = toNimstr(str, c_strlen(str))
 
 proc copyString(src: NimString): NimString {.compilerProc.} =
-  if src != nil:
+  if (src.reserved and seqShallowFlag) != 0:
+    result = src
+  elif src != nil:
     result = rawNewString(src.space)
     result.len = src.len
     c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
@@ -87,7 +89,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerProc.} =
                                s+1))
     else:
       result = allocStr(sizeof(TGenericSeq) + s + 1)
-    result.space = s
+    result.reserved = s
     result.len = src.len
     c_memcpy(result.data, src.data, src.len + 1)
 
@@ -108,13 +110,9 @@ proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
   result = s
   if result.len >= result.space:
-    result.space = resize(result.space)
+    result.reserved = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + (result.space+1) * sizeof(char)))
-    #var space = resize(result.space)
-    #result = rawNewString(space)
-    #copyMem(result, s, s.len * sizeof(char) + sizeof(TGenericSeq))
-    #result.space = space
+      sizeof(TGenericSeq) + (result.reserved+1) * sizeof(char)))
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -156,7 +154,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerproc.} =
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addLen)
     result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
-    result.space = sp
+    result.reserved = sp
     #result = rawNewString(sp)
     #copyMem(result, dest, dest.len * sizeof(char) + sizeof(TGenericSeq))
     # DO NOT UPDATE LEN YET: dest.len = newLen
@@ -188,55 +186,31 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #  add(seq, x)  generates:
   #  seq = incrSeq(seq, sizeof(x));
   #  seq[seq->len-1] = x;
-  when false:
-    # broken version:
-    result = seq
-    if result.len >= result.space:
-      var s = resize(result.space)
-      result = cast[PGenericSeq](newSeq(extGetCellType(seq), s))
-      genericSeqAssign(result, seq, XXX)
-      #copyMem(result, seq, seq.len * elemSize + GenericSeqSize)
-    inc(result.len)
-  else:
-    result = seq
-    if result.len >= result.space:
-      result.space = resize(result.space)
-      result = cast[PGenericSeq](growObj(result, elemSize * result.space +
-                                 GenericSeqSize))
-      # set new elements to zero:
-      #var s = cast[TAddress](result)
-      #zeroMem(cast[pointer](s + GenericSeqSize + (result.len * elemSize)),
-      #  (result.space - result.len) * elemSize)
-      # for i in len .. space-1:
-      #   seq->data[i] = 0
-    inc(result.len)
+  result = seq
+  if result.len >= result.space:
+    result.reserved = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+                               GenericSeqSize))
+  inc(result.len)
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl.} =
-  when false:
-    # broken version:
-    result = seq
-    if result.space < newLen:
-      var s = max(resize(result.space), newLen)
-      result = cast[PGenericSeq](newSeq(extGetCellType(seq), s))
-    result.len = newLen
-  else:
-    result = seq
-    if result.space < newLen:
-      result.space = max(resize(result.space), newLen)
-      result = cast[PGenericSeq](growObj(result, elemSize * result.space +
-                                 GenericSeqSize))
-    elif newLen < result.len:
-      # we need to decref here, otherwise the GC leaks!
-      when not defined(boehmGC) and not defined(nogc):
-        for i in newLen..result.len-1:
-          forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
-                            GenericSeqSize +% (i*%elemSize)),
-                            extGetCellType(result).base, waZctDecRef)
-      # and set the memory to nil:
-      zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
-             (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
-    result.len = newLen
+  result = seq
+  if result.space < newLen:
+    result.reserved = max(resize(result.space), newLen)
+    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+                               GenericSeqSize))
+  elif newLen < result.len:
+    # we need to decref here, otherwise the GC leaks!
+    when not defined(boehmGC) and not defined(nogc):
+      for i in newLen..result.len-1:
+        forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
+                          GenericSeqSize +% (i*%elemSize)),
+                          extGetCellType(result).base, waZctDecRef)
+    # and set the memory to nil:
+    zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
+           (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
+  result.len = newLen
 
 # --------------- other string routines ----------------------------------
 proc nimIntToStr(x: int): string {.compilerRtl.} =

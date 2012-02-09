@@ -1507,7 +1507,7 @@ Syntax::
 Example:
 
 .. code-block:: nimrod
-  proc p(x, y: int): int {.optional.} = 
+  proc p(x, y: int): int = 
     return x + y
 
   discard p(3, 4) # discard the return value of `p`
@@ -3472,6 +3472,8 @@ a `thead-local`:idx: variable then:
 
 Actor model
 -----------
+
+**Caution**: This section is already outdated! XXX
 
 Nimrod supports the `actor model`:idx: of concurrency natively:
 
