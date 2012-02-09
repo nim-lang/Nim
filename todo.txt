@@ -1,21 +1,14 @@
-version 0.8.14
-==============
+version 0.9.0
+=============
 
-- implement closures
+- ``=`` should be overloadable; requires specialization for ``=``
+- fix remaining generics bugs
+- fix remaining closure bugs:
   - fix evals.nim with closures
   - deactivate lambda lifting for JS backend
   - Test capture of for loop vars; test generics;
   - test constant closures
-  - 'closureEnv' magic for easy interfacing with C
-  
-- object {.pure, final.} does not work again!
-- bug: tsortdev does not run with native GC?
-- ``=`` should be overloadable; requires specialization for ``=``?
 
-version 0.9.0
-=============
-
-- fix remaining generics bugs
 - GC: marker procs for native Nimrod GC and Boehm GC; precise stack marking;
   escape analysis for string/seq seems to be easy to do too;
   even further write barrier specialization
@@ -54,6 +47,8 @@ Bugs
   without ``-d:release`` leaks memory?
 - bug: temp2.nim triggers weird compiler and except.nim bug
 - bug: negative array indexes fail to index check
+- bug: object {.pure, final.} does not work again!
+- bug: tsortdev does not run with native GC?
 
 
 version 0.9.XX

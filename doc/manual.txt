@@ -3128,7 +3128,7 @@ line pragma
 The `line`:idx: pragma can be used to affect line information of the annotated
 statement as seen in stack backtraces:
 
-.. code-bock:: nimrod
+.. code-block:: nimrod
   
   template myassert*(cond: expr, msg = "") =
     if not cond:

@@ -84,8 +84,8 @@ proc install(args: string) =
   exec("sh ./build.sh")
 
 proc web(args: string) =
-  exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
-       NimrodVersion)
+  exec(("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
+        " --path:$#") % [NimrodVersion, getCurrentDir()])
 
 # -------------- boot ---------------------------------------------------------
 

@@ -955,6 +955,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkProcDef: 
     putWithSpace(g, tkProc, "proc")
     gproc(g, n)
+  of nkConverterDef:
+    putWithSpace(g, tkConverter, "converter")
+    gproc(g, n)
   of nkMethodDef: 
     putWithSpace(g, tkMethod, "method")
     gproc(g, n)

@@ -115,5 +115,5 @@ Version 0.9.x
   * term rewriting macros
   * the syntactic distinction between statements and expressions will be
     removed
-  * forward declarations will likely be removed
+  * the need for forward declarations may be removed
 

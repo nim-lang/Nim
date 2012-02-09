@@ -337,7 +337,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
       result = copyTree(result)
     if result != nil: return 
     x = x.next
-  internalError(sym.info, "cannot eval " & sym.name.s)
+  #internalError(sym.info, "cannot eval " & sym.name.s)
   result = raiseCannotEval(nil, sym.info)
   #result = emptyNode
 

@@ -175,6 +175,9 @@ Internet Protocols and Support
 * `sockets <sockets.html>`_
   This module implements a simple portable type-safe sockets layer.
 
+* `asyncio <asyncio.html>`_
+  This module implements an asynchronous event loop for sockets.
+
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
@@ -189,7 +192,7 @@ Internet Protocols and Support
   This module implement a simple SMTP client. 
 
 * `irc <irc.html>`_
-  This module implements an asynchronous IRC client.  
+  This module implements an asynchronous IRC client.
 
 * `ftpclient <ftpclient.html>`_
   This module implements an FTP client.

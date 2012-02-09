@@ -53,7 +53,7 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
   if a[result] != key: result = -1
 
 const
-  onlySafeCode = false
+  onlySafeCode = true
 
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
               cmp: proc (x, y: T): int, order: TSortOrder) =

@@ -132,11 +132,6 @@ __clang__
 /* specify no calling convention */
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
-#define N_CLOSURE(rettype, name) rettype name
-/* specify no calling convention */
-#define N_CLOSURE_PTR(rettype, name) rettype (*name)
-
-
 #if defined(__GNUC__) || defined(__ICC__)
 #  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
 #elif defined(_MSC_VER)
@@ -156,6 +151,9 @@ __clang__
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)
 #endif
+
+#define N_CLOSURE(rettype, name) N_NIMCALL(rettype, name)
+#define N_CLOSURE_PTR(rettype, name) N_NIMCALL_PTR(rettype, name)
 
 /* ----------------------------------------------------------------------- */
 

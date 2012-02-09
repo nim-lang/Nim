@@ -9,7 +9,8 @@ SET LINK_FLAGS=?{c.linker.flags}
 REM call the compiler:
 
 #  var linkCmd = ""
-#  for f in items(c.cfiles[1][1]):
+#  for ff in items(c.cfiles[1][1]):
+#    let f = ff.replace('/', '\\')
 ECHO %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
 %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
 #    linkCmd.add(" " & changeFileExt(f, "o"))
