@@ -160,8 +160,17 @@ Version 2
   issues can "easily" dealt with by ensuring:
   
     var x = myProc() # checks myProc() initializes every pointer explicitely
+
+- guards for the 'case' statement; generalized case statement;
+  a guard looks like: 
+  
+    case x
+    of nkStmtList if x.value == 0: 
+  
+  a generalized case statement looks like:
     
-- generalized case statement (requires better transf)
+    case x with `=~`
+      
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
