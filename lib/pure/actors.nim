@@ -10,11 +10,22 @@
 ## `Actor`:idx: support for Nimrod. An actor is implemented as a thread with
 ## a channel as its inbox. This module requires the ``--threads:on``
 ## command line switch.
+##
+## Example:
+##
+## .. code-block:: nimrod
+##
+##      var
+##        a: TActorPool[int, void]
+##      createActorPool(a)
+##      for i in 0 .. < 300:
+##        a.spawn(i, proc (x: int) {.thread.} = echo x)
+##      a.join()
 
 from os import sleep
 
 type
-  TTask*[TIn, TOut] = object{.pure, final.}
+  TTask*[TIn, TOut] = object{.pure, final.} ## a task
     when TOut isnot void:
       receiver*: ptr TChannel[TOut] ## the receiver channel of the response
     action*: proc (x: TIn): TOut {.thread.} ## action to execute;

@@ -1,6 +1,6 @@
 =======================================================
                 The Nimrod Compiler
-         Copyright (C) 2004-2011  Andreas Rumpf
+         Copyright (C) 2004-2012  Andreas Rumpf
 =======================================================
 
 This program is free software; you can redistribute it and/or
