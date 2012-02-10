@@ -33,8 +33,9 @@ type
     tkSymbol, # keywords:
     tkAddr, tkAnd, tkAs, tkAsm, tkAtomic, 
     tkBind, tkBlock, tkBreak, tkCase, tkCast, 
-    tkConst, tkContinue, tkConverter, tkDiscard, tkDistinct, tkDiv, tkElif, 
-    tkElse, tkEnd, tkEnum, tkExcept, tkExport, tkFinally, tkFor, tkFrom,
+    tkConst, tkContinue, tkConverter, tkDiscard, tkDistinct, tkDiv, tkDo,
+    tkElif, tkElse, tkEnd, tkEnum, tkExcept, tkExport,
+    tkFinally, tkFor, tkFrom,
     tkGeneric, tkIf, tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator,
     tkLambda, tkLet,
     tkMacro, tkMethod, tkMod, tkNil, tkNot, tkNotin, tkObject, tkOf, tkOr, 
@@ -48,10 +49,12 @@ type
     tkBracketDotLe, tkBracketDotRi, # [. and  .]
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
-    tkComma, tkSemiColon, tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, 
+    tkComma, tkSemiColon,
+    tkColon, tkColonColon, tkEquals, tkLeArrow, tkRiArrow, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent, tkInd, tkSad, 
     tkDed, # pseudo token types used by the source renderers:
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+    
   TTokTypes* = set[TTokType]
 
 const 
@@ -61,8 +64,8 @@ const
     "tkSymbol",
     "addr", "and", "as", "asm", "atomic", 
     "bind", "block", "break", "case", "cast", 
-    "const", "continue", "converter", "discard", "distinct", "div", "elif", 
-    "else", "end", "enum", "except", "export",
+    "const", "continue", "converter", "discard", "distinct", "div", "do",
+    "elif", "else", "end", "enum", "except", "export",
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "is", "isnot", "iterator",
     "lambda", "let", 
@@ -73,9 +76,10 @@ const
     "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit", 
     "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkStrLit", "tkRStrLit", 
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
-    ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)", ",", ";", 
-    ":", "::",
-    "=", ".", "..", "tkOpr", "tkComment", "`", "[new indentation]", 
+    ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
+    ",", ";",
+    ":", "::", "=", "<-", "->", ".", "..",
+    "tkOpr", "tkComment", "`", "[new indentation]", 
     "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
     "tkPrefixOpr", "tkPostfixOpr"]
 

@@ -25,7 +25,7 @@ type
     nnkPrefix, nnkPostfix, nnkPar, nnkCurly, nnkCurlyExpr,
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
-    nnkElifExpr, nnkElseExpr, nnkLambda, nnkAccQuoted, 
+    nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted, 
     nnkTableConstr, nnkBind, nnkSymChoice, nnkHiddenStdConv, 
     nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, 
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 

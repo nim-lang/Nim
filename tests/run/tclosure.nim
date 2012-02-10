@@ -12,6 +12,10 @@ proc foldr(n: openarray[int], fn: proc (x, y: int): int {.closure}): int =
   for i in 0..n.len-1:
     result = fn(result, n[i])
 
+proc each(n: openarray[int], fn: proc(x: int) {.closure.}) =
+  for i in 0..n.len-1:
+    fn(n[i])
+
 var
   myData: array[0..4, int] = [0, 1, 2, 3, 4]
 
@@ -24,8 +28,10 @@ proc testA() =
                 inc(p))
 
 testA()
-for x in items(myData):
+
+myData.each do (x: int):
   write(stout, x)
+
 #OUT 2 4 6 8 10
 
 
