@@ -93,6 +93,7 @@ type
     nkElifExpr,
     nkElseExpr,
     nkLambda,             # lambda expression
+    nkDo,                 # lambda block appering as trailing proc param
     nkAccQuoted,          # `a` as a node
 
     nkTableConstr,        # a table constructor {expr: expr}
@@ -643,6 +644,8 @@ proc copyTree*(src: PNode): PNode
 
 const nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
                       nkCallStrLit}
+
+const nkLambdaKinds* = {nkLambda, nkDo}
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds

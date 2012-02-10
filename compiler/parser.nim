@@ -146,7 +146,8 @@ proc newIdentNodeP(ident: PIdent, p: TParser): PNode =
 proc parseExpr(p: var TParser): PNode
 proc parseStmt(p: var TParser): PNode
 proc parseTypeDesc(p: var TParser): PNode
-proc parseParamList(p: var TParser): PNode
+proc parseDoBlocks(p: var TParser, call: PNode)
+proc parseParamList(p: var TParser, resTypeTok = tkColon): PNode
 
 proc IsLeftAssociative(tok: TToken): bool {.inline.} =
   result = tok.tokType != tkOpr or tok.ident.s[0] != '^'
@@ -466,6 +467,7 @@ proc primary(p: var TParser): PNode =
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
+      parseDoBlocks(p, result)
     of tkDot:
       result = newDotExpr(p, result)
       result = parseGStrLit(p, result)
@@ -599,7 +601,7 @@ proc parseTuple(p: var TParser): PNode =
   optPar(p)
   eat(p, tkBracketRi)
 
-proc parseParamList(p: var TParser): PNode = 
+proc parseParamList(p: var TParser, resTypeTok = tkColon): PNode = 
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, ast.emptyNode) # return type
@@ -621,11 +623,33 @@ proc parseParamList(p: var TParser): PNode =
       optInd(p, a)
     optPar(p)
     eat(p, tkParRi)
-  if p.tok.tokType == tkColon: 
+  if p.tok.tokType == resTypeTok:
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
 
+proc optPragmas(p: var TParser): PNode =
+  if p.tok.tokType == tkCurlyDotLe: result = parsePragma(p)
+  else: result = ast.emptyNode
+
+proc parseDoBlock(p: var TParser): PNode =
+  var info = parLineInfo(p)
+  getTok(p)
+  var params = parseParamList(p, tkRiArrow)
+  var pragmas = optPragmas(p)
+  eat(p, tkColon)
+  result = newNodeI(nkDo, info)
+  addSon(result, ast.emptyNode)       # no name part
+  addSon(result, ast.emptyNode)       # no generic parameters
+  addSon(result, params)
+  addSon(result, pragmas)
+  skipComment(p, result)
+  addSon(result, parseStmt(p))
+
+proc parseDoBlocks(p: var TParser, call: PNode) =
+  while p.tok.tokType == tkDo:
+    addSon(call, parseDoBlock(p))
+    
 proc parseProcExpr(p: var TParser, isExpr: bool): PNode = 
   # either a proc type or a anonymous proc
   var 
@@ -634,8 +658,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
   info = parLineInfo(p)
   getTok(p)
   params = parseParamList(p)
-  if p.tok.tokType == tkCurlyDotLe: pragmas = parsePragma(p)
-  else: pragmas = ast.emptyNode
+  pragmas = optPragmas(p)
   if (p.tok.tokType == tkEquals) and isExpr: 
     result = newNodeI(nkLambda, info)
     addSon(result, ast.emptyNode)       # no name part
@@ -709,9 +732,12 @@ proc parseExprStmt(p: var TParser): PNode =
       if p.tok.tokType != tkComma: break 
       getTok(p)
       optInd(p, a)
+    if p.tok.tokType == tkDo:
+      parseDoBlocks(p, result)
+      return    
     if sonsLen(result) <= 1: result = a
     else: a = result
-    if p.tok.tokType == tkColon: 
+    if p.tok.tokType == tkColon:
       # macro statement
       result = newNodeP(nkMacroStmt, p)
       result.info = a.info
@@ -746,7 +772,7 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(b, parseStmt(p))
         addSon(result, b)
         if b.kind == nkElse: break 
-  
+    
 proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode = 
   var a: PNode
   result = newNodeP(kind, p)

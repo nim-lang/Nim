@@ -348,7 +348,7 @@ proc lsub(n: PNode): int =
   of nkBind: result = lsons(n) + len("bind_")
   of nkBindStmt: result = lcomma(n) + len("bind_")
   of nkCheckedFieldExpr: result = lsub(n.sons[0])
-  of nkLambda: result = lsons(n) + len("lambda__=_")
+  of nkLambda, nkDo: result = lsons(n) + len("lambda__=_") # XXX: render nkDo
   of nkConstDef, nkIdentDefs: 
     result = lcomma(n, 0, - 3)
     var L = sonsLen(n)
@@ -785,7 +785,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[0])
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref: 
     gsub(g, n.sons[0])
-  of nkLambda: 
+  of nkLambda, nkDo: # XXX: nkDo is rendered as regular lambda
     assert(n.sons[genericParamsPos].kind == nkEmpty)
     putWithSpace(g, tkLambda, "lambda")
     gsub(g, n.sons[paramsPos])
