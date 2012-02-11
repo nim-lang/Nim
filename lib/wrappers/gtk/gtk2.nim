@@ -4068,7 +4068,6 @@ proc set_need_default_position*(a: gtk2.PWindow, `need_default_position`: guint)
 proc need_default_size*(a: gtk2.PWindow): guint
 proc set_need_default_size*(a: gtk2.PWindow, `need_default_size`: guint)
 proc position*(a: gtk2.PWindow): guint
-proc set_position*(a: gtk2.PWindow, `position`: guint)
 proc get_type*(a: gtk2.PWindow): guint
 proc set_type*(a: gtk2.PWindow, `type`: guint)
 proc has_user_ref_count*(a: gtk2.PWindow): guint
@@ -11357,10 +11356,6 @@ proc set_need_default_size*(a: gtk2.PWindow, `need_default_size`: guint) =
 proc position*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_position) shr
       bp_TGtkWindow_position
-
-proc set_position*(a: gtk2.PWindow, `position`: guint) = 
-  a.Window_flag0 = a.Window_flag0 or
-      ((`position` shl bp_TGtkWindow_position) and bm_TGtkWindow_position)
 
 proc get_type*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_type) shr bp_TGtkWindow_type
