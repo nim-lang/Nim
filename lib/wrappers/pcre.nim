@@ -269,8 +269,6 @@ proc get_substring*(a2: cstring, a3: ptr cint, a4: cint, a5: cint,
 proc get_substring_list*(a2: cstring, a3: ptr cint, a4: cint, 
                          a5: ptr cstringArray): cint{.cdecl, 
     importc: "pcre_get_substring_list", dynlib: pcredll.}
-proc info*(a2: ptr TPcre, a3: ptr cint, a4: ptr cint): cint{.cdecl, 
-    importc: "pcre_info", dynlib: pcredll.}
 proc maketables*(): ptr char{.cdecl, importc: "pcre_maketables", 
                                        dynlib: pcredll.}
 proc refcount*(a2: ptr TPcre, a3: cint): cint{.cdecl, importc: "pcre_refcount", 
