@@ -1279,7 +1279,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n)
-  of nkLambda: result = semLambda(c, n)
+  of nkLambdaKinds: result = semLambda(c, n)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr: 
     result = n

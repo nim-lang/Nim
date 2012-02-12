@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+# included from cgen.nim
+
 proc lenField: PRope {.inline.} = 
   result = toRope(if gCmd != cmdCompileToCpp: "Sup.len" else: "len")
 
@@ -1723,7 +1725,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
   of nkChckRange: genRangeChck(p, e, d, "chckRange")
   of nkStringToCString: convStrToCStr(p, e, d)
   of nkCStringToString: convCStrToStr(p, e, d)
-  of nkLambda:
+  of nkLambdaKinds:
     var sym = e.sons[namePos].sym
     genProc(p.module, sym)
     if sym.loc.r == nil or sym.loc.t == nil:
