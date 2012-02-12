@@ -1,9 +1,10 @@
 addr and as asm atomic
 bind block break
 case cast const continue converter
-discard distinct div
+discard distinct div do
 elif else end enum except export
-finally for from generic
+finally for from
+generic
 if import in include is isnot iterator
 lambda let
 macro method mod

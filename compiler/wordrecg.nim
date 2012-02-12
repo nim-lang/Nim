@@ -24,15 +24,17 @@ type
     
     wAddr, wAnd, wAs, wAsm, wAtomic, 
     wBind, wBlock, wBreak, wCase, wCast, wConst, 
-    wContinue, wConverter, wDiscard, wDistinct, wDiv, wElif, wElse, wEnd, wEnum, 
-    wExcept, wExport, wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
+    wContinue, wConverter, wDiscard, wDistinct, wDiv, wDo, 
+    wElif, wElse, wEnd, wEnum, wExcept, wExport,
+    wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
     wInclude, wIs, wIsnot, wIterator, wLambda, wLet,
     wMacro, wMethod, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
     wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
     wWithout, wXor, wYield,
     
-    wColon, wColonColon, wEquals, wDot, wDotDot, wStar, wMinus, 
+    wColon, wColonColon, wEquals, wLeArraw, wRiArrow, wDot, wDotDot,
+    wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
@@ -66,8 +68,9 @@ const
     
     "addr", "and", "as", "asm", "atomic", 
     "bind", "block", "break", "case", "cast", 
-    "const", "continue", "converter", "discard", "distinct", "div", "elif", 
-    "else", "end", "enum", "except", "export", 
+    "const", "continue", "converter",
+    "discard", "distinct", "div", "do",
+    "elif", "else", "end", "enum", "except", "export", 
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "is", "isnot", "iterator",
     "lambda", "let",
@@ -76,7 +79,8 @@ const
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",
 
-    ":", "::", "=", ".", "..", "*", "-",
+    ":", "::", "=", "<-", "->", ".", "..",
+    "*", "-",
     "magic", "thread", "final", "profiler", "objchecks", 
     
     "importcpp", "importobjc",

@@ -8,11 +8,12 @@
 #
 
 # This include file implements lambda lifting for the transformator.
+# included from transf.nim
 
 const
   declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef,
      nkConverterDef}
-  procDefs = {nkLambda} + declarativeDefs
+  procDefs = nkLambdaKinds + declarativeDefs
 
 proc indirectAccess(a, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node
@@ -169,7 +170,7 @@ proc createEnvStmt(c: PTransf, varList: TCapture, env: PSym): PTransNode =
     IdNodeTablePut(c.transCon.mapping, v, fieldAccess)
   
 proc transformProcFin(c: PTransf, n: PNode, s: PSym): PTransNode =
-  if n.kind == nkLambda:
+  if n.kind in nkLambdaKinds:
     # for lambdas we transformed 'n.sons[bodyPos]', but not 'ast.n[bodyPos]'!
     s.ast.sons[bodyPos] = n.sons[bodyPos]
   else:
