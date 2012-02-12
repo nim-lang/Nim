@@ -730,7 +730,8 @@ to ``cstring`` for convenience. If a Nimrod string is passed to a C-style
 variadic proc, it is implicitely converted to ``cstring`` too:
 
 .. code-block:: nimrod
-  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+  proc printf(formatstr: cstring) {.importc: "printf", varargs, 
+                                    header: "<stdio.h>".}
   
   printf("This works %s", "as expected")
 
@@ -2054,6 +2055,7 @@ Type casts
 ~~~~~~~~~~
 Example:
 
+
 .. code-block:: nimrod
   cast[int](x)
 
@@ -2555,6 +2557,7 @@ type class           matches
 ==================   ===================================================
 ``object``           any object type
 ``tuple``            any tuple type
+
 ``enum``             any enumeration
 ``proc``             any proc type
 ``ref``              any ``ref`` type
@@ -3467,7 +3470,7 @@ A global variable can be marked with the `threadvar`:idx: pragma; it is
 a `thead-local`:idx: variable then:
 
 .. code-block:: nimrod
-  var checkpoints* {.thread.}: seq[string] = @[]
+  var checkpoints* {.threadvar.}: seq[string] = @[]
 
 
 Actor model

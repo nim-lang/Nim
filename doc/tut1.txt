@@ -831,7 +831,7 @@ terminating zero is no error and often leads to simpler code:
     ...
 
 The assignment operator for strings copies the string. You can use the ``&``
-operator to concatenate strings.
+operator to concatenate strings and ``add`` to append to a string.
 
 Strings are compared by their lexicographical order. All comparison operators
 are available. Per convention, all strings are UTF-8 strings, but this is not
