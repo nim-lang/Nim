@@ -16897,3 +16897,6 @@ proc set_has_tooltip*(widget: PWidget, b: gboolean){.cdecl, dynlib: lib,
 
 proc set_markup*(tp: PTooltip, mk: cstring){.cdecl, dynlib: lib, 
   importc: "gtk_tooltip_set_markup".}
+
+proc set_visible_window*(evBox: PEventBox, v: gboolean){.cdecl, dynlib: lib,
+  importc: "gtk_event_box_set_visible_window".}
