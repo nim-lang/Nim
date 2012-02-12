@@ -33,7 +33,7 @@ type
     wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
     wWithout, wXor, wYield,
     
-    wColon, wColonColon, wEquals, wLeArraw, wRiArrow, wDot, wDotDot,
+    wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImportCpp, wImportObjC,
@@ -79,7 +79,7 @@ const
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",
 
-    ":", "::", "=", "<-", "->", ".", "..",
+    ":", "::", "=", ".", "..",
     "*", "-",
     "magic", "thread", "final", "profiler", "objchecks", 
     
