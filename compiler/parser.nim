@@ -147,7 +147,7 @@ proc parseExpr(p: var TParser): PNode
 proc parseStmt(p: var TParser): PNode
 proc parseTypeDesc(p: var TParser): PNode
 proc parseDoBlocks(p: var TParser, call: PNode)
-proc parseParamList(p: var TParser, resTypeTok = tkColon): PNode
+proc parseParamList(p: var TParser, retColon = true): PNode
 
 proc IsLeftAssociative(tok: TToken): bool {.inline.} =
   result = tok.tokType != tkOpr or tok.ident.s[0] != '^'
@@ -601,7 +601,7 @@ proc parseTuple(p: var TParser): PNode =
   optPar(p)
   eat(p, tkBracketRi)
 
-proc parseParamList(p: var TParser, resTypeTok = tkColon): PNode = 
+proc parseParamList(p: var TParser, retColon = true): PNode = 
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, ast.emptyNode) # return type
@@ -623,7 +623,9 @@ proc parseParamList(p: var TParser, resTypeTok = tkColon): PNode =
       optInd(p, a)
     optPar(p)
     eat(p, tkParRi)
-  if p.tok.tokType == resTypeTok:
+  let b = if retColon: p.tok.tokType == tkColon
+          else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
+  if b:
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
@@ -635,7 +637,7 @@ proc optPragmas(p: var TParser): PNode =
 proc parseDoBlock(p: var TParser): PNode =
   var info = parLineInfo(p)
   getTok(p)
-  var params = parseParamList(p, tkRiArrow)
+  var params = parseParamList(p, retColon=false)
   var pragmas = optPragmas(p)
   eat(p, tkColon)
   result = newNodeI(nkDo, info)

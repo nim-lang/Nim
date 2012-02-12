@@ -50,7 +50,7 @@ type
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon,
-    tkColon, tkColonColon, tkEquals, tkLeArrow, tkRiArrow, tkDot, tkDotDot,
+    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent, tkInd, tkSad, 
     tkDed, # pseudo token types used by the source renderers:
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
@@ -78,7 +78,7 @@ const
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
-    ":", "::", "=", "<-", "->", ".", "..",
+    ":", "::", "=", ".", "..",
     "tkOpr", "tkComment", "`", "[new indentation]", 
     "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
     "tkPrefixOpr", "tkPostfixOpr"]
