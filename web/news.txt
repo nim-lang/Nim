@@ -10,6 +10,9 @@ Version 0.8.XX has been released! Get it `here <download.html>`_.
 Bugfixes
 --------
 
+- Fixed a bug where the compiler would "optimize away" valid constant parts of
+  a string concatenation.
+
 
 Library Additions
 -----------------

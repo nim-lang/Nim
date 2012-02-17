@@ -49,8 +49,6 @@ Boot options:
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
 """
 
-proc boot(args: string) # Forward declaration
-
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 proc exec(cmd: string) =
