@@ -379,15 +379,15 @@ proc getClockStr*(): string {.rtl, extern: "nt$1".} =
 
 proc `$`*(day: TWeekDay): string =
   ## stingify operator for ``TWeekDay``.
-  let lookup: array[TWeekDay, string] = ["Monday", "Tuesday", "Wednesday", "Thursday",
-      "Friday", "Saturday", "Sunday"]
+  const lookup: array[TWeekDay, string] = ["Monday", "Tuesday", "Wednesday",
+     "Thursday", "Friday", "Saturday", "Sunday"]
   return lookup[day]
 
 proc `$`*(m: TMonth): string =
   ## stingify operator for ``TMonth``.
-  let lookup: array[TMonth, string] = ["January", "February", "March", "April",
-      "May", "June", "July", "August", "September", "October", "November",
-      "December"]
+  const lookup: array[TMonth, string] = ["January", "February", "March", 
+      "April", "May", "June", "July", "August", "September", "October",
+      "November", "December"]
   return lookup[m]
 
 {.pop.}
