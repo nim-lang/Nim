@@ -588,13 +588,15 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     add(result, transform(c, n.sons[0]))
     var j = 1
     while j < sonsLen(n): 
-      var a = n.sons[j]
+      var a = transform(c, n.sons[j]).pnode
       inc(j)
       if isConstExpr(a): 
-        while (j < sonsLen(n)) and isConstExpr(n.sons[j]): 
-          a = evalOp(op.magic, n, a, n.sons[j], nil)
+        while (j < sonsLen(n)):
+          let b = transform(c, n.sons[j]).pnode
+          if not isConstExpr(b): break
+          a = evalOp(op.magic, n, a, b, nil)
           inc(j)
-      add(result, transform(c, a))
+      add(result, a.ptransnode)
     if len(result) == 2: result = result[1]
   elif n.sons[0].kind == nkSym and n.sons[0].sym.kind == skMethod: 
     # use the dispatcher for the call:

@@ -512,6 +512,10 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
 
+proc `??`* (info: TLineInfo, filename: string): bool =
+  # only for debugging purposes
+  result = filename in info.toFilename
+
 var checkPoints: seq[TLineInfo] = @[]
 
 proc addCheckpoint*(info: TLineInfo) = 

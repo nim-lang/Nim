@@ -16,7 +16,7 @@ elif defined(macosx):
     Lib = "sqlite-3.6.13.dylib"
 else: 
   const 
-    Lib = "libsqlite3.so"
+    Lib = "libsqlite3.so(|.0)"
     
 const 
   SQLITE_INTEGER* = 1
