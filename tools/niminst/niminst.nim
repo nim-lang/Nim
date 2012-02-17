@@ -14,7 +14,7 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, strutils, parseopt, parsecfg, strtabs, streams
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation
 
 const
   maxOS = 20 # max number of OSes
@@ -30,7 +30,8 @@ type
     actionNone,   # action not yet known
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
-    actionZip     # action: create zip file
+    actionZip,    # action: create zip file
+    actionDeb     # action: prepare deb package
 
   TFileCategory = enum
     fcWinBin,     # binaries for Windows
@@ -56,6 +57,7 @@ type
     vars: PStringTable
     app: TAppType
     nimrodArgs: string
+    debOpts: TDebOptions
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [
@@ -85,6 +87,11 @@ proc initConfigData(c: var TConfigData) =
   c.installScript = false
   c.uninstallScript = false
   c.vars = newStringTable(modeStyleInsensitive)
+
+  c.debOpts.buildDepends = ""
+  c.debOpts.pkgDepends = ""
+  c.debOpts.shortDesc = ""
+  c.debOpts.licenses = @[]
 
 proc firstBinPath(c: TConfigData): string =
   if c.binPaths.len > 0: result = c.binPaths[0]
@@ -121,6 +128,7 @@ Command:
   csource             build C source code for source based installations
   zip                 build the ZIP file
   inno                build the Inno Setup installer
+  deb                 create files for debhelper
 Options:
   -o, --output:dir    set the output directory
   --var:name=value    set the value of a variable
@@ -145,6 +153,7 @@ proc parseCmdLine(c: var TConfigData) =
           of "csource": incl(c.actions, actionCSource)
           of "zip": incl(c.actions, actionZip)
           of "inno": incl(c.actions, actionInno)
+          of "deb": incl(c.actions, actionDeb)
           else: quit(Usage)
       else:
         c.infile = addFileExt(key.string, "ini")
@@ -266,6 +275,36 @@ proc parseIniFile(c: var TConfigData) =
         of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
         of "linker": pathFlags(p, k.key, v, c.linker)
+        of "deb":
+          case normalize(k.key)
+          of "builddepends":
+            c.debOpts.buildDepends = v
+          of "packagedepends", "pkgdepends":
+            c.debOpts.pkgDepends = v
+          of "shortdesc":
+            c.debOpts.shortDesc = v
+          of "licenses":
+            # file,license;file,license;
+            var i = 0
+            var file = ""
+            var license = ""
+            var afterComma = false
+            while i < v.len():
+              case v[i]
+              of ',':
+                afterComma = true
+              of ';':
+                if file == "" or license == "":
+                  quit(errorStr(p, "Invalid `licenses` key."))
+                c.debOpts.licenses.add((file, license))
+                afterComma = false
+                file = ""
+                license = ""
+              else:
+                if afterComma: license.add(v[i])
+                else: file.add(v[i])
+              inc(i)
+          else: quit(errorStr(p, "unknown variable: " & k.key))
         else: quit(errorStr(p, "invalid section: " & section))
 
       of cfgOption: quit(errorStr(p, "syntax error"))
@@ -415,6 +454,52 @@ when haveZipLib:
     else:
       quit("Cannot open for writing: " & n)
 
+# -- prepare build files for .deb creation
+
+proc debDist(c: var TConfigData) =
+  if not existsFile("build.sh"): quit("No build.sh found.")
+  if not existsFile("install.sh"): quit("No install.sh found.")
+  
+  if c.debOpts.shortDesc == "": quit("shortDesc must be set in the .ini file.")
+  if c.debOpts.licenses.len == 0:
+    echo("[Warning] No licenses specified for .deb creation.")
+  
+  # -- Copy files into /tmp/..
+  echo("Copying source to tmp/niminst/deb/")
+  var currentSource = getCurrentDir()
+  var workingDir = getTempDir() / "niminst" / "deb"
+  var upstreamSource = (c.name.toLower() & "-" & c.version)
+  
+  createDir(workingDir / upstreamSource)
+  
+  template copyNimDist(f, dest: string): stmt =
+    createDir((workingDir / upstreamSource / dest).splitFile.dir)
+    copyFile(currentSource / f, workingDir / upstreamSource / dest)
+  
+  # Don't copy all files, only the ones specified in the config:
+  copyNimDist(buildShFile, buildShFile)
+  copyNimDist(installShFile, installShFile)
+  createDir(workingDir / upstreamSource / "build")
+  for f in walkFiles(c.libpath / "lib/*.h"):
+    copyNimDist(f, "build" / extractFilename(f))
+  for osA in 1..c.oses.len:
+    for cpuA in 1..c.cpus.len:
+      var dir = buildDir(osA, cpuA)
+      for k, f in walkDir(dir):
+        if k == pcFile: copyNimDist(f, dir / extractFilename(f))
+  for cat in items({fcConfig..fcOther, fcUnix}):
+    for f in items(c.cat[cat]): copyNimDist(f, f)
+
+  # -- Create necessary build files for debhelper.
+
+  let mtnName = c.vars["mtnname"]
+  let mtnEmail = c.vars["mtnemail"]
+
+  prepDeb(c.name, c.version, mtnName, mtnEmail, c.debOpts.shortDesc,
+          c.description, c.debOpts.licenses, c.cat[fcUnixBin], c.cat[fcConfig],
+          c.cat[fcDoc], c.cat[fcLib], c.debOpts.buildDepends,
+          c.debOpts.pkgDepends)
+
 # ------------------- main ----------------------------------------------------
 
 var c: TConfigData
@@ -430,3 +515,6 @@ if actionZip in c.actions:
     zipdist(c)
   else:
     quit("libzip is not installed")
+if actionDeb in c.actions:
+  debDist(c)
+
