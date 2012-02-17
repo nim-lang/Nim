@@ -156,11 +156,11 @@ proc blockLeaveActions(p: BProc, howMany: int) =
   for i in countdown(p.popCurrExc-1, 0):
     appcg(p, cpsStmts, "#popCurrentException();$n", [])
 
-proc genReturnStmt(p: BProc, t: PNode) = 
+proc genReturnStmt(p: BProc, t: PNode) =
   p.beforeRetNeeded = true
-  blockLeaveActions(p, min(1, p.nestedTryStmts.len))
   genLineDir(p, t)
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
+  blockLeaveActions(p, min(1, p.nestedTryStmts.len))
   appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
   
 proc genWhileStmt(p: BProc, t: PNode) = 
@@ -529,7 +529,7 @@ proc genTryStmt(p: BProc, t: PNode) =
   discard cgsym(p.module, "E_Base")
   appcg(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
   appcg(p, cpsStmts, "#pushSafePoint(&$1);$n" &
-        "$1.status = setjmp($1.context);$n", [safePoint])
+                     "$1.status = setjmp($1.context);$n", [safePoint])
   if optStackTrace in p.Options: 
     appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
@@ -544,10 +544,11 @@ proc genTryStmt(p: BProc, t: PNode) =
     if blen == 1: 
       # general except section:
       if i > 1: appf(p.s[cpsStmts], "else {$n")
+      appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
       inc p.popCurrExc
       genStmts(p, t.sons[i].sons[0])
       dec p.popCurrExc
-      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();$n", [safePoint])
+      appcg(p, cpsStmts, "#popCurrentException();$n", [])
       if i > 1: appf(p.s[cpsStmts], "}$n")
     else:
       inc p.popCurrExc
@@ -560,11 +561,11 @@ proc genTryStmt(p: BProc, t: PNode) =
               [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: app(p.s[cpsStmts], "else ")
       appf(p.s[cpsStmts], "if ($1) {$n", [orExpr])
+      appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
       genStmts(p, t.sons[i].sons[blen-1])
       dec p.popCurrExc
       # code to clear the exception:
-      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();}$n",
-           [safePoint])
+      appcg(p, cpsStmts, "#popCurrentException();}$n", [])
     inc(i)
   appf(p.s[cpsStmts], "}$n") # end of if statement
   if i < length and t.sons[i].kind == nkFinally: 
