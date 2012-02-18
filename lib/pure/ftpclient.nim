@@ -196,9 +196,9 @@ proc getLines(ftp: var TFTPClient, async: bool = false): bool =
   ## It doesn't if `async` is true, because it doesn't check for 226 then.
   if ftp.dsockStatus == SockConnected:
     var r = TaintedString""
-    if ftp.dsock.recvLine(r):
+    if ftp.dsock.recvAsync(r):
       if r.string != "":
-        ftp.job.lines.add(r.string & "\n")
+        ftp.job.lines.add(r.string)
       else:
         ftp.dsockStatus = SockClosed
   
