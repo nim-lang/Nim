@@ -46,6 +46,7 @@ type
   TAsyncIRC* = object of TIRC
     userArg: PObject
     handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent, userArg: PObject)
+    lineBuffer: TaintedString
 
   TIRCMType* = enum
     MUnknown,
@@ -281,7 +282,7 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
   var ret = socks.select(timeout)
   if socks.len() == 0 and ret != 0:
     if irc.sock.recvLine(line):
-      ev = irc.processLine(line)
+      ev = irc.processLine(line.string)
       result = true
   
   if processOther(irc, ev): result = true
@@ -320,11 +321,22 @@ proc handleConnect(h: PObject) =
 
 proc handleRead(h: PObject) =
   var irc = PAsyncIRC(h)
-  var line = ""
-  if irc.sock.recvLine(line):
-    var ev = irc[].processLine(line)
+  var line = "".TaintedString
+  var ret = irc.sock.recvLineAsync(line)
+  case ret
+  of RecvFullLine:
+    var ev = irc[].processLine(irc.lineBuffer.string & line.string)
     irc.handleEvent(irc[], ev, irc.userArg)
-
+    irc.lineBuffer = "".TaintedString
+  of RecvPartialLine:
+    if line.string != "":
+      string(irc.lineBuffer).add(line.string)
+  of RecvDisconnected:
+    var ev: TIRCEvent
+    ev.typ = EvDisconnected
+    irc.handleEvent(irc[], ev, irc.userArg)
+  of RecvFail: nil
+  
 proc handleTask(h: PObject) =
   var irc = PAsyncIRC(h)
   var ev: TIRCEvent

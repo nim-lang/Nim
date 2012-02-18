@@ -56,6 +56,9 @@ type
     length*: int
     addrList*: seq[string]
 
+  TRecvLineResult* = enum ## result for recvLineAsync
+    RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
+
 const
   InvalidSocket* = TSocket(-1'i32) ## invalid socket number
 
@@ -546,8 +549,7 @@ proc select*(readfds: var seq[TSocket], timeout = 500): int =
 
 proc recvLine*(socket: TSocket, line: var TaintedString): bool =
   ## returns false if no further data is available. `Line` must be initialized
-  ## and not nil! This does not throw an EOS exception, therefore
-  ## it can be used in both blocking and non-blocking sockets.
+  ## and not nil! This does not throw an EOS exception.
   ## If ``socket`` is disconnected, ``true`` will be returned and line will be
   ## set to ``""``.
   setLen(line.string, 0)
@@ -563,6 +565,31 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool =
       elif n <= 0: return false
       return true
     elif c == '\L': return true
+    add(line.string, c)
+
+proc recvLineAsync*(socket: TSocket, line: var TaintedString): TRecvLineResult =
+  ## similar to ``recvLine`` but for non-blocking sockets.
+  ## The values of the returned enum should be pretty self explanatory:
+  ## If a full line has been retrieved; ``RecvFullLine`` is returned.
+  ## If some data has been retrieved; ``RecvPartialLine`` is returned.
+  ## If the socket has been disconnected; ``RecvDisconncted`` is returned.
+  ## If call to ``recv`` failed; ``RecvFail`` is returned.
+  setLen(line.string, 0)
+  while true:
+    var c: char
+    var n = recv(cint(socket), addr(c), 1, 0'i32)
+    if n < 0: 
+      return (if line.len == 0: RecvFail else: RecvPartialLine)
+    elif n == 0: 
+      return (if line.len == 0: RecvDisconnected else: RecvPartialLine)
+    if c == '\r':
+      n = recv(cint(socket), addr(c), 1, MSG_PEEK)
+      if n > 0 and c == '\L':
+        discard recv(cint(socket), addr(c), 1, 0'i32)
+      elif n <= 0: 
+        return (if line.len == 0: RecvFail else: RecvPartialLine)
+      return RecvFullLine
+    elif c == '\L': return RecvFullLine
     add(line.string, c)
 
 proc recv*(socket: TSocket, data: pointer, size: int): int =
@@ -663,6 +690,11 @@ proc sendAsync*(socket: TSocket, data: string): bool =
       if errno == EAGAIN or errno == EWOULDBLOCK:
         return false
       else: OSError()
+
+proc trySend*(socket: TSocket, data: string): bool =
+  ## safe alternative to ``send``. Does not raise an EOS when an error occurs,
+  ## and instead returns ``false`` on failure.
+  result = send(socket, cstring(data), data.len) == data.len
 
 when defined(Windows):
   const 

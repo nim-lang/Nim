@@ -61,6 +61,8 @@ type
 
     handleAccept*: proc (s:  PAsyncSocket, arg: PObject)
 
+    lineBuffer: TaintedString ## Temporary storage for ``recvLine``
+
   TInfo* = enum
     SockIdle, SockConnecting, SockConnected, SockListening, SockClosed
   
@@ -87,6 +89,8 @@ proc newAsyncSocket(userArg: PObject = nil): PAsyncSocket =
   result.handleRead = (proc (s: PAsyncSocket, arg: PObject) = nil)
   result.handleConnect = (proc (s: PAsyncSocket, arg: PObject) = nil)
   result.handleAccept = (proc (s: PAsyncSocket, arg: PObject) = nil)
+
+  result.lineBuffer = "".TaintedString
 
 proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
@@ -192,6 +196,31 @@ proc isListening*(s: PAsyncSocket): bool =
 proc isConnecting*(s: PAsyncSocket): bool =
   ## Determines whether ``s`` is connecting.  
   return s.info == SockConnecting
+
+proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
+  ## Behaves similar to ``sockets.recvLine``, however it handles non-blocking
+  ## sockets properly. This function guarantees that ``line`` is a full line,
+  ## if this function can only retrieve some data; it will save this data and
+  ## add it to the result when a full line is retrieved.
+  setLen(line.string, 0)
+  var dataReceived = "".TaintedString
+  var ret = s.socket.recvLineAsync(dataReceived)
+  case ret
+  of RecvFullLine:
+    if s.lineBuffer.len > 0:
+      string(line).add(s.lineBuffer.string)
+      setLen(s.lineBuffer.string, 0)
+    
+    string(line).add(dataReceived.string)
+    result = true
+  of RecvPartialLine:
+    string(s.lineBuffer).add(dataReceived.string)
+    result = false
+  of RecvDisconnected:
+    result = true
+  of RecvFail:
+    result = false
+
 
 proc poll*(d: PDispatcher, timeout: int = 500): bool =
   ## This function checks for events on all the sockets in the `PDispatcher`.
