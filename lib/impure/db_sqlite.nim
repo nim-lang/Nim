@@ -85,7 +85,8 @@ proc setRow(stmt: PStmt, r: var TRow, cols: int) =
   for col in 0..cols-1:
     setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
-    add(r[col], column_text(stmt, col))
+    let x = column_text(stmt, col)
+    if not isNil(x): add(r[col], x)
   
 iterator FastRows*(db: TDbConn, query: TSqlQuery,
                    args: openarray[string]): TRow =

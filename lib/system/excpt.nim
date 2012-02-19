@@ -292,6 +292,11 @@ proc registerSignalHandler() =
 when not defined(noSignalHandler):
   registerSignalHandler() # call it in initialization section
 
+proc setControlCHook(hook: proc () {.noconv.}) =
+  # ugly cast, but should work on all architectures:
+  type TSignalHandler = proc (sig: cint) {.noconv.}
+  c_signal(SIGINT, cast[TSignalHandler](hook))
+
 proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn, noinline.} =
   raise newException(EOutOfRange, "value " & $val & " out of range")
 
