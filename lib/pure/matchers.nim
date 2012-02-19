@@ -15,7 +15,7 @@
 
 include "system/inclrtl"
 
-import strutils
+import parseutils, strutils
 
 proc validEmailAddress*(s: string): bool {.noSideEffect,
   rtl, extern: "nsuValidEmailAddress".} = 
@@ -52,7 +52,7 @@ proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
   ## won't be overwritten.
   var x = value
   try:
-    x = parseInt(s)
+    discard parseutils.parseInt(s, x, 0)
   except EOverflow:
     nil
   if x in validRange: value = x
