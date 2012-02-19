@@ -196,7 +196,7 @@ proc parseBiggestInt*(s: string, number: var biggestInt, start = 0): int {.
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `EOverflow` is raised if an overflow occurs.
-  var res: biggestInt = number
+  var res: biggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception:
   result = rawParseInt(s, res, start)
@@ -281,6 +281,7 @@ proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int {.
       while s[i] == '_': inc(i)
   # Calculate Exponent
   var hd = 1.0
+  # XXX: this loop is horrible for large exponents:
   for j in 1..exponent: hd = hd * 10.0
   if esign > 0.0: number = number * hd
   else:           number = number / hd

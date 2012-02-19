@@ -1871,6 +1871,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   else:
     initStackBottom()
     initGC()
+
+  proc setControlCHook*(hook: proc () {.noconv.})
+    ## allows you to override the behaviour of your application when CTRL+C
+    ## is pressed. Only one such hook is supported.
+    
+  proc writeStackTrace*()
+    ## writes the current stack trace to ``stderr``. This is only works
+    ## for debug builds.
     
   {.push stack_trace: off.}
   include "system/excpt"
