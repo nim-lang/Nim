@@ -44,8 +44,21 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
      "aero", "jobs", "museum": return true
   return false
 
+proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
+  noSideEffect, rtl, extern: "nmatchParseInt".} =
+  ## parses `s` into an integer in the range `validRange`. If successful,
+  ## `value` is modified to contain the result. Otherwise no exception is
+  ## raised and `value` is not touched; this way a reasonable default value
+  ## won't be overwritten.
+  var x = value
+  try:
+    x = parseInt(s)
+  except EOverflow:
+    nil
+  if x in validRange: value = x
+
 when isMainModule:
-  assert "wuseldusel@codehome.com".validEmailAddress
+  doAssert "wuseldusel@codehome.com".validEmailAddress
   
 {.pop.}
 

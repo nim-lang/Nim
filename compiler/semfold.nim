@@ -372,6 +372,14 @@ proc foldFieldAccess(m: PSym, n: PNode): PNode =
       return
   localError(n.info, errFieldXNotFound, field.name.s)
   
+proc foldConStrStr(m: PSym, n: PNode): PNode = 
+  result = newNodeIT(nkStrLit, n.info, n.typ)
+  result.strVal = ""
+  for i in countup(1, sonsLen(n) - 1): 
+    let a = getConstExpr(m, n.sons[i])
+    if a == nil: return nil
+    result.strVal.add(getStrOrChar(a))
+  
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -444,6 +452,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
+      of mConStrStr:
+        result = foldConStrStr(m, n)
       else:
         result = magicCall(m, n)
     except EOverflow: 
