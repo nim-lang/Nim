@@ -119,6 +119,13 @@ proc part*(irc: var TIRC, channel, message: string) =
   ## Leaves ``channel`` with ``message``.
   irc.send("PART " & channel & " :" & message)
 
+proc close*(irc: var TIRC) =
+  ## Closes connection to an IRC server.
+  ##
+  ## **Warning:** This procedure does not send a ``QUIT`` message to the server.
+  irc.status = SockClosed
+  irc.sock.close()
+
 proc isNumber(s: string): bool =
   ## Checks if `s` contains only numbers.
   var i = 0
@@ -224,6 +231,7 @@ proc irc*(address: string, port: TPort = 6667.TPort,
 
 proc processLine(irc: var TIRC, line: string): TIRCEvent =
   if line.len == 0:
+    irc.close()
     result.typ = EvDisconnected
   else:
     result = parseMessage(line)
@@ -232,6 +240,7 @@ proc processLine(irc: var TIRC, line: string): TIRCEvent =
     if result.origin == irc.nick: result.origin = result.nick
 
     if result.cmd == MError:
+      irc.close()
       result.typ = EvDisconnected
       return
 
@@ -252,6 +261,7 @@ proc processOther(irc: var TIRC, ev: var TIRCEvent): bool =
     irc.send("PING :" & formatFloat(irc.lastPing), true)
 
   if epochTime() - irc.lastPong >= 120.0 and irc.lastPong != -1.0:
+    irc.close()
     ev.typ = EvDisconnected # TODO: EvTimeout?
     return true
   
@@ -276,7 +286,9 @@ proc poll*(irc: var TIRC, ev: var TIRCEvent,
   ## not need to be running many time critical tasks in the background. If you
   ## require this, use the asyncio implementation.
   
-  if not (irc.status == SockConnected): ev.typ = EvDisconnected
+  if not (irc.status == SockConnected):
+    # Do not close the socket here, it is already closed!
+    ev.typ = EvDisconnected
   var line = TaintedString""
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
@@ -333,6 +345,7 @@ proc handleRead(h: PObject) =
       string(irc.lineBuffer).add(line.string)
   of RecvDisconnected:
     var ev: TIRCEvent
+    irc[].close()
     ev.typ = EvDisconnected
     irc.handleEvent(irc[], ev, irc.userArg)
   of RecvFail: nil
