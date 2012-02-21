@@ -881,3 +881,57 @@ proc CommandRst2TeX =
   splitter = "\\-"
   CommandRstAux(gProjectFull, TexExt)
 
+# ---------- forum ---------------------------------------------------------
+
+proc setupConfig*() =
+  setConfigVar("split.item.toc", "20")
+  setConfigVar("doc.section", """
+<div class="section" id="$sectionID">
+<h1><a class="toc-backref" href="#$sectionTitleID">$sectionTitle</a></h1>
+<dl class="item">
+$content
+</dl></div>
+""")
+  setConfigVar("doc.section.toc", """
+<li>
+  <a class="reference" href="#$sectionID" id="$sectionTitleID">$sectionTitle</a>
+  <ul class="simple">
+    $content
+  </ul>
+</li>
+""")
+  setConfigVar("doc.item", """
+<dt id="$itemID"><pre>$header</pre></dt>
+<dd>
+$desc
+</dd>
+""")
+  setConfigVar("doc.item.toc", """
+  <li><a class="reference" href="#$itemID">$name</a></li>
+""")
+  setConfigVar("doc.toc", """
+<div class="navigation" id="navigation">
+<ul class="simple">
+$content
+</ul>
+</div>""")
+  setConfigVar("doc.body_toc", """
+$tableofcontents
+<div class="content" id="content">
+$moduledesc
+$content
+</div>
+""")
+  setConfigVar("doc.body_no_toc", "$moduledesc $content")
+  setConfigVar("doc.file", "$content")
+
+proc rstToHtml*(s: string): string =
+  ## exported for *nimforum*.
+  const filen = "input"
+  var d = newDocumentor(filen)
+  var dummyHasToc = false
+  var rst = rstParse(s, false, filen, 0, 1, dummyHasToc)
+  d.modDesc = renderRstToOut(d, rst)
+  let res = genOutFile(d)
+  result = res.ropeToStr
+

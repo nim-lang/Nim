@@ -15,7 +15,13 @@
 const
   rodfilesDir = "tests/rodfiles"
 
-proc delNimCache() = removeDir(rodfilesDir / "nimcache")
+proc delNimCache() = 
+  let dir = rodfilesDir / "nimcache"
+  try:
+    removeDir(dir)
+  except EOS:
+    echo "[Warning] could not delete: ", dir
+    
 proc plusCache(options: string): string = return options & " --symbolFiles:on"
 
 proc runRodFiles(r: var TResults, options: string) =
