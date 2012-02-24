@@ -174,9 +174,9 @@ The `incompleteStruct`:idx: pragma tells the compiler to not use the
 underlying C ``struct`` in a ``sizeof`` expression:
 
 .. code-block:: Nimrod
-type
-  TDIR* {.importc: "DIR", header: "<dirent.h>", 
-          final, pure, incompleteStruct.} = object
+  type
+    TDIR* {.importc: "DIR", header: "<dirent.h>", 
+            final, pure, incompleteStruct.} = object
 
 
 Compile pragma

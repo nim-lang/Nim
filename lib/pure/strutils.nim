@@ -542,19 +542,18 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
     if c notin theSet: return false
   return true
 
-# 012345
-#    345
-
-when false:
-  proc abbrev(s: string, possibilities: openarray[string]): int =
-    ## returns the index of the first item in `possibilities` if not
-    ## ambiguous; -1 if no item has been found; -2 if multiple items
-    ## match.
-    result = -1 # none found
-    for i in 0..possibilities.len-1:
-      if possibilities[i].startsWith(s):
-        if result >= 0: return -2 # ambiguous
-        result = i
+proc abbrev*(s: string, possibilities: openarray[string]): int =
+  ## returns the index of the first item in `possibilities` if not
+  ## ambiguous; -1 if no item has been found; -2 if multiple items
+  ## match.
+  result = -1 # none found
+  for i in 0..possibilities.len-1:
+    if possibilities[i].startsWith(s):
+      if possibilities[i] == s:
+        # special case: exact match shouldn't be ambiguous
+        return i
+      if result >= 0: return -2 # ambiguous
+      result = i
 
 # ---------------------------------------------------------------------------
 
