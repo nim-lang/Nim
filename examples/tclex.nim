@@ -19,7 +19,7 @@ var interp = CreateInterp()
 if interp == nil: quit("cannot create TCL interpreter")
 if Init(interp) != TCL_OK: 
   quit("cannot init interpreter")
-if Eval(interp, myScript) != TCL_OK: 
+if tcl.Eval(interp, myScript) != TCL_OK: 
   quit("cannot execute script.tcl")
 
 
