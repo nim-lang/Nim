@@ -208,7 +208,18 @@ proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandToAst".}
   ##
   ##   macro FooMacro() = 
   ##     var ast = getAst(BarTemplate())
-  
+
+template emit*(s: expr): stmt =
+  ## accepts a single sting argument and treats it as nimrod code
+  ## that should be inserted verbatim in the program
+  ## Example:
+  ## 
+  ##   emit("echo " & '"' & "hello world".toUpper & '"')
+  ##
+  block:
+    const evaluated = s
+    eval: result = evaluated.parseStmt
+
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
