@@ -289,10 +289,10 @@ proc tokInfo(p: TRstParser, tok: TToken): TLineInfo =
   result = newLineInfo(p.filename, p.line + tok.line, p.col + tok.col)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) = 
-  GenericMessage(tokInfo(p, p.tok[p.idx]), msgKind, arg)
+  GlobalError(tokInfo(p, p.tok[p.idx]), msgKind, arg)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind) = 
-  GenericMessage(tokInfo(p, p.tok[p.idx]), msgKind, p.tok[p.idx].symbol)
+  GlobalError(tokInfo(p, p.tok[p.idx]), msgKind, p.tok[p.idx].symbol)
 
 proc currInd(p: TRstParser): int = 
   result = p.indentStack[high(p.indentStack)]
