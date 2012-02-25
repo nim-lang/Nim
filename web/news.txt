@@ -19,15 +19,13 @@ Library Additions
 
 - Added ``system.shallow`` that can be used to speed up string and sequence
   assignments.
-
 - Added ``system.static`` that can force compile-time evaluation of certain
-  expressions
-
+  expressions.
 - Added ``system.eval`` that can execute an anonymous block of code at
-  compile time as if was a macro
-
+  compile time as if was a macro.
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
-  code during compilation
+  code during compilation.
+
 
 2012-02-09 Version 0.8.14 released
 ==================================

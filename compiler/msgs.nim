@@ -447,8 +447,8 @@ proc newLineInfo*(filename: string, line, col: int): TLineInfo {.inline.} =
 fileInfos.add(newFileInfo("", "command line"))
 var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
 
-proc raiseRecoverableError*() {.noinline, noreturn.} =
-  raise newException(ERecoverableError, "")
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+  raise newException(ERecoverableError, msg)
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)}
@@ -560,7 +560,7 @@ proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc handleError(msg: TMsgKind, eh: TErrorHandling) = 
+proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) = 
   if msg == errInternal: 
     assert(false)             # we want a stack trace here
   if msg >= fatalMin and msg <= fatalMax: 
@@ -574,7 +574,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling) =
       if gVerbosity >= 3: assert(false)
       quit(1)                 # one error stops the compiler
     elif eh == doRaise:
-      raiseRecoverableError()
+      raiseRecoverableError(s)
   
 proc `==`(a, b: TLineInfo): bool = 
   result = a.line == b.line and a.fileIndex == b.fileIndex
@@ -606,8 +606,9 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
     if not (msg in gNotes): return 
     frmt = rawHintFormat
     inc(gHintCounter)
-  MsgWriteln(`%`(frmt, `%`(msgKindToString(msg), args)))
-  handleError(msg, doAbort)
+  let s = `%`(frmt, `%`(msgKindToString(msg), args))
+  MsgWriteln(s)
+  handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
   rawMessage(msg, [arg])
@@ -636,10 +637,11 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = posHintFormat
     inc(gHintCounter)
+  let s = frmt % [toFilename(info), coordToStr(info.line),
+                  coordToStr(info.col), getMessageStr(msg, arg)]
   if not ignoreMsg:
-    MsgWriteln(frmt % [toFilename(info), coordToStr(info.line),
-                       coordToStr(info.col), getMessageStr(msg, arg)])
-  handleError(msg, eh)
+    MsgWriteln(s)
+  handleError(msg, eh, s)
   
 proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doAbort)
@@ -652,11 +654,6 @@ proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
 
 proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
-
-proc GenericMessage*(info: TLineInfo, msg: TMsgKind, arg = "") =
-  ## does the right thing for old code that is written with "abort on first
-  ## error" in mind.
-  liMessage(info, msg, arg, doAbort)
 
 proc InternalError*(info: TLineInfo, errMsg: string) = 
   writeContext(info)

@@ -26,7 +26,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
-    raiseRecoverableError()
+    raiseRecoverableError("")
   if result.typ != nil: 
     if result.typ.kind == tyVar: result = newDeref(result)
   else:
@@ -37,7 +37,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
-    raiseRecoverableError()
+    raiseRecoverableError("")
   if result.typ == nil:
     GlobalError(n.info, errExprXHasNoType, 
                 renderTree(result, {renderNoComments}))

@@ -884,6 +884,7 @@ proc CommandRst2TeX =
 # ---------- forum ---------------------------------------------------------
 
 proc setupConfig*() =
+  msgs.gErrorMax = 1000_000
   setConfigVar("split.item.toc", "20")
   setConfigVar("doc.section", """
 <div class="section" id="$sectionID">
