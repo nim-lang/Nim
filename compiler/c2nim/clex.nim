@@ -130,11 +130,11 @@ proc getLineInfo*(L: TLexer): TLineInfo =
   result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
 
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") = 
-  msgs.GenericMessage(getLineInfo(L), msg, arg)
+  msgs.GlobalError(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
   var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
-  msgs.GenericMessage(info, msg, arg)
+  msgs.GlobalError(info, msg, arg)
 
 proc TokKindToStr*(k: TTokKind): string =
   case k
