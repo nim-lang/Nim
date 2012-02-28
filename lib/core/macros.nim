@@ -210,7 +210,7 @@ proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandToAst".}
   ##     var ast = getAst(BarTemplate())
 
 template emit*(s: expr): stmt =
-  ## accepts a single sting argument and treats it as nimrod code
+  ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program
   ## Example:
   ## 
