@@ -8,15 +8,43 @@ SET LINK_FLAGS=?{c.linker.flags}
 
 REM call the compiler:
 
-#  var linkCmd = ""
-#  for ff in items(c.cfiles[1][1]):
-#    let f = ff.replace('/', '\\')
+IF EXIST %SystemRoot%\SysWOW64 GOTO :Win64
+
+ECHO Building for Win32
+
+#  block win32:
+#    var linkCmd = ""
+#    for ff in items(c.cfiles[1][1]):
+#      let f = ff.replace('/', '\\')
 ECHO %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
 %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
-#    linkCmd.add(" " & changeFileExt(f, "o"))
-#  end for
+#      linkCmd.add(" " & changeFileExt(f, "o"))
+#    end for
 
 ECHO %LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
 %LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
+
+#  end block
+
+GOTO :end
+
+:Win64
+ECHO Building for Win64
+
+#  block win64:
+#    var linkCmd = ""
+#    for ff in items(c.cfiles[1][2]):
+#      let f = ff.replace('/', '\\')
+ECHO %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
+%CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
+#      linkCmd.add(" " & changeFileExt(f, "o"))
+#    end for
+
+ECHO %LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
+%LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
+
+#  end block
+
+:end
 
 ECHO SUCCESS
