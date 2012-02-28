@@ -1,3 +1,12 @@
+#
+#
+#        The Nimrod Installation Generator
+#        (c) Copyright 2012 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import osproc, times, os, strutils
 
 # http://www.debian.org/doc/manuals/maint-guide/
@@ -13,8 +22,9 @@ type
     buildDepends*, pkgDepends*, shortDesc*: string
     licenses*: seq[tuple[files, license: string]]
 
-template addN(r: string): expr =
-  result.add(r & "\n")
+template addN(r: string) =
+  result.add(r)
+  result.add("\n")
 
 proc createControl(pkgName, maintainer, shortDesc, desc: string,
                    buildDepends, pkgDepends: string = ""): string =
@@ -132,9 +142,9 @@ proc assertSuccess(exitCode: int) =
   doAssert(exitCode == QuitSuccess)
 
 proc prepDeb*(packName, version, mtnName, mtnEmail, shortDesc, desc: string,
-  licenses: seq[tuple[files, license: string]], binaries,
-  config, docs, lib: seq[string],
-  buildDepends, pkgDepends = "") =
+              licenses: seq[tuple[files, license: string]], binaries,
+              config, docs, lib: seq[string],
+              buildDepends, pkgDepends = "") =
   ## binaries/config/docs/lib: files relative to nimrod's root, that need to
   ##   be installed.
   
@@ -222,6 +232,4 @@ when isMainModule:
     @[("bin/nimrod", "gpl2"), ("lib/*", "lgpl")], 
     @["bin/nimrod"], @["config/*"], @["doc/*"], @["lib/*"],
     "gcc (>= 4:4.3.2)", "gcc (>= 4:4.3.2)")
- 
-  
-  
+

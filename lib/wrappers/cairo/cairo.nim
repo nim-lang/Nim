@@ -53,7 +53,7 @@ when defined(windows):
 elif defined(macosx):
   const LIB_CAIRO* = "libcairo.dylib"
 else: 
-  const LIB_CAIRO* = "libcairo.so"
+  const LIB_CAIRO* = "libcairo.so(|.2)"
 
 type 
   PByte = cstring
