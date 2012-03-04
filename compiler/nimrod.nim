@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) and defined(windows): 
-  {.link: "icons/nimrod.res".}
+when defined(gcc) and defined(windows):
+  when defined(x86):
+    {.link: "icons/nimrod.res".}
+  else:
+    {.link: "icons/nimrod_icon.o".}
 
 import 
   times, commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
@@ -96,7 +99,7 @@ proc HandleCmdLine() =
                    formatSize(getTotalMem())])
       if optRun in gGlobalOptions:
         var ex = quoteIfContainsWhite(
-            changeFileExt(gProjectFull, "").prependCurDir)
+            changeFileExt(gProjectFull, exeExt).prependCurDir)
         execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()

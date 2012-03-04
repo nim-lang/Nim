@@ -56,8 +56,8 @@ Currently, the following C compilers are supported under Windows:
     the win32api header files and import libraries are essential.)
 - | Gnu C Compiler (the mingw version; the cygwin version has not been tested!)
   | http://www.mingw.org/download.shtml
-- | LLVM with GNU C/C++ frontend
-  | http://llvm.org/releases/download.html#2.2
+- | LLVM with Clang or GNU C/C++ frontend
+  | http://llvm.org/releases/download.html
 - | Digital Mars C++
   | http://www.digitalmars.com/download/freecompiler.html
 
@@ -91,6 +91,10 @@ On Windows
 * ``build.bat``
 * ``bin\nimrod c koch``
 * ``koch boot -d:release``
+
+If you want a 64 bit build, make sure that you have a GCC built for Win64 and
+execute ``build64.bat`` instead of ``build.bat``.
+
 
 On UNIX
 ~~~~~~~

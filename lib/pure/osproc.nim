@@ -343,8 +343,18 @@ when defined(Windows) and not defined(useNimRtl):
     if len(workingDir) > 0: wd = workingDir
     if env != nil: e = buildEnv(env)
     if poEchoCmd in options: echo($cmdl)
-    success = winlean.CreateProcess(nil,
-      cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
+    when useWinUnicode:
+      var tmp = allocWideCString(cmdl)
+      var ee = allocWideCString(e)
+      var wwd = allocWideCString(wd)
+      success = winlean.CreateProcessW(nil,
+        tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS, ee, wwd, SI, ProcInfo)
+      if tmp != nil: dealloc tmp
+      if ee != nil: dealloc ee
+      if wwd != nil: dealloc wwd
+    else:
+      success = winlean.CreateProcessA(nil,
+        cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
 
     if poParentStreams notin options:
       FileClose(si.hStdInput)
@@ -417,8 +427,15 @@ when defined(Windows) and not defined(useNimRtl):
     SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
     SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
     SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
-    if winlean.CreateProcess(nil, command, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo) == 0:
+    when useWinUnicode:
+      var c = allocWideCString(command)
+      var res = winlean.CreateProcessW(nil, c, nil, nil, 0,
+        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
+      dealloc c
+    else:
+      var res = winlean.CreateProcessA(nil, command, nil, nil, 0,
+        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
+    if res == 0:
       OSError()
     else:
       Process = ProcInfo.hProcess

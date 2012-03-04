@@ -27,6 +27,20 @@ Library Additions
   code during compilation.
 
 
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- On Windows filenames and paths are supposed to be in UTF-8. 
+  The ``system``, ``os``, ``osproc`` and ``memfiles`` modules use the wide
+  string versions of the WinAPI. Use the ``-d:useWinAnsi`` switch to revert
+  back to the old behaviour which uses the Ansi string versions.
+  
+Compiler Additions
+------------------
+
+- Win64 is now an officially supported target.
+
+
 2012-02-09 Version 0.8.14 released
 ==================================
 

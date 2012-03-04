@@ -34,9 +34,6 @@ proc ftell(f: TFile): int {.importc: "ftell", noDecl.}
 proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
   importc, nodecl.}
 
-proc freopen(path, mode: cstring, stream: TFile): TFile {.importc: "freopen",
-  nodecl.}
-
 proc write(f: TFile, c: cstring) = fputs(c, f)
 
 var
@@ -161,7 +158,33 @@ proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
 proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 
 # interface to the C procs:
-proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}
+
+when defined(windows) and not defined(useWinAnsi):
+  include "system/widestrs"
+  
+  proc wfopen(filename, mode: widecstring): pointer {.
+    importc: "_wfopen", nodecl.}
+  proc wfreopen(filename, mode: widecstring, stream: TFile): TFile {.
+    importc: "_wfreopen", nodecl.}
+
+  proc fopen(filename, mode: CString): pointer =
+    var f = allocWideCString(filename)
+    var m = allocWideCString(mode)
+    result = wfopen(f, m)
+    dealloc m
+    dealloc f
+
+  proc freopen(filename, mode: cstring, stream: TFile): TFile =
+    var f = allocWideCString(filename)
+    var m = allocWideCString(mode)
+    result = wfreopen(f, m, stream)
+    dealloc m
+    dealloc f
+
+else:
+  proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}
+  proc freopen(filename, mode: cstring, stream: TFile): TFile {.
+    importc: "freopen", nodecl.}
 
 const
   FormatOpen: array [TFileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]

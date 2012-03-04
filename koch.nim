@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) and defined(windows): 
-  {.link: "icons/koch.res".}
+when defined(gcc) and defined(windows):
+  when defined(x86):
+    {.link: "icons/koch.res".}
+  else:
+    {.link: "icons/koch_icon.o".}
 
 import
   os, strutils, parseopt, osproc, streams
@@ -74,7 +77,8 @@ proc buildTool(toolname, args: string) =
 proc inno(args: string) =
   # make sure we have generated the c2nim and niminst executables:
   buildTool("tools/niminst/niminst", args)
-  buildTool("compiler/c2nim/c2nim", args)
+  buildTool("tools/nimgrep", args)
+  buildTool("compiler/c2nim/c2nim", args)  
   exec("tools" / "niminst" / "niminst --var:version=$# inno compiler/nimrod" % 
        NimrodVersion)
 

@@ -57,15 +57,23 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       OSError()
       # return false
       #raise newException(EIO, msg)
-      
-    result.fHandle = CreateFileA(
-      filename,
-      if readonly: GENERIC_READ else: GENERIC_ALL,
-      FILE_SHARE_READ,
-      nil,
-      if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
-      if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
-      0)
+
+    template callCreateFile(winApiProc, filename: expr): expr =
+      winApiProc(
+        filename,
+        if readonly: GENERIC_READ else: GENERIC_ALL,
+        FILE_SHARE_READ,
+        nil,
+        if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
+        if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
+        0)
+
+    when useWinUnicode:
+      var f = allocWideCString(filename)
+      result.fHandle = callCreateFile(CreateFileW, f)
+      dealloc f
+    else:
+      result.fHandle = callCreateFile(CreateFileA, filename)
 
     if result.fHandle == INVALID_HANDLE_VALUE:
       fail "error opening file"
@@ -81,7 +89,9 @@ proc open*(filename: string, mode: TFileMode = fmRead,
          (SetEndOfFile(result.fHandle) == 0):
         fail "error setting file size"
 
-    result.mapHandle = CreateFileMapping(
+    # since the strings are always 'nil', we simply always call
+    # CreateFileMappingW which should be slightly faster anyway:
+    result.mapHandle = CreateFileMappingW(
       result.fHandle, nil,
       if readonly: PAGE_READONLY else: PAGE_READWRITE,
       0, 0, nil)
