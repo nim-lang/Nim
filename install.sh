@@ -132,6 +132,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/tut1.txt
   cp doc/tut2.txt $docdir/tut2.txt || exit 1
   chmod 644 $docdir/tut2.txt
+  cp doc/actors.html $docdir/actors.html || exit 1
+  chmod 644 $docdir/actors.html
   cp doc/algorithm.html $docdir/algorithm.html || exit 1
   chmod 644 $docdir/algorithm.html
   cp doc/apis.html $docdir/apis.html || exit 1
@@ -386,6 +388,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sysstr.nim
   cp lib/system/threads.nim $libdir/system/threads.nim || exit 1
   chmod 644 $libdir/system/threads.nim
+  cp lib/system/widestrs.nim $libdir/system/widestrs.nim || exit 1
+  chmod 644 $libdir/system/widestrs.nim
   cp lib/core/locks.nim $libdir/core/locks.nim || exit 1
   chmod 644 $libdir/core/locks.nim
   cp lib/core/macros.nim $libdir/core/macros.nim || exit 1

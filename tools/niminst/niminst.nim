@@ -20,12 +20,14 @@ const
   maxOS = 20 # max number of OSes
   maxCPU = 10 # max number of CPUs
   buildShFile = "build.sh"
-  buildBatFile = "build.bat"
+  buildBatFile32 = "build.bat"
+  buildBatFile64 = "build64.bat"
   installShFile = "install.sh"
   deinstallShFile = "deinstall.sh"
 
 type
   TAppType = enum appConsole, appGUI
+  TTarget = enum tWin32 = 1, tWin64 = 2
   TAction = enum
     actionNone,   # action not yet known
     actionCSource # action: create C sources
@@ -404,7 +406,8 @@ proc srcdist(c: var TConfigData) =
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
   writeFile(buildShFile, GenerateBuildShellScript(c), "\10")
-  writeFile(buildBatFile, GenerateBuildBatchScript(c), "\13\10")
+  writeFile(buildBatFile32, GenerateBuildBatchScript(c, tWin32), "\13\10")
+  writeFile(buildBatFile64, GenerateBuildBatchScript(c, tWin64), "\13\10")
   if c.installScript:
     writeFile(installShFile, GenerateInstallScript(c), "\10")
   if c.uninstallScript:
@@ -436,7 +439,8 @@ when haveZipLib:
     else: n = c.outdir / n
     var z: TZipArchive
     if open(z, n, fmWrite):
-      addFile(z, proj / buildBatFile, buildBatFile)
+      addFile(z, proj / buildBatFile32, buildBatFile32)
+      addFile(z, proj / buildBatFile64, buildBatFile64)
       addFile(z, proj / buildShFile, buildShFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)

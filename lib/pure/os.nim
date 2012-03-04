@@ -168,13 +168,18 @@ proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
   when defined(Windows):
     var err = GetLastError()
     if err != 0'i32:
-      var msgbuf: cstring
-      if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
-                        nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-        var m = $msgbuf
-        if msgbuf != nil:
-          LocalFree(msgbuf)
-        result = m
+      when useWinUnicode:
+        var msgbuf: widecstring
+        if FormatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
+          result = $msgbuf
+          if msgbuf != nil: LocalFree(msgbuf)
+      else:
+        var msgbuf: cstring
+        if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
+          result = $msgbuf
+          if msgbuf != nil: LocalFree(msgbuf)
   if errno != 0'i32:
     result = $os.strerror(errno)
 
@@ -236,10 +241,47 @@ proc UnixToNativePath*(path: string): string {.
         add result, path[i]
         inc(i)
 
+when defined(windows):
+  template wrapUnary(varname, winApiProc, arg: expr) =
+    var tmp = allocWideCString(arg)
+    var varname = winApiProc(tmp)
+    dealloc tmp
+
+  template wrapBinary(varname, winApiProc, arg, arg2: expr) =
+    var tmp2 = allocWideCString(arg)
+    var varname = winApiProc(tmp2, arg2)
+    dealloc tmp2
+
+  when useWinUnicode:
+    proc FindFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
+      var aa = allocWideCString(a)
+      result = FindFirstFileW(aa, b)
+      dealloc aa
+    template FindNextFile(a, b: expr): expr = FindNextFileW(a, b)
+    template getCommandLine(): expr = getCommandLineW()
+
+    proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+      result = f.cFilename[0].int == ord('.')
+
+    template getFilename(f: expr): expr =
+      $cast[WideCString](addr(f.cFilename[0]))
+  else:
+    template FindFirstFile(a, b: expr): expr = FindFirstFileA(a, b)
+    template FindNextFile(a, b: expr): expr = FindNextFileA(a, b)
+    template getCommandLine(): expr = getCommandLineA()
+
+    proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+      result = f.cFilename[0] == '.'
+
+    template getFilename(f: expr): expr = $f.cFilename
+    
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file exists, false otherwise.
   when defined(windows):
-    var a = GetFileAttributesA(filename)
+    when useWinUnicode:
+      wrapUnary(a, GetFileAttributesW, filename)
+    else:
+      var a = GetFileAttributesA(filename)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
   else:
@@ -250,7 +292,10 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true iff the directory `dir` exists. If `dir` is a file, false
   ## is returned.
   when defined(windows):
-    var a = GetFileAttributesA(dir)
+    when useWinUnicode:
+      wrapUnary(a, GetFileAttributesW, dir)
+    else:
+      var a = GetFileAttributesA(dir)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
@@ -265,7 +310,7 @@ proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     return res.st_mtime
   else:
     var f: TWIN32_Find_Data
-    var h = findfirstFileA(file, f)
+    var h = findfirstFile(file, f)
     if h == -1'i32: OSError()
     result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
     findclose(h)
@@ -278,7 +323,7 @@ proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     return res.st_atime
   else:
     var f: TWIN32_Find_Data
-    var h = findfirstFileA(file, f)
+    var h = findfirstFile(file, f)
     if h == -1'i32: OSError()
     result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
     findclose(h)
@@ -291,7 +336,7 @@ proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
     return res.st_ctime
   else:
     var f: TWIN32_Find_Data
-    var h = findfirstFileA(file, f)
+    var h = findfirstFile(file, f)
     if h == -1'i32: OSError()
     result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
     findclose(h)
@@ -304,12 +349,20 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
 proc getCurrentDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the `current working directory`:idx:.
   const bufsize = 512 # should be enough
-  result = newString(bufsize)
   when defined(windows):
-    var L = GetCurrentDirectoryA(bufsize, result)
-    if L == 0'i32: OSError()
-    setLen(result, L)
+    when useWinUnicode:
+      var res = cast[wideCString](alloc0(bufsize+1))
+      var L = GetCurrentDirectoryW(bufsize, res)
+      result = res$L
+      dealloc res
+      if L == 0'i32: OSError()
+    else:
+      result = newString(bufsize)
+      var L = GetCurrentDirectoryA(bufsize, result)
+      if L == 0'i32: OSError()
+      setLen(result, L)
   else:
+    result = newString(bufsize)
     if getcwd(result, bufsize) != nil:
       setlen(result, c_strlen(result))
     else:
@@ -319,7 +372,13 @@ proc setCurrentDir*(newDir: string) {.inline.} =
   ## Sets the `current working directory`:idx:; `EOS` is raised if
   ## `newDir` cannot been set.
   when defined(Windows):
-    if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
+    when useWinUnicode:
+      var x = allocWideCString(newDir)
+      let res = SetCurrentDirectoryW(x)
+      dealloc x
+      if res == 0'i32: OSError()
+    else:
+      if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
   else:
     if chdir(newDir) != 0'i32: OSError()
 
@@ -377,8 +436,7 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.
   ##   SplitPath("bin") -> ("", "bin")
   ##   SplitPath("/bin") -> ("", "bin")
   ##   SplitPath("") -> ("", "")
-  var
-    sepPos = -1
+  var sepPos = -1
   for i in countdown(len(path)-1, 0):
     if path[i] in {dirsep, altsep}:
       sepPos = i
@@ -504,11 +562,24 @@ proc extractFilename*(path: string): string {.
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
   ## Returns the full path of `filename`, raises EOS in case of an error.
   when defined(windows):
-    var unused: cstring
-    result = newString(3072)
-    var L = GetFullPathNameA(filename, 3072'i32, result, unused)
-    if L <= 0'i32 or L >= 3072'i32: OSError()
-    setLen(result, L)
+    const bufsize = 3072'i32
+    when useWinUnicode:
+      var unused: widecstring
+      var res = cast[widecstring](alloc(bufsize*2+2))
+      var f = allocWideCString(filename)
+      var L = GetFullPathNameW(f, bufsize, res, unused)
+      dealloc f
+      if L <= 0'i32 or L >= bufsize: 
+        dealloc res
+        OSError()
+      result = res$L
+      dealloc res
+    else:
+      var unused: cstring
+      result = newString(bufsize)
+      var L = GetFullPathNameA(filename, bufsize, result, unused)
+      if L <= 0'i32 or L >= bufsize: OSError()
+      setLen(result, L)
   elif defined(macosx):
     # On Mac OS X 10.5, realpath does not allocate the buffer on its own
     var pathBuffer: cstring = newString(pathMax)
@@ -585,14 +656,26 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
   ## sym-linked paths to the same file or directory.
   when defined(Windows):
     var success = true
-    
-    template OpenHandle(path: expr): expr =
-      CreateFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
-        FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
 
-    var f1 = OpenHandle(path1)
-    var f2 = OpenHandle(path2)
+    when useWinUnicode:
+      var p1 = allocWideCString(path1)
+      var p2 = allocWideCString(path2)
+      template OpenHandle(path: expr): expr =
+        CreateFileW(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
+          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
+
+      var f1 = OpenHandle(p1)
+      var f2 = OpenHandle(p2)
+      
+    else:
+      template OpenHandle(path: expr): expr =
+        CreateFileA(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
+          FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+          FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL, 0)
+
+      var f1 = OpenHandle(path1)
+      var f2 = OpenHandle(path2)
 
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
       var fi1, fi2: TBY_HANDLE_FILE_INFORMATION
@@ -607,13 +690,13 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
 
     discard CloseHandle(f1)
     discard CloseHandle(f2)
+    when useWinUnicode:
+      dealloc p1
+      dealloc p2
 
-    if not success:
-      OSError()
-
+    if not success: OSError()
   else:
-    var
-      a, b: TStat
+    var a, b: TStat
     if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
       OSError()
     else:
@@ -653,7 +736,15 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1".} =
   ## Copies a file from `source` to `dest`. If this fails,
   ## `EOS` is raised.
   when defined(Windows):
-    if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
+    when useWinUnicode:
+      var s = allocWideCString(source)
+      var d = allocWideCString(dest)
+      let res = CopyFileW(s, d, 0'i32)
+      dealloc s
+      dealloc d
+      if res == 0'i32: OSError()
+    else:
+      if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager
@@ -710,23 +801,39 @@ var
 when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
-  proc strEnd(cstr: CString, c = 0'i32): CString {.
-    importc: "strchr", header: "<string.h>".}
+  when useWinUnicode:
+    proc strEnd(cstr: wideCString, c = 0'i32): wideCString {.
+      importc: "wcschr", header: "<string.h>".}
+  else:
+    proc strEnd(cstr: CString, c = 0'i32): CString {.
+      importc: "strchr", header: "<string.h>".}
 
   proc getEnvVarsC() =
     if not envComputed:
       environment = @[]
-      var
-        env = getEnvironmentStringsA()
-        e = env
-      if e == nil: return # an error occured
-      while True:
-        var eend = strEnd(e)
-        add(environment, $e)
-        e = cast[CString](cast[TAddress](eend)+1)
-        if eend[1] == '\0': break
+      when useWinUnicode:
+        var
+          env = getEnvironmentStringsW()
+          e = env
+        if e == nil: return # an error occured
+        while True:
+          var eend = strEnd(e)
+          add(environment, $e)
+          e = cast[wideCString](cast[TAddress](eend)+2)
+          if eend[1].int == 0: break
+        discard FreeEnvironmentStringsW(env)
+      else:
+        var
+          env = getEnvironmentStringsA()
+          e = env
+        if e == nil: return # an error occured
+        while True:
+          var eend = strEnd(e)
+          add(environment, $e)
+          e = cast[CString](cast[TAddress](eend)+1)
+          if eend[1] == '\0': break
+        discard FreeEnvironmentStringsA(env)
       envComputed = true
-      discard FreeEnvironmentStringsA(env)
 
 else:
   const
@@ -804,8 +911,15 @@ proc putEnv*(key, val: string) =
     if cputenv(environment[indx]) != 0'i32:
       OSError()
   else:
-    if SetEnvironmentVariableA(key, val) == 0'i32:
-      OSError()
+    when useWinUnicode:
+      var k = allocWideCString(key)
+      var v = allocWideCString(val)
+      let res = SetEnvironmentVariableW(k, v)
+      dealloc k
+      dealloc v
+      if res == 0'i32: OSError()
+    else:
+      if SetEnvironmentVariableA(key, val) == 0'i32: OSError()
 
 iterator envPairs*(): tuple[key, value: TaintedString] =
   ## Iterate over all `environments variables`:idx:. In the first component 
@@ -821,18 +935,18 @@ iterator walkFiles*(pattern: string): string =
   ## Iterate over all the files that match the `pattern`. On POSIX this uses
   ## the `glob`:idx: call.
   ##
-  ## `pattern` is OS dependant, but at least the "\*.ext"
+  ## `pattern` is OS dependent, but at least the "\*.ext"
   ## notation is supported.
   when defined(windows):
     var
       f: TWin32FindData
       res: int
-    res = findfirstFileA(pattern, f)
+    res = findfirstFile(pattern, f)
     if res != -1:
       while true:
-        if f.cFileName[0] != '.':
-          yield splitFile(pattern).dir / extractFilename($f.cFileName)
-        if findnextFileA(res, f) == 0'i32: break
+        if not skipFindData(f):
+          yield splitFile(pattern).dir / extractFilename(getFilename(f))
+        if findnextFile(res, f) == 0'i32: break
       findclose(res)
   else: # here we use glob
     var
@@ -878,15 +992,15 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
   ##   dirA/fileA2.txt
   when defined(windows):
     var f: TWIN32_Find_Data
-    var h = findfirstFileA(dir / "*", f)
+    var h = findfirstFile(dir / "*", f)
     if h != -1:
       while true:
         var k = pcFile
-        if f.cFilename[0] != '.':
+        if not skipFindData(f):
           if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
             k = pcDir
-          yield (k, dir / extractFilename($f.cFilename))
-        if findnextFileA(h, f) == 0'i32: break
+          yield (k, dir / extractFilename(getFilename(f)))
+        if findnextFile(h, f) == 0'i32: break
       findclose(h)
   else:
     var d = openDir(dir)
@@ -929,7 +1043,11 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
 
 proc rawRemoveDir(dir: string) = 
   when defined(windows):
-    if RemoveDirectoryA(dir) == 0'i32 and GetLastError() != 3'i32 and 
+    when useWinUnicode:
+      wrapUnary(res, RemoveDirectoryW, dir)
+    else:
+      var res = RemoveDirectoryA(dir)
+    if res == 0'i32 and GetLastError() != 3'i32 and 
         GetLastError() != 18'i32: OSError()
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: OSError()
@@ -949,7 +1067,11 @@ proc rawCreateDir(dir: string) =
     if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
       OSError()
   else:
-    if CreateDirectoryA(dir, nil) == 0'i32 and GetLastError() != 183'i32:
+    when useWinUnicode:
+      wrapUnary(res, CreateDirectoryW, dir)
+    else:
+      var res = CreateDirectoryA(dir)
+    if res == 0'i32 and GetLastError() != 183'i32:
       OSError()
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1".} =
@@ -1097,7 +1219,10 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
     if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
   else:
-    var res = GetFileAttributesA(filename)
+    when useWinUnicode:
+      wrapUnary(res, GetFileAttributesW, filename)
+    else:
+      var res = GetFileAttributesA(filename)
     if res == -1'i32: OSError()
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
@@ -1126,14 +1251,20 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
     
     if chmod(filename, p) != 0: OSError()
   else:
-    var res = GetFileAttributesA(filename)
+    when useWinUnicode:
+      wrapUnary(res, GetFileAttributesW, filename)
+    else:
+      var res = GetFileAttributesA(filename)
     if res == -1'i32: OSError()
     if fpUserWrite in permissions: 
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
-    if SetFileAttributesA(filename, res) == - 1'i32: 
-      OSError()
+    when useWinUnicode:
+      wrapBinary(res2, SetFileAttributesW, filename, res)
+    else:
+      var res2 = SetFileAttributesA(filename, res)
+    if res2 == - 1'i32: OSError()
   
 proc inclFilePermissions*(filename: string, 
                           permissions: set[TFilePermission]) {.
@@ -1181,7 +1312,7 @@ when defined(windows):
   proc paramCount*(): int {.rtl, extern: "nos$1".} =
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
+    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1".} =
@@ -1190,7 +1321,7 @@ when defined(windows):
     ##
     ## `i` should be in the range `1..paramCount()`, else
     ## the `EOutOfIndex` exception is raised.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
+    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
 elif not defined(createNimRtl):
@@ -1232,9 +1363,14 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
   # *BSD (and maybe Darwin too):
   # /proc/<pid>/file
   when defined(windows):
-    result = newString(256)
-    var len = getModuleFileNameA(0, result, 256)
-    setlen(result, int(len))
+    when useWinUnicode:
+      var buf = cast[wideCString](alloc(256*2))
+      var len = getModuleFileNameW(0, buf, 256)
+      result = buf$len
+    else:
+      result = newString(256)
+      var len = getModuleFileNameA(0, result, 256)
+      setlen(result, int(len))
   elif defined(linux) or defined(aix):
     result = getApplAux("/proc/self/exe")
   elif defined(solaris):
@@ -1290,7 +1426,7 @@ proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1".} =
   ## returns the file size of `file`. Can raise ``EOS``. 
   when defined(windows):
     var a: TWin32FindData
-    var resA = findfirstFileA(file, a)
+    var resA = findfirstFile(file, a)
     if resA == -1: OSError()
     result = rdFileSize(a)
     findclose(resA)

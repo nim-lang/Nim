@@ -23,8 +23,6 @@ version 0.9.0
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - 'const' objects including case objects
-- os module should use Windows Unicode versions
-- 64bit build for Windows
 - change how comments are part of the AST
 - optional indentation for 'case' statement; hm, keep in mind other syntax
   changes that people want; may turn out to be a bad idea

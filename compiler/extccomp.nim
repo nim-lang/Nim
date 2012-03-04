@@ -403,7 +403,7 @@ proc execExternalProgram*(cmd: string) =
   if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: PRope) = 
-  var (dir, name, ext) = splitFile(projectFile)
+  let (dir, name, ext) = splitFile(projectFile)
   WriteRope(script, dir / addFileExt("compile_" & name, 
                                      platform.os[targetOS].scriptExt))
 
