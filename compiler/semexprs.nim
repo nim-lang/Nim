@@ -87,7 +87,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
-  of skVar, skLet, skResult, skParam:
+  of skVar, skLet, skResult, skParam, skForVar:
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:

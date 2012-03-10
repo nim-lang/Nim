@@ -407,6 +407,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
   if iter.kind != tyTuple or length == 3: 
     if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
     var v = newSymS(skForVar, n.sons[0], c)
+    if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
     # BUGFIX: don't use `iter` here as that would strip away
     # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
     # for an example:
@@ -418,6 +419,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       GlobalError(n.info, errWrongNumberOfVariables)
     for i in countup(0, length - 3): 
       var v = newSymS(skForVar, n.sons[i], c)
+      if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
       addDecl(c, v)
