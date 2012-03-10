@@ -106,7 +106,8 @@ macro check*(conditions: stmt): stmt =
     case conditions[1].kind
     of nnkInfix:
       proc rewriteBinaryOp(op: expr): stmt =
-        template rewrite(op, left, right, lineInfoLit: expr, opLit, leftLit, rightLit: string): stmt =
+        template rewrite(op, left, right, lineInfoLit: expr, opLit,
+          leftLit, rightLit: string, printLhs, printRhs: bool): stmt =
           block:
             var 
               lhs = left
@@ -114,8 +115,8 @@ macro check*(conditions: stmt): stmt =
 
             if not `op`(lhs, rhs):
               checkpoint(lineInfoLit & ": Check failed: " & opLit)
-              checkpoint("  " & leftLit & " was " & $lhs)
-              checkpoint("  " & rightLit & " was " & $rhs)
+              when printLhs: checkpoint("  " & leftLit & " was " & $lhs)
+              when printRhs: checkpoint("  " & rightLit & " was " & $rhs)
               fail()
 
         result = getAst(rewrite(
@@ -123,7 +124,9 @@ macro check*(conditions: stmt): stmt =
           op.lineinfo,
           op.toStrLit,
           op[1].toStrLit,
-          op[2].toStrLit))
+          op[2].toStrLit,
+          op[1].kind notin nnkLiterals,
+          op[2].kind notin nnkLiterals))
         
       result = rewriteBinaryOp(conditions[1])
   

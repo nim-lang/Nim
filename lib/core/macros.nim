@@ -89,7 +89,12 @@ type
   
   PNimrodNode* = expr
     ## represents a Nimrod AST node. Macros operate on this type.
-    
+
+const
+  nnkLiterals* = {nnkCharLit..nnkNilLit}
+  nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
+                      nnkCallStrLit}
+
 # Nodes should be reference counted to make the `copy` operation very fast!
 # However, this is difficult to achieve: modify(n[0][1]) should propagate to
 # its father. How to do this without back references? Hm, BS, it works without 
