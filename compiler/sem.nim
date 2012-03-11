@@ -125,7 +125,7 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
   if c.evalContext == nil:
-    c.evalContext = newEvalContext(c.module, "", false)
+    c.evalContext = newEvalContext(c.module, "", emStatic)
   result = evalMacroCall(c.evalContext, n, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
