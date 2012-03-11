@@ -411,9 +411,9 @@ var
 
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.fullPath = fullPath
-  shallow(result.fullPath)
+  #shallow(result.fullPath)
   result.projPath = projPath
-  shallow(result.projPath)
+  #shallow(result.projPath)
 
 proc fileInfoIdx*(filename: string): int32 =
   var
