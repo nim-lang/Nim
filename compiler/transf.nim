@@ -199,7 +199,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
     elif it.kind == nkIdentDefs: 
       if it.sons[0].kind != nkSym: InternalError(it.info, "transformVarSection")
       var newVar = copySym(it.sons[0].sym)
-      incl(newVar.flags, sfFromGeneric) 
+      incl(newVar.flags, sfFromGeneric)
       # fixes a strange bug for rodgen:
       #include(it.sons[0].sym.flags, sfFromGeneric);
       newVar.owner = getCurrOwner(c)

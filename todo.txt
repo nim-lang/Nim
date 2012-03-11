@@ -1,6 +1,7 @@
 version 0.9.0
 =============
 
+- implement 'static' vs. 'const'
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
 - fix remaining closure bugs:
@@ -137,6 +138,13 @@ Low priority
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
 - implement closures that support nesting > 1
+
+
+Further optimization ideas
+==========================
+
+- To optimize further copies away, you want to gather the additional
+  information inlining would provide, but don't inline for code size reasons.
 
 
 Version 2

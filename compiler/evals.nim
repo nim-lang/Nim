@@ -27,11 +27,18 @@ type
     next*: PStackFrame        # for stacking
     params*: TNodeSeq         # parameters passed to the proc
   
+  TEvalMode* = enum           ## reason for evaluation
+    emRepl,                   ## evaluate because in REPL mode
+    emConst,                  ## evaluate for 'const' according to spec
+    emOptimize,               ## evaluate for optimization purposes (same as
+                              ## emConst?)
+    emStatic                  ## evaluate for enforced compile time eval
+                              ## ('static' context)
   TEvalContext* = object of passes.TPassContext
     module*: PSym
     tos*: PStackFrame         # top of stack
     lastException*: PNode
-    optEval*: bool            # evaluation done for optimization purposes
+    mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
   
   PEvalContext* = ref TEvalContext
@@ -53,10 +60,10 @@ proc newStackFrame*(): PStackFrame =
   result.params = @[]
 
 proc newEvalContext*(module: PSym, filename: string, 
-                     optEval: bool): PEvalContext = 
+                     mode: TEvalMode): PEvalContext = 
   new(result)
   result.module = module
-  result.optEval = optEval
+  result.mode = mode
   initIdNodeTable(result.globals)
 
 proc pushStackFrame*(c: PEvalContext, t: PStackFrame) {.inline.} = 
@@ -342,18 +349,21 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   #result = emptyNode
 
 proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
-  result = IdNodeTableGet(c.globals, s)
-  if result != nil: 
-    if not aliasNeeded(result, flags): 
-      result = copyTree(result)
-  else:
-    result = s.ast
-    if result == nil or result.kind == nkEmpty:
-      result = getNullValue(s.typ, s.info)
+  if sfCompileTime in s.flags or c.mode == emRepl:
+    result = IdNodeTableGet(c.globals, s)
+    if result != nil: 
+      if not aliasNeeded(result, flags): 
+        result = copyTree(result)
     else:
-      result = evalAux(c, result, {})
-      if isSpecial(result): return
-    IdNodeTablePut(c.globals, s, result)
+      result = s.ast
+      if result == nil or result.kind == nkEmpty:
+        result = getNullValue(s.typ, s.info)
+      else:
+        result = evalAux(c, result, {})
+        if isSpecial(result): return
+      IdNodeTablePut(c.globals, s, result)
+  else:
+    result = raiseCannotEval(nil, s.info)
 
 proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = evalAux(c, n.sons[0], flags)
@@ -540,7 +550,8 @@ proc evalAnd(c: PEvalContext, n: PNode): PNode =
   if result.intVal != 0: result = evalAux(c, n.sons[2], {})
   
 proc evalNew(c: PEvalContext, n: PNode): PNode = 
-  if c.optEval: return raiseCannotEval(c, n.info)
+  #if c.mode == emOptimize: return raiseCannotEval(c, n.info)
+  
   # we ignore the finalizer for now and most likely forever :-)
   result = evalAux(c, n.sons[1], {efLValue})
   if isSpecial(result): return 
@@ -1269,7 +1280,7 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
       stackTrace(c, n, errCannotInterpretNodeX, renderTree(n))
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
-  var p = newEvalContext(module, "", true)
+  var p = newEvalContext(module, "", emConst)
   var s = newStackFrame()
   s.call = e
   pushStackFrame(p, s)
@@ -1296,7 +1307,7 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   dec(evalTemplateCounter)
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
-  var c = newEvalContext(module, filename, false)
+  var c = newEvalContext(module, filename, emRepl)
   pushStackFrame(c, newStackFrame())
   result = c
 
