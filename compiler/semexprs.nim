@@ -475,6 +475,39 @@ proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
   
 include semmagic
 
+proc evalAtCompileTime(c: PContext, n: PNode): PNode =
+  result = n
+  if n.kind notin nkCallKinds or n.sons[0].kind != nkSym: return
+  var callee = n.sons[0].sym
+  
+  if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
+     {sfForward, sfImportc} * callee.flags == {}:
+    if sfCompileTime notin callee.flags and 
+        optImplicitCompileTime notin gOptions: return
+
+    if callee.magic notin ctfeWhitelist: return
+    if callee.kind notin {skProc, skConverter} or callee.isGenericRoutine:
+      return
+    
+    if n.typ != nil and not typeAllowed(n.typ, skConst): return
+    
+    var call = newNodeIT(nkCall, n.info, n.typ)
+    call.add(n.sons[0])
+    for i in 1 .. < n.len:
+      let a = getConstExpr(c.module, n.sons[i])
+      if a == nil: return n
+      call.add(a)
+    #echo "NOW evaluating at compile time: ", call.renderTree
+    if sfCompileTime in callee.flags:
+      result = evalStaticExpr(c.module, call)
+      if result.isNil: 
+        LocalError(n.info, errCannotInterpretNodeX, renderTree(call))
+    else:
+      result = evalConstExpr(c.module, call)
+      if result.isNil: result = n
+    #if result != n:
+    #  echo "SUCCESS evaluated at compile time: ", call.renderTree
+
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
                                  flags: TExprFlags): PNode =
   if efWantIterator in flags:
@@ -490,7 +523,7 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
     var callee = result.sons[0].sym
     if (callee.kind == skIterator) and (callee.id == c.p.owner.id): 
       GlobalError(n.info, errRecursiveDependencyX, callee.name.s)
-    if sfNoSideEffect notin callee.flags: 
+    if sfNoSideEffect notin callee.flags:
       if {sfImportc, sfSideEffect} * callee.flags != {}:
         incl(c.p.owner.flags, sfSideEffect)
   
@@ -544,6 +577,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   analyseIfAddressTakenInCall(c, result)
   if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
     result = magicsAfterOverloadResolution(c, result, flags)
+  result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
@@ -556,6 +590,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   analyseIfAddressTakenInCall(c, result)
   if result.sons[0].sym.magic != mNone:
     result = magicsAfterOverloadResolution(c, result, flags)
+  result = evalAtCompileTime(c, result)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and skipTypes(arg.typ, abstractInst).kind == tyString:

@@ -2213,12 +2213,12 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
-template static*(e: expr): expr =
-  ## evaluates a given expression `e` at compile-time
-  ## even if it has side effects
-  block:
-    const res = e
-    res
+#template static*(e: expr): expr =
+#  ## evaluates a given expression `e` at compile-time
+#  ## even if it has side effects
+#  block:
+#    const res = e
+#    res
 
 template eval*(blk: stmt): stmt =
   ## executes a block of code at compile time just as if it was a macro

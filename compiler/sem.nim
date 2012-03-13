@@ -85,13 +85,6 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty: 
       GlobalError(n.info, errConstExprExpected)
-  when false:
-    result = semExprWithType(c, n)
-    if result == nil: 
-      GlobalError(n.info, errConstExprExpected)
-      return 
-    result = getConstExpr(c.module, result)
-    if result == nil: GlobalError(n.info, errConstExprExpected)
   
 proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
   result = semConstExpr(c, n)

@@ -183,6 +183,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "threads": result = contains(gGlobalOptions, optThreads)
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
   of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
+  of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string): string = 
@@ -312,6 +313,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "threads": ProcessOnOffSwitchG({optThreads}, arg, pass, info)
   of "tlsemulation": ProcessOnOffSwitchG({optTlsEmulation}, arg, pass, info)
   of "taintmode": ProcessOnOffSwitchG({optTaintMode}, arg, pass, info)
+  of "implicitstatic":
+    ProcessOnOffSwitch({optImplicitStatic}, arg, pass, info)
   of "opt":
     expectArg(switch, arg, pass, info)
     case arg.normalize

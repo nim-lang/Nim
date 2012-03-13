@@ -827,7 +827,8 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   if ContainsOrIncl(marker, typ.id): return 
   var t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyVar: 
+  of tyVar:
+    if kind == skConst: return false
     var t2 = skipTypes(t.sons[0], abstractInst)
     case t2.kind
     of tyVar: 
@@ -866,6 +867,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     result = t.sons[1].kind == tyEmpty or
         typeAllowedAux(marker, t.sons[1], skVar)
   of tyPtr, tyRef:
+    if kind == skConst: return false
     result = typeAllowedAux(marker, t.sons[0], skVar)
   of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter, tyProxy: 
     for i in countup(0, sonsLen(t) - 1): 
