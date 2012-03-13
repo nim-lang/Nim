@@ -22,6 +22,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   var t = tup.t
   for i in countup(0, L-3): 
     var v = n.sons[i].sym
+    if sfCompileTime in v.flags: continue
     if sfGlobal in v.flags and v.kind != skForVar: 
       assignGlobalVar(p, v)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
@@ -46,6 +47,7 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
 
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
+  if sfCompileTime in v.flags: return
   var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags and v.kind != skForVar: 
     assignGlobalVar(p, v)

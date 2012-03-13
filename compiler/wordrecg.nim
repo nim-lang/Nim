@@ -30,8 +30,8 @@ type
     wInclude, wIs, wIsnot, wIterator, wLambda, wLet,
     wMacro, wMethod, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
-    wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
-    wWithout, wXor, wYield,
+    wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
+    wWhen, wWhile, wWith, wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
@@ -57,7 +57,8 @@ type
     wFieldChecks, 
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
-    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame
+    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame,
+    wImplicitStatic
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -75,8 +76,9 @@ const
     "import", "in", "include", "is", "isnot", "iterator",
     "lambda", "let",
     "macro", "method", "mod", "nil", "not", "notin", "object", "of", "or", 
-    "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "template", 
-    "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
+    "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "static",
+    "template", "try", "tuple", "type", "var", 
+    "when", "while", "with", "without", "xor",
     "yield",
 
     ":", "::", "=", ".", "..",
@@ -105,7 +107,7 @@ const
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "nostackframe"]
+    "nostackframe", "implicitstatic"]
 
 proc findStr*(a: openarray[string], s: string): int = 
   for i in countup(low(a), high(a)): 

@@ -1,7 +1,9 @@
 version 0.9.0
 =============
 
-- implement 'static' vs. 'const'
+- implement 'static' vs. 'const';
+  clear separation between tyExpr and PNimrodNode
+
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
 - fix remaining closure bugs:
@@ -24,7 +26,6 @@ version 0.9.0
   loop hoisting
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
-- 'const' objects including case objects
 - change how comments are part of the AST
 - optional indentation for 'case' statement; hm, keep in mind other syntax
   changes that people want; may turn out to be a bad idea
@@ -77,6 +78,7 @@ version 0.9.XX
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?
 - fix implicit generic routines
+- 'const' objects including case objects
 - improve docgen to use the semantic pass
 - 'export' feature (requires improved docgen)
 - think about ``{:}.toTable[int, string]()``
@@ -102,7 +104,7 @@ version 0.9.XX
 Library
 -------
 
-- wrappers for poppler; libharu
+- wrappers for mongodb; poppler; libharu
 - suffix trees
 - locale support; i18n module
 - bignums

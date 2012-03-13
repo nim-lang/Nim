@@ -396,6 +396,36 @@ type
     mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError, 
     mInstantiationInfo, mGetTypeInfo
 
+# things that we can evaluate safely at compile time, even if not asked for it:
+const
+  ctfeWhitelist* = {mNone, mUnaryLt, mSucc, 
+    mPred, mInc, mDec, mOrd, mLengthOpenArray, 
+    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, 
+    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64, 
+    mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI, 
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
+    mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
+    mDivU, mModU, mAddU64, mSubU64, mMulU64, mDivU64, mModU64, mEqI, mLeI,
+    mLtI, 
+    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, 
+    mLeU, mLtU, mLeU64, mLtU64, 
+    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef, 
+    mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI, 
+    mUnaryMinusI64, mAbsI, mAbsI64, mNot, 
+    mUnaryPlusI, mBitnotI, mUnaryPlusI64, 
+    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64, 
+    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32, 
+    mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr, 
+    mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr, 
+    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
+    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
+    mConTArr, mConTT, mSlice, 
+    mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
+    mInRange, mInSet, mRepr,
+    mRand, 
+    mCopyStr, mCopyStrLast}
+
 type 
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]

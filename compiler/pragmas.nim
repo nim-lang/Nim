@@ -277,6 +277,7 @@ proc processOption(c: PContext, n: PNode) =
           excl(gOptions, optOptimizeSpeed)
           excl(gOptions, optOptimizeSize)
         else: LocalError(n.info, errNoneSpeedOrSizeExpected)
+    of wImplicitStatic: OnOff(c, n, {optImplicitStatic})
     else: LocalError(n.info, errOptionExpected)
   
 proc processPush(c: PContext, n: PNode, start: int) = 

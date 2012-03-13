@@ -26,6 +26,7 @@ indexExpr ::= expr
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
+staticExpr ::= 'static' '(' optInd expr optPar ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')' | '[' ']' | '{' '}'
                | '=' | literal)+ '`'
          | IDENT
@@ -37,7 +38,7 @@ primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '{' optInd [indexExpr (comma indexExpr)* [comma]] optPar '}'
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 
-                            constructor | castExpr | addrExpr)
+                            constructor | castExpr | addrExpr | staticExpr)
             primarySuffix*
 
 generalizedLit ::= GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
@@ -97,7 +98,7 @@ simpleStmt ::= returnStmt
              | includeStmt
              | exprStmt
 complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
-              | blockStmt | asmStmt
+              | blockStmt | staticStmt | asmStmt
               | procDecl | iteratorDecl | macroDecl | templateDecl | methodDecl
               | constSection | letSection | varSection
               | typeSection | whenStmt | bindStmt
@@ -131,6 +132,7 @@ tryStmt ::= 'try' ':' stmt
            ['finally' ':' stmt]
 asmStmt ::= 'asm' [pragma] (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
 blockStmt ::= 'block' [symbol] ':' stmt
+staticStmt ::= 'static' ':' stmt
 filename ::= symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
 importStmt ::= 'import' filename (comma filename)*
 includeStmt ::= 'include' filename (comma filename)*

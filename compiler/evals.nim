@@ -263,7 +263,8 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
-    assert(a.kind == nkIdentDefs)
+    if a.kind != nkIdentDefs: return raiseCannotEval(c, n.info)
+    # XXX var (x, y) = z support?
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.sons[2].kind != nkEmpty: 
       result = evalAux(c, a.sons[2], {})
@@ -311,17 +312,18 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
   if isSpecial(result): return 
   prc = result
   # bind the actual params to the local parameter of a new binding
-  if prc.kind == nkSym: 
-    d.prc = prc.sym
-    if prc.sym.kind notin {skProc, skConverter}:
-      InternalError(n.info, "evalCall")
+  if prc.kind != nkSym: InternalError(n.info, "evalCall " & n.renderTree)
+  d.prc = prc.sym
+  if prc.sym.kind notin {skProc, skConverter, skMacro}:
+    InternalError(n.info, "evalCall")
+  
   for i in countup(1, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i], {})
     if isSpecial(result): return 
     d.params[i] = result
   if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
   pushStackFrame(c, d)
-  result = evalAux(c, prc, {})
+  result = evalAux(c, prc.sym.getBody, {})
   if result.kind == nkExceptBranch: return 
   if n.typ != nil: result = d.params[0]
   popStackFrame(c)
@@ -489,7 +491,8 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   var s = n.sym
   case s.kind
   of skProc, skConverter, skMacro: 
-    result = s.getBody
+    result = n
+    #result = s.getBody
   of skVar, skLet, skForVar, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
@@ -501,7 +504,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skConst: result = s.ast
   of skEnumField: result = newIntNodeT(s.position, n)
   else: result = nil
-  if result == nil or sfImportc in s.flags:
+  if result == nil or {sfImportc, sfForward} * s.flags != {}:
     result = raiseCannotEval(c, n.info)
   
 proc evalIncDec(c: PEvalContext, n: PNode, sign: biggestInt): PNode = 
@@ -532,10 +535,13 @@ proc evalEcho(c: PEvalContext, n: PNode): PNode =
   result = emptyNode
 
 proc evalExit(c: PEvalContext, n: PNode): PNode = 
-  result = evalAux(c, n.sons[1], {})
-  if isSpecial(result): return 
-  Message(n.info, hintQuitCalled)
-  quit(int(getOrdValue(result)))
+  if c.mode in {emRepl, emStatic}:
+    result = evalAux(c, n.sons[1], {})
+    if isSpecial(result): return 
+    Message(n.info, hintQuitCalled)
+    quit(int(getOrdValue(result)))
+  else:
+    result = raiseCannotEval(c, n.info)
 
 proc evalOr(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[1], {})
@@ -636,19 +642,22 @@ proc evalConvCStrToStr(c: PEvalContext, n: PNode): PNode =
   result.typ = n.typ
 
 proc evalRaise(c: PEvalContext, n: PNode): PNode = 
-  if n.sons[0].kind != nkEmpty: 
-    result = evalAux(c, n.sons[0], {})
-    if isSpecial(result): return 
-    var a = result
-    result = newNodeIT(nkExceptBranch, n.info, a.typ)
-    addSon(result, a)
-    c.lastException = result
-  elif c.lastException != nil: 
-    result = c.lastException
-  else: 
-    stackTrace(c, n, errExceptionAlreadyHandled)
-    result = newNodeIT(nkExceptBranch, n.info, nil)
-    addSon(result, ast.emptyNode)
+  if c.mode in {emRepl, emStatic}:
+    if n.sons[0].kind != nkEmpty: 
+      result = evalAux(c, n.sons[0], {})
+      if isSpecial(result): return 
+      var a = result
+      result = newNodeIT(nkExceptBranch, n.info, a.typ)
+      addSon(result, a)
+      c.lastException = result
+    elif c.lastException != nil: 
+      result = c.lastException
+    else: 
+      stackTrace(c, n, errExceptionAlreadyHandled)
+      result = newNodeIT(nkExceptBranch, n.info, nil)
+      addSon(result, ast.emptyNode)
+  else:
+    result = raiseCannotEval(c, n.info)
 
 proc evalReturn(c: PEvalContext, n: PNode): PNode = 
   if n.sons[0].kind != nkEmpty: 
@@ -1266,27 +1275,36 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
   inc(gNestedEvals)
 
-proc eval*(c: PEvalContext, n: PNode): PNode = 
-  ## eval never returns nil! This simplifies the code a lot and
-  ## makes it faster too.
+proc tryEval(c: PEvalContext, n: PNode): PNode =
   var n = transform(c.module, n)
   gWhileCounter = evalMaxIterations
   gNestedEvals = evalMaxRecDepth
   result = evalAux(c, n, {})
+  
+proc eval*(c: PEvalContext, n: PNode): PNode = 
+  ## eval never returns nil! This simplifies the code a lot and
+  ## makes it faster too.
+  result = tryEval(c, n)
   if result.kind == nkExceptBranch:
     if sonsLen(result) >= 1: 
       stackTrace(c, n, errUnhandledExceptionX, typeToString(result.typ))
     else:
       stackTrace(c, n, errCannotInterpretNodeX, renderTree(n))
 
-proc evalConstExpr*(module: PSym, e: PNode): PNode = 
-  var p = newEvalContext(module, "", emConst)
+proc evalConstExprAux(module: PSym, e: PNode, mode: TEvalMode): PNode = 
+  var p = newEvalContext(module, "", mode)
   var s = newStackFrame()
   s.call = e
   pushStackFrame(p, s)
-  result = eval(p, e)
+  result = tryEval(p, e)
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
+
+proc evalConstExpr*(module: PSym, e: PNode): PNode = 
+  result = evalConstExprAux(module, e, emConst)
+
+proc evalStaticExpr*(module: PSym, e: PNode): PNode = 
+  result = evalConstExprAux(module, e, emStatic)
 
 proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now

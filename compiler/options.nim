@@ -25,7 +25,9 @@ type                          # please make sure we have under 32 options
     optEndb,                  # embedded debugger
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
-    optProfiler               # profiler turned on
+    optProfiler,              # profiler turned on
+    optImplicitStatic         # optimization: implicit at compile time
+                              # evaluation
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 

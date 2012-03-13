@@ -1640,6 +1640,30 @@ Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
 they contain such a type.
 
 
+Static statement/expression
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Syntax::
+  staticExpr ::= 'static' '(' optInd expr optPar ')'
+  staticStmt ::= 'static' ':' stmt
+  
+A `static`:idx: statement/expression can be used to enforce compile 
+time evaluation explicitely. Enforced compile time evaluation can even evaluate
+code that has side effects: 
+
+.. code-block::
+
+  static:
+    echo "echo at compile time"
+
+It's a static error if the compiler cannot perform the evaluation at compile time.
+
+The current implementation poses some restrictions for compile time
+evaluation: Code which contains ``cast`` or makes use of the foreign function
+interface cannot be evaluated at compile time. Later versions of Nimrod will
+support the FFI at compile time.
+
+
 If statement
 ~~~~~~~~~~~~
 
