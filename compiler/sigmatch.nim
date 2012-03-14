@@ -27,6 +27,7 @@ type
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
+    calleeScope: int         # may be -1 for unknown scope
     call*: PNode             # modified call
     bindings*: TIdTable      # maps types to types
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
@@ -60,9 +61,10 @@ proc put(t: var TIdTable, key, val: PType) {.inline.} =
         IdentEq(val.sym.name, "TTable"):
       assert false
 
-proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode) = 
+proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, calleeScope = -1) = 
   initCandidateAux(c, callee.typ)
   c.calleeSym = callee
+  c.calleeScope = calleeScope
   initIdTable(c.bindings)
   if binding != nil:
     var typeParams = callee.ast[genericParamsPos]
@@ -94,6 +96,9 @@ proc cmpCandidates*(a, b: TCandidate): int =
   result = a.intConvMatches - b.intConvMatches
   if result != 0: return
   result = a.convMatches - b.convMatches
+  if result != 0: return
+  if (a.calleeScope != -1) and (b.calleeScope != -1):
+    result = a.calleeScope - b.calleeScope
 
 proc writeMatches(c: TCandidate) = 
   Writeln(stdout, "exact matches: " & $c.exactMatches)

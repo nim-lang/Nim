@@ -36,14 +36,15 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   template best: expr = result
   #Message(n.info, warnUser, renderTree(n))
   var sym = initOverloadIter(o, c, f)
+  var symScope = o.lastOverloadScope
   
-  if sym == nil: return 
-  initCandidate(best, sym, initialBinding)
-  initCandidate(alt, sym, initialBinding)
+  if sym == nil: return
+  initCandidate(best, sym, initialBinding, symScope)
+  initCandidate(alt, sym, initialBinding, symScope)
 
   while sym != nil:
     if sym.kind in filter:
-      initCandidate(z, sym, initialBinding)
+      initCandidate(z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
       matches(c, n, orig, z)
       if z.state == csMatch:

@@ -164,7 +164,7 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
     result = nil
   if result != nil and result.kind == skStub: loadStub(result)
   
-proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
+proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerAcc(n)
@@ -174,7 +174,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       dec(o.stackPtr)
       if o.stackPtr < 0: break
       result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], ident)
-  of nkSym: 
+  of nkSym:
     result = n.sym
     o.mode = oimDone
   of nkDotExpr: 
@@ -204,6 +204,13 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     Incl(o.inSymChoice, result.id)
   else: nil
   if result != nil and result.kind == skStub: loadStub(result)
+
+proc lastOverloadScope*(o: TOverloadIter): int =
+  case o.mode
+  of oimNoQualifier: result = o.stackPtr
+  of oimSelfModule:  result = ModuleTablePos
+  of oimOtherModule: result = ImportTablePos
+  else: result = -1
   
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
   case o.mode
