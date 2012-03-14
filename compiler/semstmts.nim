@@ -840,6 +840,12 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
     if whichPragma(pragmaList.sons[i]) == wLine:
       setLine(result, pragmaList.sons[i].info)
 
+proc semStaticStmt(c: PContext, n: PNode): PNode =
+  let a = semStmt(c, n.sons[0])
+  result = evalStaticExpr(c.module, a)
+  if result.isNil:
+    LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
+
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
@@ -896,6 +902,8 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     result = evalInclude(c, n)
   of nkPragmaBlock:
     result = semPragmaBlock(c, n)
+  of nkStaticStmt:
+    result = semStaticStmt(c, n)
   else: 
     # in interactive mode, we embed the expression in an 'echo':
     if gCmd == cmdInteractive:

@@ -27,7 +27,7 @@ type
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted, 
     nnkTableConstr, nnkBind, nnkSymChoice, nnkHiddenStdConv, 
-    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, 
+    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, nnkStaticExpr,
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
     nnkStringToCString, nnkCStringToString, nnkAsgn, 
@@ -40,7 +40,7 @@ type
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection, 
     nnkConstDef, nnkTypeDef, 
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
-    nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
+    nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
     nnkIncludeStmt, nnkBindStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
@@ -88,7 +88,7 @@ type
     ## *ident*.
   
   TNimrodNode {.final.} = object
-  PNimrodNode* = ref TNimrodNode
+  PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
     ## represents a Nimrod AST node. Macros operate on this type.
 
 const
@@ -263,7 +263,7 @@ proc newCall*(theProc: string,
 proc nestList*(theProc: TNimrodIdent,
                x: PNimrodNode): PNimrodNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
-  ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``
+  ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.
   var L = x.len
   result = newCall(theProc, x[L-2], x[L-1])
   var a = result
@@ -271,9 +271,9 @@ proc nestList*(theProc: TNimrodIdent,
     a = newCall(theProc, x[i], copyNimTree(a))
 
 proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
-  ## Convert the AST `n` to a human-readable tree-like string
+  ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## see also `repr` and `lispRepr`
+  ## See also `repr` and `lispRepr`.
 
   proc traverse(res: var string, level: int, n: PNimrodNode) =
     for i in 0..level-1: res.add "  "
@@ -300,9 +300,9 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   traverse(result, 0, n)
 
 proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
-  ## Convert the AST `n` to a human-readable lisp-like string
+  ## Convert the AST `n` to a human-readable lisp-like string,
   ##
-  ## see also `repr` and `treeRepr`
+  ## See also `repr` and `treeRepr`.
   
   if n == nil: return "nil"
 
@@ -331,11 +331,11 @@ macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
   ##
   ## You can use this as a tool to explore the Nimrod's abstract syntax 
   ## tree and to discover what kind of nodes must be created to represent
-  ## a certain expression/statement
+  ## a certain expression/statement.
 
 macro dumpLisp*(s: stmt): stmt = echo s[1].lispRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toLisp` function.
   ##
-  ## see `dumpTree`
+  ## See `dumpTree`.
 
