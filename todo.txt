@@ -1,8 +1,7 @@
 version 0.9.0
 =============
 
-- implement 'static' vs. 'const';
-  clear separation between tyExpr and PNimrodNode
+- clean separation between tyExpr and PNimrodNode
 
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs

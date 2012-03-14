@@ -436,8 +436,6 @@ proc identOrLiteral(p: var TParser): PNode =
                                  tkColon)
   of tkCast: 
     result = parseCast(p)
-  of tkAddr: 
-    result = parseAddr(p)
   else:
     parMessage(p, errExprExpected, p.tok)
     getTok(p)  # we must consume a token here to prevend endless loops!
@@ -453,6 +451,16 @@ proc primary(p: var TParser): PNode =
     optInd(p, a)
     addSon(result, primary(p))
     return 
+  elif p.tok.tokType == tkAddr:
+    result = newNodeP(nkAddr, p)
+    getTok(p)
+    addSon(result, primary(p))
+    return
+  elif p.tok.tokType == tkStatic:
+    result = newNodeP(nkStaticExpr, p)
+    getTok(p)
+    addSon(result, primary(p))
+    return
   elif p.tok.tokType == tkBind: 
     result = newNodeP(nkBind, p)
     getTok(p)
@@ -980,6 +988,14 @@ proc parseBlock(p: var TParser): PNode =
   skipComment(p, result)
   addSon(result, parseStmt(p))
 
+proc parseStatic(p: var TParser): PNode =
+  result = newNodeP(nkStaticStmt, p)
+  getTok(p)
+  optInd(p, result)
+  eat(p, tkColon)
+  skipComment(p, result)
+  addSon(result, parseStmt(p))
+  
 proc parseAsm(p: var TParser): PNode = 
   result = newNodeP(nkAsmStmt, p)
   getTok(p)
@@ -1379,6 +1395,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkTry: result = parseTry(p)
   of tkFor: result = parseFor(p)
   of tkBlock: result = parseBlock(p)
+  of tkStatic: result = parseStatic(p)
   of tkAsm: result = parseAsm(p)
   of tkProc: result = parseRoutine(p, nkProcDef)
   of tkMethod: result = parseRoutine(p, nkMethodDef)

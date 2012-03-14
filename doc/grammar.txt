@@ -4,7 +4,7 @@ comma ::= ',' [COMMENT] [IND]
 operator ::=  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
            | 'or' | 'xor' | 'and'
            | 'is' | 'isnot' | 'in' | 'notin' | 'of'
-           | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
+           | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'addr' | 'static' | '..'
 
 prefixOperator ::= operator
 
@@ -25,8 +25,6 @@ dollarExpr ::= primary (OP9 optInd primary)*
 indexExpr ::= expr
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
-addrExpr ::= 'addr' '(' optInd expr optPar ')'
-staticExpr ::= 'static' '(' optInd expr optPar ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')' | '[' ']' | '{' '}'
                | '=' | literal)+ '`'
          | IDENT
@@ -38,7 +36,7 @@ primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '{' optInd [indexExpr (comma indexExpr)* [comma]] optPar '}'
 
 primary ::= primaryPrefix* (symbol [generalizedLit] | 
-                            constructor | castExpr | addrExpr | staticExpr)
+                            constructor | castExpr)
             primarySuffix*
 
 generalizedLit ::= GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT

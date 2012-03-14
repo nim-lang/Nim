@@ -105,6 +105,7 @@ type
     nkHiddenCallConv,     # an implicit type conversion via a type converter
     nkConv,               # a type conversion
     nkCast,               # a type cast
+    nkStaticExpr,         # a static expr
     nkAddr,               # a addr expression
     nkHiddenAddr,         # implicit address operator
     nkHiddenDeref,        # implicit ^ operator
@@ -160,6 +161,7 @@ type
     nkBreakStmt,          # a break statement
     nkContinueStmt,       # a continue statement
     nkBlockStmt,          # a block statement
+    nkStaticStmt,         # a static statement
     nkDiscardStmt,        # a discard statement
     nkStmtList,           # a list of statements
     nkImportStmt,         # an import statement
@@ -384,7 +386,7 @@ type
     mOrdinal, mInt, mInt8, mInt16, mInt32, 
     mInt64, mFloat, mFloat32, mFloat64, mBool, mChar, mString, mCstring, 
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc, 
-    mVoidType,
+    mVoidType, mPNimrodNode,
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, 
     mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType, 
     mNaN, mInf, mNegInf, 

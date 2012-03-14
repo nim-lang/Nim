@@ -336,6 +336,7 @@ proc lsub(n: PNode): int =
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: result = lsub(n[1])
   of nkCast: result = lsub(n.sons[0]) + lsub(n.sons[1]) + len("cast[]()")
   of nkAddr: result = lsub(n.sons[0]) + len("addr()")
+  of nkStaticExpr: result = lsub(n.sons[0]) + len("static_")
   of nkHiddenAddr, nkHiddenDeref: result = lsub(n.sons[0])
   of nkCommand: result = lsub(n.sons[0]) + lcomma(n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(n) + 3
@@ -640,6 +641,16 @@ proc gblock(g: var TSrcGen, n: PNode) =
   gstmts(g, n.sons[1], c)
   dedent(g)
 
+proc gstaticStmt(g: var TSrcGen, n: PNode) = 
+  var c: TContext
+  putWithSpace(g, tkStatic, "static")
+  putWithSpace(g, tkColon, ":")
+  initContext(c)
+  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen): 
+    incl(c.flags, rfLongMode)
+  gcoms(g)                    # a good place for comments
+  gstmts(g, n.sons[0], c)
+
 proc gasm(g: var TSrcGen, n: PNode) = 
   putWithSpace(g, tkAsm, "asm")
   gsub(g, n.sons[0])
@@ -711,6 +722,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gsub(g, n.sons[0])
     put(g, tkParRi, ")")
+  of nkStaticExpr:
+    put(g, tkStatic, "static")
+    put(g, tkSpaces, space)
+    gsub(g, n.sons[0])
   of nkBracketExpr: 
     gsub(g, n.sons[0])
     put(g, tkBracketLe, "[")
@@ -951,6 +966,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkTryStmt: gtry(g, n)
   of nkForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
+  of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)
   of nkProcDef: 
     putWithSpace(g, tkProc, "proc")

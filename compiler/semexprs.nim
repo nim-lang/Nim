@@ -483,7 +483,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {}:
     if sfCompileTime notin callee.flags and 
-        optImplicitCompileTime notin gOptions: return
+        optImplicitStatic notin gOptions: return
 
     if callee.magic notin ctfeWhitelist: return
     if callee.kind notin {skProc, skConverter} or callee.isGenericRoutine:
@@ -507,6 +507,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       if result.isNil: result = n
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
+
+proc semStaticExpr(c: PContext, n: PNode): PNode =
+  let a = semExpr(c, n.sons[0])
+  result = evalStaticExpr(c.module, a)
+  if result.isNil:
+    LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
 
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
                                  flags: TExprFlags): PNode =
@@ -1342,6 +1348,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semTableConstr(c, n)
   of nkSymChoice:
     GlobalError(n.info, errExprXAmbiguous, renderTree(n, {renderNoComments}))
+  of nkStaticExpr:
+    result = semStaticExpr(c, n)
   else:
     GlobalError(n.info, errInvalidExpressionX, 
                 renderTree(n, {renderNoComments}))
