@@ -8,6 +8,7 @@
 #
 
 ## this module does the semantic checking of statements
+#  included from sem.nim
 
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
@@ -690,8 +691,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[genericParamsPos] = gp
         # check for semantics again:
         semParamList(c, n.sons[ParamsPos], nil, s)
-    # XXX: obsoleted - happens in semParamList
-    # addParams(c, s.typ.n)
   else: 
     s.typ = newTypeS(tyProc, c)
     addSon(s.typ, nil)

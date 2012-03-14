@@ -54,11 +54,6 @@ proc evalTemplateArgs(c: PContext, n: PNode, s: PSym): PNode =
     else: arg = copyTree(s.typ.n.sons[i].sym.ast)
     if arg == nil or arg.kind == nkEmpty: 
       LocalError(n.info, errWrongNumberOfArguments)
-    elif not (s.typ.sons[i].kind in {tyTypeDesc, tyStmt, tyExpr}): 
-      # concrete type means semantic checking for argument:
-      # XXX This is horrible! Better make semantic checking use some kind
-      # of fixpoint iteration ...
-      arg = fitNode(c, s.typ.sons[i], semExprWithType(c, arg))
     addSon(result, arg)
 
 proc evalTemplate*(c: PContext, n: PNode, sym: PSym): PNode = 
@@ -167,7 +162,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   # check parameter list:
   pushOwner(s)
   openScope(c.tab)
-  n.sons[namePos] = newSymNode(s) # check that no pragmas exist:
+  n.sons[namePos] = newSymNode(s)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], templatePragmas)
   # check that no generic parameters exist:
@@ -185,8 +180,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       # use ``stmt`` as implicit result type
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
-  # XXX: obsoleted - happens in semParamList # 
-  # addParams(c, s.typ.n)       # resolve parameters:
   var toBind = initIntSet()
   n.sons[bodyPos] = resolveTemplateParams(c, n.sons[bodyPos], false, toBind)
   if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
@@ -198,5 +191,14 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   if n.sons[bodyPos].kind == nkEmpty: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
-  # add identifier of template as a last step to not allow recursive templates:
-  addInterfaceDecl(c, s)
+  var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
+                                               # open for parameters
+  if proto == nil:
+    # add identifier of template as a last step to not allow recursive templates:  
+    addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
+  else:
+    # overwrite template
+    proto.info = s.info
+    proto.ast = s.ast
+    proto.typ = s.typ
+    proto.flags = s.flags
