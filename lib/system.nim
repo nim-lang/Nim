@@ -624,15 +624,15 @@ proc `<` *[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
-template `!=` * (x, y: expr): expr =
+template `!=` * (x, y: expr): expr {.immediate.} =
   ## unequals operator. This is a shorthand for ``not (x == y)``.
   not (x == y)
 
-template `>=` * (x, y: expr): expr =
+template `>=` * (x, y: expr): expr {.immediate.} =
   ## "is greater or equals" operator. This is the same as ``y <= x``.
   y <= x
 
-template `>` * (x, y: expr): expr =
+template `>` * (x, y: expr): expr {.immediate.} =
   ## "is greater" operator. This is the same as ``y < x``.
   y < x
 
@@ -655,11 +655,11 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
 
-template `in` * (x, y: expr): expr = contains(y, x)
-template `not_in` * (x, y: expr): expr = not contains(y, x)
+template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
+template `not_in` * (x, y: expr): expr {.immediate.} = not contains(y, x)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
-template `is_not` *(x, y: expr): expr = not (x is y)
+template `is_not` *(x, y: expr): expr {.immediate.} = not (x is y)
 
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
 
@@ -842,7 +842,7 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## It does *not* call the garbage collector to free all the memory,
   ## unless a quit procedure calls ``GC_collect``.
 
-template sysAssert(cond, msg: expr) =
+template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
       echo "[SYSASSERT] ", msg
@@ -1090,11 +1090,11 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
 
-template `>=%` *(x, y: expr): expr = y <=% x
+template `>=%` *(x, y: expr): expr {.immediate.} = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) >= unsigned(y)``.
 
-template `>%` *(x, y: expr): expr = y <% x
+template `>%` *(x, y: expr): expr {.immediate.} = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
@@ -1590,7 +1590,7 @@ proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo", noSideEffect.}
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience.
 
-template newException*(exceptn, message: expr): expr = 
+template newException*(exceptn: typeDesc, message: string): expr = 
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object. 
   block: # open a new scope
@@ -2033,7 +2033,7 @@ proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
   ## slice operation for strings. Negative indexes are supported.
   result = s.substr(x.a-|s, x.b-|s)
 
-template spliceImpl(s, a, L, b: expr): stmt =
+template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # make room for additional elements or cut:
   var slen = s.len
   var shift = b.len - L
@@ -2176,7 +2176,7 @@ proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
 proc raiseAssert(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
   
-template assert*(cond: expr, msg = "") =
+template assert*(cond: bool, msg = "") =
   ## provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
@@ -2188,7 +2188,7 @@ template assert*(cond: expr, msg = "") =
       if not cond:
         raiseAssert(astToStr(cond) & ' ' & msg)
 
-template doAssert*(cond: expr, msg = "") =
+template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
   bind raiseAssert, InstantiationInfo
