@@ -191,14 +191,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   if n.sons[bodyPos].kind == nkEmpty: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
-  var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
-                                               # open for parameters
+  let curScope = c.tab.tos - 2 # -2 because we have a scope open for parameters
+  var proto = SearchForProc(c, s, curScope)
   if proto == nil:
-    # add identifier of template as a last step to not allow recursive templates:  
     addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
   else:
-    # overwrite template
-    proto.info = s.info
-    proto.ast = s.ast
-    proto.typ = s.typ
-    proto.flags = s.flags
+    SymTabReplace(c.tab.stack[curScope], proto, s)
+

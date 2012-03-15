@@ -1269,7 +1269,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if s != nil: 
       case s.kind
       of skMacro:
-        echo c.filename
         if c.filename.endsWith("hello.nim") and sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:

@@ -567,6 +567,19 @@ proc StrTableRawInsert(data: var TSymSeq, n: PSym) =
   assert(data[h] == nil)
   data[h] = n
 
+proc SymTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
+  assert prevSym.name.h == newSym.name.h
+  var h: THash = prevSym.name.h and high(data)
+  while data[h] != nil:
+    if data[h] == prevSym:
+      data[h] = newSym
+      return
+    h = nextTry(h, high(data))
+  assert false
+ 
+proc SymTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
+  SymTabReplaceRaw(t.data, prevSym, newSym)
+
 proc StrTableEnlarge(t: var TStrTable) = 
   var n: TSymSeq
   newSeq(n, len(t.data) * growthFactor)
