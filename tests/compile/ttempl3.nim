@@ -26,13 +26,13 @@ echo(ha)
 
 
 # Test identifier generation:
-template prefix(name: expr): expr = `"hu" name`
+template prefix(name: expr): expr {.immediate.} = `"hu" name`
 
 var `hu "XYZ"` = "yay"
 
 echo prefix(XYZ)
 
-template typedef(name: expr, typ: typeDesc) = 
+template typedef(name: expr, typ: typeDesc) {.immediate.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`
