@@ -75,7 +75,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     addDecl(c, result)
     pushProcCon(c, result)
     if result.kind in {skProc, skMethod, skConverter}: 
-      addResult(c, result.typ.sons[0], n.info)
+      addResult(c, result.typ.sons[0], n.info, result.kind)
       addResultNode(c, n)
     var b = semStmtScope(c, n.sons[bodyPos])
     # XXX Bad hack for tests/titer2 and tests/tactiontable
@@ -92,7 +92,8 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c.tab)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      if n.sons[paramsPos].kind != nkEmpty: addParams(c, oldPrc.typ.n)
+      if n.sons[paramsPos].kind != nkEmpty: 
+        addParams(c, oldPrc.typ.n, oldPrc.kind)
       instantiateBody(c, n, oldPrc)
       closeScope(c.tab)
       popInfoContext()

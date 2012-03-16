@@ -599,12 +599,12 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
   result = n
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) = 
-  s.typ = semProcTypeNode(c, n, genericParams, nil)
+  s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind)
 
-proc addParams(c: PContext, n: PNode) = 
+proc addParams(c: PContext, n: PNode, kind: TSymKind) = 
   for i in countup(1, sonsLen(n)-1): 
     if (n.sons[i].kind != nkSym): InternalError(n.info, "addParams")
-    addDecl(c, n.sons[i].sym)
+    addParamOrResult(c, n.sons[i].sym, kind)
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) = 
   # search for the correct alias:
@@ -615,13 +615,13 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     LocalError(n.info, errNoSymbolToBorrowFromFound) 
   
-proc addResult(c: PContext, t: PType, info: TLineInfo) = 
+proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) = 
   if t != nil: 
     var s = newSym(skResult, getIdent"result", getCurrOwner())
     s.info = info
     s.typ = t
     incl(s.flags, sfUsed)
-    addDecl(c, s)
+    addParamOrResult(c, s, owner)
     c.p.resultSym = s
 
 proc addResultNode(c: PContext, n: PNode) = 
@@ -653,7 +653,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
     if sfImportc in s.flags: 
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     pushProcCon(c, s)
-    addResult(c, s.typ.sons[0], n.info)
+    addResult(c, s.typ.sons[0], n.info, skProc)
     n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
     addResultNode(c, n)
     popProcCon(c)
@@ -717,7 +717,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     openScope(c.tab)          # open scope for old (correct) parameter symbols
     if proto.ast.sons[genericParamsPos].kind != nkEmpty: 
       addGenericParamListToScope(c, proto.ast.sons[genericParamsPos])
-    addParams(c, proto.typ.n)
+    addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
     s.typ = proto.typ
     s = proto
@@ -737,7 +737,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
       if s.typ.sons[0] != nil and kind != skIterator: 
-        addResult(c, s.typ.sons[0], n.info)
+        addResult(c, s.typ.sons[0], n.info, kind)
       if sfImportc notin s.flags: 
         # no semantic checking for importc:
         n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
