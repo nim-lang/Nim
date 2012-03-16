@@ -1,6 +1,6 @@
 # All and any
 
-template all(container, cond: expr): expr =
+template all(container, cond: expr): expr {.immediate.} =
   block:
     var result = true
     for it in items(container):
@@ -9,7 +9,7 @@ template all(container, cond: expr): expr =
         break
     result
 
-template any(container, cond: expr): expr =
+template any(container, cond: expr): expr {.immediate.} =
   block:
     var result = false
     for it in items(container):

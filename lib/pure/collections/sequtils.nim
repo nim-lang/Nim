@@ -50,7 +50,7 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool): seq[T] =
   ## Returns all items in a sequence that fulfilled the predicate.
   accumulateResult(filter(seq1, pred))
 
-template filterIt*(seq1, pred: expr): expr =
+template filterIt*(seq1, pred: expr): expr {.immediate.} =
   ## Finds a specific item in a sequence as long as the 
   ## predicate returns true. The predicate needs to be an expression
   ## containing ``it``: ``filterIt("abcxyz", it == 'x')``.

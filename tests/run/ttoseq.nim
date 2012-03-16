@@ -2,7 +2,7 @@ discard """
   output: "23456"  
 """
 
-template toSeq*(iter: expr): expr =
+template toSeq*(iter: expr): expr {.immediate.} =
   var result: seq[type(iter)] = @[]
   for x in iter: add(result, x)
   result

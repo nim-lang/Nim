@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+# included from sem.nim
+
 proc isExpr(n: PNode): bool = 
   # returns true if ``n`` looks like an expression
   case n.kind
@@ -191,10 +193,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   if n.sons[bodyPos].kind == nkEmpty: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
-  let curScope = c.tab.tos - 2 # -2 because we have a scope open for parameters
+  let curScope = c.tab.tos - 1
   var proto = SearchForProc(c, s, curScope)
   if proto == nil:
-    addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
+    addInterfaceOverloadableSymAt(c, s, curScope)
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
 

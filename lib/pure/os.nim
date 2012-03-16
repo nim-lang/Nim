@@ -242,12 +242,12 @@ proc UnixToNativePath*(path: string): string {.
         inc(i)
 
 when defined(windows):
-  template wrapUnary(varname, winApiProc, arg: expr) =
+  template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
     var tmp = allocWideCString(arg)
     var varname = winApiProc(tmp)
     dealloc tmp
 
-  template wrapBinary(varname, winApiProc, arg, arg2: expr) =
+  template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
     var tmp2 = allocWideCString(arg)
     var varname = winApiProc(tmp2, arg2)
     dealloc tmp2
