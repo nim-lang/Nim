@@ -2220,6 +2220,11 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
 #    const res = e
 #    res
 
+type
+  TNimrodNode {.final.} = object
+  PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
+    ## represents a Nimrod AST node. Macros operate on this type.
+
 template eval*(blk: stmt): stmt =
   ## executes a block of code at compile time just as if it was a macro
   ## optonally, the block can return an AST tree that will replace the 

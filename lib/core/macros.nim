@@ -87,10 +87,6 @@ type
     ## represents a Nimrod *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
   
-  TNimrodNode {.final.} = object
-  PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
-    ## represents a Nimrod AST node. Macros operate on this type.
-
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,

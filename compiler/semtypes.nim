@@ -510,9 +510,18 @@ proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType =
   if genericParams != nil and sonsLen(genericParams) == 0: 
     result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
 
+proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
+  if kind == skMacro and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
+    let nn = getSysSym"PNimrodNode"
+    var a = copySym(param)
+    a.typ = nn.typ
+    addDecl(c, a)
+  else:
+    addDecl(c, param)
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
-                     prev: PType): PType = 
-  var 
+                     prev: PType, kind: TSymKind): PType = 
+  var
     def, res: PNode
     typ: PType
     cl: TIntSet
@@ -568,7 +577,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
       addSon(result, typ)
-      addDecl(c, arg)
+      addParamOrResult(c, arg, kind)
 
   if n.sons[0].kind != nkEmpty: 
     var r = paramType(c, n.sons[0], genericParams, cl)
@@ -717,7 +726,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkProcTy: 
     checkSonsLen(n, 2)
     openScope(c.tab)
-    result = semProcTypeNode(c, n.sons[0], nil, prev)
+    result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
     # dummy symbol for `pragma`:
     var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
@@ -769,6 +778,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mSet: setMagicType(m, tySet, 0) 
   of mSeq: setMagicType(m, tySequence, 0)
   of mOrdinal: setMagicType(m, tyOrdinal, 0)
+  of mPNimrodNode: nil
   else: GlobalError(m.info, errTypeExpected)
   
 proc newConstraint(c: PContext, k: TTypeKind): PType = 
