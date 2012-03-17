@@ -2220,7 +2220,7 @@ type
 
 template eval*(blk: stmt): stmt =
   ## executes a block of code at compile time just as if it was a macro
-  ## optonally, the block can return an AST tree that will replace the 
+  ## optionally, the block can return an AST tree that will replace the 
   ## eval expression
   block:
     macro payload(x: stmt): stmt = blk

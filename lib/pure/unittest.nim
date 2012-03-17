@@ -93,8 +93,8 @@ template fail* =
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt =
-  proc standardRewrite(e: expr): stmt =
-    template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
+  proc standardRewrite(e: PNimrodNode): PNimrodNode =
+    template rewrite(Exp, lineInfoLit: expr, expLit: string): PNimrodNode =
       if not Exp:
         checkpoint(lineInfoLit & ": Check failed: " & expLit)
         fail()
@@ -105,9 +105,9 @@ macro check*(conditions: stmt): stmt =
   of nnkCall, nnkCommand, nnkMacroStmt:
     case conditions[1].kind
     of nnkInfix:
-      proc rewriteBinaryOp(op: expr): stmt =
+      proc rewriteBinaryOp(op: PNimrodNode): PNimrodNode =
         template rewrite(op, left, right, lineInfoLit: expr, opLit,
-          leftLit, rightLit: string, printLhs, printRhs: bool): stmt =
+          leftLit, rightLit: string, printLhs, printRhs: bool): PNimrodNode =
           block:
             var 
               lhs = left
@@ -152,7 +152,7 @@ template require*(conditions: stmt): stmt =
     check conditions
 
 macro expect*(exp: stmt): stmt =
-  template expectBody(errorTypes, lineInfoLit: expr, body: stmt): stmt =
+  template expectBody(errorTypes, lineInfoLit: expr, body: stmt): PNimrodNode =
     try:
       body
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
