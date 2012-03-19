@@ -236,9 +236,7 @@ type
 
 proc fsClose(s: PStream) = close(PFileStream(s).f)
 proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
-{.push warning[Deprecated]: off.}
 proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
-{.pop.}
 proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
 proc fsGetPosition(s: PStream): int = return int(getFilePos(PFileStream(s).f))
 
