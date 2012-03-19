@@ -1,6 +1,7 @@
 version 0.9.0
 =============
 
+- bootstrapping fails with --symbolFiles:on again!
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
 - fix remaining closure bugs:

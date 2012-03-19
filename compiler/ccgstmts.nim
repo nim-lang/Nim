@@ -368,6 +368,22 @@ proc IfSwitchSplitPoint(p: BProc, n: PNode): int =
       if branch.kind == nkOfBranch and branchHasTooBigRange(branch): 
         result = i
 
+proc genCaseRange(p: BProc, branch: PNode) =
+  var length = branch.len
+  for j in 0 .. length-2: 
+    if branch[j].kind == nkRange: 
+      if hasSwitchRange in CC[ccompiler].props: 
+        appf(p.s[cpsStmts], "case $1 ... $2:$n", [
+            genLiteral(p, branch[j][0]), 
+            genLiteral(p, branch[j][1])])
+      else: 
+        var v = copyNode(branch[j][0])
+        while v.intVal <= branch[j][1].intVal: 
+          appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, v)])
+          Inc(v.intVal)
+    else:
+      appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, branch[j])])
+
 proc genOrdinalCase(p: BProc, n: PNode) = 
   # analyse 'case' statement:
   var splitPoint = IfSwitchSplitPoint(p, n)
@@ -387,21 +403,8 @@ proc genOrdinalCase(p: BProc, n: PNode) =
     for i in splitPoint+1 .. < n.len: 
       var branch = n[i]
       if branch.kind == nkOfBranch: 
-        var length = branch.len
-        for j in 0 .. length-2: 
-          if branch[j].kind == nkRange: 
-            if hasSwitchRange in CC[ccompiler].props: 
-              appf(p.s[cpsStmts], "case $1 ... $2:$n", [
-                  genLiteral(p, branch[j][0]), 
-                  genLiteral(p, branch[j][1])])
-            else: 
-              var v = copyNode(branch[j][0])
-              while v.intVal <= branch[j][1].intVal: 
-                appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, v)])
-                Inc(v.intVal)
-          else: 
-            appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, branch[j])])
-        genStmts(p, branch[length-1])
+        genCaseRange(p, branch)
+        genStmts(p, branch.lastSon)
       else: 
         # else part of case statement:
         appf(p.s[cpsStmts], "default:$n")
