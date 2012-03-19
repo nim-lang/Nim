@@ -1,5 +1,6 @@
 discard """
-  output: '''derived class 2
+  disabled: true
+  output: '''derived class 2  
 base class
 '''
 """

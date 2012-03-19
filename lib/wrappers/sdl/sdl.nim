@@ -1284,9 +1284,9 @@ type                          # This is the system-independent thread info struc
   TProcedure* = proc ()
 
 type TEventSeq = set[TEventKind]
-template evconv(procName: expr, ptrName: typeDesc, assertions: TEventSeq): stmt =
+template evconv(procName: expr, ptrName: typeDesc, assertions: TEventSeq): stmt {.immediate.} =
   proc `procName`*(event: PEvent): ptrName =
-    assert(assertions.contains(event.kind))
+    assert(contains(assertions, event.kind))
     result = cast[ptrName](event)
 
 evconv(EvActive, PActiveEvent, {ACTIVEEVENT})

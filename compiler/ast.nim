@@ -227,6 +227,9 @@ type
     sfInnerProc,      # proc is an inner proc
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
+    sfInline          # forced-inline procs
+    sfImmediate,      # macro or template is immediately expanded without
+                      # considering any possible overloads
     sfCompileTime,    # proc can be evaluated at compile time
     sfMerge,          # proc can be merged with itself
     sfDeadCodeElim,   # dead code elimination for the module is turned on
@@ -602,7 +605,8 @@ type
 # the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter, skModule}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter,
+    skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
