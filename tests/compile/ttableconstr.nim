@@ -1,6 +1,6 @@
 # Test if the new table constructor syntax works:
 
-template ignoreExpr(e: expr): stmt =
+template ignoreExpr(e: expr): stmt {.immediate.} =
   nil
 
 # test first class '..' syntactical citizen:  

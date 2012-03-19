@@ -170,7 +170,7 @@ when traceGC:
     cfprintf(cstdout, "Allocations: %ld; ZCT freed: %ld; CYC freed: %ld\n",
              e, z, y)
 
-template gcTrace(cell, state: expr): stmt =
+template gcTrace(cell, state: expr): stmt {.immediate.} =
   when traceGC: traceCell(cell, state)
 
 # -----------------------------------------------------------------------------
