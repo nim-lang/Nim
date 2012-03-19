@@ -794,6 +794,13 @@ proc newNodeI(kind: TNodeKind, info: TLineInfo): PNode =
   result = newNode(kind)
   result.info = info
 
+proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
+             typ: PType = nil): PNode =
+  result = newNode(kind)
+  result.info = info
+  result.typ = typ
+  result.sons = sons
+
 proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode = 
   result = newNode(kind)
   result.info = info
