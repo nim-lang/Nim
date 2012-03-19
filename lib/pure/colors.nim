@@ -17,15 +17,15 @@ type
 proc `==` *(a, b: TColor): bool {.borrow.}
   ## compares two colors.
   
-template extract(a: TColor, r, g, b: expr) =
+template extract(a: TColor, r, g, b: expr) {.immediate.}=
   var r = a.int shr 16 and 0xff
   var g = a.int shr 8 and 0xff
   var b = a.int and 0xff
   
-template rawRGB(r, g, b: expr): expr =
+template rawRGB(r, g, b: int): expr =
   TColor(r shl 16 or g shl 8 or b)
   
-template colorOp(op: expr) =
+template colorOp(op: expr) {.immediate.} =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
   result = rawRGB(op(ar, br), op(ag, bg), op(ab, bb))

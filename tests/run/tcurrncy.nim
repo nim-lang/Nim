@@ -21,7 +21,7 @@ template Comparable(typ: typeDesc): stmt =
   proc `<=` * (x, y: typ): bool {.borrow.}
   proc `==` * (x, y: typ): bool {.borrow.}
 
-template DefineCurrency(typ, base: expr): stmt =
+template DefineCurrency(typ, base: expr): stmt {.immediate.} =
   type
     typ* = distinct base
   Additive(typ)

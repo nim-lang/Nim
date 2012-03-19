@@ -26,8 +26,9 @@ const
     wNoStackFrame, wError, wDiscardable, wNoInit}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
-  macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
+  templatePragmas* = {wImmediate}
+  macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
+    wNodecl, wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
@@ -451,6 +452,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wImportCompilerProc:
             processImportCompilerProc(sym, getOptionalStr(c, it, sym.name.s))
           of wExtern: setExternName(sym, expectStrLit(c, it))
+          of wImmediate:
+            if sym.kind notin {skTemplate, skMacro}: invalidPragma(it)
+            incl(sym.flags, sfImmediate)
           of wImportCpp:
             processImportCpp(sym, getOptionalStr(c, it, sym.name.s))
           of wImportObjC:
