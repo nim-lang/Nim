@@ -6,7 +6,7 @@ template plus(a, b: expr): expr =
   a + b
 
 macro call(e: expr): expr =
-  return newCall("foo", newStrLitNode("bar"))
+  result = newCall("foo", newStrLitNode("bar"))
   
 macro dumpAST(n: stmt): stmt =
   # dump AST as a side-effect and return the inner node

@@ -26,7 +26,7 @@ macro formatStyleInterpolation(e: expr): expr =
   proc addString(s: string) =
     formatString.add(s)
 
-  proc addExpr(e: expr) =
+  proc addExpr(e: PNimrodNode) =
     arrayNode.add(e)
     formatString.add("$" & $(idx))
     inc idx
@@ -44,9 +44,9 @@ macro concatStyleInterpolation(e: expr): expr =
   var args: seq[PNimrodNode]
   newSeq(args, 0)
 
-  proc addString(s: string)  = args.add(newStrLitNode(s))
-  proc addExpr(e: expr)      = args.add(e)
-  proc addDollar()           = args.add(newStrLitNode"$")
+  proc addString(s: string)    = args.add(newStrLitNode(s))
+  proc addExpr(e: PNimrodNode) = args.add(e)
+  proc addDollar()             = args.add(newStrLitNode"$")
 
   ProcessInterpolations(e)
 
