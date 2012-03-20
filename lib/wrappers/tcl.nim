@@ -87,7 +87,7 @@ const
   IDLE_EVENTS* = 1 shl 5  # WAS 0x10 ???? *
   ALL_EVENTS* = not DONT_WAIT
   VOLATILE* = 1
-  STATIC* = 0
+  TCL_STATIC* = 0
   DYNAMIC* = 3            # Channel
   TCL_STDIN* = 1 shl 1
   TCL_STDOUT* = 1 shl 2

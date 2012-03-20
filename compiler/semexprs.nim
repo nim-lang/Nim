@@ -918,7 +918,7 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     let nOrig = n.copyTree
     a = builtinFieldAccess(c, a, {efLValue})
     if a == nil: 
-      return propertyWriteAccess(c, n, nOrig, a)
+      return propertyWriteAccess(c, n, nOrig, n[0])
   of nkBracketExpr: 
     # a[i] = x
     # --> `[]=`(a, i, x)
@@ -1028,7 +1028,7 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
 
     # Preserve the magic symbol in order to be handled in evals.nim
     n.sons[0] = newSymNode(magicSym, n.info)
-    n.typ = expandedSym.getReturnType
+    n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
     result = n
   else:
     result = semDirectOp(c, n, flags)

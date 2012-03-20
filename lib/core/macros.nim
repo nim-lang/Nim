@@ -194,15 +194,15 @@ proc lineinfo*(n: PNimrodNode): string {.magic: "NLineInfo".}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
 
-proc parseExpr*(s: string): expr {.magic: "ParseExprToAst".}
+proc parseExpr*(s: string): PNimrodNode {.magic: "ParseExprToAst".}
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression.
 
-proc parseStmt*(s: string): stmt {.magic: "ParseStmtToAst".}
+proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst".}
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements.
 
-proc getAst*(macroOrTemplate: expr): expr {.magic: "ExpandToAst".}
+proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ## 

@@ -94,7 +94,7 @@ template fail* =
 
 macro check*(conditions: stmt): stmt =
   proc standardRewrite(e: PNimrodNode): PNimrodNode =
-    template rewrite(Exp, lineInfoLit: expr, expLit: string): PNimrodNode =
+    template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
       if not Exp:
         checkpoint(lineInfoLit & ": Check failed: " & expLit)
         fail()
@@ -107,7 +107,7 @@ macro check*(conditions: stmt): stmt =
     of nnkInfix:
       proc rewriteBinaryOp(op: PNimrodNode): PNimrodNode =
         template rewrite(op, left, right, lineInfoLit: expr, opLit,
-          leftLit, rightLit: string, printLhs, printRhs: bool): PNimrodNode =
+          leftLit, rightLit: string, printLhs, printRhs: bool): stmt =
           block:
             var 
               lhs = left

@@ -26,7 +26,7 @@ import
 #  `opened` here could be an overloaded proc which any type can define.
 #  A common practice can be returing an Optional[Resource] obj for which
 #  `opened` is defined to `optional.hasValue`
-macro using(e: expr) : stmt =
+macro using(e: expr): stmt =
   if e.len != 2:
     error "Using statement: unexpected number of arguments. Got " &
       $e.len & ", expected: 1 or more variable assignments and a block"
@@ -81,7 +81,7 @@ macro using(e: expr) : stmt =
   targetAst[0][1][1][0] = body
   targetAst[0][1][1][1][0] = finallyBlock
   
-  return targetAst
+  result = targetAst
 
 type 
   TResource* = object
