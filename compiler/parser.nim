@@ -619,7 +619,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     while true: 
       case p.tok.tokType      #optInd(p, a);
       of tkSymbol, tkAccent: 
-        a = parseIdentColonEquals(p, {})
+        a = parseIdentColonEquals(p, {withBothOptional})
       of tkParRi: 
         break 
       else: 
