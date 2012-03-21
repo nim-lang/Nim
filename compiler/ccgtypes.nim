@@ -151,7 +151,6 @@ proc ccgIntroducedPtr(s: PSym): bool =
   assert skResult != s.kind
   case pt.Kind
   of tyObject:
-    # XXX quick hack floatSize*2 for the pegs module under 64bit
     if (optByRef in s.options) or (getSize(pt) > platform.floatSize * 2): 
       result = true           # requested anyway
     elif (tfFinal in pt.flags) and (pt.sons[0] == nil): 
@@ -160,7 +159,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
       result = true           # ordinary objects are always passed by reference,
                               # otherwise casting doesn't work
   of tyTuple: 
-    result = (getSize(pt) > platform.floatSize) or (optByRef in s.options)
+    result = (getSize(pt) > platform.floatSize*2) or (optByRef in s.options)
   else: result = false
   
 proc fillResult(param: PSym) = 
@@ -766,6 +765,15 @@ proc fakeClosureType(owner: PSym): PType =
   r.addSon(newType(tyTuple, owner))
   result.addSon(r)
 
+type
+  TTypeInfoReason = enum  ## for what do we need the type info?
+    tiNew,                ## for 'new'
+    tiNewSeq,             ## for 'newSeq'
+    tiNonVariantAsgn,     ## for generic assignment without variants
+    tiVariantAsgn         ## for generic assignment with variants
+
+include ccgtrav
+
 proc genTypeInfo(m: BModule, typ: PType): PRope = 
   var t = getUniqueType(typ)
   # gNimDat contains all the type information nowadays:
@@ -787,7 +795,12 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
       genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
     else:
       genTupleInfo(gNimDat, fakeClosureType(t.owner), result)
-  of tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gNimDat, t, result)
+  of tySequence, tyRef:
+    genTypeInfoAux(gNimDat, t, result)
+    if optRefcGC in gGlobalOptions:
+      let markerProc = genTraverseProc(gNimDat, t, tiNew)
+      appf(gNimDat.s[cfsTypeInit3], "$1->marker = $2;$n", [result, markerProc])
+  of tyPtr, tyRange: genTypeInfoAux(gNimDat, t, result)
   of tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result)
   of tySet: genSetInfo(gNimDat, t, result)
   of tyEnum: genEnumInfo(gNimDat, t, result)
@@ -796,6 +809,6 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
     if t.n != nil: genObjectInfo(gNimDat, t, result)
     else: genTupleInfo(gNimDat, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
-  
+
 proc genTypeSection(m: BModule, n: PNode) = 
   nil
