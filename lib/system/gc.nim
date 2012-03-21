@@ -338,17 +338,21 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
   sysAssert(cell != nil, "forAllChildren: 1")
   sysAssert(cell.typ != nil, "forAllChildren: 2")
   sysAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
-  case cell.typ.Kind
-  of tyRef: # common case
-    forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
-  of tySequence:
-    var d = cast[TAddress](cellToUsr(cell))
-    var s = cast[PGenericSeq](d)
-    if s != nil:
-      for i in 0..s.len-1:
-        forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-          GenericSeqSize), cell.typ.base, op)
-  else: nil
+  let marker = cell.typ.marker
+  if marker != nil:
+    marker(cellToUsr(cell), op.int)
+  else:
+    case cell.typ.Kind
+    of tyRef: # common case
+      forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
+    of tySequence:
+      var d = cast[TAddress](cellToUsr(cell))
+      var s = cast[PGenericSeq](d)
+      if s != nil:
+        for i in 0..s.len-1:
+          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
+            GenericSeqSize), cell.typ.base, op)
+    else: nil
 
 proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
   # we check the last 8 entries (cache line) for a slot that could be reused.
@@ -527,6 +531,9 @@ proc doOperation(p: pointer, op: TWalkOp) =
   of waCycleDecRef:
     sysAssert(c.refcount >=% rcIncrement, "doOperation 3")
     c.refcount = c.refcount -% rcIncrement
+
+proc nimGCvisit(d: pointer, op: int) {.compilerProc.} =
+  doOperation(d, TWalkOp(op))
 
 # we now use a much simpler and non-recursive algorithm for cycle removal
 proc collectCycles(gch: var TGcHeap) =

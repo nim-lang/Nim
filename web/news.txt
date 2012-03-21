@@ -33,6 +33,11 @@ Changes affecting backwards compatibility
   string versions of the WinAPI. Use the ``-d:useWinAnsi`` switch to revert
   back to the old behaviour which uses the Ansi string versions.
 - ``static`` is now a keyword.
+- Templates now participate in overloading resolution which can break code that
+  uses templates in subtle ways. Use the new ``immediate`` pragma for templates
+  to get a template of old behaviour.
+- There is now a proper distinction in the type system between ``expr`` and
+  ``PNimrodNode`` which unfortunately breaks the old macro system.
 
 
 Compiler Additions
@@ -42,6 +47,8 @@ Compiler Additions
 - The compiler can detect and evaluate calls that can be evaluated at compile
   time for optimization purposes with the ``--implicitStatic`` command line
   option or pragma.
+- The compiler now generates marker procs that the GC can use instead of RTTI.
+  This speeds up the GC quite a bit.
 
 
 Language Additions
