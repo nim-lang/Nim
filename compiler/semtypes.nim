@@ -523,8 +523,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
-    def, res: PNode
-    typ: PType
+    res: PNode
     cl: TIntSet
   checkMinSonsLen(n, 1)
   result = newOrPrevType(tyProc, prev, c)
@@ -541,20 +540,18 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     var a = n.sons[i]
     if a.kind != nkIdentDefs: IllFormedAst(a)
     checkMinSonsLen(a, 3)
-    var length = sonsLen(a)
-    if a.sons[length-2].kind != nkEmpty: 
+    var
+      typ: PType = nil
+      def: PNode = nil      
+      length = sonsLen(a)
+      hasType = a.sons[length-2].kind != nkEmpty
+      hasDefault = a.sons[length-1].kind != nkEmpty
+
+    if hasType:
       typ = paramType(c, a.sons[length-2], genericParams, cl)
       #if matchType(typ, [(tyVar, 0)], tyGenericInvokation):
       #  debug a.sons[length-2][0][1]
-    else:
-      typ = nil
-      # consider: 
-      # template T(x)
-      # it's wrong, but the parser might not generate a fatal error (when in
-      # 'check' mode for example), so we need to check again here:
-      if unlikely(a.sons[length-1].kind == nkEmpty): continue
-      
-    if a.sons[length-1].kind != nkEmpty:
+    if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
       # check type compability between def.typ and typ:
       if typ == nil:
@@ -565,15 +562,16 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
         if not containsGenericType(typ):
           def = fitNode(c, typ, def)
-    else:
-      def = ast.emptyNode
+    if not (hasType or hasDefault):
+      typ = newTypeS(tyExpr, c)
+      
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
       arg.typ = typ
       arg.position = counter
       inc(counter)
-      if def.kind != nkEmpty: arg.ast = copyTree(def)
+      if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
       if ContainsOrIncl(check, arg.name.id): 
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
