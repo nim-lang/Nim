@@ -520,6 +520,9 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     addDecl(c, param)
 
+proc isTypeClass(c: PContext, t: PType): bool =
+  return t.kind in {tyExpr}
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
@@ -536,7 +539,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   addSon(result.n, res)
   var check = initIntSet()
   var counter = 0
-  for i in countup(1, sonsLen(n)-1): 
+  for i in countup(1, n.len - 1):
     var a = n.sons[i]
     if a.kind != nkIdentDefs: IllFormedAst(a)
     checkMinSonsLen(a, 3)
@@ -569,6 +572,21 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
       arg.typ = typ
+      if kind notin {skTemplate, skMacro} and isTypeClass(c, typ):
+        let typeClassParamId = getIdent(":tcls_" & $i & "_" & $j)
+        if genericParams == nil:
+          # genericParams is nil when the proc is being instantiated
+          # the resolved type will be in scope then
+          var s = SymtabGet(c.tab, typeClassParamId)
+          arg.typ = s.typ
+        else:
+          var s = newSym(skType, typeClassParamId, getCurrOwner())
+          s.typ = newTypeS(tyGenericParam, c)
+          s.typ.sym = s
+          s.position = genericParams.len
+          genericParams.addSon(newSymNode(s))
+          arg.typ = s.typ
+
       arg.position = counter
       inc(counter)
       if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
@@ -831,10 +849,14 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
           s = newSymS(skType, a.sons[j], c)
           s.typ = newTypeS(tyGenericParam, c)
         of tyExpr:
+          echo "GENERIC EXPR ", a.info.toFileLineCol
           # not a type param, but an expression
+          # proc foo[x: expr](bar: int) what is this?
           s = newSymS(skGenericParam, a.sons[j], c)
           s.typ = typ
         else:
+          # This handles cases like proc foo[t: tuple] 
+          # XXX: we want to turn that into a type class
           s = newSymS(skType, a.sons[j], c)
           s.typ = typ
       if def.kind != nkEmpty: s.ast = def
