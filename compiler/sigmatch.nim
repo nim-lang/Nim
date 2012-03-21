@@ -463,14 +463,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       result = isGeneric
     else: 
       result = typeRel(mapping, x, a) # check if it fits
-  of tyExpr, tyStmt, tyTypeDesc: 
-    if a.kind == f.kind: 
-      result = isEqual
-    else: 
-      case a.kind
-      of tyExpr, tyStmt, tyTypeDesc: result = isGeneric
-      of tyNil: result = isSubtype
-      else: nil
+  of tyExpr, tyStmt, tyTypeDesc:
+    result = isGeneric
   else: internalError("typeRel(" & $f.kind & ')')
   
 proc cmpTypes*(f, a: PType): TTypeRelation = 
@@ -514,9 +508,6 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
                         arg, argOrig: PNode): PNode =
-  if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate} and 
-     f.kind in {tyExpr, tyStmt, tyTypeDesc}:
-    return argOrig
   var r = typeRel(m.bindings, f, a)
   case r
   of isConvertible: 
@@ -528,14 +519,17 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isSubtype: 
     inc(m.subtypeMatches)
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
-  of isGeneric: 
+  of isGeneric:
     inc(m.genericMatches)
-    result = copyTree(arg)
-    result.typ = getInstantiatedType(c, arg, m, f) 
-    # BUG: f may not be the right key!
-    if skipTypes(result.typ, abstractVar).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
-      # BUGFIX: use ``result.typ`` and not `f` here
+    if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
+      result = argOrig
+    else:
+      result = copyTree(arg)
+      result.typ = getInstantiatedType(c, arg, m, f) 
+      # BUG: f may not be the right key!
+      if skipTypes(result.typ, abstractVar).kind in {tyTuple}:
+        result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
+        # BUGFIX: use ``result.typ`` and not `f` here
   of isEqual: 
     inc(m.exactMatches)
     result = copyTree(arg)
