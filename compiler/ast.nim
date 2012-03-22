@@ -259,7 +259,7 @@ type
     tyGenericParam,      # ``a`` in the above patterns
     tyDistinct,
     tyEnum,
-    tyOrdinal,           # misnamed: should become 'tyConstraint'
+    tyOrdinal,           # integer types (including enums and boolean)
     tyArray,
     tyObject,
     tyTuple,
@@ -278,6 +278,7 @@ type
     tyConst, tyMutable, tyVarargs, 
     tyIter, # unused
     tyProxy # currently unused
+    tyTypeClass,
 
 const
   tyPureObject* = tyTuple

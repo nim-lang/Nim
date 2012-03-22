@@ -48,15 +48,15 @@ proc equalParams*(a, b: PNode): TParamsEquality
 proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
 const 
-  abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
+  abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct,
                    tyConst, tyMutable}
-  abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, 
+  abstractVar* = {tyVar, tyGenericInst, tyDistinct,
                   tyConst, tyMutable}
-  abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal,
+  abstractRange* = {tyGenericInst, tyRange, tyDistinct,
                     tyConst, tyMutable}
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct,
                        tyConst, tyMutable}
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable}
+  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable}
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable}
 
@@ -142,7 +142,7 @@ proc skipTypes(t: PType, kinds: TTypeKinds): PType =
 proc isOrdinalType(t: PType): bool = 
   assert(t != nil)
   result = (t.Kind in {tyChar, tyInt..tyInt64, tyBool, tyEnum}) or
-      (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
+      (t.Kind in {tyRange, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
 proc enumHasHoles(t: PType): bool = 
@@ -383,7 +383,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "int16", "int32", "int64", "float", "float32", "float64", "float128",
       
       "uint", "uint8", "uint16", "uint32", "uint64", "bignum", "const ",
-      "!", "varargs[$1]", "iter[$1]", "proxy[$1]"]
+      "!", "varargs[$1]", "iter[$1]", "proxy[$1]", "TypeClass" ]
   var t = typ
   result = ""
   if t == nil: return 
@@ -409,7 +409,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tySequence: 
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOrdinal: 
-    result = "ordinal[" & typeToString(t.sons[0]) & ']'
+    result = "ordinal"
   of tySet: 
     result = "set[" & typeToString(t.sons[0]) & ']'
   of tyOpenArray: 
@@ -729,8 +729,8 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
   case a.Kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-     tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc: 
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+     tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc, tyOrdinal:
     result = true
   of tyObject:
     IfFastObjectTypeCheckFailed(a, b):
@@ -740,7 +740,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     CycleCheck()
     if c.cmp == dcEq: result = sameDistinctTypes(a, b)
     else: result = sameTypeAux(a.sons[0], b.sons[0], c)
-  of tyEnum, tyForward, tyProxy:
+  of tyEnum, tyForward, tyProxy, tyTypeClass:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id
   of tyTuple:
@@ -748,7 +748,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTuple(a, b, c)
   of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
-     tyOrdinal, tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter: 
     if sonsLen(a) == sonsLen(b):
       CycleCheck()
@@ -845,7 +845,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
       result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation: 
+  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, tyTypeClass:
     result = false            #InternalError('shit found');
   of tyEmpty, tyNil:
     result = kind == skConst

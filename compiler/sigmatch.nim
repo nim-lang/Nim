@@ -340,11 +340,10 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         result = typeRel(mapping, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
     else: nil
-  of tyOrdinal: 
-    if f.sons[0].kind != tyGenericParam: 
-      # some constraint:
-      result = constraintRel(mapping, f.sons[0], a)
-    elif isOrdinalType(a): 
+  of tyTypeClass:
+    result = constraintRel(mapping, f.sons[0], a)
+  of tyOrdinal:
+    if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
       result = typeRel(mapping, f.sons[0], x)
       if result < isGeneric: result = isNone

@@ -111,7 +111,7 @@ proc mapType(typ: PType): TEcmasTypeKind =
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation, tyNone, 
-     tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc: 
+     tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc, tyTypeClass: 
     result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
