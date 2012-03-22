@@ -520,9 +520,13 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     addDecl(c, param)
 
-proc isTypeClass(c: PContext, t: PType): bool =
-  return t.kind in {tyExpr}
-
+proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind): PType =
+  case paramType.kind:
+  of tyExpr:
+    if procKind notin {skTemplate, skMacro}:
+      result = newTypeS(tyGenericParam, c)
+  else: nil
+  
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
@@ -552,6 +556,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = paramType(c, a.sons[length-2], genericParams, cl)
+      if c.filename.endsWith"nimdbg.nim" and typ != nil:
+        echo("PARAM TYPE ", typ.kind, " ")
+        if genericParams != nil:
+          echo genericParams.info.toFileLineCol
+        debug typ
       #if matchType(typ, [(tyVar, 0)], tyGenericInvokation):
       #  debug a.sons[length-2][0][1]
     if hasDefault:
@@ -571,9 +580,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
-      arg.typ = typ
-      if kind notin {skTemplate, skMacro} and isTypeClass(c, typ):
-        let typeClassParamId = getIdent(":tcls_" & $i & "_" & $j)
+      let typeClass = paramTypeClass(c, typ, kind)
+      if typeClass != nil:
+        let typeClassParamId = getIdent(arg.name.s & ":type")
         if genericParams == nil:
           # genericParams is nil when the proc is being instantiated
           # the resolved type will be in scope then
@@ -581,11 +590,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           arg.typ = s.typ
         else:
           var s = newSym(skType, typeClassParamId, getCurrOwner())
-          s.typ = newTypeS(tyGenericParam, c)
+          s.typ = typeClass
           s.typ.sym = s
           s.position = genericParams.len
           genericParams.addSon(newSymNode(s))
           arg.typ = s.typ
+      else:
+        arg.typ = typ
 
       arg.position = counter
       inc(counter)
@@ -799,7 +810,7 @@ proc processMagicType(c: PContext, m: PSym) =
   else: GlobalError(m.info, errTypeExpected)
   
 proc newConstraint(c: PContext, k: TTypeKind): PType = 
-  result = newTypeS(tyOrdinal, c)
+  result = newTypeS(tyTypeClass, c)
   result.addSon(newTypeS(k, c))
   
 proc semGenericConstraints(c: PContext, n: PNode, result: PType) = 
