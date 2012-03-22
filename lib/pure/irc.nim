@@ -142,6 +142,8 @@ proc parseMessage(msg: string): TIRCEvent =
     inc(i) # Skip `:`
     var nick = ""
     i.inc msg.parseUntil(nick, {'!', ' '}, i)
+    result.nick = ""
+    result.serverName = ""
     if msg[i] == '!':
       result.nick = nick
       inc(i) # Skip `!`
@@ -237,7 +239,8 @@ proc processLine(irc: var TIRC, line: string): TIRCEvent =
     result = parseMessage(line)
     # Get the origin
     result.origin = result.params[0]
-    if result.origin == irc.nick: result.origin = result.nick
+    if result.origin == irc.nick and
+       result.nick != "": result.origin = result.nick
 
     if result.cmd == MError:
       irc.close()
@@ -386,6 +389,7 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
   result.messageBuffer = @[]
   result.handleEvent = ircEvent
   result.userArg = userArg
+  result.lineBuffer = ""
 
 proc register*(d: PDispatcher, irc: PAsyncIRC) =
   ## Registers ``irc`` with dispatcher ``d``.

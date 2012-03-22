@@ -8,8 +8,12 @@
 #
 
 ## This module implements a simple portable type-safe sockets layer.
+##
+## Most procedures raise EOS on error.
+
 
 import os, parseutils
+from times import epochTime
 
 when defined(Windows):
   import winlean
@@ -58,6 +62,8 @@ type
 
   TRecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
+
+  ETimeout* = object of ESynch
 
 const
   InvalidSocket* = TSocket(-1'i32) ## invalid socket number
@@ -377,12 +383,14 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
   ## host name. If ``name`` is a host name, this function will try each IP
   ## of that host name. ``htons`` is already performed on ``port`` so you must
   ## not do it.
+  
   var hints: TAddrInfo
   var aiList: ptr TAddrInfo = nil
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(SOCK_STREAM)
   hints.ai_protocol = toInt(IPPROTO_TCP)
   gaiNim(name, port, hints, aiList)
+  
   # try all possibilities:
   var success = false
   var it = aiList
@@ -444,7 +452,6 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
 
   freeaddrinfo(aiList)
   if not success: OSError()
-
 
 proc timeValFromMilliseconds(timeout = 500): TTimeVal =
   if timeout != -1:
@@ -545,7 +552,33 @@ proc select*(readfds: var seq[TSocket], timeout = 500): int =
     result = int(select(cint(m+1), addr(rd), nil, nil, nil))
   
   pruneSocketSet(readfds, (rd))
+  
+proc recv*(socket: TSocket, data: pointer, size: int): int =
+  ## receives data from a socket
+  result = recv(cint(socket), data, size, 0'i32)
 
+template waitFor(): stmt =
+  if timeout - int(waited * 1000.0) < 1:
+    raise newException(ETimedout, "Call to recv() timed out.")
+  var s = @[socket]
+  var startTime = epochTime()
+  if select(s, timeout - int(waited * 1000.0)) != 1:
+    raise newException(ETimedout, "Call to recv() timed out.")
+  waited += (epochTime() - startTime)
+
+proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
+  ## overload with a ``timeout`` parameter in miliseconds.
+  var waited = 0.0 # number of seconds already waited  
+  
+  var read = 0
+  while read < size:
+    waitFor()
+    result = recv(cint(socket), addr(data[read]), 1, 0'i32)
+    if result < 0:
+      return
+    inc(read)
+  
+  result = read
 
 proc recvLine*(socket: TSocket, line: var TaintedString): bool =
   ## returns false if no further data is available. `Line` must be initialized
@@ -559,6 +592,29 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool =
     if n < 0: return
     elif n == 0: return true
     if c == '\r':
+      n = recv(cint(socket), addr(c), 1, MSG_PEEK)
+      if n > 0 and c == '\L':
+        discard recv(cint(socket), addr(c), 1, 0'i32)
+      elif n <= 0: return false
+      return true
+    elif c == '\L': return true
+    add(line.string, c)
+
+proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool =
+  ## variant with a ``timeout`` parameter, the timeout parameter specifies
+  ## how many miliseconds to wait for data.
+  
+  var waited = 0.0 # number of seconds already waited
+  
+  setLen(line.string, 0)
+  while true:
+    var c: char
+    waitFor()
+    var n = recv(cint(socket), addr(c), 1, 0'i32)
+    if n < 0: return
+    elif n == 0: return true
+    if c == '\r':
+      waitFor()
       n = recv(cint(socket), addr(c), 1, MSG_PEEK)
       if n > 0 and c == '\L':
         discard recv(cint(socket), addr(c), 1, 0'i32)
@@ -592,10 +648,6 @@ proc recvLineAsync*(socket: TSocket, line: var TaintedString): TRecvLineResult =
     elif c == '\L': return RecvFullLine
     add(line.string, c)
 
-proc recv*(socket: TSocket, data: pointer, size: int): int =
-  ## receives data from a socket
-  result = recv(cint(socket), data, size, 0'i32)
-
 proc recv*(socket: TSocket): TaintedString =
   ## receives all the data from the socket.
   ## Socket errors will result in an ``EOS`` error.
@@ -624,6 +676,16 @@ proc recv*(socket: TSocket): TaintedString =
       setLen(buf, bytesRead)
       add(result.string, buf)
       if bytesRead != bufSize-1: break
+
+proc recvTimeout*(socket: TSocket, timeout: int): TaintedString =
+  ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
+  ## parameter specifies the amount of miliseconds to wait for data on the
+  ## socket.
+  var s = @[socket]
+  if s.select(timeout) != 1:
+    raise newException(ETimedout, "Call to recv() timed out.")
+  
+  return socket.recv
 
 proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
   ## receives all the data from a non-blocking socket. If socket is non-blocking 
@@ -722,6 +784,21 @@ proc setBlocking*(s: TSocket, blocking: bool) =
       var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
       if fcntl(cint(s), F_SETFL, mode) == -1:
         OSError()
+
+proc connect*(socket: TSocket, timeout: int, name: string, port = TPort(0),
+             af: TDomain = AF_INET) =
+  ## Overload for ``connect`` to support timeouts. The ``timeout`` parameter 
+  ## specifies the time in miliseconds of how long to wait for a connection
+  ## to be made.
+  ##
+  ## **Warning:** If ``socket`` is non-blocking and timeout is not ``-1`` then
+  ## this function may set blocking mode on ``socket`` to true.
+  socket.setBlocking(true)
+  
+  socket.connectAsync(name, port, af)
+  var s: seq[TSocket] = @[socket]
+  if selectWrite(s, timeout) != 1:
+    raise newException(ETimedout, "Call to connect() timed out.")
 
 when defined(Windows):
   var wsa: TWSADATA
