@@ -559,11 +559,11 @@ proc recv*(socket: TSocket, data: pointer, size: int): int =
 
 template waitFor(): stmt =
   if timeout - int(waited * 1000.0) < 1:
-    raise newException(ETimedout, "Call to recv() timed out.")
+    raise newException(ETimeout, "Call to recv() timed out.")
   var s = @[socket]
   var startTime = epochTime()
   if select(s, timeout - int(waited * 1000.0)) != 1:
-    raise newException(ETimedout, "Call to recv() timed out.")
+    raise newException(ETimeout, "Call to recv() timed out.")
   waited += (epochTime() - startTime)
 
 proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
@@ -683,7 +683,7 @@ proc recvTimeout*(socket: TSocket, timeout: int): TaintedString =
   ## socket.
   var s = @[socket]
   if s.select(timeout) != 1:
-    raise newException(ETimedout, "Call to recv() timed out.")
+    raise newException(ETimeout, "Call to recv() timed out.")
   
   return socket.recv
 
@@ -798,7 +798,7 @@ proc connect*(socket: TSocket, timeout: int, name: string, port = TPort(0),
   socket.connectAsync(name, port, af)
   var s: seq[TSocket] = @[socket]
   if selectWrite(s, timeout) != 1:
-    raise newException(ETimedout, "Call to connect() timed out.")
+    raise newException(ETimeout, "Call to connect() timed out.")
 
 when defined(Windows):
   var wsa: TWSADATA
