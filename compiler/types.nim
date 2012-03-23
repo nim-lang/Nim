@@ -866,8 +866,10 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyArray:
     result = t.sons[1].kind == tyEmpty or
         typeAllowedAux(marker, t.sons[1], skVar)
-  of tyPtr, tyRef:
+  of tyRef:
     if kind == skConst: return false
+    result = typeAllowedAux(marker, t.sons[0], skVar)
+  of tyPtr:
     result = typeAllowedAux(marker, t.sons[0], skVar)
   of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter, tyProxy: 
     for i in countup(0, sonsLen(t) - 1): 
