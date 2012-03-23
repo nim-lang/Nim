@@ -1,7 +1,7 @@
 discard """
   file: "t99bott.nim"
   line: 26
-  errormsg: "cannot evaluate 'GetBottleNumber(bn)'"
+  errormsg: "constant expression expected"
   disabled: false
 """
 ## 99 Bottles of Beer
