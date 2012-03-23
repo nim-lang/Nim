@@ -70,6 +70,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
       genTraverseProc(c, accessor.parentObj, typ.sons[i])
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
+    let typ = GetUniqueType(typ)
     if typ.n != nil:
       genTraverseProc(c, accessor, typ.n)
     else:
