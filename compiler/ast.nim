@@ -310,6 +310,8 @@ type
     tfFromGeneric     # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
+    tfAll             # type class requires all constraints to be met (default)
+    tfAny             # type class requires any constraint to be met
 
   TTypeFlags* = set[TTypeFlag]
 

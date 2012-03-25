@@ -475,42 +475,6 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   result.n = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym)
   
-proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode, 
-                              cl: var TIntSet): PType = 
-  result = t
-  if t == nil: return 
-  if ContainsOrIncl(cl, t.id): return 
-  case t.kind
-  of tyGenericBody: 
-    result = newTypeS(tyGenericInvokation, c)
-    addSon(result, t)
-    for i in countup(0, sonsLen(t) - 2): 
-      if t.sons[i].kind != tyGenericParam: 
-        InternalError("addTypeVarsOfGenericBody")
-      # do not declare ``TKey`` twice:
-      #if not ContainsOrIncl(cl, t.sons[i].sym.ident.id):
-      var s = copySym(t.sons[i].sym)
-      s.position = sonsLen(genericParams)
-      if s.typ == nil or s.typ.kind != tyGenericParam: 
-        InternalError("addTypeVarsOfGenericBody 2")
-      addDecl(c, s)
-      addSon(genericParams, newSymNode(s))
-      addSon(result, t.sons[i])
-  of tyGenericInst: 
-    var L = sonsLen(t) - 1
-    t.sons[L] = addTypeVarsOfGenericBody(c, t.sons[L], genericParams, cl)
-  of tyGenericInvokation: 
-    for i in countup(1, sonsLen(t) - 1): 
-      t.sons[i] = addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl)
-  else: 
-    for i in countup(0, sonsLen(t) - 1): 
-      t.sons[i] = addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl)
-  
-proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType = 
-  result = semTypeNode(c, n, nil)
-  if genericParams != nil and sonsLen(genericParams) == 0: 
-    result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
-
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
     let nn = getSysSym"PNimrodNode"
@@ -520,13 +484,33 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     addDecl(c, param)
 
-proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind): PType =
+proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
+  tuple[typ: PType, id: PIdent] =
+  # if typ is not-nil, the param should be turned into a generic param
+  # if id is not nil, the generic param will bind just once (see below)
   case paramType.kind:
   of tyExpr:
+    # proc(a, b: expr)
     if procKind notin {skTemplate, skMacro}:
-      result = newTypeS(tyGenericParam, c)
+      result.typ = newTypeS(tyGenericParam, c)
+  of tyDistinct:
+    # type T1 = distinct expr
+    # type S1 = distinct Sortable
+    # proc x(a, b: T1, c, d: S1)
+    # This forces bindOnce behavior for the type class, equivalent to
+    # proc x[T, S](a, b: T, c, d: S)
+    result = paramTypeClass(c, paramType.lastSon, procKind)
+    result.id = paramType.sym.name
+  of tyGenericBody:
+    # type Foo[T] = object
+    # proc x(a: Foo, b: Foo) 
+    result.typ = newTypeS(tyTypeClass, c)
+    result.typ.addSon(paramType)
+    result.id = paramType.sym.name # bindOnce by default
+  of tyTypeClass:
+    result.typ = copyType(paramType, getCurrOwner(), false)
   else: nil
-  
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
@@ -555,14 +539,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       hasDefault = a.sons[length-1].kind != nkEmpty
 
     if hasType:
-      typ = paramType(c, a.sons[length-2], genericParams, cl)
-      if c.filename.endsWith"nimdbg.nim" and typ != nil:
-        echo("PARAM TYPE ", typ.kind, " ")
-        if genericParams != nil:
-          echo genericParams.info.toFileLineCol
-        debug typ
-      #if matchType(typ, [(tyVar, 0)], tyGenericInvokation):
-      #  debug a.sons[length-2][0][1]
+      typ = semTypeNode(c, a.sons[length-2], nil)
+      
     if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
       # check type compability between def.typ and typ:
@@ -580,42 +558,46 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
-      let typeClass = paramTypeClass(c, typ, kind)
+      var endingType = typ
+      var (typeClass, paramTypId) = paramTypeClass(c, typ, kind)
       if typeClass != nil:
-        let typeClassParamId = getIdent(arg.name.s & ":type")
+        if paramTypId == nil: paramTypId = getIdent(arg.name.s & ":type")
         if genericParams == nil:
           # genericParams is nil when the proc is being instantiated
           # the resolved type will be in scope then
-          var s = SymtabGet(c.tab, typeClassParamId)
-          arg.typ = s.typ
+          endingType = SymtabGet(c.tab, paramTypId).AssertNotNull.typ
         else:
-          var s = newSym(skType, typeClassParamId, getCurrOwner())
-          s.typ = typeClass
-          s.typ.sym = s
-          s.position = genericParams.len
-          genericParams.addSon(newSymNode(s))
-          arg.typ = s.typ
-      else:
-        arg.typ = typ
+          block addImplicitGeneric:
+            # is this a bindOnce type class already present in the param list?
+            for i in countup(0, genericParams.len - 1):
+              if genericParams.sons[i].sym.name == paramTypId:
+                endingType = genericParams.sons[i].typ
+                break addImplicitGeneric
 
+            var s = newSym(skType, paramTypId, getCurrOwner())
+            s.typ = typeClass
+            s.typ.sym = s
+            s.position = genericParams.len
+            genericParams.addSon(newSymNode(s))
+            endingType = typeClass
+      
+      arg.typ = endingType
       arg.position = counter
       inc(counter)
       if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
       if ContainsOrIncl(check, arg.name.id): 
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
-      addSon(result, typ)
+      addSon(result, endingType)
       addParamOrResult(c, arg, kind)
 
-  if n.sons[0].kind != nkEmpty: 
-    var r = paramType(c, n.sons[0], genericParams, cl)
+  if n.sons[0].kind != nkEmpty:
+    var r = semTypeNode(c, n.sons[0], nil)
     # turn explicit 'void' return type into 'nil' because the rest of the 
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       result.sons[0] = r
       res.typ = result.sons[0]
-  #if matchType(result, [(tyProc, 1), (tyVar, 0)], tyGenericInvokation):
-  #  debug result
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
@@ -707,9 +689,23 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)
   of nkCallKinds:
-    # expand macros and templates
-    var expandedSym = expectMacroOrTemplateCall(c, n)
-    result = semExpandToType(c, n, expandedSym)
+    let op = n.sons[0].ident.id
+    if op in {ord(wAnd), ord(wOr)}:
+      var
+        t1 = semTypeNode(c, n.sons[1], nil)
+        t2 = semTypeNode(c, n.sons[2], nil)
+
+      if   t1 == nil: GlobalError(n.sons[1].info, errTypeExpected)
+      elif t2 == nil: GlobalError(n.sons[2].info, errTypeExpected)
+      else:
+        result = newTypeS(tyTypeClass, c)
+        result.addSon(t1)
+        result.addSon(t2)
+        result.flags.incl(if op == ord(wAnd): tfAll else: tfAny)
+    else:
+      # expand macros and templates
+      var expandedSym = expectMacroOrTemplateCall(c, n)
+      result = semExpandToType(c, n, expandedSym)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType

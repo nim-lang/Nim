@@ -409,7 +409,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tySequence: 
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOrdinal: 
-    result = "ordinal"
+    result = "ordinal[" & typeToString(t.sons[0]) & ']'
   of tySet: 
     result = "set[" & typeToString(t.sons[0]) & ']'
   of tyOpenArray: 
