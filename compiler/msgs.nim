@@ -662,3 +662,8 @@ proc InternalError*(info: TLineInfo, errMsg: string) =
 proc InternalError*(errMsg: string) = 
   writeContext(UnknownLineInfo())
   rawMessage(errInternal, errMsg)
+
+template AssertNotNull*(e: expr): expr =
+  if(e == nil): InternalError($InstantiationInfo())
+  e
+

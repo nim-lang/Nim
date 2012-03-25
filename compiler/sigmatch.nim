@@ -208,9 +208,15 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         var y = a.n.sons[i].sym
         if x.name.id != y.name.id: return isNone
 
-proc constraintRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
+proc matchTypeClass(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   result = isNone
-  if f.kind == a.kind: result = isGeneric
+  let son = f.sons[0]
+  if son.kind == a.kind:
+    result = isGeneric
+  elif son.kind == tyGenericBody:
+    if a.kind == tyGenericInst and a.sons[0] == son:
+      result = isGeneric
+      put(mapping, f, a)
 
 proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
@@ -261,7 +267,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   assert(a != nil)
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
-        tyGenericBody, tyGenericInvokation, tyGenericParam}:
+        tyGenericBody, tyGenericInvokation,
+        tyGenericParam, tyTypeClass }:
     return typeRel(mapping, f, lastSon(a))
   if a.kind == tyVar and f.kind != tyVar: 
     return typeRel(mapping, f, a.sons[0])
@@ -341,7 +348,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         if result < isGeneric: result = isNone
     else: nil
   of tyTypeClass:
-    result = constraintRel(mapping, f.sons[0], a)
+    result = matchTypeClass(mapping, f, a)
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
@@ -414,7 +421,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyGenericBody: 
     let ff = lastSon(f)
     if ff != nil: result = typeRel(mapping, ff, a)
-  of tyGenericInvokation: 
+  of tyGenericInvokation:
     assert(f.sons[0].kind == tyGenericBody)
     if a.kind == tyGenericInvokation: 
       #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")

@@ -20,7 +20,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     if a.kind != nkSym: 
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam}: continue 
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyTypeClass}: continue 
     var s = newSym(skType, q.name, getCurrOwner())
     s.info = q.info
     s.flags = s.flags + {sfUsed, sfFromGeneric}
@@ -106,8 +106,6 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
   elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and 
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
-
-template nimdbg: expr = c.filename.endsWith"nimdbg.nim"
 
 proc applyConcreteTypesToSig(genericProc: PSym, concTypes: seq[PType]): PType =
   # XXX: This is intended to replace the use of semParamList in generateInstance.
