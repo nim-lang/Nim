@@ -267,14 +267,6 @@ proc transformLoopBody(c: PTransf, n: PNode): PTransNode =
     discard c.blockSyms.pop()
   else: 
     result = transform(c, n)
-
-proc skipConv(n: PNode): PNode = 
-  case n.kind
-  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
-    result = n.sons[0]
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = n.sons[1]
-  else: result = n
   
 proc newTupleAccess(tup: PNode, i: int): PNode = 
   result = newNodeIT(nkBracketExpr, tup.info, tup.typ.sons[i])

@@ -146,6 +146,14 @@ proc IITablePut*(t: var TIITable, key, val: int)
 
 # implementation
 
+proc skipConv*(n: PNode): PNode = 
+  case n.kind
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    result = n.sons[0]
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = n.sons[1]
+  else: result = n
+
 proc SameValue*(a, b: PNode): bool = 
   result = false
   case a.kind
