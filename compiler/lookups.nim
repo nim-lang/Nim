@@ -11,7 +11,7 @@
 
 import 
   intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread, 
-  renderer
+  renderer, wordrecg, idgen
 
 proc considerAcc*(n: PNode): PIdent = 
   case n.kind
@@ -21,6 +21,11 @@ proc considerAcc*(n: PNode): PIdent =
     case n.len
     of 0: GlobalError(n.info, errIdentifierExpected, renderTree(n))
     of 1: result = considerAcc(n.sons[0])
+    of 2:
+      if n[0].ident.id == ord(wStar):
+        result = genSym(n[1].ident.s)
+      else:
+        result = getIdent(n[0].ident.s & n[1].ident.s)
     else:
       var id = ""
       for i in 0.. <n.len:
