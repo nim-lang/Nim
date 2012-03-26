@@ -13,7 +13,7 @@
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
-  result = evalTemplate(c, n, s)
+  result = evalTemplate(n, s)
   if semCheck: result = semAfterMacroCall(c, result, s)
   popInfoContext()
 
