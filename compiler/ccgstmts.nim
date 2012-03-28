@@ -725,7 +725,10 @@ proc genStmts(p: BProc, t: PNode) =
     genLineDir(p, t)
     initLocExpr(p, t, a)
   of nkAsgn: genAsgn(p, t, fastAsgn=false)
-  of nkFastAsgn: genAsgn(p, t, fastAsgn=true)
+  of nkFastAsgn: 
+    # transf is overly aggressive with 'nkFastAsgn', so we work around here.
+    # See tests/run/tcnstseq3 for an example that would fail otherwise.
+    genAsgn(p, t, fastAsgn=p.prc != nil)
   of nkDiscardStmt: 
     genLineDir(p, t)
     initLocExpr(p, t.sons[0], a)

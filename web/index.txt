@@ -42,7 +42,7 @@ priority).
 Nimrod is efficient
 ===================
 
-* Native code generation (currently via compilation to C), not dependant on a
+* Native code generation (currently via compilation to C), not dependent on a
   virtual machine: **Nimrod produces small executables without dependencies
   for easy redistribution.**
 * A fast **non-tracing** garbage collector that should be well suited for soft 
