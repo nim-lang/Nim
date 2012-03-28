@@ -103,4 +103,3 @@ proc c_getenv(env: CString): CString {.importc: "getenv", noDecl.}
 proc c_putenv(env: CString): cint {.importc: "putenv", noDecl.}
 
 {.pop}
-

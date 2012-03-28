@@ -107,14 +107,14 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   result = c.mapping[v.id]
   if result != toUndefined: return
   case v.kind
-  of skVar, skLet, skResult:
+  of skVar, skForVar, skLet, skResult:
     result = toNil
     if sfGlobal in v.flags:
       if sfThread in v.flags: 
         result = toMine 
       elif containsGarbageCollectedRef(v.typ):
         result = toTheirs
-  of skTemp, skForVar: result = toNil
+  of skTemp: result = toNil
   of skConst: result = toMine
   of skParam: 
     result = c.mapping[v.id]

@@ -1,7 +1,7 @@
 version 0.9.0
 =============
 
-- fix bug #100 so that unittests work again
+- make GC realtime capable: GC_step(ms: int)
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
 - fix remaining closure bugs:
