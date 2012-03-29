@@ -606,6 +606,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         res.loc.s = OnUnknown
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
     var param = prc.typ.n.sons[i].sym
+    if param.typ.isCompileTimeOnly: continue
     assignParam(p, param)
   closureSetup(p, prc)
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.

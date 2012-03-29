@@ -48,15 +48,15 @@ proc equalParams*(a, b: PNode): TParamsEquality
 proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
 const 
-  abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct,
+  abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable}
-  abstractVar* = {tyVar, tyGenericInst, tyDistinct,
+  abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
                   tyConst, tyMutable}
-  abstractRange* = {tyGenericInst, tyRange, tyDistinct,
+  abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal,
                     tyConst, tyMutable}
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct,
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyConst, tyMutable}
-  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable}
+  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable, tyOrdinal}
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable}
 
@@ -142,7 +142,7 @@ proc skipTypes(t: PType, kinds: TTypeKinds): PType =
 proc isOrdinalType(t: PType): bool = 
   assert(t != nil)
   result = (t.Kind in {tyChar, tyInt..tyInt64, tyBool, tyEnum}) or
-      (t.Kind in {tyRange, tyConst, tyMutable, tyGenericInst}) and
+      (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
 proc enumHasHoles(t: PType): bool = 
@@ -730,8 +730,10 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc, tyOrdinal:
+     tyInt..tyBigNum, tyStmt:
     result = true
+  of tyExpr:
+    result = ExprStructuralEquivalent(a.n, b.n)
   of tyObject:
     IfFastObjectTypeCheckFailed(a, b):
       CycleCheck()
@@ -740,7 +742,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     CycleCheck()
     if c.cmp == dcEq: result = sameDistinctTypes(a, b)
     else: result = sameTypeAux(a.sons[0], b.sons[0], c)
-  of tyEnum, tyForward, tyProxy, tyTypeClass:
+  of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id
   of tyTuple:
@@ -749,7 +751,8 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
-     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter: 
+     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
+     tyOrdinal, tyTypeDesc, tyTypeClass:
     if sonsLen(a) == sonsLen(b):
       CycleCheck()
       result = true

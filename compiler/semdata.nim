@@ -180,14 +180,16 @@ proc addToLib(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
-  if (baseType == nil): InternalError("makePtrType")
   result = newTypeS(tyPtr, c)
-  addSon(result, baseType)
+  addSon(result, baseType.AssertNotNil)
 
 proc makeVarType(c: PContext, baseType: PType): PType = 
-  if (baseType == nil): InternalError("makeVarType")
   result = newTypeS(tyVar, c)
-  addSon(result, baseType)
+  addSon(result, baseType.AssertNotNil)
+
+proc makeTypeDesc*(c: PContext, typ: PType): PType =
+  result = newTypeS(tyTypeDesc, c)
+  result.addSon(typ.AssertNotNil)
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType = 
   result = newType(kind, getCurrOwner())

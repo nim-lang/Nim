@@ -130,6 +130,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     assert(sonsLen(typ) == sonsLen(typ.n))
+    if ri.sons[i].typ.isCompileTimeOnly: continue
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
       app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
