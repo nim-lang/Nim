@@ -180,6 +180,8 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(n, result)
+      if result.kind == skParam and result.typ.kind == tyTypeDesc:
+        return result.typ.sons[0].sym
       if result.kind != skType: GlobalError(n.info, errTypeExpected)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
@@ -490,9 +492,20 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
   # if id is not nil, the generic param will bind just once (see below)
   case paramType.kind:
   of tyExpr:
-    # proc(a, b: expr)
     if procKind notin {skTemplate, skMacro}:
-      result.typ = newTypeS(tyGenericParam, c)
+      if paramType.sonsLen == 0:
+        # proc(a, b: expr)
+        # no constraints, treat like generic param
+        result.typ = newTypeS(tyGenericParam, c)
+      else:
+        # proc(a: expr{string}, b: expr{nkLambda})
+        # overload on compile time values and AST trees
+        result.typ = newTypeS(tyExpr, c)
+        result.typ.sons = paramType.sons
+  of tyTypeDesc:
+    if procKind notin {skTemplate, skMacro}:
+      result.typ = newTypeS(tyTypeDesc, c)
+      result.typ.sons = paramType.sons
   of tyDistinct:
     # type T1 = distinct expr
     # type S1 = distinct Sortable
@@ -565,7 +578,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if genericParams == nil:
           # genericParams is nil when the proc is being instantiated
           # the resolved type will be in scope then
-          endingType = SymtabGet(c.tab, paramTypId).AssertNotNull.typ
+          endingType = SymtabGet(c.tab, paramTypId).AssertNotNil.typ
         else:
           block addImplicitGeneric:
             # is this a bindOnce type class already present in the param list?
@@ -664,9 +677,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     if s.ast == nil: GlobalError(n.info, errCannotInstantiateX, s.name.s)
     result = instGenericContainer(c, n, result)
 
-proc semExpandToType(c: PContext, n: PNode, sym: PSym): PType =
+proc semTypeFromMacro(c: PContext, n: PNode): PType =
   # Expands a macro or template until a type is returned
   # results in GlobalError if the macro expands to something different
+  var sym = expectMacroOrTemplateCall(c, n)
   markUsed(n, sym)
   case sym.kind
   of skMacro:
@@ -676,7 +690,7 @@ proc semExpandToType(c: PContext, n: PNode, sym: PSym): PType =
   else:
     GlobalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
 
-proc semTypeNode(c: PContext, n: PNode, prev: PType): PType = 
+proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
@@ -703,9 +717,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result.addSon(t2)
         result.flags.incl(if op == ord(wAnd): tfAll else: tfAny)
     else:
-      # expand macros and templates
-      var expandedSym = expectMacroOrTemplateCall(c, n)
-      result = semExpandToType(c, n, expandedSym)
+      result = semTypeFromMacro(c, n)
+  of nkCurlyExpr:
+    result = semTypeNode(c, n.sons[0], nil)
+    if result != nil:
+      result = copyType(result, getCurrOwner(), false)
+      for i in countup(1, n.len - 1):
+        result.addSon(semTypeNode(c, n.sons[i], nil))
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType

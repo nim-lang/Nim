@@ -10,6 +10,8 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+proc semExprOrTypedesc(c: PContext, n: PNode): PNode
+
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
@@ -93,6 +95,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
+    elif s.kind == skParam and s.typ.kind == tyExpr:
+      return s.typ.n
     elif s.owner != c.p.owner and s.owner.kind != skModule and 
         c.p.owner.typ != nil and not IsGenericRoutine(s.owner):
       c.p.owner.typ.callConv = ccClosure
@@ -111,7 +115,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   else:
     markUsed(n, s)
     result = newSymNode(s, n.info)
-
+  
 proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
   var diff = inheritanceDiff(castDest, src)
   if diff == high(int):
@@ -247,16 +251,31 @@ proc semIs(c: PContext, n: PNode): PNode =
   else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")
 
+proc semExprOrTypedesc(c: PContext, n: PNode): PNode =
+  # XXX: Currently, semExprWithType will return the same type
+  # for nodes such as (100) or (int). 
+  # This is inappropriate. The type of the first expression
+  # should be "int", while the type of the second one should 
+  # be typeDesc(int).
+  # Ideally, this should be fixed in semExpr, but right now 
+  # there are probably users that depend on the present behavior.
+  # XXX: Investigate current uses of efAllowType and fix them to
+  # work with tyTypeDesc.
+  result = semExprWithType(c, n, {efAllowType})
+  if result.kind == nkSym and result.sym.kind == skType and
+     result.typ.kind != tyTypeDesc:
+    result.typ = makeTypeDesc(c, result.typ)
+
 proc semOpAux(c: PContext, n: PNode) =
   for i in countup(1, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
       a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
-      a.sons[1] = semExprWithType(c, a.sons[1], {efAllowType})
+      a.sons[1] = semExprOrTypedesc(c, a.sons[1])
       a.typ = a.sons[1].typ
     else:
-      n.sons[i] = semExprWithType(c, a, {efAllowType})
+      n.sons[i] = semExprOrTypedesc(c, a)
     
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
@@ -822,7 +841,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   of tyRef, tyPtr: n.typ = t.sons[0]
   else: result = nil
   #GlobalError(n.sons[0].info, errCircumNeedsPointer) 
-  
+
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
@@ -833,7 +852,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.add(x[0])
     return
   checkMinSonsLen(n, 2)
-  n.sons[0] = semExprWithType(c, n.sons[0], flags - {efAllowType})
+  n.sons[0] = semExprOrTypedesc(c, n.sons[0])
   var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
   of tyArray, tyOpenArray, tyArrayConstr, tySequence, tyString, tyCString: 
@@ -848,6 +867,11 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
       result.typ = elemType(arr)
     #GlobalError(n.info, errIndexTypesDoNotMatch)
+  of tyTypeDesc:
+    result = n.sons[0] # The result so far is a tyTypeDesc bound to
+                       # a tyGenericBody. The line below will substitute
+                       # it with the instantiated type.
+    result.typ.sons[0] = semTypeNode(c, n, nil).linkTo(result.sym)
   of tyTuple: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
@@ -1024,7 +1048,7 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
     markUsed(n, expandedSym)
 
     for i in countup(1, macroCall.len-1):
-      macroCall.sons[i] = semExprWithType(c, macroCall[i], {efAllowType})
+      macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
 
     # Preserve the magic symbol in order to be handled in evals.nim
     n.sons[0] = newSymNode(magicSym, n.info)
@@ -1287,6 +1311,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBind:
     Message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
+  of nkTypeOfExpr:
+    var typ = semTypeNode(c, n, nil)
+    if typ.sym == nil:
+      typ = copyType(typ, typ.owner, true)
+      typ.linkTo(newSym(skType, getIdent"typedesc", typ.owner))
+    result = newSymNode(typ.sym, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)

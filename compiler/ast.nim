@@ -711,6 +711,15 @@ proc `[]`*(n: PNode, i: int): PNode {.inline.} =
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
+proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
+  t.sym = s
+  s.typ = t
+  result = t
+
+proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
+  t.sym = s
+  s.typ = t
+  result = s
 
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0

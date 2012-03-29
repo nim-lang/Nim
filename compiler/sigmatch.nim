@@ -35,7 +35,7 @@ type
   
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible, isIntConv, isSubtype, 
-    isGeneric, 
+    isGeneric
     isEqual
   
 proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
@@ -208,16 +208,32 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         var y = a.n.sons[i].sym
         if x.name.id != y.name.id: return isNone
 
-proc matchTypeClass(mapping: var TIdTable, f, a: PType): TTypeRelation = 
-  result = isNone
-  let son = f.sons[0]
-  if son.kind == a.kind:
-    result = isGeneric
-  elif son.kind == tyGenericBody:
-    if a.kind == tyGenericInst and a.sons[0] == son:
-      result = isGeneric
-      put(mapping, f, a)
+proc matchTypeClass(mapping: var TIdTable, f, a: PType): TTypeRelation =
+  for i in countup(0, f.sonsLen - 1):
+    let son = f.sons[i]
+    var match = son.kind == a.kind
 
+    if not match:
+      case son.kind
+      of tyGenericBody:
+        if a.kind == tyGenericInst and a.sons[0] == son:
+          match = true
+          put(mapping, f, a)
+      of tyTypeClass:
+        match = matchTypeClass(mapping, son, a) == isGeneric
+      else: nil
+
+    if tfAny in f.flags:
+      if match == true:
+        return isGeneric
+    else:
+      if match == false:
+        return isNone
+
+  # if the loop finished without returning, either all constraints matched
+  # or none of them matched.
+  result = if tfAny in f.flags: isNone else: isGeneric
+  
 proc procTypeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
@@ -347,8 +363,6 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         result = typeRel(mapping, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
     else: nil
-  of tyTypeClass:
-    result = matchTypeClass(mapping, f, a)
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
@@ -469,7 +483,19 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       result = isGeneric
     else: 
       result = typeRel(mapping, x, a) # check if it fits
-  of tyExpr, tyStmt, tyTypeDesc:
+  of tyTypeClass:
+    result = matchTypeClass(mapping, f, a)
+    if result == isGeneric: put(mapping, f, a)
+  of tyTypeDesc:
+    if a.kind == tyTypeDesc:
+      if f.sonsLen == 0:
+        result = isGeneric
+      else:
+        result = matchTypeClass(mapping, f, a.sons[0])
+      if result == isGeneric: put(mapping, f, a)
+    else:
+      result = isNone
+  of tyExpr, tyStmt:
     result = isGeneric
   else: internalError("typeRel(" & $f.kind & ')')
   
@@ -512,9 +538,34 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       inc(m.convMatches)
       return 
 
+
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
                         arg, argOrig: PNode): PNode =
-  var r = typeRel(m.bindings, f, a)
+  var r: TTypeRelation
+  if f.kind == tyExpr:
+    if f.sonsLen == 0:
+      r = isGeneric
+    else:
+      let match = matchTypeClass(m.bindings, f, a)
+      if match != isGeneric: r = isNone
+      else:
+        # XXX: Ideally, this should happen much earlier somewhere near 
+        # semOpAux, but to do that, we need to be able to query the 
+        # overload set to determine whether compile-time value is expected
+        # for the param before entering the full-blown sigmatch algorithm.
+        # This is related to the immediate pragma since querying the
+        # overload set could help there too.
+        var evaluated = c.semConstExpr(c, arg)
+        if evaluated != nil:
+          r = isGeneric
+          arg.typ = newTypeS(tyExpr, c)
+          arg.typ.n = evaluated
+        
+    if r == isGeneric:
+      put(m.bindings, f, arg.typ)
+  else:
+    r = typeRel(m.bindings, f, a)
+  
   case r
   of isConvertible: 
     inc(m.convMatches)
