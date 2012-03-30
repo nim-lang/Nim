@@ -778,6 +778,9 @@ proc genMainProc(m: BModule) =
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
         "  cmdLine = args;$n" & "  cmdCount = argc;$n" & "  gEnv = env;$n" &
         "  NimMain();$n" & "  return nim_program_result;$n" & "}$n"
+    StandaloneCMain = "int main(void) {$n" &
+        "  NimMain();$n" & 
+        "  return 0;$n" & "}$n"
     WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
@@ -807,7 +810,10 @@ proc genMainProc(m: BModule) =
   elif optGenDynLib in gGlobalOptions:
     nimMain = posixNimDllMain
     otherMain = posixCDllMain
-  else: 
+  elif platform.targetOS == osStandalone:
+    nimMain = PosixNimMain
+    otherMain = StandaloneCMain
+  else:
     nimMain = PosixNimMain
     otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
