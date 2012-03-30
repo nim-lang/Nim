@@ -181,6 +181,78 @@ when defined(boehmgc):
   proc deallocOsPages() {.inline.} = nil
 
   include "system/cellsets"
+elif defined(nogc) and defined(useMalloc):
+  
+  when not defined(useNimRtl):
+    proc alloc(size: int): pointer =
+      result = cmalloc(size)
+      if result == nil: raiseOutOfMem()
+    proc alloc0(size: int): pointer =
+      result = alloc(size)
+      zeroMem(result, size)
+    proc realloc(p: Pointer, newsize: int): pointer =
+      result = crealloc(p, newsize)
+      if result == nil: raiseOutOfMem()
+    proc dealloc(p: Pointer) = cfree(p)
+    
+    proc allocShared(size: int): pointer =
+      result = cmalloc(size)
+      if result == nil: raiseOutOfMem()
+    proc allocShared0(size: int): pointer =
+      result = alloc(size)
+      zeroMem(result, size)
+    proc reallocShared(p: Pointer, newsize: int): pointer =
+      result = crealloc(p, newsize)
+      if result == nil: raiseOutOfMem()
+    proc deallocShared(p: Pointer) = cfree(p)
+
+    proc GC_disable() = nil
+    proc GC_enable() = nil
+    proc GC_fullCollect() = nil
+    proc GC_setStrategy(strategy: TGC_Strategy) = nil
+    proc GC_enableMarkAndSweep() = nil
+    proc GC_disableMarkAndSweep() = nil
+    proc GC_getStatistics(): string = return ""
+    
+    proc getOccupiedMem(): int = nil
+    proc getFreeMem(): int = nil
+    proc getTotalMem(): int = nil
+    
+    proc setStackBottom(theStackBottom: pointer) = nil
+
+  proc initGC() = nil
+
+  proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+    result = alloc(size)
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+    result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+
+  proc growObj(old: pointer, newsize: int): pointer =
+    result = realloc(old, newsize)
+
+  proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
+  proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
+  
+  proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+  proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+
+  type
+    TMemRegion = object {.final, pure.}
+  
+  proc Alloc(r: var TMemRegion, size: int): pointer =
+    result = alloc(size)
+  proc Alloc0(r: var TMemRegion, size: int): pointer =
+    result = alloc0(size)
+  proc Dealloc(r: var TMemRegion, p: Pointer) = Dealloc(p)
+  proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
+  proc deallocOsPages() {.inline.} = nil
+
 elif defined(nogc):
   # Even though we don't want the GC, we cannot simply use C's memory manager
   # because Nimrod's runtime wants ``realloc`` to zero out the additional

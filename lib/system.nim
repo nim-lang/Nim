@@ -851,7 +851,7 @@ template sysAssert(cond: bool, msg: string) =
 
 include "system/inclrtl"
 
-when not defined(ecmascript) and not defined(nimrodVm):
+when not defined(ecmascript) and not defined(nimrodVm) and not defined(avr):
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1604,16 +1604,17 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   {.push stack_trace: off.}
 
   proc initGC()
-  when not defined(boehmgc):
+  when not defined(boehmgc) and not defined(useMalloc):
     proc initAllocator() {.inline.}
 
-  proc initStackBottom() {.inline.} = 
-    # WARNING: This is very fragile! An array size of 8 does not work on my
-    # Linux 64bit system. Very strange, but we are at the will of GCC's 
-    # optimizer...
-    var locals {.volatile.}: pointer
-    locals = addr(locals)
-    setStackBottom(locals)
+  when not defined(nogc):
+    proc initStackBottom() {.inline.} = 
+      # WARNING: This is very fragile! An array size of 8 does not work on my
+      # Linux 64bit system. Very strange, but we are at the will of GCC's 
+      # optimizer...
+      var locals {.volatile.}: pointer
+      locals = addr(locals)
+      setStackBottom(locals)
 
   var
     strDesc: TNimType
@@ -1868,7 +1869,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/syslocks"
     include "system/threads"
-  else:
+  elif not defined(nogc):
     initStackBottom()
     initGC()
 
@@ -1881,21 +1882,23 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## for debug builds.
     
   {.push stack_trace: off.}
-  include "system/excpt"
+  when hostCPU == "avr":
+    include "system/embedded"
+  else:
+    include "system/excpt"
+    
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
   include "system/arithm"
   {.pop.} # stack trace
   {.pop.} # stack trace
       
-  include "system/dyncalls"
+  when hostOS != "standalone": include "system/dyncalls"
   include "system/sets"
 
   const
     GenericSeqSize = (2 * sizeof(int))
     
-  proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}
-
   proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
     sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
     var d: int
@@ -1918,7 +1921,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   include "system/mmdisp"
   {.push stack_trace: off.}
-  include "system/sysstr"
+  when hostCPU != "avr": include "system/sysstr"
   {.pop.}
 
   include "system/sysio"
@@ -1938,18 +1941,19 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     var res = TaintedString(newStringOfCap(80))
     while f.readLine(res): yield TaintedString(res)
 
-  include "system/assign"
-  include "system/repr"
+  when hostCPU != "avr":
+    include "system/assign"
+    include "system/repr"
 
-  proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
-    ## retrieves the current exception; if there is none, nil is returned.
-    result = currException
+    proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
+      ## retrieves the current exception; if there is none, nil is returned.
+      result = currException
 
-  proc getCurrentExceptionMsg*(): string {.inline.} =
-    ## retrieves the error message that was attached to the current
-    ## exception; if there is none, "" is returned.
-    var e = getCurrentException()
-    return if e == nil: "" else: e.msg
+    proc getCurrentExceptionMsg*(): string {.inline.} =
+      ## retrieves the error message that was attached to the current
+      ## exception; if there is none, "" is returned.
+      var e = getCurrentException()
+      return if e == nil: "" else: e.msg
 
   {.push stack_trace: off.}
   when defined(endb):
