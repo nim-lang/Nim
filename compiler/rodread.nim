@@ -535,7 +535,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
 proc processRodFile(r: PRodReader, crc: TCrc32) = 
   var 
     w: string
-    d, L, inclCrc: int
+    d, inclCrc: int
   while r.s[r.pos] != '\0': 
     var section = rdWord(r)
     if r.reason != rrNone: 
@@ -573,20 +573,17 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "FILES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
-      L = 0
-      while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
-        setlen(r.files, L + 1)
+      while r.s[r.pos] != ')':
         var relativePath = decodeStr(r.s, r.pos)
         var resolvedPath = relativePath.findModule
-        r.files[L] = if resolvedPath.len > 0: resolvedPath else: relativePath
+        r.files.add(if resolvedPath.len > 0: resolvedPath else: relativePath)
         inc(r.pos)            # skip #10
         inc(r.line)
-        inc(L)
       if r.s[r.pos] == ')': inc(r.pos)
     of "INCLUDES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
-      while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
+      while r.s[r.pos] != ')': 
         w = r.files[decodeVInt(r.s, r.pos)]
         inc(r.pos)            # skip ' '
         inclCrc = decodeVInt(r.s, r.pos)
@@ -597,13 +594,10 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
           inc(r.pos)
           inc(r.line)
       if r.s[r.pos] == ')': inc(r.pos)
-    of "DEPS": 
+    of "DEPS":
       inc(r.pos)              # skip ':'
-      L = 0
       while r.s[r.pos] > '\x0A': 
-        setlen(r.modDeps, L + 1)
-        r.modDeps[L] = r.files[decodeVInt(r.s, r.pos)]
-        inc(L)
+        r.modDeps.add r.files[decodeVInt(r.s, r.pos)]
         if r.s[r.pos] == ' ': inc(r.pos)
     of "INTERF": 
       r.interfIdx = r.pos + 2
@@ -629,9 +623,11 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "INIT": 
       r.initIdx = r.pos + 2   # "(\10"
       skipSection(r)
-    else: 
-      MsgWriteln("skipping section: " & section &
-                 " at " & $r.pos & " in " & r.filename)
+    else:
+      InternalError("invalid section: '" & section &
+                    "' at " & $r.line & " in " & r.filename)
+      #MsgWriteln("skipping section: " & section &
+      #           " at " & $r.line & " in " & r.filename)
       skipSection(r)
     if r.s[r.pos] == '\x0A': 
       inc(r.pos)

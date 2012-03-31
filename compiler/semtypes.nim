@@ -251,43 +251,38 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     result = semIdentVis(c, kind, n, allowed)
   
 proc checkForOverlap(c: PContext, t, ex: PNode, branchIndex: int) = 
+  let ex = ex.skipConv
   for i in countup(1, branchIndex - 1): 
     for j in countup(0, sonsLen(t.sons[i]) - 2): 
-      if overlap(t.sons[i].sons[j], ex): 
+      if overlap(t.sons[i].sons[j].skipConv, ex): 
         LocalError(ex.info, errDuplicateCaseLabel)
   
-proc semBranchExpr(c: PContext, t, e: PNode): PNode =
-  result = semConstExpr(c, e)
+proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode =
   checkMinSonsLen(t, 1)
-  result = fitNode(c, t.sons[0].typ, result)
-  #if cmpTypes(t.sons[0].typ, result.typ) <= isConvertible: 
-  #  typeMismatch(result, t.sons[0].typ, result.typ)
+  let ac = semConstExpr(c, a)
+  let bc = semConstExpr(c, b)
+  let at = fitNode(c, t.sons[0].typ, ac)
+  let bt = fitNode(c, t.sons[0].typ, bc)
+  
+  result = newNodeI(nkRange, a.info)
+  result.add(at)
+  result.add(bt)
+  if emptyRange(ac, bc): GlobalError(b.info, errRangeIsEmpty)
+  covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
 proc SemCaseBranchRange(c: PContext, t, b: PNode, 
                         covered: var biggestInt): PNode = 
   checkSonsLen(b, 3)
-  result = newNodeI(nkRange, b.info)
-  result.add(semBranchExpr(c, t, b.sons[1]))
-  result.add(semBranchExpr(c, t, b.sons[2]))
-  if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
-  covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+  result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
 
 proc semCaseBranchSetElem(c: PContext, t, b: PNode, 
                           covered: var biggestInt): PNode = 
   if isRange(b):
     checkSonsLen(b, 3)
-    result = newNodeI(nkRange, b.info)
-    result.add(semBranchExpr(c, t, b.sons[1]))
-    result.add(semBranchExpr(c, t, b.sons[2]))
-    if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
-    covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+    result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
   elif b.kind == nkRange:
     checkSonsLen(b, 2)
-    result = newNodeI(nkRange, b.info)
-    result.add(semBranchExpr(c, t, b.sons[0]))
-    result.add(semBranchExpr(c, t, b.sons[1]))
-    if emptyRange(result[0], result[1]): GlobalError(b.info, errRangeIsEmpty)
-    covered = covered + getOrdValue(result[1]) - getOrdValue(result[0]) + 1
+    result = semBranchRange(c, t, b.sons[0], b.sons[1], covered)
   else:
     result = fitNode(c, t.sons[0].typ, b)
     inc(covered)

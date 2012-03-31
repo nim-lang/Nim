@@ -141,7 +141,7 @@ proc boot(args: string) =
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
-  echo "[Warning] executables are still not equal"
+  when not defined(windows): echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 

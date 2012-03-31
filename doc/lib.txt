@@ -255,6 +255,10 @@ XML Processing
 * `htmlparser <htmlparser.html>`_
   This module parses an HTML document and creates its XML tree representation.
 
+* `htmlgen <htmlgen.html>`_
+  This module implements a simple XML and HTML code 
+  generator. Each commonly used HTML tag has a corresponding macro
+  that generates a string with its HTML representation.
 
 Cryptography and Hashing
 ------------------------

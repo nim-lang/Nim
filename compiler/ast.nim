@@ -227,9 +227,6 @@ type
     sfInnerProc,      # proc is an inner proc
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
-    sfInline          # forced-inline procs
-    sfImmediate,      # macro or template is immediately expanded without
-                      # considering any possible overloads
     sfCompileTime,    # proc can be evaluated at compile time
     sfMerge,          # proc can be merged with itself
     sfDeadCodeElim,   # dead code elimination for the module is turned on
@@ -246,6 +243,8 @@ const
   sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
+  sfImmediate* = sfDeadCodeElim  # macro or template is immediately expanded
+                                 # without considering any possible overloads
 
 type
   TTypeKind* = enum  # order is important!

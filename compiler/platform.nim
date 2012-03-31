@@ -21,7 +21,8 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris, 
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osAix, osPalmos, osQnx, osAmiga, 
-    osAtari, osNetware, osMacos, osMacosx, osEcmaScript, osNimrodVM
+    osAtari, osNetware, osMacos, osMacosx, osEcmaScript, osNimrodVM, 
+    osStandalone
 
 type 
   TInfoOSProp* = enum 
@@ -139,14 +140,18 @@ const
       exeExt: "", extSep: ".", props: {}), 
      (name: "NimrodVM", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/", 
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
-      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", props: {})]
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", props: {}),
+     (name: "Standalone", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: ".elf", extSep: ".", 
+      props: {})]
 
 type 
   TSystemCPU* = enum # Also add CPU for in initialization section and 
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuArm, 
-    cpuEcmaScript, cpuNimrodVM
+    cpuEcmaScript, cpuNimrodVM, cpuAVR
 
 type 
   TEndian* = enum 
@@ -169,7 +174,8 @@ const
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
     (name: "ecmascript", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32), 
-    (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32)]
+    (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
+    (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16)]
 
 var 
   targetCPU*, hostCPU*: TSystemCPU

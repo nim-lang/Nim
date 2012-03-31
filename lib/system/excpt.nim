@@ -27,7 +27,7 @@ else:
   proc writeToStdErr(msg: CString) =
     discard MessageBoxA(0, msg, nil, 0)
 
-proc registerSignalHandler() {.compilerproc.}
+proc registerSignalHandler()
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc.}
