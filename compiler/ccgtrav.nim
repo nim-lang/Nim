@@ -70,6 +70,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
       genTraverseProc(c, accessor.parentObj, typ.sons[i])
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
+    let typ = GetUniqueType(typ)
     if typ.n != nil:
       genTraverseProc(c, accessor, typ.n)
     else:
@@ -110,7 +111,11 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".toRope, typ)
   else:
-    genTraverseProc(c, "(*a)".toRope, typ.sons[0])
+    if skipTypes(typ.sons[0], abstractInst).kind in {tyArrayConstr, tyArray}:
+      # C's arrays are broken beyond repair:
+      genTraverseProc(c, "a".toRope, typ.sons[0])
+    else:
+      genTraverseProc(c, "(*a)".toRope, typ.sons[0])
   
   let generatedProc = ropef("$1 {$n$2$3$4}$n",
         [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])

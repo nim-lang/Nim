@@ -17,6 +17,7 @@ Bugfixes
 Library Additions
 -----------------
 
+- Added the (already existing) module ``htmlgen`` to the documentation.
 - Added ``system.shallow`` that can be used to speed up string and sequence
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at

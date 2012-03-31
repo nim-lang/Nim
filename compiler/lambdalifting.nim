@@ -11,8 +11,7 @@
 # included from transf.nim
 
 const
-  declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef,
-     nkConverterDef}
+  declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs = nkLambdaKinds + declarativeDefs
 
 proc indirectAccess(a, b: PSym, info: TLineInfo): PNode = 

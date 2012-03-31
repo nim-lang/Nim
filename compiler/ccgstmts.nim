@@ -23,7 +23,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   for i in countup(0, L-3): 
     var v = n.sons[i].sym
     if sfCompileTime in v.flags: continue
-    if sfGlobal in v.flags and v.kind != skForVar: 
+    if sfGlobal in v.flags:
       assignGlobalVar(p, v)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
     else:
@@ -49,7 +49,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
   var immediateAsgn = a.sons[2].kind != nkEmpty
-  if sfGlobal in v.flags and v.kind != skForVar: 
+  if sfGlobal in v.flags:
     assignGlobalVar(p, v)
     genObjectInit(p, cpsInit, v.typ, v.loc, true)
   else:
@@ -725,7 +725,10 @@ proc genStmts(p: BProc, t: PNode) =
     genLineDir(p, t)
     initLocExpr(p, t, a)
   of nkAsgn: genAsgn(p, t, fastAsgn=false)
-  of nkFastAsgn: genAsgn(p, t, fastAsgn=true)
+  of nkFastAsgn: 
+    # transf is overly aggressive with 'nkFastAsgn', so we work around here.
+    # See tests/run/tcnstseq3 for an example that would fail otherwise.
+    genAsgn(p, t, fastAsgn=p.prc != nil)
   of nkDiscardStmt: 
     genLineDir(p, t)
     initLocExpr(p, t.sons[0], a)

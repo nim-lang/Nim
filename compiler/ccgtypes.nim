@@ -39,10 +39,10 @@ proc mangleName(s: PSym): PRope =
       case s.kind
       of skProc, skMethod, skConverter, skConst: 
         result = toRope("@")
-      of skVar, skResult, skLet: 
+      of skVar, skForVar, skResult, skLet: 
         if sfGlobal in s.flags: result = toRope("@")
         else: result = toRope("%")
-      of skForVar, skTemp, skParam, skType, skEnumField, skModule: 
+      of skTemp, skParam, skType, skEnumField, skModule: 
         result = toRope("%")
       else: InternalError(s.info, "mangleName")
     app(result, toRope(mangle(s.name.s)))

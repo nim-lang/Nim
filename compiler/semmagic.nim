@@ -22,7 +22,7 @@ proc semSlurp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = newStrNode(nkStrLit, content)
     result.typ = getSysType(tyString)
     result.info = n.info
-    c.slurpedFiles.add(filename)
+    c.slurpedFiles.add(a.strVal)
   except EIO:
     GlobalError(a.info, errCannotOpenFile, a.strVal)
 
