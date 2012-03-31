@@ -2177,7 +2177,7 @@ proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
   ## This is only useful for advanced meta programming. See the implementation
   ## of `assert` for an example.
   
-proc raiseAssert(msg: string) {.noinline.} =
+proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
   
 template assert*(cond: bool, msg = "") =
@@ -2186,7 +2186,7 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind raiseAssert, InstantiationInfo
+  bind InstantiationInfo
   when compileOption("assertions"):
     {.line.}:
       if not cond:
@@ -2195,11 +2195,33 @@ template assert*(cond: bool, msg = "") =
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
-  bind raiseAssert, InstantiationInfo
+  bind InstantiationInfo
   {.line: InstantiationInfo().}:
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
 
+template onFailedAssert*(msg: expr, code: stmt): stmt =
+  ## Sets an assertion failure handler that will intercept any assert statements
+  ## following `onFailedAssert` in the current lexical scope.
+  ## Can be defined multiple times in a single function.
+  ##  
+  ## .. code-block:: nimrod
+  ##
+  ##   proc example(x: int): TErrorCode =
+  ##     onFailedAssert(msg):
+  ##       log msg
+  ##       return E_FAIL
+  ## 
+  ##     assert(...)
+  ##     
+  ##     onFailedAssert(msg):
+  ##       raise newException(EMyException, msg)
+  ##
+  ##     assert(...)
+  ##
+  template raiseAssert(msgIMPL: string): stmt =
+    let `msg` = msgIMPL
+    code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not

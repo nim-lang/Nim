@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+# included from cgen.nim
+
 # ------------------------- Name Mangling --------------------------------
 
 proc mangle(name: string): string = 
@@ -47,6 +49,9 @@ proc mangleName(s: PSym): PRope =
     app(result, "_")
     app(result, toRope(s.id))
     s.loc.r = result
+
+proc isCompileTimeOnly(t: PType): bool =
+  result = t.kind in {tyTypedesc, tyExpr}
 
 proc getTypeName(typ: PType): PRope = 
   if (typ.sym != nil) and ({sfImportc, sfExportc} * typ.sym.flags != {}) and
@@ -187,6 +192,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
   for i in countup(1, sonsLen(t.n) - 1): 
     if t.n.sons[i].kind != nkSym: InternalError(t.n.info, "genProcParams")
     var param = t.n.sons[i].sym
+    if isCompileTimeOnly(param.typ): continue
     fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
     app(params, getParamTypeDesc(m, param.typ, check))
     if ccgIntroducedPtr(param): 
@@ -206,8 +212,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
       arr = arr.sons[0]
     if i < sonsLen(t.n) - 1: app(params, ", ")
   if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]): 
-    if params != nil: app(params, ", ")
     var arr = t.sons[0]
+    if params != nil: app(params, ", ")
     app(params, getTypeDescAux(m, arr, check))
     if (mapReturnType(t.sons[0]) != ctArray) or (gCmd == cmdCompileToLLVM): 
       app(params, "*")

@@ -219,3 +219,6 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
+# Can we keep this? I'm using it all the time
+template nimdbg*: expr = c.filename.endsWith"nimdbg.nim"
+  

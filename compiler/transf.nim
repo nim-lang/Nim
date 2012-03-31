@@ -429,7 +429,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result = generateThunk(c, x, dest).ptransnode
     else:
       result = transformSons(c, n)    
-  of tyGenericParam, tyOrdinal: 
+  of tyGenericParam, tyOrdinal, tyTypeClass:
     result = transform(c, n.sons[1])
     # happens sometimes for generated assignments, etc.
   else: 
