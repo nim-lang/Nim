@@ -1,6 +1,7 @@
 version 0.9.0
 =============
 
+- test and document AVR/embedded systems better
 - make GC realtime capable: GC_step(ms: int)
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
