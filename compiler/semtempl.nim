@@ -9,67 +9,6 @@
 
 # included from sem.nim
 
-proc isExpr(n: PNode): bool = 
-  # returns true if ``n`` looks like an expression
-  case n.kind
-  of nkIdent..nkNilLit: 
-    result = true
-  of nkCall..pred(nkAsgn): 
-    for i in countup(0, sonsLen(n) - 1): 
-      if not isExpr(n.sons[i]): 
-        return false
-    result = true
-  else: result = false
-  
-proc isTypeDesc(n: PNode): bool = 
-  # returns true if ``n`` looks like a type desc
-  case n.kind
-  of nkIdent, nkSym, nkType: 
-    result = true
-  of nkDotExpr, nkBracketExpr: 
-    for i in countup(0, sonsLen(n) - 1): 
-      if not isTypeDesc(n.sons[i]): 
-        return false
-    result = true
-  of nkTypeOfExpr..nkEnumTy: 
-    result = true
-  else: result = false
-  
-var evalTemplateCounter: int = 0
-  # to prevend endless recursion in templates instantation
-
-proc evalTemplateArgs(c: PContext, n: PNode, s: PSym): PNode = 
-  var 
-    f, a: int
-    arg: PNode
-  f = sonsLen(s.typ) 
-  # if the template has zero arguments, it can be called without ``()``
-  # `n` is then a nkSym or something similar
-  case n.kind
-  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
-    a = sonsLen(n)
-  else: a = 0
-  if a > f: LocalError(n.info, errWrongNumberOfArguments)
-  result = copyNode(n)
-  for i in countup(1, f - 1): 
-    if i < a: arg = n.sons[i]
-    else: arg = copyTree(s.typ.n.sons[i].sym.ast)
-    if arg == nil or arg.kind == nkEmpty: 
-      LocalError(n.info, errWrongNumberOfArguments)
-    addSon(result, arg)
-
-proc evalTemplate*(c: PContext, n: PNode, sym: PSym): PNode = 
-  var args: PNode
-  inc(evalTemplateCounter)
-  if evalTemplateCounter <= 100: 
-    # replace each param by the corresponding node:
-    args = evalTemplateArgs(c, n, sym)
-    result = evalTemplateAux(sym.getBody, args, sym)
-    dec(evalTemplateCounter)
-  else:
-    GlobalError(n.info, errTemplateInstantiationTooNested)
-    result = n
-
 proc symChoice(c: PContext, n: PNode, s: PSym): PNode = 
   var 
     a: PSym

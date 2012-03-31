@@ -258,7 +258,7 @@ type
     tyGenericParam,      # ``a`` in the above patterns
     tyDistinct,
     tyEnum,
-    tyOrdinal,           # misnamed: should become 'tyConstraint'
+    tyOrdinal,           # integer types (including enums and boolean)
     tyArray,
     tyObject,
     tyTuple,
@@ -277,6 +277,7 @@ type
     tyConst, tyMutable, tyVarargs, 
     tyIter, # unused
     tyProxy # currently unused
+    tyTypeClass,
 
 const
   tyPureObject* = tyTuple
@@ -308,6 +309,8 @@ type
     tfFromGeneric     # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
+    tfAll             # type class requires all constraints to be met (default)
+    tfAny             # type class requires any constraint to be met
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -707,6 +710,15 @@ proc `[]`*(n: PNode, i: int): PNode {.inline.} =
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
+proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
+  t.sym = s
+  s.typ = t
+  result = t
+
+proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
+  t.sym = s
+  s.typ = t
+  result = s
 
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0

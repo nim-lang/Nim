@@ -82,9 +82,11 @@ proc GetUniqueType*(key: PType): PType =
     if result == nil:
       gCanonicalTypes[k] = key
       result = key
+  of tyGenericParam, tyTypeClass:
+    InternalError("GetUniqueType")
   of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
     result = GetUniqueType(lastSon(key))
-  of tyArrayConstr, tyGenericInvokation, tyGenericBody, tyGenericParam,
+  of tyArrayConstr, tyGenericInvokation, tyGenericBody,
      tyOpenArray, tyArray, tyTuple, tySet, tyRange, 
      tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
     # we have to do a slow linear search because types may need

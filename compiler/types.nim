@@ -50,13 +50,13 @@ proc enumHasHoles*(t: PType): bool
 const 
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable}
-  abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, 
+  abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
                   tyConst, tyMutable}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal,
                     tyConst, tyMutable}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyConst, tyMutable}
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable}
+  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable, tyOrdinal}
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable}
 
@@ -383,7 +383,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "int16", "int32", "int64", "float", "float32", "float64", "float128",
       
       "uint", "uint8", "uint16", "uint32", "uint64", "bignum", "const ",
-      "!", "varargs[$1]", "iter[$1]", "proxy[$1]"]
+      "!", "varargs[$1]", "iter[$1]", "proxy[$1]", "TypeClass" ]
   var t = typ
   result = ""
   if t == nil: return 
@@ -729,9 +729,11 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
   case a.Kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-     tyInt..tyBigNum, tyExpr, tyStmt, tyTypeDesc: 
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+     tyInt..tyBigNum, tyStmt:
     result = true
+  of tyExpr:
+    result = ExprStructuralEquivalent(a.n, b.n)
   of tyObject:
     IfFastObjectTypeCheckFailed(a, b):
       CycleCheck()
@@ -748,8 +750,9 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTuple(a, b, c)
   of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
-     tyOrdinal, tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
-     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter: 
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
+     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
+     tyOrdinal, tyTypeDesc, tyTypeClass:
     if sonsLen(a) == sonsLen(b):
       CycleCheck()
       result = true
@@ -845,7 +848,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
       result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation: 
+  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, tyTypeClass:
     result = false            #InternalError('shit found');
   of tyEmpty, tyNil:
     result = kind == skConst

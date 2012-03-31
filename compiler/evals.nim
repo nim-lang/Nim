@@ -16,7 +16,7 @@
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
   msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
-  parser, ropes, rodread
+  parser, ropes, rodread, idgen
 
 type 
   PStackFrame* = ref TStackFrame
@@ -843,6 +843,7 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   result.typ = newType(tyStmt, c.module)
 
 proc evalTemplateAux*(templ, actual: PNode, sym: PSym): PNode = 
+  inc genSymBaseId
   case templ.kind
   of nkSym: 
     var p = templ.sym
@@ -866,26 +867,29 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     a = sonsLen(n)
   else: a = 0
-  var f = sonsLen(s.typ)  
+  var f = s.typ.sonsLen
   if a > f: GlobalError(n.info, errWrongNumberOfArguments)
 
   result = copyNode(n)
   for i in countup(1, f - 1):
     var arg = if i < a: n.sons[i] else: copyTree(s.typ.n.sons[i].sym.ast)
+    if arg == nil or arg.kind == nkEmpty:
+      LocalError(n.info, errWrongNumberOfArguments)
     addSon(result, arg)
 
-var evalTemplateCounter = 0
+var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantation
 
-proc evalTemplate(n: PNode, sym: PSym): PNode = 
+proc evalTemplate*(n: PNode, sym: PSym): PNode = 
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
     GlobalError(n.info, errTemplateInstantiationTooNested)
+    result = n
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, sym)
   result = evalTemplateAux(sym.getBody, args, sym)
-
+  
   dec(evalTemplateCounter)
   
 proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
@@ -1312,6 +1316,7 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   if evalTemplateCounter > 100: 
     GlobalError(n.info, errTemplateInstantiationTooNested)
 
+  inc genSymBaseId
   var s = newStackFrame()
   s.call = n
   setlen(s.params, 2)

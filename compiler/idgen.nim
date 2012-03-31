@@ -11,7 +11,7 @@
 
 import idents, strutils, os, options
 
-var gFrontEndId, gBackendId*: int
+var gFrontEndId, gBackendId*, genSymBaseId*: int
 
 const
   debugIds* = false
@@ -25,7 +25,7 @@ proc registerID*(id: PIdObj) =
   when debugIDs: 
     if id.id == -1 or ContainsOrIncl(usedIds, id.id): 
       InternalError("ID already used: " & $id.id)
-  
+
 proc getID*(): int {.inline.} = 
   result = gFrontEndId
   inc(gFrontEndId)
@@ -33,6 +33,9 @@ proc getID*(): int {.inline.} =
 proc backendId*(): int {.inline.} = 
   result = gBackendId
   inc(gBackendId)
+
+proc genSym*(basename: string): PIdent =
+  result = getIdent(basename & $genSymBaseId)
 
 proc setId*(id: int) {.inline.} = 
   gFrontEndId = max(gFrontEndId, id + 1)
