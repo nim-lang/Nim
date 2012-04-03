@@ -91,8 +91,9 @@ keywords, comments, operators, and other punctuation marks. Case is
 ``This_is_an_identifier`` and ``ThisIsAnIdentifier`` are the same identifier.
 This feature enables you to use other
 people's code without bothering about a naming convention that conflicts with
-yours. It also frees you from remembering the exact spelling of an identifier
-(was it ``parseURL`` or ``parseUrl`` or ``parse_URL``?).
+yours. A Nimrod-aware editor or IDE can show the identifiers as
+preferred. It also frees you from remembering the exact spelling of an 
+identifier (was it ``parseURL`` or ``parseUrl`` or ``parse_URL``?).
 
 
 String and character literals
@@ -117,16 +118,13 @@ Comments
 --------
 
 `Comments`:idx: start anywhere outside a string or character literal with the
-hash character ``#``. Documentation comments start with ``##``.
-Comments consist of a concatenation of `comment pieces`:idx:. A comment piece
-starts with ``#`` and runs until the end of the line. The end of line characters
-belong to the piece. If the next line only consists of a comment piece which is
-aligned to the preceding one, it does not start a new comment:
+hash character ``#``. Documentation comments start with ``##``. Multiline
+comments need to be aligned at the same column:
 
 .. code-block:: nimrod
 
   i = 0     # This is a single comment over multiple lines belonging to the
-            # assignment statement. The scanner merges these two pieces.
+            # assignment statement.
   # This is a new comment belonging to the current block, but to no particular
   # statement.
   i = i + 1 # This a new comment that is NOT
@@ -1206,7 +1204,7 @@ Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
 The empty ``[]`` subscript notation can be used to *derefer* a reference, 
-meaning to retrieve the item the reference points to. The ``addr`` procedure 
+meaning to retrieve the item the reference points to. The ``addr`` operator 
 returns the address of an item. An address is always an untraced reference:
 ``addr`` is an *unsafe* feature.
 

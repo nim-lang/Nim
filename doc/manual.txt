@@ -2567,11 +2567,11 @@ Type constraints
 type parameter. Only the specified types are valid for instantiation:
 
 .. code-block:: nimrod
-  proc onlyIntOrString[T: int|string](x, y: T): T = nil
+  proc onlyIntOrString[T: int|string](x, y: T) = nil
   
-  onlyIntOrString(45, 66) # valid
-  onlyIntOrString(56.0, 0.0) # type mismatch
-  
+  onlyIntOrString(450, 616) # valid
+  onlyIntOrString(5.0, 0.0) # type mismatch
+  onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
   
 Apart from ordinary types, type constraints can also be of the
 following *type classes*:

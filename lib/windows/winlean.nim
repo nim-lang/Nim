@@ -18,6 +18,8 @@ type
   LONG* = int
   WINBOOL* = int32
   DWORD* = int32
+  HDC* = THandle
+  HGLRC* = THandle
 
   TSECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32

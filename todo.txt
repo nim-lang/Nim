@@ -49,6 +49,7 @@ Bugs
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
 - bug: object {.pure, final.} does not work again!
+- bug: {.error: "msg".} produces invalid pragma message
 - bug: tsortdev does not run with native GC?
 - bug: pragma statements in combination with symbol files are evaluated twice
   but this can lead to compilation errors
@@ -74,7 +75,6 @@ version 0.9.XX
 - checked exceptions
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?
-- fix implicit generic routines
 - 'const' objects including case objects
 - improve docgen to use the semantic pass
 - 'export' feature (requires improved docgen)
@@ -101,7 +101,6 @@ version 0.9.XX
 Library
 -------
 
-- provide more up to date OpenGL headers
 - wrappers for mongodb; poppler; libharu
 - suffix trees
 - locale support; i18n module

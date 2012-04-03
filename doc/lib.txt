@@ -489,6 +489,9 @@ Graphics libraries
 * `wingl <wingl.html>`_
   Part of the wrapper for OpenGL.
 
+* `opengl <opengl.html>`_
+  New wrapper for OpenGL supporting up to version 4.2.
+  
 
 GUI libraries
 -------------
