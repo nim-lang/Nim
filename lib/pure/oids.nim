@@ -7,10 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-## Nimrod OID support. An OID consists of a timestamp, a unique counter
-## and a random value. This combination should suffice to produce a globally
-## distributed unique ID. This implementation was extracted from the
-## Mongodb interface. This calls ``math.randomize()`` for the first call of
+## Nimrod OID support. An OID is a global ID that consists of a timestamp,
+## a unique counter and a random value. This combination should suffice to 
+## produce a globally distributed unique ID. This implementation was extracted
+## from the Mongodb interface and it thus binary compatible with a Mongo OID.
+##
+## This implementation calls ``math.randomize()`` for the first call of
 ## ``genOid``.
 
 import times, endians
@@ -79,3 +81,6 @@ proc generatedTime*(oid: TOid): TTime =
   bigEndian32(addr(tmp), addr(dummy))
   result = TTime(tmp)
 
+when isMainModule:
+  let xo = genOID()
+  echo xo.generatedTime

@@ -1,3 +1,28 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2012 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module is a wrapper around `opengl`:idx:. If you define the symbol
+## ``useGlew`` this wrapper does not use Nimrod's ``dynlib`` mechanism (which
+## ends up calling ``dlsym`` or ``GetProcAddress``), but `glew`:idx: instead.
+
+when defined(useGlew):
+  {.pragma: ogl, header: "<GL/glew.h>".}
+  {.pragma: oglx, header: "<GL/glxew.h>".}
+  {.pragma: wgl, header: "<GL/wglew.h>".}
+  {.pragma: glu, dynlib: gludll.}
+else:
+  {.pragma: ogl, dynlib: ogldll.}
+  {.pragma: oglx, dynlib: ogldll.}
+  {.pragma: wgl, dynlib: ogldll.}
+  {.pragma: glu, dynlib: gludll.}
+
+
 #==============================================================================
 #                                                                              
 #       OpenGL 4.2 - Headertranslation                                         
@@ -5128,870 +5153,870 @@ const                         # GL_VERSION_1_1
   GLU_ERROR* = GLU_TESS_ERROR
   GLU_EDGE_FLAG* = GLU_TESS_EDGE_FLAG
 
-proc glCullFace*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glFrontFace*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glHint*(target: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glLineWidth*(width: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointSize*(size: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPolygonMode*(face: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glScissor*(x: GLint, y: GLint, width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glTexParameterf*(target: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexParameteri*(target: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+proc glCullFace*(mode: GLenum){.stdcall, importc, ogl.}
+proc glFrontFace*(mode: GLenum){.stdcall, importc, ogl.}
+proc glHint*(target: GLenum, mode: GLenum){.stdcall, importc, ogl.}
+proc glLineWidth*(width: GLfloat){.stdcall, importc, ogl.}
+proc glPointSize*(size: GLfloat){.stdcall, importc, ogl.}
+proc glPolygonMode*(face: GLenum, mode: GLenum){.stdcall, importc, ogl.}
+proc glScissor*(x: GLint, y: GLint, width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
+proc glTexParameterf*(target: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glTexParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glTexParameteri*(target: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glTexParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glTexImage1D*(target: GLenum, level: GLint, internalformat: GLint, 
                    width: GLsizei, border: GLint, format: GLenum, typ: GLenum, 
-                   pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                   pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTexImage2D*(target: GLenum, level: GLint, internalformat: GLint, 
                    width: GLsizei, height: GLsizei, border: GLint, 
-                   format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glDrawBuffer*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glClear*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
+                   format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
+proc glDrawBuffer*(mode: GLenum){.stdcall, importc, ogl.}
+proc glClear*(mask: GLbitfield){.stdcall, importc, ogl.}
 proc glClearColor*(red: GLclampf, green: GLclampf, blue: GLclampf, 
-                   alpha: GLclampf){.stdcall, importc, dynlib: ogldll.}
-proc glClearStencil*(s: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glClearDepth*(depth: GLclampd){.stdcall, importc, dynlib: ogldll.}
-proc glStencilMask*(mask: GLuint){.stdcall, importc, dynlib: ogldll.}
+                   alpha: GLclampf){.stdcall, importc, ogl.}
+proc glClearStencil*(s: GLint){.stdcall, importc, ogl.}
+proc glClearDepth*(depth: GLclampd){.stdcall, importc, ogl.}
+proc glStencilMask*(mask: GLuint){.stdcall, importc, ogl.}
 proc glColorMask*(red: GLboolean, green: GLboolean, blue: GLboolean, 
-                  alpha: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glDepthMask*(flag: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glDisable*(cap: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEnable*(cap: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glFinish*(){.stdcall, importc, dynlib: ogldll.}
-proc glFlush*(){.stdcall, importc, dynlib: ogldll.}
-proc glBlendFunc*(sfactor: GLenum, dfactor: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glLogicOp*(opcode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glStencilFunc*(func: GLenum, theRef: GLint, mask: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glStencilOp*(fail: GLenum, zfail: GLenum, zpass: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glDepthFunc*(func: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glPixelStoref*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPixelStorei*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glReadBuffer*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                  alpha: GLboolean){.stdcall, importc, ogl.}
+proc glDepthMask*(flag: GLboolean){.stdcall, importc, ogl.}
+proc glDisable*(cap: GLenum){.stdcall, importc, ogl.}
+proc glEnable*(cap: GLenum){.stdcall, importc, ogl.}
+proc glFinish*(){.stdcall, importc, ogl.}
+proc glFlush*(){.stdcall, importc, ogl.}
+proc glBlendFunc*(sfactor: GLenum, dfactor: GLenum){.stdcall, importc, ogl.}
+proc glLogicOp*(opcode: GLenum){.stdcall, importc, ogl.}
+proc glStencilFunc*(func: GLenum, theRef: GLint, mask: GLuint){.stdcall, importc, ogl.}
+proc glStencilOp*(fail: GLenum, zfail: GLenum, zpass: GLenum){.stdcall, importc, ogl.}
+proc glDepthFunc*(func: GLenum){.stdcall, importc, ogl.}
+proc glPixelStoref*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPixelStorei*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glReadBuffer*(mode: GLenum){.stdcall, importc, ogl.}
 proc glReadPixels*(x: GLint, y: GLint, width: GLsizei, height: GLsizei, 
-                   format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glGetBooleanv*(pname: GLenum, params: PGLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glGetDoublev*(pname: GLenum, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGetError*(): GLenum{.stdcall, importc, dynlib: ogldll.}
-proc glGetFloatv*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetIntegerv*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetString*(name: GLenum): cstring{.stdcall, importc, dynlib: ogldll.}
+                   format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
+proc glGetBooleanv*(pname: GLenum, params: PGLboolean){.stdcall, importc, ogl.}
+proc glGetDoublev*(pname: GLenum, params: PGLdouble){.stdcall, importc, ogl.}
+proc glGetError*(): GLenum{.stdcall, importc, ogl.}
+proc glGetFloatv*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetIntegerv*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetString*(name: GLenum): cstring{.stdcall, importc, ogl.}
 proc glGetTexImage*(target: GLenum, level: GLint, format: GLenum, typ: GLenum, 
-                    pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                    pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glGetTexParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexLevelParameterfv*(target: GLenum, level: GLint, pname: GLenum, 
-                               params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                               params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetTexLevelParameteriv*(target: GLenum, level: GLint, pname: GLenum, 
-                               params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glIsEnabled*(cap: GLenum): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glDepthRange*(zNear: GLclampd, zFar: GLclampd){.stdcall, importc, dynlib: ogldll.}
-proc glViewport*(x: GLint, y: GLint, width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                               params: PGLint){.stdcall, importc, ogl.}
+proc glIsEnabled*(cap: GLenum): GLboolean{.stdcall, importc, ogl.}
+proc glDepthRange*(zNear: GLclampd, zFar: GLclampd){.stdcall, importc, ogl.}
+proc glViewport*(x: GLint, y: GLint, width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
   # GL_VERSION_1_1
-proc glDrawArrays*(mode: GLenum, first: GLint, count: GLsizei){.stdcall, importc, dynlib: ogldll.}
+proc glDrawArrays*(mode: GLenum, first: GLint, count: GLsizei){.stdcall, importc, ogl.}
 proc glDrawElements*(mode: GLenum, count: GLsizei, typ: GLenum, indices: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetPointerv*(pname: GLenum, params: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glPolygonOffset*(factor: GLfloat, units: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetPointerv*(pname: GLenum, params: PGLvoid){.stdcall, importc, ogl.}
+proc glPolygonOffset*(factor: GLfloat, units: GLfloat){.stdcall, importc, ogl.}
 proc glCopyTexImage1D*(target: GLenum, level: GLint, internalFormat: GLenum, 
                        x: GLint, y: GLint, width: GLsizei, border: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyTexImage2D*(target: GLenum, level: GLint, internalFormat: GLenum, 
                        x: GLint, y: GLint, width: GLsizei, height: GLsizei, 
-                       border: GLint){.stdcall, importc, dynlib: ogldll.}
+                       border: GLint){.stdcall, importc, ogl.}
 proc glCopyTexSubImage1D*(target: GLenum, level: GLint, xoffset: GLint, 
-                          x: GLint, y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          x: GLint, y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyTexSubImage2D*(target: GLenum, level: GLint, xoffset: GLint, 
                           yoffset: GLint, x: GLint, y: GLint, width: GLsizei, 
-                          height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          height: GLsizei){.stdcall, importc, ogl.}
 proc glTexSubImage1D*(target: GLenum, level: GLint, xoffset: GLint, 
                       width: GLsizei, format: GLenum, typ: GLenum, 
-                      pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTexSubImage2D*(target: GLenum, level: GLint, xoffset: GLint, 
                       yoffset: GLint, width: GLsizei, height: GLsizei, 
-                      format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glBindTexture*(target: GLenum, texture: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteTextures*(n: GLsizei, textures: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenTextures*(n: GLsizei, textures: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glAccum*(op: GLenum, value: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glAlphaFunc*(func: GLenum, theRef: GLclampf){.stdcall, importc, dynlib: ogldll.}
+                      format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
+proc glBindTexture*(target: GLenum, texture: GLuint){.stdcall, importc, ogl.}
+proc glDeleteTextures*(n: GLsizei, textures: PGLuint){.stdcall, importc, ogl.}
+proc glGenTextures*(n: GLsizei, textures: PGLuint){.stdcall, importc, ogl.}
+proc glAccum*(op: GLenum, value: GLfloat){.stdcall, importc, ogl.}
+proc glAlphaFunc*(func: GLenum, theRef: GLclampf){.stdcall, importc, ogl.}
 proc glAreTexturesResident*(n: GLsizei, textures: PGLuint, 
-                            residences: PGLboolean): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glArrayElement*(i: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glBegin*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                            residences: PGLboolean): GLboolean{.stdcall, importc, ogl.}
+proc glArrayElement*(i: GLint){.stdcall, importc, ogl.}
+proc glBegin*(mode: GLenum){.stdcall, importc, ogl.}
 proc glBitmap*(width: GLsizei, height: GLsizei, xorig: GLfloat, yorig: GLfloat, 
-               xmove: GLfloat, ymove: GLfloat, bitmap: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glCallList*(list: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glCallLists*(n: GLsizei, typ: GLenum, lists: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+               xmove: GLfloat, ymove: GLfloat, bitmap: PGLubyte){.stdcall, importc, ogl.}
+proc glCallList*(list: GLuint){.stdcall, importc, ogl.}
+proc glCallLists*(n: GLsizei, typ: GLenum, lists: PGLvoid){.stdcall, importc, ogl.}
 proc glClearAccum*(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glClearIndex*(c: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glClipPlane*(plane: GLenum, equation: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glColor3b*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glColor3bv*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glColor3d*(red: GLdouble, green: GLdouble, blue: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glColor3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glColor3f*(red: GLfloat, green: GLfloat, blue: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor3i*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glColor3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glColor3s*(red: GLshort, green: GLshort, blue: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glColor3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glColor3ub*(red: GLubyte, green: GLubyte, blue: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glColor3ubv*(v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glColor3ui*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColor3uiv*(v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColor3us*(red: GLushort, green: GLushort, blue: GLushort){.stdcall, importc, dynlib: ogldll.}
-proc glColor3usv*(v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glClearIndex*(c: GLfloat){.stdcall, importc, ogl.}
+proc glClipPlane*(plane: GLenum, equation: PGLdouble){.stdcall, importc, ogl.}
+proc glColor3b*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, ogl.}
+proc glColor3bv*(v: PGLbyte){.stdcall, importc, ogl.}
+proc glColor3d*(red: GLdouble, green: GLdouble, blue: GLdouble){.stdcall, importc, ogl.}
+proc glColor3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glColor3f*(red: GLfloat, green: GLfloat, blue: GLfloat){.stdcall, importc, ogl.}
+proc glColor3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glColor3i*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, ogl.}
+proc glColor3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glColor3s*(red: GLshort, green: GLshort, blue: GLshort){.stdcall, importc, ogl.}
+proc glColor3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glColor3ub*(red: GLubyte, green: GLubyte, blue: GLubyte){.stdcall, importc, ogl.}
+proc glColor3ubv*(v: PGLubyte){.stdcall, importc, ogl.}
+proc glColor3ui*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, ogl.}
+proc glColor3uiv*(v: PGLuint){.stdcall, importc, ogl.}
+proc glColor3us*(red: GLushort, green: GLushort, blue: GLushort){.stdcall, importc, ogl.}
+proc glColor3usv*(v: PGLushort){.stdcall, importc, ogl.}
 proc glColor4b*(red: GLbyte, green: GLbyte, blue: GLbyte, alpha: GLbyte){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4bv*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4bv*(v: PGLbyte){.stdcall, importc, ogl.}
 proc glColor4d*(red: GLdouble, green: GLdouble, blue: GLdouble, alpha: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4dv*(v: PGLdouble){.stdcall, importc, ogl.}
 proc glColor4f*(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor4i*(red: GLint, green: GLint, blue: GLint, alpha: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glColor4iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glColor4i*(red: GLint, green: GLint, blue: GLint, alpha: GLint){.stdcall, importc, ogl.}
+proc glColor4iv*(v: PGLint){.stdcall, importc, ogl.}
 proc glColor4s*(red: GLshort, green: GLshort, blue: GLshort, alpha: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4sv*(v: PGLshort){.stdcall, importc, ogl.}
 proc glColor4ub*(red: GLubyte, green: GLubyte, blue: GLubyte, alpha: GLubyte){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4ubv*(v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4ubv*(v: PGLubyte){.stdcall, importc, ogl.}
 proc glColor4ui*(red: GLuint, green: GLuint, blue: GLuint, alpha: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4uiv*(v: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4uiv*(v: PGLuint){.stdcall, importc, ogl.}
 proc glColor4us*(red: GLushort, green: GLushort, blue: GLushort, alpha: GLushort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glColor4usv*(v: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glColorMaterial*(face: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glColor4usv*(v: PGLushort){.stdcall, importc, ogl.}
+proc glColorMaterial*(face: GLenum, mode: GLenum){.stdcall, importc, ogl.}
 proc glColorPointer*(size: GLint, typ: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyPixels*(x: GLint, y: GLint, width: GLsizei, height: GLsizei, 
-                   typ: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteLists*(list: GLuint, range: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glDisableClientState*(arr: GLenum){.stdcall, importc, dynlib: ogldll.}
+                   typ: GLenum){.stdcall, importc, ogl.}
+proc glDeleteLists*(list: GLuint, range: GLsizei){.stdcall, importc, ogl.}
+proc glDisableClientState*(arr: GLenum){.stdcall, importc, ogl.}
 proc glDrawPixels*(width: GLsizei, height: GLsizei, format: GLenum, typ: GLenum, 
-                   pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glEdgeFlag*(flag: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glEdgeFlagPointer*(stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glEdgeFlagv*(flag: PGLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glEnableClientState*(arr: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEnd*(){.stdcall, importc, dynlib: ogldll.}
-proc glEndList*(){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord1d*(u: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord1dv*(u: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord1f*(u: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord1fv*(u: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord2d*(u: GLdouble, v: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord2dv*(u: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord2f*(u: GLfloat, v: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glEvalCoord2fv*(u: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glEvalMesh1*(mode: GLenum, i1: GLint, i2: GLint){.stdcall, importc, dynlib: ogldll.}
+                   pixels: PGLvoid){.stdcall, importc, ogl.}
+proc glEdgeFlag*(flag: GLboolean){.stdcall, importc, ogl.}
+proc glEdgeFlagPointer*(stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glEdgeFlagv*(flag: PGLboolean){.stdcall, importc, ogl.}
+proc glEnableClientState*(arr: GLenum){.stdcall, importc, ogl.}
+proc glEnd*(){.stdcall, importc, ogl.}
+proc glEndList*(){.stdcall, importc, ogl.}
+proc glEvalCoord1d*(u: GLdouble){.stdcall, importc, ogl.}
+proc glEvalCoord1dv*(u: PGLdouble){.stdcall, importc, ogl.}
+proc glEvalCoord1f*(u: GLfloat){.stdcall, importc, ogl.}
+proc glEvalCoord1fv*(u: PGLfloat){.stdcall, importc, ogl.}
+proc glEvalCoord2d*(u: GLdouble, v: GLdouble){.stdcall, importc, ogl.}
+proc glEvalCoord2dv*(u: PGLdouble){.stdcall, importc, ogl.}
+proc glEvalCoord2f*(u: GLfloat, v: GLfloat){.stdcall, importc, ogl.}
+proc glEvalCoord2fv*(u: PGLfloat){.stdcall, importc, ogl.}
+proc glEvalMesh1*(mode: GLenum, i1: GLint, i2: GLint){.stdcall, importc, ogl.}
 proc glEvalMesh2*(mode: GLenum, i1: GLint, i2: GLint, j1: GLint, j2: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glEvalPoint1*(i: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glEvalPoint2*(i: GLint, j: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glFeedbackBuffer*(size: GLsizei, typ: GLenum, buffer: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogf*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogi*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glFogiv*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glEvalPoint1*(i: GLint){.stdcall, importc, ogl.}
+proc glEvalPoint2*(i: GLint, j: GLint){.stdcall, importc, ogl.}
+proc glFeedbackBuffer*(size: GLsizei, typ: GLenum, buffer: PGLfloat){.stdcall, importc, ogl.}
+proc glFogf*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glFogfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glFogi*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glFogiv*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glFrustum*(left: GLdouble, right: GLdouble, bottom: GLdouble, 
-                top: GLdouble, zNear: GLdouble, zFar: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGenLists*(range: GLsizei): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glGetClipPlane*(plane: GLenum, equation: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGetLightfv*(light: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetLightiv*(light: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetMapdv*(target: GLenum, query: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGetMapfv*(target: GLenum, query: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetMapiv*(target: GLenum, query: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetMaterialfv*(face: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetMaterialiv*(face: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetPixelMapfv*(map: GLenum, values: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetPixelMapuiv*(map: GLenum, values: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGetPixelMapusv*(map: GLenum, values: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glGetPolygonStipple*(mask: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexEnvfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexEnviv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexGendv*(coord: GLenum, pname: GLenum, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexGenfv*(coord: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexGeniv*(coord: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glIndexMask*(mask: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIndexPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glIndexd*(c: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glIndexdv*(c: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glIndexf*(c: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glIndexfv*(c: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glIndexi*(c: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glIndexiv*(c: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glIndexs*(c: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glIndexsv*(c: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glIndexub*(c: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glIndexubv*(c: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glInitNames*(){.stdcall, importc, dynlib: ogldll.}
+                top: GLdouble, zNear: GLdouble, zFar: GLdouble){.stdcall, importc, ogl.}
+proc glGenLists*(range: GLsizei): GLuint{.stdcall, importc, ogl.}
+proc glGetClipPlane*(plane: GLenum, equation: PGLdouble){.stdcall, importc, ogl.}
+proc glGetLightfv*(light: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetLightiv*(light: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetMapdv*(target: GLenum, query: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
+proc glGetMapfv*(target: GLenum, query: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glGetMapiv*(target: GLenum, query: GLenum, v: PGLint){.stdcall, importc, ogl.}
+proc glGetMaterialfv*(face: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetMaterialiv*(face: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetPixelMapfv*(map: GLenum, values: PGLfloat){.stdcall, importc, ogl.}
+proc glGetPixelMapuiv*(map: GLenum, values: PGLuint){.stdcall, importc, ogl.}
+proc glGetPixelMapusv*(map: GLenum, values: PGLushort){.stdcall, importc, ogl.}
+proc glGetPolygonStipple*(mask: PGLubyte){.stdcall, importc, ogl.}
+proc glGetTexEnvfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetTexEnviv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetTexGendv*(coord: GLenum, pname: GLenum, params: PGLdouble){.stdcall, importc, ogl.}
+proc glGetTexGenfv*(coord: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetTexGeniv*(coord: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glIndexMask*(mask: GLuint){.stdcall, importc, ogl.}
+proc glIndexPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glIndexd*(c: GLdouble){.stdcall, importc, ogl.}
+proc glIndexdv*(c: PGLdouble){.stdcall, importc, ogl.}
+proc glIndexf*(c: GLfloat){.stdcall, importc, ogl.}
+proc glIndexfv*(c: PGLfloat){.stdcall, importc, ogl.}
+proc glIndexi*(c: GLint){.stdcall, importc, ogl.}
+proc glIndexiv*(c: PGLint){.stdcall, importc, ogl.}
+proc glIndexs*(c: GLshort){.stdcall, importc, ogl.}
+proc glIndexsv*(c: PGLshort){.stdcall, importc, ogl.}
+proc glIndexub*(c: GLubyte){.stdcall, importc, ogl.}
+proc glIndexubv*(c: PGLubyte){.stdcall, importc, ogl.}
+proc glInitNames*(){.stdcall, importc, ogl.}
 proc glInterleavedArrays*(format: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glIsList*(list: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glIsTexture*(texture: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glLightModelf*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLightModelfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLightModeli*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glLightModeliv*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glLightf*(light: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLightfv*(light: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLighti*(light: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glLightiv*(light: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glLineStipple*(factor: GLint, pattern: GLushort){.stdcall, importc, dynlib: ogldll.}
-proc glListBase*(base: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glLoadIdentity*(){.stdcall, importc, dynlib: ogldll.}
-proc glLoadMatrixd*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glLoadMatrixf*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLoadName*(name: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glIsList*(list: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glIsTexture*(texture: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glLightModelf*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glLightModelfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glLightModeli*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glLightModeliv*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glLightf*(light: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glLightfv*(light: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glLighti*(light: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glLightiv*(light: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glLineStipple*(factor: GLint, pattern: GLushort){.stdcall, importc, ogl.}
+proc glListBase*(base: GLuint){.stdcall, importc, ogl.}
+proc glLoadIdentity*(){.stdcall, importc, ogl.}
+proc glLoadMatrixd*(m: PGLdouble){.stdcall, importc, ogl.}
+proc glLoadMatrixf*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glLoadName*(name: GLuint){.stdcall, importc, ogl.}
 proc glMap1d*(target: GLenum, u1: GLdouble, u2: GLdouble, stride: GLint, 
-              order: GLint, points: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+              order: GLint, points: PGLdouble){.stdcall, importc, ogl.}
 proc glMap1f*(target: GLenum, u1: GLfloat, u2: GLfloat, stride: GLint, 
-              order: GLint, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+              order: GLint, points: PGLfloat){.stdcall, importc, ogl.}
 proc glMap2d*(target: GLenum, u1: GLdouble, u2: GLdouble, ustride: GLint, 
               uorder: GLint, v1: GLdouble, v2: GLdouble, vstride: GLint, 
-              vorder: GLint, points: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+              vorder: GLint, points: PGLdouble){.stdcall, importc, ogl.}
 proc glMap2f*(target: GLenum, u1: GLfloat, u2: GLfloat, ustride: GLint, 
               uorder: GLint, v1: GLfloat, v2: GLfloat, vstride: GLint, 
-              vorder: GLint, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMapGrid1d*(un: GLint, u1: GLdouble, u2: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMapGrid1f*(un: GLint, u1: GLfloat, u2: GLfloat){.stdcall, importc, dynlib: ogldll.}
+              vorder: GLint, points: PGLfloat){.stdcall, importc, ogl.}
+proc glMapGrid1d*(un: GLint, u1: GLdouble, u2: GLdouble){.stdcall, importc, ogl.}
+proc glMapGrid1f*(un: GLint, u1: GLfloat, u2: GLfloat){.stdcall, importc, ogl.}
 proc glMapGrid2d*(un: GLint, u1: GLdouble, u2: GLdouble, vn: GLint, 
-                  v1: GLdouble, v2: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                  v1: GLdouble, v2: GLdouble){.stdcall, importc, ogl.}
 proc glMapGrid2f*(un: GLint, u1: GLfloat, u2: GLfloat, vn: GLint, v1: GLfloat, 
-                  v2: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMaterialf*(face: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMaterialfv*(face: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMateriali*(face: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMaterialiv*(face: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixMode*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMultMatrixd*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultMatrixf*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glNewList*(list: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3b*(nx: GLbyte, ny: GLbyte, nz: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3bv*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3d*(nx: GLdouble, ny: GLdouble, nz: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3f*(nx: GLfloat, ny: GLfloat, nz: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3i*(nx: GLint, ny: GLint, nz: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3s*(nx: GLshort, ny: GLshort, nz: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glNormalPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                  v2: GLfloat){.stdcall, importc, ogl.}
+proc glMaterialf*(face: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glMaterialfv*(face: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glMateriali*(face: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glMaterialiv*(face: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glMatrixMode*(mode: GLenum){.stdcall, importc, ogl.}
+proc glMultMatrixd*(m: PGLdouble){.stdcall, importc, ogl.}
+proc glMultMatrixf*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glNewList*(list: GLuint, mode: GLenum){.stdcall, importc, ogl.}
+proc glNormal3b*(nx: GLbyte, ny: GLbyte, nz: GLbyte){.stdcall, importc, ogl.}
+proc glNormal3bv*(v: PGLbyte){.stdcall, importc, ogl.}
+proc glNormal3d*(nx: GLdouble, ny: GLdouble, nz: GLdouble){.stdcall, importc, ogl.}
+proc glNormal3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glNormal3f*(nx: GLfloat, ny: GLfloat, nz: GLfloat){.stdcall, importc, ogl.}
+proc glNormal3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glNormal3i*(nx: GLint, ny: GLint, nz: GLint){.stdcall, importc, ogl.}
+proc glNormal3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glNormal3s*(nx: GLshort, ny: GLshort, nz: GLshort){.stdcall, importc, ogl.}
+proc glNormal3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glNormalPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glOrtho*(left: GLdouble, right: GLdouble, bottom: GLdouble, top: GLdouble, 
-              zNear: GLdouble, zFar: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glPassThrough*(token: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPixelMapfv*(map: GLenum, mapsize: GLsizei, values: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPixelMapuiv*(map: GLenum, mapsize: GLsizei, values: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glPixelMapusv*(map: GLenum, mapsize: GLsizei, values: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glPixelTransferf*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPixelTransferi*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPixelZoom*(xfactor: GLfloat, yfactor: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPolygonStipple*(mask: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glPopAttrib*(){.stdcall, importc, dynlib: ogldll.}
-proc glPopClientAttrib*(){.stdcall, importc, dynlib: ogldll.}
-proc glPopMatrix*(){.stdcall, importc, dynlib: ogldll.}
-proc glPopName*(){.stdcall, importc, dynlib: ogldll.}
+              zNear: GLdouble, zFar: GLdouble){.stdcall, importc, ogl.}
+proc glPassThrough*(token: GLfloat){.stdcall, importc, ogl.}
+proc glPixelMapfv*(map: GLenum, mapsize: GLsizei, values: PGLfloat){.stdcall, importc, ogl.}
+proc glPixelMapuiv*(map: GLenum, mapsize: GLsizei, values: PGLuint){.stdcall, importc, ogl.}
+proc glPixelMapusv*(map: GLenum, mapsize: GLsizei, values: PGLushort){.stdcall, importc, ogl.}
+proc glPixelTransferf*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPixelTransferi*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glPixelZoom*(xfactor: GLfloat, yfactor: GLfloat){.stdcall, importc, ogl.}
+proc glPolygonStipple*(mask: PGLubyte){.stdcall, importc, ogl.}
+proc glPopAttrib*(){.stdcall, importc, ogl.}
+proc glPopClientAttrib*(){.stdcall, importc, ogl.}
+proc glPopMatrix*(){.stdcall, importc, ogl.}
+proc glPopName*(){.stdcall, importc, ogl.}
 proc glPrioritizeTextures*(n: GLsizei, textures: PGLuint, priorities: PGLclampf){.
-    stdcall, importc, dynlib: ogldll.}
-proc glPushAttrib*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glPushClientAttrib*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glPushMatrix*(){.stdcall, importc, dynlib: ogldll.}
-proc glPushName*(name: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2d*(x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2f*(x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2i*(x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2s*(x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos2sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4d*(x: GLdouble, y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4f*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4i*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4s*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRasterPos4sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRectd*(x1: GLdouble, y1: GLdouble, x2: GLdouble, y2: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRectdv*(v1: PGLdouble, v2: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRectf*(x1: GLfloat, y1: GLfloat, x2: GLfloat, y2: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRectfv*(v1: PGLfloat, v2: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRecti*(x1: GLint, y1: GLint, x2: GLint, y2: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glRectiv*(v1: PGLint, v2: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glRects*(x1: GLshort, y1: GLshort, x2: GLshort, y2: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRectsv*(v1: PGLshort, v2: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glRenderMode*(mode: GLenum): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glRotated*(angle: GLdouble, x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glRotatef*(angle: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glScaled*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glScalef*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSelectBuffer*(size: GLsizei, buffer: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glShadeModel*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1d*(s: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1f*(s: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1i*(s: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1s*(s: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2d*(s: GLdouble, t: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2f*(s: GLfloat, t: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2i*(s: GLint, t: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2s*(s: GLshort, t: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3d*(s: GLdouble, t: GLdouble, r: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3f*(s: GLfloat, t: GLfloat, r: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3i*(s: GLint, t: GLint, r: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3s*(s: GLshort, t: GLshort, r: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4d*(s: GLdouble, t: GLdouble, r: GLdouble, q: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4f*(s: GLfloat, t: GLfloat, r: GLfloat, q: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4i*(s: GLint, t: GLint, r: GLint, q: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4s*(s: GLshort, t: GLshort, r: GLshort, q: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glPushAttrib*(mask: GLbitfield){.stdcall, importc, ogl.}
+proc glPushClientAttrib*(mask: GLbitfield){.stdcall, importc, ogl.}
+proc glPushMatrix*(){.stdcall, importc, ogl.}
+proc glPushName*(name: GLuint){.stdcall, importc, ogl.}
+proc glRasterPos2d*(x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glRasterPos2dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glRasterPos2f*(x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glRasterPos2fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glRasterPos2i*(x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glRasterPos2iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glRasterPos2s*(x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glRasterPos2sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glRasterPos3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glRasterPos3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glRasterPos3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glRasterPos3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glRasterPos3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glRasterPos3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glRasterPos3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, ogl.}
+proc glRasterPos3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glRasterPos4d*(x: GLdouble, y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
+proc glRasterPos4dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glRasterPos4f*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
+proc glRasterPos4fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glRasterPos4i*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
+proc glRasterPos4iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glRasterPos4s*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, ogl.}
+proc glRasterPos4sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glRectd*(x1: GLdouble, y1: GLdouble, x2: GLdouble, y2: GLdouble){.stdcall, importc, ogl.}
+proc glRectdv*(v1: PGLdouble, v2: PGLdouble){.stdcall, importc, ogl.}
+proc glRectf*(x1: GLfloat, y1: GLfloat, x2: GLfloat, y2: GLfloat){.stdcall, importc, ogl.}
+proc glRectfv*(v1: PGLfloat, v2: PGLfloat){.stdcall, importc, ogl.}
+proc glRecti*(x1: GLint, y1: GLint, x2: GLint, y2: GLint){.stdcall, importc, ogl.}
+proc glRectiv*(v1: PGLint, v2: PGLint){.stdcall, importc, ogl.}
+proc glRects*(x1: GLshort, y1: GLshort, x2: GLshort, y2: GLshort){.stdcall, importc, ogl.}
+proc glRectsv*(v1: PGLshort, v2: PGLshort){.stdcall, importc, ogl.}
+proc glRenderMode*(mode: GLenum): GLint{.stdcall, importc, ogl.}
+proc glRotated*(angle: GLdouble, x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glRotatef*(angle: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glScaled*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glScalef*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glSelectBuffer*(size: GLsizei, buffer: PGLuint){.stdcall, importc, ogl.}
+proc glShadeModel*(mode: GLenum){.stdcall, importc, ogl.}
+proc glTexCoord1d*(s: GLdouble){.stdcall, importc, ogl.}
+proc glTexCoord1dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glTexCoord1f*(s: GLfloat){.stdcall, importc, ogl.}
+proc glTexCoord1fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glTexCoord1i*(s: GLint){.stdcall, importc, ogl.}
+proc glTexCoord1iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glTexCoord1s*(s: GLshort){.stdcall, importc, ogl.}
+proc glTexCoord1sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glTexCoord2d*(s: GLdouble, t: GLdouble){.stdcall, importc, ogl.}
+proc glTexCoord2dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glTexCoord2f*(s: GLfloat, t: GLfloat){.stdcall, importc, ogl.}
+proc glTexCoord2fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glTexCoord2i*(s: GLint, t: GLint){.stdcall, importc, ogl.}
+proc glTexCoord2iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glTexCoord2s*(s: GLshort, t: GLshort){.stdcall, importc, ogl.}
+proc glTexCoord2sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glTexCoord3d*(s: GLdouble, t: GLdouble, r: GLdouble){.stdcall, importc, ogl.}
+proc glTexCoord3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glTexCoord3f*(s: GLfloat, t: GLfloat, r: GLfloat){.stdcall, importc, ogl.}
+proc glTexCoord3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glTexCoord3i*(s: GLint, t: GLint, r: GLint){.stdcall, importc, ogl.}
+proc glTexCoord3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glTexCoord3s*(s: GLshort, t: GLshort, r: GLshort){.stdcall, importc, ogl.}
+proc glTexCoord3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glTexCoord4d*(s: GLdouble, t: GLdouble, r: GLdouble, q: GLdouble){.stdcall, importc, ogl.}
+proc glTexCoord4dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glTexCoord4f*(s: GLfloat, t: GLfloat, r: GLfloat, q: GLfloat){.stdcall, importc, ogl.}
+proc glTexCoord4fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glTexCoord4i*(s: GLint, t: GLint, r: GLint, q: GLint){.stdcall, importc, ogl.}
+proc glTexCoord4iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glTexCoord4s*(s: GLshort, t: GLshort, r: GLshort, q: GLshort){.stdcall, importc, ogl.}
+proc glTexCoord4sv*(v: PGLshort){.stdcall, importc, ogl.}
 proc glTexCoordPointer*(size: GLint, typ: GLenum, stride: GLsizei, 
-                        pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glTexEnvf*(target: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexEnvfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexEnvi*(target: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexEnviv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexGend*(coord: GLenum, pname: GLenum, param: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexGendv*(coord: GLenum, pname: GLenum, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTexGenf*(coord: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexGenfv*(coord: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexGeni*(coord: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexGeniv*(coord: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTranslated*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTranslatef*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2d*(x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2f*(x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2i*(x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2s*(x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4d*(x: GLdouble, y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4f*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4i*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4s*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                        pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glTexEnvf*(target: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glTexEnvfv*(target: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glTexEnvi*(target: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glTexEnviv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glTexGend*(coord: GLenum, pname: GLenum, param: GLdouble){.stdcall, importc, ogl.}
+proc glTexGendv*(coord: GLenum, pname: GLenum, params: PGLdouble){.stdcall, importc, ogl.}
+proc glTexGenf*(coord: GLenum, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glTexGenfv*(coord: GLenum, pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glTexGeni*(coord: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glTexGeniv*(coord: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glTranslated*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glTranslatef*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glVertex2d*(x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glVertex2dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertex2f*(x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glVertex2fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertex2i*(x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glVertex2iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glVertex2s*(x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glVertex2sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glVertex3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glVertex3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertex3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glVertex3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertex3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glVertex3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glVertex3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, ogl.}
+proc glVertex3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glVertex4d*(x: GLdouble, y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
+proc glVertex4dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertex4f*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
+proc glVertex4fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertex4i*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
+proc glVertex4iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glVertex4s*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, ogl.}
+proc glVertex4sv*(v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexPointer*(size: GLint, typ: GLenum, stride: GLsizei, 
-                      pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_VERSION_1_2
 proc glBlendColor*(red: GLclampf, green: GLclampf, blue: GLclampf, 
-                   alpha: GLclampf){.stdcall, importc, dynlib: ogldll.}
-proc glBlendEquation*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                   alpha: GLclampf){.stdcall, importc, ogl.}
+proc glBlendEquation*(mode: GLenum){.stdcall, importc, ogl.}
 proc glDrawRangeElements*(mode: GLenum, start: GLuint, ending: GLuint, 
                           count: GLsizei, typ: GLenum, indices: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexImage3D*(target: GLenum, level: GLint, internalformat: GLint, 
                    width: GLsizei, height: GLsizei, depth: GLsizei, 
                    border: GLint, format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexSubImage3D*(target: GLenum, level: GLint, xoffset: GLint, 
                       yoffset: GLint, zoffset: GLint, width: GLsizei, 
                       height: GLsizei, depth: GLsizei, format: GLenum, 
-                      typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glCopyTexSubImage3D*(target: GLenum, level: GLint, xoffset: GLint, 
                           yoffset: GLint, zoffset: GLint, x: GLint, y: GLint, 
-                          width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glColorTable*(target: GLenum, internalformat: GLenum, width: GLsizei, 
-                   format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                   format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, ogl.}
 proc glColorTableParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glColorTableParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyColorTable*(target: GLenum, internalformat: GLenum, x: GLint, 
-                       y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                       y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glGetColorTable*(target: GLenum, format: GLenum, typ: GLenum, 
-                      table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      table: PGLvoid){.stdcall, importc, ogl.}
 proc glGetColorTableParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetColorTableParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glColorSubTable*(target: GLenum, start: GLsizei, count: GLsizei, 
-                      format: GLenum, typ: GLenum, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      format: GLenum, typ: GLenum, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCopyColorSubTable*(target: GLenum, start: GLsizei, x: GLint, y: GLint, 
-                          width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          width: GLsizei){.stdcall, importc, ogl.}
 proc glConvolutionFilter1D*(target: GLenum, internalformat: GLenum, 
                             width: GLsizei, format: GLenum, typ: GLenum, 
-                            image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                            image: PGLvoid){.stdcall, importc, ogl.}
 proc glConvolutionFilter2D*(target: GLenum, internalformat: GLenum, 
                             width: GLsizei, height: GLsizei, format: GLenum, 
-                            typ: GLenum, image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                            typ: GLenum, image: PGLvoid){.stdcall, importc, ogl.}
 proc glConvolutionParameterf*(target: GLenum, pname: GLenum, params: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glConvolutionParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glConvolutionParameteri*(target: GLenum, pname: GLenum, params: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glConvolutionParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyConvolutionFilter1D*(target: GLenum, internalformat: GLenum, 
-                                x: GLint, y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                x: GLint, y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyConvolutionFilter2D*(target: GLenum, internalformat: GLenum, 
                                 x: GLint, y: GLint, width: GLsizei, 
-                                height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                height: GLsizei){.stdcall, importc, ogl.}
 proc glGetConvolutionFilter*(target: GLenum, format: GLenum, typ: GLenum, 
-                             image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             image: PGLvoid){.stdcall, importc, ogl.}
 proc glGetConvolutionParameterfv*(target: GLenum, pname: GLenum, 
-                                  params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetConvolutionParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetSeparableFilter*(target: GLenum, format: GLenum, typ: GLenum, 
                            row: PGLvoid, column: PGLvoid, span: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSeparableFilter2D*(target: GLenum, internalformat: GLenum, 
                           width: GLsizei, height: GLsizei, format: GLenum, 
-                          typ: GLenum, row: PGLvoid, column: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          typ: GLenum, row: PGLvoid, column: PGLvoid){.stdcall, importc, ogl.}
 proc glGetHistogram*(target: GLenum, reset: GLboolean, format: GLenum, 
-                     typ: GLenum, values: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                     typ: GLenum, values: PGLvoid){.stdcall, importc, ogl.}
 proc glGetHistogramParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetHistogramParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMinmax*(target: GLenum, reset: GLboolean, format: GLenum, typ: GLenum, 
-                  values: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                  values: PGLvoid){.stdcall, importc, ogl.}
 proc glGetMinmaxParameterfv*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMinmaxParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glHistogram*(target: GLenum, width: GLsizei, internalformat: GLenum, 
-                  sink: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glMinmax*(target: GLenum, internalformat: GLenum, sink: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glResetHistogram*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glResetMinmax*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
+                  sink: GLboolean){.stdcall, importc, ogl.}
+proc glMinmax*(target: GLenum, internalformat: GLenum, sink: GLboolean){.stdcall, importc, ogl.}
+proc glResetHistogram*(target: GLenum){.stdcall, importc, ogl.}
+proc glResetMinmax*(target: GLenum){.stdcall, importc, ogl.}
   # GL_VERSION_1_3
-proc glActiveTexture*(texture: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glSampleCoverage*(value: GLclampf, invert: GLboolean){.stdcall, importc, dynlib: ogldll.}
+proc glActiveTexture*(texture: GLenum){.stdcall, importc, ogl.}
+proc glSampleCoverage*(value: GLclampf, invert: GLboolean){.stdcall, importc, ogl.}
 proc glCompressedTexImage3D*(target: GLenum, level: GLint, 
                              internalformat: GLenum, width: GLsizei, 
                              height: GLsizei, depth: GLsizei, border: GLint, 
-                             imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexImage2D*(target: GLenum, level: GLint, 
                              internalformat: GLenum, width: GLsizei, 
                              height: GLsizei, border: GLint, imageSize: GLsizei, 
-                             data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexImage1D*(target: GLenum, level: GLint, 
                              internalformat: GLenum, width: GLsizei, 
                              border: GLint, imageSize: GLsizei, data: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedTexSubImage3D*(target: GLenum, level: GLint, xoffset: GLint, 
                                 yoffset: GLint, zoffset: GLint, width: GLsizei, 
                                 height: GLsizei, depth: GLsizei, format: GLenum, 
-                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexSubImage2D*(target: GLenum, level: GLint, xoffset: GLint, 
                                 yoffset: GLint, width: GLsizei, height: GLsizei, 
                                 format: GLenum, imageSize: GLsizei, 
-                                data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexSubImage1D*(target: GLenum, level: GLint, xoffset: GLint, 
                                 width: GLsizei, format: GLenum, 
-                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetCompressedTexImage*(target: GLenum, level: GLint, img: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glClientActiveTexture*(texture: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1d*(target: GLenum, s: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1dv*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1f*(target: GLenum, s: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1fv*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1i*(target: GLenum, s: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1iv*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1s*(target: GLenum, s: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1sv*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2d*(target: GLenum, s: GLdouble, t: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2dv*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2f*(target: GLenum, s: GLfloat, t: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2fv*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2i*(target: GLenum, s: GLint, t: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2iv*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2s*(target: GLenum, s: GLshort, t: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2sv*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glClientActiveTexture*(texture: GLenum){.stdcall, importc, ogl.}
+proc glMultiTexCoord1d*(target: GLenum, s: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord1dv*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord1f*(target: GLenum, s: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord1fv*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord1i*(target: GLenum, s: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord1iv*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord1s*(target: GLenum, s: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord1sv*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord2d*(target: GLenum, s: GLdouble, t: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord2dv*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord2f*(target: GLenum, s: GLfloat, t: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord2fv*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord2i*(target: GLenum, s: GLint, t: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord2iv*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord2s*(target: GLenum, s: GLshort, t: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord2sv*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
 proc glMultiTexCoord3d*(target: GLenum, s: GLdouble, t: GLdouble, r: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3dv*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3dv*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
 proc glMultiTexCoord3f*(target: GLenum, s: GLfloat, t: GLfloat, r: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3fv*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3i*(target: GLenum, s: GLint, t: GLint, r: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3iv*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3fv*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord3i*(target: GLenum, s: GLint, t: GLint, r: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord3iv*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexCoord3s*(target: GLenum, s: GLshort, t: GLshort, r: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3sv*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3sv*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
 proc glMultiTexCoord4d*(target: GLenum, s: GLdouble, t: GLdouble, r: GLdouble, 
-                        q: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4dv*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                        q: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord4dv*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
 proc glMultiTexCoord4f*(target: GLenum, s: GLfloat, t: GLfloat, r: GLfloat, 
-                        q: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4fv*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                        q: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord4fv*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexCoord4i*(target: GLenum, s: GLint, t: GLint, r: GLint, q: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4iv*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord4iv*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexCoord4s*(target: GLenum, s: GLshort, t: GLshort, r: GLshort, 
-                        q: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4sv*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glLoadTransposeMatrixf*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLoadTransposeMatrixd*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultTransposeMatrixf*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultTransposeMatrixd*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                        q: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord4sv*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
+proc glLoadTransposeMatrixf*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glLoadTransposeMatrixd*(m: PGLdouble){.stdcall, importc, ogl.}
+proc glMultTransposeMatrixf*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glMultTransposeMatrixd*(m: PGLdouble){.stdcall, importc, ogl.}
   # GL_VERSION_1_4
 proc glBlendFuncSeparate*(sfactorRGB: GLenum, dfactorRGB: GLenum, 
-                          sfactorAlpha: GLenum, dfactorAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
+                          sfactorAlpha: GLenum, dfactorAlpha: GLenum){.stdcall, importc, ogl.}
 proc glMultiDrawArrays*(mode: GLenum, first: PGLint, count: PGLsizei, 
-                        primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                        primcount: GLsizei){.stdcall, importc, ogl.}
 proc glMultiDrawElements*(mode: GLenum, count: PGLsizei, typ: GLenum, 
-                          indices: PGLvoid, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterf*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameteri*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameteriv*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordf*(coord: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordfv*(coord: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordd*(coord: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoorddv*(coord: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3b*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3bv*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+                          indices: PGLvoid, primcount: GLsizei){.stdcall, importc, ogl.}
+proc glPointParameterf*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPointParameterfv*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glPointParameteri*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glPointParameteriv*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glFogCoordf*(coord: GLfloat){.stdcall, importc, ogl.}
+proc glFogCoordfv*(coord: PGLfloat){.stdcall, importc, ogl.}
+proc glFogCoordd*(coord: GLdouble){.stdcall, importc, ogl.}
+proc glFogCoorddv*(coord: PGLdouble){.stdcall, importc, ogl.}
+proc glFogCoordPointer*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glSecondaryColor3b*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, ogl.}
+proc glSecondaryColor3bv*(v: PGLbyte){.stdcall, importc, ogl.}
 proc glSecondaryColor3d*(red: GLdouble, green: GLdouble, blue: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3f*(red: GLfloat, green: GLfloat, blue: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3i*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3s*(red: GLshort, green: GLshort, blue: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3ub*(red: GLubyte, green: GLubyte, blue: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3ubv*(v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3ui*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3uiv*(v: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glSecondaryColor3f*(red: GLfloat, green: GLfloat, blue: GLfloat){.stdcall, importc, ogl.}
+proc glSecondaryColor3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glSecondaryColor3i*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, ogl.}
+proc glSecondaryColor3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glSecondaryColor3s*(red: GLshort, green: GLshort, blue: GLshort){.stdcall, importc, ogl.}
+proc glSecondaryColor3sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glSecondaryColor3ub*(red: GLubyte, green: GLubyte, blue: GLubyte){.stdcall, importc, ogl.}
+proc glSecondaryColor3ubv*(v: PGLubyte){.stdcall, importc, ogl.}
+proc glSecondaryColor3ui*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, ogl.}
+proc glSecondaryColor3uiv*(v: PGLuint){.stdcall, importc, ogl.}
 proc glSecondaryColor3us*(red: GLushort, green: GLushort, blue: GLushort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3usv*(v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3usv*(v: PGLushort){.stdcall, importc, ogl.}
 proc glSecondaryColorPointer*(size: GLint, typ: GLenum, stride: GLsizei, 
-                              pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2d*(x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2f*(x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2i*(x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2s*(x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3dv*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3fv*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3iv*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3sv*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                              pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glWindowPos2d*(x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2f*(x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2i*(x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glWindowPos2iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos2s*(x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos2sv*(v: PGLshort){.stdcall, importc, ogl.}
+proc glWindowPos3d*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3dv*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3f*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3fv*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3i*(x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glWindowPos3iv*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos3s*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos3sv*(v: PGLshort){.stdcall, importc, ogl.}
   # GL_VERSION_1_5
-proc glGenQueries*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteQueries*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsQuery*(id: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-proc glBeginQuery*(target: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEndQuery*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryiv*(target, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryObjectiv*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryObjectuiv*(id: GLuint, pname: GLenum, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glBindBuffer*(target: GLenum, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteBuffers*(n: GLsizei, buffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenBuffers*(n: GLsizei, buffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsBuffer*(buffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glGenQueries*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteQueries*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glIsQuery*(id: GLuint): bool{.stdcall, importc, ogl.}
+proc glBeginQuery*(target: GLenum, id: GLuint){.stdcall, importc, ogl.}
+proc glEndQuery*(target: GLenum){.stdcall, importc, ogl.}
+proc glGetQueryiv*(target, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetQueryObjectiv*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetQueryObjectuiv*(id: GLuint, pname: GLenum, params: PGLuint){.stdcall, importc, ogl.}
+proc glBindBuffer*(target: GLenum, buffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteBuffers*(n: GLsizei, buffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenBuffers*(n: GLsizei, buffers: PGLuint){.stdcall, importc, ogl.}
+proc glIsBuffer*(buffer: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glBufferData*(target: GLenum, size: GLsizeiptr, data: PGLvoid, 
-                   usage: GLenum){.stdcall, importc, dynlib: ogldll.}
+                   usage: GLenum){.stdcall, importc, ogl.}
 proc glBufferSubData*(target: GLenum, offset: GLintptr, size: GLsizeiptr, 
-                      data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetBufferSubData*(target: GLenum, offset: GLintptr, size: GLsizeiptr, 
-                         data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glMapBuffer*(target: GLenum, access: GLenum): PGLvoid{.stdcall, importc, dynlib: ogldll.}
-proc glUnmapBuffer*(target: GLenum): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                         data: PGLvoid){.stdcall, importc, ogl.}
+proc glMapBuffer*(target: GLenum, access: GLenum): PGLvoid{.stdcall, importc, ogl.}
+proc glUnmapBuffer*(target: GLenum): GLboolean{.stdcall, importc, ogl.}
 proc glGetBufferParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetBufferPointerv*(target: GLenum, pname: GLenum, params: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_VERSION_2_0
-proc glBlendEquationSeparate*(modeRGB: GLenum, modeAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glDrawBuffers*(n: GLsizei, bufs: PGLenum){.stdcall, importc, dynlib: ogldll.}
+proc glBlendEquationSeparate*(modeRGB: GLenum, modeAlpha: GLenum){.stdcall, importc, ogl.}
+proc glDrawBuffers*(n: GLsizei, bufs: PGLenum){.stdcall, importc, ogl.}
 proc glStencilOpSeparate*(face: GLenum, sfail: GLenum, dpfail: GLenum, 
-                          dppass: GLenum){.stdcall, importc, dynlib: ogldll.}
+                          dppass: GLenum){.stdcall, importc, ogl.}
 proc glStencilFuncSeparate*(face: GLenum, func: GLenum, theRef: GLint, mask: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glStencilMaskSeparate*(face: GLenum, mask: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glAttachShader*(programObj, shaderObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glStencilMaskSeparate*(face: GLenum, mask: GLuint){.stdcall, importc, ogl.}
+proc glAttachShader*(programObj, shaderObj: GLhandle){.stdcall, importc, ogl.}
 proc glBindAttribLocation*(programObj: GLhandle, index: GLuint, name: PGLChar){.
-    stdcall, importc, dynlib: ogldll.}
-proc glCompileShader*(shaderObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glCreateProgram*(): GLhandle{.stdcall, importc, dynlib: ogldll.}
-proc glCreateShader*(shaderType: GLenum): GLhandle{.stdcall, importc, dynlib: ogldll.}
-proc glDeleteProgram*(programObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteShader*(shaderObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glDetachShader*(programObj, shaderObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glDisableVertexAttribArray*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEnableVertexAttribArray*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glCompileShader*(shaderObj: GLhandle){.stdcall, importc, ogl.}
+proc glCreateProgram*(): GLhandle{.stdcall, importc, ogl.}
+proc glCreateShader*(shaderType: GLenum): GLhandle{.stdcall, importc, ogl.}
+proc glDeleteProgram*(programObj: GLhandle){.stdcall, importc, ogl.}
+proc glDeleteShader*(shaderObj: GLhandle){.stdcall, importc, ogl.}
+proc glDetachShader*(programObj, shaderObj: GLhandle){.stdcall, importc, ogl.}
+proc glDisableVertexAttribArray*(index: GLuint){.stdcall, importc, ogl.}
+proc glEnableVertexAttribArray*(index: GLuint){.stdcall, importc, ogl.}
 proc glGetActiveAttrib*(programObj: GLhandle, index: GLuint, maxlength: GLsizei, 
                         len: var GLint, size: var GLint, typ: var GLenum, 
-                        name: PGLChar){.stdcall, importc, dynlib: ogldll.}
+                        name: PGLChar){.stdcall, importc, ogl.}
 proc glGetActiveUniform*(programObj: GLhandle, index: GLuint, 
                          maxLength: GLsizei, len: var GLsizei, size: var GLint, 
-                         typ: var GLenum, name: PGLChar){.stdcall, importc, dynlib: ogldll.}
+                         typ: var GLenum, name: PGLChar){.stdcall, importc, ogl.}
 proc glGetAttachedShaders*(programObj: GLhandle, MaxCount: GLsizei, 
-                           Count: var GLint, shaders: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGetAttribLocation*(programObj: GLhandle, char: PGLChar): glint{.stdcall, importc, dynlib: ogldll.}
+                           Count: var GLint, shaders: PGLuint){.stdcall, importc, ogl.}
+proc glGetAttribLocation*(programObj: GLhandle, char: PGLChar): glint{.stdcall, importc, ogl.}
 proc glGetProgramiv*(programObj: GLhandle, pname: GLenum, params: PGLInt){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetProgramInfoLog*(programObj: GLHandle, maxLength: glsizei, 
-                          len: var GLint, infoLog: PGLChar){.stdcall, importc, dynlib: ogldll.}
-proc glGetShaderiv*(shaderObj: GLhandle, pname: GLenum, params: PGLInt){.stdcall, importc, dynlib: ogldll.}
+                          len: var GLint, infoLog: PGLChar){.stdcall, importc, ogl.}
+proc glGetShaderiv*(shaderObj: GLhandle, pname: GLenum, params: PGLInt){.stdcall, importc, ogl.}
 proc glGetShaderInfoLog*(shaderObj: GLHandle, maxLength: glsizei, 
-                         len: var glint, infoLog: PGLChar){.stdcall, importc, dynlib: ogldll.}
+                         len: var glint, infoLog: PGLChar){.stdcall, importc, ogl.}
 proc glGetShaderSource*(shaderObj: GLhandle, maxlength: GLsizei, 
-                        len: var GLsizei, source: PGLChar){.stdcall, importc, dynlib: ogldll.}
-proc glGetUniformLocation*(programObj: GLhandle, char: PGLChar): glint{.stdcall, importc, dynlib: ogldll.}
+                        len: var GLsizei, source: PGLChar){.stdcall, importc, ogl.}
+proc glGetUniformLocation*(programObj: GLhandle, char: PGLChar): glint{.stdcall, importc, ogl.}
 proc glGetUniformfv*(programObj: GLhandle, location: GLint, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetUniformiv*(programObj: GLhandle, location: GLint, params: PGLInt){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribfv*(index: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetVertexAttribiv*(index: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetVertexAttribiv*(index: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetVertexAttribPointerv*(index: GLuint, pname: GLenum, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glIsProgram*(programObj: GLhandle): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glIsShader*(shaderObj: GLhandle): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glLinkProgram*(programObj: GLHandle){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glIsProgram*(programObj: GLhandle): GLboolean{.stdcall, importc, ogl.}
+proc glIsShader*(shaderObj: GLhandle): GLboolean{.stdcall, importc, ogl.}
+proc glLinkProgram*(programObj: GLHandle){.stdcall, importc, ogl.}
 proc glShaderSource*(shaderObj: GLHandle, count: glsizei, string: PPGLChar, 
-                     lengths: pglint){.stdcall, importc, dynlib: ogldll.}
-proc glUseProgram*(programObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1f*(location: GLint, v0: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2f*(location: GLint, v0, v1: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3f*(location: GLint, v0, v1, v2: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4f*(location: GLint, v0, v1, v2, v3: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1i*(location: GLint, v0: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2i*(location: GLint, v0, v1: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3i*(location: GLint, v0, v1, v2: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4i*(location: GLint, v0, v1, v2, v3: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                     lengths: pglint){.stdcall, importc, ogl.}
+proc glUseProgram*(programObj: GLhandle){.stdcall, importc, ogl.}
+proc glUniform1f*(location: GLint, v0: GLfloat){.stdcall, importc, ogl.}
+proc glUniform2f*(location: GLint, v0, v1: GLfloat){.stdcall, importc, ogl.}
+proc glUniform3f*(location: GLint, v0, v1, v2: GLfloat){.stdcall, importc, ogl.}
+proc glUniform4f*(location: GLint, v0, v1, v2, v3: GLfloat){.stdcall, importc, ogl.}
+proc glUniform1i*(location: GLint, v0: GLint){.stdcall, importc, ogl.}
+proc glUniform2i*(location: GLint, v0, v1: GLint){.stdcall, importc, ogl.}
+proc glUniform3i*(location: GLint, v0, v1, v2: GLint){.stdcall, importc, ogl.}
+proc glUniform4i*(location: GLint, v0, v1, v2, v3: GLint){.stdcall, importc, ogl.}
+proc glUniform1fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, ogl.}
+proc glUniform2fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, ogl.}
+proc glUniform3fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, ogl.}
+proc glUniform4fv*(location: GLint, count: GLsizei, value: PGLfloat){.stdcall, importc, ogl.}
+proc glUniform1iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, ogl.}
+proc glUniform2iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, ogl.}
+proc glUniform3iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, ogl.}
+proc glUniform4iv*(location: GLint, count: GLsizei, value: PGLint){.stdcall, importc, ogl.}
 proc glUniformMatrix2fv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix3fv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix4fv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glValidateProgram*(programObj: GLhandle){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1d*(index: GLuint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1f*(index: GLuint, x: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1fv*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1s*(index: GLuint, x: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1sv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2d*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2f*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2fv*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2s*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2sv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLfloat){.stdcall, importc, ogl.}
+proc glValidateProgram*(programObj: GLhandle){.stdcall, importc, ogl.}
+proc glVertexAttrib1d*(index: GLuint, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1f*(index: GLuint, x: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1fv*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1s*(index: GLuint, x: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib1sv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2d*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2f*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2fv*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2s*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2sv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib3d*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib3f*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3fv*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3fv*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexAttrib3s*(index: GLuint, x: GLshort, y: GLshort, z: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3sv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Nbv*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Niv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Nsv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3sv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4Nbv*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4Niv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttrib4Nsv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib4Nub*(index: GLuint, x: GLubyte, y: GLubyte, z: GLubyte, 
-                         w: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Nubv*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Nuiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4Nusv*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4bv*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+                         w: GLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4Nubv*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4Nuiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttrib4Nusv*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
+proc glVertexAttrib4bv*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
 proc glVertexAttrib4d*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                       w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                       w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib4dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib4f*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, 
-                       w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4fv*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4iv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+                       w: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib4fv*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib4iv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
 proc glVertexAttrib4s*(index: GLuint, x: GLshort, y: GLshort, z: GLshort, 
-                       w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4sv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4ubv*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4uiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4usv*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+                       w: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4sv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4ubv*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4uiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttrib4usv*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
 proc glVertexAttribPointer*(index: GLuint, size: GLint, typ: GLenum, 
                             normalized: GLboolean, stride: GLsizei, 
-                            pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                            pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_VERSION_2_1
 proc glUniformMatrix2x3fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix3x2fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix2x4fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix4x2fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix3x4fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix4x3fv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
   # GL_VERSION_3_0
   # OpenGL 3.0 also reuses entry points from these extensions: 
   # ARB_framebuffer_object 
   # ARB_map_buffer_range 
   # ARB_vertex_array_object 
 proc glColorMaski*(index: GLuint, r: GLboolean, g: GLboolean, b: GLboolean, 
-                   a: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glGetBooleani_v*(target: GLenum, index: GLuint, data: PGLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glGetIntegeri_v*(target: GLenum, index: GLuint, data: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glEnablei*(target: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDisablei*(target: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsEnabledi*(target: GLenum, index: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBeginTransformFeedback*(primitiveMode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEndTransformFeedback*(){.stdcall, importc, dynlib: ogldll.}
+                   a: GLboolean){.stdcall, importc, ogl.}
+proc glGetBooleani_v*(target: GLenum, index: GLuint, data: PGLboolean){.stdcall, importc, ogl.}
+proc glGetIntegeri_v*(target: GLenum, index: GLuint, data: PGLint){.stdcall, importc, ogl.}
+proc glEnablei*(target: GLenum, index: GLuint){.stdcall, importc, ogl.}
+proc glDisablei*(target: GLenum, index: GLuint){.stdcall, importc, ogl.}
+proc glIsEnabledi*(target: GLenum, index: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glBeginTransformFeedback*(primitiveMode: GLenum){.stdcall, importc, ogl.}
+proc glEndTransformFeedback*(){.stdcall, importc, ogl.}
 proc glBindBufferRange*(target: GLenum, index: GLuint, buffer: GLuint, 
-                        offset: GLintptr, size: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
-proc glBindBufferBase*(target: GLenum, index: GLuint, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                        offset: GLintptr, size: GLsizeiptr){.stdcall, importc, ogl.}
+proc glBindBufferBase*(target: GLenum, index: GLuint, buffer: GLuint){.stdcall, importc, ogl.}
 proc glTransformFeedbackVaryings*(prog: GLuint, count: GLsizei, 
                                   varyings: PPGLchar, bufferMode: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTransformFeedbackVarying*(prog: GLuint, index: GLuint, 
                                     bufSize: GLsizei, len: PGLsizei, 
                                     size: PGLsizei, typ: PGLsizei, name: PGLchar){.
-    stdcall, importc, dynlib: ogldll.}
-proc glClampColor*(targe: GLenum, clamp: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glBeginConditionalRender*(id: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEndConditionalRender*(){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glClampColor*(targe: GLenum, clamp: GLenum){.stdcall, importc, ogl.}
+proc glBeginConditionalRender*(id: GLuint, mode: GLenum){.stdcall, importc, ogl.}
+proc glEndConditionalRender*(){.stdcall, importc, ogl.}
 proc glVertexAttribIPointer*(index: GLuint, size: GLint, typ: GLenum, 
-                             stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glGetVertexAttribIiv*(index: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribIuiv*(index: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1i*(index: GLuint, x: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2i*(index: GLuint, x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3i*(index: GLuint, x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttribI1i*(index: GLuint, x: GLint){.stdcall, importc, ogl.}
+proc glVertexAttribI2i*(index: GLuint, x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glVertexAttribI3i*(index: GLuint, x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
 proc glVertexAttribI4i*(index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1ui*(index: GLuint, x: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2ui*(index: GLuint, x: GLuint, y: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttribI1ui*(index: GLuint, x: GLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI2ui*(index: GLuint, x: GLuint, y: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribI3ui*(index: GLuint, x: GLuint, y: GLuint, z: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribI4ui*(index: GLuint, x: GLuint, y: GLuint, z: GLuint, 
-                         w: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1iv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2iv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3iv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4iv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1uiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2uiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3uiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4uiv*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4bv*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4sv*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4ubv*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4usv*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glGetUniformuiv*(prog: GLuint, location: GLint, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                         w: GLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI1iv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI2iv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI3iv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI4iv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI1uiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI2uiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI3uiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI4uiv*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI4bv*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
+proc glVertexAttribI4sv*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribI4ubv*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttribI4usv*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
+proc glGetUniformuiv*(prog: GLuint, location: GLint, params: PGLuint){.stdcall, importc, ogl.}
 proc glBindFragDataLocation*(prog: GLuint, color: GLuint, name: PGLChar){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetFragDataLocation*(prog: GLuint, name: PGLChar): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glUniform1ui*(location: GLint, v0: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2ui*(location: GLint, v0: GLuint, v1: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3ui*(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetFragDataLocation*(prog: GLuint, name: PGLChar): GLint{.stdcall, importc, ogl.}
+proc glUniform1ui*(location: GLint, v0: GLuint){.stdcall, importc, ogl.}
+proc glUniform2ui*(location: GLint, v0: GLuint, v1: GLuint){.stdcall, importc, ogl.}
+proc glUniform3ui*(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint){.stdcall, importc, ogl.}
 proc glUniform4ui*(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, 
-                   v3: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexParameterIiv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                   v3: GLuint){.stdcall, importc, ogl.}
+proc glUniform1uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform2uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform3uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform4uiv*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glTexParameterIiv*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glTexParameterIuiv*(target: GLenum, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterIiv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterIuiv*(target: GLenum, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glClearBufferiv*(buffer: GLenum, drawbuffer: GLint, value: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glClearBufferiv*(buffer: GLenum, drawbuffer: GLint, value: PGLint){.stdcall, importc, ogl.}
 proc glClearBufferuiv*(buffer: GLenum, drawbuffer: GLint, value: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glClearBufferfv*(buffer: GLenum, drawbuffer: GLint, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glClearBufferfi*(buffer: GLenum, drawbuffer: GLint, depth: GLfloat, 
-                      stencil: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetStringi*(name: GLenum, index: GLuint): PGLubyte{.stdcall, importc, dynlib: ogldll.}
+                      stencil: GLint){.stdcall, importc, ogl.}
+proc glGetStringi*(name: GLenum, index: GLuint): PGLubyte{.stdcall, importc, ogl.}
   # GL_VERSION_3_1
   # OpenGL 3.1 also reuses entry points from these extensions: 
   # ARB_copy_buffer 
   # ARB_uniform_buffer_object 
 proc glDrawArraysInstanced*(mode: GLenum, first: GLint, count: GLsizei, 
-                            primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                            primcount: GLsizei){.stdcall, importc, ogl.}
 proc glDrawElementsInstanced*(mode: GLenum, count: GLsizei, typ: GLenum, 
-                              indices: PGLvoid, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                              indices: PGLvoid, primcount: GLsizei){.stdcall, importc, ogl.}
 proc glTexBuffer*(target: GLenum, internalformat: GLenum, buffer: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glPrimitiveRestartIndex*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glPrimitiveRestartIndex*(index: GLuint){.stdcall, importc, ogl.}
   # GL_VERSION_3_2
   # OpenGL 3.2 also reuses entry points from these extensions: 
   # ARB_draw_elements_base_vertex 
   # ARB_provoking_vertex 
   # ARB_sync 
   # ARB_texture_multisample 
-proc glGetInteger64i_v*(target: GLenum, index: GLuint, data: PGLint64){.stdcall, importc, dynlib: ogldll.}
+proc glGetInteger64i_v*(target: GLenum, index: GLuint, data: PGLint64){.stdcall, importc, ogl.}
 proc glGetBufferParameteri64v*(target: GLenum, pname: GLenum, params: PGLint64){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTexture*(target: GLenum, attachment: GLenum, texture: GLuint, 
-                           level: GLint){.stdcall, importc, dynlib: ogldll.}
-  #procedure glFramebufferTextureFace(target: GLenum; attachment: GLenum; texture: GLuint; level: GLint; face: GLenum); stdcall, importc, dynlib: ogldll;
+                           level: GLint){.stdcall, importc, ogl.}
+  #procedure glFramebufferTextureFace(target: GLenum; attachment: GLenum; texture: GLuint; level: GLint; face: GLenum); stdcall, importc, ogl;
   # GL_VERSION_3_3
   # OpenGL 3.3 also reuses entry points from these extensions: 
   # ARB_blend_func_extended 
@@ -6003,7 +6028,7 @@ proc glFramebufferTexture*(target: GLenum, attachment: GLenum, texture: GLuint,
   # ARB_texture_swizzle (no entry points) 
   # ARB_timer_query 
   # ARB_vertextyp_2_10_10_10_rev 
-proc glVertexAttribDivisor*(index: GLuint, divisor: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribDivisor*(index: GLuint, divisor: GLuint){.stdcall, importc, ogl.}
   # GL_VERSION_4_0
   # OpenGL 4.0 also reuses entry points from these extensions: 
   # ARB_texture_query_lod (no entry points) 
@@ -6017,13 +6042,13 @@ proc glVertexAttribDivisor*(index: GLuint, divisor: GLuint){.stdcall, importc, d
   # ARB_texture_gather (no entry points) 
   # ARB_transform_feedback2 
   # ARB_transform_feedback3 
-proc glMinSampleShading*(value: GLclampf){.stdcall, importc, dynlib: ogldll.}
-proc glBlendEquationi*(buf: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glMinSampleShading*(value: GLclampf){.stdcall, importc, ogl.}
+proc glBlendEquationi*(buf: GLuint, mode: GLenum){.stdcall, importc, ogl.}
 proc glBlendEquationSeparatei*(buf: GLuint, modeRGB: GLenum, modeAlpha: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
-proc glBlendFunci*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glBlendFunci*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, ogl.}
 proc glBlendFuncSeparatei*(buf: GLuint, srcRGB: GLenum, dstRGB: GLenum, 
-                           srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
+                           srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, ogl.}
   # GL_VERSION_4_1
   # OpenGL 4.1 also reuses entry points from these extensions: 
   # ARB_ES2_compatibility 
@@ -6033,3450 +6058,3450 @@ proc glBlendFuncSeparatei*(buf: GLuint, srcRGB: GLenum, dstRGB: GLenum,
   # ARB_vertex_attrib_64bit 
   # ARB_viewport_array 
   # GL_3DFX_tbuffer
-proc glTbufferMask3DFX*(mask: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glTbufferMask3DFX*(mask: GLuint){.stdcall, importc, ogl.}
   # GL_APPLE_element_array
-proc glElementPointerAPPLE*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+proc glElementPointerAPPLE*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glDrawElementArrayAPPLE*(mode: GLenum, first: GLint, count: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDrawRangeElementArrayAPPLE*(mode: GLenum, start: GLuint, ending: GLuint, 
-                                   first: GLint, count: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                   first: GLint, count: GLsizei){.stdcall, importc, ogl.}
 proc glMultiDrawElementArrayAPPLE*(mode: GLenum, first: PGLint, count: PGLsizei, 
-                                   primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                   primcount: GLsizei){.stdcall, importc, ogl.}
 proc glMultiDrawRangeElementArrayAPPLE*(mode: GLenum, start: GLuint, 
                                         ending: GLuint, first: PGLint, 
                                         count: PGLsizei, primcount: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_APPLE_fence
-proc glGenFencesAPPLE*(n: GLsizei, fences: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteFencesAPPLE*(n: GLsizei, fences: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSetFenceAPPLE*(fence: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsFenceAPPLE*(fence: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glTestFenceAPPLE*(fence: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glFinishFenceAPPLE*(fence: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTestObjectAPPLE*(obj: GLenum, name: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glFinishObjectAPPLE*(obj: GLenum, name: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glGenFencesAPPLE*(n: GLsizei, fences: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteFencesAPPLE*(n: GLsizei, fences: PGLuint){.stdcall, importc, ogl.}
+proc glSetFenceAPPLE*(fence: GLuint){.stdcall, importc, ogl.}
+proc glIsFenceAPPLE*(fence: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glTestFenceAPPLE*(fence: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glFinishFenceAPPLE*(fence: GLuint){.stdcall, importc, ogl.}
+proc glTestObjectAPPLE*(obj: GLenum, name: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glFinishObjectAPPLE*(obj: GLenum, name: GLint){.stdcall, importc, ogl.}
   # GL_APPLE_vertex_array_object
-proc glBindVertexArrayAPPLE*(arr: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteVertexArraysAPPLE*(n: GLsizei, arrays: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenVertexArraysAPPLE*(n: GLsizei, arrays: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsVertexArrayAPPLE*(arr: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glBindVertexArrayAPPLE*(arr: GLuint){.stdcall, importc, ogl.}
+proc glDeleteVertexArraysAPPLE*(n: GLsizei, arrays: PGLuint){.stdcall, importc, ogl.}
+proc glGenVertexArraysAPPLE*(n: GLsizei, arrays: PGLuint){.stdcall, importc, ogl.}
+proc glIsVertexArrayAPPLE*(arr: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_APPLE_vertex_array_range
-proc glVertexArrayRangeAPPLE*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glFlushVertexArrayRangeAPPLE*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glVertexArrayParameteriAPPLE*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glVertexArrayRangeAPPLE*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glFlushVertexArrayRangeAPPLE*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glVertexArrayParameteriAPPLE*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
   # GL_APPLE_texture_range
 proc glTextureRangeAPPLE*(target: GLenum, len: GLsizei, Pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterPointervAPPLE*(target: GLenum, pname: GLenum, 
-                                     params: PPGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                     params: PPGLvoid){.stdcall, importc, ogl.}
   # GL_APPLE_vertex_program_evaluators
-proc glEnableVertexAttribAPPLE*(index: GLuint, pname: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glDisableVertexAttribAPPLE*(index: GLuint, pname: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glEnableVertexAttribAPPLE*(index: GLuint, pname: GLenum){.stdcall, importc, ogl.}
+proc glDisableVertexAttribAPPLE*(index: GLuint, pname: GLenum){.stdcall, importc, ogl.}
 proc glIsVertexAttribEnabledAPPLE*(index: GLuint, pname: GLenum): GLboolean{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMapVertexAttrib1dAPPLE*(index: GLuint, size: GLuint, u1: GLdouble, 
                                u2: GLdouble, stride: GLint, order: GLint, 
-                               points: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                               points: PGLdouble){.stdcall, importc, ogl.}
 proc glMapVertexAttrib1fAPPLE*(index: GLuint, size: GLuint, u1: GLfloat, 
                                u2: GLfloat, stride: GLint, order: GLint, 
-                               points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                               points: PGLfloat){.stdcall, importc, ogl.}
 proc glMapVertexAttrib2dAPPLE*(index: GLuint, size: GLuint, u1: GLdouble, 
                                u2: GLdouble, ustride: GLint, uorder: GLint, 
                                v1: GLdouble, v2: GLdouble, vstride: GLint, 
-                               vorder: GLint, points: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                               vorder: GLint, points: PGLdouble){.stdcall, importc, ogl.}
 proc glMapVertexAttrib2fAPPLE*(index: GLuint, size: GLuint, u1: GLfloat, 
                                u2: GLfloat, ustride: GLint, order: GLint, 
                                v1: GLfloat, v2: GLfloat, vstride: GLint, 
-                               vorder: GLint, points: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                               vorder: GLint, points: GLfloat){.stdcall, importc, ogl.}
   # GL_APPLE_object_purgeable
 proc glObjectPurgeableAPPLE*(objectType: GLenum, name: GLuint, option: GLenum): GLenum{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glObjectUnpurgeableAPPLE*(objectType: GLenum, name: GLuint, option: GLenum): GLenum{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetObjectParameterivAPPLE*(objectType: GLenum, name: GLuint, 
-                                  pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_matrix_palette
-proc glCurrentPaletteMatrixARB*(index: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixIndexubvARB*(size: GLint, indices: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixIndexusvARB*(size: GLint, indices: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixIndexuivARB*(size: GLint, indices: PGLuint){.stdcall, importc, dynlib: ogldll.}
+proc glCurrentPaletteMatrixARB*(index: GLint){.stdcall, importc, ogl.}
+proc glMatrixIndexubvARB*(size: GLint, indices: PGLubyte){.stdcall, importc, ogl.}
+proc glMatrixIndexusvARB*(size: GLint, indices: PGLushort){.stdcall, importc, ogl.}
+proc glMatrixIndexuivARB*(size: GLint, indices: PGLuint){.stdcall, importc, ogl.}
 proc glMatrixIndexPointerARB*(size: GLint, typ: GLenum, stride: GLsizei, 
-                              pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                              pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_ARB_multisample
-proc glSampleCoverageARB*(value: GLclampf, invert: GLboolean){.stdcall, importc, dynlib: ogldll.}
+proc glSampleCoverageARB*(value: GLclampf, invert: GLboolean){.stdcall, importc, ogl.}
   # GL_ARB_multitexture
-proc glActiveTextureARB*(texture: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glClientActiveTextureARB*(texture: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1dARB*(target: GLenum, s: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1fARB*(target: GLenum, s: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1iARB*(target: GLenum, s: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1ivARB*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1sARB*(target: GLenum, s: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1svARB*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2dARB*(target: GLenum, s: GLdouble, t: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2fARB*(target: GLenum, s: GLfloat, t: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2iARB*(target: GLenum, s: GLint, t: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2ivARB*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2sARB*(target: GLenum, s: GLshort, t: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2svARB*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+proc glActiveTextureARB*(texture: GLenum){.stdcall, importc, ogl.}
+proc glClientActiveTextureARB*(texture: GLenum){.stdcall, importc, ogl.}
+proc glMultiTexCoord1dARB*(target: GLenum, s: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord1dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord1fARB*(target: GLenum, s: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord1fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord1iARB*(target: GLenum, s: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord1ivARB*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord1sARB*(target: GLenum, s: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord1svARB*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord2dARB*(target: GLenum, s: GLdouble, t: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord2dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord2fARB*(target: GLenum, s: GLfloat, t: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord2fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord2iARB*(target: GLenum, s: GLint, t: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord2ivARB*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord2sARB*(target: GLenum, s: GLshort, t: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord2svARB*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
 proc glMultiTexCoord3dARB*(target: GLenum, s: GLdouble, t: GLdouble, r: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
 proc glMultiTexCoord3fARB*(target: GLenum, s: GLfloat, t: GLfloat, r: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexCoord3iARB*(target: GLenum, s: GLint, t: GLint, r: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3ivARB*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3ivARB*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexCoord3sARB*(target: GLenum, s: GLshort, t: GLshort, r: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3svARB*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3svARB*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
 proc glMultiTexCoord4dARB*(target: GLenum, s: GLdouble, t: GLdouble, 
-                           r: GLdouble, q: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           r: GLdouble, q: GLdouble){.stdcall, importc, ogl.}
+proc glMultiTexCoord4dvARB*(target: GLenum, v: PGLdouble){.stdcall, importc, ogl.}
 proc glMultiTexCoord4fARB*(target: GLenum, s: GLfloat, t: GLfloat, r: GLfloat, 
-                           q: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           q: GLfloat){.stdcall, importc, ogl.}
+proc glMultiTexCoord4fvARB*(target: GLenum, v: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexCoord4iARB*(target: GLenum, s: GLint, t: GLint, r: GLint, 
-                           q: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4ivARB*(target: GLenum, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+                           q: GLint){.stdcall, importc, ogl.}
+proc glMultiTexCoord4ivARB*(target: GLenum, v: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexCoord4sARB*(target: GLenum, s: GLshort, t: GLshort, r: GLshort, 
-                           q: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4svARB*(target: GLenum, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                           q: GLshort){.stdcall, importc, ogl.}
+proc glMultiTexCoord4svARB*(target: GLenum, v: PGLshort){.stdcall, importc, ogl.}
   # GL_ARB_point_parameters
-proc glPointParameterfARB*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterfvARB*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPointParameterfARB*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPointParameterfvARB*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_ARB_texture_compression
 proc glCompressedTexImage3DARB*(target: GLenum, level: GLint, 
                                 internalformat: GLenum, width: GLsizei, 
                                 height: GLsizei, depth: GLsizei, border: GLint, 
-                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexImage2DARB*(target: GLenum, level: GLint, 
                                 internalformat: GLenum, width: GLsizei, 
                                 height: GLsizei, border: GLint, 
-                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexImage1DARB*(target: GLenum, level: GLint, 
                                 internalformat: GLenum, width: GLsizei, 
                                 border: GLint, imageSize: GLsizei, data: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedTexSubImage3DARB*(target: GLenum, level: GLint, xoffset: GLint, 
                                    yoffset: GLint, zoffset: GLint, 
                                    width: GLsizei, height: GLsizei, 
                                    depth: GLsizei, format: GLenum, 
-                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexSubImage2DARB*(target: GLenum, level: GLint, xoffset: GLint, 
                                    yoffset: GLint, width: GLsizei, 
                                    height: GLsizei, format: GLenum, 
-                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTexSubImage1DARB*(target: GLenum, level: GLint, xoffset: GLint, 
                                    width: GLsizei, format: GLenum, 
-                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                   imageSize: GLsizei, data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetCompressedTexImageARB*(target: GLenum, level: GLint, img: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_transpose_matrix
-proc glLoadTransposeMatrixfARB*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glLoadTransposeMatrixdARB*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMultTransposeMatrixfARB*(m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMultTransposeMatrixdARB*(m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glLoadTransposeMatrixfARB*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glLoadTransposeMatrixdARB*(m: PGLdouble){.stdcall, importc, ogl.}
+proc glMultTransposeMatrixfARB*(m: PGLfloat){.stdcall, importc, ogl.}
+proc glMultTransposeMatrixdARB*(m: PGLdouble){.stdcall, importc, ogl.}
   # GL_ARB_vertex_blend
-proc glWeightbvARB*(size: GLint, weights: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glWeightsvARB*(size: GLint, weights: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWeightivARB*(size: GLint, weights: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWeightfvARB*(size: GLint, weights: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWeightdvARB*(size: GLint, weights: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWeightubvARB*(size: GLint, weights: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glWeightusvARB*(size: GLint, weights: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glWeightuivARB*(size: GLint, weights: PGLuint){.stdcall, importc, dynlib: ogldll.}
+proc glWeightbvARB*(size: GLint, weights: PGLbyte){.stdcall, importc, ogl.}
+proc glWeightsvARB*(size: GLint, weights: PGLshort){.stdcall, importc, ogl.}
+proc glWeightivARB*(size: GLint, weights: PGLint){.stdcall, importc, ogl.}
+proc glWeightfvARB*(size: GLint, weights: PGLfloat){.stdcall, importc, ogl.}
+proc glWeightdvARB*(size: GLint, weights: PGLdouble){.stdcall, importc, ogl.}
+proc glWeightubvARB*(size: GLint, weights: PGLubyte){.stdcall, importc, ogl.}
+proc glWeightusvARB*(size: GLint, weights: PGLushort){.stdcall, importc, ogl.}
+proc glWeightuivARB*(size: GLint, weights: PGLuint){.stdcall, importc, ogl.}
 proc glWeightPointerARB*(size: GLint, typ: GLenum, stride: GLsizei, 
-                         pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glVertexBlendARB*(count: GLint){.stdcall, importc, dynlib: ogldll.}
+                         pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glVertexBlendARB*(count: GLint){.stdcall, importc, ogl.}
   # GL_ARB_vertex_buffer_object
-proc glBindBufferARB*(target: GLenum, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteBuffersARB*(n: GLsizei, buffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenBuffersARB*(n: GLsizei, buffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsBufferARB*(buffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glBindBufferARB*(target: GLenum, buffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteBuffersARB*(n: GLsizei, buffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenBuffersARB*(n: GLsizei, buffers: PGLuint){.stdcall, importc, ogl.}
+proc glIsBufferARB*(buffer: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glBufferDataARB*(target: GLenum, size: GLsizeiptrARB, data: PGLvoid, 
-                      usage: GLenum){.stdcall, importc, dynlib: ogldll.}
+                      usage: GLenum){.stdcall, importc, ogl.}
 proc glBufferSubDataARB*(target: GLenum, offset: GLintptrARB, 
-                         size: GLsizeiptrARB, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         size: GLsizeiptrARB, data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetBufferSubDataARB*(target: GLenum, offset: GLintptrARB, 
-                            size: GLsizeiptrARB, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glMapBufferARB*(target: GLenum, access: GLenum): PGLvoid{.stdcall, importc, dynlib: ogldll.}
-proc glUnmapBufferARB*(target: GLenum): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                            size: GLsizeiptrARB, data: PGLvoid){.stdcall, importc, ogl.}
+proc glMapBufferARB*(target: GLenum, access: GLenum): PGLvoid{.stdcall, importc, ogl.}
+proc glUnmapBufferARB*(target: GLenum): GLboolean{.stdcall, importc, ogl.}
 proc glGetBufferParameterivARB*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetBufferPointervARB*(target: GLenum, pname: GLenum, params: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_vertex_program
-proc glVertexAttrib1dARB*(index: GLuint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1fARB*(index: GLuint, x: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1sARB*(index: GLuint, x: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1svARB*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2dARB*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2fARB*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2sARB*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2svARB*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttrib1dARB*(index: GLuint, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1fARB*(index: GLuint, x: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1sARB*(index: GLuint, x: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib1svARB*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2dARB*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2fARB*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2sARB*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2svARB*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib3dARB*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib3fARB*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexAttrib3sARB*(index: GLuint, x: GLshort, y: GLshort, z: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3svARB*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NbvARB*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NivARB*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NsvARB*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3svARB*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4NbvARB*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4NivARB*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttrib4NsvARB*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib4NubARB*(index: GLuint, x: GLubyte, y: GLubyte, z: GLubyte, 
-                            w: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NubvARB*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NuivARB*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4NusvARB*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4bvARB*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+                            w: GLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4NubvARB*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4NuivARB*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttrib4NusvARB*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
+proc glVertexAttrib4bvARB*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
 proc glVertexAttrib4dARB*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                          w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                          w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib4dvARB*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib4fARB*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, 
-                          w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4ivARB*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          w: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib4fvARB*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib4ivARB*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
 proc glVertexAttrib4sARB*(index: GLuint, x: GLshort, y: GLshort, z: GLshort, 
-                          w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4svARB*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4ubvARB*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4uivARB*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4usvARB*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+                          w: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4svARB*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4ubvARB*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4uivARB*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttrib4usvARB*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
 proc glVertexAttribPointerARB*(index: GLuint, size: GLint, typ: GLenum, 
                                normalized: GLboolean, stride: GLsizei, 
-                               pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glEnableVertexAttribArrayARB*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDisableVertexAttribArrayARB*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
+                               pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glEnableVertexAttribArrayARB*(index: GLuint){.stdcall, importc, ogl.}
+proc glDisableVertexAttribArrayARB*(index: GLuint){.stdcall, importc, ogl.}
 proc glProgramStringARB*(target: GLenum, format: GLenum, length: GLsizei, 
-                         string: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glBindProgramARB*(target: GLenum, prog: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteProgramsARB*(n: GLsizei, programs: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenProgramsARB*(n: GLsizei, programs: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                         string: PGLvoid){.stdcall, importc, ogl.}
+proc glBindProgramARB*(target: GLenum, prog: GLuint){.stdcall, importc, ogl.}
+proc glDeleteProgramsARB*(n: GLsizei, programs: PGLuint){.stdcall, importc, ogl.}
+proc glGenProgramsARB*(n: GLsizei, programs: PGLuint){.stdcall, importc, ogl.}
 proc glProgramEnvParameter4dARB*(target: GLenum, index: GLuint, x: GLdouble, 
-                                 y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                                 y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
 proc glProgramEnvParameter4dvARB*(target: GLenum, index: GLuint, 
-                                  params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramEnvParameter4fARB*(target: GLenum, index: GLuint, x: GLfloat, 
-                                 y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                 y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
 proc glProgramEnvParameter4fvARB*(target: GLenum, index: GLuint, 
-                                  params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramLocalParameter4dARB*(target: GLenum, index: GLuint, x: GLdouble, 
                                    y: GLdouble, z: GLdouble, w: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramLocalParameter4dvARB*(target: GLenum, index: GLuint, 
-                                    params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramLocalParameter4fARB*(target: GLenum, index: GLuint, x: GLfloat, 
-                                   y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
 proc glProgramLocalParameter4fvARB*(target: GLenum, index: GLuint, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetProgramEnvParameterdvARB*(target: GLenum, index: GLuint, 
-                                    params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLdouble){.stdcall, importc, ogl.}
 proc glGetProgramEnvParameterfvARB*(target: GLenum, index: GLuint, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetProgramLocalParameterdvARB*(target: GLenum, index: GLuint, 
-                                      params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLdouble){.stdcall, importc, ogl.}
 proc glGetProgramLocalParameterfvARB*(target: GLenum, index: GLuint, 
-                                      params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetProgramivARB*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetProgramivARB*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetProgramStringARB*(target: GLenum, pname: GLenum, string: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribdvARB*(index: GLuint, pname: GLenum, params: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribfvARB*(index: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribivARB*(index: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribPointervARB*(index: GLuint, pname: GLenum, 
-                                   pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glIsProgramARB*(prog: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                                   pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glIsProgramARB*(prog: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_ARB_window_pos
-proc glWindowPos2dARB*(x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2dvARB*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2fARB*(x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2fvARB*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2iARB*(x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2ivARB*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2sARB*(x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2svARB*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3dARB*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3dvARB*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3fARB*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3fvARB*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3iARB*(x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3ivARB*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3sARB*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3svARB*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+proc glWindowPos2dARB*(x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2dvARB*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2fARB*(x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2fvARB*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2iARB*(x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glWindowPos2ivARB*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos2sARB*(x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos2svARB*(v: PGLshort){.stdcall, importc, ogl.}
+proc glWindowPos3dARB*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3dvARB*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3fARB*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3fvARB*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3iARB*(x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glWindowPos3ivARB*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos3sARB*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos3svARB*(v: PGLshort){.stdcall, importc, ogl.}
   # GL_ARB_draw_buffers
-proc glDrawBuffersARB*(n: GLsizei, bufs: PGLenum){.stdcall, importc, dynlib: ogldll.}
+proc glDrawBuffersARB*(n: GLsizei, bufs: PGLenum){.stdcall, importc, ogl.}
   # GL_ARB_color_buffer_float
-proc glClampColorARB*(target: GLenum, clamp: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glClampColorARB*(target: GLenum, clamp: GLenum){.stdcall, importc, ogl.}
   # GL_ARB_vertex_shader
 proc glGetActiveAttribARB*(programobj: GLhandleARB, index: GLuint, 
                            maxLength: GLsizei, len: var GLsizei, 
                            size: var GLint, typ: var GLenum, name: PGLcharARB){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetAttribLocationARB*(programObj: GLhandleARB, char: PGLcharARB): glint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glBindAttribLocationARB*(programObj: GLhandleARB, index: GLuint, 
-                              name: PGLcharARB){.stdcall, importc, dynlib: ogldll.}
+                              name: PGLcharARB){.stdcall, importc, ogl.}
   # GL_ARB_shader_objects
-proc glDeleteObjectARB*(Obj: GLHandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glGetHandleARB*(pname: GlEnum): GLHandleARB{.stdcall, importc, dynlib: ogldll.}
-proc glDetachObjectARB*(container, attached: GLHandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glCreateShaderObjectARB*(shaderType: glenum): GLHandleARB{.stdcall, importc, dynlib: ogldll.}
+proc glDeleteObjectARB*(Obj: GLHandleARB){.stdcall, importc, ogl.}
+proc glGetHandleARB*(pname: GlEnum): GLHandleARB{.stdcall, importc, ogl.}
+proc glDetachObjectARB*(container, attached: GLHandleARB){.stdcall, importc, ogl.}
+proc glCreateShaderObjectARB*(shaderType: glenum): GLHandleARB{.stdcall, importc, ogl.}
 proc glShaderSourceARB*(shaderObj: GLHandleARB, count: glsizei, 
-                        string: PPGLCharARB, lengths: pglint){.stdcall, importc, dynlib: ogldll.}
-proc glCompileShaderARB*(shaderObj: GLHandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glCreateProgramObjectARB*(): GLHandleARB{.stdcall, importc, dynlib: ogldll.}
-proc glAttachObjectARB*(programObj, shaderObj: GLhandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glLinkProgramARB*(programObj: GLHandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glUseProgramObjectARB*(programObj: GLHandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glValidateProgramARB*(programObj: GLhandleARB){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1fARB*(location: glint, v0: glfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2fARB*(location: glint, v0, v1: glfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3fARB*(location: glint, v0, v1, v2: glfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4fARB*(location: glint, v0, v1, v2, v3: glfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1iARB*(location: glint, v0: glint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2iARB*(location: glint, v0, v1: glint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3iARB*(location: glint, v0, v1, v2: glint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4iARB*(location: glint, v0, v1, v2, v3: glint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, dynlib: ogldll.}
+                        string: PPGLCharARB, lengths: pglint){.stdcall, importc, ogl.}
+proc glCompileShaderARB*(shaderObj: GLHandleARB){.stdcall, importc, ogl.}
+proc glCreateProgramObjectARB*(): GLHandleARB{.stdcall, importc, ogl.}
+proc glAttachObjectARB*(programObj, shaderObj: GLhandleARB){.stdcall, importc, ogl.}
+proc glLinkProgramARB*(programObj: GLHandleARB){.stdcall, importc, ogl.}
+proc glUseProgramObjectARB*(programObj: GLHandleARB){.stdcall, importc, ogl.}
+proc glValidateProgramARB*(programObj: GLhandleARB){.stdcall, importc, ogl.}
+proc glUniform1fARB*(location: glint, v0: glfloat){.stdcall, importc, ogl.}
+proc glUniform2fARB*(location: glint, v0, v1: glfloat){.stdcall, importc, ogl.}
+proc glUniform3fARB*(location: glint, v0, v1, v2: glfloat){.stdcall, importc, ogl.}
+proc glUniform4fARB*(location: glint, v0, v1, v2, v3: glfloat){.stdcall, importc, ogl.}
+proc glUniform1iARB*(location: glint, v0: glint){.stdcall, importc, ogl.}
+proc glUniform2iARB*(location: glint, v0, v1: glint){.stdcall, importc, ogl.}
+proc glUniform3iARB*(location: glint, v0, v1, v2: glint){.stdcall, importc, ogl.}
+proc glUniform4iARB*(location: glint, v0, v1, v2, v3: glint){.stdcall, importc, ogl.}
+proc glUniform1fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, ogl.}
+proc glUniform2fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, ogl.}
+proc glUniform3fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, ogl.}
+proc glUniform4fvARB*(location: glint, count: GLsizei, value: pglfloat){.stdcall, importc, ogl.}
+proc glUniform1ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, ogl.}
+proc glUniform2ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, ogl.}
+proc glUniform3ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, ogl.}
+proc glUniform4ivARB*(location: glint, count: GLsizei, value: pglint){.stdcall, importc, ogl.}
 proc glUniformMatrix2fvARB*(location: glint, count: glsizei, 
-                            transpose: glboolean, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
+                            transpose: glboolean, value: pglfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix3fvARB*(location: glint, count: glsizei, 
-                            transpose: glboolean, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
+                            transpose: glboolean, value: pglfloat){.stdcall, importc, ogl.}
 proc glUniformMatrix4fvARB*(location: glint, count: glsizei, 
-                            transpose: glboolean, value: pglfloat){.stdcall, importc, dynlib: ogldll.}
+                            transpose: glboolean, value: pglfloat){.stdcall, importc, ogl.}
 proc glGetObjectParameterfvARB*(Obj: GLHandleARB, pname: GLEnum, 
-                                params: PGLFloat){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLFloat){.stdcall, importc, ogl.}
 proc glGetObjectParameterivARB*(Obj: GLHandleARB, pname: GLEnum, params: PGLInt){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetInfoLogARB*(shaderObj: GLHandleARB, maxLength: glsizei, 
-                      len: var glint, infoLog: PGLcharARB){.stdcall, importc, dynlib: ogldll.}
+                      len: var glint, infoLog: PGLcharARB){.stdcall, importc, ogl.}
 proc glGetAttachedObjectsARB*(programobj: GLhandleARB, maxCount: GLsizei, 
                               count: var GLsizei, objects: PGLhandleARB){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetUniformLocationARB*(programObj: GLhandleARB, char: PGLcharARB): glint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetActiveUniformARB*(programobj: GLhandleARB, index: GLuint, 
                             maxLength: GLsizei, len: var GLsizei, 
                             size: var GLint, typ: var GLenum, name: PGLcharARB){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetUniformfvARB*(programObj: GLhandleARB, location: GLint, 
-                        params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                        params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetUniformivARB*(programObj: GLhandleARB, location: GLint, params: PGLInt){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetShaderSourceARB*(shader: GLhandleARB, maxLength: GLsizei, 
-                           len: var GLsizei, source: PGLcharARB){.stdcall, importc, dynlib: ogldll.}
+                           len: var GLsizei, source: PGLcharARB){.stdcall, importc, ogl.}
   # GL_ARB_Occlusion_Query
-proc glGenQueriesARB*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteQueriesARB*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsQueryARB*(id: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-proc glBeginQueryARB*(target: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEndQueryARB*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryivARB*(target, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryObjectivARB*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+proc glGenQueriesARB*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteQueriesARB*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glIsQueryARB*(id: GLuint): bool{.stdcall, importc, ogl.}
+proc glBeginQueryARB*(target: GLenum, id: GLuint){.stdcall, importc, ogl.}
+proc glEndQueryARB*(target: GLenum){.stdcall, importc, ogl.}
+proc glGetQueryivARB*(target, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetQueryObjectivARB*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetQueryObjectuivARB*(id: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_draw_instanced
 proc glDrawArraysInstancedARB*(mode: GLenum, first: GLint, count: GLsizei, 
-                               primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                               primcount: GLsizei){.stdcall, importc, ogl.}
 proc glDrawElementsInstancedARB*(mode: GLenum, count: GLsizei, typ: GLenum, 
-                                 indices: PGLvoid, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                 indices: PGLvoid, primcount: GLsizei){.stdcall, importc, ogl.}
   # GL_ARB_framebuffer_object
-proc glIsRenderbuffer*(renderbuffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBindRenderbuffer*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteRenderbuffers*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenRenderbuffers*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
+proc glIsRenderbuffer*(renderbuffer: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glBindRenderbuffer*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteRenderbuffers*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenRenderbuffers*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, ogl.}
 proc glRenderbufferStorage*(target: GLenum, internalformat: GLenum, 
-                            width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                            width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glGetRenderbufferParameteriv*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glIsFramebuffer*(framebuffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBindFramebuffer*(target: GLenum, framebuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteFramebuffers*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenFramebuffers*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glCheckFramebufferStatus*(target: GLenum): GLenum{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glIsFramebuffer*(framebuffer: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glBindFramebuffer*(target: GLenum, framebuffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteFramebuffers*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenFramebuffers*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, ogl.}
+proc glCheckFramebufferStatus*(target: GLenum): GLenum{.stdcall, importc, ogl.}
 proc glFramebufferTexture1D*(target: GLenum, attachment: GLenum, 
                              textarget: GLenum, texture: GLuint, level: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTexture2D*(target: GLenum, attachment: GLenum, 
                              textarget: GLenum, texture: GLuint, level: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTexture3D*(target: GLenum, attachment: GLenum, 
                              textarget: GLenum, texture: GLuint, level: GLint, 
-                             zoffset: GLint){.stdcall, importc, dynlib: ogldll.}
+                             zoffset: GLint){.stdcall, importc, ogl.}
 proc glFramebufferRenderbuffer*(target: GLenum, attachment: GLenum, 
                                 renderbuffertarget: GLenum, renderbuffer: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetFramebufferAttachmentParameteriv*(target: GLenum, attachment: GLenum, 
-    pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGenerateMipmap*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
+    pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGenerateMipmap*(target: GLenum){.stdcall, importc, ogl.}
 proc glBlitFramebuffer*(srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, 
                         dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, 
-                        mask: GLbitfield, filter: GLenum){.stdcall, importc, dynlib: ogldll.}
+                        mask: GLbitfield, filter: GLenum){.stdcall, importc, ogl.}
 proc glRenderbufferStorageMultisample*(target: GLenum, samples: GLsizei, 
                                        internalformat: GLenum, width: GLsizei, 
-                                       height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                       height: GLsizei){.stdcall, importc, ogl.}
 proc glFramebufferTextureLayer*(target: GLenum, attachment: GLenum, 
                                 texture: GLuint, level: GLint, layer: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_geometry_shader4
-proc glProgramParameteriARB*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glProgramParameteriARB*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, ogl.}
 proc glFramebufferTextureARB*(target: GLenum, attachment: GLenum, 
-                              texture: GLuint, level: GLint){.stdcall, importc, dynlib: ogldll.}
+                              texture: GLuint, level: GLint){.stdcall, importc, ogl.}
 proc glFramebufferTextureLayerARB*(target: GLenum, attachment: GLenum, 
                                    texture: GLuint, level: GLint, layer: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTextureFaceARB*(target: GLenum, attachment: GLenum, 
                                   texture: GLuint, level: GLint, face: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_instanced_arrays
-proc glVertexAttribDivisorARB*(index: GLuint, divisor: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribDivisorARB*(index: GLuint, divisor: GLuint){.stdcall, importc, ogl.}
   # GL_ARB_map_buffer_range
 proc glMapBufferRange*(target: GLenum, offset: GLintptr, len: GLsizeiptr, 
-                       access: GLbitfield): PGLvoid{.stdcall, importc, dynlib: ogldll.}
+                       access: GLbitfield): PGLvoid{.stdcall, importc, ogl.}
 proc glFlushMappedBufferRange*(target: GLenum, offset: GLintptr, len: GLsizeiptr){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_texture_buffer_object
 proc glTexBufferARB*(target: GLenum, internalformat: GLenum, buffer: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_vertex_array_object
-proc glBindVertexArray*(arr: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteVertexArrays*(n: GLsizei, arrays: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenVertexArrays*(n: GLsizei, arrays: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsVertexArray*(arr: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glBindVertexArray*(arr: GLuint){.stdcall, importc, ogl.}
+proc glDeleteVertexArrays*(n: GLsizei, arrays: PGLuint){.stdcall, importc, ogl.}
+proc glGenVertexArrays*(n: GLsizei, arrays: PGLuint){.stdcall, importc, ogl.}
+proc glIsVertexArray*(arr: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_ARB_uniform_buffer_object
 proc glGetUniformIndices*(prog: GLuint, uniformCount: GLsizei, 
                           uniformNames: PPGLchar, uniformIndices: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetActiveUniformsiv*(prog: GLuint, uniformCount: GLsizei, 
                             uniformIndices: PGLuint, pname: GLenum, 
-                            params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLint){.stdcall, importc, ogl.}
 proc glGetActiveUniformName*(prog: GLuint, uniformIndex: GLuint, 
                              bufSize: GLsizei, len: PGLsizei, 
-                             uniformName: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                             uniformName: PGLchar){.stdcall, importc, ogl.}
 proc glGetUniformBlockIndex*(prog: GLuint, uniformBlockName: PGLchar): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetActiveUniformBlockiv*(prog: GLuint, uniformBlockIndex: GLuint, 
-                                pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetActiveUniformBlockName*(prog: GLuint, uniformBlockIndex: GLuint, 
                                   bufSize: GLsizei, len: PGLsizei, 
-                                  uniformBlockName: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                                  uniformBlockName: PGLchar){.stdcall, importc, ogl.}
 proc glUniformBlockBinding*(prog: GLuint, uniformBlockIndex: GLuint, 
-                            uniformBlockBinding: GLuint){.stdcall, importc, dynlib: ogldll.}
+                            uniformBlockBinding: GLuint){.stdcall, importc, ogl.}
   # GL_ARB_copy_buffer
 proc glCopyBufferSubData*(readTarget: GLenum, writeTarget: GLenum, 
                           readOffset: GLintptr, writeOffset: GLintptr, 
-                          size: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
+                          size: GLsizeiptr){.stdcall, importc, ogl.}
   # GL_ARB_draw_elements_base_vertex
 proc glDrawElementsBaseVertex*(mode: GLenum, count: GLsizei, typ: GLenum, 
-                               indices: PGLvoid, basevertex: GLint){.stdcall, importc, dynlib: ogldll.}
+                               indices: PGLvoid, basevertex: GLint){.stdcall, importc, ogl.}
 proc glDrawRangeElementsBaseVertex*(mode: GLenum, start: GLuint, ending: GLuint, 
                                     count: GLsizei, typ: GLenum, 
                                     indices: PGLvoid, basevertex: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDrawElementsInstancedBaseVertex*(mode: GLenum, count: GLsizei, 
                                         typ: GLenum, indices: PGLvoid, 
                                         primcount: GLsizei, basevertex: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMultiDrawElementsBaseVertex*(mode: GLenum, count: PGLsizei, typ: GLenum, 
                                     indices: PPGLvoid, primcount: GLsizei, 
-                                    basevertex: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    basevertex: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_provoking_vertex
-proc glProvokingVertex*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glProvokingVertex*(mode: GLenum){.stdcall, importc, ogl.}
   # GL_ARB_sync
-proc glFenceSync*(condition: GLenum, flags: GLbitfield): GLsync{.stdcall, importc, dynlib: ogldll.}
-proc glIsSync*(sync: GLsync): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glDeleteSync*(sync: GLsync){.stdcall, importc, dynlib: ogldll.}
+proc glFenceSync*(condition: GLenum, flags: GLbitfield): GLsync{.stdcall, importc, ogl.}
+proc glIsSync*(sync: GLsync): GLboolean{.stdcall, importc, ogl.}
+proc glDeleteSync*(sync: GLsync){.stdcall, importc, ogl.}
 proc glClientWaitSync*(sync: GLsync, flags: GLbitfield, timeout: GLuint64): GLenum{.
-    stdcall, importc, dynlib: ogldll.}
-proc glWaitSync*(sync: GLsync, flags: GLbitfield, timeout: GLuint64){.stdcall, importc, dynlib: ogldll.}
-proc glGetInteger64v*(pname: GLenum, params: PGLint64){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glWaitSync*(sync: GLsync, flags: GLbitfield, timeout: GLuint64){.stdcall, importc, ogl.}
+proc glGetInteger64v*(pname: GLenum, params: PGLint64){.stdcall, importc, ogl.}
 proc glGetSynciv*(sync: GLsync, pname: GLenum, butSize: GLsizei, len: PGLsizei, 
-                  values: PGLint){.stdcall, importc, dynlib: ogldll.}
+                  values: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_texture_multisample
 proc glTexImage2DMultisample*(target: GLenum, samples: GLsizei, 
                               internalformat: GLint, width: GLsizei, 
                               height: GLsizei, fixedsamplelocations: GLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexImage3DMultisample*(target: GLenum, samples: GLsizei, 
                               internalformat: GLint, width: GLsizei, 
                               height: GLsizei, depth: GLsizei, 
-                              fixedsamplelocations: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glGetMultisamplefv*(pname: GLenum, index: GLuint, val: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSampleMaski*(index: GLuint, mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
+                              fixedsamplelocations: GLboolean){.stdcall, importc, ogl.}
+proc glGetMultisamplefv*(pname: GLenum, index: GLuint, val: PGLfloat){.stdcall, importc, ogl.}
+proc glSampleMaski*(index: GLuint, mask: GLbitfield){.stdcall, importc, ogl.}
   # GL_ARB_draw_buffers_blend
-proc glBlendEquationiARB*(buf: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glBlendEquationiARB*(buf: GLuint, mode: GLenum){.stdcall, importc, ogl.}
 proc glBlendEquationSeparateiARB*(buf: GLuint, modeRGB: GLenum, 
-                                  modeAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glBlendFunciARB*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                  modeAlpha: GLenum){.stdcall, importc, ogl.}
+proc glBlendFunciARB*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, ogl.}
 proc glBlendFuncSeparateiARB*(buf: GLuint, srcRGB: GLenum, dstRGB: GLenum, 
-                              srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
+                              srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, ogl.}
   # GL_ARB_sample_shading
-proc glMinSampleShadingARB*(value: GLclampf){.stdcall, importc, dynlib: ogldll.}
+proc glMinSampleShadingARB*(value: GLclampf){.stdcall, importc, ogl.}
   # GL_ARB_shading_language_include
 proc glNamedStringARB*(typ: GLenum, namelen: GLint, name: PGLchar, 
-                       stringlen: GLint, string: PGLchar){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteNamedStringARB*(namelen: GLint, name: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                       stringlen: GLint, string: PGLchar){.stdcall, importc, ogl.}
+proc glDeleteNamedStringARB*(namelen: GLint, name: PGLchar){.stdcall, importc, ogl.}
 proc glCompileShaderIncludeARB*(shader: GLuint, count: GLsizei, path: PPGLchar, 
-                                len: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glIsNamedStringARB*(namelen: GLint, name: PGLchar): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                                len: PGLint){.stdcall, importc, ogl.}
+proc glIsNamedStringARB*(namelen: GLint, name: PGLchar): GLboolean{.stdcall, importc, ogl.}
 proc glGetNamedStringARB*(namelen: GLint, name: PGLchar, bufSize: GLsizei, 
-                          stringlen: GLint, string: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                          stringlen: GLint, string: PGLchar){.stdcall, importc, ogl.}
 proc glGetNamedStringivARB*(namelen: GLint, name: PGLchar, pname: GLenum, 
-                            params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_blend_func_extended
 proc glBindFragDataLocationIndexed*(prog: GLuint, colorNumber: GLuint, 
-                                    index: GLuint, name: PGLchar){.stdcall, importc, dynlib: ogldll.}
-proc glGetFragDataIndex*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, dynlib: ogldll.}
+                                    index: GLuint, name: PGLchar){.stdcall, importc, ogl.}
+proc glGetFragDataIndex*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, ogl.}
   # GL_ARB_sampler_objects
-proc glGenSamplers*(count: GLsizei, samplers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteSamplers*(count: GLsizei, samplers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsSampler*(sampler: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBindSampler*(theUnit: GLuint, sampler: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSamplerParameteri*(sampler: GLuint, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glGenSamplers*(count: GLsizei, samplers: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteSamplers*(count: GLsizei, samplers: PGLuint){.stdcall, importc, ogl.}
+proc glIsSampler*(sampler: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glBindSampler*(theUnit: GLuint, sampler: GLuint){.stdcall, importc, ogl.}
+proc glSamplerParameteri*(sampler: GLuint, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
 proc glSamplerParameteriv*(sampler: GLuint, pname: GLenum, param: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSamplerParameterf*(sampler: GLuint, pname: GLenum, param: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSamplerParameterfv*(sampler: GLuint, pname: GLenum, param: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSamplerParameterIiv*(sampler: GLuint, pname: GLenum, param: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSamplerParameterIuiv*(sampler: GLuint, pname: GLenum, param: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetSamplerParameteriv*(sampler: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetSamplerParameterIiv*(sampler: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetSamplerParameterfv*(sampler: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetSamplerParameterIuiv*(sampler: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_timer_query
-proc glQueryCounter*(id: GLuint, target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glGetQueryObjecti64v*(id: GLuint, pname: GLenum, params: PGLint64){.stdcall, importc, dynlib: ogldll.}
+proc glQueryCounter*(id: GLuint, target: GLenum){.stdcall, importc, ogl.}
+proc glGetQueryObjecti64v*(id: GLuint, pname: GLenum, params: PGLint64){.stdcall, importc, ogl.}
 proc glGetQueryObjectui64v*(id: GLuint, pname: GLenum, params: PGLuint64){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_vertextyp_2_10_10_10_rev
-proc glVertexP2ui*(typ: GLenum, value: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexP2uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexP3ui*(typ: GLenum, value: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexP3uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexP4ui*(typ: GLenum, value: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexP4uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP1ui*(typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP1uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP2ui*(typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP2uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP3ui*(typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP3uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP4ui*(typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordP4uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoordP1ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glVertexP2ui*(typ: GLenum, value: GLuint){.stdcall, importc, ogl.}
+proc glVertexP2uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, ogl.}
+proc glVertexP3ui*(typ: GLenum, value: GLuint){.stdcall, importc, ogl.}
+proc glVertexP3uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, ogl.}
+proc glVertexP4ui*(typ: GLenum, value: GLuint){.stdcall, importc, ogl.}
+proc glVertexP4uiv*(typ: GLenum, value: PGLuint){.stdcall, importc, ogl.}
+proc glTexCoordP1ui*(typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
+proc glTexCoordP1uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, ogl.}
+proc glTexCoordP2ui*(typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
+proc glTexCoordP2uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, ogl.}
+proc glTexCoordP3ui*(typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
+proc glTexCoordP3uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, ogl.}
+proc glTexCoordP4ui*(typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
+proc glTexCoordP4uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, ogl.}
+proc glMultiTexCoordP1ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexCoordP1uiv*(texture: GLenum, typ: GLenum, coords: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoordP2ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoordP2ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexCoordP2uiv*(texture: GLenum, typ: GLenum, coords: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoordP3ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoordP3ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexCoordP3uiv*(texture: GLenum, typ: GLenum, coords: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoordP4ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoordP4ui*(texture: GLenum, typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexCoordP4uiv*(texture: GLenum, typ: GLenum, coords: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glNormalP3ui*(typ: GLenum, coords: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glNormalP3uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColorP3ui*(typ: GLenum, color: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColorP3uiv*(typ: GLenum, color: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColorP4ui*(typ: GLenum, color: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glColorP4uiv*(typ: GLenum, color: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColorP3ui*(typ: GLenum, color: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColorP3uiv*(typ: GLenum, color: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glNormalP3ui*(typ: GLenum, coords: GLuint){.stdcall, importc, ogl.}
+proc glNormalP3uiv*(typ: GLenum, coords: PGLuint){.stdcall, importc, ogl.}
+proc glColorP3ui*(typ: GLenum, color: GLuint){.stdcall, importc, ogl.}
+proc glColorP3uiv*(typ: GLenum, color: PGLuint){.stdcall, importc, ogl.}
+proc glColorP4ui*(typ: GLenum, color: GLuint){.stdcall, importc, ogl.}
+proc glColorP4uiv*(typ: GLenum, color: GLuint){.stdcall, importc, ogl.}
+proc glSecondaryColorP3ui*(typ: GLenum, color: GLuint){.stdcall, importc, ogl.}
+proc glSecondaryColorP3uiv*(typ: GLenum, color: PGLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP1ui*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                         value: GLuint){.stdcall, importc, dynlib: ogldll.}
+                         value: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP1uiv*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                          value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP2ui*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                         value: GLuint){.stdcall, importc, dynlib: ogldll.}
+                         value: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP2uiv*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                          value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP3ui*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                         value: GLuint){.stdcall, importc, dynlib: ogldll.}
+                         value: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP3uiv*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                          value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP4ui*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                         value: GLuint){.stdcall, importc, dynlib: ogldll.}
+                         value: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribP4uiv*(index: GLuint, typ: GLenum, normalized: GLboolean, 
-                          value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLuint){.stdcall, importc, ogl.}
   # GL_ARB_draw_indirect
-proc glDrawArraysIndirect*(mode: GLenum, indirect: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+proc glDrawArraysIndirect*(mode: GLenum, indirect: PGLvoid){.stdcall, importc, ogl.}
 proc glDrawElementsIndirect*(mode: GLenum, typ: GLenum, indirect: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_gpu_shader_fp64
-proc glUniform1d*(location: GLint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2d*(location: GLint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glUniform1d*(location: GLint, x: GLdouble){.stdcall, importc, ogl.}
+proc glUniform2d*(location: GLint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
 proc glUniform3d*(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform4d*(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                  w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                  w: GLdouble){.stdcall, importc, ogl.}
+proc glUniform1dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, ogl.}
+proc glUniform2dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, ogl.}
+proc glUniform3dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, ogl.}
+proc glUniform4dv*(location: GLint, count: GLsizei, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix2dv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix3dv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix4dv*(location: GLint, count: GLsizei, transpose: GLboolean, 
-                         value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix2x3dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix2x4dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix3x2dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix3x4dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix4x2dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glUniformMatrix4x3dv*(location: GLint, count: GLsizei, 
-                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGetUniformdv*(prog: GLuint, location: GLint, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
+proc glGetUniformdv*(prog: GLuint, location: GLint, params: PGLdouble){.stdcall, importc, ogl.}
   # GL_ARB_shader_subroutine
 proc glGetSubroutineUniformLocation*(prog: GLuint, shadertype: GLenum, 
-                                     name: PGLchar): GLint{.stdcall, importc, dynlib: ogldll.}
+                                     name: PGLchar): GLint{.stdcall, importc, ogl.}
 proc glGetSubroutineIndex*(prog: GLuint, shadertype: GLenum, name: PGLchar): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetActiveSubroutineUniformiv*(prog: GLuint, shadertype: GLenum, 
                                      index: GLuint, pname: GLenum, 
-                                     values: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     values: PGLint){.stdcall, importc, ogl.}
 proc glGetActiveSubroutineUniformName*(prog: GLuint, shadertype: GLenum, 
                                        index: GLuint, bufsize: GLsizei, 
-                                       len: PGLsizei, name: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                                       len: PGLsizei, name: PGLchar){.stdcall, importc, ogl.}
 proc glGetActiveSubroutineName*(prog: GLuint, shadertype: GLenum, index: GLuint, 
                                 bufsize: GLsizei, len: PGLsizei, name: PGLchar){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniformSubroutinesuiv*(shadertype: GLenum, count: GLsizei, 
-                              indices: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              indices: PGLuint){.stdcall, importc, ogl.}
 proc glGetUniformSubroutineuiv*(shadertype: GLenum, location: GLint, 
-                                params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLuint){.stdcall, importc, ogl.}
 proc glGetProgramStageiv*(prog: GLuint, shadertype: GLenum, pname: GLenum, 
-                          values: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          values: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_tessellation_shader
-proc glPatchParameteri*(pname: GLenum, value: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPatchParameterfv*(pname: GLenum, values: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPatchParameteri*(pname: GLenum, value: GLint){.stdcall, importc, ogl.}
+proc glPatchParameterfv*(pname: GLenum, values: PGLfloat){.stdcall, importc, ogl.}
   # GL_ARB_transform_feedback2
-proc glBindTransformFeedback*(target: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteTransformFeedbacks*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenTransformFeedbacks*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsTransformFeedback*(id: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glPauseTransformFeedback*(){.stdcall, importc, dynlib: ogldll.}
-proc glResumeTransformFeedback*(){.stdcall, importc, dynlib: ogldll.}
-proc glDrawTransformFeedback*(mode: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glBindTransformFeedback*(target: GLenum, id: GLuint){.stdcall, importc, ogl.}
+proc glDeleteTransformFeedbacks*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glGenTransformFeedbacks*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glIsTransformFeedback*(id: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glPauseTransformFeedback*(){.stdcall, importc, ogl.}
+proc glResumeTransformFeedback*(){.stdcall, importc, ogl.}
+proc glDrawTransformFeedback*(mode: GLenum, id: GLuint){.stdcall, importc, ogl.}
   # GL_ARB_transform_feedback3
 proc glDrawTransformFeedbackStream*(mode: GLenum, id: GLuint, stream: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glBeginQueryIndexed*(target: GLenum, index: GLuint, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEndQueryIndexed*(target: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glBeginQueryIndexed*(target: GLenum, index: GLuint, id: GLuint){.stdcall, importc, ogl.}
+proc glEndQueryIndexed*(target: GLenum, index: GLuint){.stdcall, importc, ogl.}
 proc glGetQueryIndexediv*(target: GLenum, index: GLuint, pname: GLenum, 
-                          params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          params: PGLint){.stdcall, importc, ogl.}
   # GL_ARB_ES2_compatibility
-proc glReleaseShaderCompiler*(){.stdcall, importc, dynlib: ogldll.}
+proc glReleaseShaderCompiler*(){.stdcall, importc, ogl.}
 proc glShaderBinary*(count: GLsizei, shaders: PGLuint, binaryformat: GLenum, 
-                     binary: PGLvoid, len: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                     binary: PGLvoid, len: GLsizei){.stdcall, importc, ogl.}
 proc glGetShaderPrecisionFormat*(shadertype: GLenum, precisiontype: GLenum, 
-                                 range: PGLint, precision: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glDepthRangef*(n: GLclampf, f: GLclampf){.stdcall, importc, dynlib: ogldll.}
-proc glClearDepthf*(d: GLclampf){.stdcall, importc, dynlib: ogldll.}
+                                 range: PGLint, precision: PGLint){.stdcall, importc, ogl.}
+proc glDepthRangef*(n: GLclampf, f: GLclampf){.stdcall, importc, ogl.}
+proc glClearDepthf*(d: GLclampf){.stdcall, importc, ogl.}
   # GL_ARB_get_prog_binary
 proc glGetProgramBinary*(prog: GLuint, bufSize: GLsizei, len: PGLsizei, 
-                         binaryFormat: PGLenum, binary: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         binaryFormat: PGLenum, binary: PGLvoid){.stdcall, importc, ogl.}
 proc glProgramBinary*(prog: GLuint, binaryFormat: GLenum, binary: PGLvoid, 
-                      len: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glProgramParameteri*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, dynlib: ogldll.}
+                      len: GLsizei){.stdcall, importc, ogl.}
+proc glProgramParameteri*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, ogl.}
   # GL_ARB_separate_shader_objects
 proc glUseProgramStages*(pipeline: GLuint, stages: GLbitfield, prog: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glActiveShaderProgram*(pipeline: GLuint, prog: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glActiveShaderProgram*(pipeline: GLuint, prog: GLuint){.stdcall, importc, ogl.}
 proc glCreateShaderProgramv*(typ: GLenum, count: GLsizei, strings: PPGLchar): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
-proc glBindProgramPipeline*(pipeline: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteProgramPipelines*(n: GLsizei, pipelines: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenProgramPipelines*(n: GLsizei, pipelines: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsProgramPipeline*(pipeline: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glBindProgramPipeline*(pipeline: GLuint){.stdcall, importc, ogl.}
+proc glDeleteProgramPipelines*(n: GLsizei, pipelines: PGLuint){.stdcall, importc, ogl.}
+proc glGenProgramPipelines*(n: GLsizei, pipelines: PGLuint){.stdcall, importc, ogl.}
+proc glIsProgramPipeline*(pipeline: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glGetProgramPipelineiv*(pipeline: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1i*(prog: GLuint, location: GLint, v0: GLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glProgramUniform1i*(prog: GLuint, location: GLint, v0: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform1iv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1f*(prog: GLuint, location: GLint, v0: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLint){.stdcall, importc, ogl.}
+proc glProgramUniform1f*(prog: GLuint, location: GLint, v0: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform1fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1d*(prog: GLuint, location: GLint, v0: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLfloat){.stdcall, importc, ogl.}
+proc glProgramUniform1d*(prog: GLuint, location: GLint, v0: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform1dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1ui*(prog: GLuint, location: GLint, v0: GLuint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLdouble){.stdcall, importc, ogl.}
+proc glProgramUniform1ui*(prog: GLuint, location: GLint, v0: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform1uiv*(prog: GLuint, location: GLint, count: GLsizei, 
-                           value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                           value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform2i*(prog: GLuint, location: GLint, v0: GLint, v1: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform2iv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform2f*(prog: GLuint, location: GLint, v0: GLfloat, v1: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform2fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform2d*(prog: GLuint, location: GLint, v0: GLdouble, 
-                         v1: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                         v1: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform2dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform2ui*(prog: GLuint, location: GLint, v0: GLuint, v1: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform2uiv*(prog: GLuint, location: GLint, count: GLsizei, 
-                           value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                           value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform3i*(prog: GLuint, location: GLint, v0: GLint, v1: GLint, 
-                         v2: GLint){.stdcall, importc, dynlib: ogldll.}
+                         v2: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform3iv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform3f*(prog: GLuint, location: GLint, v0: GLfloat, 
-                         v1: GLfloat, v2: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                         v1: GLfloat, v2: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform3fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform3d*(prog: GLuint, location: GLint, v0: GLdouble, 
-                         v1: GLdouble, v2: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                         v1: GLdouble, v2: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform3dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform3ui*(prog: GLuint, location: GLint, v0: GLuint, v1: GLuint, 
-                          v2: GLuint){.stdcall, importc, dynlib: ogldll.}
+                          v2: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform3uiv*(prog: GLuint, location: GLint, count: GLsizei, 
-                           value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                           value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform4i*(prog: GLuint, location: GLint, v0: GLint, v1: GLint, 
-                         v2: GLint, v3: GLint){.stdcall, importc, dynlib: ogldll.}
+                         v2: GLint, v3: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform4iv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform4f*(prog: GLuint, location: GLint, v0: GLfloat, 
-                         v1: GLfloat, v2: GLfloat, v3: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                         v1: GLfloat, v2: GLfloat, v3: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform4fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform4d*(prog: GLuint, location: GLint, v0: GLdouble, 
-                         v1: GLdouble, v2: GLdouble, v3: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                         v1: GLdouble, v2: GLdouble, v3: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform4dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                          value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                          value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform4ui*(prog: GLuint, location: GLint, v0: GLuint, v1: GLuint, 
-                          v2: GLuint, v3: GLuint){.stdcall, importc, dynlib: ogldll.}
+                          v2: GLuint, v3: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform4uiv*(prog: GLuint, location: GLint, count: GLsizei, 
-                           value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                           value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4fv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4dv*(prog: GLuint, location: GLint, count: GLsizei, 
-                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                transpose: GLboolean, value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x3fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x2fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x4fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x2fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x4fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x3fv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x3dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x2dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x4dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x2dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x4dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x3dv*(prog: GLuint, location: GLint, count: GLsizei, 
                                   transpose: GLboolean, value: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glValidateProgramPipeline*(pipeline: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glValidateProgramPipeline*(pipeline: GLuint){.stdcall, importc, ogl.}
 proc glGetProgramPipelineInfoLog*(pipeline: GLuint, bufSize: GLsizei, 
-                                  len: PGLsizei, infoLog: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                                  len: PGLsizei, infoLog: PGLchar){.stdcall, importc, ogl.}
   # GL_ARB_vertex_attrib_64bit
-proc glVertexAttribL1d*(index: GLuint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2d*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribL1d*(index: GLuint, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL2d*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
 proc glVertexAttribL3d*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribL4d*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                        w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL1dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL3dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL4dv*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                        w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL1dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL2dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL3dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL4dv*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttribLPointer*(index: GLuint, size: GLint, typ: GLenum, 
-                             stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glGetVertexAttribLdv*(index: GLuint, pname: GLenum, params: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_viewport_array
-proc glViewportArrayv*(first: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glViewportArrayv*(first: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, ogl.}
 proc glViewportIndexedf*(index: GLuint, x: GLfloat, y: GLfloat, w: GLfloat, 
-                         h: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glViewportIndexedfv*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glScissorArrayv*(first: GLuint, count: GLsizei, v: PGLint){.stdcall, importc, dynlib: ogldll.}
+                         h: GLfloat){.stdcall, importc, ogl.}
+proc glViewportIndexedfv*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glScissorArrayv*(first: GLuint, count: GLsizei, v: PGLint){.stdcall, importc, ogl.}
 proc glScissorIndexed*(index: GLuint, left: GLint, bottom: GLint, 
-                       width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glScissorIndexedv*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glDepthRangeArrayv*(first: GLuint, count: GLsizei, v: PGLclampd){.stdcall, importc, dynlib: ogldll.}
-proc glDepthRangeIndexed*(index: GLuint, n: GLclampd, f: GLclampd){.stdcall, importc, dynlib: ogldll.}
-proc glGetFloati_v*(target: GLenum, index: GLuint, data: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetDoublei_v*(target: GLenum, index: GLuint, data: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                       width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
+proc glScissorIndexedv*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glDepthRangeArrayv*(first: GLuint, count: GLsizei, v: PGLclampd){.stdcall, importc, ogl.}
+proc glDepthRangeIndexed*(index: GLuint, n: GLclampd, f: GLclampd){.stdcall, importc, ogl.}
+proc glGetFloati_v*(target: GLenum, index: GLuint, data: PGLfloat){.stdcall, importc, ogl.}
+proc glGetDoublei_v*(target: GLenum, index: GLuint, data: PGLdouble){.stdcall, importc, ogl.}
   # GL 4.2
   # GL_ARB_base_instance
 proc glDrawArraysInstancedBaseInstance*(mode: GLenum, first: GLint, 
                                         count: GLsizei, primcount: GLsizei, 
-                                        baseinstance: GLUint){.stdcall, importc, dynlib: ogldll.}
+                                        baseinstance: GLUint){.stdcall, importc, ogl.}
 proc glDrawElementsInstancedBaseInstance*(mode: GLEnum, count: GLsizei, 
     typ: GLenum, indices: PGLVoid, primcount: GLsizei, baseinstance: GLUInt){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDrawElementsInstancedBaseVertexBaseInstance*(mode: GLEnum, 
     count: GLsizei, typ: GLenum, indices: PGLVoid, primcount: GLsizei, 
-    basevertex: GLint, baseinstance: GLuint){.stdcall, importc, dynlib: ogldll.}
+    basevertex: GLint, baseinstance: GLuint){.stdcall, importc, ogl.}
   # GL_ARB_transform_feedback_instanced
 proc glDrawTransformFeedbackInstanced*(mode: GLenum, id: GLuint, 
-                                       primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                       primcount: GLsizei){.stdcall, importc, ogl.}
 proc glDrawTransformFeedbackStreamInstanced*(mode: GLenum, id: GLUInt, 
-    stream: GLUint, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+    stream: GLUint, primcount: GLsizei){.stdcall, importc, ogl.}
   # GL_ARB_internalformat_query
 proc glGetInternalformativ*(target: GLenum, internalformat: GLenum, 
                             pname: GLenum, bufSize: GLsizei, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_shader_atomic_counters
 proc glGetActiveAtomicCounterBufferiv*(prog: GLuint, bufferIndex: GLuint, 
-                                       pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                       pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
   #/ GL_ARB_shader_image_load_store
 proc glBindImageTexture*(theUnit: GLuint, texture: GLuint, level: GLint, 
                          layered: GLboolean, layer: GLint, access: GLenum, 
-                         format: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMemoryBarrier*(barriers: GLbitfield){.stdcall, importc, dynlib: ogldll.}
+                         format: GLenum){.stdcall, importc, ogl.}
+proc glMemoryBarrier*(barriers: GLbitfield){.stdcall, importc, ogl.}
   # GL_ARB_texture_storage
 proc glTexStorage1D*(target: GLenum, levels: GLsizei, internalformat: GLenum, 
-                     width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                     width: GLsizei){.stdcall, importc, ogl.}
 proc glTexStorage2D*(target: GLenum, levels: GLsizei, internalformat: GLenum, 
-                     width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                     width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glTexStorage3D*(target: GLenum, levels: GLsizei, internalformat: GLenum, 
-                     width: GLsizei, height: GLsizei, depth: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                     width: GLsizei, height: GLsizei, depth: GLsizei){.stdcall, importc, ogl.}
 proc glTextureStorage1DEXT*(texture: GLuint, target: GLenum, levels: GLsizei, 
-                            internalformat: GLenum, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                            internalformat: GLenum, width: GLsizei){.stdcall, importc, ogl.}
 proc glTextureStorage2DEXT*(texture: GLuint, target: GLenum, levels: GLsizei, 
                             internalformat: GLenum, width: GLsizei, 
-                            height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                            height: GLsizei){.stdcall, importc, ogl.}
 proc glTextureStorage3DEXT*(texture: GLuint, target: GLenum, levels: GLsizei, 
                             internalformat: GLenum, width: GLsizei, 
-                            height: GLsizei, depth: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                            height: GLsizei, depth: GLsizei){.stdcall, importc, ogl.}
   #
   # GL_ARB_cl_event
 proc glCreateSyncFromCLeventARB*(context: p_cl_context, event: p_cl_event, 
-                                 flags: GLbitfield): GLsync{.stdcall, importc, dynlib: ogldll.}
+                                 flags: GLbitfield): GLsync{.stdcall, importc, ogl.}
   # GL_ARB_debug_output
 proc glDebugMessageControlARB*(source: GLenum, typ: GLenum, severity: GLenum, 
                                count: GLsizei, ids: PGLuint, enabled: GLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDebugMessageInsertARB*(source: GLenum, typ: GLenum, id: GLuint, 
                               severity: GLenum, len: GLsizei, buf: PGLchar){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDebugMessageCallbackARB*(callback: TglDebugProcARB, userParam: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetDebugMessageLogARB*(count: GLuint, bufsize: GLsizei, sources: PGLenum, 
                               types: PGLenum, ids: PGLuint, severities: PGLenum, 
                               lengths: PGLsizei, messageLog: PGLchar): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ARB_robustness
-proc glGetGraphicsResetStatusARB*(): GLenum{.stdcall, importc, dynlib: ogldll.}
+proc glGetGraphicsResetStatusARB*(): GLenum{.stdcall, importc, ogl.}
 proc glGetnMapdvARB*(target: GLenum, query: GLenum, bufSize: GLsizei, 
-                     v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                     v: PGLdouble){.stdcall, importc, ogl.}
 proc glGetnMapfvARB*(target: GLenum, query: GLenum, bufSize: GLsizei, 
-                     v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                     v: PGLfloat){.stdcall, importc, ogl.}
 proc glGetnMapivARB*(target: GLenum, query: GLenum, bufSize: GLsizei, v: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetnPixelMapfvARB*(map: GLenum, bufSize: GLsizei, values: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetnPixelMapuivARB*(map: GLenum, bufSize: GLsizei, values: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetnPixelMapusvARB*(map: GLenum, bufSize: GLsizei, values: PGLushort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetnPolygonStippleARB*(bufSize: GLsizei, pattern: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetnPolygonStippleARB*(bufSize: GLsizei, pattern: PGLubyte){.stdcall, importc, ogl.}
 proc glGetnColorTableARB*(target: GLenum, format: GLenum, typ: GLenum, 
-                          bufSize: GLsizei, table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          bufSize: GLsizei, table: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnConvolutionFilterARB*(target: GLenum, format: GLenum, typ: GLenum, 
-                                 bufSize: GLsizei, image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                 bufSize: GLsizei, image: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnSeparableFilterARB*(target: GLenum, format: GLenum, typ: GLenum, 
                                rowBufSize: GLsizei, row: PGLvoid, 
                                columnBufSize: GLsizei, column: PGLvoid, 
-                               span: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                               span: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnHistogramARB*(target: GLenum, reset: GLboolean, format: GLenum, 
                          typ: GLenum, bufSize: GLsizei, values: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetnMinmaxARB*(target: GLenum, reset: GLboolean, format: GLenum, 
-                      typ: GLenum, bufSize: GLsizei, values: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      typ: GLenum, bufSize: GLsizei, values: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnTexImageARB*(target: GLenum, level: GLint, format: GLenum, 
-                        typ: GLenum, bufSize: GLsizei, img: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                        typ: GLenum, bufSize: GLsizei, img: PGLvoid){.stdcall, importc, ogl.}
 proc glReadnPixelsARB*(x: GLint, y: GLint, width: GLsizei, height: GLsizei, 
                        format: GLenum, typ: GLenum, bufSize: GLsizei, 
-                       data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                       data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnCompressedTexImageARB*(target: GLenum, lod: GLint, bufSize: GLsizei, 
-                                  img: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                  img: PGLvoid){.stdcall, importc, ogl.}
 proc glGetnUniformfvARB*(prog: GLuint, location: GLint, bufSize: GLsizei, 
-                         params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetnUniformivARB*(prog: GLuint, location: GLint, bufSize: GLsizei, 
-                         params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLint){.stdcall, importc, ogl.}
 proc glGetnUniformuivARB*(prog: GLuint, location: GLint, bufSize: GLsizei, 
-                          params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                          params: PGLuint){.stdcall, importc, ogl.}
 proc glGetnUniformdvARB*(prog: GLuint, location: GLint, bufSize: GLsizei, 
-                         params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLdouble){.stdcall, importc, ogl.}
   # GL_ATI_draw_buffers
-proc glDrawBuffersATI*(n: GLsizei, bufs: PGLenum){.stdcall, importc, dynlib: ogldll.}
+proc glDrawBuffersATI*(n: GLsizei, bufs: PGLenum){.stdcall, importc, ogl.}
   # GL_ATI_element_array
-proc glElementPointerATI*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glDrawElementArrayATI*(mode: GLenum, count: GLsizei){.stdcall, importc, dynlib: ogldll.}
+proc glElementPointerATI*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glDrawElementArrayATI*(mode: GLenum, count: GLsizei){.stdcall, importc, ogl.}
 proc glDrawRangeElementArrayATI*(mode: GLenum, start: GLuint, ending: GLuint, 
-                                 count: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                 count: GLsizei){.stdcall, importc, ogl.}
   # GL_ATI_envmap_bumpmap
-proc glTexBumpParameterivATI*(pname: GLenum, param: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTexBumpParameterfvATI*(pname: GLenum, param: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexBumpParameterivATI*(pname: GLenum, param: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetTexBumpParameterfvATI*(pname: GLenum, param: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glTexBumpParameterivATI*(pname: GLenum, param: PGLint){.stdcall, importc, ogl.}
+proc glTexBumpParameterfvATI*(pname: GLenum, param: PGLfloat){.stdcall, importc, ogl.}
+proc glGetTexBumpParameterivATI*(pname: GLenum, param: PGLint){.stdcall, importc, ogl.}
+proc glGetTexBumpParameterfvATI*(pname: GLenum, param: PGLfloat){.stdcall, importc, ogl.}
   # GL_ATI_fragment_shader
-proc glGenFragmentShadersATI*(range: GLuint): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glBindFragmentShaderATI*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteFragmentShaderATI*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glBeginFragmentShaderATI*(){.stdcall, importc, dynlib: ogldll.}
-proc glEndFragmentShaderATI*(){.stdcall, importc, dynlib: ogldll.}
-proc glPassTexCoordATI*(dst: GLuint, coord: GLuint, swizzle: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glSampleMapATI*(dst: GLuint, interp: GLuint, swizzle: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glGenFragmentShadersATI*(range: GLuint): GLuint{.stdcall, importc, ogl.}
+proc glBindFragmentShaderATI*(id: GLuint){.stdcall, importc, ogl.}
+proc glDeleteFragmentShaderATI*(id: GLuint){.stdcall, importc, ogl.}
+proc glBeginFragmentShaderATI*(){.stdcall, importc, ogl.}
+proc glEndFragmentShaderATI*(){.stdcall, importc, ogl.}
+proc glPassTexCoordATI*(dst: GLuint, coord: GLuint, swizzle: GLenum){.stdcall, importc, ogl.}
+proc glSampleMapATI*(dst: GLuint, interp: GLuint, swizzle: GLenum){.stdcall, importc, ogl.}
 proc glColorFragmentOp1ATI*(op: GLenum, dst: GLuint, dstMask: GLuint, 
                             dstMod: GLuint, arg1: GLuint, arg1Rep: GLuint, 
-                            arg1Mod: GLuint){.stdcall, importc, dynlib: ogldll.}
+                            arg1Mod: GLuint){.stdcall, importc, ogl.}
 proc glColorFragmentOp2ATI*(op: GLenum, dst: GLuint, dstMask: GLuint, 
                             dstMod: GLuint, arg1: GLuint, arg1Rep: GLuint, 
                             arg1Mod: GLuint, arg2: GLuint, arg2Rep: GLuint, 
-                            arg2Mod: GLuint){.stdcall, importc, dynlib: ogldll.}
+                            arg2Mod: GLuint){.stdcall, importc, ogl.}
 proc glColorFragmentOp3ATI*(op: GLenum, dst: GLuint, dstMask: GLuint, 
                             dstMod: GLuint, arg1: GLuint, arg1Rep: GLuint, 
                             arg1Mod: GLuint, arg2: GLuint, arg2Rep: GLuint, 
                             arg2Mod: GLuint, arg3: GLuint, arg3Rep: GLuint, 
-                            arg3Mod: GLuint){.stdcall, importc, dynlib: ogldll.}
+                            arg3Mod: GLuint){.stdcall, importc, ogl.}
 proc glAlphaFragmentOp1ATI*(op: GLenum, dst: GLuint, dstMod: GLuint, 
                             arg1: GLuint, arg1Rep: GLuint, arg1Mod: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glAlphaFragmentOp2ATI*(op: GLenum, dst: GLuint, dstMod: GLuint, 
                             arg1: GLuint, arg1Rep: GLuint, arg1Mod: GLuint, 
                             arg2: GLuint, arg2Rep: GLuint, arg2Mod: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glAlphaFragmentOp3ATI*(op: GLenum, dst: GLuint, dstMod: GLuint, 
                             arg1: GLuint, arg1Rep: GLuint, arg1Mod: GLuint, 
                             arg2: GLuint, arg2Rep: GLuint, arg2Mod: GLuint, 
                             arg3: GLuint, arg3Rep: GLuint, arg3Mod: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSetFragmentShaderConstantATI*(dst: GLuint, value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSetFragmentShaderConstantATI*(dst: GLuint, value: PGLfloat){.stdcall, importc, ogl.}
   # GL_ATI_map_object_buffer
-proc glMapObjectBufferATI*(buffer: GLuint): PGLvoid{.stdcall, importc, dynlib: ogldll.}
-proc glUnmapObjectBufferATI*(buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glMapObjectBufferATI*(buffer: GLuint): PGLvoid{.stdcall, importc, ogl.}
+proc glUnmapObjectBufferATI*(buffer: GLuint){.stdcall, importc, ogl.}
   # GL_ATI_pn_triangles
-proc glPNTrianglesiATI*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPNTrianglesfATI*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPNTrianglesiATI*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glPNTrianglesfATI*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
   # GL_ATI_separate_stencil
 proc glStencilOpSeparateATI*(face: GLenum, sfail: GLenum, dpfail: GLenum, 
-                             dppass: GLenum){.stdcall, importc, dynlib: ogldll.}
+                             dppass: GLenum){.stdcall, importc, ogl.}
 proc glStencilFuncSeparateATI*(frontfunc: GLenum, backfunc: GLenum, theRef: GLint, 
-                               mask: GLuint){.stdcall, importc, dynlib: ogldll.}
+                               mask: GLuint){.stdcall, importc, ogl.}
   # GL_ATI_vertex_array_object
 proc glNewObjectBufferATI*(size: GLsizei, pointer: PGLvoid, usage: GLenum): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
-proc glIsObjectBufferATI*(buffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glIsObjectBufferATI*(buffer: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glUpdateObjectBufferATI*(buffer: GLuint, offset: GLuint, size: GLsizei, 
-                              pointer: PGLvoid, preserve: GLenum){.stdcall, importc, dynlib: ogldll.}
+                              pointer: PGLvoid, preserve: GLenum){.stdcall, importc, ogl.}
 proc glGetObjectBufferfvATI*(buffer: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetObjectBufferivATI*(buffer: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFreeObjectBufferATI*(buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFreeObjectBufferATI*(buffer: GLuint){.stdcall, importc, ogl.}
 proc glArrayObjectATI*(arr: GLenum, size: GLint, typ: GLenum, stride: GLsizei, 
-                       buffer: GLuint, offset: GLuint){.stdcall, importc, dynlib: ogldll.}
+                       buffer: GLuint, offset: GLuint){.stdcall, importc, ogl.}
 proc glGetArrayObjectfvATI*(arr: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetArrayObjectivATI*(arr: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetArrayObjectivATI*(arr: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glVariantArrayObjectATI*(id: GLuint, typ: GLenum, stride: GLsizei, 
-                              buffer: GLuint, offset: GLuint){.stdcall, importc, dynlib: ogldll.}
+                              buffer: GLuint, offset: GLuint){.stdcall, importc, ogl.}
 proc glGetVariantArrayObjectfvATI*(id: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVariantArrayObjectivATI*(id: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_ATI_vertex_attrib_array_object
 proc glVertexAttribArrayObjectATI*(index: GLuint, size: GLint, typ: GLenum, 
                                    normalized: GLboolean, stride: GLsizei, 
-                                   buffer: GLuint, offset: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                   buffer: GLuint, offset: GLuint){.stdcall, importc, ogl.}
 proc glGetVertexAttribArrayObjectfvATI*(index: GLuint, pname: GLenum, 
-                                        params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                        params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetVertexAttribArrayObjectivATI*(index: GLuint, pname: GLenum, 
-                                        params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                        params: PGLint){.stdcall, importc, ogl.}
   # GL_ATI_vertex_streams
-proc glVertexStream1sATI*(stream: GLenum, x: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1iATI*(stream: GLenum, x: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1fATI*(stream: GLenum, x: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1dATI*(stream: GLenum, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream1dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2sATI*(stream: GLenum, x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2iATI*(stream: GLenum, x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2fATI*(stream: GLenum, x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2dATI*(stream: GLenum, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream2dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glVertexStream1sATI*(stream: GLenum, x: GLshort){.stdcall, importc, ogl.}
+proc glVertexStream1svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, ogl.}
+proc glVertexStream1iATI*(stream: GLenum, x: GLint){.stdcall, importc, ogl.}
+proc glVertexStream1ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, ogl.}
+proc glVertexStream1fATI*(stream: GLenum, x: GLfloat){.stdcall, importc, ogl.}
+proc glVertexStream1fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexStream1dATI*(stream: GLenum, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexStream1dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexStream2sATI*(stream: GLenum, x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glVertexStream2svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, ogl.}
+proc glVertexStream2iATI*(stream: GLenum, x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glVertexStream2ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, ogl.}
+proc glVertexStream2fATI*(stream: GLenum, x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glVertexStream2fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexStream2dATI*(stream: GLenum, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glVertexStream2dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexStream3sATI*(stream: GLenum, x: GLshort, y: GLshort, z: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexStream3svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream3iATI*(stream: GLenum, x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream3ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexStream3svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, ogl.}
+proc glVertexStream3iATI*(stream: GLenum, x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glVertexStream3ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, ogl.}
 proc glVertexStream3fATI*(stream: GLenum, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexStream3fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexStream3fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexStream3dATI*(stream: GLenum, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexStream3dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexStream3dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexStream4sATI*(stream: GLenum, x: GLshort, y: GLshort, z: GLshort, 
-                          w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream4svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                          w: GLshort){.stdcall, importc, ogl.}
+proc glVertexStream4svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, ogl.}
 proc glVertexStream4iATI*(stream: GLenum, x: GLint, y: GLint, z: GLint, w: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexStream4ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexStream4ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, ogl.}
 proc glVertexStream4fATI*(stream: GLenum, x: GLfloat, y: GLfloat, z: GLfloat, 
-                          w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream4fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                          w: GLfloat){.stdcall, importc, ogl.}
+proc glVertexStream4fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexStream4dATI*(stream: GLenum, x: GLdouble, y: GLdouble, z: GLdouble, 
-                          w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexStream4dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                          w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexStream4dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, ogl.}
 proc glNormalStream3bATI*(stream: GLenum, nx: GLbyte, ny: GLbyte, nz: GLbyte){.
-    stdcall, importc, dynlib: ogldll.}
-proc glNormalStream3bvATI*(stream: GLenum, coords: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glNormalStream3bvATI*(stream: GLenum, coords: PGLbyte){.stdcall, importc, ogl.}
 proc glNormalStream3sATI*(stream: GLenum, nx: GLshort, ny: GLshort, nz: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glNormalStream3svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glNormalStream3svATI*(stream: GLenum, coords: PGLshort){.stdcall, importc, ogl.}
 proc glNormalStream3iATI*(stream: GLenum, nx: GLint, ny: GLint, nz: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glNormalStream3ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glNormalStream3ivATI*(stream: GLenum, coords: PGLint){.stdcall, importc, ogl.}
 proc glNormalStream3fATI*(stream: GLenum, nx: GLfloat, ny: GLfloat, nz: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glNormalStream3fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glNormalStream3fvATI*(stream: GLenum, coords: PGLfloat){.stdcall, importc, ogl.}
 proc glNormalStream3dATI*(stream: GLenum, nx: GLdouble, ny: GLdouble, 
-                          nz: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glNormalStream3dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glClientActiveVertexStreamATI*(stream: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glVertexBlendEnviATI*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexBlendEnvfATI*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                          nz: GLdouble){.stdcall, importc, ogl.}
+proc glNormalStream3dvATI*(stream: GLenum, coords: PGLdouble){.stdcall, importc, ogl.}
+proc glClientActiveVertexStreamATI*(stream: GLenum){.stdcall, importc, ogl.}
+proc glVertexBlendEnviATI*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glVertexBlendEnvfATI*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
   # GL_AMD_performance_monitor
 proc glGetPerfMonitorGroupsAMD*(numGroups: PGLint, groupsSize: GLsizei, 
-                                groups: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                groups: PGLuint){.stdcall, importc, ogl.}
 proc glGetPerfMonitorCountersAMD*(group: GLuint, numCounters: PGLint, 
                                   maxActiveCouters: PGLint, 
                                   counterSize: GLsizei, counters: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetPerfMonitorGroupStringAMD*(group: GLuint, bufSize: GLsizei, 
                                      len: PGLsizei, groupString: PGLchar){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetPerfMonitorCounterStringAMD*(group: GLuint, counter: GLuint, 
                                        bufSize: GLsizei, len: PGLsizei, 
-                                       counterString: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                                       counterString: PGLchar){.stdcall, importc, ogl.}
 proc glGetPerfMonitorCounterInfoAMD*(group: GLuint, counter: GLuint, 
-                                     pname: GLenum, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glGenPerfMonitorsAMD*(n: GLsizei, monitors: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeletePerfMonitorsAMD*(n: GLsizei, monitors: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                     pname: GLenum, data: PGLvoid){.stdcall, importc, ogl.}
+proc glGenPerfMonitorsAMD*(n: GLsizei, monitors: PGLuint){.stdcall, importc, ogl.}
+proc glDeletePerfMonitorsAMD*(n: GLsizei, monitors: PGLuint){.stdcall, importc, ogl.}
 proc glSelectPerfMonitorCountersAMD*(monitor: GLuint, enable: GLboolean, 
                                      group: GLuint, numCounters: GLint, 
-                                     counterList: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glBeginPerfMonitorAMD*(monitor: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEndPerfMonitorAMD*(monitor: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                     counterList: PGLuint){.stdcall, importc, ogl.}
+proc glBeginPerfMonitorAMD*(monitor: GLuint){.stdcall, importc, ogl.}
+proc glEndPerfMonitorAMD*(monitor: GLuint){.stdcall, importc, ogl.}
 proc glGetPerfMonitorCounterDataAMD*(monitor: GLuint, pname: GLenum, 
                                      dataSize: GLsizei, data: PGLuint, 
-                                     bytesWritten: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     bytesWritten: PGLint){.stdcall, importc, ogl.}
   # GL_AMD_vertex_shader_tesselator
-proc glTessellationFactorAMD*(factor: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTessellationModeAMD*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glTessellationFactorAMD*(factor: GLfloat){.stdcall, importc, ogl.}
+proc glTessellationModeAMD*(mode: GLenum){.stdcall, importc, ogl.}
   # GL_AMD_draw_buffers_blend
-proc glBlendFuncIndexedAMD*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glBlendFuncIndexedAMD*(buf: GLuint, src: GLenum, dst: GLenum){.stdcall, importc, ogl.}
 proc glBlendFuncSeparateIndexedAMD*(buf: GLuint, srcRGB: GLenum, dstRGB: GLenum, 
-                                    srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glBlendEquationIndexedAMD*(buf: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                    srcAlpha: GLenum, dstAlpha: GLenum){.stdcall, importc, ogl.}
+proc glBlendEquationIndexedAMD*(buf: GLuint, mode: GLenum){.stdcall, importc, ogl.}
 proc glBlendEquationSeparateIndexedAMD*(buf: GLuint, modeRGB: GLenum, 
-                                        modeAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                        modeAlpha: GLenum){.stdcall, importc, ogl.}
   # GL_AMD_name_gen_delete
-proc glGenNamesAMD*(identifier: GLenum, num: GLuint, names: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteNamesAMD*(identifier: GLenum, num: GLuint, names: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsNameAMD*(identifier: GLenum, name: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glGenNamesAMD*(identifier: GLenum, num: GLuint, names: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteNamesAMD*(identifier: GLenum, num: GLuint, names: PGLuint){.stdcall, importc, ogl.}
+proc glIsNameAMD*(identifier: GLenum, name: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_AMD_debug_output
 proc glDebugMessageEnableAMD*(category: GLenum, severity: GLenum, 
                               count: GLsizei, ids: PGLuint, enabled: GLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glDebugMessageInsertAMD*(category: GLenum, severity: GLenum, id: GLuint, 
-                              len: GLsizei, buf: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                              len: GLsizei, buf: PGLchar){.stdcall, importc, ogl.}
 proc glDebugMessageCallbackAMD*(callback: TGLDebugProcAMD, userParam: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetDebugMessageLogAMD*(count: GLuint, bufsize: GLsizei, 
                               categories: PGLenum, severities: PGLuint, 
                               ids: PGLuint, lengths: PGLsizei, message: PGLchar): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_blend_color
 proc glBlendColorEXT*(red: GLclampf, green: GLclampf, blue: GLclampf, 
-                      alpha: GLclampf){.stdcall, importc, dynlib: ogldll.}
+                      alpha: GLclampf){.stdcall, importc, ogl.}
   # GL_EXT_blend_func_separate
 proc glBlendFuncSeparateEXT*(sfactorRGB: GLenum, dfactorRGB: GLenum, 
                              sfactorAlpha: GLenum, dfactorAlpha: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_blend_minmax
-proc glBlendEquationEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glBlendEquationEXT*(mode: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_color_subtable
 proc glColorSubTableEXT*(target: GLenum, start: GLsizei, count: GLsizei, 
-                         format: GLenum, typ: GLenum, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         format: GLenum, typ: GLenum, data: PGLvoid){.stdcall, importc, ogl.}
 proc glCopyColorSubTableEXT*(target: GLenum, start: GLsizei, x: GLint, y: GLint, 
-                             width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             width: GLsizei){.stdcall, importc, ogl.}
   # GL_EXT_compiled_vertex_array
-proc glLockArraysEXT*(first: GLint, count: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glUnlockArraysEXT*(){.stdcall, importc, dynlib: ogldll.}
+proc glLockArraysEXT*(first: GLint, count: GLsizei){.stdcall, importc, ogl.}
+proc glUnlockArraysEXT*(){.stdcall, importc, ogl.}
   # GL_EXT_convolution
 proc glConvolutionFilter1DEXT*(target: GLenum, internalformat: GLenum, 
                                width: GLsizei, format: GLenum, typ: GLenum, 
-                               image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                               image: PGLvoid){.stdcall, importc, ogl.}
 proc glConvolutionFilter2DEXT*(target: GLenum, internalformat: GLenum, 
                                width: GLsizei, height: GLsizei, format: GLenum, 
-                               typ: GLenum, image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                               typ: GLenum, image: PGLvoid){.stdcall, importc, ogl.}
 proc glConvolutionParameterfEXT*(target: GLenum, pname: GLenum, params: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glConvolutionParameterfvEXT*(target: GLenum, pname: GLenum, 
-                                  params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLfloat){.stdcall, importc, ogl.}
 proc glConvolutionParameteriEXT*(target: GLenum, pname: GLenum, params: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glConvolutionParameterivEXT*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyConvolutionFilter1DEXT*(target: GLenum, internalformat: GLenum, 
-                                   x: GLint, y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                   x: GLint, y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyConvolutionFilter2DEXT*(target: GLenum, internalformat: GLenum, 
                                    x: GLint, y: GLint, width: GLsizei, 
-                                   height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                   height: GLsizei){.stdcall, importc, ogl.}
 proc glGetConvolutionFilterEXT*(target: GLenum, format: GLenum, typ: GLenum, 
-                                image: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                image: PGLvoid){.stdcall, importc, ogl.}
 proc glGetConvolutionParameterfvEXT*(target: GLenum, pname: GLenum, 
-                                     params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetConvolutionParameterivEXT*(target: GLenum, pname: GLenum, 
-                                     params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLint){.stdcall, importc, ogl.}
 proc glGetSeparableFilterEXT*(target: GLenum, format: GLenum, typ: GLenum, 
                               row: PGLvoid, column: PGLvoid, span: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glSeparableFilter2DEXT*(target: GLenum, internalformat: GLenum, 
                              width: GLsizei, height: GLsizei, format: GLenum, 
                              typ: GLenum, row: PGLvoid, column: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_coordinate_frame
-proc glTangent3bEXT*(tx: GLbyte, ty: GLbyte, tz: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3bvEXT*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3dEXT*(tx: GLdouble, ty: GLdouble, tz: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3dvEXT*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3fEXT*(tx: GLfloat, ty: GLfloat, tz: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3fvEXT*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3iEXT*(tx: GLint, ty: GLint, tz: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3ivEXT*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3sEXT*(tx: GLshort, ty: GLshort, tz: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glTangent3svEXT*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3bEXT*(bx: GLbyte, by: GLbyte, bz: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3bvEXT*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3dEXT*(bx: GLdouble, by: GLdouble, bz: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3dvEXT*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3fEXT*(bx: GLfloat, by: GLfloat, bz: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3fvEXT*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3iEXT*(bx: GLint, by: GLint, bz: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3ivEXT*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3sEXT*(bx: GLshort, by: GLshort, bz: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glBinormal3svEXT*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+proc glTangent3bEXT*(tx: GLbyte, ty: GLbyte, tz: GLbyte){.stdcall, importc, ogl.}
+proc glTangent3bvEXT*(v: PGLbyte){.stdcall, importc, ogl.}
+proc glTangent3dEXT*(tx: GLdouble, ty: GLdouble, tz: GLdouble){.stdcall, importc, ogl.}
+proc glTangent3dvEXT*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glTangent3fEXT*(tx: GLfloat, ty: GLfloat, tz: GLfloat){.stdcall, importc, ogl.}
+proc glTangent3fvEXT*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glTangent3iEXT*(tx: GLint, ty: GLint, tz: GLint){.stdcall, importc, ogl.}
+proc glTangent3ivEXT*(v: PGLint){.stdcall, importc, ogl.}
+proc glTangent3sEXT*(tx: GLshort, ty: GLshort, tz: GLshort){.stdcall, importc, ogl.}
+proc glTangent3svEXT*(v: PGLshort){.stdcall, importc, ogl.}
+proc glBinormal3bEXT*(bx: GLbyte, by: GLbyte, bz: GLbyte){.stdcall, importc, ogl.}
+proc glBinormal3bvEXT*(v: PGLbyte){.stdcall, importc, ogl.}
+proc glBinormal3dEXT*(bx: GLdouble, by: GLdouble, bz: GLdouble){.stdcall, importc, ogl.}
+proc glBinormal3dvEXT*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glBinormal3fEXT*(bx: GLfloat, by: GLfloat, bz: GLfloat){.stdcall, importc, ogl.}
+proc glBinormal3fvEXT*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glBinormal3iEXT*(bx: GLint, by: GLint, bz: GLint){.stdcall, importc, ogl.}
+proc glBinormal3ivEXT*(v: PGLint){.stdcall, importc, ogl.}
+proc glBinormal3sEXT*(bx: GLshort, by: GLshort, bz: GLshort){.stdcall, importc, ogl.}
+proc glBinormal3svEXT*(v: PGLshort){.stdcall, importc, ogl.}
 proc glTangentPointerEXT*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glBinormalPointerEXT*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_copy_texture
 proc glCopyTexImage1DEXT*(target: GLenum, level: GLint, internalformat: GLenum, 
                           x: GLint, y: GLint, width: GLsizei, border: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyTexImage2DEXT*(target: GLenum, level: GLint, internalformat: GLenum, 
                           x: GLint, y: GLint, width: GLsizei, height: GLsizei, 
-                          border: GLint){.stdcall, importc, dynlib: ogldll.}
+                          border: GLint){.stdcall, importc, ogl.}
 proc glCopyTexSubImage1DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
-                             x: GLint, y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             x: GLint, y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyTexSubImage2DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
                              yoffset: GLint, x: GLint, y: GLint, width: GLsizei, 
-                             height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             height: GLsizei){.stdcall, importc, ogl.}
 proc glCopyTexSubImage3DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
                              yoffset: GLint, zoffset: GLint, x: GLint, y: GLint, 
-                             width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
   # GL_EXT_cull_vertex
-proc glCullParameterdvEXT*(pname: GLenum, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glCullParameterfvEXT*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glCullParameterdvEXT*(pname: GLenum, params: PGLdouble){.stdcall, importc, ogl.}
+proc glCullParameterfvEXT*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_draw_range_elements
 proc glDrawRangeElementsEXT*(mode: GLenum, start: GLuint, ending: GLuint, 
                              count: GLsizei, typ: GLenum, indices: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_fog_coord
-proc glFogCoordfEXT*(coord: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordfvEXT*(coord: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoorddEXT*(coord: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoorddvEXT*(coord: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glFogCoordfEXT*(coord: GLfloat){.stdcall, importc, ogl.}
+proc glFogCoordfvEXT*(coord: PGLfloat){.stdcall, importc, ogl.}
+proc glFogCoorddEXT*(coord: GLdouble){.stdcall, importc, ogl.}
+proc glFogCoorddvEXT*(coord: PGLdouble){.stdcall, importc, ogl.}
 proc glFogCoordPointerEXT*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_framebuffer_object
-proc glIsRenderbufferEXT*(renderbuffer: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-proc glBindRenderbufferEXT*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteRenderbuffersEXT*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenRenderbuffersEXT*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
+proc glIsRenderbufferEXT*(renderbuffer: GLuint): bool{.stdcall, importc, ogl.}
+proc glBindRenderbufferEXT*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteRenderbuffersEXT*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenRenderbuffersEXT*(n: GLsizei, renderbuffers: PGLuint){.stdcall, importc, ogl.}
 proc glRenderbufferStorageEXT*(target: GLenum, internalformat: GLenum, 
-                               width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                               width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glGetRenderbufferParameterivEXT*(target: GLenum, pname: GLenum, 
-                                      params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glIsFramebufferEXT*(framebuffer: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-proc glBindFramebufferEXT*(target: GLenum, framebuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteFramebuffersEXT*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenFramebuffersEXT*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glCheckFramebufferStatusEXT*(target: GLenum): GLenum{.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLint){.stdcall, importc, ogl.}
+proc glIsFramebufferEXT*(framebuffer: GLuint): bool{.stdcall, importc, ogl.}
+proc glBindFramebufferEXT*(target: GLenum, framebuffer: GLuint){.stdcall, importc, ogl.}
+proc glDeleteFramebuffersEXT*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, ogl.}
+proc glGenFramebuffersEXT*(n: GLsizei, framebuffers: PGLuint){.stdcall, importc, ogl.}
+proc glCheckFramebufferStatusEXT*(target: GLenum): GLenum{.stdcall, importc, ogl.}
 proc glFramebufferTexture1DEXT*(target: GLenum, attachment: GLenum, 
                                 textarget: GLenum, texture: GLuint, level: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTexture2DEXT*(target: GLenum, attachment: GLenum, 
                                 textarget: GLenum, texture: GLuint, level: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFramebufferTexture3DEXT*(target: GLenum, attachment: GLenum, 
                                 textarget: GLenum, texture: GLuint, 
-                                level: GLint, zoffset: GLint){.stdcall, importc, dynlib: ogldll.}
+                                level: GLint, zoffset: GLint){.stdcall, importc, ogl.}
 proc glFramebufferRenderbufferEXT*(target: GLenum, attachment: GLenum, 
                                    renderbuffertarget: GLenum, 
-                                   renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                   renderbuffer: GLuint){.stdcall, importc, ogl.}
 proc glGetFramebufferAttachmentParameterivEXT*(target: GLenum, 
-    attachment: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGenerateMipmapEXT*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
+    attachment: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGenerateMipmapEXT*(target: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_histogram
 proc glGetHistogramEXT*(target: GLenum, reset: GLboolean, format: GLenum, 
-                        typ: GLenum, values: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                        typ: GLenum, values: PGLvoid){.stdcall, importc, ogl.}
 proc glGetHistogramParameterfvEXT*(target: GLenum, pname: GLenum, 
-                                   params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetHistogramParameterivEXT*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMinmaxEXT*(target: GLenum, reset: GLboolean, format: GLenum, 
-                     typ: GLenum, values: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                     typ: GLenum, values: PGLvoid){.stdcall, importc, ogl.}
 proc glGetMinmaxParameterfvEXT*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMinmaxParameterivEXT*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glHistogramEXT*(target: GLenum, width: GLsizei, internalformat: GLenum, 
-                     sink: GLboolean){.stdcall, importc, dynlib: ogldll.}
+                     sink: GLboolean){.stdcall, importc, ogl.}
 proc glMinmaxEXT*(target: GLenum, internalformat: GLenum, sink: GLboolean){.
-    stdcall, importc, dynlib: ogldll.}
-proc glResetHistogramEXT*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glResetMinmaxEXT*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glResetHistogramEXT*(target: GLenum){.stdcall, importc, ogl.}
+proc glResetMinmaxEXT*(target: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_index_func
-proc glIndexFuncEXT*(func: GLenum, theRef: GLclampf){.stdcall, importc, dynlib: ogldll.}
+proc glIndexFuncEXT*(func: GLenum, theRef: GLclampf){.stdcall, importc, ogl.}
   # GL_EXT_index_material
-proc glIndexMaterialEXT*(face: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glIndexMaterialEXT*(face: GLenum, mode: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_light_texture
-proc glApplyTextureEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glTextureLightEXT*(pname: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glTextureMaterialEXT*(face: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glApplyTextureEXT*(mode: GLenum){.stdcall, importc, ogl.}
+proc glTextureLightEXT*(pname: GLenum){.stdcall, importc, ogl.}
+proc glTextureMaterialEXT*(face: GLenum, mode: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_multi_draw_arrays
 proc glMultiDrawArraysEXT*(mode: GLenum, first: PGLint, count: PGLsizei, 
-                           primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                           primcount: GLsizei){.stdcall, importc, ogl.}
 proc glMultiDrawElementsEXT*(mode: GLenum, count: PGLsizei, typ: GLenum, 
-                             indices: PGLvoid, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             indices: PGLvoid, primcount: GLsizei){.stdcall, importc, ogl.}
   # GL_EXT_multisample
-proc glSampleMaskEXT*(value: GLclampf, invert: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glSamplePatternEXT*(pattern: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glSampleMaskEXT*(value: GLclampf, invert: GLboolean){.stdcall, importc, ogl.}
+proc glSamplePatternEXT*(pattern: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_paletted_texture
 proc glColorTableEXT*(target: GLenum, internalFormat: GLenum, width: GLsizei, 
-                      format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, ogl.}
 proc glGetColorTableEXT*(target: GLenum, format: GLenum, typ: GLenum, 
-                         data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetColorTableParameterivEXT*(target: GLenum, pname: GLenum, 
-                                    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLint){.stdcall, importc, ogl.}
 proc glGetColorTableParameterfvEXT*(target: GLenum, pname: GLenum, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_pixel_transform
 proc glPixelTransformParameteriEXT*(target: GLenum, pname: GLenum, param: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glPixelTransformParameterfEXT*(target: GLenum, pname: GLenum, 
-                                    param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    param: GLfloat){.stdcall, importc, ogl.}
 proc glPixelTransformParameterivEXT*(target: GLenum, pname: GLenum, 
-                                     params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLint){.stdcall, importc, ogl.}
 proc glPixelTransformParameterfvEXT*(target: GLenum, pname: GLenum, 
-                                     params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_point_parameters
-proc glPointParameterfEXT*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterfvEXT*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPointParameterfEXT*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPointParameterfvEXT*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_polygon_offset
-proc glPolygonOffsetEXT*(factor: GLfloat, bias: GLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPolygonOffsetEXT*(factor: GLfloat, bias: GLfloat){.stdcall, importc, ogl.}
   # GL_EXT_secondary_color
-proc glSecondaryColor3bEXT*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3bvEXT*(v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
+proc glSecondaryColor3bEXT*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, ogl.}
+proc glSecondaryColor3bvEXT*(v: PGLbyte){.stdcall, importc, ogl.}
 proc glSecondaryColor3dEXT*(red: GLdouble, green: GLdouble, blue: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3dvEXT*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3dvEXT*(v: PGLdouble){.stdcall, importc, ogl.}
 proc glSecondaryColor3fEXT*(red: GLfloat, green: GLfloat, blue: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3fvEXT*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3iEXT*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3ivEXT*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3fvEXT*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glSecondaryColor3iEXT*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, ogl.}
+proc glSecondaryColor3ivEXT*(v: PGLint){.stdcall, importc, ogl.}
 proc glSecondaryColor3sEXT*(red: GLshort, green: GLshort, blue: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3svEXT*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3svEXT*(v: PGLshort){.stdcall, importc, ogl.}
 proc glSecondaryColor3ubEXT*(red: GLubyte, green: GLubyte, blue: GLubyte){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3ubvEXT*(v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3uiEXT*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3uivEXT*(v: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3ubvEXT*(v: PGLubyte){.stdcall, importc, ogl.}
+proc glSecondaryColor3uiEXT*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, ogl.}
+proc glSecondaryColor3uivEXT*(v: PGLuint){.stdcall, importc, ogl.}
 proc glSecondaryColor3usEXT*(red: GLushort, green: GLushort, blue: GLushort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3usvEXT*(v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3usvEXT*(v: PGLushort){.stdcall, importc, ogl.}
 proc glSecondaryColorPointerEXT*(size: GLint, typ: GLenum, stride: GLsizei, 
-                                 pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                 pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_EXT_stencil_two_side
-proc glActiveStencilFaceEXT*(face: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glActiveStencilFaceEXT*(face: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_subtexture
 proc glTexSubImage1DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
                          width: GLsizei, format: GLenum, typ: GLenum, 
-                         pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTexSubImage2DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
                          yoffset: GLint, width: GLsizei, height: GLsizei, 
-                         format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
   # GL_EXT_texture3D
 proc glTexImage3DEXT*(target: GLenum, level: GLint, internalformat: GLenum, 
                       width: GLsizei, height: GLsizei, depth: GLsizei, 
                       border: GLint, format: GLenum, typ: GLenum, 
-                      pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTexSubImage3DEXT*(target: GLenum, level: GLint, xoffset: GLint, 
                          yoffset: GLint, zoffset: GLint, width: GLsizei, 
                          height: GLsizei, depth: GLsizei, format: GLenum, 
-                         typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
   # GL_EXT_texture_object
 proc glAreTexturesResidentEXT*(n: GLsizei, textures: PGLuint, 
-                               residences: PGLboolean): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBindTextureEXT*(target: GLenum, texture: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteTexturesEXT*(n: GLsizei, textures: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenTexturesEXT*(n: GLsizei, textures: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsTextureEXT*(texture: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                               residences: PGLboolean): GLboolean{.stdcall, importc, ogl.}
+proc glBindTextureEXT*(target: GLenum, texture: GLuint){.stdcall, importc, ogl.}
+proc glDeleteTexturesEXT*(n: GLsizei, textures: PGLuint){.stdcall, importc, ogl.}
+proc glGenTexturesEXT*(n: GLsizei, textures: PGLuint){.stdcall, importc, ogl.}
+proc glIsTextureEXT*(texture: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glPrioritizeTexturesEXT*(n: GLsizei, textures: PGLuint, 
-                              priorities: PGLclampf){.stdcall, importc, dynlib: ogldll.}
+                              priorities: PGLclampf){.stdcall, importc, ogl.}
   # GL_EXT_texture_perturb_normal
-proc glTextureNormalEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glTextureNormalEXT*(mode: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_vertex_array
-proc glArrayElementEXT*(i: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glArrayElementEXT*(i: GLint){.stdcall, importc, ogl.}
 proc glColorPointerEXT*(size: GLint, typ: GLenum, stride: GLsizei, 
-                        count: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glDrawArraysEXT*(mode: GLenum, first: GLint, count: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                        count: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glDrawArraysEXT*(mode: GLenum, first: GLint, count: GLsizei){.stdcall, importc, ogl.}
 proc glEdgeFlagPointerEXT*(stride: GLsizei, count: GLsizei, pointer: PGLboolean){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetPointervEXT*(pname: GLenum, params: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetPointervEXT*(pname: GLenum, params: PGLvoid){.stdcall, importc, ogl.}
 proc glIndexPointerEXT*(typ: GLenum, stride: GLsizei, count: GLsizei, 
-                        pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                        pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glNormalPointerEXT*(typ: GLenum, stride: GLsizei, count: GLsizei, 
-                         pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glTexCoordPointerEXT*(size: GLint, typ: GLenum, stride: GLsizei, 
-                           count: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                           count: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glVertexPointerEXT*(size: GLint, typ: GLenum, stride: GLsizei, 
-                         count: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         count: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_EXT_vertex_shader
-proc glBeginVertexShaderEXT*(){.stdcall, importc, dynlib: ogldll.}
-proc glEndVertexShaderEXT*(){.stdcall, importc, dynlib: ogldll.}
-proc glBindVertexShaderEXT*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenVertexShadersEXT*(range: GLuint): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glDeleteVertexShaderEXT*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glShaderOp1EXT*(op: GLenum, res: GLuint, arg1: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glBeginVertexShaderEXT*(){.stdcall, importc, ogl.}
+proc glEndVertexShaderEXT*(){.stdcall, importc, ogl.}
+proc glBindVertexShaderEXT*(id: GLuint){.stdcall, importc, ogl.}
+proc glGenVertexShadersEXT*(range: GLuint): GLuint{.stdcall, importc, ogl.}
+proc glDeleteVertexShaderEXT*(id: GLuint){.stdcall, importc, ogl.}
+proc glShaderOp1EXT*(op: GLenum, res: GLuint, arg1: GLuint){.stdcall, importc, ogl.}
 proc glShaderOp2EXT*(op: GLenum, res: GLuint, arg1: GLuint, arg2: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glShaderOp3EXT*(op: GLenum, res: GLuint, arg1: GLuint, arg2: GLuint, 
-                     arg3: GLuint){.stdcall, importc, dynlib: ogldll.}
+                     arg3: GLuint){.stdcall, importc, ogl.}
 proc glSwizzleEXT*(res: GLuint, ain: GLuint, outX: GLenum, outY: GLenum, 
-                   outZ: GLenum, outW: GLenum){.stdcall, importc, dynlib: ogldll.}
+                   outZ: GLenum, outW: GLenum){.stdcall, importc, ogl.}
 proc glWriteMaskEXT*(res: GLuint, ain: GLuint, outX: GLenum, outY: GLenum, 
-                     outZ: GLenum, outW: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glInsertComponentEXT*(res: GLuint, src: GLuint, num: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glExtractComponentEXT*(res: GLuint, src: GLuint, num: GLuint){.stdcall, importc, dynlib: ogldll.}
+                     outZ: GLenum, outW: GLenum){.stdcall, importc, ogl.}
+proc glInsertComponentEXT*(res: GLuint, src: GLuint, num: GLuint){.stdcall, importc, ogl.}
+proc glExtractComponentEXT*(res: GLuint, src: GLuint, num: GLuint){.stdcall, importc, ogl.}
 proc glGenSymbolsEXT*(datatype: GLenum, storagetype: GLenum, range: GLenum, 
-                      components: GLuint): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glSetInvariantEXT*(id: GLuint, typ: GLenum, theAddr: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glSetLocalConstantEXT*(id: GLuint, typ: GLenum, theAddr: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glVariantbvEXT*(id: GLuint, theAddr: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glVariantsvEXT*(id: GLuint, theAddr: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVariantivEXT*(id: GLuint, theAddr: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVariantfvEXT*(id: GLuint, theAddr: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVariantdvEXT*(id: GLuint, theAddr: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVariantubvEXT*(id: GLuint, theAddr: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVariantusvEXT*(id: GLuint, theAddr: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glVariantuivEXT*(id: GLuint, theAddr: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                      components: GLuint): GLuint{.stdcall, importc, ogl.}
+proc glSetInvariantEXT*(id: GLuint, typ: GLenum, theAddr: PGLvoid){.stdcall, importc, ogl.}
+proc glSetLocalConstantEXT*(id: GLuint, typ: GLenum, theAddr: PGLvoid){.stdcall, importc, ogl.}
+proc glVariantbvEXT*(id: GLuint, theAddr: PGLbyte){.stdcall, importc, ogl.}
+proc glVariantsvEXT*(id: GLuint, theAddr: PGLshort){.stdcall, importc, ogl.}
+proc glVariantivEXT*(id: GLuint, theAddr: PGLint){.stdcall, importc, ogl.}
+proc glVariantfvEXT*(id: GLuint, theAddr: PGLfloat){.stdcall, importc, ogl.}
+proc glVariantdvEXT*(id: GLuint, theAddr: PGLdouble){.stdcall, importc, ogl.}
+proc glVariantubvEXT*(id: GLuint, theAddr: PGLubyte){.stdcall, importc, ogl.}
+proc glVariantusvEXT*(id: GLuint, theAddr: PGLushort){.stdcall, importc, ogl.}
+proc glVariantuivEXT*(id: GLuint, theAddr: PGLuint){.stdcall, importc, ogl.}
 proc glVariantPointerEXT*(id: GLuint, typ: GLenum, stride: GLuint, theAddr: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glEnableVariantClientStateEXT*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDisableVariantClientStateEXT*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glBindLightParameterEXT*(light: GLenum, value: GLenum): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glBindMaterialParameterEXT*(face: GLenum, value: GLenum): GLuint{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glEnableVariantClientStateEXT*(id: GLuint){.stdcall, importc, ogl.}
+proc glDisableVariantClientStateEXT*(id: GLuint){.stdcall, importc, ogl.}
+proc glBindLightParameterEXT*(light: GLenum, value: GLenum): GLuint{.stdcall, importc, ogl.}
+proc glBindMaterialParameterEXT*(face: GLenum, value: GLenum): GLuint{.stdcall, importc, ogl.}
 proc glBindTexGenParameterEXT*(theUnit: GLenum, coord: GLenum, value: GLenum): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glBindTextureUnitParameterEXT*(theUnit: GLenum, value: GLenum): GLuint{.
-    stdcall, importc, dynlib: ogldll.}
-proc glBindParameterEXT*(value: GLenum): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glIsVariantEnabledEXT*(id: GLuint, cap: GLenum): GLboolean{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glBindParameterEXT*(value: GLenum): GLuint{.stdcall, importc, ogl.}
+proc glIsVariantEnabledEXT*(id: GLuint, cap: GLenum): GLboolean{.stdcall, importc, ogl.}
 proc glGetVariantBooleanvEXT*(id: GLuint, value: GLenum, data: PGLboolean){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetVariantIntegervEXT*(id: GLuint, value: GLenum, data: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetVariantFloatvEXT*(id: GLuint, value: GLenum, data: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetVariantPointervEXT*(id: GLuint, value: GLenum, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetVariantIntegervEXT*(id: GLuint, value: GLenum, data: PGLint){.stdcall, importc, ogl.}
+proc glGetVariantFloatvEXT*(id: GLuint, value: GLenum, data: PGLfloat){.stdcall, importc, ogl.}
+proc glGetVariantPointervEXT*(id: GLuint, value: GLenum, data: PGLvoid){.stdcall, importc, ogl.}
 proc glGetInvariantBooleanvEXT*(id: GLuint, value: GLenum, data: PGLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetInvariantIntegervEXT*(id: GLuint, value: GLenum, data: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetInvariantFloatvEXT*(id: GLuint, value: GLenum, data: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetLocalConstantBooleanvEXT*(id: GLuint, value: GLenum, data: PGLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetLocalConstantIntegervEXT*(id: GLuint, value: GLenum, data: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetLocalConstantFloatvEXT*(id: GLuint, value: GLenum, data: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_vertex_weighting
-proc glVertexWeightfEXT*(weight: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexWeightfvEXT*(weight: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glVertexWeightfEXT*(weight: GLfloat){.stdcall, importc, ogl.}
+proc glVertexWeightfvEXT*(weight: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexWeightPointerEXT*(size: GLsizei, typ: GLenum, stride: GLsizei, 
-                               pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                               pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_EXT_stencil_clear_tag
 proc glStencilClearTagEXT*(stencilTagBits: GLsizei, stencilClearTag: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_framebuffer_blit
 proc glBlitFramebufferEXT*(srcX0: GLint, srcY0: GLint, srcX1: GLint, 
                            srcY1: GLint, dstX0: GLint, dstY0: GLint, 
                            dstX1: GLint, dstY1: GLint, mask: GLbitfield, 
-                           filter: GLenum){.stdcall, importc, dynlib: ogldll.}
+                           filter: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_framebuffer_multisample
 proc glRenderbufferStorageMultisampleEXT*(target: GLenum, samples: GLsizei, 
-    internalformat: GLenum, width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+    internalformat: GLenum, width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
   # GL_EXT_timer_query
 proc glGetQueryObjecti64vEXT*(id: GLuint, pname: GLenum, params: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetQueryObjectui64vEXT*(id: GLuint, pname: GLenum, params: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_gpu_program_parameters
 proc glProgramEnvParameters4fvEXT*(target: GLenum, index: GLuint, 
-                                   count: GLsizei, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   count: GLsizei, params: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramLocalParameters4fvEXT*(target: GLenum, index: GLuint, 
-                                     count: GLsizei, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     count: GLsizei, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_bindable_uniform
-proc glUniformBufferEXT*(prog: GLuint, location: GLint, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGetUniformBufferSizeEXT*(prog: GLuint, location: GLint): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glGetUniformOffsetEXT*(prog: GLuint, location: GLint): GLintptr{.stdcall, importc, dynlib: ogldll.}
+proc glUniformBufferEXT*(prog: GLuint, location: GLint, buffer: GLuint){.stdcall, importc, ogl.}
+proc glGetUniformBufferSizeEXT*(prog: GLuint, location: GLint): GLint{.stdcall, importc, ogl.}
+proc glGetUniformOffsetEXT*(prog: GLuint, location: GLint): GLintptr{.stdcall, importc, ogl.}
   # GL_EXT_draw_buffers2
 proc glColorMaskIndexedEXT*(buf: GLuint, r: GLboolean, g: GLboolean, 
-                            b: GLboolean, a: GLboolean){.stdcall, importc, dynlib: ogldll.}
+                            b: GLboolean, a: GLboolean){.stdcall, importc, ogl.}
 proc glGetBooleanIndexedvEXT*(value: GLenum, index: GLuint, data: PGLboolean){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetIntegerIndexedvEXT*(value: GLenum, index: GLuint, data: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glEnableIndexedEXT*(target: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDisableIndexedEXT*(target: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsEnabledIndexedEXT*(target: GLenum, index: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glEnableIndexedEXT*(target: GLenum, index: GLuint){.stdcall, importc, ogl.}
+proc glDisableIndexedEXT*(target: GLenum, index: GLuint){.stdcall, importc, ogl.}
+proc glIsEnabledIndexedEXT*(target: GLenum, index: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_EXT_draw_instanced
 proc glDrawArraysInstancedEXT*(mode: GLenum, first: GLint, count: GLsizei, 
-                               primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                               primcount: GLsizei){.stdcall, importc, ogl.}
 proc glDrawElementsInstancedEXT*(mode: GLenum, count: GLsizei, typ: GLenum, 
-                                 indices: Pointer, primcount: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                 indices: Pointer, primcount: GLsizei){.stdcall, importc, ogl.}
   # GL_EXT_geometry_shader4
-proc glProgramParameteriEXT*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glProgramParameteriEXT*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, importc, ogl.}
 proc glFramebufferTextureEXT*(target: GLenum, attachment: GLenum, 
-                              texture: GLuint, level: GLint){.stdcall, importc, dynlib: ogldll.}
-  #procedure glFramebufferTextureLayerEXT(target: GLenum; attachment: GLenum; texture: GLuint; level: GLint; layer: GLint); stdcall, importc, dynlib: ogldll;
+                              texture: GLuint, level: GLint){.stdcall, importc, ogl.}
+  #procedure glFramebufferTextureLayerEXT(target: GLenum; attachment: GLenum; texture: GLuint; level: GLint; layer: GLint); stdcall, importc, ogl;
 proc glFramebufferTextureFaceEXT*(target: GLenum, attachment: GLenum, 
                                   texture: GLuint, level: GLint, face: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_gpu_shader4
-proc glVertexAttribI1iEXT*(index: GLuint, x: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2iEXT*(index: GLuint, x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3iEXT*(index: GLuint, x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribI1iEXT*(index: GLuint, x: GLint){.stdcall, importc, ogl.}
+proc glVertexAttribI2iEXT*(index: GLuint, x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glVertexAttribI3iEXT*(index: GLuint, x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
 proc glVertexAttribI4iEXT*(index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1uiEXT*(index: GLuint, x: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2uiEXT*(index: GLuint, x: GLuint, y: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttribI1uiEXT*(index: GLuint, x: GLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI2uiEXT*(index: GLuint, x: GLuint, y: GLuint){.stdcall, importc, ogl.}
 proc glVertexAttribI3uiEXT*(index: GLuint, x: GLuint, y: GLuint, z: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribI4uiEXT*(index: GLuint, x: GLuint, y: GLuint, z: GLuint, 
-                            w: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI1uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI2uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI3uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4bvEXT*(index: GLuint, v: PGLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4svEXT*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4ubvEXT*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribI4usvEXT*(index: GLuint, v: PGLushort){.stdcall, importc, dynlib: ogldll.}
+                            w: GLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI1ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI2ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI3ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI4ivEXT*(index: GLuint, v: PGLint){.stdcall, importc, ogl.}
+proc glVertexAttribI1uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI2uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI3uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI4uivEXT*(index: GLuint, v: PGLuint){.stdcall, importc, ogl.}
+proc glVertexAttribI4bvEXT*(index: GLuint, v: PGLbyte){.stdcall, importc, ogl.}
+proc glVertexAttribI4svEXT*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribI4ubvEXT*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttribI4usvEXT*(index: GLuint, v: PGLushort){.stdcall, importc, ogl.}
 proc glVertexAttribIPointerEXT*(index: GLuint, size: GLint, typ: GLenum, 
-                                stride: GLsizei, pointer: Pointer){.stdcall, importc, dynlib: ogldll.}
+                                stride: GLsizei, pointer: Pointer){.stdcall, importc, ogl.}
 proc glGetVertexAttribIivEXT*(index: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribIuivEXT*(index: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glUniform1uiEXT*(location: GLint, v0: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2uiEXT*(location: GLint, v0: GLuint, v1: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glUniform1uiEXT*(location: GLint, v0: GLuint){.stdcall, importc, ogl.}
+proc glUniform2uiEXT*(location: GLint, v0: GLuint, v1: GLuint){.stdcall, importc, ogl.}
 proc glUniform3uiEXT*(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform4uiEXT*(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, 
-                      v3: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform1uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform3uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glUniform4uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                      v3: GLuint){.stdcall, importc, ogl.}
+proc glUniform1uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform2uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform3uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
+proc glUniform4uivEXT*(location: GLint, count: GLsizei, value: PGLuint){.stdcall, importc, ogl.}
 proc glGetUniformuivEXT*(prog: GLuint, location: GLint, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glBindFragDataLocationEXT*(prog: GLuint, colorNumber: GLuint, name: PGLchar){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetFragDataLocationEXT*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetFragDataLocationEXT*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, ogl.}
   # GL_EXT_texture_array
 proc glFramebufferTextureLayerEXT*(target: GLenum, attachment: GLenum, 
                                    texture: GLuint, level: GLint, layer: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_texture_buffer_object
 proc glTexBufferEXT*(target: GLenum, internalformat: GLenum, buffer: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_EXT_texture_integer
-proc glClearColorIiEXT*(r: GLint, g: GLint, b: GLint, a: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glClearColorIuiEXT*(r: GLuint, g: GLuint, b: GLuint, a: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glClearColorIiEXT*(r: GLint, g: GLint, b: GLint, a: GLint){.stdcall, importc, ogl.}
+proc glClearColorIuiEXT*(r: GLuint, g: GLuint, b: GLuint, a: GLuint){.stdcall, importc, ogl.}
 proc glTexParameterIivEXT*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexParameterIuivEXT*(target: GLenum, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterIivEXT*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTexParameterIiuvEXT*(target: GLenum, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_HP_image_transform
 proc glImageTransformParameteriHP*(target: GLenum, pname: GLenum, param: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glImageTransformParameterfHP*(target: GLenum, pname: GLenum, param: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glImageTransformParameterivHP*(target: GLenum, pname: GLenum, 
-                                    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLint){.stdcall, importc, ogl.}
 proc glImageTransformParameterfvHP*(target: GLenum, pname: GLenum, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetImageTransformParameterivHP*(target: GLenum, pname: GLenum, 
-                                       params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLint){.stdcall, importc, ogl.}
 proc glGetImageTransformParameterfvHP*(target: GLenum, pname: GLenum, 
-                                       params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLfloat){.stdcall, importc, ogl.}
   # GL_EXT_depth_bounds_test
-proc glDepthBoundsEXT*(zmin: GLclampd, zmax: GLclampd){.stdcall, importc, dynlib: ogldll.}
+proc glDepthBoundsEXT*(zmin: GLclampd, zmax: GLclampd){.stdcall, importc, ogl.}
   # GL_EXT_blend_equation_separate
-proc glBlendEquationSeparateEXT*(modeRGB: GLenum, modeAlpha: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glBlendEquationSeparateEXT*(modeRGB: GLenum, modeAlpha: GLenum){.stdcall, importc, ogl.}
   # GL_EXT_transform_feedback
-proc glBeginTransformFeedbackEXT*(primitiveMode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEndTransformFeedbackEXT*(){.stdcall, importc, dynlib: ogldll.}
+proc glBeginTransformFeedbackEXT*(primitiveMode: GLenum){.stdcall, importc, ogl.}
+proc glEndTransformFeedbackEXT*(){.stdcall, importc, ogl.}
 proc glBindBufferRangeEXT*(target: GLenum, index: GLuint, buffer: GLuint, 
-                           offset: GLintptr, size: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
+                           offset: GLintptr, size: GLsizeiptr){.stdcall, importc, ogl.}
 proc glBindBufferOffsetEXT*(target: GLenum, index: GLuint, buffer: GLuint, 
-                            offset: GLintptr){.stdcall, importc, dynlib: ogldll.}
+                            offset: GLintptr){.stdcall, importc, ogl.}
 proc glBindBufferBaseEXT*(target: GLenum, index: GLuint, buffer: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTransformFeedbackVaryingsEXT*(prog: GLuint, count: GLsizei, 
                                      locations: PGLint, bufferMode: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTransformFeedbackVaryingEXT*(prog: GLuint, index: GLuint, 
-                                       location: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                       location: PGLint){.stdcall, importc, ogl.}
   # GL_EXT_direct_state_access
-proc glClientAttribDefaultEXT*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glPushClientAttribDefaultEXT*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixLoadfEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixLoaddEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixMultfEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixMultdEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixLoadIdentityEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glClientAttribDefaultEXT*(mask: GLbitfield){.stdcall, importc, ogl.}
+proc glPushClientAttribDefaultEXT*(mask: GLbitfield){.stdcall, importc, ogl.}
+proc glMatrixLoadfEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, ogl.}
+proc glMatrixLoaddEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, ogl.}
+proc glMatrixMultfEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, ogl.}
+proc glMatrixMultdEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, ogl.}
+proc glMatrixLoadIdentityEXT*(mode: GLenum){.stdcall, importc, ogl.}
 proc glMatrixRotatefEXT*(mode: GLenum, angle: GLfloat, x: GLfloat, y: GLfloat, 
-                         z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                         z: GLfloat){.stdcall, importc, ogl.}
 proc glMatrixRotatedEXT*(mode: GLenum, angle: GLdouble, x: GLdouble, 
-                         y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                         y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
 proc glMatrixScalefEXT*(mode: GLenum, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMatrixScaledEXT*(mode: GLenum, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMatrixTranslatefEXT*(mode: GLenum, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMatrixTranslatedEXT*(mode: GLenum, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMatrixFrustumEXT*(mode: GLenum, left: GLdouble, right: GLdouble, 
                          bottom: GLdouble, top: GLdouble, zNear: GLdouble, 
-                         zFar: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                         zFar: GLdouble){.stdcall, importc, ogl.}
 proc glMatrixOrthoEXT*(mode: GLenum, left: GLdouble, right: GLdouble, 
                        bottom: GLdouble, top: GLdouble, zNear: GLdouble, 
-                       zFar: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixPopEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixPushEXT*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixLoadTransposefEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixLoadTransposedEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixMultTransposefEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glMatrixMultTransposedEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                       zFar: GLdouble){.stdcall, importc, ogl.}
+proc glMatrixPopEXT*(mode: GLenum){.stdcall, importc, ogl.}
+proc glMatrixPushEXT*(mode: GLenum){.stdcall, importc, ogl.}
+proc glMatrixLoadTransposefEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, ogl.}
+proc glMatrixLoadTransposedEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, ogl.}
+proc glMatrixMultTransposefEXT*(mode: GLenum, m: PGLfloat){.stdcall, importc, ogl.}
+proc glMatrixMultTransposedEXT*(mode: GLenum, m: PGLdouble){.stdcall, importc, ogl.}
 proc glTextureParameterfEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                             param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                             param: GLfloat){.stdcall, importc, ogl.}
 proc glTextureParameterfvEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                              params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                              params: PGLfloat){.stdcall, importc, ogl.}
 proc glTextureParameteriEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                             param: GLint){.stdcall, importc, dynlib: ogldll.}
+                             param: GLint){.stdcall, importc, ogl.}
 proc glTextureParameterivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                              params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                              params: PGLint){.stdcall, importc, ogl.}
 proc glTextureImage1DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                           internalformat: GLenum, width: GLsizei, border: GLint, 
-                          format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTextureImage2DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                           internalformat: GLenum, width: GLsizei, 
                           height: GLsizei, border: GLint, format: GLenum, 
-                          typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTextureSubImage1DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                              xoffset: GLint, width: GLsizei, format: GLenum, 
-                             typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTextureSubImage2DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                              xoffset: GLint, yoffset: GLint, width: GLsizei, 
                              height: GLsizei, format: GLenum, typ: GLenum, 
-                             pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                             pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glCopyTextureImage1DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                               internalformat: GLenum, x: GLint, y: GLint, 
-                              width: GLsizei, border: GLint){.stdcall, importc, dynlib: ogldll.}
+                              width: GLsizei, border: GLint){.stdcall, importc, ogl.}
 proc glCopyTextureImage2DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                               internalformat: GLenum, x: GLint, y: GLint, 
                               width: GLsizei, height: GLsizei, border: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyTextureSubImage1DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                                  xoffset: GLint, x: GLint, y: GLint, 
-                                 width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                 width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyTextureSubImage2DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                                  xoffset: GLint, yoffset: GLint, x: GLint, 
                                  y: GLint, width: GLsizei, height: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTextureImageEXT*(texture: GLuint, target: GLenum, level: GLint, 
                            format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetTextureParameterfvEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                                 params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                 params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetTextureParameterivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                                 params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                 params: PGLint){.stdcall, importc, ogl.}
 proc glGetTextureLevelParameterfvEXT*(texture: GLuint, target: GLenum, 
                                       level: GLint, pname: GLenum, 
-                                      params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetTextureLevelParameterivEXT*(texture: GLuint, target: GLenum, 
                                       level: GLint, pname: GLenum, params: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTextureImage3DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                           internalformat: GLenum, width: GLsizei, 
                           height: GLsizei, depth: GLsizei, border: GLint, 
-                          format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          format: GLenum, typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTextureSubImage3DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                              xoffset: GLint, yoffset: GLint, zoffset: GLint, 
                              width: GLsizei, height: GLsizei, depth: GLsizei, 
                              format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyTextureSubImage3DEXT*(texture: GLuint, target: GLenum, level: GLint, 
                                  xoffset: GLint, yoffset: GLint, zoffset: GLint, 
                                  x: GLint, y: GLint, width: GLsizei, 
-                                 height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                 height: GLsizei){.stdcall, importc, ogl.}
 proc glMultiTexParameterfEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                              param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                              param: GLfloat){.stdcall, importc, ogl.}
 proc glMultiTexParameterfvEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                               params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                               params: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexParameteriEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                              param: GLint){.stdcall, importc, dynlib: ogldll.}
+                              param: GLint){.stdcall, importc, ogl.}
 proc glMultiTexParameterivEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                               params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                               params: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexImage1DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                            internalformat: GLenum, width: GLsizei, 
                            border: GLint, format: GLenum, typ: GLenum, 
-                           pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                           pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glMultiTexImage2DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                            internalformat: GLenum, width: GLsizei, 
                            height: GLsizei, border: GLint, format: GLenum, 
-                           typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                           typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glMultiTexSubImage1DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                               xoffset: GLint, width: GLsizei, format: GLenum, 
-                              typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                              typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glMultiTexSubImage2DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                               xoffset: GLint, yoffset: GLint, width: GLsizei, 
                               height: GLsizei, format: GLenum, typ: GLenum, 
-                              pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                              pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glCopyMultiTexImage1DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                                internalformat: GLenum, x: GLint, y: GLint, 
-                               width: GLsizei, border: GLint){.stdcall, importc, dynlib: ogldll.}
+                               width: GLsizei, border: GLint){.stdcall, importc, ogl.}
 proc glCopyMultiTexImage2DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                                internalformat: GLenum, x: GLint, y: GLint, 
                                width: GLsizei, height: GLsizei, border: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyMultiTexSubImage1DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                                   xoffset: GLint, x: GLint, y: GLint, 
-                                  width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                  width: GLsizei){.stdcall, importc, ogl.}
 proc glCopyMultiTexSubImage2DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                                   xoffset: GLint, yoffset: GLint, x: GLint, 
                                   y: GLint, width: GLsizei, height: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMultiTexImageEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                             format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMultiTexParameterfvEXT*(texunit: GLenum, target: GLenum, 
-                                  pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetMultiTexParameterivEXT*(texunit: GLenum, target: GLenum, 
-                                  pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetMultiTexLevelParameterfvEXT*(texunit: GLenum, target: GLenum, 
                                        level: GLint, pname: GLenum, 
-                                       params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetMultiTexLevelParameterivEXT*(texunit: GLenum, target: GLenum, 
                                        level: GLint, pname: GLenum, 
-                                       params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexImage3DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                            internalformat: GLenum, width: GLsizei, 
                            height: GLsizei, depth: GLsizei, border: GLint, 
                            format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glMultiTexSubImage3DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                               xoffset: GLint, yoffset: GLint, zoffset: GLint, 
                               width: GLsizei, height: GLsizei, depth: GLsizei, 
                               format: GLenum, typ: GLenum, pixels: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyMultiTexSubImage3DEXT*(texunit: GLenum, target: GLenum, level: GLint, 
                                   xoffset: GLint, yoffset: GLint, 
                                   zoffset: GLint, x: GLint, y: GLint, 
-                                  width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                  width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glBindMultiTextureEXT*(texunit: GLenum, target: GLenum, texture: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glEnableClientStateIndexedEXT*(arr: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDisableClientStateIndexedEXT*(arr: GLenum, index: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glEnableClientStateIndexedEXT*(arr: GLenum, index: GLuint){.stdcall, importc, ogl.}
+proc glDisableClientStateIndexedEXT*(arr: GLenum, index: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexCoordPointerEXT*(texunit: GLenum, size: GLint, typ: GLenum, 
-                                stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glMultiTexEnvfEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                        param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                        param: GLfloat){.stdcall, importc, ogl.}
 proc glMultiTexEnvfvEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                         params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexEnviEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                        param: GLint){.stdcall, importc, dynlib: ogldll.}
+                        param: GLint){.stdcall, importc, ogl.}
 proc glMultiTexEnvivEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                         params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexGendEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                        param: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                        param: GLdouble){.stdcall, importc, ogl.}
 proc glMultiTexGendvEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                         params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLdouble){.stdcall, importc, ogl.}
 proc glMultiTexGenfEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                        param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                        param: GLfloat){.stdcall, importc, ogl.}
 proc glMultiTexGenfvEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                         params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLfloat){.stdcall, importc, ogl.}
 proc glMultiTexGeniEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                        param: GLint){.stdcall, importc, dynlib: ogldll.}
+                        param: GLint){.stdcall, importc, ogl.}
 proc glMultiTexGenivEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                         params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                         params: PGLint){.stdcall, importc, ogl.}
 proc glGetMultiTexEnvfvEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                            params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetMultiTexEnvivEXT*(texunit: GLenum, target: GLenum, pname: GLenum, 
-                            params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLint){.stdcall, importc, ogl.}
 proc glGetMultiTexGendvEXT*(texunit: GLenum, coord: GLenum, pname: GLenum, 
-                            params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLdouble){.stdcall, importc, ogl.}
 proc glGetMultiTexGenfvEXT*(texunit: GLenum, coord: GLenum, pname: GLenum, 
-                            params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetMultiTexGenivEXT*(texunit: GLenum, coord: GLenum, pname: GLenum, 
-                            params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLint){.stdcall, importc, ogl.}
 proc glGetFloatIndexedvEXT*(target: GLenum, index: GLuint, data: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetDoubleIndexedvEXT*(target: GLenum, index: GLuint, data: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetPointerIndexedvEXT*(target: GLenum, index: GLuint, data: PPGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedTextureImage3DEXT*(texture: GLuint, target: GLenum, 
                                     level: GLint, internalformat: GLenum, 
                                     width: GLsizei, height: GLsizei, 
                                     depth: GLsizei, border: GLint, 
-                                    imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                    imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTextureImage2DEXT*(texture: GLuint, target: GLenum, 
                                     level: GLint, internalformat: GLenum, 
                                     width: GLsizei, height: GLsizei, 
                                     border: GLint, imageSize: GLsizei, 
-                                    bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                    bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTextureImage1DEXT*(texture: GLuint, target: GLenum, 
                                     level: GLint, internalformat: GLenum, 
                                     width: GLsizei, border: GLint, 
-                                    imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                    imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedTextureSubImage3DEXT*(texture: GLuint, target: GLenum, 
                                        level: GLint, xoffset: GLint, 
                                        yoffset: GLint, zoffset: GLint, 
                                        width: GLsizei, height: GLsizei, 
                                        depth: GLsizei, format: GLenum, 
                                        imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedTextureSubImage2DEXT*(texture: GLuint, target: GLenum, 
                                        level: GLint, xoffset: GLint, 
                                        yoffset: GLint, width: GLsizei, 
                                        height: GLsizei, format: GLenum, 
                                        imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedTextureSubImage1DEXT*(texture: GLuint, target: GLenum, 
                                        level: GLint, xoffset: GLint, 
                                        width: GLsizei, format: GLenum, 
                                        imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetCompressedTextureImageEXT*(texture: GLuint, target: GLenum, 
-                                     lod: GLint, img: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                     lod: GLint, img: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedMultiTexImage3DEXT*(texunit: GLenum, target: GLenum, 
                                      level: GLint, internalformat: GLenum, 
                                      width: GLsizei, height: GLsizei, 
                                      depth: GLsizei, border: GLint, 
-                                     imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                     imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedMultiTexImage2DEXT*(texunit: GLenum, target: GLenum, 
                                      level: GLint, internalformat: GLenum, 
                                      width: GLsizei, height: GLsizei, 
                                      border: GLint, imageSize: GLsizei, 
-                                     bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                     bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedMultiTexImage1DEXT*(texunit: GLenum, target: GLenum, 
                                      level: GLint, internalformat: GLenum, 
                                      width: GLsizei, border: GLint, 
-                                     imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                     imageSize: GLsizei, bits: PGLvoid){.stdcall, importc, ogl.}
 proc glCompressedMultiTexSubImage3DEXT*(texunit: GLenum, target: GLenum, 
                                         level: GLint, xoffset: GLint, 
                                         yoffset: GLint, zoffset: GLint, 
                                         width: GLsizei, height: GLsizei, 
                                         depth: GLsizei, format: GLenum, 
                                         imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedMultiTexSubImage2DEXT*(texunit: GLenum, target: GLenum, 
                                         level: GLint, xoffset: GLint, 
                                         yoffset: GLint, width: GLsizei, 
                                         height: GLsizei, format: GLenum, 
                                         imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCompressedMultiTexSubImage1DEXT*(texunit: GLenum, target: GLenum, 
                                         level: GLint, xoffset: GLint, 
                                         width: GLsizei, format: GLenum, 
                                         imageSize: GLsizei, bits: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetCompressedMultiTexImageEXT*(texunit: GLenum, target: GLenum, 
-                                      lod: GLint, img: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                      lod: GLint, img: PGLvoid){.stdcall, importc, ogl.}
 proc glNamedProgramStringEXT*(prog: GLuint, target: GLenum, format: GLenum, 
-                              length: GLsizei, string: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                              length: GLsizei, string: PGLvoid){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameter4dEXT*(prog: GLuint, target: GLenum, 
                                         index: GLuint, x: GLdouble, y: GLdouble, 
-                                        z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                                        z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameter4dvEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLdouble){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameter4fEXT*(prog: GLuint, target: GLenum, 
                                         index: GLuint, x: GLfloat, y: GLfloat, 
-                                        z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                        z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameter4fvEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetNamedProgramLocalParameterdvEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLdouble){.stdcall, importc, ogl.}
 proc glGetNamedProgramLocalParameterfvEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetNamedProgramivEXT*(prog: GLuint, target: GLenum, pname: GLenum, 
-                             params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                             params: PGLint){.stdcall, importc, ogl.}
 proc glGetNamedProgramStringEXT*(prog: GLuint, target: GLenum, pname: GLenum, 
-                                 string: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                 string: PGLvoid){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameters4fvEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, count: GLsizei, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, count: GLsizei, params: PGLfloat){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameterI4iEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameterI4ivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLint){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParametersI4ivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, count: GLsizei, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, count: GLsizei, params: PGLint){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameterI4uiEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, x: GLuint, y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, x: GLuint, y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParameterI4uivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLuint){.stdcall, importc, ogl.}
 proc glNamedProgramLocalParametersI4uivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, count: GLsizei, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, count: GLsizei, params: PGLuint){.stdcall, importc, ogl.}
 proc glGetNamedProgramLocalParameterIivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLint){.stdcall, importc, ogl.}
 proc glGetNamedProgramLocalParameterIuivEXT*(prog: GLuint, target: GLenum, 
-    index: GLuint, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    index: GLuint, params: PGLuint){.stdcall, importc, ogl.}
 proc glTextureParameterIivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                               params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                               params: PGLint){.stdcall, importc, ogl.}
 proc glTextureParameterIuivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                                params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLuint){.stdcall, importc, ogl.}
 proc glGetTextureParameterIivEXT*(texture: GLuint, target: GLenum, 
-                                  pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetTextureParameterIuivEXT*(texture: GLuint, target: GLenum, 
-                                   pname: GLenum, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                   pname: GLenum, params: PGLuint){.stdcall, importc, ogl.}
 proc glMultiTexParameterIivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                                params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLint){.stdcall, importc, ogl.}
 proc glMultiTexParameterIuivEXT*(texture: GLuint, target: GLenum, pname: GLenum, 
-                                 params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                 params: PGLuint){.stdcall, importc, ogl.}
 proc glGetMultiTexParameterIivEXT*(texture: GLuint, target: GLenum, 
-                                   pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                   pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetMultiTexParameterIuivEXT*(texture: GLuint, target: GLenum, 
-                                    pname: GLenum, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1fEXT*(prog: GLuint, location: GLint, v0: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    pname: GLenum, params: PGLuint){.stdcall, importc, ogl.}
+proc glProgramUniform1fEXT*(prog: GLuint, location: GLint, v0: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform2fEXT*(prog: GLuint, location: GLint, v0: GLfloat, 
-                            v1: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                            v1: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform3fEXT*(prog: GLuint, location: GLint, v0: GLfloat, 
-                            v1: GLfloat, v2: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                            v1: GLfloat, v2: GLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform4fEXT*(prog: GLuint, location: GLint, v0: GLfloat, 
-                            v1: GLfloat, v2: GLfloat, v3: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1iEXT*(prog: GLuint, location: GLint, v0: GLint){.stdcall, importc, dynlib: ogldll.}
+                            v1: GLfloat, v2: GLfloat, v3: GLfloat){.stdcall, importc, ogl.}
+proc glProgramUniform1iEXT*(prog: GLuint, location: GLint, v0: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform2iEXT*(prog: GLuint, location: GLint, v0: GLint, v1: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform3iEXT*(prog: GLuint, location: GLint, v0: GLint, v1: GLint, 
-                            v2: GLint){.stdcall, importc, dynlib: ogldll.}
+                            v2: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform4iEXT*(prog: GLuint, location: GLint, v0: GLint, v1: GLint, 
-                            v2: GLint, v3: GLint){.stdcall, importc, dynlib: ogldll.}
+                            v2: GLint, v3: GLint){.stdcall, importc, ogl.}
 proc glProgramUniform1fvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform2fvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform3fvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform4fvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniform1ivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform2ivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform3ivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniform4ivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLint){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLint){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2fvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3fvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4fvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x3fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x2fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x4fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x2fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x4fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x3fvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1uiEXT*(prog: GLuint, location: GLint, v0: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLfloat){.stdcall, importc, ogl.}
+proc glProgramUniform1uiEXT*(prog: GLuint, location: GLint, v0: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform2uiEXT*(prog: GLuint, location: GLint, v0: GLuint, 
-                             v1: GLuint){.stdcall, importc, dynlib: ogldll.}
+                             v1: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform3uiEXT*(prog: GLuint, location: GLint, v0: GLuint, 
-                             v1: GLuint, v2: GLuint){.stdcall, importc, dynlib: ogldll.}
+                             v1: GLuint, v2: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform4uiEXT*(prog: GLuint, location: GLint, v0: GLuint, 
-                             v1: GLuint, v2: GLuint, v3: GLuint){.stdcall, importc, dynlib: ogldll.}
+                             v1: GLuint, v2: GLuint, v3: GLuint){.stdcall, importc, ogl.}
 proc glProgramUniform1uivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform2uivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform3uivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLuint){.stdcall, importc, ogl.}
 proc glProgramUniform4uivEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLuint){.stdcall, importc, ogl.}
 proc glNamedBufferDataEXT*(buffer: GLuint, size: GLsizei, data: PGLvoid, 
-                           usage: GLenum){.stdcall, importc, dynlib: ogldll.}
+                           usage: GLenum){.stdcall, importc, ogl.}
 proc glNamedBufferSubDataEXT*(buffer: GLuint, offset: GLintptr, 
-                              size: GLsizeiptr, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glMapNamedBufferEXT*(buffer: GLuint, access: GLenum): PGLvoid{.stdcall, importc, dynlib: ogldll.}
-proc glUnmapNamedBufferEXT*(buffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+                              size: GLsizeiptr, data: PGLvoid){.stdcall, importc, ogl.}
+proc glMapNamedBufferEXT*(buffer: GLuint, access: GLenum): PGLvoid{.stdcall, importc, ogl.}
+proc glUnmapNamedBufferEXT*(buffer: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glMapNamedBufferRangeEXT*(buffer: GLuint, offset: GLintptr, 
                                len: GLsizeiptr, access: GLbitfield): PGLvoid{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFlushMappedNamedBufferRangeEXT*(buffer: GLuint, offset: GLintptr, 
-                                       len: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
+                                       len: GLsizeiptr){.stdcall, importc, ogl.}
 proc glNamedCopyBufferSubDataEXT*(readBuffer: GLuint, writeBuffer: GLuint, 
                                   readOffset: GLintptr, writeOffset: GLintptr, 
-                                  size: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
+                                  size: GLsizeiptr){.stdcall, importc, ogl.}
 proc glGetNamedBufferParameterivEXT*(buffer: GLuint, pname: GLenum, 
-                                     params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLint){.stdcall, importc, ogl.}
 proc glGetNamedBufferPointervEXT*(buffer: GLuint, pname: GLenum, 
-                                  params: PPGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                  params: PPGLvoid){.stdcall, importc, ogl.}
 proc glGetNamedBufferSubDataEXT*(buffer: GLuint, offset: GLintptr, 
-                                 size: GLsizeiptr, data: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                 size: GLsizeiptr, data: PGLvoid){.stdcall, importc, ogl.}
 proc glTextureBufferEXT*(texture: GLuint, target: GLenum, 
-                         internalformat: GLenum, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                         internalformat: GLenum, buffer: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexBufferEXT*(texunit: GLenum, target: GLenum, interformat: GLenum, 
-                          buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                          buffer: GLuint){.stdcall, importc, ogl.}
 proc glNamedRenderbufferStorageEXT*(renderbuffer: GLuint, interformat: GLenum, 
-                                    width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                                    width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glGetNamedRenderbufferParameterivEXT*(renderbuffer: GLuint, pname: GLenum, 
-    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    params: PGLint){.stdcall, importc, ogl.}
 proc glCheckNamedFramebufferStatusEXT*(framebuffer: GLuint, target: GLenum): GLenum{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glNamedFramebufferTexture1DEXT*(framebuffer: GLuint, attachment: GLenum, 
                                      textarget: GLenum, texture: GLuint, 
-                                     level: GLint){.stdcall, importc, dynlib: ogldll.}
+                                     level: GLint){.stdcall, importc, ogl.}
 proc glNamedFramebufferTexture2DEXT*(framebuffer: GLuint, attachment: GLenum, 
                                      textarget: GLenum, texture: GLuint, 
-                                     level: GLint){.stdcall, importc, dynlib: ogldll.}
+                                     level: GLint){.stdcall, importc, ogl.}
 proc glNamedFramebufferTexture3DEXT*(framebuffer: GLuint, attachment: GLenum, 
                                      textarget: GLenum, texture: GLuint, 
-                                     level: GLint, zoffset: GLint){.stdcall, importc, dynlib: ogldll.}
+                                     level: GLint, zoffset: GLint){.stdcall, importc, ogl.}
 proc glNamedFramebufferRenderbufferEXT*(framebuffer: GLuint, attachment: GLenum, 
                                         renderbuffertarget: GLenum, 
-                                        renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                        renderbuffer: GLuint){.stdcall, importc, ogl.}
 proc glGetNamedFramebufferAttachmentParameterivEXT*(framebuffer: GLuint, 
-    attachment: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGenerateTextureMipmapEXT*(texture: GLuint, target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glGenerateMultiTexMipmapEXT*(texunit: GLenum, target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glFramebufferDrawBufferEXT*(framebuffer: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+    attachment: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGenerateTextureMipmapEXT*(texture: GLuint, target: GLenum){.stdcall, importc, ogl.}
+proc glGenerateMultiTexMipmapEXT*(texunit: GLenum, target: GLenum){.stdcall, importc, ogl.}
+proc glFramebufferDrawBufferEXT*(framebuffer: GLuint, mode: GLenum){.stdcall, importc, ogl.}
 proc glFramebufferDrawBuffersEXT*(framebuffer: GLuint, n: GLsizei, bufs: PGLenum){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFramebufferReadBufferEXT*(framebuffer: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFramebufferReadBufferEXT*(framebuffer: GLuint, mode: GLenum){.stdcall, importc, ogl.}
 proc glGetFramebufferParameterivEXT*(framebuffer: GLuint, pname: GLenum, 
-                                     params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLint){.stdcall, importc, ogl.}
 proc glNamedRenderbufferStorageMultisampleEXT*(renderbuffer: GLuint, 
     samples: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glNamedRenderbufferStorageMultisampleCoverageEXT*(renderbuffer: GLuint, 
     coverageSamples: GLsizei, colorSamples: GLsizei, internalformat: GLenum, 
-    width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+    width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
 proc glNamedFramebufferTextureEXT*(framebuffer: GLuint, attachment: GLenum, 
-                                   texture: GLuint, level: GLint){.stdcall, importc, dynlib: ogldll.}
+                                   texture: GLuint, level: GLint){.stdcall, importc, ogl.}
 proc glNamedFramebufferTextureLayerEXT*(framebuffer: GLuint, attachment: GLenum, 
                                         texture: GLuint, level: GLint, 
-                                        layer: GLint){.stdcall, importc, dynlib: ogldll.}
+                                        layer: GLint){.stdcall, importc, ogl.}
 proc glNamedFramebufferTextureFaceEXT*(framebuffer: GLuint, attachment: GLenum, 
                                        texture: GLuint, level: GLint, 
-                                       face: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                       face: GLenum){.stdcall, importc, ogl.}
 proc glTextureRenderbufferEXT*(texture: GLuint, target: GLenum, 
-                               renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                               renderbuffer: GLuint){.stdcall, importc, ogl.}
 proc glMultiTexRenderbufferEXT*(texunit: GLenum, target: GLenum, 
-                                renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glProgramUniform1dEXT*(prog: GLuint, location: GLint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                                renderbuffer: GLuint){.stdcall, importc, ogl.}
+proc glProgramUniform1dEXT*(prog: GLuint, location: GLint, x: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform2dEXT*(prog: GLuint, location: GLint, x: GLdouble, 
-                            y: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                            y: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform3dEXT*(prog: GLuint, location: GLint, x: GLdouble, 
-                            y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                            y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform4dEXT*(prog: GLuint, location: GLint, x: GLdouble, 
-                            y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                            y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform1dvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform2dvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform3dvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniform4dvEXT*(prog: GLuint, location: GLint, count: GLsizei, 
-                             value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                             value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2dvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3dvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4dvEXT*(prog: GLuint, location: GLint, 
                                    count: GLsizei, transpose: GLboolean, 
-                                   value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                   value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x3dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix2x4dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x2dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix3x4dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x2dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramUniformMatrix4x3dvEXT*(prog: GLuint, location: GLint, 
                                      count: GLsizei, transpose: GLboolean, 
-                                     value: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     value: PGLdouble){.stdcall, importc, ogl.}
   # GL_EXT_separate_shader_objects
-proc glUseShaderProgramEXT*(typ: GLenum, prog: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glActiveProgramEXT*(prog: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glCreateShaderProgramEXT*(typ: GLenum, string: PGLchar): GLuint{.stdcall, importc, dynlib: ogldll.}
+proc glUseShaderProgramEXT*(typ: GLenum, prog: GLuint){.stdcall, importc, ogl.}
+proc glActiveProgramEXT*(prog: GLuint){.stdcall, importc, ogl.}
+proc glCreateShaderProgramEXT*(typ: GLenum, string: PGLchar): GLuint{.stdcall, importc, ogl.}
   # GL_EXT_shader_image_load_store
 proc glBindImageTextureEXT*(index: GLuint, texture: GLuint, level: GLint, 
                             layered: GLboolean, layer: GLint, access: GLenum, 
-                            format: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glMemoryBarrierEXT*(barriers: GLbitfield){.stdcall, importc, dynlib: ogldll.}
+                            format: GLint){.stdcall, importc, ogl.}
+proc glMemoryBarrierEXT*(barriers: GLbitfield){.stdcall, importc, ogl.}
   # GL_EXT_vertex_attrib_64bit
-proc glVertexAttribL1dEXT*(index: GLuint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2dEXT*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribL1dEXT*(index: GLuint, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL2dEXT*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
 proc glVertexAttribL3dEXT*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribL4dEXT*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                           w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL1dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL3dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL4dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                           w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL1dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL2dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL3dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribL4dvEXT*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttribLPointerEXT*(index: GLuint, size: GLint, typ: GLenum, 
-                                stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                                stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glGetVertexAttribLdvEXT*(index: GLuint, pname: GLenum, params: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexArrayVertexAttribLOffsetEXT*(vaobj: GLuint, buffer: GLuint, 
     index: GLuint, size: GLint, typ: GLenum, stride: GLsizei, offset: GLintptr){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_IBM_multimode_draw_arrays
 proc glMultiModeDrawArraysIBM*(mode: GLenum, first: PGLint, count: PGLsizei, 
-                               primcount: GLsizei, modestride: GLint){.stdcall, importc, dynlib: ogldll.}
+                               primcount: GLsizei, modestride: GLint){.stdcall, importc, ogl.}
 proc glMultiModeDrawElementsIBM*(mode: PGLenum, count: PGLsizei, typ: GLenum, 
                                  indices: PGLvoid, primcount: GLsizei, 
-                                 modestride: GLint){.stdcall, importc, dynlib: ogldll.}
+                                 modestride: GLint){.stdcall, importc, ogl.}
   # GL_IBM_vertex_array_lists
 proc glColorPointerListIBM*(size: GLint, typ: GLenum, stride: GLint, 
-                            pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                            pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, ogl.}
 proc glSecondaryColorPointerListIBM*(size: GLint, typ: GLenum, stride: GLint, 
                                      pointer: PGLvoid, ptrstride: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glEdgeFlagPointerListIBM*(stride: GLint, pointer: PGLboolean, 
-                               ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                               ptrstride: GLint){.stdcall, importc, ogl.}
 proc glFogCoordPointerListIBM*(typ: GLenum, stride: GLint, pointer: PGLvoid, 
-                               ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                               ptrstride: GLint){.stdcall, importc, ogl.}
 proc glIndexPointerListIBM*(typ: GLenum, stride: GLint, pointer: PGLvoid, 
-                            ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                            ptrstride: GLint){.stdcall, importc, ogl.}
 proc glNormalPointerListIBM*(typ: GLenum, stride: GLint, pointer: PGLvoid, 
-                             ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                             ptrstride: GLint){.stdcall, importc, ogl.}
 proc glTexCoordPointerListIBM*(size: GLint, typ: GLenum, stride: GLint, 
-                               pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                               pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, ogl.}
 proc glVertexPointerListIBM*(size: GLint, typ: GLenum, stride: GLint, 
-                             pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, dynlib: ogldll.}
+                             pointer: PGLvoid, ptrstride: GLint){.stdcall, importc, ogl.}
   # GL_INGR_blend_func_separate
 proc glBlendFuncSeparateINGR*(sfactorRGB: GLenum, dfactorRGB: GLenum, 
                               sfactorAlpha: GLenum, dfactorAlpha: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_INTEL_parallel_arrays
-proc glVertexPointervINTEL*(size: GLint, typ: GLenum, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glNormalPointervINTEL*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glColorPointervINTEL*(size: GLint, typ: GLenum, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+proc glVertexPointervINTEL*(size: GLint, typ: GLenum, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glNormalPointervINTEL*(typ: GLenum, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glColorPointervINTEL*(size: GLint, typ: GLenum, pointer: PGLvoid){.stdcall, importc, ogl.}
 proc glTexCoordPointervINTEL*(size: GLint, typ: GLenum, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_MESA_resize_buffers
-proc glResizeBuffersMESA*(){.stdcall, importc, dynlib: ogldll.}
+proc glResizeBuffersMESA*(){.stdcall, importc, ogl.}
   # GL_MESA_window_pos
-proc glWindowPos2dMESA*(x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2dvMESA*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2fMESA*(x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2fvMESA*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2iMESA*(x: GLint, y: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2ivMESA*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2sMESA*(x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos2svMESA*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3dMESA*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3dvMESA*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3fMESA*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3fvMESA*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3iMESA*(x: GLint, y: GLint, z: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3ivMESA*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3sMESA*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos3svMESA*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+proc glWindowPos2dMESA*(x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2dvMESA*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos2fMESA*(x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2fvMESA*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos2iMESA*(x: GLint, y: GLint){.stdcall, importc, ogl.}
+proc glWindowPos2ivMESA*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos2sMESA*(x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos2svMESA*(v: PGLshort){.stdcall, importc, ogl.}
+proc glWindowPos3dMESA*(x: GLdouble, y: GLdouble, z: GLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3dvMESA*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos3fMESA*(x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3fvMESA*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos3iMESA*(x: GLint, y: GLint, z: GLint){.stdcall, importc, ogl.}
+proc glWindowPos3ivMESA*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos3sMESA*(x: GLshort, y: GLshort, z: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos3svMESA*(v: PGLshort){.stdcall, importc, ogl.}
 proc glWindowPos4dMESA*(x: GLdouble, y: GLdouble, z: GLdouble, w: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4dvMESA*(v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4fMESA*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4fvMESA*(v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4iMESA*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4ivMESA*(v: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4sMESA*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glWindowPos4svMESA*(v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glWindowPos4dvMESA*(v: PGLdouble){.stdcall, importc, ogl.}
+proc glWindowPos4fMESA*(x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
+proc glWindowPos4fvMESA*(v: PGLfloat){.stdcall, importc, ogl.}
+proc glWindowPos4iMESA*(x: GLint, y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
+proc glWindowPos4ivMESA*(v: PGLint){.stdcall, importc, ogl.}
+proc glWindowPos4sMESA*(x: GLshort, y: GLshort, z: GLshort, w: GLshort){.stdcall, importc, ogl.}
+proc glWindowPos4svMESA*(v: PGLshort){.stdcall, importc, ogl.}
   # GL_NV_evaluators
 proc glMapControlPointsNV*(target: GLenum, index: GLuint, typ: GLenum, 
                            ustride: GLsizei, vstride: GLsizei, uorder: GLint, 
                            vorder: GLint, pack: GLboolean, points: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMapParameterivNV*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMapParameterivNV*(target: GLenum, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glMapParameterfvNV*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMapControlPointsNV*(target: GLenum, index: GLuint, typ: GLenum, 
                               ustride: GLsizei, vstride: GLsizei, 
-                              pack: GLboolean, points: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                              pack: GLboolean, points: PGLvoid){.stdcall, importc, ogl.}
 proc glGetMapParameterivNV*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMapParameterfvNV*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetMapAttribParameterivNV*(target: GLenum, index: GLuint, pname: GLenum, 
-                                  params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLint){.stdcall, importc, ogl.}
 proc glGetMapAttribParameterfvNV*(target: GLenum, index: GLuint, pname: GLenum, 
-                                  params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glEvalMapsNV*(target: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLfloat){.stdcall, importc, ogl.}
+proc glEvalMapsNV*(target: GLenum, mode: GLenum){.stdcall, importc, ogl.}
   # GL_NV_fence
-proc glDeleteFencesNV*(n: GLsizei, fences: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenFencesNV*(n: GLsizei, fences: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsFenceNV*(fence: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glTestFenceNV*(fence: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glGetFenceivNV*(fence: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glFinishFenceNV*(fence: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glSetFenceNV*(fence: GLuint, condition: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glDeleteFencesNV*(n: GLsizei, fences: PGLuint){.stdcall, importc, ogl.}
+proc glGenFencesNV*(n: GLsizei, fences: PGLuint){.stdcall, importc, ogl.}
+proc glIsFenceNV*(fence: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glTestFenceNV*(fence: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glGetFenceivNV*(fence: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glFinishFenceNV*(fence: GLuint){.stdcall, importc, ogl.}
+proc glSetFenceNV*(fence: GLuint, condition: GLenum){.stdcall, importc, ogl.}
   # GL_NV_fragment_prog
 proc glProgramNamedParameter4fNV*(id: GLuint, length: GLsizei, name: PGLubyte, 
                                   x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramNamedParameter4dNV*(id: GLuint, length: GLsizei, name: PGLubyte, 
                                   x: GLdouble, y: GLdouble, z: GLdouble, 
-                                  w: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                                  w: GLdouble){.stdcall, importc, ogl.}
 proc glProgramNamedParameter4fvNV*(id: GLuint, length: GLsizei, name: PGLubyte, 
-                                   v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   v: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramNamedParameter4dvNV*(id: GLuint, length: GLsizei, name: PGLubyte, 
-                                   v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                   v: PGLdouble){.stdcall, importc, ogl.}
 proc glGetProgramNamedParameterfvNV*(id: GLuint, length: GLsizei, 
-                                     name: PGLubyte, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     name: PGLubyte, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetProgramNamedParameterdvNV*(id: GLuint, length: GLsizei, 
-                                     name: PGLubyte, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                     name: PGLubyte, params: PGLdouble){.stdcall, importc, ogl.}
   # GL_NV_half_float
-proc glVertex2hNV*(x: GLhalfNV, y: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertex2hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3hNV*(x: GLhalfNV, y: GLhalfNV, z: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertex3hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4hNV*(x: GLhalfNV, y: GLhalfNV, z: GLhalfNV, w: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertex4hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3hNV*(nx: GLhalfNV, ny: GLhalfNV, nz: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glColor3hNV*(red: GLhalfNV, green: GLhalfNV, blue: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glColor3hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+proc glVertex2hNV*(x: GLhalfNV, y: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertex2hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertex3hNV*(x: GLhalfNV, y: GLhalfNV, z: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertex3hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertex4hNV*(x: GLhalfNV, y: GLhalfNV, z: GLhalfNV, w: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertex4hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glNormal3hNV*(nx: GLhalfNV, ny: GLhalfNV, nz: GLhalfNV){.stdcall, importc, ogl.}
+proc glNormal3hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glColor3hNV*(red: GLhalfNV, green: GLhalfNV, blue: GLhalfNV){.stdcall, importc, ogl.}
+proc glColor3hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glColor4hNV*(red: GLhalfNV, green: GLhalfNV, blue: GLhalfNV, 
-                  alpha: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glColor4hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1hNV*(s: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord1hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2hNV*(s: GLhalfNV, t: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3hNV*(s: GLhalfNV, t: GLhalfNV, r: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord3hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+                  alpha: GLhalfNV){.stdcall, importc, ogl.}
+proc glColor4hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord1hNV*(s: GLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord1hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord2hNV*(s: GLhalfNV, t: GLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord2hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord3hNV*(s: GLhalfNV, t: GLhalfNV, r: GLhalfNV){.stdcall, importc, ogl.}
+proc glTexCoord3hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glTexCoord4hNV*(s: GLhalfNV, t: GLhalfNV, r: GLhalfNV, q: GLhalfNV){.
-    stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1hNV*(target: GLenum, s: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord1hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2hNV*(target: GLenum, s: GLhalfNV, t: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord2hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glTexCoord4hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glMultiTexCoord1hNV*(target: GLenum, s: GLhalfNV){.stdcall, importc, ogl.}
+proc glMultiTexCoord1hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glMultiTexCoord2hNV*(target: GLenum, s: GLhalfNV, t: GLhalfNV){.stdcall, importc, ogl.}
+proc glMultiTexCoord2hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glMultiTexCoord3hNV*(target: GLenum, s: GLhalfNV, t: GLhalfNV, r: GLhalfNV){.
-    stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord3hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glMultiTexCoord3hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glMultiTexCoord4hNV*(target: GLenum, s: GLhalfNV, t: GLhalfNV, r: GLhalfNV, 
-                          q: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glMultiTexCoord4hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordhNV*(fog: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glFogCoordhvNV*(fog: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+                          q: GLhalfNV){.stdcall, importc, ogl.}
+proc glMultiTexCoord4hvNV*(target: GLenum, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glFogCoordhNV*(fog: GLhalfNV){.stdcall, importc, ogl.}
+proc glFogCoordhvNV*(fog: PGLhalfNV){.stdcall, importc, ogl.}
 proc glSecondaryColor3hNV*(red: GLhalfNV, green: GLhalfNV, blue: GLhalfNV){.
-    stdcall, importc, dynlib: ogldll.}
-proc glSecondaryColor3hvNV*(v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexWeighthNV*(weight: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexWeighthvNV*(weight: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1hNV*(index: GLuint, x: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2hNV*(index: GLuint, x: GLhalfNV, y: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glSecondaryColor3hvNV*(v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexWeighthNV*(weight: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertexWeighthvNV*(weight: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttrib1hNV*(index: GLuint, x: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttrib1hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttrib2hNV*(index: GLuint, x: GLhalfNV, y: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttrib2hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glVertexAttrib3hNV*(index: GLuint, x: GLhalfNV, y: GLhalfNV, z: GLhalfNV){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, ogl.}
 proc glVertexAttrib4hNV*(index: GLuint, x: GLhalfNV, y: GLhalfNV, z: GLhalfNV, 
-                         w: GLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs1hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs2hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs3hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs4hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, dynlib: ogldll.}
+                         w: GLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttrib4hvNV*(index: GLuint, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttribs1hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttribs2hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttribs3hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, ogl.}
+proc glVertexAttribs4hvNV*(index: GLuint, n: GLsizei, v: PGLhalfNV){.stdcall, importc, ogl.}
   # GL_NV_occlusion_query
-proc glGenOcclusionQueriesNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteOcclusionQueriesNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsOcclusionQueryNV*(id: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBeginOcclusionQueryNV*(id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glEndOcclusionQueryNV*(){.stdcall, importc, dynlib: ogldll.}
+proc glGenOcclusionQueriesNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glDeleteOcclusionQueriesNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glIsOcclusionQueryNV*(id: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glBeginOcclusionQueryNV*(id: GLuint){.stdcall, importc, ogl.}
+proc glEndOcclusionQueryNV*(){.stdcall, importc, ogl.}
 proc glGetOcclusionQueryivNV*(id: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetOcclusionQueryuivNV*(id: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_NV_pixel_data_range
 proc glPixelDataRangeNV*(target: GLenum, len: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFlushPixelDataRangeNV*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFlushPixelDataRangeNV*(target: GLenum){.stdcall, importc, ogl.}
   # GL_NV_point_sprite
-proc glPointParameteriNV*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterivNV*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+proc glPointParameteriNV*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glPointParameterivNV*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
   # GL_NV_primitive_restart
-proc glPrimitiveRestartNV*(){.stdcall, importc, dynlib: ogldll.}
-proc glPrimitiveRestartIndexNV*(index: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glPrimitiveRestartNV*(){.stdcall, importc, ogl.}
+proc glPrimitiveRestartIndexNV*(index: GLuint){.stdcall, importc, ogl.}
   # GL_NV_register_combiners
-proc glCombinerParameterfvNV*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glCombinerParameterfNV*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glCombinerParameterivNV*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glCombinerParameteriNV*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glCombinerParameterfvNV*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glCombinerParameterfNV*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glCombinerParameterivNV*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glCombinerParameteriNV*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
 proc glCombinerInputNV*(stage: GLenum, portion: GLenum, variable: GLenum, 
                         input: GLenum, mapping: GLenum, componentUsage: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCombinerOutputNV*(stage: GLenum, portion: GLenum, abOutput: GLenum, 
                          cdOutput: GLenum, sumOutput: GLenum, scale: GLenum, 
                          bias: GLenum, abDotProduct: GLboolean, 
-                         cdDotProduct: GLboolean, muxSum: GLboolean){.stdcall, importc, dynlib: ogldll.}
+                         cdDotProduct: GLboolean, muxSum: GLboolean){.stdcall, importc, ogl.}
 proc glFinalCombinerInputNV*(variable: GLenum, input: GLenum, mapping: GLenum, 
-                             componentUsage: GLenum){.stdcall, importc, dynlib: ogldll.}
+                             componentUsage: GLenum){.stdcall, importc, ogl.}
 proc glGetCombinerInputParameterfvNV*(stage: GLenum, portion: GLenum, 
                                       variable: GLenum, pname: GLenum, 
-                                      params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetCombinerInputParameterivNV*(stage: GLenum, portion: GLenum, 
                                       variable: GLenum, pname: GLenum, 
-                                      params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLint){.stdcall, importc, ogl.}
 proc glGetCombinerOutputParameterfvNV*(stage: GLenum, portion: GLenum, 
-                                       pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                       pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetCombinerOutputParameterivNV*(stage: GLenum, portion: GLenum, 
-                                       pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                       pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetFinalCombinerInputParameterfvNV*(variable: GLenum, pname: GLenum, 
-    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetFinalCombinerInputParameterivNV*(variable: GLenum, pname: GLenum, 
-    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    params: PGLint){.stdcall, importc, ogl.}
   # GL_NV_register_combiners2
 proc glCombinerStageParameterfvNV*(stage: GLenum, pname: GLenum, 
-                                   params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetCombinerStageParameterfvNV*(stage: GLenum, pname: GLenum, 
-                                      params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLfloat){.stdcall, importc, ogl.}
   # GL_NV_vertex_array_range
-proc glFlushVertexArrayRangeNV*(){.stdcall, importc, dynlib: ogldll.}
-proc glVertexArrayRangeNV*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+proc glFlushVertexArrayRangeNV*(){.stdcall, importc, ogl.}
+proc glVertexArrayRangeNV*(len: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
   # GL_NV_vertex_prog
 proc glAreProgramsResidentNV*(n: GLsizei, programs: PGLuint, 
-                              residences: PGLboolean): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glBindProgramNV*(target: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glExecuteProgramNV*(target: GLenum, id: GLuint, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGenProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                              residences: PGLboolean): GLboolean{.stdcall, importc, ogl.}
+proc glBindProgramNV*(target: GLenum, id: GLuint){.stdcall, importc, ogl.}
+proc glDeleteProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, ogl.}
+proc glExecuteProgramNV*(target: GLenum, id: GLuint, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGenProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, ogl.}
 proc glGetProgramParameterdvNV*(target: GLenum, index: GLuint, pname: GLenum, 
-                                params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLdouble){.stdcall, importc, ogl.}
 proc glGetProgramParameterfvNV*(target: GLenum, index: GLuint, pname: GLenum, 
-                                params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetProgramivNV*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetProgramStringNV*(id: GLuint, pname: GLenum, prog: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetProgramivNV*(id: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetProgramStringNV*(id: GLuint, pname: GLenum, prog: PGLubyte){.stdcall, importc, ogl.}
 proc glGetTrackMatrixivNV*(target: GLenum, address: GLuint, pname: GLenum, 
-                           params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                           params: PGLint){.stdcall, importc, ogl.}
 proc glGetVertexAttribdvNV*(index: GLuint, pname: GLenum, params: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribfvNV*(index: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribivNV*(index: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribPointervNV*(index: GLuint, pname: GLenum, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
-proc glIsProgramNV*(id: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glIsProgramNV*(id: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glLoadProgramNV*(target: GLenum, id: GLuint, length: GLsizei, 
-                      prog: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+                      prog: PGLubyte){.stdcall, importc, ogl.}
 proc glProgramParameter4dNV*(target: GLenum, index: GLuint, x: GLdouble, 
-                             y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, dynlib: ogldll.}
+                             y: GLdouble, z: GLdouble, w: GLdouble){.stdcall, importc, ogl.}
 proc glProgramParameter4dvNV*(target: GLenum, index: GLuint, v: PGLdouble){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramParameter4fNV*(target: GLenum, index: GLuint, x: GLfloat, 
-                             y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                             y: GLfloat, z: GLfloat, w: GLfloat){.stdcall, importc, ogl.}
 proc glProgramParameter4fvNV*(target: GLenum, index: GLuint, v: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramParameters4dvNV*(target: GLenum, index: GLuint, count: GLuint, 
-                               v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                               v: PGLdouble){.stdcall, importc, ogl.}
 proc glProgramParameters4fvNV*(target: GLenum, index: GLuint, count: GLuint, 
-                               v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glRequestResidentProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                               v: PGLfloat){.stdcall, importc, ogl.}
+proc glRequestResidentProgramsNV*(n: GLsizei, programs: PGLuint){.stdcall, importc, ogl.}
 proc glTrackMatrixNV*(target: GLenum, address: GLuint, matrix: GLenum, 
-                      transform: GLenum){.stdcall, importc, dynlib: ogldll.}
+                      transform: GLenum){.stdcall, importc, ogl.}
 proc glVertexAttribPointerNV*(index: GLuint, fsize: GLint, typ: GLenum, 
-                              stride: GLsizei, pointer: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1dNV*(index: GLuint, x: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1fNV*(index: GLuint, x: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1sNV*(index: GLuint, x: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib1svNV*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2dNV*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2fNV*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2sNV*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib2svNV*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                              stride: GLsizei, pointer: PGLvoid){.stdcall, importc, ogl.}
+proc glVertexAttrib1dNV*(index: GLuint, x: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib1fNV*(index: GLuint, x: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib1sNV*(index: GLuint, x: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib1svNV*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2dNV*(index: GLuint, x: GLdouble, y: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib2fNV*(index: GLuint, x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib2sNV*(index: GLuint, x: GLshort, y: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib2svNV*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib3dNV*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib3fNV*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexAttrib3sNV*(index: GLuint, x: GLshort, y: GLshort, z: GLshort){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib3svNV*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVertexAttrib3svNV*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib4dNV*(index: GLuint, x: GLdouble, y: GLdouble, z: GLdouble, 
-                         w: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                         w: GLdouble){.stdcall, importc, ogl.}
+proc glVertexAttrib4dvNV*(index: GLuint, v: PGLdouble){.stdcall, importc, ogl.}
 proc glVertexAttrib4fNV*(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, 
-                         w: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                         w: GLfloat){.stdcall, importc, ogl.}
+proc glVertexAttrib4fvNV*(index: GLuint, v: PGLfloat){.stdcall, importc, ogl.}
 proc glVertexAttrib4sNV*(index: GLuint, x: GLshort, y: GLshort, z: GLshort, 
-                         w: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4svNV*(index: GLuint, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
+                         w: GLshort){.stdcall, importc, ogl.}
+proc glVertexAttrib4svNV*(index: GLuint, v: PGLshort){.stdcall, importc, ogl.}
 proc glVertexAttrib4ubNV*(index: GLuint, x: GLubyte, y: GLubyte, z: GLubyte, 
-                          w: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttrib4ubvNV*(index: GLuint, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs1dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs1fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs1svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs2dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs2fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs2svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs3dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs3fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs3svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs4dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs4fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs4svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribs4ubvNV*(index: GLuint, count: GLsizei, v: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+                          w: GLubyte){.stdcall, importc, ogl.}
+proc glVertexAttrib4ubvNV*(index: GLuint, v: PGLubyte){.stdcall, importc, ogl.}
+proc glVertexAttribs1dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribs1fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttribs1svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribs2dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribs2fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttribs2svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribs3dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribs3fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttribs3svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribs4dvNV*(index: GLuint, count: GLsizei, v: PGLdouble){.stdcall, importc, ogl.}
+proc glVertexAttribs4fvNV*(index: GLuint, count: GLsizei, v: PGLfloat){.stdcall, importc, ogl.}
+proc glVertexAttribs4svNV*(index: GLuint, count: GLsizei, v: PGLshort){.stdcall, importc, ogl.}
+proc glVertexAttribs4ubvNV*(index: GLuint, count: GLsizei, v: PGLubyte){.stdcall, importc, ogl.}
   # GL_NV_depth_buffer_float
-proc glDepthRangedNV*(n: GLdouble, f: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glClearDepthdNV*(d: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glDepthBoundsdNV*(zmin: GLdouble, zmax: GLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glDepthRangedNV*(n: GLdouble, f: GLdouble){.stdcall, importc, ogl.}
+proc glClearDepthdNV*(d: GLdouble){.stdcall, importc, ogl.}
+proc glDepthBoundsdNV*(zmin: GLdouble, zmax: GLdouble){.stdcall, importc, ogl.}
   # GL_NV_framebuffer_multisample_coverage
 proc glRenderbufferStorageMultsampleCoverageNV*(target: GLenum, 
     coverageSamples: GLsizei, colorSamples: GLsizei, internalformat: GLenum, 
-    width: GLsizei, height: GLsizei){.stdcall, importc, dynlib: ogldll.}
+    width: GLsizei, height: GLsizei){.stdcall, importc, ogl.}
   # GL_NV_geometry_program4
-proc glProgramVertexLimitNV*(target: GLenum, limit: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glProgramVertexLimitNV*(target: GLenum, limit: GLint){.stdcall, importc, ogl.}
   # GL_NV_gpu_program4
 proc glProgramLocalParameterI4iNV*(target: GLenum, index: GLuint, x: GLint, 
-                                   y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
+                                   y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
 proc glProgramLocalParameterI4ivNV*(target: GLenum, index: GLuint, 
-                                    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLint){.stdcall, importc, ogl.}
 proc glProgramLocalParametersI4ivNV*(target: GLenum, index: GLuint, 
-                                     count: GLsizei, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                     count: GLsizei, params: PGLint){.stdcall, importc, ogl.}
 proc glProgramLocalParameterI4uiNV*(target: GLenum, index: GLuint, x: GLuint, 
-                                    y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                    y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, ogl.}
 proc glProgramLocalParameterI4uivNV*(target: GLenum, index: GLuint, 
-                                     params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLuint){.stdcall, importc, ogl.}
 proc glProgramLocalParametersI4uivNV*(target: GLenum, index: GLuint, 
-                                      count: GLsizei, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                      count: GLsizei, params: PGLuint){.stdcall, importc, ogl.}
 proc glProgramEnvParameterI4iNV*(target: GLenum, index: GLuint, x: GLint, 
-                                 y: GLint, z: GLint, w: GLint){.stdcall, importc, dynlib: ogldll.}
+                                 y: GLint, z: GLint, w: GLint){.stdcall, importc, ogl.}
 proc glProgramEnvParameterI4ivNV*(target: GLenum, index: GLuint, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramEnvParametersI4ivNV*(target: GLenum, index: GLuint, 
-                                   count: GLsizei, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                   count: GLsizei, params: PGLint){.stdcall, importc, ogl.}
 proc glProgramEnvParameterI4uiNV*(target: GLenum, index: GLuint, x: GLuint, 
-                                  y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, dynlib: ogldll.}
+                                  y: GLuint, z: GLuint, w: GLuint){.stdcall, importc, ogl.}
 proc glProgramEnvParameterI4uivNV*(target: GLenum, index: GLuint, 
-                                   params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                   params: PGLuint){.stdcall, importc, ogl.}
 proc glProgramEnvParametersI4uivNV*(target: GLenum, index: GLuint, 
-                                    count: GLsizei, params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                    count: GLsizei, params: PGLuint){.stdcall, importc, ogl.}
 proc glGetProgramLocalParameterIivNV*(target: GLenum, index: GLuint, 
-                                      params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLint){.stdcall, importc, ogl.}
 proc glGetProgramLocalParameterIuivNV*(target: GLenum, index: GLuint, 
-                                       params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLuint){.stdcall, importc, ogl.}
 proc glGetProgramEnvParameterIivNV*(target: GLenum, index: GLuint, 
-                                    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLint){.stdcall, importc, ogl.}
 proc glGetProgramEnvParameterIuivNV*(target: GLenum, index: GLuint, 
-                                     params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                     params: PGLuint){.stdcall, importc, ogl.}
   # GL_NV_parameter_buffer_object
 proc glProgramBufferParametersfvNV*(target: GLenum, buffer: GLuint, 
                                     index: GLuint, count: GLsizei, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
 proc glProgramBufferParametersIivNV*(target: GLenum, buffer: GLuint, 
                                      index: GLuint, count: GLsizei, 
-                                     params: GLint){.stdcall, importc, dynlib: ogldll.}
+                                     params: GLint){.stdcall, importc, ogl.}
 proc glProgramBufferParametersIuivNV*(target: GLenum, buffer: GLuint, 
                                       index: GLuint, count: GLuint, 
-                                      params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                                      params: PGLuint){.stdcall, importc, ogl.}
   # GL_NV_transform_feedback
-proc glBeginTransformFeedbackNV*(primitiveMode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEndTransformFeedbackNV*(){.stdcall, importc, dynlib: ogldll.}
+proc glBeginTransformFeedbackNV*(primitiveMode: GLenum){.stdcall, importc, ogl.}
+proc glEndTransformFeedbackNV*(){.stdcall, importc, ogl.}
 proc glTransformFeedbackAttribsNV*(count: GLsizei, attribs: GLint, 
-                                   bufferMode: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                   bufferMode: GLenum){.stdcall, importc, ogl.}
 proc glBindBufferRangeNV*(target: GLenum, index: GLuint, buffer: GLuint, 
-                          offset: GLintptr, size: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
+                          offset: GLintptr, size: GLsizeiptr){.stdcall, importc, ogl.}
 proc glBindBufferOffsetNV*(target: GLenum, index: GLuint, buffer: GLuint, 
-                           offset: GLintptr){.stdcall, importc, dynlib: ogldll.}
-proc glBindBufferBaseNV*(target: GLenum, index: GLuint, buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+                           offset: GLintptr){.stdcall, importc, ogl.}
+proc glBindBufferBaseNV*(target: GLenum, index: GLuint, buffer: GLuint){.stdcall, importc, ogl.}
 proc glTransformFeedbackVaryingsNV*(prog: GLuint, count: GLsizei, 
                                     locations: PGLint, bufferMode: GLenum){.
-    stdcall, importc, dynlib: ogldll.}
-proc glActiveVaryingNV*(prog: GLuint, name: PGLchar){.stdcall, importc, dynlib: ogldll.}
-proc glGetVaryingLocationNV*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glActiveVaryingNV*(prog: GLuint, name: PGLchar){.stdcall, importc, ogl.}
+proc glGetVaryingLocationNV*(prog: GLuint, name: PGLchar): GLint{.stdcall, importc, ogl.}
 proc glGetActiveVaryingNV*(prog: GLuint, index: GLuint, bufSize: GLsizei, 
                            len: PGLsizei, size: PGLsizei, typ: PGLenum, 
-                           name: PGLchar){.stdcall, importc, dynlib: ogldll.}
+                           name: PGLchar){.stdcall, importc, ogl.}
 proc glGetTransformFeedbackVaryingNV*(prog: GLuint, index: GLuint, 
-                                      location: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                      location: PGLint){.stdcall, importc, ogl.}
 proc glTransformFeedbackStreamAttribsNV*(count: GLsizei, attribs: PGLint, 
-    nbuffers: GLsizei, bufstreams: PGLint, bufferMode: GLenum){.stdcall, importc, dynlib: ogldll.}
+    nbuffers: GLsizei, bufstreams: PGLint, bufferMode: GLenum){.stdcall, importc, ogl.}
   # GL_NV_conditional_render
-proc glBeginConditionalRenderNV*(id: GLuint, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glEndConditionalRenderNV*(){.stdcall, importc, dynlib: ogldll.}
+proc glBeginConditionalRenderNV*(id: GLuint, mode: GLenum){.stdcall, importc, ogl.}
+proc glEndConditionalRenderNV*(){.stdcall, importc, ogl.}
   # GL_NV_present_video
 proc glPresentFrameKeyedNV*(video_slot: GLuint, minPresentTime: GLuint64EXT, 
                             beginPresentTimeId: GLuint, 
                             presentDuratioId: GLuint, typ: GLenum, 
                             target0: GLenum, fill0: GLuint, key0: GLuint, 
                             target1: GLenum, fill1: GLuint, key1: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glPresentFrameDualFillNV*(video_slot: GLuint, minPresentTime: GLuint64EXT, 
                                beginPresentTimeId: GLuint, 
                                presentDurationId: GLuint, typ: GLenum, 
                                target0: GLenum, fill0: GLuint, target1: GLenum, 
                                fill1: GLuint, target2: GLenum, fill2: GLuint, 
-                               target3: GLenum, fill3: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGetVideoivNV*(video_slot: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                               target3: GLenum, fill3: GLuint){.stdcall, importc, ogl.}
+proc glGetVideoivNV*(video_slot: GLuint, pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetVideouivNV*(video_slot: GLuint, pname: GLenum, params: PGLuint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVideoi64vNV*(video_slot: GLuint, pname: GLenum, params: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVideoui64vNV*(video_slot: GLuint, pname: GLenum, params: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
-  #procedure glVideoParameterivNV(video_slot: GLuint; pname: GLenum; const params: PGLint); stdcall, importc, dynlib: ogldll;
+    stdcall, importc, ogl.}
+  #procedure glVideoParameterivNV(video_slot: GLuint; pname: GLenum; const params: PGLint); stdcall, importc, ogl;
   # GL_NV_explicit_multisample
-proc glGetMultisamplefvNV*(pname: GLenum, index: GLuint, val: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSampleMaskIndexedNV*(index: GLuint, mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glTexRenderbufferNV*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glGetMultisamplefvNV*(pname: GLenum, index: GLuint, val: PGLfloat){.stdcall, importc, ogl.}
+proc glSampleMaskIndexedNV*(index: GLuint, mask: GLbitfield){.stdcall, importc, ogl.}
+proc glTexRenderbufferNV*(target: GLenum, renderbuffer: GLuint){.stdcall, importc, ogl.}
   # GL_NV_transform_feedback2
-proc glBindTransformFeedbackNV*(target: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glDeleteTransformFeedbacksNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glGenTransformFeedbacksNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsTransformFeedbackNV*(id: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glPauseTransformFeedbackNV*(){.stdcall, importc, dynlib: ogldll.}
-proc glResumeTransformFeedbackNV*(){.stdcall, importc, dynlib: ogldll.}
-proc glDrawTransformFeedbackNV*(mode: GLenum, id: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glBindTransformFeedbackNV*(target: GLenum, id: GLuint){.stdcall, importc, ogl.}
+proc glDeleteTransformFeedbacksNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glGenTransformFeedbacksNV*(n: GLsizei, ids: PGLuint){.stdcall, importc, ogl.}
+proc glIsTransformFeedbackNV*(id: GLuint): GLboolean{.stdcall, importc, ogl.}
+proc glPauseTransformFeedbackNV*(){.stdcall, importc, ogl.}
+proc glResumeTransformFeedbackNV*(){.stdcall, importc, ogl.}
+proc glDrawTransformFeedbackNV*(mode: GLenum, id: GLuint){.stdcall, importc, ogl.}
   # GL_NV_video_capture
-proc glBeginVideoCaptureNV*(video_capture_slot: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glBeginVideoCaptureNV*(video_capture_slot: GLuint){.stdcall, importc, ogl.}
 proc glBindVideoCaptureStreamBufferNV*(video_capture_slot: GLuint, 
                                        stream: GLuint, frame_region: GLenum, 
-                                       offset: GLintptrARB){.stdcall, importc, dynlib: ogldll.}
+                                       offset: GLintptrARB){.stdcall, importc, ogl.}
 proc glBindVideoCaptureStreamTextureNV*(video_capture_slot: GLuint, 
                                         stream: GLuint, frame_region: GLenum, 
                                         target: GLenum, texture: GLuint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glEndVideoCaptureNV*(video_capture_slot: GLuint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glEndVideoCaptureNV*(video_capture_slot: GLuint){.stdcall, importc, ogl.}
 proc glGetVideoCaptureivNV*(video_capture_slot: GLuint, pname: GLenum, 
-                            params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                            params: PGLint){.stdcall, importc, ogl.}
 proc glGetVideoCaptureStreamivNV*(video_capture_slot: GLuint, stream: GLuint, 
-                                  pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glGetVideoCaptureStreamfvNV*(video_capture_slot: GLuint, stream: GLuint, 
-                                  pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetVideoCaptureStreamdvNV*(video_capture_slot: GLuint, stream: GLuint, 
-                                  pname: GLenum, params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                  pname: GLenum, params: PGLdouble){.stdcall, importc, ogl.}
 proc glVideoCaptureNV*(video_capture_slot: GLuint, sequence_num: PGLuint, 
-                       capture_time: PGLuint64EXT): GLenum{.stdcall, importc, dynlib: ogldll.}
+                       capture_time: PGLuint64EXT): GLenum{.stdcall, importc, ogl.}
 proc glVideoCaptureStreamParameterivNV*(video_capture_slot: GLuint, 
                                         stream: GLuint, pname: GLenum, 
-                                        params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                        params: PGLint){.stdcall, importc, ogl.}
 proc glVideoCaptureStreamParameterfvNV*(video_capture_slot: GLuint, 
                                         stream: GLuint, pname: GLenum, 
-                                        params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                        params: PGLfloat){.stdcall, importc, ogl.}
 proc glVideoCaptureStreamParameterdvNV*(video_capture_slot: GLuint, 
                                         stream: GLuint, pname: GLenum, 
-                                        params: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                                        params: PGLdouble){.stdcall, importc, ogl.}
   # GL_NV_copy_image
 proc glCopyImageSubDataNV*(srcName: GLuint, srcTarget: GLenum, srcLevel: GLint, 
                            srcX: GLint, srcY: GLint, srcZ: GLint, 
                            dstName: GLuint, dstTarget: GLenum, dstLevel: GLint, 
                            dstX: GLint, dstY: GLint, dstZ: GLint, 
                            width: GLsizei, height: GLsizei, depth: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_NV_shader_buffer_load
-proc glMakeBufferResidentNV*(target: GLenum, access: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMakeBufferNonResidentNV*(target: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glIsBufferResidentNV*(target: GLenum): GLboolean{.stdcall, importc, dynlib: ogldll.}
-proc glMakeNamedBufferResidentNV*(buffer: GLuint, access: GLenum){.stdcall, importc, dynlib: ogldll.}
-proc glMakeNamedBufferNonResidentNV*(buffer: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glIsNamedBufferResidentNV*(buffer: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glMakeBufferResidentNV*(target: GLenum, access: GLenum){.stdcall, importc, ogl.}
+proc glMakeBufferNonResidentNV*(target: GLenum){.stdcall, importc, ogl.}
+proc glIsBufferResidentNV*(target: GLenum): GLboolean{.stdcall, importc, ogl.}
+proc glMakeNamedBufferResidentNV*(buffer: GLuint, access: GLenum){.stdcall, importc, ogl.}
+proc glMakeNamedBufferNonResidentNV*(buffer: GLuint){.stdcall, importc, ogl.}
+proc glIsNamedBufferResidentNV*(buffer: GLuint): GLboolean{.stdcall, importc, ogl.}
 proc glGetBufferParameterui64vNV*(target: GLenum, pname: GLenum, 
-                                  params: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                                  params: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glGetNamedBufferParameterui64vNV*(buffer: GLuint, pname: GLenum, 
-                                       params: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glGetIntegerui64vNV*(value: GLenum, result: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glUniformui64NV*(location: GLint, value: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                                       params: PGLuint64EXT){.stdcall, importc, ogl.}
+proc glGetIntegerui64vNV*(value: GLenum, result: PGLuint64EXT){.stdcall, importc, ogl.}
+proc glUniformui64NV*(location: GLint, value: GLuint64EXT){.stdcall, importc, ogl.}
 proc glUniformui64vNV*(location: GLint, count: GLsizei, value: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetUniformui64vNV*(prog: GLuint, location: GLint, params: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformui64NV*(prog: GLuint, location: GLint, value: GLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniformui64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLuint64EXT){.stdcall, importc, ogl.}
   # GL_NV_vertex_buffer_unified_memory
 proc glBufferAddressRangeNV*(pname: GLenum, index: GLuint, adress: GLuint64EXT, 
-                             len: GLsizeiptr){.stdcall, importc, dynlib: ogldll.}
-proc glVertexFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glNormalFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glColorFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glIndexFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoordFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glEdgeFlagFormatNV*(stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             len: GLsizeiptr){.stdcall, importc, ogl.}
+proc glVertexFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
+proc glNormalFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
+proc glColorFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
+proc glIndexFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
+proc glTexCoordFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
+proc glEdgeFlagFormatNV*(stride: GLsizei){.stdcall, importc, ogl.}
 proc glSecondaryColorFormatNV*(size: GLint, typ: GLenum, stride: GLsizei){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFogCoordFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFogCoordFormatNV*(typ: GLenum, stride: GLsizei){.stdcall, importc, ogl.}
 proc glVertexAttribFormatNV*(index: GLuint, size: GLint, typ: GLenum, 
-                             normalized: GLboolean, stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                             normalized: GLboolean, stride: GLsizei){.stdcall, importc, ogl.}
 proc glVertexAttribIFormatNV*(index: GLuint, size: GLint, typ: GLenum, 
-                              stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                              stride: GLsizei){.stdcall, importc, ogl.}
 proc glGetIntegerui64i_vNV*(value: GLenum, index: GLuint, Result: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_NV_gpu_program5
 proc glProgramSubroutineParametersuivNV*(target: GLenum, count: GLsizei, 
-    params: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    params: PGLuint){.stdcall, importc, ogl.}
 proc glGetProgramSubroutineParameteruivNV*(target: GLenum, index: GLuint, 
-    param: PGLuint){.stdcall, importc, dynlib: ogldll.}
+    param: PGLuint){.stdcall, importc, ogl.}
   # GL_NV_gpu_shader5
-proc glUniform1i64NV*(location: GLint, x: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2i64NV*(location: GLint, x: GLint64EXT, y: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+proc glUniform1i64NV*(location: GLint, x: GLint64EXT){.stdcall, importc, ogl.}
+proc glUniform2i64NV*(location: GLint, x: GLint64EXT, y: GLint64EXT){.stdcall, importc, ogl.}
 proc glUniform3i64NV*(location: GLint, x: GLint64EXT, y: GLint64EXT, 
-                      z: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                      z: GLint64EXT){.stdcall, importc, ogl.}
 proc glUniform4i64NV*(location: GLint, x: GLint64EXT, y: GLint64EXT, 
-                      z: GLint64EXT, w: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                      z: GLint64EXT, w: GLint64EXT){.stdcall, importc, ogl.}
 proc glUniform1i64vNV*(location: GLint, count: GLsizei, value: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform2i64vNV*(location: GLint, count: GLsizei, value: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform3i64vNV*(location: GLint, count: GLsizei, value: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform4i64vNV*(location: GLint, count: GLsizei, value: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
-proc glUniform1ui64NV*(location: GLint, x: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glUniform2ui64NV*(location: GLint, x: GLuint64EXT, y: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glUniform1ui64NV*(location: GLint, x: GLuint64EXT){.stdcall, importc, ogl.}
+proc glUniform2ui64NV*(location: GLint, x: GLuint64EXT, y: GLuint64EXT){.stdcall, importc, ogl.}
 proc glUniform3ui64NV*(location: GLint, x: GLuint64EXT, y: GLuint64EXT, 
-                       z: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                       z: GLuint64EXT){.stdcall, importc, ogl.}
 proc glUniform4ui64NV*(location: GLint, x: GLuint64EXT, y: GLuint64EXT, 
-                       z: GLuint64EXT, w: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                       z: GLuint64EXT, w: GLuint64EXT){.stdcall, importc, ogl.}
 proc glUniform1ui64vNV*(location: GLint, count: GLsizei, value: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform2ui64vNV*(location: GLint, count: GLsizei, value: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform3ui64vNV*(location: GLint, count: GLsizei, value: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glUniform4ui64vNV*(location: GLint, count: GLsizei, value: PGLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetUniformi64vNV*(prog: GLuint, location: GLint, params: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform1i64NV*(prog: GLuint, location: GLint, x: GLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform2i64NV*(prog: GLuint, location: GLint, x: GLint64EXT, 
-                             y: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                             y: GLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform3i64NV*(prog: GLuint, location: GLint, x: GLint64EXT, 
-                             y: GLint64EXT, z: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                             y: GLint64EXT, z: GLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform4i64NV*(prog: GLuint, location: GLint, x: GLint64EXT, 
                              y: GLint64EXT, z: GLint64EXT, w: GLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform1i64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform2i64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform3i64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform4i64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                              value: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              value: PGLint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform1ui64NV*(prog: GLuint, location: GLint, x: GLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform2ui64NV*(prog: GLuint, location: GLint, x: GLuint64EXT, 
-                              y: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              y: GLuint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform3ui64NV*(prog: GLuint, location: GLint, x: GLuint64EXT, 
-                              y: GLuint64EXT, z: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                              y: GLuint64EXT, z: GLuint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform4ui64NV*(prog: GLuint, location: GLint, x: GLuint64EXT, 
                               y: GLuint64EXT, z: GLuint64EXT, w: GLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glProgramUniform1ui64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                               value: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                               value: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform2ui64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                               value: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                               value: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform3ui64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                               value: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                               value: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glProgramUniform4ui64vNV*(prog: GLuint, location: GLint, count: GLsizei, 
-                               value: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                               value: PGLuint64EXT){.stdcall, importc, ogl.}
   # GL_NV_vertex_attrib_integer_64bit
-proc glVertexAttribL1i64NV*(index: GLuint, x: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+proc glVertexAttribL1i64NV*(index: GLuint, x: GLint64EXT){.stdcall, importc, ogl.}
 proc glVertexAttribL2i64NV*(index: GLuint, x: GLint64EXT, y: GLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribL3i64NV*(index: GLuint, x: GLint64EXT, y: GLint64EXT, 
-                            z: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
+                            z: GLint64EXT){.stdcall, importc, ogl.}
 proc glVertexAttribL4i64NV*(index: GLuint, x: GLint64EXT, y: GLint64EXT, 
-                            z: GLint64EXT, w: GLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL1i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL3i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL4i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL1ui64NV*(index: GLuint, x: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                            z: GLint64EXT, w: GLint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL1i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL2i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL3i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL4i64vNV*(index: GLuint, v: PGLint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL1ui64NV*(index: GLuint, x: GLuint64EXT){.stdcall, importc, ogl.}
 proc glVertexAttribL2ui64NV*(index: GLuint, x: GLuint64EXT, y: GLuint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVertexAttribL3ui64NV*(index: GLuint, x: GLuint64EXT, y: GLuint64EXT, 
-                             z: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                             z: GLuint64EXT){.stdcall, importc, ogl.}
 proc glVertexAttribL4ui64NV*(index: GLuint, x: GLuint64EXT, y: GLuint64EXT, 
-                             z: GLuint64EXT, w: GLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL1ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL2ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL3ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
-proc glVertexAttribL4ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                             z: GLuint64EXT, w: GLuint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL1ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL2ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL3ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, ogl.}
+proc glVertexAttribL4ui64vNV*(index: GLuint, v: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glGetVertexAttribLi64vNV*(index: GLuint, pname: GLenum, params: PGLint64EXT){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetVertexAttribLui64vNV*(index: GLuint, pname: GLenum, 
-                                params: PGLuint64EXT){.stdcall, importc, dynlib: ogldll.}
+                                params: PGLuint64EXT){.stdcall, importc, ogl.}
 proc glVertexAttribLFormatNV*(index: GLuint, size: GLint, typ: GLenum, 
-                              stride: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                              stride: GLsizei){.stdcall, importc, ogl.}
   # GL_NV_vdpau_interop
-proc glVDPAUInitNV*(vdpDevice: PGLvoid, getProcAddress: PGLvoid){.stdcall, importc, dynlib: ogldll.}
-proc glVDPAUFiniNV*(){.stdcall, importc, dynlib: ogldll.}
+proc glVDPAUInitNV*(vdpDevice: PGLvoid, getProcAddress: PGLvoid){.stdcall, importc, ogl.}
+proc glVDPAUFiniNV*(){.stdcall, importc, ogl.}
 proc glVDPAURegisterVideoSurfaceNV*(vdpSurface: PGLvoid, target: GLenum, 
                                     numTextureNames: GLsizei, 
                                     textureNames: PGLuint): GLvdpauSurfaceNV{.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVDPAURegisterOutputSurfaceNV*(vdpSurface: PGLvoid, target: GLenum, 
                                      numTextureNames: GLsizei, 
                                      textureNames: PGLuint): GLvdpauSurfaceNV{.
-    stdcall, importc, dynlib: ogldll.}
-proc glVDPAUIsSurfaceNV*(surface: GLvdpauSurfaceNV){.stdcall, importc, dynlib: ogldll.}
-proc glVDPAUUnregisterSurfaceNV*(surface: GLvdpauSurfaceNV){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVDPAUIsSurfaceNV*(surface: GLvdpauSurfaceNV){.stdcall, importc, ogl.}
+proc glVDPAUUnregisterSurfaceNV*(surface: GLvdpauSurfaceNV){.stdcall, importc, ogl.}
 proc glVDPAUGetSurfaceivNV*(surface: GLvdpauSurfaceNV, pname: GLenum, 
                             bufSize: GLsizei, len: PGLsizei, values: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glVDPAUSurfaceAccessNV*(surface: GLvdpauSurfaceNV, access: GLenum){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glVDPAUSurfaceAccessNV*(surface: GLvdpauSurfaceNV, access: GLenum){.stdcall, importc, ogl.}
 proc glVDPAUMapSurfacesNV*(numSurfaces: GLsizei, surfaces: PGLvdpauSurfaceNV){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glVDPAUUnmapSurfacesNV*(numSurface: GLsizei, surfaces: PGLvdpauSurfaceNV){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_NV_texture_barrier
-proc glTextureBarrierNV*(){.stdcall, importc, dynlib: ogldll.}
+proc glTextureBarrierNV*(){.stdcall, importc, ogl.}
   # GL_PGI_misc_hints
-proc glHintPGI*(target: GLenum, mode: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glHintPGI*(target: GLenum, mode: GLint){.stdcall, importc, ogl.}
   # GL_SGIS_detail_texture
-proc glDetailTexFuncSGIS*(target: GLenum, n: GLsizei, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetDetailTexFuncSGIS*(target: GLenum, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glDetailTexFuncSGIS*(target: GLenum, n: GLsizei, points: PGLfloat){.stdcall, importc, ogl.}
+proc glGetDetailTexFuncSGIS*(target: GLenum, points: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIS_fog_function
-proc glFogFuncSGIS*(n: GLsizei, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetFogFuncSGIS*(points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glFogFuncSGIS*(n: GLsizei, points: PGLfloat){.stdcall, importc, ogl.}
+proc glGetFogFuncSGIS*(points: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIS_multisample
-proc glSampleMaskSGIS*(value: GLclampf, invert: GLboolean){.stdcall, importc, dynlib: ogldll.}
-proc glSamplePatternSGIS*(pattern: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glSampleMaskSGIS*(value: GLclampf, invert: GLboolean){.stdcall, importc, ogl.}
+proc glSamplePatternSGIS*(pattern: GLenum){.stdcall, importc, ogl.}
   # GL_SGIS_pixel_texture
-proc glPixelTexGenParameteriSGIS*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glPixelTexGenParameterivSGIS*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glPixelTexGenParameterfSGIS*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPixelTexGenParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGetPixelTexGenParameterivSGIS*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glGetPixelTexGenParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPixelTexGenParameteriSGIS*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glPixelTexGenParameterivSGIS*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glPixelTexGenParameterfSGIS*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPixelTexGenParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glGetPixelTexGenParameterivSGIS*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
+proc glGetPixelTexGenParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIS_point_parameters
-proc glPointParameterfSGIS*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glPointParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+proc glPointParameterfSGIS*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glPointParameterfvSGIS*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIS_sharpen_texture
 proc glSharpenTexFuncSGIS*(target: GLenum, n: GLsizei, points: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glGetSharpenTexFuncSGIS*(target: GLenum, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glGetSharpenTexFuncSGIS*(target: GLenum, points: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIS_texture4D
 proc glTexImage4DSGIS*(target: GLenum, level: GLint, internalformat: GLenum, 
                        width: GLsizei, height: GLsizei, depth: GLsizei, 
                        size4d: GLsizei, border: GLint, format: GLenum, 
-                       typ: GLenum, pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                       typ: GLenum, pixels: PGLvoid){.stdcall, importc, ogl.}
 proc glTexSubImage4DSGIS*(target: GLenum, level: GLint, xoffset: GLint, 
                           yoffset: GLint, zoffset: GLint, woffset: GLint, 
                           width: GLsizei, height: GLsizei, depth: GLsizei, 
                           size4d: GLsizei, format: GLenum, typ: GLenum, 
-                          pixels: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                          pixels: PGLvoid){.stdcall, importc, ogl.}
   # GL_SGIS_texture_color_mask
 proc glTextureColorMaskSGIS*(red: GLboolean, green: GLboolean, blue: GLboolean, 
-                             alpha: GLboolean){.stdcall, importc, dynlib: ogldll.}
+                             alpha: GLboolean){.stdcall, importc, ogl.}
   # GL_SGIS_texture_filter4
 proc glGetTexFilterFuncSGIS*(target: GLenum, filter: GLenum, weights: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexFilterFuncSGIS*(target: GLenum, filter: GLenum, n: GLsizei, 
-                          weights: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                          weights: PGLfloat){.stdcall, importc, ogl.}
   # GL_SGIX_async
-proc glAsyncMarkerSGIX*(marker: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glFinishAsyncSGIX*(markerp: PGLuint): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glPollAsyncSGIX*(markerp: PGLuint): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glGenAsyncMarkersSGIX*(range: GLsizei): GLuint{.stdcall, importc, dynlib: ogldll.}
-proc glDeleteAsyncMarkersSGIX*(marker: GLuint, range: GLsizei){.stdcall, importc, dynlib: ogldll.}
-proc glIsAsyncMarkerSGIX*(marker: GLuint): GLboolean{.stdcall, importc, dynlib: ogldll.}
+proc glAsyncMarkerSGIX*(marker: GLuint){.stdcall, importc, ogl.}
+proc glFinishAsyncSGIX*(markerp: PGLuint): GLint{.stdcall, importc, ogl.}
+proc glPollAsyncSGIX*(markerp: PGLuint): GLint{.stdcall, importc, ogl.}
+proc glGenAsyncMarkersSGIX*(range: GLsizei): GLuint{.stdcall, importc, ogl.}
+proc glDeleteAsyncMarkersSGIX*(marker: GLuint, range: GLsizei){.stdcall, importc, ogl.}
+proc glIsAsyncMarkerSGIX*(marker: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_SGIX_flush_raster
-proc glFlushRasterSGIX*(){.stdcall, importc, dynlib: ogldll.}
+proc glFlushRasterSGIX*(){.stdcall, importc, ogl.}
   # GL_SGIX_fragment_lighting
-proc glFragmentColorMaterialSGIX*(face: GLenum, mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glFragmentColorMaterialSGIX*(face: GLenum, mode: GLenum){.stdcall, importc, ogl.}
 proc glFragmentLightfSGIX*(light: GLenum, pname: GLenum, param: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFragmentLightfvSGIX*(light: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFragmentLightiSGIX*(light: GLenum, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFragmentLightiSGIX*(light: GLenum, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
 proc glFragmentLightivSGIX*(light: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glFragmentLightModelfSGIX*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFragmentLightModelfvSGIX*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glFragmentLightModeliSGIX*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glFragmentLightModelivSGIX*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glFragmentLightModelfSGIX*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glFragmentLightModelfvSGIX*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glFragmentLightModeliSGIX*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glFragmentLightModelivSGIX*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
 proc glFragmentMaterialfSGIX*(face: GLenum, pname: GLenum, param: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFragmentMaterialfvSGIX*(face: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFragmentMaterialiSGIX*(face: GLenum, pname: GLenum, param: GLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glFragmentMaterialivSGIX*(face: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetFragmentLightfvSGIX*(light: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetFragmentLightivSGIX*(light: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetFragmentMaterialfvSGIX*(face: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetFragmentMaterialivSGIX*(face: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glLightEnviSGIX*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glLightEnviSGIX*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
   # GL_SGIX_framezoom
-proc glFrameZoomSGIX*(factor: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glFrameZoomSGIX*(factor: GLint){.stdcall, importc, ogl.}
   # GL_SGIX_igloo_interface
-proc glIglooInterfaceSGIX*(pname: GLenum, params: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+proc glIglooInterfaceSGIX*(pname: GLenum, params: PGLvoid){.stdcall, importc, ogl.}
   # GL_SGIX_instruments
-proc glGetInstrumentsSGIX*(): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glInstrumentsBufferSGIX*(size: GLsizei, buffer: PGLint){.stdcall, importc, dynlib: ogldll.}
-proc glPollInstrumentsSGIX*(marker_p: PGLint): GLint{.stdcall, importc, dynlib: ogldll.}
-proc glReadInstrumentsSGIX*(marker: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glStartInstrumentsSGIX*(){.stdcall, importc, dynlib: ogldll.}
-proc glStopInstrumentsSGIX*(marker: GLint){.stdcall, importc, dynlib: ogldll.}
+proc glGetInstrumentsSGIX*(): GLint{.stdcall, importc, ogl.}
+proc glInstrumentsBufferSGIX*(size: GLsizei, buffer: PGLint){.stdcall, importc, ogl.}
+proc glPollInstrumentsSGIX*(marker_p: PGLint): GLint{.stdcall, importc, ogl.}
+proc glReadInstrumentsSGIX*(marker: GLint){.stdcall, importc, ogl.}
+proc glStartInstrumentsSGIX*(){.stdcall, importc, ogl.}
+proc glStopInstrumentsSGIX*(marker: GLint){.stdcall, importc, ogl.}
   # GL_SGIX_list_priority
 proc glGetListParameterfvSGIX*(list: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glGetListParameterivSGIX*(list: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
-proc glListParameterfSGIX*(list: GLuint, pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glListParameterfSGIX*(list: GLuint, pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
 proc glListParameterfvSGIX*(list: GLuint, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glListParameteriSGIX*(list: GLuint, pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glListParameteriSGIX*(list: GLuint, pname: GLenum, param: GLint){.stdcall, importc, ogl.}
 proc glListParameterivSGIX*(list: GLuint, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_SGIX_pixel_texture
-proc glPixelTexGenSGIX*(mode: GLenum){.stdcall, importc, dynlib: ogldll.}
+proc glPixelTexGenSGIX*(mode: GLenum){.stdcall, importc, ogl.}
   # GL_SGIX_polynomial_ffd
 proc glDeformationMap3dSGIX*(target: GLenum, u1: GLdouble, u2: GLdouble, 
                              ustride: GLint, uorder: GLint, v1: GLdouble, 
                              v2: GLdouble, vstride: GLint, vorder: GLint, 
                              w1: GLdouble, w2: GLdouble, wstride: GLint, 
-                             worder: GLint, points: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+                             worder: GLint, points: PGLdouble){.stdcall, importc, ogl.}
 proc glDeformationMap3fSGIX*(target: GLenum, u1: GLfloat, u2: GLfloat, 
                              ustride: GLint, uorder: GLint, v1: GLfloat, 
                              v2: GLfloat, vstride: GLint, vorder: GLint, 
                              w1: GLfloat, w2: GLfloat, wstride: GLint, 
-                             worder: GLint, points: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glDeformSGIX*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
-proc glLoadIdentityDeformationMapSGIX*(mask: GLbitfield){.stdcall, importc, dynlib: ogldll.}
+                             worder: GLint, points: PGLfloat){.stdcall, importc, ogl.}
+proc glDeformSGIX*(mask: GLbitfield){.stdcall, importc, ogl.}
+proc glLoadIdentityDeformationMapSGIX*(mask: GLbitfield){.stdcall, importc, ogl.}
   # GL_SGIX_reference_plane
-proc glReferencePlaneSGIX*(equation: PGLdouble){.stdcall, importc, dynlib: ogldll.}
+proc glReferencePlaneSGIX*(equation: PGLdouble){.stdcall, importc, ogl.}
   # GL_SGIX_sprite
-proc glSpriteParameterfSGIX*(pname: GLenum, param: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSpriteParameterfvSGIX*(pname: GLenum, params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glSpriteParameteriSGIX*(pname: GLenum, param: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glSpriteParameterivSGIX*(pname: GLenum, params: PGLint){.stdcall, importc, dynlib: ogldll.}
+proc glSpriteParameterfSGIX*(pname: GLenum, param: GLfloat){.stdcall, importc, ogl.}
+proc glSpriteParameterfvSGIX*(pname: GLenum, params: PGLfloat){.stdcall, importc, ogl.}
+proc glSpriteParameteriSGIX*(pname: GLenum, param: GLint){.stdcall, importc, ogl.}
+proc glSpriteParameterivSGIX*(pname: GLenum, params: PGLint){.stdcall, importc, ogl.}
   # GL_SGIX_tag_sample_buffer
-proc glTagSampleBufferSGIX*(){.stdcall, importc, dynlib: ogldll.}
+proc glTagSampleBufferSGIX*(){.stdcall, importc, ogl.}
   # GL_SGI_color_table
 proc glColorTableSGI*(target: GLenum, internalformat: GLenum, width: GLsizei, 
-                      format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                      format: GLenum, typ: GLenum, table: PGLvoid){.stdcall, importc, ogl.}
 proc glColorTableParameterfvSGI*(target: GLenum, pname: GLenum, params: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glColorTableParameterivSGI*(target: GLenum, pname: GLenum, params: PGLint){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glCopyColorTableSGI*(target: GLenum, internalformat: GLenum, x: GLint, 
-                          y: GLint, width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          y: GLint, width: GLsizei){.stdcall, importc, ogl.}
 proc glGetColorTableSGI*(target: GLenum, format: GLenum, typ: GLenum, 
-                         table: PGLvoid){.stdcall, importc, dynlib: ogldll.}
+                         table: PGLvoid){.stdcall, importc, ogl.}
 proc glGetColorTableParameterfvSGI*(target: GLenum, pname: GLenum, 
-                                    params: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLfloat){.stdcall, importc, ogl.}
 proc glGetColorTableParameterivSGI*(target: GLenum, pname: GLenum, 
-                                    params: PGLint){.stdcall, importc, dynlib: ogldll.}
+                                    params: PGLint){.stdcall, importc, ogl.}
   # GL_SUNX_constant_data
-proc glFinishTextureSUNX*(){.stdcall, importc, dynlib: ogldll.}
+proc glFinishTextureSUNX*(){.stdcall, importc, ogl.}
   # GL_SUN_global_alpha
-proc glGlobalAlphaFactorbSUN*(factor: GLbyte){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactorsSUN*(factor: GLshort){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactoriSUN*(factor: GLint){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactorfSUN*(factor: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactordSUN*(factor: GLdouble){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactorubSUN*(factor: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactorusSUN*(factor: GLushort){.stdcall, importc, dynlib: ogldll.}
-proc glGlobalAlphaFactoruiSUN*(factor: GLuint){.stdcall, importc, dynlib: ogldll.}
+proc glGlobalAlphaFactorbSUN*(factor: GLbyte){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactorsSUN*(factor: GLshort){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactoriSUN*(factor: GLint){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactorfSUN*(factor: GLfloat){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactordSUN*(factor: GLdouble){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactorubSUN*(factor: GLubyte){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactorusSUN*(factor: GLushort){.stdcall, importc, ogl.}
+proc glGlobalAlphaFactoruiSUN*(factor: GLuint){.stdcall, importc, ogl.}
   # GL_SUN_mesh_array
 proc glDrawMeshArraysSUN*(mode: GLenum, first: GLint, count: GLsizei, 
-                          width: GLsizei){.stdcall, importc, dynlib: ogldll.}
+                          width: GLsizei){.stdcall, importc, ogl.}
   # GL_SUN_triangle_list
-proc glReplacementCodeuiSUN*(code: GLuint){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeusSUN*(code: GLushort){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeubSUN*(code: GLubyte){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeuivSUN*(code: PGLuint){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeusvSUN*(code: PGLushort){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeubvSUN*(code: PGLubyte){.stdcall, importc, dynlib: ogldll.}
+proc glReplacementCodeuiSUN*(code: GLuint){.stdcall, importc, ogl.}
+proc glReplacementCodeusSUN*(code: GLushort){.stdcall, importc, ogl.}
+proc glReplacementCodeubSUN*(code: GLubyte){.stdcall, importc, ogl.}
+proc glReplacementCodeuivSUN*(code: PGLuint){.stdcall, importc, ogl.}
+proc glReplacementCodeusvSUN*(code: PGLushort){.stdcall, importc, ogl.}
+proc glReplacementCodeubvSUN*(code: PGLubyte){.stdcall, importc, ogl.}
 proc glReplacementCodePointerSUN*(typ: GLenum, stride: GLsizei, pointer: PGLvoid){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
   # GL_SUN_vertex
 proc glColor4ubVertex2fSUN*(r: GLubyte, g: GLubyte, b: GLubyte, a: GLubyte, 
-                            x: GLfloat, y: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor4ubVertex2fvSUN*(c: PGLubyte, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                            x: GLfloat, y: GLfloat){.stdcall, importc, ogl.}
+proc glColor4ubVertex2fvSUN*(c: PGLubyte, v: PGLfloat){.stdcall, importc, ogl.}
 proc glColor4ubVertex3fSUN*(r: GLubyte, g: GLubyte, b: GLubyte, a: GLubyte, 
-                            x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor4ubVertex3fvSUN*(c: PGLubyte, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                            x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glColor4ubVertex3fvSUN*(c: PGLubyte, v: PGLfloat){.stdcall, importc, ogl.}
 proc glColor3fVertex3fSUN*(r: GLfloat, g: GLfloat, b: GLfloat, x: GLfloat, 
-                           y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glColor3fVertex3fvSUN*(c: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                           y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glColor3fVertex3fvSUN*(c: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glNormal3fVertex3fSUN*(nx: GLfloat, ny: GLfloat, nz: GLfloat, x: GLfloat, 
-                            y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glNormal3fVertex3fvSUN*(n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                            y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
+proc glNormal3fVertex3fvSUN*(n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glColor4fNormal3fVertex3fSUN*(r: GLfloat, g: GLfloat, b: GLfloat, 
                                    a: GLfloat, nx: GLfloat, ny: GLfloat, 
                                    nz: GLfloat, x: GLfloat, y: GLfloat, 
-                                   z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                   z: GLfloat){.stdcall, importc, ogl.}
 proc glColor4fNormal3fVertex3fvSUN*(c: PGLfloat, n: PGLfloat, v: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord2fVertex3fSUN*(s: GLfloat, t: GLfloat, x: GLfloat, y: GLfloat, 
-                              z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glTexCoord2fVertex3fvSUN*(tc: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                              z: GLfloat){.stdcall, importc, ogl.}
+proc glTexCoord2fVertex3fvSUN*(tc: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glTexCoord4fVertex4fSUN*(s: GLfloat, t: GLfloat, p: GLfloat, q: GLfloat, 
                               x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
-proc glTexCoord4fVertex4fvSUN*(tc: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
+proc glTexCoord4fVertex4fvSUN*(tc: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glTexCoord2fColor4ubVertex3fSUN*(s: GLfloat, t: GLfloat, r: GLubyte, 
                                       g: GLubyte, b: GLubyte, a: GLubyte, 
                                       x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord2fColor4ubVertex3fvSUN*(tc: PGLfloat, c: PGLubyte, v: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord2fColor3fVertex3fSUN*(s: GLfloat, t: GLfloat, r: GLfloat, 
                                      g: GLfloat, b: GLfloat, x: GLfloat, 
-                                     y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glTexCoord2fColor3fVertex3fvSUN*(tc: PGLfloat, c: PGLfloat, v: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord2fNormal3fVertex3fSUN*(s: GLfloat, t: GLfloat, nx: GLfloat, 
                                       ny: GLfloat, nz: GLfloat, x: GLfloat, 
-                                      y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+                                      y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glTexCoord2fNormal3fVertex3fvSUN*(tc: PGLfloat, n: PGLfloat, v: PGLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord2fColor4fNormal3fVertex3fSUN*(s: GLfloat, t: GLfloat, r: GLfloat, 
     g: GLfloat, b: GLfloat, a: GLfloat, nx: GLfloat, ny: GLfloat, nz: GLfloat, 
-    x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glTexCoord2fColor4fNormal3fVertex3fvSUN*(tc: PGLfloat, c: PGLfloat, 
-    n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glTexCoord4fColor4fNormal3fVertex4fSUN*(s: GLfloat, t: GLfloat, p: GLfloat, 
     q: GLfloat, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat, nx: GLfloat, 
     ny: GLfloat, nz: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glTexCoord4fColor4fNormal3fVertex4fvSUN*(tc: PGLfloat, c: PGLfloat, 
-    n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiVertex3fSUN*(rc: GLuint, x: GLfloat, y: GLfloat, 
-                                     z: GLfloat){.stdcall, importc, dynlib: ogldll.}
-proc glReplacementCodeuiVertex3fvSUN*(rc: PGLuint, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+                                     z: GLfloat){.stdcall, importc, ogl.}
+proc glReplacementCodeuiVertex3fvSUN*(rc: PGLuint, v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor4ubVertex3fSUN*(rc: GLuint, r: GLubyte, g: GLubyte, 
-    b: GLubyte, a: GLubyte, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    b: GLubyte, a: GLubyte, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor4ubVertex3fvSUN*(rc: PGLuint, c: PGLubyte, 
-    v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor3fVertex3fSUN*(rc: GLuint, r: GLfloat, g: GLfloat, 
-    b: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    b: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat, 
-    v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiNormal3fVertex3fSUN*(rc: GLuint, nx: GLfloat, 
-    ny: GLfloat, nz: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    ny: GLfloat, nz: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiNormal3fVertex3fvSUN*(rc: PGLuint, n: PGLfloat, 
-    v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor4fNormal3fVertex3fSUN*(rc: GLuint, r: GLfloat, 
     g: GLfloat, b: GLfloat, a: GLfloat, nx: GLfloat, ny: GLfloat, nz: GLfloat, 
-    x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiColor4fNormal3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat, 
-    n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fVertex3fSUN*(rc: GLuint, s: GLfloat, 
-    t: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    t: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fVertex3fvSUN*(rc: PGLuint, tc: PGLfloat, 
-    v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN*(rc: GLuint, s: GLfloat, 
     t: GLfloat, nx: GLfloat, ny: GLfloat, nz: GLfloat, x: GLfloat, y: GLfloat, 
-    z: GLfloat){.stdcall, importc, dynlib: ogldll.}
+    z: GLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN*(rc: PGLuint, 
-    tc: PGLfloat, n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    tc: PGLfloat, n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN*(rc: GLuint, 
     s: GLfloat, t: GLfloat, r: GLfloat, g: GLfloat, b: GLfloat, a: GLfloat, 
     nx: GLfloat, ny: GLfloat, nz: GLfloat, x: GLfloat, y: GLfloat, z: GLfloat){.
-    stdcall, importc, dynlib: ogldll.}
+    stdcall, importc, ogl.}
 proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN*(rc: PGLuint, 
-    tc: PGLfloat, c: PGLfloat, n: PGLfloat, v: PGLfloat){.stdcall, importc, dynlib: ogldll.}
+    tc: PGLfloat, c: PGLfloat, n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
   # window support functions
 when defined(windows): 
-  proc wglGetProcAddress*(ProcName: cstring): Pointer{.stdcall, importc, dynlib: ogldll.}
-  proc wglCopyContext*(p1: HGLRC, p2: HGLRC, p3: int): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglCreateContext*(DC: HDC): HGLRC{.stdcall, importc, dynlib: ogldll.}
-  proc wglCreateLayerContext*(p1: HDC, p2: int): HGLRC{.stdcall, importc, dynlib: ogldll.}
-  proc wglDeleteContext*(p1: HGLRC): BOOL{.stdcall, importc, dynlib: ogldll.}
+  proc wglGetProcAddress*(ProcName: cstring): Pointer{.stdcall, importc, wgl.}
+  proc wglCopyContext*(p1: HGLRC, p2: HGLRC, p3: int): BOOL{.stdcall, importc, wgl.}
+  proc wglCreateContext*(DC: HDC): HGLRC{.stdcall, importc, wgl.}
+  proc wglCreateLayerContext*(p1: HDC, p2: int): HGLRC{.stdcall, importc, wgl.}
+  proc wglDeleteContext*(p1: HGLRC): BOOL{.stdcall, importc, wgl.}
   proc wglDescribeLayerPlane*(p1: HDC, p2, p3: int, p4: int, 
-                              LayerPlaneDescriptor: pointer): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetCurrentContext*(): HGLRC{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetCurrentDC*(): HDC{.stdcall, importc, dynlib: ogldll.}
+                              LayerPlaneDescriptor: pointer): BOOL{.stdcall, importc, wgl.}
+  proc wglGetCurrentContext*(): HGLRC{.stdcall, importc, wgl.}
+  proc wglGetCurrentDC*(): HDC{.stdcall, importc, wgl.}
   proc wglGetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglMakeCurrent*(DC: HDC, p2: HGLRC): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglRealizeLayerPalette*(p1: HDC, p2: int, p3: BOOL): BOOL{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglMakeCurrent*(DC: HDC, p2: HGLRC): BOOL{.stdcall, importc, wgl.}
+  proc wglRealizeLayerPalette*(p1: HDC, p2: int, p3: BOOL): BOOL{.stdcall, importc, wgl.}
   proc wglSetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglShareLists*(p1, p2: HGLRC): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglSwapLayerBuffers*(p1: HDC, p2: int): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglSwapMultipleBuffers*(p1: int32, p2: PWGLSWAP): int32{.stdcall, importc, dynlib: ogldll.}
-  proc wglUseFontBitmapsA*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglUseFontBitmapsW*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, dynlib: ogldll.}
-  proc wglUseFontBitmaps*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglShareLists*(p1, p2: HGLRC): BOOL{.stdcall, importc, wgl.}
+  proc wglSwapLayerBuffers*(p1: HDC, p2: int): BOOL{.stdcall, importc, wgl.}
+  proc wglSwapMultipleBuffers*(p1: int32, p2: PWGLSWAP): int32{.stdcall, importc, wgl.}
+  proc wglUseFontBitmapsA*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, wgl.}
+  proc wglUseFontBitmapsW*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, wgl.}
+  proc wglUseFontBitmaps*(DC: HDC, p2, p3, p4: int32): BOOL{.stdcall, importc, wgl.}
   proc wglUseFontOutlinesA*(p1: HDC, p2, p3, p4: int32, p5, p6: float32, 
-                            p7: int, GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, dynlib: ogldll.}
+                            p7: int, GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, wgl.}
   proc wglUseFontOutlinesW*(p1: HDC, p2, p3, p4: int32, p5, p6: float32, 
-                            p7: int, GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, dynlib: ogldll.}
+                            p7: int, GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, wgl.}
   proc wglUseFontOutlines*(p1: HDC, p2, p3, p4: int32, p5, p6: float32, p7: int, 
-                           GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, dynlib: ogldll.}
+                           GlyphMetricsFloat: pointer): BOOL{.stdcall, importc, wgl.}
     # WGL_ARB_buffer_region
   proc wglCreateBufferRegionARB*(hDC: HDC, iLayerPlane: GLint, uType: GLuint): THandle{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglDeleteBufferRegionARB*(hRegion: THandle){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglDeleteBufferRegionARB*(hRegion: THandle){.stdcall, importc, wgl.}
   proc wglSaveBufferRegionARB*(hRegion: THandle, x: GLint, y: GLint, 
-                               width: GLint, height: GLint): bool{.stdcall, importc, dynlib: ogldll.}
+                               width: GLint, height: GLint): bool{.stdcall, importc, wgl.}
   proc wglRestoreBufferRegionARB*(hRegion: THandle, x: GLint, y: GLint, 
                                   width: GLint, height: GLint, xSrc: GLint, 
-                                  ySrc: GLint): bool{.stdcall, importc, dynlib: ogldll.}
+                                  ySrc: GLint): bool{.stdcall, importc, wgl.}
     # WGL_ARB_extensions_string
-  proc wglGetExtensionsStringARB*(hdc: HDC): cstring{.stdcall, importc, dynlib: ogldll.}
+  proc wglGetExtensionsStringARB*(hdc: HDC): cstring{.stdcall, importc, wgl.}
     # WGL_ARB_make_current_read
   proc wglMakeContextCurrentARB*(hDrawDC: HDC, hReadDC: HDC, hglrc: HGLRC): bool{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglGetCurrentReadDCARB*(): HDC{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglGetCurrentReadDCARB*(): HDC{.stdcall, importc, wgl.}
     # WGL_ARB_pbuffer
   proc wglCreatePbufferARB*(hDC: HDC, iPixelFormat: GLint, iWidth: GLint, 
                             iHeight: GLint, piAttribList: PGLint): HPBUFFERARB{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglGetPbufferDCARB*(hPbuffer: HPBUFFERARB): HDC{.stdcall, importc, dynlib: ogldll.}
-  proc wglReleasePbufferDCARB*(hPbuffer: HPBUFFERARB, hDC: HDC): GLint{.stdcall, importc, dynlib: ogldll.}
-  proc wglDestroyPbufferARB*(hPbuffer: HPBUFFERARB): bool{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglGetPbufferDCARB*(hPbuffer: HPBUFFERARB): HDC{.stdcall, importc, wgl.}
+  proc wglReleasePbufferDCARB*(hPbuffer: HPBUFFERARB, hDC: HDC): GLint{.stdcall, importc, wgl.}
+  proc wglDestroyPbufferARB*(hPbuffer: HPBUFFERARB): bool{.stdcall, importc, wgl.}
   proc wglQueryPbufferARB*(hPbuffer: HPBUFFERARB, iAttribute: GLint, 
-                           piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                           piValue: PGLint): bool{.stdcall, importc, wgl.}
     # WGL_ARB_pixel_format
   proc wglGetPixelFormatAttribivARB*(hdc: HDC, iPixelFormat: GLint, 
                                      iLayerPlane: GLint, nAttributes: GLuint, 
                                      piAttributes: PGLint, piValues: PGLint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglGetPixelFormatAttribfvARB*(hdc: HDC, iPixelFormat: GLint, 
                                      iLayerPlane: GLint, nAttributes: GLuint, 
                                      piAttributes: PGLint, pfValues: PGLfloat): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglChoosePixelFormatARB*(hdc: HDC, piAttribIList: PGLint, 
                                 pfAttribFList: PGLfloat, nMaxFormats: GLuint, 
                                 piFormats: PGLint, nNumFormats: PGLuint): BOOL{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_ARB_color_buffer_float
-  proc wglClampColorARB*(target: GLenum, clamp: GLenum){.stdcall, importc, dynlib: ogldll.}
+  proc wglClampColorARB*(target: GLenum, clamp: GLenum){.stdcall, importc, wgl.}
     # WGL_ARB_render_texture
-  proc wglBindTexImageARB*(hPbuffer: HPBUFFERARB, iBuffer: GLint): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglBindTexImageARB*(hPbuffer: HPBUFFERARB, iBuffer: GLint): bool{.stdcall, importc, wgl.}
   proc wglReleaseTexImageARB*(hPbuffer: HPBUFFERARB, iBuffer: GLint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglSetPbufferAttribARB*(hPbuffer: HPBUFFERARB, piAttribList: PGLint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_ARB_create_context
   proc wglCreateContextAttribsARB*(hDC: HDC, hShareContext: HGLRC, 
-                                   attribList: PGLint): HGLRC{.stdcall, importc, dynlib: ogldll.}
+                                   attribList: PGLint): HGLRC{.stdcall, importc, wgl.}
     # WGL_AMD_gpu_association
-  proc wglGetGPUIDsAMD*(maxCount: int, ids: ptr int): int{.stdcall, importc, dynlib: ogldll.}
+  proc wglGetGPUIDsAMD*(maxCount: int, ids: ptr int): int{.stdcall, importc, wgl.}
   proc wglGetGPUInfoAMD*(id: int, prop: int, dataType: GLenum, size: int, 
-                         data: Pointer): int{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetContextGPUIDAMD*(hglrc: HGLRC): int{.stdcall, importc, dynlib: ogldll.}
-  proc wglCreateAssociatedContextAMD*(id: int): HGLRC{.stdcall, importc, dynlib: ogldll.}
+                         data: Pointer): int{.stdcall, importc, wgl.}
+  proc wglGetContextGPUIDAMD*(hglrc: HGLRC): int{.stdcall, importc, wgl.}
+  proc wglCreateAssociatedContextAMD*(id: int): HGLRC{.stdcall, importc, wgl.}
   proc wglCreateAssociatedContextAttribsAMD*(id: int, hShareContext: HGLRC, 
-      attribList: ptr int32): HGLRC{.stdcall, importc, dynlib: ogldll.}
-  proc wglDeleteAssociatedContextAMD*(hglrc: HGLRC): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglMakeAssociatedContextCurrentAMD*(hglrc: HGLRC): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetCurrentAssociatedContextAMD*(): HGLRC{.stdcall, importc, dynlib: ogldll.}
+      attribList: ptr int32): HGLRC{.stdcall, importc, wgl.}
+  proc wglDeleteAssociatedContextAMD*(hglrc: HGLRC): bool{.stdcall, importc, wgl.}
+  proc wglMakeAssociatedContextCurrentAMD*(hglrc: HGLRC): bool{.stdcall, importc, wgl.}
+  proc wglGetCurrentAssociatedContextAMD*(): HGLRC{.stdcall, importc, wgl.}
   proc wglBlitContextFramebufferAMD*(dstCtx: HGLRC, srcX0: GLint, srcY0: GLint, 
                                      srcX1: GLint, srcY1: GLint, dstX0: GLint, 
                                      dstY0: GLint, dstX1: GLint, dstY1: GLint, 
-                                     mask: GLbitfield, filter: GLenum){.stdcall, importc, dynlib: ogldll.}
+                                     mask: GLbitfield, filter: GLenum){.stdcall, importc, wgl.}
     # WGL_EXT_display_color_table
-  proc wglCreateDisplayColorTableEXT*(id: GLushort): GLboolean{.stdcall, importc, dynlib: ogldll.}
+  proc wglCreateDisplayColorTableEXT*(id: GLushort): GLboolean{.stdcall, importc, wgl.}
   proc wglLoadDisplayColorTableEXT*(table: PGLushort, len: GLuint): GLboolean{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglBindDisplayColorTableEXT*(id: GLushort): GLboolean{.stdcall, importc, dynlib: ogldll.}
-  proc wglDestroyDisplayColorTableEXT*(id: GLushort){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglBindDisplayColorTableEXT*(id: GLushort): GLboolean{.stdcall, importc, wgl.}
+  proc wglDestroyDisplayColorTableEXT*(id: GLushort){.stdcall, importc, wgl.}
     # WGL_EXT_extensions_string
-  proc wglGetExtensionsStringEXT*(): cstring{.stdcall, importc, dynlib: ogldll.}
+  proc wglGetExtensionsStringEXT*(): cstring{.stdcall, importc, wgl.}
     # WGL_EXT_make_current_read
   proc wglMakeContextCurrentEXT*(hDrawDC: HDC, hReadDC: HDC, hglrc: HGLRC): bool{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglGetCurrentReadDCEXT*(): HDC{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglGetCurrentReadDCEXT*(): HDC{.stdcall, importc, wgl.}
     # WGL_EXT_pbuffer
   proc wglCreatePbufferEXT*(hDC: HDC, iPixelFormat: GLint, iWidth: GLint, 
                             iHeight: GLint, piAttribList: PGLint): HPBUFFEREXT{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglGetPbufferDCEXT*(hPbuffer: HPBUFFEREXT): HDC{.stdcall, importc, dynlib: ogldll.}
-  proc wglReleasePbufferDCEXT*(hPbuffer: HPBUFFEREXT, hDC: HDC): GLint{.stdcall, importc, dynlib: ogldll.}
-  proc wglDestroyPbufferEXT*(hPbuffer: HPBUFFEREXT): bool{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglGetPbufferDCEXT*(hPbuffer: HPBUFFEREXT): HDC{.stdcall, importc, wgl.}
+  proc wglReleasePbufferDCEXT*(hPbuffer: HPBUFFEREXT, hDC: HDC): GLint{.stdcall, importc, wgl.}
+  proc wglDestroyPbufferEXT*(hPbuffer: HPBUFFEREXT): bool{.stdcall, importc, wgl.}
   proc wglQueryPbufferEXT*(hPbuffer: HPBUFFEREXT, iAttribute: GLint, 
-                           piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                           piValue: PGLint): bool{.stdcall, importc, wgl.}
     # WGL_EXT_pixel_format
   proc wglGetPixelFormatAttribivEXT*(hdc: HDC, iPixelFormat: GLint, 
                                      iLayerPlane: GLint, nAttributes: GLuint, 
                                      piAttributes: PGLint, piValues: PGLint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglGetPixelFormatAttribfvEXT*(hdc: HDC, iPixelFormat: GLint, 
                                      iLayerPlane: GLint, nAttributes: GLuint, 
                                      piAttributes: PGLint, pfValues: PGLfloat): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglChoosePixelFormatEXT*(hdc: HDC, piAttribIList: PGLint, 
                                 pfAttribFList: PGLfloat, nMaxFormats: GLuint, 
                                 piFormats: PGLint, nNumFormats: PGLuint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_EXT_swap_control
-  proc wglSwapIntervalEXT*(interval: GLint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetSwapIntervalEXT*(): GLint{.stdcall, importc, dynlib: ogldll.}
+  proc wglSwapIntervalEXT*(interval: GLint): bool{.stdcall, importc, wgl.}
+  proc wglGetSwapIntervalEXT*(): GLint{.stdcall, importc, wgl.}
     # WGL_I3D_digital_video_control
   proc wglGetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: GLint, 
-                                        piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                                        piValue: PGLint): bool{.stdcall, importc, wgl.}
   proc wglSetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: GLint, 
-                                        piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                                        piValue: PGLint): bool{.stdcall, importc, wgl.}
     # WGL_I3D_gamma
   proc wglGetGammaTableParametersI3D*(hDC: HDC, iAttribute: GLint, 
-                                      piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                                      piValue: PGLint): bool{.stdcall, importc, wgl.}
   proc wglSetGammaTableParametersI3D*(hDC: HDC, iAttribute: GLint, 
-                                      piValue: PGLint): bool{.stdcall, importc, dynlib: ogldll.}
+                                      piValue: PGLint): bool{.stdcall, importc, wgl.}
   proc wglGetGammaTableI3D*(hDC: HDC, iEntries: GLint, puRed: PGLushort, 
                             puGreen: PGLushort, puBlue: PGLushort): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglSetGammaTableI3D*(hDC: HDC, iEntries: GLint, puRed: PGLushort, 
                             puGreen: PGLushort, puBlue: PGLushort): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_I3D_genlock
-  proc wglEnableGenlockI3D*(hDC: HDC): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglDisableGenlockI3D*(hDC: HDC): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglIsEnabledGenlockI3D*(hDC: HDC, pFlag: bool): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGenlockSourceI3D*(hDC: HDC, uSource: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetGenlockSourceI3D*(hDC: HDC, uSource: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGenlockSourceEdgeI3D*(hDC: HDC, uEdge: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetGenlockSourceEdgeI3D*(hDC: HDC, uEdge: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGenlockSampleRateI3D*(hDC: HDC, uRate: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetGenlockSampleRateI3D*(hDC: HDC, uRate: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGenlockSourceDelayI3D*(hDC: HDC, uDelay: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglGetGenlockSourceDelayI3D*(hDC: HDC, uDelay: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglEnableGenlockI3D*(hDC: HDC): bool{.stdcall, importc, wgl.}
+  proc wglDisableGenlockI3D*(hDC: HDC): bool{.stdcall, importc, wgl.}
+  proc wglIsEnabledGenlockI3D*(hDC: HDC, pFlag: bool): bool{.stdcall, importc, wgl.}
+  proc wglGenlockSourceI3D*(hDC: HDC, uSource: GLuint): bool{.stdcall, importc, wgl.}
+  proc wglGetGenlockSourceI3D*(hDC: HDC, uSource: PGLuint): bool{.stdcall, importc, wgl.}
+  proc wglGenlockSourceEdgeI3D*(hDC: HDC, uEdge: GLuint): bool{.stdcall, importc, wgl.}
+  proc wglGetGenlockSourceEdgeI3D*(hDC: HDC, uEdge: PGLuint): bool{.stdcall, importc, wgl.}
+  proc wglGenlockSampleRateI3D*(hDC: HDC, uRate: GLuint): bool{.stdcall, importc, wgl.}
+  proc wglGetGenlockSampleRateI3D*(hDC: HDC, uRate: PGLuint): bool{.stdcall, importc, wgl.}
+  proc wglGenlockSourceDelayI3D*(hDC: HDC, uDelay: GLuint): bool{.stdcall, importc, wgl.}
+  proc wglGetGenlockSourceDelayI3D*(hDC: HDC, uDelay: PGLuint): bool{.stdcall, importc, wgl.}
   proc wglQueryGenlockMaxSourceDelayI3D*(hDC: HDC, uMaxLineDelay: PGLuint, 
-      uMaxPixelDelay: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
+      uMaxPixelDelay: PGLuint): bool{.stdcall, importc, wgl.}
     # WGL_I3D_image_buffer
   proc wglCreateImageBufferI3D*(hDC: HDC, dwSize: GLuint, uFlags: GLuint): GLvoid{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglDestroyImageBufferI3D*(hDC: HDC, pAddress: GLvoid): bool{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglDestroyImageBufferI3D*(hDC: HDC, pAddress: GLvoid): bool{.stdcall, importc, wgl.}
   proc wglAssociateImageBufferEventsI3D*(hDC: HDC, pEvent: THandle, 
-      pAddress: PGLvoid, pSize: PGLuint, count: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
+      pAddress: PGLvoid, pSize: PGLuint, count: GLuint): bool{.stdcall, importc, wgl.}
   proc wglReleaseImageBufferEventsI3D*(hDC: HDC, pAddress: PGLvoid, 
-                                       count: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
+                                       count: GLuint): bool{.stdcall, importc, wgl.}
     # WGL_I3D_swap_frame_lock
-  proc wglEnableFrameLockI3D*(): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglDisableFrameLockI3D*(): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglIsEnabledFrameLockI3D*(pFlag: bool): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglQueryFrameLockMasterI3D*(pFlag: bool): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglEnableFrameLockI3D*(): bool{.stdcall, importc, wgl.}
+  proc wglDisableFrameLockI3D*(): bool{.stdcall, importc, wgl.}
+  proc wglIsEnabledFrameLockI3D*(pFlag: bool): bool{.stdcall, importc, wgl.}
+  proc wglQueryFrameLockMasterI3D*(pFlag: bool): bool{.stdcall, importc, wgl.}
     # WGL_I3D_swap_frame_usage
-  proc wglGetFrameUsageI3D*(pUsage: PGLfloat): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglBeginFrameTrackingI3D*(): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglEndFrameTrackingI3D*(): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglGetFrameUsageI3D*(pUsage: PGLfloat): bool{.stdcall, importc, wgl.}
+  proc wglBeginFrameTrackingI3D*(): bool{.stdcall, importc, wgl.}
+  proc wglEndFrameTrackingI3D*(): bool{.stdcall, importc, wgl.}
   proc wglQueryFrameTrackingI3D*(pFrameCount: PGLuint, pMissedFrames: PGLuint, 
-                                 pLastMissedUsage: PGLfloat): bool{.stdcall, importc, dynlib: ogldll.}
+                                 pLastMissedUsage: PGLfloat): bool{.stdcall, importc, wgl.}
     # WGL_NV_vertex_array_range
   proc wglAllocateMemoryNV*(size: GLsizei, readfreq: GLfloat, 
-                            writefreq: GLfloat, priority: GLfloat){.stdcall, importc, dynlib: ogldll.}
-  proc wglFreeMemoryNV*(pointer: Pointer){.stdcall, importc, dynlib: ogldll.}
+                            writefreq: GLfloat, priority: GLfloat){.stdcall, importc, wgl.}
+  proc wglFreeMemoryNV*(pointer: Pointer){.stdcall, importc, wgl.}
     # WGL_NV_present_video
   proc wglEnumerateVideoDevicesNV*(hdc: HDC, phDeviceList: PHVIDEOOUTPUTDEVICENV): int{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglBindVideoDeviceNV*(hd: HDC, uVideoSlot: int, 
                              hVideoDevice: HVIDEOOUTPUTDEVICENV, 
-                             piAttribList: ptr int32): bool{.stdcall, importc, dynlib: ogldll.}
+                             piAttribList: ptr int32): bool{.stdcall, importc, wgl.}
   proc wglQueryCurrentContextNV*(iAttribute: int, piValue: ptr int32): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_NV_video_output
   proc wglGetVideoDeviceNV*(hDC: HDC, numDevices: int, hVideoDevice: PHPVIDEODEV): bool{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglReleaseVideoDeviceNV*(hVideoDevice: HPVIDEODEV): bool{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglReleaseVideoDeviceNV*(hVideoDevice: HPVIDEODEV): bool{.stdcall, importc, wgl.}
   proc wglBindVideoImageNV*(hVideoDevice: HPVIDEODEV, hPbuffer: HPBUFFERARB, 
-                            iVideoBuffer: int): bool{.stdcall, importc, dynlib: ogldll.}
+                            iVideoBuffer: int): bool{.stdcall, importc, wgl.}
   proc wglReleaseVideoImageNV*(hPbuffer: HPBUFFERARB, iVideoBuffer: int): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglSendPbufferToVideoNV*(hPbuffer: HPBUFFERARB, iBufferType: int, 
                                 pulCounterPbuffer: ptr int, bBlock: bool): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglGetVideoInfoNV*(hpVideoDevice: HPVIDEODEV, 
                           pulCounterOutputPbuffer: ptr int, 
-                          pulCounterOutputVideo: ptr int): bool{.stdcall, importc, dynlib: ogldll.}
+                          pulCounterOutputVideo: ptr int): bool{.stdcall, importc, wgl.}
     # WGL_NV_swap_group
-  proc wglJoinSwapGroupNV*(hDC: HDC, group: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglBindSwapBarrierNV*(group: GLuint, barrier: GLuint): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglJoinSwapGroupNV*(hDC: HDC, group: GLuint): bool{.stdcall, importc, wgl.}
+  proc wglBindSwapBarrierNV*(group: GLuint, barrier: GLuint): bool{.stdcall, importc, wgl.}
   proc wglQuerySwapGroupNV*(hDC: HDC, group: PGLuint, barrier: PGLuint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglQueryMaxSwapGroupsNV*(hDC: HDC, mxGroups: PGLuint, 
-                                maxBarriers: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglQueryFrameCountNV*(hDC: HDC, count: PGLuint): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglResetFrameCountNV*(hDC: HDC): bool{.stdcall, importc, dynlib: ogldll.}
+                                maxBarriers: PGLuint): bool{.stdcall, importc, wgl.}
+  proc wglQueryFrameCountNV*(hDC: HDC, count: PGLuint): bool{.stdcall, importc, wgl.}
+  proc wglResetFrameCountNV*(hDC: HDC): bool{.stdcall, importc, wgl.}
     # WGL_NV_gpu_affinity
-  proc wglEnumGpusNV*(iGpuIndex: int, phGpu: PHGPUNV): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglEnumGpusNV*(iGpuIndex: int, phGpu: PHGPUNV): bool{.stdcall, importc, wgl.}
   proc wglEnumGpuDevicesNV*(hGpu: HGPUNV, iDeviceIndex: int, 
-                            lpGpuDevice: PGPU_DEVICE): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglCreateAffinityDCNV*(phGpuList: PHGPUNV): HDC{.stdcall, importc, dynlib: ogldll.}
+                            lpGpuDevice: PGPU_DEVICE): bool{.stdcall, importc, wgl.}
+  proc wglCreateAffinityDCNV*(phGpuList: PHGPUNV): HDC{.stdcall, importc, wgl.}
   proc wglEnumGpusFromAffinityDCNV*(hAffinityDC: HDC, iGpuIndex: int, 
-                                    hGpu: PHGPUNV): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglDeleteDCNV*(hDC: HDC): bool{.stdcall, importc, dynlib: ogldll.}
+                                    hGpu: PHGPUNV): bool{.stdcall, importc, wgl.}
+  proc wglDeleteDCNV*(hDC: HDC): bool{.stdcall, importc, wgl.}
     # WGL_NV_video_capture
   proc wglBindVideoCaptureDeviceNV*(uVideoSlot: int, 
-                                    hDevice: HVIDEOINPUTDEVICENV): bool{.stdcall, importc, dynlib: ogldll.}
+                                    hDevice: HVIDEOINPUTDEVICENV): bool{.stdcall, importc, wgl.}
   proc wglEnumerateVideoCaptureDevicesNV*(hDc: HDC, 
-      phDeviceList: PHVIDEOINPUTDEVICENV): int{.stdcall, importc, dynlib: ogldll.}
+      phDeviceList: PHVIDEOINPUTDEVICENV): int{.stdcall, importc, wgl.}
   proc wglLockVideoCaptureDeviceNV*(hDc: HDC, hDevice: HVIDEOINPUTDEVICENV): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglQueryVideoCaptureDeviceNV*(hDc: HDC, hDevice: HVIDEOINPUTDEVICENV, 
                                      iAttribute: int, piValue: ptr int32): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglReleaseVideoCaptureDeviceNV*(hDc: HDC, hDevice: HVIDEOINPUTDEVICENV): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_NV_copy_image
   proc wglCopyImageSubDataNV*(hSrcRc: HGLRC, srcName: GLuint, srcTarget: GLenum, 
                               srcLevel: GLint, srcX: GLint, srcY: GLint, 
                               srcZ: GLint, hDstRC: HGLRC, dstName: GLuint, 
                               dstTarget: GLenum, dstLevel: GLint, dstX: GLint, 
                               dstY: GLint, dstZ: GLint, width: GLsizei, 
-                              height: GLsizei, depth: GLsizei): bool{.stdcall, importc, dynlib: ogldll.}
+                              height: GLsizei, depth: GLsizei): bool{.stdcall, importc, wgl.}
     # WGL_NV_DX_interop
   proc wglDXSetResourceShareHandleNV*(dxObject: PGLVoid, hareHandle: int): bool{.
-      stdcall, importc, dynlib: ogldll.}
-  proc wglDXOpenDeviceNV*(dxDevice: PGLVoid): int{.stdcall, importc, dynlib: ogldll.}
-  proc wglDXCloseDeviceNV*(hDevice: int): bool{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
+  proc wglDXOpenDeviceNV*(dxDevice: PGLVoid): int{.stdcall, importc, wgl.}
+  proc wglDXCloseDeviceNV*(hDevice: int): bool{.stdcall, importc, wgl.}
   proc wglDXRegisterObjectNV*(hDevice: int, dxObject: PGLVoid, name: GLUInt, 
-                              typ: TGLEnum, access: TGLenum): int{.stdcall, importc, dynlib: ogldll.}
-  proc wglDXUnregisterObjectNV*(hDevice: int, hObject: int): bool{.stdcall, importc, dynlib: ogldll.}
-  proc wglDXObjectAccessNV*(hObject: int, access: GLenum): bool{.stdcall, importc, dynlib: ogldll.}
+                              typ: TGLEnum, access: TGLenum): int{.stdcall, importc, wgl.}
+  proc wglDXUnregisterObjectNV*(hDevice: int, hObject: int): bool{.stdcall, importc, wgl.}
+  proc wglDXObjectAccessNV*(hObject: int, access: GLenum): bool{.stdcall, importc, wgl.}
   proc wglDXLockObjectsNV*(hDevice: int, count: GLint, hObjects: ptr int): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglDXUnlockObjectsNV*(hDevice: int, count: GLint, hObjects: ptr int): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WGL_OML_sync_control
   proc wglGetSyncValuesOML*(hdc: HDC, ust: PGLint64, msc: PGLint64, 
-                            sbc: PGLint64): bool{.stdcall, importc, dynlib: ogldll.}
+                            sbc: PGLint64): bool{.stdcall, importc, wgl.}
   proc wglGetMscRateOML*(hdc: HDC, numerator: PGLint, denominator: PGLint): bool{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
   proc wglSwapBuffersMscOML*(hdc: HDC, target_msc: GLint64, divisor: GLint64, 
-                             remainder: GLint64): GLint64{.stdcall, importc, dynlib: ogldll.}
+                             remainder: GLint64): GLint64{.stdcall, importc, wgl.}
   proc wglSwapLayerBuffersMscOML*(hdc: HDC, fuPlanes: GLint, 
                                   target_msc: GLint64, divisor: GLint64, 
-                                  remainder: GLint64): GLint64{.stdcall, importc, dynlib: ogldll.}
+                                  remainder: GLint64): GLint64{.stdcall, importc, wgl.}
   proc wglWaitForMscOML*(hdc: HDC, target_msc: GLint64, divisor: GLint64, 
                          remainder: GLint64, ust: PGLint64, msc: PGLint64, 
-                         sbc: PGLint64): bool{.stdcall, importc, dynlib: ogldll.}
+                         sbc: PGLint64): bool{.stdcall, importc, wgl.}
   proc wglWaitForSbcOML*(hdc: HDC, target_sbc: GLint64, ust: PGLint64, 
-                         msc: PGLint64, sbc: PGLint64): bool{.stdcall, importc, dynlib: ogldll.}
+                         msc: PGLint64, sbc: PGLint64): bool{.stdcall, importc, wgl.}
     # WGL_3DL_stereo_control
-  proc wglSetStereoEmitterState3DL*(hDC: HDC, uState: int32): bool{.stdcall, importc, dynlib: ogldll.}
+  proc wglSetStereoEmitterState3DL*(hDC: HDC, uState: int32): bool{.stdcall, importc, wgl.}
     # WIN_draw_range_elements
   proc glDrawRangeElementsWIN*(mode: GLenum, start: GLuint, ending: GLuint, 
                                count: GLsizei, typ: GLenum, indices: PGLvoid){.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
     # WIN_swap_hint
   proc glAddSwapHintRectWIN*(x: GLint, y: GLint, width: GLsizei, height: GLsizei){.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, wgl.}
 when defined(LINUX): 
   proc glXChooseVisual*(dpy: PDisplay, screen: GLint, attribList: PGLint): PXVisualInfo{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXCopyContext*(dpy: PDisplay, src: GLXContext, dst: GLXContext, 
-                       mask: GLuint){.stdcall, importc, dynlib: ogldll.}
+                       mask: GLuint){.stdcall, importc, oglx.}
   proc glXCreateContext*(dpy: PDisplay, vis: PXVisualInfo, 
                          shareList: GLXContext, direct: GLboolean): GLXContext{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXCreateGLXPixmap*(dpy: PDisplay, vis: PXVisualInfo, pixmap: Pixmap): GLXPixmap{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXDestroyContext*(dpy: PDisplay, ctx: GLXContext){.stdcall, importc, dynlib: ogldll.}
-  proc glXDestroyGLXPixmap*(dpy: PDisplay, pix: GLXPixmap){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXDestroyContext*(dpy: PDisplay, ctx: GLXContext){.stdcall, importc, oglx.}
+  proc glXDestroyGLXPixmap*(dpy: PDisplay, pix: GLXPixmap){.stdcall, importc, oglx.}
   proc glXGetConfig*(dpy: PDisplay, vis: PXVisualInfo, attrib: GLint, 
-                     value: PGLint): GLint{.stdcall, importc, dynlib: ogldll.}
-  proc glXGetCurrentContext*(): GLXContext{.stdcall, importc, dynlib: ogldll.}
-  proc glXGetCurrentDrawable*(): GLXDrawable{.stdcall, importc, dynlib: ogldll.}
-  proc glXIsDirect*(dpy: PDisplay, ctx: GLXContext): glboolean{.stdcall, importc, dynlib: ogldll.}
+                     value: PGLint): GLint{.stdcall, importc, oglx.}
+  proc glXGetCurrentContext*(): GLXContext{.stdcall, importc, oglx.}
+  proc glXGetCurrentDrawable*(): GLXDrawable{.stdcall, importc, oglx.}
+  proc glXIsDirect*(dpy: PDisplay, ctx: GLXContext): glboolean{.stdcall, importc, oglx.}
   proc glXMakeCurrent*(dpy: PDisplay, drawable: GLXDrawable, ctx: GLXContext): GLboolean{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXQueryExtension*(dpy: PDisplay, errorBase: PGLint, eventBase: PGLint): GLboolean{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXQueryVersion*(dpy: PDisplay, major: PGLint, minor: PGLint): GLboolean{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXSwapBuffers*(dpy: PDisplay, drawable: GLXDrawable){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXSwapBuffers*(dpy: PDisplay, drawable: GLXDrawable){.stdcall, importc, oglx.}
   proc glXUseXFont*(font: Font, first: GLint, count: GLint, listBase: GLint){.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXWaitGL*(){.stdcall, importc, dynlib: ogldll.}
-  proc glXWaitX*(){.stdcall, importc, dynlib: ogldll.}
-  proc glXGetClientString*(dpy: PDisplay, name: GLint): PGLchar{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXWaitGL*(){.stdcall, importc, oglx.}
+  proc glXWaitX*(){.stdcall, importc, oglx.}
+  proc glXGetClientString*(dpy: PDisplay, name: GLint): PGLchar{.stdcall, importc, oglx.}
   proc glXQueryServerString*(dpy: PDisplay, screen: GLint, name: GLint): PGLchar{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXQueryExtensionsString*(dpy: PDisplay, screen: GLint): PGLchar{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXQueryExtensionsString*(dpy: PDisplay, screen: GLint): PGLchar{.stdcall, importc, oglx.}
     # GLX_VERSION_1_3
   proc glXGetFBConfigs*(dpy: PDisplay, screen: GLint, nelements: PGLint): GLXFBConfig{.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXChooseFBConfig*(dpy: PDisplay, screen: GLint, attrib_list: PGLint, 
-                          nelements: PGLint): GLXFBConfig{.stdcall, importc, dynlib: ogldll.}
+                          nelements: PGLint): GLXFBConfig{.stdcall, importc, oglx.}
   proc glXGetFBConfigAttrib*(dpy: PDisplay, config: GLXFBConfig, 
-                             attribute: GLint, value: PGLint): glint{.stdcall, importc, dynlib: ogldll.}
-  proc glXGetVisualFromFBConfig*(dpy: PDisplay, config: GLXFBConfig): PXVisualInfo{.stdcall, importc, dynlib: ogldll.}
+                             attribute: GLint, value: PGLint): glint{.stdcall, importc, oglx.}
+  proc glXGetVisualFromFBConfig*(dpy: PDisplay, config: GLXFBConfig): PXVisualInfo{.stdcall, importc, oglx.}
   proc glXCreateWindow*(dpy: PDisplay, config: GLXFBConfig, win: Window, 
-                        attrib_list: PGLint): GLXWindow{.stdcall, importc, dynlib: ogldll.}
-  proc glXDestroyWindow*(dpy: PDisplay, win: GLXWindow){.stdcall, importc, dynlib: ogldll.}
+                        attrib_list: PGLint): GLXWindow{.stdcall, importc, oglx.}
+  proc glXDestroyWindow*(dpy: PDisplay, win: GLXWindow){.stdcall, importc, oglx.}
   proc glXCreatePixmap*(dpy: PDisplay, config: GLXFBConfig, pixmap: Pixmap, 
-                        attrib_list: PGLint): GLXPixmap{.stdcall, importc, dynlib: ogldll.}
-  proc glXDestroyPixmap*(dpy: PDisplay, pixmap: GLXPixmap){.stdcall, importc, dynlib: ogldll.}
+                        attrib_list: PGLint): GLXPixmap{.stdcall, importc, oglx.}
+  proc glXDestroyPixmap*(dpy: PDisplay, pixmap: GLXPixmap){.stdcall, importc, oglx.}
   proc glXCreatePbuffer*(dpy: PDisplay, config: GLXFBConfig, attrib_list: PGLint): GLXPbuffer{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXDestroyPbuffer*(dpy: PDisplay, pbuf: GLXPbuffer){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXDestroyPbuffer*(dpy: PDisplay, pbuf: GLXPbuffer){.stdcall, importc, oglx.}
   proc glXQueryDrawable*(dpy: PDisplay, draw: GLXDrawable, attribute: GLint, 
-                         value: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                         value: PGLuint){.stdcall, importc, oglx.}
   proc glXCreateNewContext*(dpy: PDisplay, config: GLXFBConfig, 
                             rendertyp: GLint, share_list: GLXContext, 
-                            direct: GLboolean): GLXContext{.stdcall, importc, dynlib: ogldll.}
+                            direct: GLboolean): GLXContext{.stdcall, importc, oglx.}
   proc glXMakeContextCurrent*(display: PDisplay, draw: GLXDrawable, 
                               read: GLXDrawable, ctx: GLXContext): GLboolean{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXGetCurrentReadDrawable*(): GLXDrawable{.stdcall, importc, dynlib: ogldll.}
-  proc glXGetCurreentDisplay*(): PDisplay{.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXGetCurrentReadDrawable*(): GLXDrawable{.stdcall, importc, oglx.}
+  proc glXGetCurreentDisplay*(): PDisplay{.stdcall, importc, oglx.}
   proc glXQueryContext*(dpy: PDisplay, ctx: GLXContext, attribute: GLint, 
-                        value: PGLint): GLint{.stdcall, importc, dynlib: ogldll.}
+                        value: PGLint): GLint{.stdcall, importc, oglx.}
   proc glXSelectEvent*(dpy: PDisplay, draw: GLXDrawable, event_mask: GLuint){.
-      stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
   proc glXGetSelectedEvent*(dpy: PDisplay, draw: GLXDrawable, 
-                            event_mask: PGLuint){.stdcall, importc, dynlib: ogldll.}
+                            event_mask: PGLuint){.stdcall, importc, oglx.}
     # GLX_VERSION_1_4
-  proc glXGetProcAddress*(name: cstring): pointer{.stdcall, importc, dynlib: ogldll.}
+  proc glXGetProcAddress*(name: cstring): pointer{.stdcall, importc, oglx.}
     # GLX_ARB_get_proc_address
-  proc glXGetProcAddressARB*(name: cstring): pointer{.stdcall, importc, dynlib: ogldll.}
+  proc glXGetProcAddressARB*(name: cstring): pointer{.stdcall, importc, oglx.}
     # GLX_ARB_create_context
   proc glXCreateContextAttribsARB*(dpy: PDisplay, config: GLXFBConfig, 
                                    share_context: GLXContext, direct: GLboolean, 
-                                   attrib_list: PGLint): GLXContext{.stdcall, importc, dynlib: ogldll.}
+                                   attrib_list: PGLint): GLXContext{.stdcall, importc, oglx.}
     # GLX_EXT_import_context
-  proc glXGetCurrentDisplayEXT*(): PDisplay{.stdcall, importc, dynlib: ogldll.}
+  proc glXGetCurrentDisplayEXT*(): PDisplay{.stdcall, importc, oglx.}
   proc glXQueryContextInfoEXT*(dpy: PDisplay, context: GLXContext, 
-                               attribute: GLint, value: PGLint): GLint{.stdcall, importc, dynlib: ogldll.}
-  proc glXGetContextIDEXT*(context: GLXContext): GLXContextID{.stdcall, importc, dynlib: ogldll.}
+                               attribute: GLint, value: PGLint): GLint{.stdcall, importc, oglx.}
+  proc glXGetContextIDEXT*(context: GLXContext): GLXContextID{.stdcall, importc, oglx.}
   proc glXImportContextEXT*(dpy: PDisplay, contextID: GLXContextID): GLXContext{.
-      stdcall, importc, dynlib: ogldll.}
-  proc glXFreeContextEXT*(dpy: PDisplay, context: GLXContext){.stdcall, importc, dynlib: ogldll.}
+      stdcall, importc, oglx.}
+  proc glXFreeContextEXT*(dpy: PDisplay, context: GLXContext){.stdcall, importc, oglx.}
     # GLX_EXT_texture_from_pixmap
   proc glXBindTexImageEXT*(dpy: PDisplay, drawable: GLXDrawable, buffer: GLint, 
-                           attrib_list: PGLint){.stdcall, importc, dynlib: ogldll.}
+                           attrib_list: PGLint){.stdcall, importc, oglx.}
   proc glXReleaseTexImageEXT*(dpy: PDisplay, drawable: GLXDrawable, 
-                              buffer: GLint){.stdcall, importc, dynlib: ogldll.}
+                              buffer: GLint){.stdcall, importc, oglx.}
 # GL utility functions and procedures
 
-proc gluErrorString*(errCode: GLEnum): cstring{.stdcall, importc, dynlib: gludll.}
-proc gluGetString*(name: GLEnum): cstring{.stdcall, importc, dynlib: gludll.}
-proc gluOrtho2D*(left, right, bottom, top: GLdouble){.stdcall, importc, dynlib: gludll.}
-proc gluPerspective*(fovy, aspect, zNear, zFar: GLdouble){.stdcall, importc, dynlib: gludll.}
-proc gluPickMatrix*(x, y, width, height: GLdouble, viewport: TVector4i){.stdcall, importc, dynlib: gludll.}
+proc gluErrorString*(errCode: GLEnum): cstring{.stdcall, importc, glu.}
+proc gluGetString*(name: GLEnum): cstring{.stdcall, importc, glu.}
+proc gluOrtho2D*(left, right, bottom, top: GLdouble){.stdcall, importc, glu.}
+proc gluPerspective*(fovy, aspect, zNear, zFar: GLdouble){.stdcall, importc, glu.}
+proc gluPickMatrix*(x, y, width, height: GLdouble, viewport: TVector4i){.stdcall, importc, glu.}
 proc gluLookAt*(eyex, eyey, eyez, centerx, centery, centerz, upx, upy, upz: GLdouble){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluProject*(objx, objy, objz: GLdouble, modelMatrix: TGLMatrixd4, 
                  projMatrix: TGLMatrixd4, viewport: TVector4i, 
-                 winx, winy, winz: PGLdouble): GLint{.stdcall, importc, dynlib: gludll.}
+                 winx, winy, winz: PGLdouble): GLint{.stdcall, importc, glu.}
 proc gluUnProject*(winx, winy, winz: GLdouble, modelMatrix: TGLMatrixd4, 
                    projMatrix: TGLMatrixd4, viewport: TVector4i, 
-                   objx, objy, objz: PGLdouble): GLint{.stdcall, importc, dynlib: gludll.}
+                   objx, objy, objz: PGLdouble): GLint{.stdcall, importc, glu.}
 proc gluScaleImage*(format: GLEnum, widthin, heightin: GLint, typein: GLEnum, 
                     datain: Pointer, widthout, heightout: GLint, 
-                    typeout: GLEnum, dataout: Pointer): GLint{.stdcall, importc, dynlib: gludll.}
+                    typeout: GLEnum, dataout: Pointer): GLint{.stdcall, importc, glu.}
 proc gluBuild1DMipmaps*(target: GLEnum, components, width: GLint, 
-                        format, atype: GLEnum, data: Pointer): GLint{.stdcall, importc, dynlib: gludll.}
+                        format, atype: GLEnum, data: Pointer): GLint{.stdcall, importc, glu.}
 proc gluBuild2DMipmaps*(target: GLEnum, components, width, height: GLint, 
-                        format, atype: GLEnum, Data: Pointer): GLint{.stdcall, importc, dynlib: gludll.}
-proc gluNewQuadric*(): PGLUquadric{.stdcall, importc, dynlib: gludll.}
-proc gluDeleteQuadric*(state: PGLUquadric){.stdcall, importc, dynlib: gludll.}
-proc gluQuadricNormals*(quadObject: PGLUquadric, normals: GLEnum){.stdcall, importc, dynlib: gludll.}
+                        format, atype: GLEnum, Data: Pointer): GLint{.stdcall, importc, glu.}
+proc gluNewQuadric*(): PGLUquadric{.stdcall, importc, glu.}
+proc gluDeleteQuadric*(state: PGLUquadric){.stdcall, importc, glu.}
+proc gluQuadricNormals*(quadObject: PGLUquadric, normals: GLEnum){.stdcall, importc, glu.}
 proc gluQuadricTexture*(quadObject: PGLUquadric, textureCoords: GLboolean){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluQuadricOrientation*(quadObject: PGLUquadric, orientation: GLEnum){.
-    stdcall, importc, dynlib: gludll.}
-proc gluQuadricDrawStyle*(quadObject: PGLUquadric, drawStyle: GLEnum){.stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
+proc gluQuadricDrawStyle*(quadObject: PGLUquadric, drawStyle: GLEnum){.stdcall, importc, glu.}
 proc gluCylinder*(quadObject: PGLUquadric, 
                   baseRadius, topRadius, height: GLdouble, slices, stacks: GLint){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluDisk*(quadObject: PGLUquadric, innerRadius, outerRadius: GLdouble, 
-              slices, loops: GLint){.stdcall, importc, dynlib: gludll.}
+              slices, loops: GLint){.stdcall, importc, glu.}
 proc gluPartialDisk*(quadObject: PGLUquadric, 
                      innerRadius, outerRadius: GLdouble, slices, loops: GLint, 
-                     startAngle, sweepAngle: GLdouble){.stdcall, importc, dynlib: gludll.}
+                     startAngle, sweepAngle: GLdouble){.stdcall, importc, glu.}
 proc gluSphere*(quadObject: PGLUquadric, radius: GLdouble, slices, stacks: GLint){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluQuadricCallback*(quadObject: PGLUquadric, which: GLEnum, 
-                         fn: TGLUQuadricErrorProc){.stdcall, importc, dynlib: gludll.}
-proc gluNewTess*(): PGLUtesselator{.stdcall, importc, dynlib: gludll.}
-proc gluDeleteTess*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
-proc gluTessBeginPolygon*(tess: PGLUtesselator, polygon_data: Pointer){.stdcall, importc, dynlib: gludll.}
-proc gluTessBeginContour*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
+                         fn: TGLUQuadricErrorProc){.stdcall, importc, glu.}
+proc gluNewTess*(): PGLUtesselator{.stdcall, importc, glu.}
+proc gluDeleteTess*(tess: PGLUtesselator){.stdcall, importc, glu.}
+proc gluTessBeginPolygon*(tess: PGLUtesselator, polygon_data: Pointer){.stdcall, importc, glu.}
+proc gluTessBeginContour*(tess: PGLUtesselator){.stdcall, importc, glu.}
 proc gluTessVertex*(tess: PGLUtesselator, coords: TGLArrayd3, data: Pointer){.
-    stdcall, importc, dynlib: gludll.}
-proc gluTessEndContour*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
-proc gluTessEndPolygon*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
+proc gluTessEndContour*(tess: PGLUtesselator){.stdcall, importc, glu.}
+proc gluTessEndPolygon*(tess: PGLUtesselator){.stdcall, importc, glu.}
 proc gluTessProperty*(tess: PGLUtesselator, which: GLEnum, value: GLdouble){.
-    stdcall, importc, dynlib: gludll.}
-proc gluTessNormal*(tess: PGLUtesselator, x, y, z: GLdouble){.stdcall, importc, dynlib: gludll.}
-proc gluTessCallback*(tess: PGLUtesselator, which: GLEnum, fn: Pointer){.stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
+proc gluTessNormal*(tess: PGLUtesselator, x, y, z: GLdouble){.stdcall, importc, glu.}
+proc gluTessCallback*(tess: PGLUtesselator, which: GLEnum, fn: Pointer){.stdcall, importc, glu.}
 proc gluGetTessProperty*(tess: PGLUtesselator, which: GLEnum, value: PGLdouble){.
-    stdcall, importc, dynlib: gludll.}
-proc gluNewNurbsRenderer*(): PGLUnurbs{.stdcall, importc, dynlib: gludll.}
-proc gluDeleteNurbsRenderer*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluBeginSurface*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluBeginCurve*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluEndCurve*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluEndSurface*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluBeginTrim*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
-proc gluEndTrim*(nobj: PGLUnurbs){.stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
+proc gluNewNurbsRenderer*(): PGLUnurbs{.stdcall, importc, glu.}
+proc gluDeleteNurbsRenderer*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluBeginSurface*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluBeginCurve*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluEndCurve*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluEndSurface*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluBeginTrim*(nobj: PGLUnurbs){.stdcall, importc, glu.}
+proc gluEndTrim*(nobj: PGLUnurbs){.stdcall, importc, glu.}
 proc gluPwlCurve*(nobj: PGLUnurbs, count: GLint, points: PGLfloat, 
-                  stride: GLint, atype: GLEnum){.stdcall, importc, dynlib: gludll.}
+                  stride: GLint, atype: GLEnum){.stdcall, importc, glu.}
 proc gluNurbsCurve*(nobj: PGLUnurbs, nknots: GLint, knot: PGLfloat, 
                     stride: GLint, ctlarray: PGLfloat, order: GLint, 
-                    atype: GLEnum){.stdcall, importc, dynlib: gludll.}
+                    atype: GLEnum){.stdcall, importc, glu.}
 proc gluNurbsSurface*(nobj: PGLUnurbs, sknot_count: GLint, sknot: PGLfloat, 
                       tknot_count: GLint, tknot: PGLfloat, 
                       s_stride, t_stride: GLint, ctlarray: PGLfloat, 
-                      sorder, torder: GLint, atype: GLEnum){.stdcall, importc, dynlib: gludll.}
+                      sorder, torder: GLint, atype: GLEnum){.stdcall, importc, glu.}
 proc gluLoadSamplingMatrices*(nobj: PGLUnurbs, 
                               modelMatrix, projMatrix: TGLMatrixf4, 
-                              viewport: TVector4i){.stdcall, importc, dynlib: gludll.}
+                              viewport: TVector4i){.stdcall, importc, glu.}
 proc gluNurbsProperty*(nobj: PGLUnurbs, aproperty: GLEnum, value: GLfloat){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluGetNurbsProperty*(nobj: PGLUnurbs, aproperty: GLEnum, value: PGLfloat){.
-    stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
 proc gluNurbsCallback*(nobj: PGLUnurbs, which: GLEnum, fn: TGLUNurbsErrorProc){.
-    stdcall, importc, dynlib: gludll.}
-proc gluBeginPolygon*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
-proc gluNextContour*(tess: PGLUtesselator, atype: GLEnum){.stdcall, importc, dynlib: gludll.}
-proc gluEndPolygon*(tess: PGLUtesselator){.stdcall, importc, dynlib: gludll.}
+    stdcall, importc, glu.}
+proc gluBeginPolygon*(tess: PGLUtesselator){.stdcall, importc, glu.}
+proc gluNextContour*(tess: PGLUtesselator, atype: GLEnum){.stdcall, importc, glu.}
+proc gluEndPolygon*(tess: PGLUtesselator){.stdcall, importc, glu.}
 
 type 
   TRCOption* = enum 

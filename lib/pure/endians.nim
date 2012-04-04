@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains helpers that deal with `endian`:idx: changes.
+## This module contains helpers that deal with different byte orders
+## (`endian`:idx:).
 
 proc swapEndian64*(outp, inp: pointer) =
   ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
