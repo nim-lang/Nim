@@ -371,6 +371,8 @@
 # to keep it up to date                                                        
 #==============================================================================
 
+{.deadCodeElim: on.}
+
 when defined(LINUX): 
   import 
     X, XLib, XUtil
