@@ -29,6 +29,7 @@ Library Additions
 - The stdlib can now be avoided to a point where C code generation for 16bit 
   micro controllers is feasible.
 - Added a new OpenGL wrapper that supports OpenGL up to version 4.2.
+- Added a wrapper for ``libsvm``.
 
 
 Changes affecting backwards compatibility

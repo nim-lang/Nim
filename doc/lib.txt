@@ -584,3 +584,9 @@ Data Compression and Archiving
   Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
   Dieter Baron and Thomas Klausner.
 
+
+Scientific computing
+--------------------
+
+* `libsvm <libsvm.html>`_ 
+  Low level wrapper for `libsvm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
