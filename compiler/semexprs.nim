@@ -409,8 +409,10 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   of nkSym:
     # don't list 'skLet' here:
     if n.sym.kind in {skVar, skResult, skTemp}:
-      if c.p.owner.id == n.sym.owner.id: result = arLocalLValue
-      else: result = arLValue
+      if c.p.owner.id == n.sym.owner.id and sfGlobal notin n.sym.flags:
+        result = arLocalLValue
+      else:
+        result = arLValue
   of nkDotExpr: 
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
       result = arLValue

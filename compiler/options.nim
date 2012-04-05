@@ -221,4 +221,4 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
 
 # Can we keep this? I'm using it all the time
 template nimdbg*: expr = c.filename.endsWith"nimdbg.nim"
-  
+template cnimdbg*: expr = p.module.filename.endsWith"nimdbg.nim"
