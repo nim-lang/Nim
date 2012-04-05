@@ -57,6 +57,8 @@ Language Additions
 
 - Added explicit ``static`` sections for enforced compile time evaluation.
 - ``addr`` is now treated like a prefix operator syntactically.
+- Added ``global`` pragma that can be used to introduce new global variables
+  from within procs. 
 
 
 2012-02-09 Version 0.8.14 released
