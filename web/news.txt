@@ -32,6 +32,7 @@ Library Additions
 - Added module ``endians``.
 - Added a new OpenGL wrapper that supports OpenGL up to version 4.2.
 - Added a wrapper for ``libsvm``.
+- Added a wrapper for ``mongodb``.
 
 
 Changes affecting backwards compatibility

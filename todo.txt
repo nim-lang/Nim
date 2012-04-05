@@ -1,7 +1,8 @@
 version 0.9.0
 =============
 
-- test and document AVR/embedded systems better
+- document AVR/embedded systems better
+- implement ``--script:sh|bat`` command line option
 - make GC realtime capable: GC_step(ms: int)
 - make templates hygienic by default
 - ``=`` should be overloadable; requires specialization for ``=``
