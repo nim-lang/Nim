@@ -349,7 +349,8 @@ proc lsub(n: PNode): int =
   of nkBind: result = lsons(n) + len("bind_")
   of nkBindStmt: result = lcomma(n) + len("bind_")
   of nkCheckedFieldExpr: result = lsub(n.sons[0])
-  of nkLambda, nkDo: result = lsons(n) + len("lambda__=_") # XXX: render nkDo
+  of nkLambda: result = lsons(n) + len("proc__=_")
+  of nkDo: result = lsons(n) + len("do__:_")
   of nkConstDef, nkIdentDefs: 
     result = lcomma(n, 0, - 3)
     var L = sonsLen(n)
@@ -673,7 +674,17 @@ proc gident(g: var TSrcGen, n: PNode) =
     t = tkOpr
   put(g, t, s)
   if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
+
+proc doParamsAux(g: var TSrcGen, params: PNode) =
+  if params.len > 1:
+    put(g, tkParLe, "(")
+    gcomma(g, params, 1)
+    put(g, tkParRi, ")")
   
+  if params.sons[0].kind != nkEmpty: 
+    putWithSpace(g, tkOpr, "->")
+    gsub(g, params.sons[0])
+
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) = 
   if isNil(n): return
   var 
@@ -800,13 +811,18 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[0])
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref: 
     gsub(g, n.sons[0])
-  of nkLambda, nkDo: # XXX: nkDo is rendered as regular lambda
-    assert(n.sons[genericParamsPos].kind == nkEmpty)
-    putWithSpace(g, tkLambda, "lambda")
+  of nkLambda:
+    putWithSpace(g, tkLambda, "proc")
     gsub(g, n.sons[paramsPos])
     gsub(g, n.sons[pragmasPos])
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
+    gsub(g, n.sons[bodyPos])
+  of nkDo:
+    putWithSpace(g, tkDo, "do")
+    doParamsAux(g, n.sons[paramsPos])
+    gsub(g, n.sons[pragmasPos])
+    put(g, tkColon, ":")
     gsub(g, n.sons[bodyPos])
   of nkConstDef, nkIdentDefs: 
     gcomma(g, n, 0, - 3)
@@ -956,7 +972,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkIfStmt: 
     putWithSpace(g, tkIf, "if")
     gif(g, n)
-  of nkWhenStmt, nkRecWhen: 
+  of nkWhen, nkRecWhen: 
     putWithSpace(g, tkWhen, "when")
     gif(g, n)
   of nkWhileStmt: gwhile(g, n)

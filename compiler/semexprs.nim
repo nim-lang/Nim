@@ -1356,6 +1356,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = semIndirectOp(c, n, flags)
   of nkMacroStmt: 
     result = semMacroStmt(c, n)
+  of nkWhenExpr:
+    result = semWhen(c, n, false)
+    result = semExpr(c, result)
   of nkBracketExpr: 
     checkMinSonsLen(n, 1)
     var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
