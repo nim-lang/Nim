@@ -27,9 +27,7 @@ elif defined(macosx):
 else: 
   const 
     dllname = "libglut.so.3"
-type 
-  PInteger* = ptr int
-  PPChar* = ptr cstring
+type
   TGlutVoidCallback* = proc (){.cdecl.}
   TGlut1IntCallback* = proc (value: cint){.cdecl.}
   TGlut2IntCallback* = proc (v1, v2: cint){.cdecl.}
@@ -231,8 +229,16 @@ const                         # glutGet parameters.
   GLUT_GAME_MODE_REFRESH_RATE* = 5
   GLUT_GAME_MODE_DISPLAY_CHANGED* = 6 # GLUT initialization sub-API.
 
-proc glutInit*(argcp: PInteger, argv: PPChar){.dynlib: dllname, 
+proc glutInit*(argcp: ptr cint, argv: pointer){.dynlib: dllname, 
     importc: "glutInit".}
+
+proc glutInit*() =
+  ## version that passes `argc` and `argc` implicitely.
+  var
+    cmdLine {.importc: "cmdLine".}: array[0..255, cstring]
+    cmdCount {.importc: "cmdCount".}: cint
+  glutInit(addr(cmdCount), addr(cmdLine))
+
 proc glutInitDisplayMode*(mode: int16){.dynlib: dllname, 
                                         importc: "glutInitDisplayMode".}
 proc glutInitDisplayString*(str: cstring){.dynlib: dllname, 

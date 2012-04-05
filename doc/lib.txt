@@ -340,6 +340,9 @@ Database support
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
+* `mongodb <mongo.html>`_
+  Wrapper for the **mongodb** client C library.
+  
 
 Other
 -----
