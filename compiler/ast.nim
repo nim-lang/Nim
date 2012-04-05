@@ -143,7 +143,7 @@ type
     nkPragma,             # a pragma statement
     nkPragmaBlock,        # a pragma with a block
     nkIfStmt,             # an if statement
-    nkWhenStmt,           # a when statement
+    nkWhenStmt,           # a when expression or statement
     nkForStmt,            # a for statement
     nkWhileStmt,          # a while statement
     nkCaseStmt,           # a case statement
@@ -245,6 +245,11 @@ const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
   sfImmediate* = sfDeadCodeElim  # macro or template is immediately expanded
                                  # without considering any possible overloads
+
+const
+  # getting ready for the future expr/stmt merge
+  nkWhen* = nkWhenStmt
+  nkWhenExpr* = nkWhenStmt
 
 type
   TTypeKind* = enum  # order is important!
