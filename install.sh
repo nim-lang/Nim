@@ -124,6 +124,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/rst.txt
   cp doc/subexes.txt $docdir/subexes.txt || exit 1
   chmod 644 $docdir/subexes.txt
+  cp doc/targets.txt $docdir/targets.txt || exit 1
+  chmod 644 $docdir/targets.txt
   cp doc/theindex.txt $docdir/theindex.txt || exit 1
   chmod 644 $docdir/theindex.txt
   cp doc/tools.txt $docdir/tools.txt || exit 1
@@ -202,6 +204,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/lib.html
   cp doc/lists.html $docdir/lists.html || exit 1
   chmod 644 $docdir/lists.html
+  cp doc/locks.html $docdir/locks.html || exit 1
+  chmod 644 $docdir/locks.html
   cp doc/macros.html $docdir/macros.html || exit 1
   chmod 644 $docdir/macros.html
   cp doc/manual.html $docdir/manual.html || exit 1
@@ -362,6 +366,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/dyncalls.nim
   cp lib/system/ecmasys.nim $libdir/system/ecmasys.nim || exit 1
   chmod 644 $libdir/system/ecmasys.nim
+  cp lib/system/embedded.nim $libdir/system/embedded.nim || exit 1
+  chmod 644 $libdir/system/embedded.nim
   cp lib/system/excpt.nim $libdir/system/excpt.nim || exit 1
   chmod 644 $libdir/system/excpt.nim
   cp lib/system/gc.nim $libdir/system/gc.nim || exit 1
@@ -420,6 +426,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/dynlib.nim
   cp lib/pure/encodings.nim $libdir/pure/encodings.nim || exit 1
   chmod 644 $libdir/pure/encodings.nim
+  cp lib/pure/endians.nim $libdir/pure/endians.nim || exit 1
+  chmod 644 $libdir/pure/endians.nim
   cp lib/pure/events.nim $libdir/pure/events.nim || exit 1
   chmod 644 $libdir/pure/events.nim
   cp lib/pure/ftpclient.nim $libdir/pure/ftpclient.nim || exit 1
@@ -452,6 +460,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/md5.nim
   cp lib/pure/memfiles.nim $libdir/pure/memfiles.nim || exit 1
   chmod 644 $libdir/pure/memfiles.nim
+  cp lib/pure/oids.nim $libdir/pure/oids.nim || exit 1
+  chmod 644 $libdir/pure/oids.nim
   cp lib/pure/os.nim $libdir/pure/os.nim || exit 1
   chmod 644 $libdir/pure/os.nim
   cp lib/pure/osproc.nim $libdir/pure/osproc.nim || exit 1
@@ -558,8 +568,12 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/joyent_http_parser.nim
   cp lib/wrappers/libcurl.nim $libdir/wrappers/libcurl.nim || exit 1
   chmod 644 $libdir/wrappers/libcurl.nim
+  cp lib/wrappers/libsvm.nim $libdir/wrappers/libsvm.nim || exit 1
+  chmod 644 $libdir/wrappers/libsvm.nim
   cp lib/wrappers/libuv.nim $libdir/wrappers/libuv.nim || exit 1
   chmod 644 $libdir/wrappers/libuv.nim
+  cp lib/wrappers/mongo.nim $libdir/wrappers/mongo.nim || exit 1
+  chmod 644 $libdir/wrappers/mongo.nim
   cp lib/wrappers/mysql.nim $libdir/wrappers/mysql.nim || exit 1
   chmod 644 $libdir/wrappers/mysql.nim
   cp lib/wrappers/odbcsql.nim $libdir/wrappers/odbcsql.nim || exit 1
@@ -630,6 +644,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/opengl/glut.nim
   cp lib/wrappers/opengl/glx.nim $libdir/wrappers/opengl/glx.nim || exit 1
   chmod 644 $libdir/wrappers/opengl/glx.nim
+  cp lib/wrappers/opengl/opengl.nim $libdir/wrappers/opengl/opengl.nim || exit 1
+  chmod 644 $libdir/wrappers/opengl/opengl.nim
   cp lib/wrappers/opengl/wingl.nim $libdir/wrappers/opengl/wingl.nim || exit 1
   chmod 644 $libdir/wrappers/opengl/wingl.nim
   cp lib/wrappers/sdl/sdl.nim $libdir/wrappers/sdl/sdl.nim || exit 1
