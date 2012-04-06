@@ -583,8 +583,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                 break addImplicitGeneric
 
             var s = newSym(skType, paramTypId, getCurrOwner())
-            s.typ = typeClass
-            s.typ.sym = s
+            s.flags.incl(sfAnon)
+            s.linkTo(typeClass)
             s.position = genericParams.len
             genericParams.addSon(newSymNode(s))
             endingType = typeClass
@@ -693,7 +693,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
-    result = semExprWithType(c, n.sons[0], {efInTypeof}).typ
+    result = semExprWithType(c, n.sons[0], {efInTypeof, efAllowType}).typ
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)

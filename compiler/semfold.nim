@@ -206,7 +206,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mNewString, mNewStringOfCap, 
      mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
-     mParseExprToAst, mParseStmtToAst, mExpandToAst,
+     mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait,
      mNLen..mNError, mEqRef: 
     nil
   of mRand:

@@ -667,3 +667,6 @@ template AssertNotNil*(e: expr): expr =
   if(e == nil): InternalError($InstantiationInfo())
   e
 
+template InternalAssert*(e: bool): stmt =
+  if not e: InternalError($InstantiationInfo())
+
