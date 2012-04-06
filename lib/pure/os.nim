@@ -580,7 +580,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
       var L = GetFullPathNameA(filename, bufsize, result, unused)
       if L <= 0'i32 or L >= bufsize: OSError()
       setLen(result, L)
-  elif defined(macosx):
+  elif defined(macosx) or defined(bsd):
     # On Mac OS X 10.5, realpath does not allocate the buffer on its own
     var pathBuffer: cstring = newString(pathMax)
     var resultBuffer = realpath(filename, pathBuffer)
@@ -1377,7 +1377,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
   elif defined(bsd):
     result = getApplAux("/proc/" & $getpid() & "/file")
-  elif defined(macosx) or defined(bsd):
+  elif defined(macosx):
     var size: int32
     getExecPath1(nil, size)
     result = newString(int(size))
