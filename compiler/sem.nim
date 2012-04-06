@@ -21,7 +21,7 @@ proc semPass*(): TPass
 
 type 
   TExprFlag = enum 
-    efAllowType, efLValue, efWantIterator, efInTypeof
+    efLValue, efWantIterator, efInTypeof
   TExprFlags = set[TExprFlag]
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode

@@ -10,7 +10,16 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-proc semExprOrTypedesc(c: PContext, n: PNode): PNode
+proc restoreOldStyleType(n: PNode) =
+  # XXX: semExprWithType used to return the same type
+  # for nodes such as (100) or (int). 
+  # This is inappropriate. The type of the first expression
+  # should be "int", while the type of the second one should 
+  # be typedesc(int).
+  #
+  # This is strictly for backward compatibility until 
+  # the transition to types as first-class values is complete.
+  n.typ = n.typ.skipTypes({tyTypeDesc})
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
@@ -108,10 +117,9 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if s.ast == nil: InternalError(n.info, "no default for")
     result = semExpr(c, s.ast)
   of skType:
-    if efAllowType notin flags:
-      GlobalError(n.info, errATypeHasNoValue)
     markUsed(n, s)
     result = newSymNode(s, n.info)
+    result.typ = makeTypeDesc(c, s.typ)
   else:
     markUsed(n, s)
     result = newSymNode(s, n.info)
@@ -206,7 +214,8 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   if sonsLen(n) != 2: 
     GlobalError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else: 
-    n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
+    n.sons[1] = semExprWithType(c, n.sons[1])
+    restoreOldStyleType(n.sons[1])
     var typ = skipTypes(n.sons[1].typ, abstractVarRange)
     case typ.Kind
     of tySequence, tyString, tyOpenArray: 
@@ -219,15 +228,21 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   result = n
 
 proc semSizeof(c: PContext, n: PNode): PNode = 
-  if sonsLen(n) != 2: GlobalError(n.info, errXExpectsTypeOrValue, "sizeof")
-  else: n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
+  if sonsLen(n) != 2:
+    GlobalError(n.info, errXExpectsTypeOrValue, "sizeof")
+  else: 
+    n.sons[1] = semExprWithType(c, n.sons[1])
+    restoreOldStyleType(n.sons[1])
+
   n.typ = getSysType(tyInt)
   result = n
 
 proc semOf(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3: 
-    n.sons[1] = semExprWithType(c, n.sons[1], {efAllowType})
-    n.sons[2] = semExprWithType(c, n.sons[2], {efAllowType})
+    n.sons[1] = semExprWithType(c, n.sons[1])
+    n.sons[2] = semExprWithType(c, n.sons[2])
+    restoreOldStyleType(n.sons[1])
+    restoreOldStyleType(n.sons[2])
     var a = skipTypes(n.sons[1].typ, abstractPtrs)
     var b = skipTypes(n.sons[2].typ, abstractPtrs)
     if b.kind != tyObject or a.kind != tyObject: 
@@ -251,31 +266,16 @@ proc semIs(c: PContext, n: PNode): PNode =
   else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")
 
-proc semExprOrTypedesc(c: PContext, n: PNode): PNode =
-  # XXX: Currently, semExprWithType will return the same type
-  # for nodes such as (100) or (int). 
-  # This is inappropriate. The type of the first expression
-  # should be "int", while the type of the second one should 
-  # be typeDesc(int).
-  # Ideally, this should be fixed in semExpr, but right now 
-  # there are probably users that depend on the present behavior.
-  # XXX: Investigate current uses of efAllowType and fix them to
-  # work with tyTypeDesc.
-  result = semExprWithType(c, n, {efAllowType})
-  if result.kind == nkSym and result.sym.kind == skType and
-     result.typ.kind != tyTypeDesc:
-    result.typ = makeTypeDesc(c, result.typ)
-
 proc semOpAux(c: PContext, n: PNode) =
   for i in countup(1, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
       a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
-      a.sons[1] = semExprOrTypedesc(c, a.sons[1])
+      a.sons[1] = semExprWithType(c, a.sons[1])
       a.typ = a.sons[1].typ
     else:
-      n.sons[i] = semExprOrTypedesc(c, a)
+      n.sons[i] = semExprWithType(c, a)
     
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
@@ -754,13 +754,15 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return semSym(c, n, s, flags)
 
   checkSonsLen(n, 2)
-  n.sons[0] = semExprWithType(c, n.sons[0], {efAllowType} + flags)
+  n.sons[0] = semExprWithType(c, n.sons[0], flags)
+  restoreOldStyleType(n.sons[0])
   var i = considerAcc(n.sons[1])
-  var ty = n.sons[0].Typ
+  var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
   if isTypeExpr(n.sons[0]):
-    if ty.kind == tyEnum: 
+    case ty.kind
+    of tyEnum: 
       # look up if the identifier belongs to the enum:
       while ty != nil: 
         f = getSymFromList(ty.n, i)
@@ -771,10 +773,22 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result.info = n.info
         result.typ = ty
         markUsed(n, f)
-        return 
-    elif efAllowType notin flags:
-      GlobalError(n.sons[0].info, errATypeHasNoValue)
+        return
+    of tyGenericInst:
+      assert ty.sons[0].kind == tyGenericBody
+      let tbody = ty.sons[0]
+      for s in countup(0, tbody.len-2):
+        let tParam = tbody.sons[s]
+        assert tParam.kind == tyGenericParam
+        if tParam.sym.name == i:
+          let foundTyp = makeTypeDesc(c, ty.sons[s + 1])
+          return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
       return
+    else:
+      # echo "TYPE FIELD ACCESS"
+      # debug ty
+      return
+    # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].Typ
       
@@ -854,14 +868,14 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.add(x[0])
     return
   checkMinSonsLen(n, 2)
-  n.sons[0] = semExprOrTypedesc(c, n.sons[0])
+  n.sons[0] = semExprWithType(c, n.sons[0])
   var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
   of tyArray, tyOpenArray, tyArrayConstr, tySequence, tyString, tyCString: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 
-      n.sons[i] = semExprWithType(c, n.sons[i], flags - {efAllowType})
+      n.sons[i] = semExprWithType(c, n.sons[i], flags)
     var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(tyInt)
     var arg = IndexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
     if arg != nil: 
@@ -1282,9 +1296,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     nil
   of nkNilLit: 
     result.typ = getSysType(tyNil)
-  of nkType: 
-    if not (efAllowType in flags): GlobalError(n.info, errATypeHasNoValue)
-    n.typ = semTypeNode(c, n, nil)
   of nkIntLit: 
     if result.typ == nil: result.typ = getSysType(tyInt)
   of nkInt8Lit: 
