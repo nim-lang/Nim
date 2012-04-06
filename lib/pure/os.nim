@@ -151,7 +151,7 @@ else: # UNIX-like operating system
     ScriptExt* = ""
     DynlibFormat* = "lib$1.so"
 
-when defined(macosx):
+when defined(macosx) or defined(bsd):
   var
     pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
 
