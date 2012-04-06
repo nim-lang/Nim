@@ -1314,11 +1314,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     Message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr:
-    var typ = semTypeNode(c, n, nil)
-    if typ.sym == nil:
-      typ = copyType(typ, typ.owner, true)
-      typ.linkTo(newSym(skType, getIdent"typedesc", typ.owner))
-    result = newSymNode(typ.sym, n.info)
+    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    typ = makeTypedesc(c, typ)
+    var sym = newSym(skType, getIdent"TypeOfExpr", typ.owner).linkTo(typ)
+    sym.flags.incl(sfAnon)
+    result = newSymNode(sym, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)

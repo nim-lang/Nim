@@ -8,6 +8,7 @@
 #
 
 # This include file implements the semantic checking for magics.
+# included from sem.nim
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
@@ -43,11 +44,21 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
+proc semTypeTraits(c: PContext, n: PNode): PNode =
+  checkMinSonsLen(n, 2)
+  internalAssert n.sons[1].kind == nkSym
+  if n.sons[1].sym.kind == skType:
+    result = evalTypeTrait(n, GetCurrOwner())
+  else:
+    # pass unmodified to evals
+    result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
   of mSlurp: result = semSlurp(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
+  of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
