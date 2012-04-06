@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "0.8"
+  Version = "0.9"
   Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
 
   (c) 2012 Andreas Rumpf
@@ -32,6 +32,7 @@ Options:
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
+  --verbose           be verbose: list every processed file
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -39,7 +40,7 @@ Options:
 type
   TOption = enum 
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose
   TOptions = set[TOption]
   TConfirmEnum = enum 
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -50,6 +51,7 @@ var
   replacement = ""
   extensions: seq[string] = @[]
   options: TOptions = {optRegex}
+  useWriteStyled = true
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -89,6 +91,12 @@ proc afterPattern(s: string, last: int): int =
     inc(result)
   dec(result)
 
+proc writeColored(s: string) =
+  if useWriteStyled:
+    terminal.WriteStyled(s, {styleUnderscore, styleBright})
+  else:
+    stdout.write(s)
+
 proc highlight(s, match, repl: string, t: tuple[first, last: int],
                line: int, showRepl: bool) = 
   const alignment = 6
@@ -96,24 +104,30 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
   var x = beforePattern(s, t.first)
   var y = afterPattern(s, t.last)
   for i in x .. t.first-1: stdout.write(s[i])
-  terminal.WriteStyled(match, {styleUnderscore, styleBright})
+  writeColored(match)
   for i in t.last+1 .. y: stdout.write(s[i])
   stdout.write("\n")
   if showRepl:
     stdout.write(repeatChar(alignment-1), "-> ")
     for i in x .. t.first-1: stdout.write(s[i])
-    terminal.WriteStyled(repl, {styleUnderscore, styleBright})
+    writeColored(repl)
     for i in t.last+1 .. y: stdout.write(s[i])
     stdout.write("\n")
 
-proc processFile(filename: string) = 
+proc processFile(filename: string) =
+  var filenameShown = false
+  template beforeHighlight =
+    if not filenameShown and optVerbose notin options: 
+      stdout.writeln(filename)
+      filenameShown = true
+  
   var buffer: string
   try:
     buffer = system.readFile(filename)
   except EIO: 
     echo "cannot open file: ", filename
     return
-  stdout.writeln(filename)
+  if optVerbose in options: stdout.writeln(filename)
   var pegp: TPeg
   var rep: TRegex
   var result: string
@@ -145,6 +159,7 @@ proc processFile(filename: string) =
     
     var wholeMatch = buffer.substr(t.first, t.last)
     
+    beforeHighlight()
     if optReplace notin options: 
       highlight(buffer, wholeMatch, "", t, line, showRepl=false)
     else:
@@ -276,10 +291,14 @@ for kind, key, val in getopt():
     of "ignorecase", "i": incl(options, optIgnoreCase)
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
     of "ext": extensions = val.split('|')
+    of "verbose": incl(options, optVerbose)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: writeHelp()
   of cmdEnd: assert(false) # cannot happen
+
+when defined(posix):
+  useWriteStyled = terminal.isatty(stdout)
 
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
