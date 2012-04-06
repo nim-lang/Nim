@@ -1377,7 +1377,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
   elif defined(bsd):
     result = getApplAux("/proc/" & $getpid() & "/file")
-  elif defined(macosx):
+  elif defined(macosx) or defined(bsd):
     var size: int32
     getExecPath1(nil, size)
     result = newString(int(size))
