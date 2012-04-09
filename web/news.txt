@@ -26,6 +26,7 @@ Library Additions
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
 - Added ``strutils.parseEnum``.
+- Added ``json.%`` constructor operator.
 - The stdlib can now be avoided to a point where C code generation for 16bit 
   micro controllers is feasible.
 - Added module ``oids``.
@@ -55,6 +56,8 @@ Compiler Additions
 ------------------
 
 - Win64 is now an officially supported target.
+- The Nimrod compiler works on BSD again, but has some issues 
+  as ``os.getAppFilename`` and ``os.getAppDir`` cannot work reliably on BSD.
 - The compiler can detect and evaluate calls that can be evaluated at compile
   time for optimization purposes with the ``--implicitStatic`` command line
   option or pragma.
