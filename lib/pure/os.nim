@@ -1355,6 +1355,7 @@ when defined(macosx):
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
   ## Returns the filename of the application's executable.
+  ## **Note**: This does not work reliably on BSD.
 
   # Linux: /proc/<pid>/exe
   # Solaris:
@@ -1410,6 +1411,7 @@ proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
 
 proc getAppDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the directory of the application's executable.
+  ## **Note**: This does not work reliably on BSD.
   result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1".} =
