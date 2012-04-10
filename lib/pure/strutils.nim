@@ -379,6 +379,22 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
 
+proc parseEnum*[T: enum](s: string): T =
+  ## parses an enum ``T``. Raises ``EInvalidValue`` for an invalid value in 
+  ## `s`. The comparison is done in a style insensitive way.
+  for e in low(T)..high(T):
+    if cmpIgnoreStyle(s, $e) == 0:
+      return e
+  raise newException(EInvalidValue, "invalid enum value: " & s)
+
+proc parseEnum*[T: enum](s: string, default: T): T =
+  ## parses an enum ``T``. Uses `default` for an invalid value in 
+  ## `s`. The comparison is done in a style insensitive way.
+  for e in low(T)..high(T):
+    if cmpIgnoreStyle(s, $e) == 0:
+      return e
+  result = default
+
 proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
@@ -1106,4 +1122,7 @@ when isMainModule:
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
   
-  
+  type TMyEnum = enum enA, enB, enC, enuD, enE
+  doAssert parseEnum[TMyEnum]("enu_D") == enuD
+
+  doAssert parseEnum("invalid enum value", enC) == enC

@@ -289,6 +289,15 @@ Miscellaneous
   This module implements an event system that is not dependant on external
   graphical toolkits.
 
+* `oids <oids.html>`_
+  An OID is a global ID that consists of a timestamp,
+  a unique counter and a random value. This combination should suffice to 
+  produce a globally distributed unique ID. This implementation was extracted
+  from the Mongodb interface and it thus binary compatible with a Mongo OID.
+
+* `endians <endians.html>`_
+  This module contains helpers that deal with different byte orders.
+
 
 Database support
 ----------------
@@ -331,6 +340,12 @@ Database support
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
+* `db_mongo <db_mongo.html>`_
+  A higher level **mongodb** wrapper. 
+
+* `mongodb <mongo.html>`_
+  Lower level wrapper for the **mongodb** client C library.
+  
 
 Other
 -----
@@ -489,6 +504,9 @@ Graphics libraries
 * `wingl <wingl.html>`_
   Part of the wrapper for OpenGL.
 
+* `opengl <opengl.html>`_
+  New wrapper for OpenGL supporting up to version 4.2.
+  
 
 GUI libraries
 -------------
@@ -581,3 +599,9 @@ Data Compression and Archiving
   Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
   Dieter Baron and Thomas Klausner.
 
+
+Scientific computing
+--------------------
+
+* `libsvm <libsvm.html>`_ 
+  Low level wrapper for `libsvm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.

@@ -386,7 +386,11 @@ proc lsub(n: PNode): int =
   of nkTypeDef: result = lsons(n) + 3
   of nkOfInherit: result = lsub(n.sons[0]) + len("of_")
   of nkProcTy: result = lsons(n) + len("proc_")
-  of nkEnumTy: result = lsub(n.sons[0]) + lcomma(n, 1) + len("enum_")
+  of nkEnumTy: 
+    if sonsLen(n) > 0:
+      result = lsub(n.sons[0]) + lcomma(n, 1) + len("enum_")
+    else:
+      result = len("enum")
   of nkEnumFieldDef: result = lsons(n) + 3
   of nkVarSection, nkLetSection: 
     if sonsLen(n) > 1: result = maxLineLen + 1

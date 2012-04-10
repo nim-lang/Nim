@@ -1,9 +1,6 @@
 # Test/show CGI module
 import strtabs, cgi
 
-
-#setTestData("name", "the andreas", "password", "rumpf\t\ttab")
-
 var myData = readData()
 validateData(myData, "name", "password")
 writeContentType()

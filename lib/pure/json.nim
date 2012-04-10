@@ -495,16 +495,16 @@ type
     JArray
     
   PJsonNode* = ref TJsonNode ## JSON node 
-  TJsonNode* {.final, pure.} = object
+  TJsonNode* {.final, pure, acyclic.} = object
     case kind*: TJsonNodeKind
     of JString:
-      str*: String
+      str*: string
     of JInt:
       num*: biggestInt
     of JFloat:
-      fnum: Float
+      fnum*: float
     of JBool:
-      bval*: Bool
+      bval*: bool
     of JNull:
       nil
     of JObject:
@@ -557,6 +557,45 @@ proc newJArray*(): PJsonNode =
   new(result)
   result.kind = JArray
   result.elems = @[]
+
+
+proc `%`*(s: string): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JString PJsonNode`.
+  new(result)
+  result.kind = JString
+  result.str = s
+
+proc `%`*(n: biggestInt): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JInt PJsonNode`.
+  new(result)
+  result.kind = JInt
+  result.num  = n
+
+proc `%`*(n: float): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JFloat PJsonNode`.
+  new(result)
+  result.kind = JFloat
+  result.fnum  = n
+
+proc `%`*(b: bool): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JBool PJsonNode`.
+  new(result)
+  result.kind = JBool
+  result.bval = b
+
+proc `%`*(keyVals: openArray[tuple[key: string, val: PJsonNode]]): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject PJsonNode`
+  new(result)
+  result.kind = JObject
+  newSeq(result.fields, keyVals.len)
+  for i, p in pairs(keyVals): result.fields[i] = p
+
+proc `%`*(elements: openArray[PJSonNode]): PJsonNode =
+  ## Generic constructor for JSON data. Creates a new `JArray PJsonNode`
+  new(result)
+  result.kind = JArray
+  newSeq(result.elems, elements.len)
+  for i, p in pairs(elements): result.elems[i] = p
 
 proc len*(n: PJsonNode): int = 
   ## If `n` is a `JArray`, it returns the number of elements.

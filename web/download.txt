@@ -9,10 +9,10 @@ Please choose your platform:
 
 The source-based installation has been tested on these systems:
 * Linux: i386, AMD64, PowerPC
+* BSD: AMD64
 * Mac OS X: i386, AMD64
 
-Other UNIX-based operating systems may work. An older version was tested on 
-FreeBSD (i386).
+Other UNIX-based operating systems may work.
 
 .. include:: ../install.txt
 

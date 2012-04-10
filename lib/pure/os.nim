@@ -151,7 +151,7 @@ else: # UNIX-like operating system
     ScriptExt* = ""
     DynlibFormat* = "lib$1.so"
 
-when defined(macosx):
+when defined(macosx) or defined(bsd):
   var
     pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
 
@@ -580,7 +580,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
       var L = GetFullPathNameA(filename, bufsize, result, unused)
       if L <= 0'i32 or L >= bufsize: OSError()
       setLen(result, L)
-  elif defined(macosx):
+  elif defined(macosx) or defined(bsd):
     # On Mac OS X 10.5, realpath does not allocate the buffer on its own
     var pathBuffer: cstring = newString(pathMax)
     var resultBuffer = realpath(filename, pathBuffer)
@@ -1355,6 +1355,7 @@ when defined(macosx):
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
   ## Returns the filename of the application's executable.
+  ## **Note**: This does not work reliably on BSD.
 
   # Linux: /proc/<pid>/exe
   # Solaris:
@@ -1410,6 +1411,7 @@ proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
 
 proc getAppDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the directory of the application's executable.
+  ## **Note**: This does not work reliably on BSD.
   result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1".} =
