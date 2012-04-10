@@ -1,7 +1,7 @@
 discard """
   file: "ttypenoval.nim"
   line: 38
-  errormsg: "a type has no value"
+  errormsg: "type mismatch: got (typedesc{int}) but expected 'int'"
 """
 
 # A min-heap.

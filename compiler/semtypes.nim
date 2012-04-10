@@ -181,7 +181,12 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     if result != nil:
       markUsed(n, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
-        return result.typ.sons[0].sym
+        # This is a typedesc param. is it already bound?
+        # it's not bound when it's also used as return type for example
+        if result.typ.sonsLen > 0:
+          return result.typ.sons[0].sym
+        else:
+          return result.typ.sym
       if result.kind != skType: GlobalError(n.info, errTypeExpected)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
