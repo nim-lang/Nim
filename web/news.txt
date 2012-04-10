@@ -12,6 +12,7 @@ Bugfixes
 
 - Fixed a bug where the compiler would "optimize away" valid constant parts of
   a string concatenation.
+- Fixed a bug concerning implicit type conversions in ``case`` statements.
 
 
 Library Additions
@@ -24,6 +25,16 @@ Library Additions
   compile time as if was a macro.
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
+- Added ``strutils.parseEnum``.
+- Added ``json.%`` constructor operator.
+- The stdlib can now be avoided to a point where C code generation for 16bit 
+  micro controllers is feasible.
+- Added module ``oids``.
+- Added module ``endians``.
+- Added a new OpenGL wrapper that supports OpenGL up to version 4.2.
+- Added a wrapper for ``libsvm``.
+- Added a wrapper for ``mongodb``.
+- Added ``terminal.isatty``.
 
 
 Changes affecting backwards compatibility
@@ -33,7 +44,7 @@ Changes affecting backwards compatibility
   The ``system``, ``os``, ``osproc`` and ``memfiles`` modules use the wide
   string versions of the WinAPI. Use the ``-d:useWinAnsi`` switch to revert
   back to the old behaviour which uses the Ansi string versions.
-- ``static`` is now a keyword.
+- ``static`` and ``do`` are now keywords.
 - Templates now participate in overloading resolution which can break code that
   uses templates in subtle ways. Use the new ``immediate`` pragma for templates
   to get a template of old behaviour.
@@ -45,6 +56,8 @@ Compiler Additions
 ------------------
 
 - Win64 is now an officially supported target.
+- The Nimrod compiler works on BSD again, but has some issues 
+  as ``os.getAppFilename`` and ``os.getAppDir`` cannot work reliably on BSD.
 - The compiler can detect and evaluate calls that can be evaluated at compile
   time for optimization purposes with the ``--implicitStatic`` command line
   option or pragma.
@@ -56,6 +69,7 @@ Language Additions
 ------------------
 
 - Added explicit ``static`` sections for enforced compile time evaluation.
+- Added an alternative notation for lambdas with ``do``.
 - ``addr`` is now treated like a prefix operator syntactically.
 - Added ``global`` pragma that can be used to introduce new global variables
   from within procs.

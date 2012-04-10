@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -307,6 +307,17 @@ proc setBackgroundColor*(bg: TBackgroundColor, bright=false) =
     gBG = ord(bg)
     if bright: inc(gBG, 60)
     stdout.write("\e[" & $gBG & 'm')
+
+proc isatty*(f: TFile): bool =
+  ## returns true if `f` is associated with a terminal device.
+  when defined(posix):
+    proc isatty(fildes: TFileHandle): cint {.
+      importc: "isatty", header: "<unistd.h>".}
+  else:
+    proc isatty(fildes: TFileHandle): cint {.
+      importc: "_isatty", header: "<io.h>".}
+  
+  result = isatty(fileHandle(f)) != 0'i32
 
 # XXX: 
 # These should be private, but there is no yet 

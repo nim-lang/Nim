@@ -1486,10 +1486,10 @@ proc primary(p: var TPegParser): TPeg =
     return !primary(p)
   of tkAt:
     getTok(p)
-    return @primary(p)
+    return @(primary(p))
   of tkCurlyAt:
     getTok(p)
-    return @@primary(p).token(p)
+    return @@(primary(p).token(p))
   else: nil
   case p.tok.kind
   of tkIdentifier:

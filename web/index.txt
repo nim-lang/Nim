@@ -18,13 +18,11 @@ Welcome to Nimrod
   *Nimrod looks like this:*
   
   .. code-block:: nimrod
-    # Filter key=value pairs
-    import re
-
-    for x in lines("myfile.txt"):
-      if x =~ re"(\w+)=(.*)":
-        echo "Key: ", matches[0],
-             " Value: ", matches[1]
+    import strutils
+    
+    echo "List of ints (separate by whitespace): "
+    echo stdin.readLine.split.each(parseInt).max, 
+      " is the maximum"
 
 **Nimrod** is a new statically typed, imperative
 programming language, that supports procedural, object oriented, functional 
