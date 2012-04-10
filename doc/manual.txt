@@ -3267,7 +3267,7 @@ but are used to override the settings temporarily. Example:
   {.pop.} # restore old settings
 
 
-Register pragma
+register pragma
 ---------------
 The `register`:idx: pragma is for variables only. It declares the variable as
 ``register``, giving the compiler a hint that the variable should be placed
@@ -3277,6 +3277,22 @@ though and for good reasons: Often they do a better job without it anyway.
 In highly specific cases (a dispatch loop of an bytecode interpreter for
 example) it may provide benefits, though.
 
+global pragma
+---------------
+The `global`:idx pragma can be applied to a variable within a proc to instruct
+the compiler to store it in a global location and initialize it once at program
+startup.
+
+.. code-block:: nimrod
+proc isHexNumber(s: string): bool =
+  var pattern {.global.} = re"[0-9a-fA-F]+"
+  result = s.match(pattern)
+
+When used within a generic proc, a separate unique global variable will be
+created for each instantiation of the proc. The order of initialization of
+the created global variables within a module is not defined, but all of them
+will be initialized after any top-level variables in their originating module
+and before any variable in a module that imports it. 
 
 DeadCodeElim pragma
 -------------------
