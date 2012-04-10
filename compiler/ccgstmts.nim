@@ -53,7 +53,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   var targetProc = p
   var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags:
-    targetProc = p.module.initProc
+    targetProc = p.module.preInitProc
     assignGlobalVar(targetProc, v)
     genObjectInit(targetProc, cpsInit, v.typ, v.loc, true)
   else:

@@ -859,6 +859,7 @@ proc genInitCode(m: BModule) =
   
   app(prc, genSectionStart(cpsLocals))
   app(prc, m.initProc.s[cpsLocals])
+  app(prc, m.preInitProc.s[cpsLocals])
   app(prc, genSectionEnd(cpsLocals))
 
   app(prc, genSectionStart(cfsTypeInit1))
@@ -875,10 +876,12 @@ proc genInitCode(m: BModule) =
     app(prc, genSectionEnd(i))
   
   app(prc, genSectionStart(cpsInit))
+  app(prc, m.preInitProc.s[cpsInit])
   app(prc, m.initProc.s[cpsInit])
   app(prc, genSectionEnd(cpsInit))
 
-  app(prc, genSectionStart(cpsStmts))  
+  app(prc, genSectionStart(cpsStmts))
+  app(prc, m.preInitProc.s[cpsStmts])
   app(prc, m.initProc.s[cpsStmts])
   if optStackTrace in m.initProc.options and not m.PreventStackTrace:
     app(prc, deinitFrame(m.initProc))
@@ -916,6 +919,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.typeInfoMarker = initIntSet()
   result.initProc = newProc(nil, result)
   result.initProc.options = gOptions
+  result.preInitProc = newProc(nil, result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
