@@ -3,9 +3,30 @@
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/buildsh.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
+while :
+do
+    case "$1" in
+      --extraBuildArgs)
+	  extraBuildArgs=" $2"
+	  shift 2
+	  ;;
+      --) # End of all options
+	  shift
+	  break;
+	  ;;
+      -*)
+	  echo "Error: Unknown option: $1" >&2
+	  exit 1
+	  ;;
+      *)  # No more options
+	  break
+	  ;;
+    esac
+done
+
 CC="gcc"
 LINKER="gcc"
-COMP_FLAGS="?{c.ccompiler.flags}"
+COMP_FLAGS="?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="?{c.linker.flags}"
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
