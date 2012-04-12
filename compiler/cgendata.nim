@@ -48,13 +48,14 @@ type
   TCProcSections* = array[TCProcSection, PRope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
-  TBlock{.final.} = object 
+  TBlock*{.final.} = object 
     id*: int                  # the ID of the label; positive means that it
-                              # has been used (i.e. the label should be emitted)
+    label*: PRope             # generated text for the label
+                              # nil if label is not used
     nestedTryStmts*: int      # how many try statements is it nested into
+    sections*: TCProcSections # the code beloging
   
   TCProc{.final.} = object    # represents C proc that is currently generated
-    s*: TCProcSections        # the procs sections; short name for readability
     prc*: PSym                # the Nimrod proc that this C proc belongs to
     BeforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     ThreadVarAccessed*: bool  # true if the proc already accessed some threadvar
@@ -113,6 +114,8 @@ var
   gForwardedProcsCounter*: int = 0
   gNimDat*: BModule            # generated global data
 
+proc s*(prc: BProc, s: TCProcSection): var PRope {.inline.} =
+  result = prc.blocks[prc.blocks.len - 1].sections[s]
 
 proc newProc*(prc: PSym, module: BModule): BProc = 
   new(result)
@@ -120,6 +123,6 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.module = module
   if prc != nil: result.options = prc.options
   else: result.options = gOptions
-  result.blocks = @[]
+  newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
 
