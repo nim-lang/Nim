@@ -65,6 +65,8 @@ type
                               # before 'break'|'return'
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
+    breakIdx*: int            # the block that will be exited
+                              # with a regular break
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
