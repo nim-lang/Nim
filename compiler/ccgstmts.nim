@@ -47,6 +47,51 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   else:
     expr(p, ri, a)
 
+proc startBlock(p: BProc, start: TFormatStr = "{$n",
+                args: openarray[PRope]): int {.discardable.} =
+  inc(p.labels)
+  result = len(p.blocks)
+  setlen(p.blocks, result + 1)
+  p.blocks[result].id = p.labels
+  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len
+  appcg(p, cpsLocals, start, args)
+
+proc assignLabel(b: var TBlock): PRope {.inline.} =
+  b.label = con("LA", b.id.toRope)
+  result = b.label
+
+proc blockBody(b: var TBlock): PRope {.inline.} =
+  return b.sections[cpsLocals].con(b.sections[cpsInit]).con(b.sections[cpsStmts])
+
+proc endBlock(p: BProc, blockEnd: PRope) =
+  let topBlock = p.blocks.len - 1
+  # the block is merged into the parent block
+  app(p.blocks[topBlock - 1].sections[cpsStmts], p.blocks[topBlock].blockBody)
+  setlen(p.blocks, topBlock)
+  # this is done after the block is popped so $n is
+  # properly indented when pretty printing is enabled
+  app(p.s(cpsStmts), blockEnd)
+
+var gBlockEndBracket = ropef("}$n")
+
+proc endBlock(p: BProc) =
+  let topBlock = p.blocks.len - 1  
+  let blockEnd = if p.blocks[topBlock].label != nil:
+      ropef("} $1: ;$n", [p.blocks[topBlock].label])
+    else:
+      gBlockEndBracket
+  endBlock(p, blockEnd)
+
+proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
+  startBlock(p)
+  genStmts(p, stmts)
+  endBlock(p)
+
+template preserveBreakIdx(body: stmt): stmt =
+  var oldBreakIdx = p.breakIdx
+  body
+  p.breakIdx = oldBreakIdx
+
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
@@ -110,17 +155,15 @@ proc genConstStmt(p: BProc, t: PNode) =
 proc genIfStmt(p: BProc, n: PNode) = 
   #
   #  if (!expr1) goto L1;
-  #  thenPart
+  #  { thenPart }
   #  goto LEnd
   #  L1:
   #  if (!expr2) goto L2;
-  #  thenPart2
+  #  { thenPart2 }
   #  goto LEnd
   #  L2:
-  #  elsePart
+  #  { elsePart }
   #  Lend:
-  #
-  ## XXX: push blocks here
   var 
     a: TLoc
     Lelse: TLabel
@@ -136,12 +179,12 @@ proc genIfStmt(p: BProc, n: PNode) =
       appff(p.s(cpsStmts), "if (!$1) goto $2;$n", 
             "br i1 $1, label %LOC$3, label %$2$n" & "LOC$3: $n", 
             [rdLoc(a), Lelse, toRope(p.labels)])
-      genStmts(p, it.sons[1])
+      genSimpleBlock(p, it.sons[1])
       if sonsLen(n) > 1: 
         appff(p.s(cpsStmts), "goto $1;$n", "br label %$1$n", [Lend])
       fixLabel(p, Lelse)
-    of nkElse: 
-      genStmts(p, it.sons[0])
+    of nkElse:
+      genSimpleBlock(p, it.sons[0])
     else: internalError(n.info, "genIfStmt()")
   if sonsLen(n) > 1: fixLabel(p, Lend)
   
@@ -171,36 +214,6 @@ proc genReturnStmt(p: BProc, t: PNode) =
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
   blockLeaveActions(p, min(1, p.nestedTryStmts.len))
   appff(p.s(cpsStmts), "goto BeforeRet;$n", "br label %BeforeRet$n", [])
-  
-proc startBlock(p: BProc, start = "{$n"): int =
-  inc(p.labels)
-  result = len(p.blocks)
-  setlen(p.blocks, result + 1)
-  p.blocks[result].id = p.labels
-  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len
-  appf(p.s(cpsStmts), start)
-
-proc assignLabel(b: var TBlock): PRope {.inline.} =
-  b.label = con("LA", b.id.toRope)
-  result = b.label
-
-proc blockBody(b: var TBlock): PRope {.inline.} =
-  result = b.sections[cpsLocals].con(b.sections[cpsInit]).con(b.sections[cpsStmts])
-
-var gBlockEndBracket = ropef("}$n")
-
-proc endBlock(p: BProc) =
-  let topBlock = p.blocks.len - 1  
-  let blockEnd = if p.blocks[topBlock].label != nil:
-      ropef("} $1: ;$n", [p.blocks[topBlock].label])
-    else:
-      gBlockEndBracket
-  # the block is merged into the parent block
-  app(p.blocks[topBlock - 1].sections[cpsStmts], p.blocks[topBlock].blockBody)
-  setlen(p.blocks, topBlock)
-  # this is done after the block is popped so $n is
-  # properly indented when pretty printing is enabled
-  app(p.s(cpsStmts), blockEnd)
 
 proc genWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce
@@ -211,31 +224,33 @@ proc genWhileStmt(p: BProc, t: PNode) =
   assert(sonsLen(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
-  
-  var blockIdx = startBlock(p, "while (1) {$n")
-  initLocExpr(p, t.sons[0], a)
-  if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
-    let label = assignLabel(p.blocks[blockIdx])
-    appf(p.s(cpsStmts), "if (!$1) goto $2;$n", [rdLoc(a), label])
-  genStmts(p, t.sons[1])
-  endBlock(p)
+
+  preserveBreakIdx:
+    p.breakIdx = startBlock(p, "while (1) {$n")
+    initLocExpr(p, t.sons[0], a)
+    if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
+      let label = assignLabel(p.blocks[p.breakIdx])
+      appf(p.s(cpsStmts), "if (!$1) goto $2;$n", [rdLoc(a), label])
+    genStmts(p, t.sons[1])
+    endBlock(p)
 
   dec(p.withinLoop)
 
-proc genBlock(p: BProc, t: PNode, d: var TLoc) = 
-  var idx = startBlock(p)
-  if t.sons[0].kind != nkEmpty: 
-    # named block?
-    assert(t.sons[0].kind == nkSym)
-    var sym = t.sons[0].sym
-    sym.loc.k = locOther
-    sym.loc.a = idx
-  if t.kind == nkBlockExpr: genStmtListExpr(p, t.sons[1], d)
-  else: genStmts(p, t.sons[1])
-  endBlock(p)
-
+proc genBlock(p: BProc, t: PNode, d: var TLoc) =
+  preserveBreakIdx:
+    p.breakIdx = startBlock(p)
+    if t.sons[0].kind != nkEmpty: 
+      # named block?
+      assert(t.sons[0].kind == nkSym)
+      var sym = t.sons[0].sym
+      sym.loc.k = locOther
+      sym.loc.a = p.breakIdx
+    if t.kind == nkBlockExpr: genStmtListExpr(p, t.sons[1], d)
+    else: genStmts(p, t.sons[1])
+    endBlock(p)
+  
 proc genBreakStmt(p: BProc, t: PNode) = 
-  var idx = len(p.blocks) - 1
+  var idx = p.breakIdx
   if t.sons[0].kind != nkEmpty: 
     # named break?
     assert(t.sons[0].kind == nkSym)
@@ -290,10 +305,10 @@ proc genCaseSecondPass(p: BProc, t: PNode, labId, until: int): TLabel =
     appf(p.s(cpsStmts), "LA$1: ;$n", [toRope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
-      genStmts(p, t.sons[i].sons[length - 1])
+      genSimpleBlock(p, t.sons[i].sons[length - 1])
       appf(p.s(cpsStmts), "goto $1;$n", [Lend])
     else: 
-      genStmts(p, t.sons[i].sons[0])
+      genSimpleBlock(p, t.sons[i].sons[0])
   result = Lend
 
 proc genIfForCaseUntil(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr,
@@ -428,11 +443,11 @@ proc genOrdinalCase(p: BProc, n: PNode) =
       var branch = n[i]
       if branch.kind == nkOfBranch: 
         genCaseRange(p, branch)
-        genStmts(p, branch.lastSon)
+        genSimpleBlock(p, branch.lastSon)
       else: 
         # else part of case statement:
         appf(p.s(cpsStmts), "default:$n")
-        genStmts(p, branch[0])
+        genSimpleBlock(p, branch[0])
         hasDefault = true
       appf(p.s(cpsStmts), "break;$n")
     if (hasAssume in CC[ccompiler].props) and not hasDefault: 
@@ -484,6 +499,8 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   #  excHandler = excHandler->prev; // we handled the exception
   #  finallyPart();
   #  if (tmpRethrow) throw; 
+  #
+  #  XXX: push blocks
   var 
     rethrowFlag: PRope
     exc: PRope
@@ -529,7 +546,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     genStmts(p, t.sons[i].sons[0])
   if rethrowFlag != nil: 
     appf(p.s(cpsStmts), "if ($1) { throw; }$n", [rethrowFlag])
-  
+
 proc genTryStmt(p: BProc, t: PNode) = 
   # code to generate:
   #
@@ -549,12 +566,13 @@ proc genTryStmt(p: BProc, t: PNode) =
   #      clearException();
   #    }
   #  }
-  #  /* finally: */
-  #  printf('fin!\n');
+  #  { 
+  #    /* finally: */
+  #    printf('fin!\n');
+  #  }
   #  if (exception not cleared)
   #    propagateCurrentException();
   #
-  # XXX: push blocks here
   genLineDir(p, t)
   var safePoint = getTempName()
   discard cgsym(p.module, "E_Base")
@@ -563,24 +581,25 @@ proc genTryStmt(p: BProc, t: PNode) =
                      "$1.status = setjmp($1.context);$n", [safePoint])
   if optStackTrace in p.Options: 
     appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
-  appf(p.s(cpsStmts), "if ($1.status == 0) {$n", [safePoint])
+  startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
-  appcg(p, cpsStmts, "#popSafePoint();$n} else {$n#popSafePoint();$n")
+  endBlock(p, ropecg(p.module, "#popSafePoint();$n } else {$n#popSafePoint();$n"))
   discard pop(p.nestedTryStmts)
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
     var blen = sonsLen(t.sons[i])
     if blen == 1: 
       # general except section:
-      if i > 1: appf(p.s(cpsStmts), "else {$n")
+      if i > 1: appf(p.s(cpsStmts), "else")
+      startBlock(p)
       appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
       inc p.popCurrExc
       genStmts(p, t.sons[i].sons[0])
       dec p.popCurrExc
       appcg(p, cpsStmts, "#popCurrentException();$n", [])
-      if i > 1: appf(p.s(cpsStmts), "}$n")
+      endBlock(p)
     else:
       inc p.popCurrExc
       var orExpr: PRope = nil
@@ -591,16 +610,15 @@ proc genTryStmt(p: BProc, t: PNode) =
               "#isObj(#getCurrentException()->Sup.m_type, $1)", 
               [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: app(p.s(cpsStmts), "else ")
-      appf(p.s(cpsStmts), "if ($1) {$n", [orExpr])
+      startBlock(p, "if ($1) {$n", [orExpr])
       appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
       genStmts(p, t.sons[i].sons[blen-1])
       dec p.popCurrExc
-      # code to clear the exception:
-      appcg(p, cpsStmts, "#popCurrentException();}$n", [])
+      endBlock(p, ropecg(p.module, "#popCurrentException();}$n"))
     inc(i)
-  appf(p.s(cpsStmts), "}$n") # end of if statement
-  if i < length and t.sons[i].kind == nkFinally: 
-    genStmts(p, t.sons[i].sons[0])
+  appf(p.s(cpsStmts), "}$n") # end of else block
+  if i < length and t.sons[i].kind == nkFinally:
+    genSimpleBlock(p, t.sons[i].sons[0])
   appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode): PRope = 
