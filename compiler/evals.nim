@@ -490,7 +490,7 @@ proc evalSwap(c: PEvalContext, n: PNode): PNode =
 proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   var s = n.sym
   case s.kind
-  of skProc, skConverter, skMacro: 
+  of skProc, skConverter, skMacro, skType:
     result = n
     #result = s.getBody
   of skVar, skLet, skForVar, skTemp, skResult:
@@ -891,7 +891,24 @@ proc evalTemplate*(n: PNode, sym: PSym): PNode =
   result = evalTemplateAux(sym.getBody, args, sym)
   
   dec(evalTemplateCounter)
+ 
+proc evalTypeTrait*(n: PNode, context: PSym): PNode =
+  ## XXX: This should be pretty much guaranteed to be true
+  # by the type traits procs' signitures, but until the
+  # code is more mature it doesn't hurt to be extra safe
+  internalAssert n.sons.len >= 2 and
+                 n.sons[1].sym.typ.kind == tyTypeDesc
   
+  let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
+  case n.sons[0].sym.name.s
+  of "name":
+    result = newStrNode(nkStrLit, typ.typeToString)
+    result.typ = newType(tyString, context)
+    result.info = n.info
+
+  else:
+    internalAssert false
+
 proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
   var
     n = original.copyTree
@@ -941,6 +958,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mParseExprToAst: result = evalParseExpr(c, n)
   of mParseStmtToAst: result = evalParseStmt(c, n)
   of mExpandToAst: result = evalExpandToAst(c, n)
+  of mTypeTrait: result = evalTypeTrait(n, c.module)
   of mNLen:
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 

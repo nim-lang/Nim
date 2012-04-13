@@ -1,5 +1,4 @@
 discard """
-  disabled: true
   output: '''derived class
 base class
 '''

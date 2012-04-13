@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+# included from cgen.nim
+
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
@@ -48,16 +50,20 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
+  var targetProc = p
   var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags:
-    assignGlobalVar(p, v)
-    genObjectInit(p, cpsInit, v.typ, v.loc, true)
+    if v.owner.kind != skModule:
+      targetProc = p.module.preInitProc
+    assignGlobalVar(targetProc, v)
+    genObjectInit(targetProc, cpsInit, v.typ, v.loc, true)
   else:
     assignLocalVar(p, v)
     initLocalVar(p, v, immediateAsgn)
+
   if immediateAsgn:
-    genLineDir(p, a)
-    loadInto(p, a.sons[0], a.sons[2], v.loc)
+    genLineDir(targetProc, a)
+    loadInto(targetProc, a.sons[0], a.sons[2], v.loc)
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty

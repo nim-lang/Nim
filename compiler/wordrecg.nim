@@ -58,7 +58,7 @@ type
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame,
-    wImplicitStatic
+    wImplicitStatic, wGlobal
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -107,7 +107,7 @@ const
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "nostackframe", "implicitstatic"]
+    "nostackframe", "implicitstatic", "global"]
 
 proc findStr*(a: openarray[string], s: string): int = 
   for i in countup(low(a), high(a)): 

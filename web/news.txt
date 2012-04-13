@@ -71,6 +71,9 @@ Language Additions
 - Added explicit ``static`` sections for enforced compile time evaluation.
 - Added an alternative notation for lambdas with ``do``.
 - ``addr`` is now treated like a prefix operator syntactically.
+- Added ``global`` pragma that can be used to introduce new global variables
+  from within procs.
+- when expressions are now allowed just like if expressions
 
 
 2012-02-09 Version 0.8.14 released

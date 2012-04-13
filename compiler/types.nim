@@ -372,6 +372,13 @@ proc rangeToStr(n: PNode): string =
   assert(n.kind == nkRange)
   result = ValueToString(n.sons[0]) & ".." & ValueToString(n.sons[1])
 
+proc constraintsToStr(t: PType): string =
+  let sep = if tfAny in t.flags: " or " else: " and "
+  result = ""
+  for i in countup(0, t.sons.len - 1):
+    if i > 0: result.add(sep)
+    result.add(t.sons[i].typeToString)
+
 proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string = 
   const 
     typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty", 
@@ -387,7 +394,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
-  if prefer == preferName and t.sym != nil:
+  if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
     return t.sym.Name.s
   case t.Kind
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
@@ -396,6 +403,14 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i]))
     add(result, ']')
+  of tyTypeDesc:
+    if t.sons.len == 0: result = "typedesc"
+    else: result = "typedesc{" & constraintsToStr(t) & "}"
+  of tyTypeClass:
+    result = constraintsToStr(t)
+  of tyExpr:
+    if t.sons.len == 0: result = "expr"
+    else: result = "expr{" & constraintsToStr(t) & "}"
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &

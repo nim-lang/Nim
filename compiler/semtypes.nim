@@ -181,7 +181,12 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     if result != nil:
       markUsed(n, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
-        return result.typ.sons[0].sym
+        # This is a typedesc param. is it already bound?
+        # it's not bound when it's also used as return type for example
+        if result.typ.sonsLen > 0:
+          return result.typ.sons[0].sym
+        else:
+          return result.typ.sym
       if result.kind != skType: GlobalError(n.info, errTypeExpected)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
@@ -583,8 +588,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                 break addImplicitGeneric
 
             var s = newSym(skType, paramTypId, getCurrOwner())
-            s.typ = typeClass
-            s.typ.sym = s
+            s.flags.incl(sfAnon)
+            s.linkTo(typeClass)
             s.position = genericParams.len
             genericParams.addSon(newSymNode(s))
             endingType = typeClass

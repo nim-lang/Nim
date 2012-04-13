@@ -22,7 +22,8 @@ proc delNimCache() =
   except EOS:
     echo "[Warning] could not delete: ", dir
     
-proc plusCache(options: string): string = return options & " --symbolFiles:on"
+proc plusCache(options: string): string = return options &
+  " --symbolFiles:on --nimcache:./nimcache"
 
 proc runRodFiles(r: var TResults, options: string) =
   template test(filename: expr): stmt =
