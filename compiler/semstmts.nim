@@ -216,7 +216,14 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
     result = result.sons[1]
   elif not sameType(result.typ, typ): 
     changeType(result, typ)
-  
+
+proc findShadowedVar(c: PContext, v: PSym): PSym =
+  for i in countdown(c.tab.tos - 2, 0):
+    let shadowed = StrTableGet(c.tab.stack[i], v.name)
+    if shadowed != nil:
+      if shadowed.kind in skLocalVars:
+        return shadowed
+
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
     result = semIdentWithPragma(c, kind, n, {sfExported})
@@ -267,6 +274,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
       addInterfaceDecl(c, v)
+      when oKeepVariableNames:
+        let shadowed = findShadowedVar(c, v)
+        if shadowed != nil: shadowed.flags.incl(sfShadowed)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
