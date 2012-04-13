@@ -72,7 +72,7 @@ type
     errNoPragmasAllowedForX, errNoGenericParamsAllowedForX, 
     errInvalidParamKindX, errDefaultArgumentInvalid, errNamedParamHasToBeIdent, 
     errNoReturnTypeForX, errConvNeedsOneArg, errInvalidPragmaX, 
-    errXNotAllowedHere, errInvalidControlFlowX, errATypeHasNoValue, 
+    errXNotAllowedHere, errInvalidControlFlowX,
     errXisNoType, errCircumNeedsPointer, errInvalidExpression, 
     errInvalidExpressionX, errEnumHasNoValueX, errNamedExprExpected, 
     errNamedExprNotAllowed, errXExpectsOneTypeParam, 
@@ -275,7 +275,6 @@ const
     errInvalidPragmaX: "invalid pragma: $1", 
     errXNotAllowedHere: "$1 not allowed here",
     errInvalidControlFlowX: "invalid control flow: $1",
-    errATypeHasNoValue: "a type has no value", 
     errXisNoType: "invalid type: \'$1\'",
     errCircumNeedsPointer: "'[]' needs a pointer or reference type", 
     errInvalidExpression: "invalid expression",
@@ -666,4 +665,7 @@ proc InternalError*(errMsg: string) =
 template AssertNotNil*(e: expr): expr =
   if(e == nil): InternalError($InstantiationInfo())
   e
+
+template InternalAssert*(e: bool): stmt =
+  if not e: InternalError($InstantiationInfo())
 

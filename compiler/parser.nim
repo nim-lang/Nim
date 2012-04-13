@@ -264,16 +264,26 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     optInd(p, a)
   eat(p, endTok)
 
-proc newDotExpr(p: var TParser, a: PNode): PNode =
+proc dotExpr(p: var TParser, a: PNode): PNode =
   getTok(p)
   optInd(p, a)
-  result = newNodeI(nkDotExpr, a.info)
-  addSon(result, a)
-  addSon(result, parseSymbol(p))
+  case p.tok.tokType
+  of tkType:
+    result = newNodeP(nkTypeOfExpr, p)
+    getTok(p)
+    addSon(result, a)
+  of tkAddr:
+    result = newNodeP(nkAddr, p)
+    getTok(p)
+    addSon(result, a)
+  else:
+    result = newNodeI(nkDotExpr, a.info)
+    addSon(result, a)
+    addSon(result, parseSymbol(p))
 
 proc qualifiedIdent(p: var TParser): PNode = 
   result = parseSymbol(p)     #optInd(p, result);
-  if p.tok.tokType == tkDot: result = newDotExpr(p, result)
+  if p.tok.tokType == tkDot: result = dotExpr(p, result)
 
 proc qualifiedIdentListAux(p: var TParser, endTok: TTokType, result: PNode) = 
   getTok(p)
@@ -477,7 +487,7 @@ proc primary(p: var TParser): PNode =
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
       parseDoBlocks(p, result)
     of tkDot:
-      result = newDotExpr(p, result)
+      result = dotExpr(p, result)
       result = parseGStrLit(p, result)
     of tkBracketLe: 
       result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
@@ -506,8 +516,8 @@ proc lowestExprAux(p: var TParser, limit: int): PNode =
 proc lowestExpr(p: var TParser): PNode = 
   result = lowestExprAux(p, -1)
 
-proc parseIfExpr(p: var TParser): PNode = 
-  result = newNodeP(nkIfExpr, p)
+proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode = 
+  result = newNodeP(kind, p)
   while true: 
     getTok(p)                 # skip `if`, `elif`
     var branch = newNodeP(nkElifExpr, p)
@@ -707,7 +717,8 @@ proc parseExpr(p: var TParser): PNode =
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr)
   of tkTuple: result = parseTuple(p)
   of tkProc: result = parseProcExpr(p, true)
-  of tkIf: result = parseIfExpr(p)
+  of tkIf: result = parseIfExpr(p, nkIfExpr)
+  of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   else: result = lowestExpr(p)
   
 proc parseTypeDesc(p: var TParser): PNode = 
@@ -718,7 +729,7 @@ proc isExprStart(p: TParser): bool =
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkProc, tkBind, 
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
-     tkTuple, tkType: 
+     tkTuple, tkType, tkWhen:
     result = true
   else: result = false
   
