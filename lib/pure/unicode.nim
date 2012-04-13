@@ -34,7 +34,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     elif ord(s[i]) shr 3 == 0b11110: inc(i, 4)
     elif ord(s[i]) shr 2 == 0b111110: inc(i, 5)
     elif ord(s[i]) shr 1 == 0b1111110: inc(i, 6)
-    else: assert(false)
+    else: inc i
     inc(result)
 
 proc runeLenAt*(s: string, i: int): int =
@@ -45,7 +45,7 @@ proc runeLenAt*(s: string, i: int): int =
   elif ord(s[i]) shr 3 == 0b11110: result = 4
   elif ord(s[i]) shr 2 == 0b111110: result = 5
   elif ord(s[i]) shr 1 == 0b1111110: result = 6
-  else: assert(false)
+  else: result = 1
 
 template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
   ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
@@ -100,7 +100,8 @@ template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
              (ord(s[i+5]) and ones(6)))
     when doInc: inc(i, 6)
   else:
-    assert(false)
+    result = TRune(ord(s[i]))
+    when doInc: inc(i)
 
 proc runeAt*(s: string, i: int): TRune =
   ## returns the unicode character in `s` at byte index `i`
@@ -128,7 +129,8 @@ proc toUTF8*(c: TRune): string {.rtl, extern: "nuc$1".} =
     result[2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     result[3] = chr(i and ones(6) or 0b10_0000_00)
   else:
-    assert false
+    result = newString(1)
+    result[0] = chr(i)
 
 const
   alphaRanges = [
