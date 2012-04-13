@@ -63,7 +63,7 @@ import
 
 const 
   CacheLeafs* = true
-  countCacheMisses* = False   # see what our little optimization gives
+  countCacheMisses* = false   # see what our little optimization gives
 
 type 
   TFormatStr* = string # later we may change it to CString for better
@@ -118,7 +118,7 @@ proc newMutableRope*(capacity = 30): PRope =
   result.data = newStringOfCap(capacity)
 
 var 
-  cache: PRope                # the root of the cache tree
+  cache: array[0..2048 -1, PRope]
   misses, hits: int
   N: PRope                    # dummy rope needed for splay algorithm
 
@@ -207,14 +207,20 @@ proc RopeInvariant(r: PRope): bool =
                   #      if result then result := ropeInvariant(r.left);
                   #      if result then result := ropeInvariant(r.right);
                   #    end 
+
+proc insertInCache(s: string): PRope = 
+  var h = hash(s) and high(cache)
+  result = cache[h]
+  if isNil(result) or result.data != s:
+    result = newRope(s)
+    cache[h] = result
   
 proc toRope(s: string): PRope = 
-  if s == "": 
+  if s.len == 0: 
     result = nil
   elif cacheLeafs: 
-    result = insertInCache(s, cache)
-    cache = result
-  else: 
+    result = insertInCache(s)
+  else:
     result = newRope(s)
   assert(RopeInvariant(result))
 
@@ -292,7 +298,7 @@ proc writeRope*(f: TFile, c: PRope) =
     write(f, it.data)
 
 proc WriteRope(head: PRope, filename: string) = 
-  var f: tfile                # we use a textfile for automatic buffer handling
+  var f: tfile
   if open(f, filename, fmWrite): 
     if head != nil: WriteRope(f, head)
     close(f)
@@ -326,16 +332,16 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
           internalError("ropes: invalid format string $" & $(j))
         app(result, args[j - 1])
       of 'n':
-        if not (optLineDir in gOptions): app(result, tnl)
+        if optLineDir notin gOptions: app(result, tnl)
         inc i
-      of 'N': 
+      of 'N':
         app(result, tnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
     var start = i
-    while (i <= length - 1): 
-      if (frmt[i] != '$'): inc(i)
-      else: break 
+    while i < length:
+      if frmt[i] != '$': inc(i)
+      else: break
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
   assert(RopeInvariant(result))
@@ -347,11 +353,11 @@ const
   bufSize = 1024              # 1 KB is reasonable
 
 proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool = 
-  if (r.data != nil): 
+  if r.data != nil:
     if r.length > bufSize: 
       internalError("ropes: token too long")
     var readBytes = readBuffer(bin, buf, r.length)
-    result = (readBytes == r.length) and
+    result = readBytes == r.length and
         equalMem(buf, addr(r.data[0]), r.length) # BUGFIX
   else: 
     result = auxRopeEqualsFile(r.left, bin, buf)
