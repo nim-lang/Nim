@@ -116,8 +116,13 @@ var
   gForwardedProcsCounter*: int = 0
   gNimDat*: BModule            # generated global data
 
-proc s*(prc: BProc, s: TCProcSection): var PRope {.inline.} =
-  result = prc.blocks[prc.blocks.len - 1].sections[s]
+proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+  # section in the current block
+  result = p.blocks[p.blocks.len - 1].sections[s]
+
+proc procSec*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+  # top level proc sections
+  result = p.blocks[0].sections[s]
 
 proc newProc*(prc: PSym, module: BModule): BProc = 
   new(result)
