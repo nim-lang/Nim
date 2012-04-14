@@ -18,9 +18,6 @@ proc leftAppearsOnRightSide(le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call.sons[0].kind == nkSym and sfNoInit in call.sons[0].sym.flags
 
-proc resetLoc(p: BProc, d: var TLoc) =
-  zeroVar(p, d, containsGarbageCollectedRef(d.t))
-
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
   var pl = pl
   var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
