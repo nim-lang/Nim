@@ -50,8 +50,8 @@ proc semIf(c: PContext, n: PNode): PNode =
     case it.kind
     of nkElifBranch: 
       checkSonsLen(it, 2)
-      openScope(c.tab)
       it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      openScope(c.tab)
       it.sons[1] = semStmt(c, it.sons[1])
       closeScope(c.tab)
     of nkElse: 
