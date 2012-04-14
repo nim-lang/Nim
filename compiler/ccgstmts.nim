@@ -101,7 +101,15 @@ proc genSingleVar(p: BProc, a: PNode) =
     if v.owner.kind != skModule:
       targetProc = p.module.preInitProc
     assignGlobalVar(targetProc, v)
-    genObjectInit(targetProc, cpsInit, v.typ, v.loc, true)
+    # XXX: be careful here.
+    # Global variables should not be zeromem-ed within loops 
+    # (see bug #20).
+    # That's why we are doing the construction inside the preInitProc.
+    # genObjectInit relies on the C runtime's guarantees that 
+    # global variables will be initialized to zero.
+    genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
+    # Alternative construction using default constructor (which may zeromem):
+    # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
   else:
     assignLocalVar(p, v)
     initLocalVar(p, v, immediateAsgn)

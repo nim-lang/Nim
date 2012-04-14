@@ -229,45 +229,37 @@ proc isComplexValueType(t: PType): bool {.inline.} =
   result = t.kind in {tyArray, tyArrayConstr, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
-proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) = 
+proc resetLoc(p: BProc, loc: var TLoc) =
+  let containsGcRef = containsGarbageCollectedRef(loc.t)
   if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
-    if containsGcref and p.WithInLoop > 0:
-      appf(p.s(cpsInit), "$1 = 0;$n", [rdLoc(loc)])
+    if containsGcRef:
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.t, onStack)
       nilLoc.r = toRope("NIM_NIL")
-      # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
       appf(p.s(cpsStmts), "$1 = 0;$n", [rdLoc(loc)])
   else:
-    if containsGcref and p.WithInLoop > 0:
-      appf(p.s(cpsInit), "memset((void*)$1, 0, sizeof($2));$n", 
-           [addrLoc(loc), rdLoc(loc)])
-      genObjectInit(p, cpsInit, loc.t, loc, true)
-      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
-           [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+    if loc.s != OnStack:
+      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+        [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+      # XXX: generated reset procs should not touch the m_type
+      # field, so disabling this should be safe:
+      genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      appf(p.s(cpsStmts), "memset((void*)$1, 0, sizeof($2));$n", 
-           [addrLoc(loc), rdLoc(loc)])
+      appf(p.s(cpsStmts), "memset((void*)$1, 0, sizeof($2));$n",
+        [addrLoc(loc), rdLoc(loc)])
+      # XXX: We can be extra clever here and call memset only 
+      # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
-proc zeroTemp(p: BProc, loc: TLoc) =
+proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
   if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
-    appf(p.s(cpsStmts), "$1 = 0;$n", [rdLoc(loc)])
-    when false:
-      var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.t, onStack)
-      nilLoc.r = toRope("NIM_NIL")
-      # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
-      genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+    appf(p.s(section), "$1 = 0;$n", [rdLoc(loc)])
   else:
-    appf(p.s(cpsStmts), "memset((void*)$1, 0, sizeof($2));$n", 
-         [addrLoc(loc), rdLoc(loc)])
-    # XXX no object init necessary for temporaries?
-    when false:
-      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
-           [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+    appf(p.s(section), "memset((void*)$1, 0, sizeof($2));$n",
+       [addrLoc(loc), rdLoc(loc)])
+    genObjectInit(p, section, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
   if sfNoInit notin v.flags:
@@ -279,11 +271,13 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # ``var v = X()`` gets transformed into ``X(&v)``. 
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
-      zeroVar(p, v.loc, containsGarbageCollectedRef(v.typ))
-    
-proc initTemp(p: BProc, tmp: var TLoc) = 
+      constructLoc(p, v.loc)
+
+proc initTemp(p: BProc, tmp: var TLoc) =
+  # XXX: This is still suspicious.
+  # Objects should always be constructed?
   if containsGarbageCollectedRef(tmp.t) or isInvalidReturnType(tmp.t):
-    zeroTemp(p, tmp)
+    constructLoc(p, tmp)
 
 proc getTemp(p: BProc, t: PType, result: var TLoc) = 
   inc(p.labels)
@@ -410,7 +404,7 @@ proc assignGlobalVar(p: BProc, s: PSym) =
     appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:
-    initLocalVar(p, s, false)
+    resetLoc(p, s.loc)
   if p.module.module.options * {optStackTrace, optEndb} ==
                                {optStackTrace, optEndb}: 
     appcg(p.module, p.module.s[cfsDebugInit], 

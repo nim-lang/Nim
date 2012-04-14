@@ -220,9 +220,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
 proc findShadowedVar(c: PContext, v: PSym): PSym =
   for i in countdown(c.tab.tos - 2, 0):
     let shadowed = StrTableGet(c.tab.stack[i], v.name)
-    if shadowed != nil:
-      if shadowed.kind in skLocalVars:
-        return shadowed
+    if shadowed != nil and shadowed.kind in skLocalVars:
+      return shadowed
 
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
