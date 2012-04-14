@@ -1738,7 +1738,6 @@ when isMainModule:
   else:
     assert false
     
-  var matches: array[0..5, string]
   if match("abcdefg", peg"c {d} ef {g}", matches, 2): 
     assert matches[0] == "d"
     assert matches[1] == "g"
