@@ -274,8 +274,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       var v = semIdentDef(c, a.sons[j], symkind)
       addInterfaceDecl(c, v)
       when oKeepVariableNames:
-        let shadowed = findShadowedVar(c, v)
-        if shadowed != nil: shadowed.flags.incl(sfShadowed)
+        if c.InUnrolledContext > 0: v.flags.incl(sfShadowed)
+        else:
+          let shadowed = findShadowedVar(c, v)
+          if shadowed != nil: shadowed.flags.incl(sfShadowed)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
@@ -401,7 +403,9 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     openScope(c.tab)
     var body = transfFieldLoopBody(loopBody, n, tupleTypeA, i,
                                    ord(m==mFieldPairs))
+    inc c.InUnrolledContext
     stmts.add(SemStmt(c, body))
+    dec c.InUnrolledContext
     closeScope(c.tab)
   Dec(c.p.nestedLoopCounter)
   var b = newNodeI(nkBreakStmt, n.info)
