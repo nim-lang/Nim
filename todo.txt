@@ -1,8 +1,8 @@
 version 0.9.0
 =============
 
-- sigil-like operator: @x.abc parsed as (@x).abc
-- document AVR/embedded systems better
+- document AVR/embedded systems better; document all the ``useX`` conditional
+  symbols for the stdlib
 - implement ``--script:sh|bat`` command line option
 - make GC realtime capable: GC_step(ms: int)
 - make templates hygienic by default
@@ -20,8 +20,7 @@ version 0.9.0
 - implement the high level optimizer
 - change overloading resolution
 - implement proper coroutines
-- implement ``partial`` pragma for partial evaluation; ``hoist`` pragma for
-  loop hoisting
+- ``hoist`` pragma for loop hoisting
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
@@ -193,3 +192,4 @@ Version 2 and beyond
     
     case x with `=~`
 
+- implement ``partial`` pragma for partial evaluation

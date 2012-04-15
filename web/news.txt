@@ -50,6 +50,8 @@ Changes affecting backwards compatibility
   to get a template of old behaviour.
 - There is now a proper distinction in the type system between ``expr`` and
   ``PNimrodNode`` which unfortunately breaks the old macro system.
+- ``pegs.@`` has been renamed to ``pegs.!*`` and ``pegs.@@`` has been renamed
+  to ``pegs.!*\`` as ``@`` operators now have different precedence.
 
 
 Compiler Additions
@@ -73,7 +75,9 @@ Language Additions
 - ``addr`` is now treated like a prefix operator syntactically.
 - Added ``global`` pragma that can be used to introduce new global variables
   from within procs.
-- when expressions are now allowed just like if expressions
+- ``when`` expressions are now allowed just like ``if`` expressions.
+- The precedence for operators starting with ``@`` is different now 
+  allowing for *sigil-like* operators.
 
 
 2012-02-09 Version 0.8.14 released
