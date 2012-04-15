@@ -490,6 +490,3 @@ efficient:
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
 
-
-
-Target specific
