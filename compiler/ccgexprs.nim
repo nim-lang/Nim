@@ -160,7 +160,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if dest.s == OnStack or optRefcGC notin gGlobalOptions:
-    appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    appf(p.s(cpsStmts), "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     if needToKeepAlive in flags: keepAlive(p, dest)
   elif dest.s == OnHeap:
     # location is on heap
@@ -180,13 +180,13 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     #      appf(p.s[cpsStmts], 'if ($1) nimGCunref($1);$n', [rdLoc(dest)])
     #    appf(p.s[cpsStmts], '$1 = $2;$n', [rdLoc(dest), rdLoc(src)])
     if canFormAcycle(dest.t):
-      appcg(p.module, p.s[cpsStmts], "#asgnRef((void**) $1, $2);$n",
+      appcg(p.module, p.s(cpsStmts), "#asgnRef((void**) $1, $2);$n",
            [addrLoc(dest), rdLoc(src)])
     else:
-      appcg(p.module, p.s[cpsStmts], "#asgnRefNoCycle((void**) $1, $2);$n",
+      appcg(p.module, p.s(cpsStmts), "#asgnRefNoCycle((void**) $1, $2);$n",
            [addrLoc(dest), rdLoc(src)])
   else:
-    appcg(p.module, p.s[cpsStmts], "#unsureAsgnRef((void**) $1, $2);$n",
+    appcg(p.module, p.s(cpsStmts), "#unsureAsgnRef((void**) $1, $2);$n",
          [addrLoc(dest), rdLoc(src)])
     if needToKeepAlive in flags: keepAlive(p, dest)
 
@@ -736,9 +736,9 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   expr(p, e.sons[1], tmp)
   L = getLabel(p)
   if m == mOr:
-    appf(p.s[cpsStmts], "if ($1) goto $2;$n", [rdLoc(tmp), L])
+    appf(p.s(cpsStmts), "if ($1) goto $2;$n", [rdLoc(tmp), L])
   else:
-    appf(p.s[cpsStmts], "if (!($1)) goto $2;$n", [rdLoc(tmp), L])
+    appf(p.s(cpsStmts), "if (!($1)) goto $2;$n", [rdLoc(tmp), L])
   expr(p, e.sons[2], tmp)
   fixLabel(p, L)
   if d.k == locNone:
@@ -771,9 +771,9 @@ proc genIfExpr(p: BProc, n: PNode, d: var TLoc) =
     of nkElifExpr:
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
-      appf(p.s[cpsStmts], "if (!$1) goto $2;$n", [rdLoc(a), Lelse])
+      appf(p.s(cpsStmts), "if (!$1) goto $2;$n", [rdLoc(a), Lelse])
       expr(p, it.sons[1], tmp)
-      appf(p.s[cpsStmts], "goto $1;$n", [Lend])
+      appf(p.s(cpsStmts), "goto $1;$n", [Lend])
       fixLabel(p, Lelse)
     of nkElseExpr:
       expr(p, it.sons[0], tmp)
@@ -832,7 +832,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
         appf(lens, "$1->$2 + ", [rdLoc(a), lenField()])
       appcg(p.module, appends, "#appendString($1, $2);$n", [tmp.r, rdLoc(a)])
   appcg(p, cpsStmts, "$1 = #rawNewString($2$3);$n", [tmp.r, lens, toRope(L)])
-  app(p.s[cpsStmts], appends)
+  app(p.s(cpsStmts), appends)
   if d.k == locNone:
     d = tmp
     keepAlive(p, tmp)
@@ -874,7 +874,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   appcg(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
        [rdLoc(dest), lens, toRope(L)])
   keepAlive(p, dest)
-  app(p.s[cpsStmts], appends)
+  app(p.s(cpsStmts), appends)
 
 proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   # seq &= x  -->
@@ -1171,7 +1171,7 @@ proc binaryStmtInExcl(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   assert(d.k == locNone)
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  appf(p.s[cpsStmts], frmt, [rdLoc(a), rdSetElemLoc(b, a.t)])
+  appf(p.s(cpsStmts), frmt, [rdLoc(a), rdSetElemLoc(b, a.t)])
 
 proc genInOp(p: BProc, e: PNode, d: var TLoc) =
   var a, b, x, y: TLoc
@@ -1247,7 +1247,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
       if d.k == locNone: getTemp(p, a.t, d)
-      appf(p.s[cpsStmts], lookupOpr[op],
+      appf(p.s(cpsStmts), lookupOpr[op],
            [rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
     of mEqSet:
       binaryExprChar(p, e, d, "(memcmp($1, $2, " & $(size) & ")==0)")
@@ -1257,7 +1257,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
       if d.k == locNone: getTemp(p, a.t, d)
-      appf(p.s[cpsStmts],
+      appf(p.s(cpsStmts),
            "for ($1 = 0; $1 < $2; $1++) $n" & 
            "  $3[$1] = $4[$1] $6 $5[$1];$n", [
           rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b),
@@ -1467,35 +1467,35 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     if d.k == locNone: getTemp(p, e.typ, d)
     if getSize(e.typ) > 8:
       # big set:
-      appf(p.s[cpsStmts], "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
+      appf(p.s(cpsStmts), "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
           initLocExpr(p, e.sons[i].sons[0], a)
           initLocExpr(p, e.sons[i].sons[1], b)
-          appf(p.s[cpsStmts], "for ($1 = $3; $1 <= $4; $1++) $n" &
+          appf(p.s(cpsStmts), "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2[$1/8] |=(1<<($1%8));$n", [rdLoc(idx), rdLoc(d),
               rdSetElemLoc(a, e.typ), rdSetElemLoc(b, e.typ)])
         else:
           initLocExpr(p, e.sons[i], a)
-          appf(p.s[cpsStmts], "$1[$2/8] |=(1<<($2%8));$n",
+          appf(p.s(cpsStmts), "$1[$2/8] |=(1<<($2%8));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
       var ts = "NI" & $(getSize(e.typ) * 8)
-      appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(d)])
+      appf(p.s(cpsStmts), "$1 = 0;$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
           initLocExpr(p, e.sons[i].sons[0], a)
           initLocExpr(p, e.sons[i].sons[1], b)
-          appf(p.s[cpsStmts], "for ($1 = $3; $1 <= $4; $1++) $n" &
+          appf(p.s(cpsStmts), "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2 |=(1<<((" & ts & ")($1)%(sizeof(" & ts & ")*8)));$n", [
               rdLoc(idx), rdLoc(d), rdSetElemLoc(a, e.typ),
               rdSetElemLoc(b, e.typ)])
         else:
           initLocExpr(p, e.sons[i], a)
-          appf(p.s[cpsStmts],
+          appf(p.s(cpsStmts),
                "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
 

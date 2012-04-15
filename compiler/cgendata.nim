@@ -48,13 +48,14 @@ type
   TCProcSections* = array[TCProcSection, PRope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
-  TBlock{.final.} = object 
+  TBlock*{.final.} = object 
     id*: int                  # the ID of the label; positive means that it
-                              # has been used (i.e. the label should be emitted)
+    label*: PRope             # generated text for the label
+                              # nil if label is not used
     nestedTryStmts*: int      # how many try statements is it nested into
+    sections*: TCProcSections # the code beloging
   
   TCProc{.final.} = object    # represents C proc that is currently generated
-    s*: TCProcSections        # the procs sections; short name for readability
     prc*: PSym                # the Nimrod proc that this C proc belongs to
     BeforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     ThreadVarAccessed*: bool  # true if the proc already accessed some threadvar
@@ -64,6 +65,8 @@ type
                               # before 'break'|'return'
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
+    breakIdx*: int            # the block that will be exited
+                              # with a regular break
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
@@ -113,6 +116,13 @@ var
   gForwardedProcsCounter*: int = 0
   gNimDat*: BModule            # generated global data
 
+proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+  # section in the current block
+  result = p.blocks[p.blocks.len - 1].sections[s]
+
+proc procSec*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+  # top level proc sections
+  result = p.blocks[0].sections[s]
 
 proc newProc*(prc: PSym, module: BModule): BProc = 
   new(result)
@@ -120,6 +130,6 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.module = module
   if prc != nil: result.options = prc.options
   else: result.options = gOptions
-  result.blocks = @[]
+  newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
 

@@ -50,8 +50,8 @@ proc semIf(c: PContext, n: PNode): PNode =
     case it.kind
     of nkElifBranch: 
       checkSonsLen(it, 2)
-      openScope(c.tab)
       it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      openScope(c.tab)
       it.sons[1] = semStmt(c, it.sons[1])
       closeScope(c.tab)
     of nkElse: 
@@ -216,7 +216,13 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
     result = result.sons[1]
   elif not sameType(result.typ, typ): 
     changeType(result, typ)
-  
+
+proc findShadowedVar(c: PContext, v: PSym): PSym =
+  for i in countdown(c.tab.tos - 2, 0):
+    let shadowed = StrTableGet(c.tab.stack[i], v.name)
+    if shadowed != nil and shadowed.kind in skLocalVars:
+      return shadowed
+
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
     result = semIdentWithPragma(c, kind, n, {sfExported})
@@ -267,6 +273,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
       addInterfaceDecl(c, v)
+      when oKeepVariableNames:
+        if c.InUnrolledContext > 0: v.flags.incl(sfShadowed)
+        else:
+          let shadowed = findShadowedVar(c, v)
+          if shadowed != nil: shadowed.flags.incl(sfShadowed)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
@@ -392,7 +403,9 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     openScope(c.tab)
     var body = transfFieldLoopBody(loopBody, n, tupleTypeA, i,
                                    ord(m==mFieldPairs))
+    inc c.InUnrolledContext
     stmts.add(SemStmt(c, body))
+    dec c.InUnrolledContext
     closeScope(c.tab)
   Dec(c.p.nestedLoopCounter)
   var b = newNodeI(nkBreakStmt, n.info)

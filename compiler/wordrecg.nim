@@ -38,8 +38,8 @@ type
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
     wImmediate, wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wExtern, wIncompleteStruct,
-    wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
+    wImportc, wExportc, wIncompleteStruct,
+    wAlign, wNodecl, wPure, wSideeffect, wHeader,
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile, 
@@ -58,13 +58,36 @@ type
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame,
-    wImplicitStatic, wGlobal
+    wImplicitStatic, wGlobal,
+
+    wAuto, wBool, wCatch, wChar, wClass,
+    wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
+    wExplicit, wExtern, wFalse, wFloat, wFriend,
+    wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
+    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
+    wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
+    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
+    wUnion, wUnsigned, wUsing, wVirtual, wVoid, wVolatile, wWchar_t,
+
+    wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
+    wThread_local, wStatic_assert, wChar16_t, wChar32_t,
     
   TSpecialWords* = set[TSpecialWord]
 
 const 
   oprLow* = ord(wColon)
   oprHigh* = ord(wDotDot)
+  
+  nimKeywordsLow* = ord(wAsm)
+  nimKeywordsHigh* = ord(wYield)
+  
+  cppKeywordsLow* = ord(wAuto)
+  cppKeywordsHigh* = ord(wChar32_t)
+  
+  cppNimSharedKeywords* = {
+    wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
+    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile }
+
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
     "addr", "and", "as", "asm", "atomic", 
@@ -86,14 +109,14 @@ const
     "magic", "thread", "final", "profiler", "objchecks", 
     
     "immediate", "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "extern", "incompletestruct",
-    "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
+    "importcompilerproc", "importc", "exportc", "incompletestruct",
+    "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 
     "link", "compile", "linksys", "deprecated", "varargs", 
     "byref", "callconv", "breakpoint", "debugger", "nimcall", "stdcall", 
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure", 
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks", 
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks",
@@ -107,7 +130,22 @@ const
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "nostackframe", "implicitstatic", "global"]
+    "nostackframe", "implicitstatic", "global",
+    
+    "auto", "bool", "catch", "char", "class",
+    "const_cast", "default", "delete", "double",
+    "dynamic_cast", "explicit", "extern", "false",
+    "float", "friend", "goto", "int", "long", "mutable",
+    "namespace", "new", "operator",
+    "private", "protected", "public", "register", "reinterpret_cast",
+    "short", "signed", "sizeof", "static_cast", "struct", "switch",
+    "this", "throw", "true", "typedef", "typeid",
+    "typename", "union", "unsigned", "using", "virtual", "void", "volatile",
+    "wchar_t",
+
+    "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",
+    "thread_local", "static_assert", "char16_t", "char32_t",
+    ]
 
 proc findStr*(a: openarray[string], s: string): int = 
   for i in countup(low(a), high(a)): 

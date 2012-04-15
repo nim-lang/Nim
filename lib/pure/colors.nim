@@ -29,19 +29,14 @@ template colorOp(op: expr) {.immediate.} =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
   result = rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
-  
-template satPlus(a, b: expr): expr =
-  # saturated plus:
-  block:
-    var result = a +% b
-    if result > 255: result = 255
-    result
 
-template satMinus(a, b: expr): expr =
-  block:
-    var result = a -% b
-    if result < 0: result = 0
-    result
+proc satPlus(a, b: int): int {.inline.} =
+  result = a +% b
+  if result > 255: result = 255
+
+proc satMinus(a, b: int): int {.inline.} =
+  result = a -% b
+  if result < 0: result = 0
   
 proc `+`*(a, b: TColor): TColor =
   ## adds two colors: This uses saturated artithmetic, so that each color

@@ -10,20 +10,21 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+# included from tester.nim
 # ---------------- ROD file tests ---------------------------------------------
 
 const
   rodfilesDir = "tests/rodfiles"
+  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() = 
-  let dir = rodfilesDir / "nimcache"
+proc delNimCache() =
   try:
-    removeDir(dir)
+    removeDir(nimcacheDir)
   except EOS:
-    echo "[Warning] could not delete: ", dir
+    echo "[Warning] could not delete: ", nimcacheDir
     
 proc plusCache(options: string): string = return options &
-  " --symbolFiles:on --nimcache:./nimcache"
+  " --symbolFiles:on --nimcache:" & nimcacheDir
 
 proc runRodFiles(r: var TResults, options: string) =
   template test(filename: expr): stmt =
