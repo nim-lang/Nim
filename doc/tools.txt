@@ -10,3 +10,8 @@ The standard distribution ships with the following tools:
 - | `C2nim <c2nim.html>`_
   | C to Nimrod source converter. Translates C header files to Nimrod.
 
+- | `nimgrep <nimgrep.html>`_
+  | Nimrod search and replace utility.
+
+- | `endb <endb.html>`_
+  | Nimrod's slow platform independent embedded debugger.

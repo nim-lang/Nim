@@ -124,6 +124,28 @@ To link against ``nimrtl.dll`` use the command::
 never been tested and is unlikely to work!
 
 
+Additional compilation switches
+===============================
+
+The standard library supports a growing number of ``useX`` conditional defines
+affecting how some features are implemented. This section tries to give a
+complete list.
+
+==================   =========================================================
+Define               Effect
+==================   =========================================================
+``release``          Turns off runtime checks and turns on the optimizer.
+``useWinAnsi``       Modules like ``os`` and ``osproc`` use the Ansi versions
+                     of the Windows API. The default build uses the Unicode
+                     version.s
+``useFork``          Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
+``useNimRtl``        Compile and link against ``nimrtl.dll``.
+``useMalloc``        Makes Nimrod use C's `malloc`:idx: instead of Nimrod's 
+                     own memory manager. This only works with ``gc:none``.
+==================   =========================================================
+
+
+
 Additional Features
 ===================
 
@@ -367,6 +389,22 @@ line is an incomplete statement to be continued these rules are used:
    does not work if the line contains more than one ``"""``.
 
 
+Nimrod for embedded systems
+===========================
+
+The standard library can be avoided to a point where C code generation 
+for a 16bit micro controllers is feasible. Use the `standalone`:idx: target
+(``--os:standalone``) for a bare bones standard library that lacks any
+OS features.
+
+To make the compiler output code for a 16bit target use the ``--cpu:avr`` 
+target.
+
+So to generate code for an `AVR`:idx: processor use this command::
+  
+  nimrod c --cpu:avr --os:standalone --gc:none -d:useMalloc --genScript x.nim
+
+
 Debugging with Nimrod
 =====================
 
@@ -451,3 +489,7 @@ efficient:
     else: quit(errorStr(p, "expected: console or gui"))
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
+
+
+
+Target specific
