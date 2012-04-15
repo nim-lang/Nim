@@ -15,6 +15,8 @@
 # So we have to eval templates/macros right here so that symbol
 # lookup can be accurate.
 
+# included from sem.nim
+
 type 
   TSemGenericFlag = enum 
     withinBind, withinTypeDesc

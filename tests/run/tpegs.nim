@@ -1734,7 +1734,6 @@ when isMainModule:
   else:
     doAssert false
     
-  var matches: array[0..5, string]
   if match("abcdefg", peg"c {d} ef {g}", matches, 2): 
     doAssert matches[0] == "d"
     doAssert matches[1] == "g"

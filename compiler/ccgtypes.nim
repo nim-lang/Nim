@@ -32,6 +32,15 @@ proc mangle(name: string): string =
       add(result, "HEX")
       add(result, toHex(ord(name[i]), 2))
 
+proc isCKeyword(w: PIdent): bool =
+  # nimrod and C++ share some keywords
+  # it's more efficient to test the whole nimrod keywords range
+  case w.id
+  of cppKeywordsLow..cppKeywordsHigh,
+     nimKeywordsLow..nimKeywordsHigh,
+     ord(wInline): return true
+  else: return false
+
 proc mangleName(s: PSym): PRope = 
   result = s.loc.r
   if result == nil: 
@@ -45,9 +54,64 @@ proc mangleName(s: PSym): PRope =
       of skTemp, skParam, skType, skEnumField, skModule: 
         result = toRope("%")
       else: InternalError(s.info, "mangleName")
-    app(result, toRope(mangle(s.name.s)))
-    app(result, "_")
-    app(result, toRope(s.id))
+    when oKeepVariableNames:
+      let keepOrigName = s.kind in skLocalVars - {skForVar} and 
+        {sfFromGeneric, sfGlobal, sfShadowed} * s.flags == {} and
+        not isCKeyword(s.name)
+      # XXX: This is still very experimental
+      #
+      # Even with all these inefficient checks, the bootstrap
+      # time is actually improved. This is probably because so many
+      # rope concatenations and are now eliminated.
+      #
+      # Future notes:
+      # sfFromGeneric seems to be needed in order to avoid multiple
+      # definitions of certain varialbes generated in transf with
+      # names such as:
+      # `r`, `res`
+      # I need to study where these come from.
+      #
+      # about sfShadowed:
+      # consider the following nimrod code:
+      #   var x = 10
+      #   block:
+      #     var x = something(x)
+      # The generated C code will be:
+      #   NI x;
+      #   x = 10;
+      #   {
+      #     NI x;
+      #     x = something(x); // Oops, x is already shadowed here
+      #   }
+      # Right now, we work-around by not keeping the original name
+      # of the shadowed variable, but we can do better - we can
+      # create an alternative reference to it in the outer scope and
+      # use that in the inner scope.
+      #
+      # about isCKeyword:
+      # nimrod variable names can be C keywords.
+      # We need to avoid such names in the generated code.
+      # XXX: Study whether mangleName is called just once per variable.
+      # Otherwise, there might be better place to do this.
+      #
+      # about sfGlobal:
+      # This seems to be harder - a top level extern variable from
+      # another modules can have the same name as a local one.
+      # Maybe we should just implement sfShadowed for them too.
+      #
+      # about skForVar:
+      # These are not properly scoped now - we need to add blocks
+      # around for loops in transf
+      if keepOrigName:
+        result = s.name.s.toRope
+      else:
+        app(result, toRope(mangle(s.name.s)))
+        app(result, "_")
+        app(result, toRope(s.id))
+    else:
+      app(result, toRope(mangle(s.name.s)))
+      app(result, "_")
+      app(result, toRope(s.id))
     s.loc.r = result
 
 proc isCompileTimeOnly(t: PType): bool =

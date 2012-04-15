@@ -280,7 +280,7 @@ proc mergeRequired*(m: BModule): bool =
       #echo "not empty: ", i, " ", ropeToStr(m.s[i])
       return true
   for i in low(TCProcSection)..high(TCProcSection):
-    if m.initProc.s[i] != nil: 
+    if m.initProc.s(i) != nil: 
       #echo "not empty: ", i, " ", ropeToStr(m.initProc.s[i])
       return true
 
@@ -292,5 +292,5 @@ proc mergeFiles*(cfilename: string, m: BModule) =
   for i in low(TCFileSection)..high(TCFileSection):
     m.s[i] = con(old.f[i], m.s[i])
   for i in low(TCProcSection)..high(TCProcSection):
-    m.initProc.s[i] = con(old.p[i], m.initProc.s[i])
+    m.initProc.s(i) = con(old.p[i], m.initProc.s(i))
 

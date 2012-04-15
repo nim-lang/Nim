@@ -113,7 +113,9 @@ var
   gKeepComments*: bool = true # whether the parser needs to keep comments
   implicitImports*: seq[string] = @[] # modules that are to be implicitly imported
   implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
-  
+
+const oKeepVariableNames* = true
+
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless

@@ -62,6 +62,7 @@ type
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     InGenericContext*: int     # > 0 if we are in a generic
+    InUnrolledContext*: int    # > 0 if we are unrolling a loop
     converters*: TSymSeq       # sequence of converters
     optionStack*: TLinkedList
     libs*: TLinkedList         # all libs used by this module
