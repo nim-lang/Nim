@@ -53,19 +53,12 @@
 #  Leaves have relatively high memory overhead (~30 bytes on a 32
 #  bit machines) and we produce many of them. This is why we cache and
 #  share leaves accross different rope trees.
-#  To cache them they are inserted in another tree, a splay tree for best
-#  performance. But for the caching tree we use the leaves' left and right
-#  pointers.
-#
+#  To cache them they are inserted in a `cache` array.
 
 import 
   msgs, strutils, platform, hashes, crc, options
 
-const 
-  CacheLeafs* = true
-  countCacheMisses* = false   # see what our little optimization gives
-
-type 
+type
   TFormatStr* = string # later we may change it to CString for better
                        # performance of the code generator (assignments 
                        # copy the format strings
@@ -94,7 +87,6 @@ proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropeToStr*(p: PRope): string
 proc ropef*(frmt: TFormatStr, args: openarray[PRope]): PRope
 proc appf*(c: var PRope, frmt: TFormatStr, args: openarray[PRope])
-proc getCacheStats*(): string
 proc RopeEqualsFile*(r: PRope, f: string): bool
   # returns true if the rope r is the same as the contents of file f
 proc RopeInvariant*(r: PRope): bool
@@ -119,81 +111,6 @@ proc newMutableRope*(capacity = 30): PRope =
 
 var 
   cache: array[0..2048 -1, PRope]
-  misses, hits: int
-  N: PRope                    # dummy rope needed for splay algorithm
-
-proc getCacheStats(): string = 
-  if hits + misses != 0: 
-    result = "Misses: " & $(misses) & " total: " & $(hits + misses) & " quot: " &
-        $(toFloat(misses) / toFloat(hits + misses))
-  else: 
-    result = ""
-  
-proc splay(s: string, tree: PRope, cmpres: var int): PRope = 
-  var c: int
-  var t = tree
-  N.left = nil
-  N.right = nil               # reset to nil
-  var le = N
-  var r = N
-  while true: 
-    c = cmp(s, t.data)
-    if c < 0: 
-      if (t.left != nil) and (s < t.left.data): 
-        var y = t.left
-        t.left = y.right
-        y.right = t
-        t = y
-      if t.left == nil: break 
-      r.left = t
-      r = t
-      t = t.left
-    elif c > 0: 
-      if (t.right != nil) and (s > t.right.data): 
-        var y = t.right
-        t.right = y.left
-        y.left = t
-        t = y
-      if t.right == nil: break 
-      le.right = t
-      le = t
-      t = t.right
-    else: 
-      break 
-  cmpres = c
-  le.right = t.left
-  r.left = t.right
-  t.left = N.right
-  t.right = N.left
-  result = t
-
-proc insertInCache(s: string, tree: PRope): PRope = 
-  # Insert i into the tree t, unless it's already there.
-  # Return a pointer to the resulting tree.
-  var t = tree
-  if t == nil: 
-    result = newRope(s)
-    if countCacheMisses: inc(misses)
-    return 
-  var cmp: int
-  t = splay(s, t, cmp)
-  if cmp == 0: 
-    # We get here if it's already in the Tree
-    # Don't add it again
-    result = t
-    if countCacheMisses: inc(hits)
-  else: 
-    if countCacheMisses: inc(misses)
-    result = newRope(s)
-    if cmp < 0: 
-      result.left = t.left
-      result.right = t
-      t.left = nil
-    else: 
-      # i > t.item:
-      result.right = t.right
-      result.left = t
-      t.right = nil
 
 proc RopeInvariant(r: PRope): bool = 
   if r == nil: 
@@ -215,13 +132,11 @@ proc insertInCache(s: string): PRope =
     result = newRope(s)
     cache[h] = result
   
-proc toRope(s: string): PRope = 
-  if s.len == 0: 
+proc toRope(s: string): PRope =
+  if s.len == 0:
     result = nil
-  elif cacheLeafs: 
-    result = insertInCache(s)
   else:
-    result = newRope(s)
+    result = insertInCache(s)
   assert(RopeInvariant(result))
 
 proc RopeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
@@ -233,17 +148,6 @@ proc RopeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) =
   for i in countdown(length, at + 1): 
     rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
   rs[at] = r
-
-proc recRopeToStr(result: var string, resultLen: var int, p: PRope) = 
-  if p == nil: 
-    return                    # do not add to result
-  if (p.data == nil): 
-    recRopeToStr(result, resultLen, p.left)
-    recRopeToStr(result, resultLen, p.right)
-  else: 
-    CopyMem(addr(result[resultLen + 0]), addr(p.data[0]), p.length)
-    Inc(resultLen, p.length)
-    assert(resultLen <= len(result))
 
 proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) = 
   var stack = @[r]
@@ -281,7 +185,7 @@ proc con(a: openarray[PRope]): PRope =
   for i in countup(0, high(a)): result = con(result, a[i])
 
 proc toRope(i: BiggestInt): PRope = result = toRope($i)
-#proc toRopeF*(r: BiggestFloat): PRope = result = toRope($r)
+
 proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
@@ -411,5 +315,3 @@ proc writeRopeIfNotEqual(r: PRope, filename: string): bool =
     result = true
   else: 
     result = false
-  
-new(N) # init dummy node for splay algorithm

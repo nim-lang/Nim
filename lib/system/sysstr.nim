@@ -237,8 +237,6 @@ proc nimFloatToStr(x: float): string {.compilerproc.} =
   return $buf
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
-  # we don't rely on C's runtime here as some C compiler's
-  # int64 support is weak
   result = newString(sizeof(x)*4)
   var i = 0
   var y = x

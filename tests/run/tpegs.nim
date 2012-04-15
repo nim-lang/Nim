@@ -57,8 +57,8 @@ type
     pkBackRef,          ## $i     --> Internal DSL: backref(i)
     pkBackRefIgnoreCase,
     pkBackRefIgnoreStyle,
-    pkSearch,           ## @a     --> Internal DSL: @a
-    pkCapturedSearch,   ## {@} a  --> Internal DSL: @@a
+    pkSearch,           ## @a     --> Internal DSL: !*a
+    pkCapturedSearch,   ## {@} a  --> Internal DSL: !*\a
     pkRule,             ## a <- b
     pkList,             ## a, b
     pkStartAnchor       ## ^      --> Internal DSL: startAnchor()
@@ -212,13 +212,13 @@ proc `*`*(a: TPeg): TPeg {.rtl, extern: "npegsGreedyRep".} =
     result.kind = pkGreedyRep
     result.sons = @[a]
 
-proc `@`*(a: TPeg): TPeg {.rtl, extern: "npegsSearch".} =
+proc `!*`*(a: TPeg): TPeg {.rtl, extern: "npegsSearch".} =
   ## constructs a "search" for the PEG `a`
   result.kind = pkSearch
   result.sons = @[a]
 
-proc `@@`*(a: TPeg): TPeg {.rtl, 
-                            extern: "npgegsCapturedSearch".} =
+proc `!*\`*(a: TPeg): TPeg {.rtl, 
+                             extern: "npgegsCapturedSearch".} =
   ## constructs a "captured search" for the PEG `a`
   result.kind = pkCapturedSearch
   result.sons = @[a]
@@ -1484,10 +1484,10 @@ proc primary(p: var TPegParser): TPeg =
     return !primary(p)
   of tkAt:
     getTok(p)
-    return @primary(p)
+    return !*primary(p)
   of tkCurlyAt:
     getTok(p)
-    return @@primary(p).token(p)
+    return !*\primary(p).token(p)
   else: nil
   case p.tok.kind
   of tkIdentifier:

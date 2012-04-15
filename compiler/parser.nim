@@ -149,20 +149,27 @@ proc parseTypeDesc(p: var TParser): PNode
 proc parseDoBlocks(p: var TParser, call: PNode)
 proc parseParamList(p: var TParser, retColon = true): PNode
 
+proc relevantOprChar(ident: PIdent): char {.inline.} =
+  result = ident.s[0]
+  var L = ident.s.len
+  if result == '\\' and L > 1:
+    result = ident.s[1]
+
+proc IsSigilLike(tok: TToken): bool {.inline.} =
+  result = tok.tokType == tkOpr and relevantOprChar(tok.ident) == '@'
+
 proc IsLeftAssociative(tok: TToken): bool {.inline.} =
-  result = tok.tokType != tkOpr or tok.ident.s[0] != '^'
+  result = tok.tokType != tkOpr or relevantOprChar(tok.ident) != '^'
 
 proc getPrecedence(tok: TToken): int = 
   case tok.tokType
   of tkOpr:
-    var relevantChar = tok.ident.s[0]
-    var L = tok.ident.s.len
-    if relevantChar == '\\' and L > 1:
-      relevantChar = tok.ident.s[1]
+    let L = tok.ident.s.len
+    let relevantChar = relevantOprChar(tok.ident)
     
     template considerAsgn(value: expr) = 
       result = if tok.ident.s[L-1] == '=': 1 else: value     
-       
+    
     case relevantChar
     of '$', '^': considerAsgn(10)
     of '*', '%', '/', '\\': considerAsgn(9)
@@ -451,16 +458,41 @@ proc identOrLiteral(p: var TParser): PNode =
     getTok(p)  # we must consume a token here to prevend endless loops!
     result = ast.emptyNode
 
-proc primary(p: var TParser): PNode = 
+proc primarySuffix(p: var TParser, r: PNode): PNode =
+  result = r
+  while true:
+    case p.tok.tokType
+    of tkParLe: 
+      var a = result
+      result = newNodeP(nkCall, p)
+      addSon(result, a)
+      exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
+      parseDoBlocks(p, result)
+    of tkDot:
+      result = dotExpr(p, result)
+      result = parseGStrLit(p, result)
+    of tkBracketLe: 
+      result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
+    of tkCurlyLe:
+      result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
+    else: break
+
+proc primary(p: var TParser, skipSuffix = false): PNode = 
   # prefix operator?
   if isOperator(p.tok):
+    let isSigil = IsSigilLike(p.tok)
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     addSon(result, a)
     getTok(p)
     optInd(p, a)
-    addSon(result, primary(p))
-    return 
+    if isSigil: 
+      #XXX prefix operators
+      addSon(result, primary(p, true))
+      result = primarySuffix(p, result)
+    else:
+      addSon(result, primary(p))
+    return
   elif p.tok.tokType == tkAddr:
     result = newNodeP(nkAddr, p)
     getTok(p)
@@ -478,22 +510,8 @@ proc primary(p: var TParser): PNode =
     addSon(result, primary(p))
     return 
   result = identOrLiteral(p)
-  while true: 
-    case p.tok.tokType
-    of tkParLe: 
-      var a = result
-      result = newNodeP(nkCall, p)
-      addSon(result, a)
-      exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
-      parseDoBlocks(p, result)
-    of tkDot:
-      result = dotExpr(p, result)
-      result = parseGStrLit(p, result)
-    of tkBracketLe: 
-      result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
-    of tkCurlyLe:
-      result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
-    else: break
+  if not skipSuffix:
+    result = primarySuffix(p, result)
   
 proc lowestExprAux(p: var TParser, limit: int): PNode = 
   result = primary(p) 
