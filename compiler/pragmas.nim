@@ -26,7 +26,7 @@ const
     wNoStackFrame, wError, wDiscardable, wNoInit}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
-  templatePragmas* = {wImmediate}
+  templatePragmas* = {wImmediate, wDeprecated, wError}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable}
@@ -560,10 +560,14 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wHint: Message(it.info, hintUser, expectStrLit(c, it))
           of wWarning: Message(it.info, warnUser, expectStrLit(c, it))
           of wError: 
-            if sym != nil:
+            if sym != nil and sym.isRoutine:
+              # This is subtle but correct: the error *statement* is only
+              # allowed for top level statements. Seems to be easier than 
+              # distinguishing properly between
+              # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
               noVal(it)
               incl(sym.flags, sfError)
-            else:            
+            else:
               LocalError(it.info, errUser, expectStrLit(c, it))
           of wFatal: Fatal(it.info, errUser, expectStrLit(c, it))
           of wDefine: processDefine(c, it)
@@ -609,12 +613,12 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)
-  if (sym != nil) and (sym.kind != skModule): 
-    if (lfExportLib in sym.loc.flags) and not (sfExportc in sym.flags): 
+  if sym != nil and sym.kind != skModule:
+    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags: 
       LocalError(n.info, errDynlibRequiresExportc)
     var lib = POptionEntry(c.optionstack.tail).dynlib
-    if ({lfDynamicLib, lfHeader} * sym.loc.flags == {}) and
-        (sfImportc in sym.flags) and (lib != nil): 
+    if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
+        sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
       if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
