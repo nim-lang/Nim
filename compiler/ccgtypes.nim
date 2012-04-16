@@ -269,7 +269,9 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     var arr = param.typ
     if arr.kind == tyVar: arr = arr.sons[0]
     var j = 0
-    while arr.Kind == tyOpenArray: 
+    while arr.Kind == tyOpenArray:
+      # this fixes the 'sort' bug:
+      if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
       appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, j.toRope])
       inc(j)
@@ -288,7 +290,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
   if tfVarargs in t.flags: 
     if params != nil: app(params, ", ")
     app(params, "...")
-  if (params == nil) and (gCmd != cmdCompileToLLVM): app(params, "void)")
+  if params == nil and gCmd != cmdCompileToLLVM: app(params, "void)")
   else: app(params, ")")
   params = con("(", params)
 

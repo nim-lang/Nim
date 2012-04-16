@@ -45,7 +45,6 @@ Bugs
   without ``-d:release`` leaks memory?
 - bug: object {.pure, final.} does not work again!
 - bug: {.error: "msg".} produces invalid pragma message
-- bug: tsortdev does not run with native GC!!
 - bug: pragma statements in combination with symbol files are evaluated twice
   but this can lead to compilation errors
 
