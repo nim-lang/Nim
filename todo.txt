@@ -10,7 +10,9 @@ version 0.9.0
   - deactivate lambda lifting for JS backend
   - Test capture of for loop vars; test generics;
   - test constant closures
+  - implement closures that support nesting > 1
 
+- document and fix 'do' notation
 - dead code elim for JS backend; 'of' operator for JS backend
 - unsigned ints and bignums; requires abstract integer literal type: 
   use tyInt+node for that
@@ -21,7 +23,6 @@ version 0.9.0
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
-- activate more thread tests
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
@@ -43,7 +44,6 @@ Bugs
 
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
-- bug: object {.pure, final.} does not work again!
 - bug: pragma statements in combination with symbol files are evaluated twice
   but this can lead to compilation errors
 
@@ -126,8 +126,8 @@ Low priority
 - warning for implicit openArray -> varargs conversion
 - implement explicit varargs; **but** ``len(varargs)`` problem remains! 
   --> solve by implicit conversion from varargs to openarray
-- implement closures that support nesting > 1
 - optimize method dispatchers
+- activate more thread tests
 - implement ``--script:sh|bat`` command line option; think about script 
   generation
 

@@ -528,7 +528,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     s.typ = newTypeS(tyForward, c)
     s.typ.sym = s             # process pragmas:
     if a.sons[0].kind == nkPragmaExpr:
-      pragma(c, s, a.sons[0].sons[1], typePragmas) 
+      pragma(c, s, a.sons[0].sons[1], typePragmas)
     # add it here, so that recursive types are possible:
     addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)

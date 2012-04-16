@@ -476,6 +476,11 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   addSon(result, base)
   result.n = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym)
+  if n.sons[0].kind != nkEmpty:
+    # dummy symbol for `pragma`:
+    var s = newSymS(skType, newIdentNode(getIdent("dummy"), n.info), c)
+    s.typ = result
+    pragma(c, s, n.sons[0], typePragmas)
   
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
