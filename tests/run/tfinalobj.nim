@@ -1,5 +1,5 @@
 discard """
-  outp: "abc"
+  output: "abc"
 """
 
 type
