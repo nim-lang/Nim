@@ -43,7 +43,7 @@ type
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile, 
-    wLinksys, wDeprecated, wVarargs, wByref, wCallconv, wBreakpoint, wDebugger, 
+    wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger, 
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline, 
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks, 
     wBoundchecks, wOverflowchecks, wNilchecks,
@@ -71,6 +71,10 @@ type
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
     wThread_local, wStatic_assert, wChar16_t, wChar32_t,
+
+    wStdIn, wStdOut, wStdErr,
+
+    wInOut, wByCopy, wByRef, wOneWay,
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -81,8 +85,8 @@ const
   nimKeywordsLow* = ord(wAsm)
   nimKeywordsHigh* = ord(wYield)
   
-  cppKeywordsLow* = ord(wAuto)
-  cppKeywordsHigh* = ord(wChar32_t)
+  ccgKeywordsLow* = ord(wAuto)
+  ccgKeywordsHigh* = ord(wOneWay)
   
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
@@ -115,7 +119,7 @@ const
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 
     "link", "compile", "linksys", "deprecated", "varargs", 
-    "byref", "callconv", "breakpoint", "debugger", "nimcall", "stdcall", 
+    "callconv", "breakpoint", "debugger", "nimcall", "stdcall", 
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks", 
     "overflowchecks", "nilchecks",
@@ -145,6 +149,10 @@ const
 
     "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",
     "thread_local", "static_assert", "char16_t", "char32_t",
+
+    "stdin", "stdout", "stderr",
+
+    "inout", "bycopy", "byref", "oneway",
     ]
 
 proc findStr*(a: openarray[string], s: string): int = 

@@ -32,11 +32,11 @@ proc mangle(name: string): string =
       add(result, "HEX")
       add(result, toHex(ord(name[i]), 2))
 
-proc isCKeyword(w: PIdent): bool =
+proc isKeyword(w: PIdent): bool =
   # nimrod and C++ share some keywords
   # it's more efficient to test the whole nimrod keywords range
   case w.id
-  of cppKeywordsLow..cppKeywordsHigh,
+  of ccgKeywordsLow..ccgKeywordsHigh,
      nimKeywordsLow..nimKeywordsHigh,
      ord(wInline): return true
   else: return false
@@ -57,7 +57,7 @@ proc mangleName(s: PSym): PRope =
     when oKeepVariableNames:
       let keepOrigName = s.kind in skLocalVars - {skForVar} and 
         {sfFromGeneric, sfGlobal, sfShadowed} * s.flags == {} and
-        not isCKeyword(s.name)
+        not isKeyword(s.name)
       # XXX: This is still very experimental
       #
       # Even with all these inefficient checks, the bootstrap
