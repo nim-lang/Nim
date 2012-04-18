@@ -117,12 +117,20 @@ proc mangleName(s: PSym): PRope =
 proc isCompileTimeOnly(t: PType): bool =
   result = t.kind in {tyTypedesc, tyExpr}
 
+var anonTypeName = toRope"TY"
+
+proc typeName(typ: PType): PRope =
+  result = if typ.sym != nil: typ.sym.name.s.toRope
+           else: anonTypeName
+
 proc getTypeName(typ: PType): PRope = 
   if (typ.sym != nil) and ({sfImportc, sfExportc} * typ.sym.flags != {}) and
       (gCmd != cmdCompileToLLVM): 
     result = typ.sym.loc.r
-  else: 
-    if typ.loc.r == nil: typ.loc.r = ropeff("TY$1", "%TY$1", [toRope(typ.id)])
+  else:
+    if typ.loc.r == nil:
+      typ.loc.r = if gCmd != cmdCompileToLLVM: con(typ.typeName, typ.id.toRope)
+                  else: con("%".toRope, typ.typeName, typ.id.toRope)
     result = typ.loc.r
   if result == nil: InternalError("getTypeName: " & $typ.kind)
   
@@ -525,9 +533,12 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     IdTablePut(m.typeCache, t, con(result, "*"))
     if not isImportedType(t): 
       if skipTypes(t.sons[0], abstractInst).kind != tyEmpty: 
-        appcg(m, m.s[cfsSeqTypes], 
-            "struct $2 {$n" & 
-            "  #TGenericSeq Sup;$n" &
+        const
+          cppSeq = "struct $2 : #TGenericSeq {$n"
+          cSeq = "struct $2 {$n" &
+                 "  #TGenericSeq Sup;$n"
+        appcg(m, m.s[cfsSeqTypes],
+            (if gCmd == cmdCompileToCpp: cppSeq else: cSeq) &
             "  $1 data[SEQ_DECL_SIZE];$n" & 
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
       else: 
