@@ -626,16 +626,17 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
 proc parseTuple(p: var TParser): PNode = 
   result = newNodeP(nkTupleTy, p)
   getTok(p)
-  eat(p, tkBracketLe)
-  optInd(p, result)
-  while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
-    var a = parseIdentColonEquals(p, {})
-    addSon(result, a)
-    if p.tok.tokType != tkComma: break 
+  if p.tok.tokType == tkBracketLe:
     getTok(p)
-    optInd(p, a)
-  optPar(p)
-  eat(p, tkBracketRi)
+    optInd(p, result)
+    while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
+      var a = parseIdentColonEquals(p, {})
+      addSon(result, a)
+      if p.tok.tokType != tkComma: break 
+      getTok(p)
+      optInd(p, a)
+    optPar(p)
+    eat(p, tkBracketRi)
 
 proc parseParamList(p: var TParser, retColon = true): PNode = 
   var a: PNode
@@ -711,21 +712,33 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     addSon(result, params)
     addSon(result, pragmas)
 
+proc isExprStart(p: TParser): bool = 
+  case p.tok.tokType
+  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkProc, tkBind, 
+     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
+     tkTuple, tkType, tkWhen:
+    result = true
+  else: result = false
+  
 proc parseTypeDescKAux(p: var TParser, kind: TNodeKind): PNode = 
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
-  addSon(result, parseTypeDesc(p))
+  if isExprStart(p):
+    addSon(result, parseTypeDesc(p))
 
 proc parseExpr(p: var TParser): PNode = 
   #
   #expr ::= lowestExpr
   #     | 'if' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
-  #     | 'var' expr
-  #     | 'ref' expr
-  #     | 'ptr' expr
+  #     | 'var' [expr]
+  #     | 'ref' [expr]
+  #     | 'ptr' [expr]
   #     | 'type' expr
-  #     | 'tuple' tupleDesc
+  #     | 'tuple' [tupleDesc]
+  #     | 'enum'
+  #     | 'object'
+  #     | 
   #     | 'proc' paramList [pragma] ['=' stmt] 
   #
   case p.tok.toktype
@@ -737,19 +750,17 @@ proc parseExpr(p: var TParser): PNode =
   of tkProc: result = parseProcExpr(p, true)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
+  of tkEnum:
+    result = newNodeP(nkEnumTy, p)
+    getTok(p)
+  of tkObject:
+    result = newNodeP(nkObjectTy, p)
+    getTok(p)
   else: result = lowestExpr(p)
   
 proc parseTypeDesc(p: var TParser): PNode = 
   if p.tok.toktype == tkProc: result = parseProcExpr(p, false)
   else: result = parseExpr(p)
-  
-proc isExprStart(p: TParser): bool = 
-  case p.tok.tokType
-  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkProc, tkBind, 
-     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
-     tkTuple, tkType, tkWhen:
-    result = true
-  else: result = false
   
 proc parseExprStmt(p: var TParser): PNode = 
   var a = lowestExpr(p)
@@ -1042,45 +1053,6 @@ proc parseAsm(p: var TParser): PNode =
     return 
   getTok(p)
 
-proc parseGenericConstraint(p: var TParser): PNode = 
-  case p.tok.tokType
-  of tkObject:
-    result = newNodeP(nkObjectTy, p)
-    getTok(p)
-  of tkTuple:
-    result = newNodeP(nkTupleTy, p)
-    getTok(p)
-  of tkEnum: 
-    result = newNodeP(nkEnumTy, p)
-    getTok(p)
-  of tkProc:
-    result = newNodeP(nkProcTy, p)
-    getTok(p)
-  of tkVar:
-    result = newNodeP(nkVarTy, p)
-    getTok(p)
-  of tkPtr:
-    result = newNodeP(nkPtrTy, p)
-    getTok(p)
-  of tkRef:
-    result = newNodeP(nkRefTy, p)
-    getTok(p)
-  of tkDistinct:
-    result = newNodeP(nkDistinctTy, p)
-    getTok(p)
-  else: result = primary(p)
-
-proc parseGenericConstraintList(p: var TParser): PNode = 
-  result = parseGenericConstraint(p)
-  while p.tok.tokType == tkOpr:
-    var a = result
-    result = newNodeP(nkInfix, p)
-    addSon(result, newIdentNodeP(p.tok.ident, p))
-    addSon(result, a)
-    getTok(p)
-    optInd(p, result)
-    addSon(result, parseGenericConstraint(p))
-
 proc parseGenericParam(p: var TParser): PNode = 
   var a: PNode
   result = newNodeP(nkIdentDefs, p)
@@ -1097,7 +1069,7 @@ proc parseGenericParam(p: var TParser): PNode =
   if p.tok.tokType == tkColon: 
     getTok(p)
     optInd(p, result)
-    addSon(result, parseGenericConstraintList(p))
+    addSon(result, parseExpr(p))
   else: 
     addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals: 
