@@ -971,7 +971,7 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
 
-proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
+proc addQuitProc*(QuitProc: proc() {.noconv.}) {.importc: "atexit", nodecl.}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
   ## registers another quit procedure. Up to 30 procedures can be
   ## registered. They are executed on a last-in, first-out basis
@@ -1511,7 +1511,7 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc
+  dbgLineHook*: proc ()
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
@@ -1531,7 +1531,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
-  outOfMemHook*: proc
+  outOfMemHook*: proc ()
     ## set this variable to provide a procedure that should be called 
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can

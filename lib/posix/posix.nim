@@ -1889,7 +1889,7 @@ proc setpwent*() {.importc, header: "<pwd.h>".}
 
 proc uname*(a1: var Tutsname): cint {.importc, header: "<sys/utsname.h>".}
 
-proc pthread_atfork*(a1, a2, a3: proc {.noconv.}): cint {.
+proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_destroy*(a1: ptr Tpthread_attr): cint {.
   importc, header: "<pthread.h>".}
@@ -2015,7 +2015,7 @@ proc pthread_mutexattr_setprotocol*(a1: ptr Tpthread_mutexattr, a2: cint): cint 
 proc pthread_mutexattr_setpshared*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 proc pthread_mutexattr_settype*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_once*(a1: ptr Tpthread_once, a2: proc {.noconv.}): cint {.importc, header: "<pthread.h>".}
+proc pthread_once*(a1: ptr Tpthread_once, a2: proc () {.noconv.}): cint {.importc, header: "<pthread.h>".}
 
 proc pthread_rwlock_destroy*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
 proc pthread_rwlock_init*(a1: ptr Tpthread_rwlock,

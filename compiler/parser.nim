@@ -608,7 +608,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, ast.emptyNode) # return type
-  if p.tok.tokType == tkParLe: 
+  if p.tok.tokType == tkParLe:
     getTok(p)
     optInd(p, result)
     while true: 
@@ -626,9 +626,9 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
       optInd(p, a)
     optPar(p)
     eat(p, tkParRi)
-  let b = if retColon: p.tok.tokType == tkColon
-          else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
-  if b:
+  let hasRet = if retColon: p.tok.tokType == tkColon
+               else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
+  if hasRet:
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
@@ -662,6 +662,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     info: TLineInfo
   info = parLineInfo(p)
   getTok(p)
+  let hasSignature = p.tok.tokType in {tkParLe, tkColon}
   params = parseParamList(p)
   pragmas = optPragmas(p)
   if (p.tok.tokType == tkEquals) and isExpr: 
@@ -675,8 +676,9 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     addSon(result, parseStmt(p))
   else: 
     result = newNodeI(nkProcTy, info)
-    addSon(result, params)
-    addSon(result, pragmas)
+    if hasSignature:
+      addSon(result, params)
+      addSon(result, pragmas)
 
 proc isExprStart(p: TParser): bool = 
   case p.tok.tokType
