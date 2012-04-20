@@ -708,8 +708,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)
   of nkCallKinds:
-    let op = n.sons[0].ident.id
-    if op in {ord(wAnd), ord(wOr)}:
+    let op = n.sons[0].ident
+    if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
       var
         t1 = semTypeNode(c, n.sons[1], nil)
         t2 = semTypeNode(c, n.sons[2], nil)
@@ -720,7 +720,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = newTypeS(tyTypeClass, c)
         result.addSon(t1)
         result.addSon(t2)
-        result.flags.incl(if op == ord(wAnd): tfAll else: tfAny)
+        result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
     else:
       result = semTypeFromMacro(c, n)
   of nkCurlyExpr:
