@@ -16,8 +16,13 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   else: 
     result = prev
     if result.kind == tyForward: result.kind = kind
-  
-proc semEnum(c: PContext, n: PNode, prev: PType): PType = 
+
+proc newConstraint(c: PContext, k: TTypeKind): PType = 
+  result = newTypeS(tyTypeClass, c)
+  result.addSon(newTypeS(k, c))
+
+proc semEnum(c: PContext, n: PNode, prev: PType): PType =
+  if n.sonsLen == 0: return newConstraint(c, tyEnum)
   var 
     counter, x: BiggestInt
     e: PSym
@@ -92,29 +97,30 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
     addSon(result, base)
   else: 
     GlobalError(n.info, errXExpectsOneTypeParam, kindStr)
-  
-proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, kindStr: string, 
-               prev: PType): PType = 
-  result = newOrPrevType(kind, prev, c)
-  if sonsLen(n) == 1: 
+
+proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, prev: PType): PType = 
+  if sonsLen(n) == 1:
+    result = newOrPrevType(kind, prev, c)
     var base = semTypeNode(c, n.sons[0], nil)
     addSon(result, base)
-  else: 
-    GlobalError(n.info, errXExpectsOneTypeParam, kindStr)
+  else:
+    result = newConstraint(c, kind)
   
 proc semVarType(c: PContext, n: PNode, prev: PType): PType = 
-  result = newOrPrevType(tyVar, prev, c)
   if sonsLen(n) == 1: 
+    result = newOrPrevType(tyVar, prev, c)
     var base = semTypeNode(c, n.sons[0], nil)
     if base.kind == tyVar: GlobalError(n.info, errVarVarTypeNotAllowed)
     addSon(result, base)
-  else: 
-    GlobalError(n.info, errXExpectsOneTypeParam, "var")
+  else:
+    result = newConstraint(c, tyVar)
   
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType = 
-  result = newOrPrevType(tyDistinct, prev, c)
-  if sonsLen(n) == 1: addSon(result, semTypeNode(c, n.sons[0], nil))
-  else: GlobalError(n.info, errXExpectsOneTypeParam, "distinct")
+  if sonsLen(n) == 1:
+    result = newOrPrevType(tyDistinct, prev, c)
+    addSon(result, semTypeNode(c, n.sons[0], nil))
+  else:
+    result = newConstraint(c, tyDistinct)
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
   assert IsRange(n)
@@ -197,8 +203,8 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       GlobalError(n.info, errIdentifierExpected)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
-  var 
-    typ: PType
+  if n.sonsLen == 0: return newConstraint(c, tyTuple)
+  var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
   var check = initIntSet()
@@ -458,7 +464,8 @@ proc skipGenericInvokation(t: PType): PType {.inline.} =
   if result.kind == tyGenericBody:
     result = lastSon(result)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType): PType = 
+proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
+  if n.sonsLen == 0: return newConstraint(c, tyObject)
   var check = initIntSet()
   var pos = 0 
   var base: PType = nil
@@ -766,8 +773,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       GlobalError(n.info, errTypeExpected)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
-  of nkRefTy: result = semAnyRef(c, n, tyRef, "ref", prev)
-  of nkPtrTy: result = semAnyRef(c, n, tyPtr, "ptr", prev)
+  of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
+  of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkProcTy: 
@@ -828,23 +835,9 @@ proc processMagicType(c: PContext, m: PSym) =
   of mPNimrodNode: nil
   else: GlobalError(m.info, errTypeExpected)
   
-proc newConstraint(c: PContext, k: TTypeKind): PType = 
-  result = newTypeS(tyTypeClass, c)
-  result.addSon(newTypeS(k, c))
-  
 proc semGenericConstraints(c: PContext, n: PNode, result: PType) = 
   case n.kind
   of nkProcTy: result.addSon(newConstraint(c, tyProc))
-  of nkEnumTy: result.addSon(newConstraint(c, tyEnum))
-  of nkObjectTy: result.addSon(newConstraint(c, tyObject))
-  of nkTupleTy: result.addSon(newConstraint(c, tyTuple))
-  of nkDistinctTy: result.addSon(newConstraint(c, tyDistinct))
-  of nkVarTy: result.addSon(newConstraint(c, tyVar))
-  of nkPtrTy: result.addSon(newConstraint(c, tyPtr))
-  of nkRefTy: result.addSon(newConstraint(c, tyRef))
-  of nkInfix: 
-    semGenericConstraints(c, n.sons[1], result)
-    semGenericConstraints(c, n.sons[2], result)
   else:
     var x = semTypeNode(c, n, nil)
     if x.kind in StructuralEquivTypes and (
