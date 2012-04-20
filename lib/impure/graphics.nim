@@ -406,20 +406,22 @@ proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural,
       inc(YChange,TwoASquare)
   
 
-proc plotAA(sur: PSurface, x, y, c: float, color: TColor) =
-  if (x.toInt() > 0 and x.toInt() < sur.s.w) and (y.toInt() > 0 and 
-      y.toInt() < sur.s.h):
+proc plotAA(sur: PSurface, x, y: int, c: float, color: TColor) =
+  if (x > 0 and x < sur.s.w) and (y > 0 and 
+      y < sur.s.h):
     var video = cast[PPixels](sur.s.pixels)
     var pitch = sur.s.pitch div ColSize
 
-    var pixColor = getPix(video, pitch, x.toInt, y.toInt)
+    var pixColor = getPix(video, pitch, x, y)
 
-    setPix(video, pitch, x.toInt(), y.toInt(), 
+    setPix(video, pitch, x, y, 
            pixColor.intensity(1.0 - c) + color.intensity(c))
-         
-proc ipart(x: float): float = return x.trunc()
-proc fpart(x: float): float = return x - ipart(x)
-proc rfpart(x: float): float = return 1.0 - fpart(x)
+ 
+
+template ipart(x: expr): expr = floor(x) 
+template cround(x: expr): expr = ipart(x + 0.5)
+template fpart(x: expr): expr = x - ipart(x)
+template rfpart(x: expr): expr = 1.0 - fpart(x)
 
 proc drawLineAA*(sur: PSurface, p1, p2: TPoint, color: TColor) =
   ## Draws a anti-aliased line from ``p1`` to ``p2``, using Xiaolin Wu's 
@@ -428,36 +430,56 @@ proc drawLineAA*(sur: PSurface, p1, p2: TPoint, color: TColor) =
                           p1.y.toFloat(), p2.y.toFloat())
   var dx = x2 - x1
   var dy = y2 - y1
-  if abs(dx) < abs(dy):
+  
+  var ax = dx
+  if ax < 0'f64:
+    ax = 0'f64 - ax
+  var ay = dy
+  if ay < 0'f64:
+    ay = 0'f64 - ay
+  
+  if ax < ay:
     swap(x1, y1)
     swap(x2, y2)
+    swap(dx, dy)
+  
+  template doPlot(x, y: int, c: float, color: TColor): stmt =
+    if ax < ay:
+      sur.PlotAA(y, x, c, color)
+    else:
+      sur.PlotAA(x, y, c, color)
+  
   if x2 < x1:
     swap(x1, x2)
     swap(y1, y2)
-
+  
   var gradient = dy / dx
   # handle first endpoint
-  var xend = x1  # Should be round(x1), but since this is an int anyway..
+  var xend = cround(x1)
   var yend = y1 + gradient * (xend - x1)
   var xgap = rfpart(x1 + 0.5)
-  var xpxl1 = xend # this will be used in the main loop
-  var ypxl1 = ipart(yend)
-  sur.plotAA(xpxl1, ypxl1, rfpart(yend) * xgap, color)
-  sur.plotAA(xpxl1, ypxl1 + 1.0, fpart(yend) * xgap, color)
+  var xpxl1 = int(xend) # this will be used in the main loop
+  var ypxl1 = int(ipart(yend))
+  doPlot(xpxl1, ypxl1, rfpart(yend)*xgap, color)
+  doPlot(xpxl1, ypxl1 + 1, fpart(yend)*xgap, color)
   var intery = yend + gradient # first y-intersection for the main loop
+
   # handle second endpoint
-  xend = x2 # Should be round(x1), but since this is an int anyway..
+  xend = cround(x2)
   yend = y2 + gradient * (xend - x2)
   xgap = fpart(x2 + 0.5)
-  var xpxl2 = xend  # this will be used in the main loop
-  var ypxl2 = ipart(yend)
-  sur.plotAA(xpxl2, ypxl2, rfpart(yend) * xgap, color)
-  sur.plotAA(xpxl2, ypxl2 + 1.0, fpart(yend) * xgap, color)  
+  var xpxl2 = int(xend) # this will be used in the main loop
+  var ypxl2 = int(ipart(yend))
+  doPlot(xpxl2, ypxl2, rfpart(yend) * xgap, color)
+  doPlot(xpxl2, ypxl2 + 1, fpart(yend) * xgap, color)
+
   # main loop
-  for x in xpxl1.toInt + 1..xpxl2.toInt - 1:
-    sur.plotAA(x.toFloat(), ipart(intery), rfpart(intery), color)
-    sur.plotAA(x.toFloat(), ipart(intery) + 1.0, fpart(intery), color)
+  var x = xpxl1 + 1
+  while x <= xpxl2-1:
+    doPlot(x, int(ipart(intery)), rfpart(intery), color)
+    doPlot(x, int(ipart(intery)) + 1, fpart(intery), color)
     intery = intery + gradient
+    inc(x)
 
 proc fillSurface*(sur: PSurface, color: TColor) =
   ## Fills the entire surface with ``color``.
@@ -469,7 +491,7 @@ template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt =
   ## variable containing the TEvent object.
   while True:
     var event: SDL.TEvent
-    if SDL.PollEvent(addr(event)) == 1:
+    if SDL.WaitEvent(addr(event)) == 1:
       actions
 
 if sdl.Init(sdl.INIT_VIDEO) < 0: raiseEGraphics()
@@ -478,9 +500,9 @@ if sdl_ttf.Init() < 0: raiseEGraphics()
 when isMainModule:
   var surf = newScreenSurface(800, 600)
   surf.fillSurface(colWhite)
-  
+
   # Draw the shapes
-  surf.drawLineAA((100, 170), (400, 471), colTan)
+  surf.drawLineAA((150, 170), (400, 471), colTan)
   surf.drawLine((100, 170), (400, 471), colRed)
   
   surf.drawEllipse(200, 300, 200, 30, colSeaGreen)
@@ -496,14 +518,16 @@ when isMainModule:
   surf.drawCircle((600, 500), 60, colRed)
   
   surf.fillRect((50, 50, 100, 100), colFuchsia)
+
+  surf.drawLineAA((592, 160), (592, 280), colPurple)
   
   #surf.drawText((300, 300), "TEST", colMidnightBlue)
   #var textSize = textBounds("TEST")
   #surf.drawText((300, 300 + textSize.height), $textSize.width & ", " &
   #  $textSize.height, colDarkGreen)
   
-  var mouseStartX = 0
-  var mouseStartY = 0
+  var mouseStartX = -1
+  var mouseStartY = -1
   withEvents(surf, event):
     var eventp = addr(event)
     case event.kind:
@@ -518,22 +542,19 @@ when isMainModule:
         echo(evk.keysym.sym)
     of SDL.MOUSEBUTTONDOWN:
       var mbd = sdl.EvMouseButton(eventp)
-      mouseStartX = mbd.x
-      mouseStartY = mbd.y
-      
-    of SDL.MOUSEBUTTONUP:
-      var mbu = sdl.EvMouseButton(eventp)
-      if mouseStartX != 0 and mouseStartY != 0:
-        echo(mouseStartX, "x->", mbu.x)
-        echo(mouseStartY, "y->", mbu.y)
-        surf.drawLineAA((mouseStartX, MouseStartY), 
-          (int(mbu.x), int(mbu.y)), colRed)
-        mouseStartX = 0
-        mouseStartY = 0
-    
+      if mouseStartX == -1 or mouseStartY == -1:
+        mouseStartX = int(mbd.x)
+        mouseStartY = int(mbd.y)
+      else:
+        surf.drawLineAA((mouseStartX, mouseStartY), (int(mbd.x), int(mbd.y)), colPurple)
+        mouseStartX = -1
+        mouseStartY = -1
+        
     of SDL.MouseMotion:
       var mm = sdl.EvMouseMotion(eventp)
-      echo(mm.x, " ", mm.y, " ", mm.yrel)
+      if mouseStartX != -1 and mouseStartY != -1:
+        surf.drawLineAA((mouseStartX, mouseStartY), (int(mm.x), int(mm.y)), colPurple)
+      #echo(mm.x, " ", mm.y, " ", mm.yrel)
     
     else:
       #echo(event.kind)
