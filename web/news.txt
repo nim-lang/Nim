@@ -52,6 +52,9 @@ Changes affecting backwards compatibility
   ``PNimrodNode`` which unfortunately breaks the old macro system.
 - ``pegs.@`` has been renamed to ``pegs.!*`` and ``pegs.@@`` has been renamed
   to ``pegs.!*\`` as ``@`` operators now have different precedence.
+- the type ``proc`` (without any params or return type) is now considered a
+  type class matching all proc types. Use ``proc ()`` to get the old meaning
+  denoting a proc expecing no arguments and returing no value.
 
 
 Compiler Additions

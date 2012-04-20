@@ -17,7 +17,8 @@ proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   elif t.kind == tyVar and t.sons[0].kind == tyVar:
     LocalError(info, errVarVarTypeNotAllowed)
 
-proc checkConstructedType*(info: TLineInfo, t: PType) = 
+proc checkConstructedType*(info: TLineInfo, typ: PType) = 
+  var t = typ.skipTypes({tyDistinct})
   if t.kind in {tyTypeClass}: nil
   elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     LocalError(info, errInvalidPragmaX, "acyclic")

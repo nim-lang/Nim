@@ -459,33 +459,22 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
             InternalError("wrong instantiated type!")
           put(mapping, f.sons[i], x)
-  of tyGenericParam: 
+  of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(mapping, f))
-    if x == nil: 
-      if sonsLen(f) == 0: 
-        # no constraints
+    if x == nil:
+      result = matchTypeClass(mapping, f, a)
+      if result == isGeneric:
         var concrete = concreteType(mapping, a)
-        if concrete != nil:
+        if concrete == nil:
+          result = isNone
+        else:
           put(mapping, f, concrete)
-          result = isGeneric
-      else: 
-        # check constraints:
-        for i in countup(0, sonsLen(f) - 1): 
-          if typeRel(mapping, f.sons[i], a) >= isSubtype: 
-            var concrete = concreteType(mapping, a)
-            if concrete != nil: 
-              put(mapping, f, concrete)
-              result = isGeneric
-            break 
-    elif a.kind == tyEmpty: 
+    elif a.kind == tyEmpty:
       result = isGeneric
-    elif x.kind == tyGenericParam: 
+    elif x.kind == tyGenericParam:
       result = isGeneric
-    else: 
+    else:
       result = typeRel(mapping, x, a) # check if it fits
-  of tyTypeClass:
-    result = matchTypeClass(mapping, f, a)
-    if result == isGeneric: put(mapping, f, a)
   of tyTypeDesc:
     if a.kind == tyTypeDesc:
       if f.sonsLen == 0:
