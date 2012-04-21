@@ -386,7 +386,7 @@ input management. To start Nimrod in interactive mode use the command
 ``nimrod i``. To quit use the ``quit()`` command. To determine whether an input
 line is an incomplete statement to be continued these rules are used:
 
-1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol  followed by optional whitespace).
+1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol followed by optional whitespace).
 2. The line starts with a space (indentation).
 3. The line is within a triple quoted string literal. However, the detection 
    does not work if the line contains more than one ``"""``.
@@ -406,6 +406,13 @@ target.
 So to generate code for an `AVR`:idx: processor use this command::
   
   nimrod c --cpu:avr --os:standalone --gc:none -d:useMalloc --genScript x.nim
+
+
+Nimrod for realtime systems
+===========================
+
+See the documentation of Nimrod's soft realtime `GC <gc.html>`_ for further 
+information.
 
 
 Debugging with Nimrod

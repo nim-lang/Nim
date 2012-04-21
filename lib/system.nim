@@ -807,7 +807,6 @@ const
   taintMode = compileOption("taintmode")
 
 when taintMode:
-  # XXX use a compile time option for it!
   type TaintedString* = distinct string ## a distinct string type that 
                                         ## is `tainted`:idx:. It is an alias for
                                         ## ``string`` if the taint mode is not
@@ -1486,8 +1485,9 @@ type
     gcOptimizeTime,    ## optimize for speed
     gcOptimizeSpace    ## optimize for memory footprint
 
-proc GC_setStrategy*(strategy: TGC_Strategy) {.rtl.}
+proc GC_setStrategy*(strategy: TGC_Strategy) {.rtl, deprecated.}
   ## tells the GC the desired strategy for the application.
+  ## **Deprecated** since version 0.8.14. This has always been a nop.
 
 proc GC_enableMarkAndSweep*() {.rtl.}
 proc GC_disableMarkAndSweep*() {.rtl.}

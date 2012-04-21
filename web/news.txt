@@ -13,12 +13,15 @@ Bugfixes
 - Fixed a bug where the compiler would "optimize away" valid constant parts of
   a string concatenation.
 - Fixed a bug concerning implicit type conversions in ``case`` statements.
+- Fixed a serious code generation bug that caused ``algorithm.sort`` to
+  produce segmentation faults.
 
 
 Library Additions
 -----------------
 
 - Added the (already existing) module ``htmlgen`` to the documentation.
+- Added the (already existing) module ``cookies`` to the documentation.
 - Added ``system.shallow`` that can be used to speed up string and sequence
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at
@@ -58,9 +61,10 @@ Changes affecting backwards compatibility
   ``PNimrodNode`` which unfortunately breaks the old macro system.
 - ``pegs.@`` has been renamed to ``pegs.!*`` and ``pegs.@@`` has been renamed
   to ``pegs.!*\`` as ``@`` operators now have different precedence.
-- the type ``proc`` (without any params or return type) is now considered a
+- The type ``proc`` (without any params or return type) is now considered a
   type class matching all proc types. Use ``proc ()`` to get the old meaning
   denoting a proc expecing no arguments and returing no value.
+- Deprecated ``system.GC_setStrategy``.
 
 
 Compiler Additions

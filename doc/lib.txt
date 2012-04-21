@@ -201,6 +201,10 @@ Internet Protocols and Support
 * `ftpclient <ftpclient.html>`_
   This module implements an FTP client.
 
+* `cookies <cookies.html>`_
+  This module contains helper procs for parsing and generating cookies.
+
+
 Parsers
 -------
 
