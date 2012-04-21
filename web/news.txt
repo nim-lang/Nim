@@ -35,6 +35,10 @@ Library Additions
 - Added a wrapper for ``libsvm``.
 - Added a wrapper for ``mongodb``.
 - Added ``terminal.isatty``.
+- Added overload for ``system.items`` that can be used to iterate over the
+  values of an enum.
+- Added ``system.TInteger`` and ``system.TNumber`` type classes matching
+  any of the corresponding type available in nimrod.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 
@@ -54,6 +58,9 @@ Changes affecting backwards compatibility
   ``PNimrodNode`` which unfortunately breaks the old macro system.
 - ``pegs.@`` has been renamed to ``pegs.!*`` and ``pegs.@@`` has been renamed
   to ``pegs.!*\`` as ``@`` operators now have different precedence.
+- the type ``proc`` (without any params or return type) is now considered a
+  type class matching all proc types. Use ``proc ()`` to get the old meaning
+  denoting a proc expecing no arguments and returing no value.
 
 
 Compiler Additions

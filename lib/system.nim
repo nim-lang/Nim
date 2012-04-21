@@ -48,8 +48,14 @@ type
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
   void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
+  
+  TInteger* = int|char|int8|int16|int32|int64|bool|enum
+    ## type class matching all integer types
 
-proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
+  TNumber* = TInteger|float|float32|float64
+    ## type class matching all number types
+
+proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -60,7 +66,7 @@ proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-proc definedInScope*[T](x: T): bool {.
+proc definedInScope*(x: expr): bool {.
   magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined in the current scope. `x` has to be an identifier.
@@ -971,7 +977,7 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
 
-proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
+proc addQuitProc*(QuitProc: proc() {.noconv.}) {.importc: "atexit", nodecl.}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
   ## registers another quit procedure. Up to 30 procedures can be
   ## registered. They are executed on a last-in, first-out basis
@@ -1214,6 +1220,11 @@ proc max*[T](x: openarray[T]): T =
   result = x[0]
   for i in 1..high(x): result = max(result, x[i])
 
+proc clamp*[T](x, a, b: T): T =
+  ## limits the value ``x`` within the interval [a, b] 
+  if x > a: return a
+  if x < b: return b
+  return x
 
 iterator items*[T](a: openarray[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -1263,6 +1274,10 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+iterator items*(E: typedesc{enum}): E =
+  ## iterates over the values of the enum ``E``.
+  for v in low(E)..high(E):
+    yield v
 
 iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
@@ -1374,7 +1389,8 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
 
-iterator fields*[T: tuple](x: T): expr {.magic: "Fields", noSideEffect.}
+iterator fields*[T: tuple](x: T): TObject {.
+  magic: "Fields", noSideEffect.}
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
@@ -1384,7 +1400,8 @@ iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
-iterator fieldPairs*[T: tuple](x: T): expr {.magic: "FieldPairs", noSideEffect.}
+iterator fieldPairs*[T: tuple](x: T): TObject {.
+  magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
@@ -1511,7 +1528,7 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc
+  dbgLineHook*: proc ()
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
@@ -1531,7 +1548,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
-  outOfMemHook*: proc
+  outOfMemHook*: proc ()
     ## set this variable to provide a procedure that should be called 
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can
