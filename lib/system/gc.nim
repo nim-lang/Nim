@@ -15,9 +15,8 @@
 # together with Christoper's partial mark-sweep garbage collector.
 #
 # Special care has been taken to avoid recursion as far as possible to avoid
-# stack overflows when traversing deep datastructures. This is comparable to
-# an incremental and generational GC. It should be well-suited for soft real
-# time applications (like games).
+# stack overflows when traversing deep datastructures. It is well-suited
+# for soft real time applications (like games).
 
 const
   CycleIncrease = 2 # is a multiplicative increase
@@ -25,6 +24,10 @@ const
   ZctThreshold = 500  # we collect garbage if the ZCT's size
                       # reaches this threshold
                       # this seems to be a good value
+  withRealTime = defined(useRealtimeGC)
+
+when withRealTime:
+  include "system/timers"
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
@@ -53,6 +56,7 @@ type
     maxStackSize: int        # max stack size
     maxStackCells: int       # max stack cells in ``decStack``
     cycleTableSize: int      # max entries in cycle table  
+    maxPause: int64          # max measured GC pause in nanoseconds
   
   TGcHeap {.final, pure.} = object # this contains the zero count and
                                    # non-zero count table
@@ -63,6 +67,8 @@ type
     cycleRoots: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
     recGcLock: int           # prevent recursion via finalizers; no thread lock
+    when withRealTime:
+      maxPause: TNanos       # max allowed pause in nanoseconds; active if > 0
     region: TMemRegion       # garbage collected region
     stat: TGcStat
 
@@ -172,8 +178,6 @@ when traceGC:
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
   when traceGC: traceCell(cell, state)
-
-# -----------------------------------------------------------------------------
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
@@ -741,12 +745,18 @@ else:
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc CollectZCT(gch: var TGcHeap) =
+proc CollectZCT(gch: var TGcHeap): bool =
   # Note: Freeing may add child objects to the ZCT! So essentially we do 
   # deep freeing, which is bad for incremental operation. In order to 
   # avoid a deep stack, we move objects to keep the ZCT small.
   # This is performance critical!
+  const workPackage = 100
   var L = addr(gch.zct.len)
+  
+  when withRealtime:
+    var steps = workPackage
+    var t0: TTicks
+    if gch.maxPause > 0: t0 = getticks()
   while L[] > 0:
     var c = gch.zct.d[0]
     sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
@@ -756,6 +766,7 @@ proc CollectZCT(gch: var TGcHeap) =
     c.refcount = c.refcount and not colorMask
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
+    when withRealtime: dec steps
     if c.refcount <% rcIncrement: 
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because
@@ -775,6 +786,17 @@ proc CollectZCT(gch: var TGcHeap) =
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(TCell))
+    when withRealtime:
+      if steps == 0:
+        steps = workPackage
+        if gch.maxPause > 0:
+          let duration = getticks() - t0
+          # the GC's measuring is not accurate and needs some cleanup actions 
+          # (stack unmarking), so subtract some short amount of time in to
+          # order to miss deadlines less often:
+          if duration >= gch.maxPause - 50_000:
+            return false
+  result = true
 
 proc unmarkStackAndRegisters(gch: var TGcHeap) = 
   var d = gch.decStack.d
@@ -788,30 +810,64 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
     sysAssert c.typ != nil, "unmarkStackAndRegisters 2"
   gch.decStack.len = 0
 
-proc collectCT(gch: var TGcHeap) =
-  if (gch.zct.len >= ZctThreshold or (cycleGC and
-      getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and 
-      gch.recGcLock == 0:
-    sysAssert(allocInv(gch.region), "collectCT: begin")
-    
-    gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
-    sysAssert(gch.decStack.len == 0, "collectCT")
-    prepareForInteriorPointerChecking(gch.region)
-    markStackAndRegisters(gch)
-    markThreadStacks(gch)
-    gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)
-    inc(gch.stat.stackScans)
-    collectZCT(gch)
+proc collectCTBody(gch: var TGcHeap) =
+  when withRealtime:
+    let t0 = getticks()
+  sysAssert(allocInv(gch.region), "collectCT: begin")
+  
+  gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
+  sysAssert(gch.decStack.len == 0, "collectCT")
+  prepareForInteriorPointerChecking(gch.region)
+  markStackAndRegisters(gch)
+  markThreadStacks(gch)
+  gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)
+  inc(gch.stat.stackScans)
+  if collectZCT(gch):
     when cycleGC:
       if getOccupiedMem(gch.region) >= gch.cycleThreshold or alwaysCycleGC:
         collectCycles(gch)
-        collectZCT(gch)
+        discard collectZCT(gch)
         inc(gch.stat.cycleCollections)
         gch.cycleThreshold = max(InitialCycleThreshold, getOccupiedMem() *
                                  cycleIncrease)
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
-    unmarkStackAndRegisters(gch)
-    sysAssert(allocInv(gch.region), "collectCT: end")
+  unmarkStackAndRegisters(gch)
+  sysAssert(allocInv(gch.region), "collectCT: end")
+  
+  when withRealtime:
+    let duration = getticks() - t0
+    gch.stat.maxPause = max(gch.stat.maxPause, duration)
+    when defined(reportMissedDeadlines):
+      if gch.maxPause > 0 and duration > gch.maxPause:
+        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+
+proc collectCT(gch: var TGcHeap) =
+  if (gch.zct.len >= ZctThreshold or (cycleGC and
+      getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and 
+      gch.recGcLock == 0:
+    collectCTBody(gch)
+
+when withRealtime:
+  proc toNano(x: int): TNanos {.inline.} =
+    result = x * 1000
+
+  proc GC_setMaxPause*(MaxPauseInUs: int) =
+    gch.maxPause = MaxPauseInUs.toNano
+
+  proc GC_step(gch: var TGcHeap, us: int, strongAdvice: bool) =
+    acquire(gch)
+    var oldThreshold = gch.cycleThreshold
+    # disable cycle collection:
+    gch.cycleThreshold = high(gch.cycleThreshold)-1
+    gch.maxPause = us.toNano
+    if strongAdvice:
+      if gch.recGcLock == 0: collectCTBody(gch)
+    else:
+      collectCT(gch)
+    gch.cycleThreshold = oldThreshold
+    release(gch)
+
+  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
 
 when not defined(useNimRtl):
   proc GC_disable() = 
@@ -858,6 +914,7 @@ when not defined(useNimRtl):
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
              "[GC] zct capacity: " & $gch.zct.cap & "\n" &
              "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
-             "[GC] max stack size: " & $gch.stat.maxStackSize
+             "[GC] max stack size: " & $gch.stat.maxStackSize & "\n" &
+             "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000)
     when traceGC: writeLeakage()
     GC_enable()

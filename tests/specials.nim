@@ -122,6 +122,8 @@ proc runGcTests(r: var TResults, options: string) =
   template test(filename: expr): stmt =
     runSingleTest(r, "tests/gc" / filename, options)
     runSingleTest(r, "tests/gc" / filename, options & " -d:release")
+    runSingleTest(r, "tests/gc" / filename, options &
+                  " -d:release -d:useRealtimeGC")
   
   test "gcbench"
   test "gcleak"

@@ -22,6 +22,10 @@ The documentation consists of several documents:
 - | `Manual <manual.html>`_
   | The Nimrod manual is a draft that will evolve into a proper specification.
 
+- | `GC <gc.html>`_
+  | Additional documentation about Nimrod's GC and how to operate it in a
+  | realtime setting.
+
 - | `Source code filters <filters.html>`_
   | The Nimrod compiler supports source code filters as a simple yet powerful
     builtin templating system.

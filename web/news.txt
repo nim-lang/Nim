@@ -35,6 +35,8 @@ Library Additions
 - Added a wrapper for ``libsvm``.
 - Added a wrapper for ``mongodb``.
 - Added ``terminal.isatty``.
+- The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
+  and ``GC_step`` procs.
 
 
 Changes affecting backwards compatibility
