@@ -477,42 +477,8 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
     else: break
 
-proc primary(p: var TParser, skipSuffix = false): PNode = 
-  # prefix operator?
-  if isOperator(p.tok):
-    let isSigil = IsSigilLike(p.tok)
-    result = newNodeP(nkPrefix, p)
-    var a = newIdentNodeP(p.tok.ident, p)
-    addSon(result, a)
-    getTok(p)
-    optInd(p, a)
-    if isSigil: 
-      #XXX prefix operators
-      addSon(result, primary(p, true))
-      result = primarySuffix(p, result)
-    else:
-      addSon(result, primary(p))
-    return
-  elif p.tok.tokType == tkAddr:
-    result = newNodeP(nkAddr, p)
-    getTok(p)
-    addSon(result, primary(p))
-    return
-  elif p.tok.tokType == tkStatic:
-    result = newNodeP(nkStaticExpr, p)
-    getTok(p)
-    addSon(result, primary(p))
-    return
-  elif p.tok.tokType == tkBind: 
-    result = newNodeP(nkBind, p)
-    getTok(p)
-    optInd(p, result)
-    addSon(result, primary(p))
-    return 
-  result = identOrLiteral(p)
-  if not skipSuffix:
-    result = primarySuffix(p, result)
-  
+proc primary(p: var TParser, skipSuffix = false): PNode
+
 proc lowestExprAux(p: var TParser, limit: int): PNode = 
   result = primary(p) 
   # expand while operators have priorities higher than 'limit'
@@ -642,7 +608,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, ast.emptyNode) # return type
-  if p.tok.tokType == tkParLe: 
+  if p.tok.tokType == tkParLe:
     getTok(p)
     optInd(p, result)
     while true: 
@@ -660,9 +626,9 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
       optInd(p, a)
     optPar(p)
     eat(p, tkParRi)
-  let b = if retColon: p.tok.tokType == tkColon
-          else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
-  if b:
+  let hasRet = if retColon: p.tok.tokType == tkColon
+               else: p.tok.tokType == tkOpr and IdentEq(p.tok.ident, "->")
+  if hasRet:
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
@@ -696,6 +662,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     info: TLineInfo
   info = parLineInfo(p)
   getTok(p)
+  let hasSignature = p.tok.tokType in {tkParLe, tkColon}
   params = parseParamList(p)
   pragmas = optPragmas(p)
   if (p.tok.tokType == tkEquals) and isExpr: 
@@ -709,8 +676,9 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     addSon(result, parseStmt(p))
   else: 
     result = newNodeI(nkProcTy, info)
-    addSon(result, params)
-    addSon(result, pragmas)
+    if hasSignature:
+      addSon(result, params)
+      addSon(result, pragmas)
 
 proc isExprStart(p: TParser): bool = 
   case p.tok.tokType
@@ -724,39 +692,70 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
-  if isExprStart(p):
+  if not isOperator(p.tok) and isExprStart(p):
     addSon(result, parseTypeDesc(p))
 
 proc parseExpr(p: var TParser): PNode = 
   #
   #expr ::= lowestExpr
   #     | 'if' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
-  #     | 'var' [expr]
-  #     | 'ref' [expr]
-  #     | 'ptr' [expr]
-  #     | 'type' expr
-  #     | 'tuple' [tupleDesc]
-  #     | 'enum'
-  #     | 'object'
-  #     | 
-  #     | 'proc' paramList [pragma] ['=' stmt] 
+  #     | 'when' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
   #
-  case p.tok.toktype
+  case p.tok.tokType:
+  of tkIf: result = parseIfExpr(p, nkIfExpr)
+  of tkWhen: result = parseIfExpr(p, nkWhenExpr)
+  else: result = lowestExpr(p)
+
+proc primary(p: var TParser, skipSuffix = false): PNode = 
+  # prefix operator?
+  if isOperator(p.tok):
+    let isSigil = IsSigilLike(p.tok)
+    result = newNodeP(nkPrefix, p)
+    var a = newIdentNodeP(p.tok.ident, p)
+    addSon(result, a)
+    getTok(p)
+    optInd(p, a)
+    if isSigil: 
+      #XXX prefix operators
+      addSon(result, primary(p, true))
+      result = primarySuffix(p, result)
+    else:
+      addSon(result, primary(p))
+    return
+  
+  case p.tok.tokType:
   of tkVar: result = parseTypeDescKAux(p, nkVarTy)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy)
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr)
   of tkTuple: result = parseTuple(p)
   of tkProc: result = parseProcExpr(p, true)
-  of tkIf: result = parseIfExpr(p, nkIfExpr)
-  of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkEnum:
     result = newNodeP(nkEnumTy, p)
     getTok(p)
   of tkObject:
     result = newNodeP(nkObjectTy, p)
     getTok(p)
-  else: result = lowestExpr(p)
+  of tkDistinct:
+    result = newNodeP(nkDistinctTy, p)
+    getTok(p)
+  of tkAddr:
+    result = newNodeP(nkAddr, p)
+    getTok(p)
+    addSon(result, primary(p))
+  of tkStatic:
+    result = newNodeP(nkStaticExpr, p)
+    getTok(p)
+    addSon(result, primary(p))
+  of tkBind: 
+    result = newNodeP(nkBind, p)
+    getTok(p)
+    optInd(p, result)
+    addSon(result, primary(p))
+  else:
+    result = identOrLiteral(p)
+    if not skipSuffix:
+      result = primarySuffix(p, result)
   
 proc parseTypeDesc(p: var TParser): PNode = 
   if p.tok.toktype == tkProc: result = parseProcExpr(p, false)

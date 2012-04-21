@@ -16,8 +16,13 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   else: 
     result = prev
     if result.kind == tyForward: result.kind = kind
-  
-proc semEnum(c: PContext, n: PNode, prev: PType): PType = 
+
+proc newConstraint(c: PContext, k: TTypeKind): PType = 
+  result = newTypeS(tyTypeClass, c)
+  result.addSon(newTypeS(k, c))
+
+proc semEnum(c: PContext, n: PNode, prev: PType): PType =
+  if n.sonsLen == 0: return newConstraint(c, tyEnum)
   var 
     counter, x: BiggestInt
     e: PSym
@@ -92,29 +97,30 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
     addSon(result, base)
   else: 
     GlobalError(n.info, errXExpectsOneTypeParam, kindStr)
-  
-proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, kindStr: string, 
-               prev: PType): PType = 
-  result = newOrPrevType(kind, prev, c)
-  if sonsLen(n) == 1: 
+
+proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, prev: PType): PType = 
+  if sonsLen(n) == 1:
+    result = newOrPrevType(kind, prev, c)
     var base = semTypeNode(c, n.sons[0], nil)
     addSon(result, base)
-  else: 
-    GlobalError(n.info, errXExpectsOneTypeParam, kindStr)
+  else:
+    result = newConstraint(c, kind)
   
 proc semVarType(c: PContext, n: PNode, prev: PType): PType = 
-  result = newOrPrevType(tyVar, prev, c)
   if sonsLen(n) == 1: 
+    result = newOrPrevType(tyVar, prev, c)
     var base = semTypeNode(c, n.sons[0], nil)
     if base.kind == tyVar: GlobalError(n.info, errVarVarTypeNotAllowed)
     addSon(result, base)
-  else: 
-    GlobalError(n.info, errXExpectsOneTypeParam, "var")
+  else:
+    result = newConstraint(c, tyVar)
   
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType = 
-  result = newOrPrevType(tyDistinct, prev, c)
-  if sonsLen(n) == 1: addSon(result, semTypeNode(c, n.sons[0], nil))
-  else: GlobalError(n.info, errXExpectsOneTypeParam, "distinct")
+  if sonsLen(n) == 1:
+    result = newOrPrevType(tyDistinct, prev, c)
+    addSon(result, semTypeNode(c, n.sons[0], nil))
+  else:
+    result = newConstraint(c, tyDistinct)
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
   assert IsRange(n)
@@ -184,7 +190,11 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         # This is a typedesc param. is it already bound?
         # it's not bound when it's also used as return type for example
         if result.typ.sonsLen > 0:
-          return result.typ.sons[0].sym
+          let bound = result.typ.sons[0].sym
+          if bound != nil:
+            return bound
+          else:
+            return result.typ.sym
         else:
           return result.typ.sym
       if result.kind != skType: GlobalError(n.info, errTypeExpected)
@@ -197,8 +207,8 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       GlobalError(n.info, errIdentifierExpected)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
-  var 
-    typ: PType
+  if n.sonsLen == 0: return newConstraint(c, tyTuple)
+  var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
   var check = initIntSet()
@@ -458,7 +468,8 @@ proc skipGenericInvokation(t: PType): PType {.inline.} =
   if result.kind == tyGenericBody:
     result = lastSon(result)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType): PType = 
+proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
+  if n.sonsLen == 0: return newConstraint(c, tyObject)
   var check = initIntSet()
   var pos = 0 
   var base: PType = nil
@@ -529,6 +540,36 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
     result.typ = copyType(paramType, getCurrOwner(), false)
   else: nil
 
+proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
+                   paramType: PType, paramName: string): PType =
+  ## Params having implicit generic types or pseudo types such as 'expr'
+  ## need to be added to the generic params lists. 
+  ## 'expr' is different from 'expr{string}' so we must first call 
+  ## paramTypeClass to get the actual type we are going to use.
+  result = paramType
+  var (typeClass, paramTypId) = paramTypeClass(c, paramType, procKind)
+  let isAnon = paramTypId == nil
+  if typeClass != nil:
+    if isAnon: paramTypId = getIdent(paramName & ":type")
+    if genericParams == nil:
+      # genericParams is nil when the proc is being instantiated
+      # the resolved type will be in scope then
+      result = SymtabGet(c.tab, paramTypId).AssertNotNil.typ
+    else:
+      block addImplicitGeneric:
+        # is this a bindOnce type class already present in the param list?
+        for i in countup(0, genericParams.len - 1):
+          if genericParams.sons[i].sym.name == paramTypId:
+            result = genericParams.sons[i].typ
+            break addImplicitGeneric
+
+        var s = newSym(skType, paramTypId, getCurrOwner())
+        if isAnon: s.flags.incl(sfAnon)
+        s.linkTo(typeClass)
+        s.position = genericParams.len
+        genericParams.addSon(newSymNode(s))
+        result = typeClass
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
@@ -576,37 +617,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
-      var endingType = typ
-      var (typeClass, paramTypId) = paramTypeClass(c, typ, kind)
-      if typeClass != nil:
-        if paramTypId == nil: paramTypId = getIdent(arg.name.s & ":type")
-        if genericParams == nil:
-          # genericParams is nil when the proc is being instantiated
-          # the resolved type will be in scope then
-          endingType = SymtabGet(c.tab, paramTypId).AssertNotNil.typ
-        else:
-          block addImplicitGeneric:
-            # is this a bindOnce type class already present in the param list?
-            for i in countup(0, genericParams.len - 1):
-              if genericParams.sons[i].sym.name == paramTypId:
-                endingType = genericParams.sons[i].typ
-                break addImplicitGeneric
-
-            var s = newSym(skType, paramTypId, getCurrOwner())
-            s.flags.incl(sfAnon)
-            s.linkTo(typeClass)
-            s.position = genericParams.len
-            genericParams.addSon(newSymNode(s))
-            endingType = typeClass
-      
-      arg.typ = endingType
+      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s)
+      arg.typ = finalType
       arg.position = counter
       inc(counter)
       if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
       if ContainsOrIncl(check, arg.name.id): 
         LocalError(a.sons[j].info, errAttemptToRedefine, arg.name.s)
       addSon(result.n, newSymNode(arg))
-      addSon(result, endingType)
+      addSon(result, finalType)
       addParamOrResult(c, arg, kind)
 
   if n.sons[0].kind != nkEmpty:
@@ -614,6 +633,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the 
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
+      if r.sym == nil or sfAnon notin r.sym.flags:
+        r = liftParamType(c, kind, genericParams, r, "result")
       result.sons[0] = r
       res.typ = result.sons[0]
 
@@ -708,8 +729,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)
   of nkCallKinds:
-    let op = n.sons[0].ident.id
-    if op in {ord(wAnd), ord(wOr)}:
+    let op = n.sons[0].ident
+    if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
       var
         t1 = semTypeNode(c, n.sons[1], nil)
         t2 = semTypeNode(c, n.sons[2], nil)
@@ -720,7 +741,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = newTypeS(tyTypeClass, c)
         result.addSon(t1)
         result.addSon(t2)
-        result.flags.incl(if op == ord(wAnd): tfAll else: tfAny)
+        result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
     else:
       result = semTypeFromMacro(c, n)
   of nkCurlyExpr:
@@ -766,11 +787,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       GlobalError(n.info, errTypeExpected)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
-  of nkRefTy: result = semAnyRef(c, n, tyRef, "ref", prev)
-  of nkPtrTy: result = semAnyRef(c, n, tyPtr, "ptr", prev)
+  of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
+  of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkProcTy: 
+    if n.sonsLen == 0: return newConstraint(c, tyProc)
     checkSonsLen(n, 2)
     openScope(c.tab)
     result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
@@ -778,7 +800,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[1], procTypePragmas)
-    closeScope(c.tab)    
+    closeScope(c.tab)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
@@ -828,29 +850,12 @@ proc processMagicType(c: PContext, m: PSym) =
   of mPNimrodNode: nil
   else: GlobalError(m.info, errTypeExpected)
   
-proc newConstraint(c: PContext, k: TTypeKind): PType = 
-  result = newTypeS(tyTypeClass, c)
-  result.addSon(newTypeS(k, c))
-  
 proc semGenericConstraints(c: PContext, n: PNode, result: PType) = 
-  case n.kind
-  of nkProcTy: result.addSon(newConstraint(c, tyProc))
-  of nkEnumTy: result.addSon(newConstraint(c, tyEnum))
-  of nkObjectTy: result.addSon(newConstraint(c, tyObject))
-  of nkTupleTy: result.addSon(newConstraint(c, tyTuple))
-  of nkDistinctTy: result.addSon(newConstraint(c, tyDistinct))
-  of nkVarTy: result.addSon(newConstraint(c, tyVar))
-  of nkPtrTy: result.addSon(newConstraint(c, tyPtr))
-  of nkRefTy: result.addSon(newConstraint(c, tyRef))
-  of nkInfix: 
-    semGenericConstraints(c, n.sons[1], result)
-    semGenericConstraints(c, n.sons[2], result)
-  else:
-    var x = semTypeNode(c, n, nil)
-    if x.kind in StructuralEquivTypes and (
-        sonsLen(x) == 0 or x.sons[0].kind in {tyGenericParam, tyEmpty}):
-      x = newConstraint(c, x.kind)
-    result.addSon(x)
+  var x = semTypeNode(c, n, nil)
+  if x.kind in StructuralEquivTypes and (
+      sonsLen(x) == 0 or x.sons[0].kind in {tyGenericParam, tyEmpty}):
+    x = newConstraint(c, x.kind)
+  result.addSon(x)
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
   result = copyNode(n)
