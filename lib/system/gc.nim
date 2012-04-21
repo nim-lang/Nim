@@ -856,15 +856,11 @@ when withRealtime:
 
   proc GC_step(gch: var TGcHeap, us: int, strongAdvice: bool) =
     acquire(gch)
-    var oldThreshold = gch.cycleThreshold
-    # disable cycle collection:
-    gch.cycleThreshold = high(gch.cycleThreshold)-1
     gch.maxPause = us.toNano
-    if strongAdvice:
-      if gch.recGcLock == 0: collectCTBody(gch)
-    else:
-      collectCT(gch)
-    gch.cycleThreshold = oldThreshold
+    if (gch.zct.len >= ZctThreshold or (cycleGC and
+        getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) or 
+        strongAdvice:
+      collectCTBody(gch)
     release(gch)
 
   proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)

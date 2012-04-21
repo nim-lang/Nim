@@ -2,11 +2,15 @@
 Nimrod's Garbage Collector
 ==========================
 
+:Author: Andreas Rumpf
+:Version: |nimrodversion|
+
+
 Introduction
 ============
 
-This document describes how the GC works and how to tune it for (soft)
-realtime systems.
+This document describes how the GC works and how to tune it for
+(soft) `realtime systems`:idx:.
 
 The basic algorithm is *Deferrent Reference Counting* with cycle detection.
 References on the stack are not counted for better performance (and easier C
@@ -15,22 +19,49 @@ delta-subgraph of the heap that changed since its last run.
 
 
 The GC is only triggered in a memory allocation operation. It it not triggered
-by some timer or background thread.
+by some timer and does not run in a background thread.
+
+The cycle collector can be en-/disabled independently from the other parts of
+the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
+
+To force a full collection call ``GC_fullCollect``. Note that it is generally
+better to let the GC do its work and not enforce a full collection.
 
 
 Realtime support
 ================
 
-To enable realtime support, the switch `useRealtimeGC`:idx: needs to be
+To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
 defined. With this switch the GC supports the following operations:
 
 .. code-block:: nimrod
   proc GC_setMaxPause*(MaxPauseInUs: int)
   proc GC_step*(us: int, strongAdvice = false)
 
-After calling ``GC_setMaxPause`` any GC run tries to finish within 
-``MaxPauseInUs`` microseconds. XXX complete documentation
+The unit of the parameters ``MaxPauseInUs`` and ``us`` is microseconds.
 
+These two procs are the two modus operandi of the realtime GC: 
+
+(1) GC_SetMaxPause Mode
+
+    You can call ``GC_SetMaxPause`` at program startup and then each triggered
+    GC run tries to not take longer than ``MaxPause`` time. However, it is 
+    possible (and common) that the work is nevertheless not evenly distributed 
+    as each call to ``new`` can trigger the GC and thus take  ``MaxPause`` 
+    time.
+
+(2) GC_step Mode
+
+    This allows the GC to perform some work for up to ``us`` time. This is
+    useful to call in a main loop to ensure the GC can do its work. To    
+    bind all GC activity to a ``GC_step`` call, deactivate the GC with 
+    ``GC_disable`` at program startup.
+
+These procs provide a "best effort" realtime guarantee; in particular the
+cycle collector is not aware of deadlines yet. Deactivate it to get more
+predictable realtime behaviour. Tests show that a 2ms max pause
+time will be met in almost all cases on modern CPUs unless the cycle collector
+is triggered.
 
 
 Time measurement
@@ -53,6 +84,11 @@ later versions of the collector.
 
 
 Tweaking the GC
-===============
+---------------
 
-To be written. 
+The collector checks whether there is still time left for its work after 
+every ``workPackage``'th iteration. This is currently set to 100 which means
+that up to 100 objects are traversed and freed before it checks again. Thus
+``workPackage`` affects the timing granularity and may need to be tweaked in
+highly specialized environments or for older hardware.
+
