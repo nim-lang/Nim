@@ -48,8 +48,14 @@ type
   typeDesc* {.magic: TypeDesc.} ## meta type to denote
                                 ## a type description (for templates)
   void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
+  
+  TInteger* = int|char|int8|int16|int32|int64|bool|enum
+    ## type class matching all integer types
 
-proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
+  TNumber* = TInteger|float|float32|float64
+    ## type class matching all number types
+
+proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -60,7 +66,7 @@ proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-proc definedInScope*[T](x: T): bool {.
+proc definedInScope*(x: expr): bool {.
   magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined in the current scope. `x` has to be an identifier.
@@ -1214,6 +1220,11 @@ proc max*[T](x: openarray[T]): T =
   result = x[0]
   for i in 1..high(x): result = max(result, x[i])
 
+proc clamp*[T](x, a, b: T): T =
+  ## limits the value ``x`` within the interval [a, b] 
+  if x > a: return a
+  if x < b: return b
+  return x
 
 iterator items*[T](a: openarray[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -1263,6 +1274,10 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+iterator items*(E: typedesc{enum}): E =
+  ## iterates over the values of the enum ``E``.
+  for v in low(E)..high(E):
+    yield v
 
 iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.

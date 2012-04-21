@@ -35,6 +35,10 @@ Library Additions
 - Added a wrapper for ``libsvm``.
 - Added a wrapper for ``mongodb``.
 - Added ``terminal.isatty``.
+- Added overload for ``system.items`` that can be used to iterate over the
+  values of an enum.
+- Added ``system.TInteger`` and ``system.TNumber`` type classes matching
+  any of the corresponding type available in nimrod.
 
 
 Changes affecting backwards compatibility
