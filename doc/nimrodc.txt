@@ -142,6 +142,9 @@ Define               Effect
 ``useNimRtl``        Compile and link against ``nimrtl.dll``.
 ``useMalloc``        Makes Nimrod use C's `malloc`:idx: instead of Nimrod's 
                      own memory manager. This only works with ``gc:none``.
+``useRealtimeGC``    Enables support of Nimrod's GC for *soft* realtime 
+                     systems. See the documentation of the `gc <gc.html>`_ 
+                     for further information.
 ==================   =========================================================
 
 

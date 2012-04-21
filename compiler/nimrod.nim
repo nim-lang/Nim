@@ -103,6 +103,9 @@ proc HandleCmdLine() =
         execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
+
+when defined(GC_setMaxPause):
+  GC_setMaxPause 2_000
 condsyms.InitDefines()
 HandleCmdLine()
 quit(options.gExitcode)

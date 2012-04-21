@@ -1,0 +1,58 @@
+==========================
+Nimrod's Garbage Collector
+==========================
+
+Introduction
+============
+
+This document describes how the GC works and how to tune it for (soft)
+realtime systems.
+
+The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+References on the stack are not counted for better performance (and easier C
+code generation). The GC **never** scans the whole heap but it may scan the
+delta-subgraph of the heap that changed since its last run.
+
+
+The GC is only triggered in a memory allocation operation. It it not triggered
+by some timer or background thread.
+
+
+Realtime support
+================
+
+To enable realtime support, the switch `useRealtimeGC`:idx: needs to be
+defined. With this switch the GC supports the following operations:
+
+.. code-block:: nimrod
+  proc GC_setMaxPause*(MaxPauseInUs: int)
+  proc GC_step*(us: int, strongAdvice = false)
+
+After calling ``GC_setMaxPause`` any GC run tries to finish within 
+``MaxPauseInUs`` microseconds. XXX complete documentation
+
+
+
+Time measurement
+----------------
+
+The GC's way of measing time uses (see ``lib/system/timers.nim`` for the 
+implementation):
+
+1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
+2) ``mach_absolute_time`` on Mac OS X.
+3) ``gettimeofday`` on Posix systems.
+
+As such it supports a resolution of nano seconds internally; however the API
+uses microseconds for convenience. 
+
+
+Define the symbol ``reportMissedDeadlines`` to make the GC output whenever it
+missed a deadline. The reporting will be enhances and supported by the API in
+later versions of the collector.
+
+
+Tweaking the GC
+===============
+
+To be written. 

@@ -43,7 +43,7 @@ Nimrod is efficient
 * Native code generation (currently via compilation to C), not dependent on a
   virtual machine: **Nimrod produces small executables without dependencies
   for easy redistribution.**
-* A fast **non-tracing** garbage collector that should be well suited for soft 
+* A fast **non-tracing** garbage collector that supports soft 
   real-time systems (like games).
 * System programming features: Ability to manage your own memory and access the
   hardware directly. Pointers to garbage collected memory are distinguished

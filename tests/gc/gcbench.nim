@@ -162,4 +162,7 @@ proc main() =
   PrintDiagnostics()
   echo("Completed in " & $elapsed & "ms. Success!")
 
+when defined(GC_setMaxPause):
+  GC_setMaxPause 2_000
+
 main()
