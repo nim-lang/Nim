@@ -42,6 +42,7 @@ Library Additions
   values of an enum.
 - Added ``system.TInteger`` and ``system.TNumber`` type classes matching
   any of the corresponding type available in nimrod.
+- Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 

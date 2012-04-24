@@ -103,6 +103,15 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
     yield result
   PQclear(res)
 
+proc getRow*(db: TDbConn, query: TSqlQuery,
+             args: openarray[string]): TRow =
+  ## retrieves a single row.
+  var res = setupQuery(db, query, args)
+  var L = int(PQnfields(res))
+  var result = newRow(L)
+  setRow(res, result, 0, L)
+  PQclear(res)
+
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: openarray[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
