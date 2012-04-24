@@ -22,7 +22,10 @@ The GC is only triggered in a memory allocation operation. It it not triggered
 by some timer and does not run in a background thread.
 
 The cycle collector can be en-/disabled independently from the other parts of
-the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
+the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``. The
+compiler analyses the types for their possibility to build cycles, but often
+it is necessary to help this analysis with the ``acyclic`` pragma (see
+`acyclic <manual.html#acyclic-pragma>`_ for further information).
 
 To force a full collection call ``GC_fullCollect``. Note that it is generally
 better to let the GC do its work and not enforce a full collection.
@@ -79,7 +82,7 @@ uses microseconds for convenience.
 
 
 Define the symbol ``reportMissedDeadlines`` to make the GC output whenever it
-missed a deadline. The reporting will be enhances and supported by the API in
+missed a deadline. The reporting will be enhanced and supported by the API in
 later versions of the collector.
 
 

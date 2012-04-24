@@ -101,6 +101,16 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
     yield result
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
+proc getRow*(db: TDbConn, query: TSqlQuery,
+             args: openarray[string]): TRow =
+  ## retrieves a single row.
+  var stmt = setupQuery(db, query, args)
+  var L = int(columnCount(stmt))
+  var result = newRow(L)
+  if step(stmt) == SQLITE_ROW: 
+    setRow(stmt, result, L)
+  if finalize(stmt) != SQLITE_OK: dbError(db)
+
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: openarray[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
