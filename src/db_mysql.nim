@@ -99,6 +99,21 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
       yield result
     properFreeResult(sqlres, row)
 
+proc getRow*(db: TDbConn, query: TSqlQuery,
+             args: openarray[string]): TRow =
+  ## retrieves a single row.
+  Exec(db, query, args)
+  var sqlres = mysql.UseResult(db)
+  if sqlres != nil:
+    var L = int(mysql.NumFields(sqlres))
+    var result = newRow(L)
+    var row = mysql.FetchRow(sqlres)
+    if row != nil: 
+      for i in 0..L-1: 
+        setLen(result[i], 0)
+        add(result[i], row[i])
+    properFreeResult(sqlres, row)
+
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: openarray[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
