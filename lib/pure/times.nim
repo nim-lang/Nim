@@ -390,4 +390,123 @@ proc `$`*(m: TMonth): string =
       "November", "December"]
   return lookup[m]
 
+proc format*(info: TTimeInfo, f: string): string =
+  ## This function formats `info` as specified by `f`. The following format
+  ## specifiers are available:
+  ## 
+  ## ==========  =================================================================================  ================================================
+  ## Specifier   Description                                                                        Example
+  ## ==========  =================================================================================  ================================================
+  ##    d        Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
+  ##    dd       Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
+  ##    ddd      Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
+  ##    dddd     Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
+  ##    h        The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
+  ##    hh       The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
+  ##    H        The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
+  ##    HH       The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
+  ##    m        The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
+  ##    mm       Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
+  ##    M
+  
+  
+  ## ==========  =================================================================================  ================================================
+
+
+  result = ""
+  var i = 0
+  var currentF = ""
+  while True:
+    case f[i]
+    of '\0':
+      break
+    of ' ', '-', '/', ':', '\'':
+      case currentF
+      of "d":
+        result.add($info.monthday)
+      of "dd":
+        if info.monthday < 10:
+          result.add("0")
+        result.add($info.monthday)
+      of "ddd":
+        result.add(($info.month)[0 .. 2])
+      of "dddd":
+        result.add($info.month)
+      of "h":
+        result.add($(0 - (info.hour - 12)))
+      of "hh":
+        let amerHour = 0 - (info.hour - 12)
+        if amerHour < 10:
+          result.add('0')
+        result.add($amerHour)
+      of "H":
+        result.add($info.hour)
+      of "HH":
+        if info.hour < 10:
+          result.add('0')
+        result.add($info.hour)
+      of "m":
+        result.add($info.minute)
+      of "mm":
+        if info.minute < 10:
+          result.add('0')
+        result.add($info.minute)
+      of "M":
+        result.add($(int(info.month)))
+      of "MM":
+        if int(info.month) < 10:
+          result.add('0')
+        result.add($(int(info.month)))
+      of "MMM":
+        result.add(($info.month)[0..2])
+      of "MMMM":
+        result.add($info.month)
+      of "s":
+        result.add($info.second)
+      of "ss":
+        if info.second < 10:
+          result.add('0')
+        result.add($info.second)
+      of "t":
+        if info.hour >= 12:
+          result.add('P')
+        else: result.add('A')
+      of "tt":
+        if info.hour >= 12:
+          result.add("PM")
+        else: result.add("AM")
+      of "y":
+        var fr = ($info.year).len()-2
+        if fr < 0: fr = 0
+        result.add(($info.year)[fr .. ($info.year).len()-1])
+      of "yy":
+        var fr = ($info.year).len()-3
+        if fr < 0: fr = 0
+        result.add(($info.year)[fr .. ($info.year).len()-1])
+      of "yyy":
+        var fr = ($info.year).len()-4
+        if fr < 0: fr = 0
+        result.add(($info.year)[fr .. ($info.year).len()-1])
+      of "yyyy":
+        result.add($info.year)
+      of "yyyyy":
+        result.add('0')
+        result.add($info.year)
+      of "":
+        nil # Do nothing.
+      else:
+        raise newException(EInvalidValue, "Invalid format string: " & currentF)
+      
+      currentF = ""
+      
+      if f[i] == '\'':
+        inc(i) # Skip '
+        while f[i] != '\'' and f.len-1 > i:
+          result.add(f[i])
+          inc(i)
+      else: result.add(f[i])
+      
+    else: currentF.add(f[i])
+    inc(i)
+
 {.pop.}
