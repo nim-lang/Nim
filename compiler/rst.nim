@@ -776,10 +776,10 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
   of tkAdornment, tkOther, tkWhite: 
     addSon(father, newLeaf(p))
     inc(p.idx)
-  else: assert(false)
+  else: nil
   
 proc getDirective(p: var TRstParser): string = 
-  if (p.tok[p.idx].kind == tkWhite) and (p.tok[p.idx + 1].kind == tkWord): 
+  if p.tok[p.idx].kind == tkWhite and p.tok[p.idx+1].kind == tkWord: 
     var j = p.idx
     inc(p.idx)
     result = p.tok[p.idx].symbol
@@ -788,7 +788,7 @@ proc getDirective(p: var TRstParser): string =
       if p.tok[p.idx].symbol == "::": break 
       add(result, p.tok[p.idx].symbol)
       inc(p.idx)
-    if (p.tok[p.idx].kind == tkWhite): inc(p.idx)
+    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
     if p.tok[p.idx].symbol == "::": 
       inc(p.idx)
       if (p.tok[p.idx].kind == tkWhite): inc(p.idx)
@@ -814,8 +814,8 @@ proc parseComment(p: var TRstParser): PRstNode =
         else: 
           nil
         inc(p.idx)
-  else: 
-    while not (p.tok[p.idx].kind in {tkIndent, tkEof}): inc(p.idx)
+  else:
+    while p.tok[p.idx].kind notin {tkIndent, tkEof}: inc(p.idx)
   result = nil
 
 type 
@@ -941,9 +941,9 @@ proc isLineBlock(p: TRstParser): bool =
 
 proc predNL(p: TRstParser): bool = 
   result = true
-  if (p.idx > 0): 
-    result = (p.tok[p.idx - 1].kind == tkIndent) and
-        (p.tok[p.idx - 1].ival == currInd(p))
+  if p.idx > 0:
+    result = p.tok[p.idx-1].kind == tkIndent and
+        p.tok[p.idx-1].ival == currInd(p)
   
 proc isDefList(p: TRstParser): bool = 
   var j = tokenAfterNewline(p)

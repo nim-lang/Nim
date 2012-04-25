@@ -162,15 +162,14 @@ proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery,
 
 proc Close*(db: TDbConn) = 
   ## closes the database connection.
-  if sqlite3.close(db) != SQLITE_OK:
-    dbError(db)
+  if sqlite3.close(db) != SQLITE_OK: dbError(db)
     
 proc Open*(connection, user, password, database: string): TDbConn =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established. Only the ``connection`` parameter is used for ``sqlite``.
   var db: TDbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
-    return db
+    result = db
   else:
     dbError(db)
    
