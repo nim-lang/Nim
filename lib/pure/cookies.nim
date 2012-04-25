@@ -9,7 +9,7 @@
 
 ## This module implements helper procs for parsing Cookies.
 
-import strtabs
+import strtabs, times
 
 proc parseCookies*(s: string): PStringTable = 
   ## parses cookies into a string table.
@@ -28,3 +28,32 @@ proc parseCookies*(s: string): PStringTable =
     if s[i] == '\0': break
     inc(i) # skip ';'
 
+proc setCookie*(key, value: string, domain = "", path = "", 
+                expires = "", noName = false): string =
+  ## Creates a command in the format of 
+  ## ``Set-Cookie: key=value; Domain=...; ...``
+  result = ""
+  if not noName: result.add("Set-Cookie: ")
+  result.add key & "=" & value
+  if domain != "": result.add("; Domain=" & domain)
+  if path != "": result.add("; Path=" & path)
+  if expires != "": result.add("; Expires=" & expires)
+
+proc setCookie*(key, value: string, expires: TTimeInfo,
+                domain = "", path = "", noName = false): string =
+  ## Creates a command in the format of 
+  ## ``Set-Cookie: key=value; Domain=...; ...``
+  ##
+  ## **Note:** UTC is assumed as the timezone for ``expires``.
+  
+  return setCookie(key, value, domain, path,
+            format(expires, "ddd',' dd MMM yyyy hh:mm:ss 'UTC'"), noname)
+  
+when isMainModule:
+  var tim = TTime(int(getTime()) + 76 * (60 * 60 * 24))
+
+  echo(setCookie("test", "value", tim.getGMTime()))
+  
+  echo parseCookies("uid=1; kp=2")
+  
+                
