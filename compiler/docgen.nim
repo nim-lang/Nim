@@ -28,7 +28,8 @@ type
   TSections = array[TSymKind, PRope]
   TMetaEnum = enum 
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
-  TDocumentor{.final.} = object # contains a module's documentation
+  TDocumentor {.final.} = object # contains a module's documentation
+    options: TRstParseOptions
     filename*: string         # filename of the source file; without extension
     basedir*: string          # base directory (where to put the documentation)
     modDesc*: PRope           # module description
@@ -70,8 +71,8 @@ proc initIndexFile(d: PDoc) =
   gIndexFile = addFileExt(gIndexFile, "txt")
   d.indexValFilename = changeFileExt(extractFilename(d.filename), HtmlExt)
   if ExistsFile(gIndexFile): 
-    d.indexFile = rstParse(readFile(gIndexFile), false, gIndexFile, 0, 1, 
-                           dummyHasToc)
+    d.indexFile = rstParse(readFile(gIndexFile), gIndexFile, 0, 1, 
+                           dummyHasToc, {})
     d.theIndex = findIndexNode(d.indexFile)
     if (d.theIndex == nil) or (d.theIndex.kind != rnDefList): 
       rawMessage(errXisNoValidIndexFile, gIndexFile)
@@ -264,10 +265,11 @@ proc renderIndexTerm(d: PDoc, n: PRstNode): PRope =
 
 proc genComment(d: PDoc, n: PNode): PRope = 
   var dummyHasToc: bool
-  if n.comment != nil and startsWith(n.comment, "##"): 
-    result = renderRstToOut(d, rstParse(n.comment, true, toFilename(n.info), 
+  if n.comment != nil and startsWith(n.comment, "##"):
+    result = renderRstToOut(d, rstParse(n.comment, toFilename(n.info),
                                         toLineNumber(n.info), toColumn(n.info), 
-                                        dummyHasToc))
+                                        dummyHasToc, 
+                                        d.options + {roSkipPounds}))
   
 proc genRecComment(d: PDoc, n: PNode): PRope = 
   if n == nil: return nil
@@ -357,15 +359,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     of tkSymbol: 
       dispA(result, "<span class=\"Identifier\">$1</span>", 
             "\\spanIdentifier{$1}", [toRope(esc(literal))])
-    of tkInd, tkSad, tkDed, tkSpaces: 
+    of tkInd, tkSad, tkDed, tkSpaces, tkInvalid: 
       app(result, literal)
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi, 
        tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi, tkParDotLe, 
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot, 
-       tkAccent: 
+       tkAccent, tkColonColon, 
+       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr: 
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}", 
             [toRope(esc(literal))])
-    else: InternalError(n.info, "docgen.genThing(" & toktypeToStr[kind] & ')')
   inc(d.id)
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"), 
                                         ["name", "header", "desc", "itemID"], 
@@ -498,6 +500,9 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
   of rnStrongEmphasis: 
     result = renderRstSons(d, n)
     result = ropef("**$1**", [result])
+  of rnTripleEmphasis:
+    result = renderRstSons(d, n)
+    result = ropef("***$1***", [result])
   of rnInterpretedText: 
     result = renderRstSons(d, n)
     result = ropef("`$1`", [result])
@@ -506,6 +511,8 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
     result = renderRstSons(d, n)
     result = ropef("``$1``", [result])
     dec(d.verbatim)
+  of rnSmiley:
+    result = toRope(n.text)
   of rnLeaf: 
     if (d.verbatim == 0) and (n.text == "\\"): 
       result = toRope("\\\\") # XXX: escape more special characters!
@@ -559,6 +566,12 @@ proc renderImage(d: PDoc, n: PRstNode): PRope =
   result = dispF("<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
                  [toRope(getArgument(n)), options])
   if rsonsLen(n) >= 3: app(result, renderRstToOut(d, n.sons[2]))
+  
+proc renderSmiley(d: PDoc, n: PRstNode): PRope =
+  result = dispF(
+    """<img src="images/smilies/$1.gif" width="15" 
+        height="17" hspace="2" vspace="2" />""",
+    "\\includegraphics{$1}", [toRope(n.text)])
   
 proc renderCodeBlock(d: PDoc, n: PRstNode): PRope = 
   result = nil
@@ -741,7 +754,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   of rnEmphasis: result = renderAux(d, n, disp("<em>$1</em>", "\\emph{$1}"))
   of rnStrongEmphasis:
     result = renderAux(d, n, disp("<strong>$1</strong>", "\\textbf{$1}"))
-  of rnInterpretedText: 
+  of rnTripleEmphasis:
+    result = renderAux(d, n, disp("<strong><em>$1</em></strong>", 
+                                  "\\textbf{emph{$1}}"))
+  of rnInterpretedText:
     result = renderAux(d, n, disp("<cite>$1</cite>", "\\emph{$1}"))
   of rnIdx: 
     if d.theIndex == nil: 
@@ -752,10 +768,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     result = renderAux(d, n, disp(
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>", 
       "\\texttt{$1}"))
+  of rnSmiley: result = renderSmiley(d, n)
   of rnLeaf: result = toRope(esc(n.text))
   of rnContents: d.hasToc = true
   of rnTitle: d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
-  else: InternalError("renderRstToOut")
   
 proc checkForFalse(n: PNode): bool = 
   result = n.kind == nkIdent and IdentEq(n.ident, "false")
@@ -869,7 +885,7 @@ proc CommandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen)
   initIndexFile(d)
-  var rst = rstParse(readFile(filen), false, filen, 0, 1, d.hasToc)
+  var rst = rstParse(readFile(filen), filen, 0, 1, d.hasToc, {})
   d.modDesc = renderRstToOut(d, rst)
   writeOutput(d, filename, outExt)
   generateIndex(d)
@@ -926,12 +942,13 @@ $content
   setConfigVar("doc.body_no_toc", "$moduledesc $content")
   setConfigVar("doc.file", "$content")
 
-proc rstToHtml*(s: string): string =
+proc rstToHtml*(s: string, options: TRstParseOptions): string =
   ## exported for *nimforum*.
   const filen = "input"
   var d = newDocumentor(filen)
+  d.options = options
   var dummyHasToc = false
-  var rst = rstParse(s, false, filen, 0, 1, dummyHasToc)
+  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   d.modDesc = renderRstToOut(d, rst)
   let res = genOutFile(d)
   result = res.ropeToStr

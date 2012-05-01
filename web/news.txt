@@ -43,6 +43,7 @@ Library Additions
 - Added ``system.TInteger`` and ``system.TNumber`` type classes matching
   any of the corresponding type available in nimrod.
 - Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
+- Added ``strutils.continuesWith``.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 
