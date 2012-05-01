@@ -203,8 +203,10 @@ proc main(c: var TConfigData) =
   if c.ticker.len > 0:
     Exec(cmd % [c.nimrodArgs, c.ticker])
     var temp = "web" / changeFileExt(c.ticker, "temp")
-    c.ticker = readFile(temp)
-    if isNil(c.ticker): quit("[Error] cannot open:" & temp)
+    try:
+      c.ticker = readFile(temp)
+    except EIO:
+      quit("[Error] cannot open: " & temp)
     RemoveFile(temp)
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val

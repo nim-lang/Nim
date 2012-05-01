@@ -25,10 +25,10 @@ type
     gtReference, gtOther
   TGeneralTokenizer* = object of TObject
     kind*: TTokenClass
-    start*, length*: int      # private:
-    buf*: cstring
-    pos*: int
-    state*: TTokenClass
+    start*, length*: int
+    buf: cstring
+    pos: int
+    state: TTokenClass
 
   TSourceLanguage* = enum 
     langNone, langNimrod, langCpp, langCsharp, langC, langJava

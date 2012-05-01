@@ -532,6 +532,16 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     inc(i)
   if suffix[i] == '\0': return true
 
+proc continuesWith*(s, substr: string, start: int): bool {.noSideEffect,
+  rtl, extern: "nsuContinuesWith".} =
+  ## Returns true iff ``s`` continues with ``substr`` at position ``start``.
+  ## If ``substr == ""`` true is returned.
+  var i = 0
+  while true:
+    if substr[i] == '\0': return true
+    if s[i+start] != substr[i]: return false
+    inc(i)
+
 proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
                                                            inline.} =
   ## A shorthand for:

@@ -108,7 +108,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   ## retrieves a single row.
   var res = setupQuery(db, query, args)
   var L = int(PQnfields(res))
-  var result = newRow(L)
+  result = newRow(L)
   setRow(res, result, 0, L)
   PQclear(res)
 

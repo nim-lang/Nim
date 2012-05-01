@@ -106,7 +106,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   var sqlres = mysql.UseResult(db)
   if sqlres != nil:
     var L = int(mysql.NumFields(sqlres))
-    var result = newRow(L)
+    result = newRow(L)
     var row = mysql.FetchRow(sqlres)
     if row != nil: 
       for i in 0..L-1: 

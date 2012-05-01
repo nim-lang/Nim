@@ -222,7 +222,7 @@ macro head*(e: expr): expr =
 
 macro html*(e: expr): expr = 
   ## generates the HTML ``html`` element.
-  result = xmlCheckedTag(e, "html", "", "xmlns")
+  result = xmlCheckedTag(e, "html", "xmlns", "")
 
 macro hr*(e: expr): expr = 
   ## generates the HTML ``hr`` element.
