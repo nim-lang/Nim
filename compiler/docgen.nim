@@ -72,7 +72,7 @@ proc initIndexFile(d: PDoc) =
   d.indexValFilename = changeFileExt(extractFilename(d.filename), HtmlExt)
   if ExistsFile(gIndexFile): 
     d.indexFile = rstParse(readFile(gIndexFile), gIndexFile, 0, 1, 
-                           dummyHasToc, {})
+                           dummyHasToc, {roSupportRawDirective})
     d.theIndex = findIndexNode(d.indexFile)
     if (d.theIndex == nil) or (d.theIndex.kind != rnDefList): 
       rawMessage(errXisNoValidIndexFile, gIndexFile)
@@ -96,6 +96,7 @@ proc newDocumentor(filename: string): PDoc =
   result.filename = filename
   result.id = 100
   result.splitAfter = 20
+  result.options = {roSupportRawDirective}
   var s = getConfigVar("split.item.toc")
   if s != "": result.splitAfter = parseInt(s)
   
@@ -885,7 +886,8 @@ proc CommandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen)
   initIndexFile(d)
-  var rst = rstParse(readFile(filen), filen, 0, 1, d.hasToc, {})
+  var rst = rstParse(readFile(filen), filen, 0, 1, d.hasToc,
+                     {roSupportRawDirective})
   d.modDesc = renderRstToOut(d, rst)
   writeOutput(d, filename, outExt)
   generateIndex(d)
