@@ -106,7 +106,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   ## retrieves a single row.
   var stmt = setupQuery(db, query, args)
   var L = int(columnCount(stmt))
-  var result = newRow(L)
+  result = newRow(L)
   if step(stmt) == SQLITE_ROW: 
     setRow(stmt, result, L)
   if finalize(stmt) != SQLITE_OK: dbError(db)
