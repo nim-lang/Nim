@@ -68,6 +68,8 @@ type
     roSkipPounds,             ## skip ``#`` at line beginning (documentation
                               ## embedded in Nimrod comments)
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
+    roSupportRawDirective     ## support the ``raw`` directive (don't support
+                              ## it for sandboxing)
   
   TRstParseOptions* = set[TRstParseOption]
   
@@ -1629,7 +1631,11 @@ proc parseDotDot(p: var TRstParser): PRstNode =
     of dkTitle: result = dirTitle(p)
     of dkContainer: result = dirContainer(p)
     of dkContents: result = dirContents(p)
-    of dkRaw: result = dirRaw(p)
+    of dkRaw:
+      if roSupportRawDirective in p.s.options:
+        result = dirRaw(p)
+      else:
+        rstMessage(p, errInvalidDirectiveX, d)
     of dkCodeblock: result = dirCodeBlock(p)
     of dkIndex: result = dirIndex(p)
     else: rstMessage(p, errInvalidDirectiveX, d)
