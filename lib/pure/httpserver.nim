@@ -208,6 +208,7 @@ type
     port: TPort
     client*: TSocket      ## the socket to write the file data to
     path*, query*: string ## path and query the client requested
+    headers*: PStringTable ## headers with which the client made the request
 
 proc open*(s: var TServer, port = TPort(80)) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
@@ -224,6 +225,7 @@ proc open*(s: var TServer, port = TPort(80)) =
   s.client = InvalidSocket
   s.path = ""
   s.query = ""
+  s.headers = {:}.newStringTable()
 
 proc port*(s: var TServer): TPort =
   ## get the port number the server has acquired.
@@ -232,15 +234,39 @@ proc port*(s: var TServer): TPort =
 proc next*(s: var TServer) =
   ## proceed to the first/next request.
   s.client = accept(s.socket)
-  headers(s.client, "")
-  var data = recv(s.client).string
-  #discard recvLine(s.client, data)
+  s.headers = {:}.newStringTable()
+  #headers(s.client, "")
+  var data = ""
+  while not s.client.recvLine(data): nil
+  if data == "":
+    # Socket disconnected 
+    s.client.close()
+    next(s)
+    return
+  var header = ""
+  while true:
+    if s.client.recvLine(header):
+      if header == "\c\L": break
+      if header != "":
+        var i = 0
+        var key = ""
+        var value = ""
+        i = header.parseUntil(key, ':')
+        i += header.skipWhiteSpace(i)
+        i += header.parseUntil(value, whitespace, i)
+        s.headers[key] = value
+      else:
+        s.client.close()
+        next(s)
+        return
   
   var i = skipWhitespace(data)
   if skipIgnoreCase(data, "GET") > 0: inc(i, 3)
   elif skipIgnoreCase(data, "POST") > 0: inc(i, 4)
-  else: 
+  else:
     unimplemented(s.client)
+    s.client.close()
+    next(s)
     return
   
   var L = skipWhitespace(data, i)
