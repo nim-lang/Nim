@@ -118,6 +118,8 @@ const
     ":shock:": "icon_eek",
     ":?": "icon_e_confused",
     ":-?": "icon_e_confused",
+    ":-/": "icon_e_confused",
+
     "8-)": "icon_cool",
 
     ":lol:": "icon_lol",
@@ -429,9 +431,11 @@ proc setSub(p: var TRstParser, key: string, value: PRstNode) =
 proc setRef(p: var TRstParser, key: string, value: PRstNode) = 
   var length = len(p.s.refs)
   for i in countup(0, length - 1): 
-    if key == p.s.refs[i].key: 
+    if key == p.s.refs[i].key:
+      if p.s.refs[i].value.addNodes != value.addNodes:
+        rstMessage(p, warnRedefinitionOfLabel, key)
+
       p.s.refs[i].value = value
-      rstMessage(p, warnRedefinitionOfLabel, key)
       return 
   setlen(p.s.refs, length + 1)
   p.s.refs[length].key = key

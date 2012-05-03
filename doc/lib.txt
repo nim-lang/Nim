@@ -608,4 +608,4 @@ Scientific computing
 --------------------
 
 * `libsvm <libsvm.html>`_ 
-  Low level wrapper for `libsvm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
+  Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.

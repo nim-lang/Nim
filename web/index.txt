@@ -14,16 +14,6 @@ power with Python's readability and C's performance.**
 Welcome to Nimrod
 -----------------
 
-.. container:: snippet
-  *Nimrod looks like this:*
-  
-  .. code-block:: nimrod
-    import strutils
-    
-    echo "List of ints (separate by whitespace): "
-    echo stdin.readLine.split.each(parseInt).max, 
-      " is the maximum"
-
 **Nimrod** is a new statically typed, imperative
 programming language, that supports procedural, object oriented, functional 
 and generic programming styles while remaining simple and efficient. 
@@ -35,6 +25,17 @@ Nimrod is a compiled, garbage-collected systems programming language
 which has an excellent productivity/performance ratio. Nimrod's design
 focuses on the 3E: efficiency, expressiveness, elegance (in the order of
 priority).
+
+
+.. container:: snippet
+  *Nimrod looks like this:*
+  
+  .. code-block:: nimrod
+    import strutils
+    
+    echo "Type in a list of ints of ints (separate by whitespace): "
+    let tokens = stdin.readLine.split
+    echo tokens.each(parseInt).max, " is the maximum."
 
 
 Nimrod is efficient
@@ -67,7 +68,7 @@ Nimrod is expressive
 * Modern type system with local type inference, tuples, variants, 
   generics, etc.
 * User-defineable operators; code with new operators is often easier to read
-  than code which overloads built-in operators. In the code snippet, the 
+  than code which overloads built-in operators. For example, a 
   ``=~`` operator is defined in the ``re`` module.
 * Macros can modify the abstract syntax tree at compile time.
 

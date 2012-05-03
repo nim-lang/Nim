@@ -749,11 +749,14 @@ proc makeDeref(n: PNode): PNode =
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
+  checkSonsLen(n, 2)
+  # early exit for this; see tests/compile/tbindoverload.nim:
+  if n.sons[1].kind == nkSymChoice: return
+
   var s = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
     return semSym(c, n, s, flags)
 
-  checkSonsLen(n, 2)
   n.sons[0] = semExprWithType(c, n.sons[0], flags)
   restoreOldStyleType(n.sons[0])
   var i = considerAcc(n.sons[1])
@@ -830,18 +833,23 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # in Nimrod. We first allow types in the semantic checking.
   result = builtinFieldAccess(c, n, flags)
   if result == nil:
-    var i = considerAcc(n.sons[1])
-    var f = SymTabGet(c.tab, i)
-    # if f != nil and f.kind == skStub: loadStub(f)
-    # ``loadStub`` is not correct here as we don't care for ``f`` really
-    if f != nil: 
-      # BUGFIX: do not check for (f.kind in [skProc, skMethod, skIterator]) here
-      # This special node kind is to merge with the call handler in `semExpr`.
+    if n.sons[1].kind == nkSymChoice: 
       result = newNodeI(nkDotCall, n.info)
-      addSon(result, newIdentNode(i, n.info))
+      addSon(result, n.sons[1])
       addSon(result, copyTree(n[0]))
-    else: 
-      GlobalError(n.Info, errUndeclaredFieldX, i.s)
+    else:
+      var i = considerAcc(n.sons[1])
+      var f = SymTabGet(c.tab, i)
+      # if f != nil and f.kind == skStub: loadStub(f)
+      # ``loadStub`` is not correct here as we don't care for ``f`` really
+      if f != nil: 
+        # BUGFIX: do not check for (f.kind in [skProc, skMethod, skIterator]) here
+        # This special node kind is to merge with the call handler in `semExpr`.
+        result = newNodeI(nkDotCall, n.info)
+        addSon(result, newIdentNode(i, n.info))
+        addSon(result, copyTree(n[0]))
+      else: 
+        GlobalError(n.Info, errUndeclaredFieldX, i.s)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
