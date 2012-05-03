@@ -581,10 +581,19 @@ proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
   result = read
 
 proc recvLine*(socket: TSocket, line: var TaintedString): bool =
-  ## returns false if no further data is available. `Line` must be initialized
-  ## and not nil! This does not throw an EOS exception.
-  ## If ``socket`` is disconnected, ``true`` will be returned and line will be
-  ## set to ``""``.
+  ## retrieves a line from ``socket``. If a full line is received ``\r\L`` is not
+  ## added to ``line``, however if solely ``\r\L`` is received then ``data``
+  ## will be set to it.
+  ## 
+  ## ``True`` is returned if data is available. ``False`` usually suggests an
+  ## error, EOS exceptions are not raised in favour of this.
+  ## 
+  ## If the socket is disconnected, ``line`` will be set to ``""`` and ``True``
+  ## will be returned.
+  template addNLIfEmpty(): stmt =
+    if line.len == 0:
+      line.add("\c\L")
+
   setLen(line.string, 0)
   while true:
     var c: char
@@ -596,13 +605,19 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool =
       if n > 0 and c == '\L':
         discard recv(cint(socket), addr(c), 1, 0'i32)
       elif n <= 0: return false
+      addNlIfEmpty()
       return true
-    elif c == '\L': return true
+    elif c == '\L': 
+      addNlIfEmpty()
+      return true
     add(line.string, c)
 
 proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool =
   ## variant with a ``timeout`` parameter, the timeout parameter specifies
   ## how many miliseconds to wait for data.
+  template addNLIfEmpty(): stmt =
+    if line.len == 0:
+      line.add("\c\L")
   
   var waited = 0.0 # number of seconds already waited
   
@@ -619,8 +634,11 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool =
       if n > 0 and c == '\L':
         discard recv(cint(socket), addr(c), 1, 0'i32)
       elif n <= 0: return false
+      addNlIfEmpty()
       return true
-    elif c == '\L': return true
+    elif c == '\L': 
+      addNlIfEmpty()
+      return true
     add(line.string, c)
 
 proc recvLineAsync*(socket: TSocket, line: var TaintedString): TRecvLineResult =

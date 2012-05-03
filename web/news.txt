@@ -15,7 +15,8 @@ Bugfixes
 - Fixed a bug concerning implicit type conversions in ``case`` statements.
 - Fixed a serious code generation bug that caused ``algorithm.sort`` to
   produce segmentation faults.
-
+- Fixed ambiguity in recvLine which meant that receiving ``\r\L`` was
+  indistinguishable from disconnections.
 
 Library Additions
 -----------------
