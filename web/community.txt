@@ -1,4 +1,4 @@
-Discuss Nimrod in our `forum <http://force7.de/heimdall>`_. 
+Discuss Nimrod in our `forum <http://forum.nimrod-code.org/>`_. 
 
 Visit our project page at GitHub: http://github.com/Araq/Nimrod.
 
