@@ -42,9 +42,10 @@ Library Additions
 - Added overload for ``system.items`` that can be used to iterate over the
   values of an enum.
 - Added ``system.TInteger`` and ``system.TNumber`` type classes matching
-  any of the corresponding type available in nimrod.
+  any of the corresponding types available in nimrod.
 - Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
 - Added ``strutils.continuesWith``.
+- Added ``system.getStackTrace``.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 

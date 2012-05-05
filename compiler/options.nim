@@ -199,7 +199,7 @@ proc rawFindFile(f: string): string =
       return result.canonicalizePath
   result = ""
 
-proc FindFile*(f: string): string = 
+proc FindFile*(f: string): string {.procvar.} = 
   result = rawFindFile(f)
   if len(result) == 0: result = rawFindFile(toLower(f))
 

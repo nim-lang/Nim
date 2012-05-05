@@ -663,7 +663,7 @@ proc InternalError*(errMsg: string) =
   rawMessage(errInternal, errMsg)
 
 template AssertNotNil*(e: expr): expr =
-  if(e == nil): InternalError($InstantiationInfo())
+  if e == nil: InternalError($InstantiationInfo())
   e
 
 template InternalAssert*(e: bool): stmt =

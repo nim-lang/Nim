@@ -27,6 +27,8 @@ const
   OpChars*: TCharSet = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.', 
     '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
 
+# don't forget to update the 'highlite' module if these charsets should change
+
 type 
   TTokType* = enum 
     tkInvalid, tkEof,         # order is important here!

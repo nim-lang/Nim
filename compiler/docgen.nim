@@ -13,11 +13,14 @@
 
 import 
   ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
-  wordrecg, math, syntaxes, renderer, lexer, rst, times, highlite, importer
+  wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite, 
+  importer
 
 proc CommandDoc*()
 proc CommandRst2Html*()
 proc CommandRst2TeX*()
+
+#proc CommandBuildIndex*()
 # implementation
 
 type 
@@ -29,9 +32,9 @@ type
   TMetaEnum = enum 
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
   TDocumentor {.final.} = object # contains a module's documentation
+    target: TOutputTarget
     options: TRstParseOptions
     filename*: string         # filename of the source file; without extension
-    basedir*: string          # base directory (where to put the documentation)
     modDesc*: PRope           # module description
     id*: int                  # for generating IDs
     splitAfter*: int          # split too long entries in the TOC
@@ -40,12 +43,9 @@ type
     toc*, section*: TSections
     indexFile*, theIndex*: PRstNode
     indexValFilename*: string
-    indent*, verbatim*: int   # for code generation
     meta*: array[TMetaEnum, PRope]
 
   PDoc = ref TDocumentor
-
-var splitter: string = "<wbr />"
 
 proc findIndexNode(n: PRstNode): PRstNode = 
   if n == nil: 
@@ -59,9 +59,30 @@ proc findIndexNode(n: PRstNode): PRstNode =
       result = result.sons[0]
   else: 
     result = nil
-    for i in countup(0, rsonsLen(n) - 1): 
+    for i in countup(0, len(n) - 1): 
       result = findIndexNode(n.sons[i])
       if result != nil: return 
+  
+proc compilerMsgHandler(filename: string, line, col: int,
+                        msgKind: rst.TMsgKind, arg: string) {.procvar.} =
+  # translate msg kind:
+  var k: msgs.TMsgKind
+  case msgKind
+  of meCannotOpenFile: k = errCannotOpenFile
+  of meExpected: k = errXExpected
+  of meGridTableNotImplemented: k = errGridTableNotImplemented
+  of meNewSectionExpected: k = errNewSectionExpected
+  of meGeneralParseError: k = errGeneralParseError
+  of meInvalidDirective: k = errInvalidDirectiveX
+  of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
+  of mwUnknownSubstitution: k = warnUnknownSubstitutionX
+  GlobalError(newLineInfo(filename, line, col), k, arg)
+  
+proc parseRst(text, filename: string,
+              line, column: int, hasToc: var bool,
+              rstOptions: TRstParseOptions): PRstNode =
+  result = rstParse(text, filename, line, column, hasToc, rstOptions,
+                    options.FindFile, compilerMsgHandler)
   
 proc initIndexFile(d: PDoc) = 
   var 
@@ -71,7 +92,7 @@ proc initIndexFile(d: PDoc) =
   gIndexFile = addFileExt(gIndexFile, "txt")
   d.indexValFilename = changeFileExt(extractFilename(d.filename), HtmlExt)
   if ExistsFile(gIndexFile): 
-    d.indexFile = rstParse(readFile(gIndexFile), gIndexFile, 0, 1, 
+    d.indexFile = parseRst(readFile(gIndexFile), gIndexFile, 0, 1, 
                            dummyHasToc, {roSupportRawDirective})
     d.theIndex = findIndexNode(d.indexFile)
     if (d.theIndex == nil) or (d.theIndex.kind != rnDefList): 
@@ -81,17 +102,19 @@ proc initIndexFile(d: PDoc) =
     d.indexFile = newRstNode(rnInner)
     h = newRstNode(rnOverline)
     h.level = 1
-    addSon(h, newRstNode(rnLeaf, "Index"))
-    addSon(d.indexFile, h)
+    add(h, newRstNode(rnLeaf, "Index"))
+    add(d.indexFile, h)
     h = newRstNode(rnIndex)
-    addSon(h, nil)            # no argument
-    addSon(h, nil)            # no options
+    add(h, nil)            # no argument
+    add(h, nil)            # no options
     d.theIndex = newRstNode(rnDefList)
-    addSon(h, d.theIndex)
-    addSon(d.indexFile, h)
+    add(h, d.theIndex)
+    add(d.indexFile, h)
 
 proc newDocumentor(filename: string): PDoc = 
   new(result)
+  if gCmd != cmdRst2Tex: result.target = outHtml
+  else: result.target = outLatex
   result.tocPart = @[]
   result.filename = filename
   result.id = 100
@@ -159,72 +182,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
       if (frmt[i] != '$'): inc(i)
       else: break 
     if i - 1 >= start: app(result, substr(frmt, start, i - 1))
-  
-proc addXmlChar(dest: var string, c: Char) = 
-  case c
-  of '&': add(dest, "&amp;")
-  of '<': add(dest, "&lt;")
-  of '>': add(dest, "&gt;")
-  of '\"': add(dest, "&quot;")
-  else: add(dest, c)
-  
-proc addRtfChar(dest: var string, c: Char) = 
-  case c
-  of '{': add(dest, "\\{")
-  of '}': add(dest, "\\}")
-  of '\\': add(dest, "\\\\")
-  else: add(dest, c)
-  
-proc addTexChar(dest: var string, c: Char) = 
-  case c
-  of '_': add(dest, "\\_")
-  of '{': add(dest, "\\symbol{123}")
-  of '}': add(dest, "\\symbol{125}")
-  of '[': add(dest, "\\symbol{91}")
-  of ']': add(dest, "\\symbol{93}")
-  of '\\': add(dest, "\\symbol{92}")
-  of '$': add(dest, "\\$")
-  of '&': add(dest, "\\&")
-  of '#': add(dest, "\\#")
-  of '%': add(dest, "\\%")
-  of '~': add(dest, "\\symbol{126}")
-  of '@': add(dest, "\\symbol{64}")
-  of '^': add(dest, "\\symbol{94}")
-  of '`': add(dest, "\\symbol{96}")
-  else: add(dest, c)
-  
-proc escChar(dest: var string, c: Char) = 
-  if gCmd != cmdRst2Tex: addXmlChar(dest, c)
-  else: addTexChar(dest, c)
-  
-proc nextSplitPoint(s: string, start: int): int = 
-  result = start
-  while result < len(s) + 0: 
-    case s[result]
-    of '_': return 
-    of 'a'..'z': 
-      if result + 1 < len(s) + 0: 
-        if s[result + 1] in {'A'..'Z'}: return 
-    else: nil
-    inc(result)
-  dec(result)                 # last valid index
-  
-proc esc(s: string, splitAfter: int = - 1): string = 
-  result = ""
-  if splitAfter >= 0: 
-    var partLen = 0
-    var j = 0
-    while j < len(s): 
-      var k = nextSplitPoint(s, j)
-      if (splitter != " ") or (partLen + k - j + 1 > splitAfter): 
-        partLen = 0
-        add(result, splitter)
-      for i in countup(j, k): escChar(result, s[i])
-      inc(partLen, k - j + 1)
-      j = k + 1
-  else: 
-    for i in countup(0, len(s) + 0 - 1): escChar(result, s[i])
-  
+
 proc disp(xml, tex: string): string = 
   if gCmd != cmdRst2Tex: result = xml
   else: result = tex
@@ -241,17 +199,17 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope
 
 proc renderAux(d: PDoc, n: PRstNode, outer: string = "$1"): PRope = 
   result = nil
-  for i in countup(0, rsonsLen(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
+  for i in countup(0, len(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
   result = ropef(outer, [result])
 
 proc setIndexForSourceTerm(d: PDoc, name: PRstNode, id: int) = 
   if d.theIndex == nil: return 
   var h = newRstNode(rnHyperlink)
   var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $id)
-  addSon(h, a)
-  addSon(h, a)
+  add(h, a)
+  add(h, a)
   a = newRstNode(rnIdx)
-  addSon(a, name)
+  add(a, name)
   setIndexPair(d.theIndex, a, h)
 
 proc renderIndexTerm(d: PDoc, n: PRstNode): PRope = 
@@ -260,14 +218,14 @@ proc renderIndexTerm(d: PDoc, n: PRstNode): PRope =
                  [toRope(d.id), renderAux(d, n)])
   var h = newRstNode(rnHyperlink)
   var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $d.id)
-  addSon(h, a)
-  addSon(h, a)
+  add(h, a)
+  add(h, a)
   setIndexPair(d.theIndex, n, h)
 
 proc genComment(d: PDoc, n: PNode): PRope = 
   var dummyHasToc: bool
   if n.comment != nil and startsWith(n.comment, "##"):
-    result = renderRstToOut(d, rstParse(n.comment, toFilename(n.info),
+    result = renderRstToOut(d, parseRst(n.comment, toFilename(n.info),
                                         toLineNumber(n.info), toColumn(n.info), 
                                         dummyHasToc, 
                                         d.options + {roSkipPounds}))
@@ -294,16 +252,16 @@ proc isVisible(n: PNode): bool =
   elif n.kind == nkPragmaExpr: 
     result = isVisible(n.sons[0])
   
-proc getName(n: PNode, splitAfter: int = - 1): string = 
+proc getName(d: PDoc, n: PNode, splitAfter: int = - 1): string = 
   case n.kind
-  of nkPostfix: result = getName(n.sons[1], splitAfter)
-  of nkPragmaExpr: result = getName(n.sons[0], splitAfter)
-  of nkSym: result = esc(n.sym.name.s, splitAfter)
-  of nkIdent: result = esc(n.ident.s, splitAfter)
+  of nkPostfix: result = getName(d, n.sons[1], splitAfter)
+  of nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
+  of nkSym: result = esc(d.target, n.sym.name.s, splitAfter)
+  of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted: 
-    result = esc("`") 
-    for i in 0.. <n.len: result.add(getName(n[i], splitAfter))
-    result.add esc("`")
+    result = esc(d.target, "`") 
+    for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
+    result.add esc(d.target, "`")
   else:
     internalError(n.info, "getName()")
     result = ""
@@ -323,7 +281,7 @@ proc getRstName(n: PNode): PRstNode =
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) = 
   if not isVisible(nameNode): return 
-  var name = toRope(getName(nameNode))
+  var name = toRope(getName(d, nameNode))
   var result: PRope = nil
   var literal = ""
   var kind = tkEof
@@ -338,28 +296,28 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break 
     of tkComment: 
       dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}", 
-            [toRope(esc(literal))])
+            [toRope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh: 
       dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}", 
             [toRope(literal)])
     of tkOpr: 
       dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}", 
-            [toRope(esc(literal))])
+            [toRope(esc(d.target, literal))])
     of tkStrLit..tkTripleStrLit: 
       dispA(result, "<span class=\"StringLit\">$1</span>", 
-            "\\spanStringLit{$1}", [toRope(esc(literal))])
+            "\\spanStringLit{$1}", [toRope(esc(d.target, literal))])
     of tkCharLit: 
       dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}", 
-            [toRope(esc(literal))])
+            [toRope(esc(d.target, literal))])
     of tkIntLit..tkInt64Lit: 
       dispA(result, "<span class=\"DecNumber\">$1</span>", 
-            "\\spanDecNumber{$1}", [toRope(esc(literal))])
+            "\\spanDecNumber{$1}", [toRope(esc(d.target, literal))])
     of tkFloatLit..tkFloat64Lit: 
       dispA(result, "<span class=\"FloatNumber\">$1</span>", 
-            "\\spanFloatNumber{$1}", [toRope(esc(literal))])
+            "\\spanFloatNumber{$1}", [toRope(esc(d.target, literal))])
     of tkSymbol: 
       dispA(result, "<span class=\"Identifier\">$1</span>", 
-            "\\spanIdentifier{$1}", [toRope(esc(literal))])
+            "\\spanIdentifier{$1}", [toRope(esc(d.target, literal))])
     of tkInd, tkSad, tkDed, tkSpaces, tkInvalid: 
       app(result, literal)
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi, 
@@ -368,19 +326,19 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
        tkAccent, tkColonColon, 
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr: 
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}", 
-            [toRope(esc(literal))])
+            [toRope(esc(d.target, literal))])
   inc(d.id)
   app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"), 
                                         ["name", "header", "desc", "itemID"], 
                                         [name, result, comm, toRope(d.id)]))
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"), 
                                     ["name", "header", "desc", "itemID"], [
-      toRope(getName(nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
+      toRope(getName(d, nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
   setIndexForSourceTerm(d, getRstName(nameNode), d.id)
 
 proc renderHeadline(d: PDoc, n: PRstNode): PRope = 
   result = nil
-  for i in countup(0, rsonsLen(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
+  for i in countup(0, len(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
   var refname = toRope(rstnodeToRefname(n))
   if d.hasToc: 
     var length = len(d.tocPart)
@@ -400,7 +358,7 @@ proc renderHeadline(d: PDoc, n: PRstNode): PRope =
   
 proc renderOverline(d: PDoc, n: PRstNode): PRope = 
   var t: PRope = nil
-  for i in countup(0, rsonsLen(n) - 1): app(t, renderRstToOut(d, n.sons[i]))
+  for i in countup(0, len(n) - 1): app(t, renderRstToOut(d, n.sons[i]))
   result = nil
   if d.meta[metaTitle] == nil: 
     d.meta[metaTitle] = t
@@ -411,123 +369,7 @@ proc renderOverline(d: PDoc, n: PRstNode): PRope =
                    "\\rstov$4{$3}\\label{$2}$n", [toRope(n.level), 
         toRope(rstnodeToRefname(n)), t, toRope($chr(n.level - 1 + ord('A')))])
   
-proc renderRstToRst(d: PDoc, n: PRstNode): PRope
-proc renderRstSons(d: PDoc, n: PRstNode): PRope = 
-  for i in countup(0, rsonsLen(n) - 1): 
-    app(result, renderRstToRst(d, n.sons[i]))
-  
-proc renderRstToRst(d: PDoc, n: PRstNode): PRope = 
-  # this is needed for the index generation; it may also be useful for
-  # debugging, but most code is already debugged...
-  const 
-    lvlToChar: array[0..8, char] = ['!', '=', '-', '~', '`', '<', '*', '|', '+']
-  result = nil
-  if n == nil: return 
-  var ind = toRope(repeatChar(d.indent))
-  case n.kind
-  of rnInner: 
-    result = renderRstSons(d, n)
-  of rnHeadline: 
-    result = renderRstSons(d, n)
-    var L = ropeLen(result)
-    result = ropef("$n$1$2$n$1$3", 
-                   [ind, result, toRope(repeatChar(L, lvlToChar[n.level]))])
-  of rnOverline: 
-    result = renderRstSons(d, n)
-    var L = ropeLen(result)
-    result = ropef("$n$1$3$n$1$2$n$1$3", 
-                   [ind, result, toRope(repeatChar(L, lvlToChar[n.level]))])
-  of rnTransition: 
-    result = ropef("$n$n$1$2$n$n", [ind, toRope(repeatChar(78-d.indent, '-'))])
-  of rnParagraph: 
-    result = renderRstSons(d, n)
-    result = ropef("$n$n$1$2", [ind, result])
-  of rnBulletItem: 
-    inc(d.indent, 2)
-    result = renderRstSons(d, n)
-    if result != nil: result = ropef("$n$1* $2", [ind, result])
-    dec(d.indent, 2)
-  of rnEnumItem: 
-    inc(d.indent, 4)
-    result = renderRstSons(d, n)
-    if result != nil: result = ropef("$n$1(#) $2", [ind, result])
-    dec(d.indent, 4)
-  of rnOptionList, rnFieldList, rnDefList, rnDefItem, rnLineBlock, rnFieldName, 
-     rnFieldBody, rnStandaloneHyperlink, rnBulletList, rnEnumList: 
-    result = renderRstSons(d, n)
-  of rnDefName: 
-    result = renderRstSons(d, n)
-    result = ropef("$n$n$1$2", [ind, result])
-  of rnDefBody: 
-    inc(d.indent, 2)
-    result = renderRstSons(d, n)
-    if n.sons[0].kind != rnBulletList: result = ropef("$n$1  $2", [ind, result])
-    dec(d.indent, 2)
-  of rnField: 
-    result = renderRstToRst(d, n.sons[0])
-    var L = max(ropeLen(result) + 3, 30)
-    inc(d.indent, L)
-    result = ropef("$n$1:$2:$3$4", [ind, result, toRope(
-        repeatChar(L - ropeLen(result) - 2)), renderRstToRst(d, n.sons[1])])
-    dec(d.indent, L)
-  of rnLineBlockItem: 
-    result = renderRstSons(d, n)
-    result = ropef("$n$1| $2", [ind, result])
-  of rnBlockQuote: 
-    inc(d.indent, 2)
-    result = renderRstSons(d, n)
-    dec(d.indent, 2)
-  of rnRef: 
-    result = renderRstSons(d, n)
-    result = ropef("`$1`_", [result])
-  of rnHyperlink: 
-    result = ropef("`$1 <$2>`_", 
-                   [renderRstToRst(d, n.sons[0]), renderRstToRst(d, n.sons[1])])
-  of rnGeneralRole: 
-    result = renderRstToRst(d, n.sons[0])
-    result = ropef("`$1`:$2:", [result, renderRstToRst(d, n.sons[1])])
-  of rnSub: 
-    result = renderRstSons(d, n)
-    result = ropef("`$1`:sub:", [result])
-  of rnSup: 
-    result = renderRstSons(d, n)
-    result = ropef("`$1`:sup:", [result])
-  of rnIdx: 
-    result = renderRstSons(d, n)
-    result = ropef("`$1`:idx:", [result])
-  of rnEmphasis: 
-    result = renderRstSons(d, n)
-    result = ropef("*$1*", [result])
-  of rnStrongEmphasis: 
-    result = renderRstSons(d, n)
-    result = ropef("**$1**", [result])
-  of rnTripleEmphasis:
-    result = renderRstSons(d, n)
-    result = ropef("***$1***", [result])
-  of rnInterpretedText: 
-    result = renderRstSons(d, n)
-    result = ropef("`$1`", [result])
-  of rnInlineLiteral: 
-    inc(d.verbatim)
-    result = renderRstSons(d, n)
-    result = ropef("``$1``", [result])
-    dec(d.verbatim)
-  of rnSmiley:
-    result = toRope(n.text)
-  of rnLeaf: 
-    if (d.verbatim == 0) and (n.text == "\\"): 
-      result = toRope("\\\\") # XXX: escape more special characters!
-    else: 
-      result = toRope(n.text)
-  of rnIndex: 
-    inc(d.indent, 3)
-    if n.sons[2] != nil: result = renderRstSons(d, n.sons[2])
-    dec(d.indent, 3)
-    result = ropef("$n$n$1.. index::$n$2", [ind, result])
-  of rnContents: 
-    result = ropef("$n$n$1.. contents::", [ind])
-  else: rawMessage(errCannotRenderX, $n.kind)
-  
+
 proc renderTocEntry(d: PDoc, e: TTocEntry): PRope = 
   result = dispF(
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>$n", 
@@ -537,10 +379,10 @@ proc renderTocEntries(d: PDoc, j: var int, lvl: int): PRope =
   result = nil
   while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
-    if (a == lvl): 
+    if a == lvl: 
       app(result, renderTocEntry(d, d.tocPart[j]))
       inc(j)
-    elif (a > lvl): 
+    elif a > lvl: 
       app(result, renderTocEntries(d, j, a))
     else: 
       break 
@@ -566,7 +408,7 @@ proc renderImage(d: PDoc, n: PRstNode): PRope =
   if options != nil: options = dispF("$1", "[$1]", [options])
   result = dispF("<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
                  [toRope(getArgument(n)), options])
-  if rsonsLen(n) >= 3: app(result, renderRstToOut(d, n.sons[2]))
+  if len(n) >= 3: app(result, renderRstToOut(d, n.sons[2]))
   
 proc renderSmiley(d: PDoc, n: PRstNode): PRope =
   result = dispF(
@@ -596,13 +438,13 @@ proc renderCodeBlock(d: PDoc, n: PRstNode): PRope =
       case g.kind
       of gtEof: break 
       of gtNone, gtWhitespace: 
-        app(result, substr(m.text, g.start + 0, g.length + g.start - 1))
+        app(result, substr(m.text, g.start, g.length + g.start - 1))
       else: 
         dispA(result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-            toRope(esc(substr(m.text, g.start + 0, g.length + g.start - 1))), 
-            toRope(tokenClassToStr[g.kind])])
+          toRope(esc(d.target, substr(m.text, g.start, g.length+g.start-1))),
+          toRope(tokenClassToStr[g.kind])])
     deinitGeneralTokenizer(g)
-  if result != nil: 
+  if result != nil:
     result = dispF("<pre>$1</pre>", "\\begin{rstpre}$n$1$n\\end{rstpre}$n", 
                    [result])
   
@@ -614,13 +456,13 @@ proc renderContainer(d: PDoc, n: PRstNode): PRope =
   
 proc texColumns(n: PRstNode): string = 
   result = ""
-  for i in countup(1, rsonsLen(n)): add(result, "|X")
+  for i in countup(1, len(n)): add(result, "|X")
   
 proc renderField(d: PDoc, n: PRstNode): PRope = 
   var b = false
   if gCmd == cmdRst2Tex: 
     var fieldname = addNodes(n.sons[0])
-    var fieldval = toRope(esc(strip(addNodes(n.sons[1]))))
+    var fieldval = toRope(esc(d.target, strip(addNodes(n.sons[1]))))
     if cmpIgnoreStyle(fieldname, "author") == 0: 
       if d.meta[metaAuthor] == nil: 
         d.meta[metaAuthor] = fieldval
@@ -657,7 +499,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   of rnDefBody: result = renderAux(d, n, disp("<dd>$1</dd>\n", "$1\n"))
   of rnFieldList: 
     result = nil
-    for i in countup(0, rsonsLen(n) - 1): 
+    for i in countup(0, len(n) - 1): 
       app(result, renderRstToOut(d, n.sons[i]))
     if result != nil: 
       result = dispf(
@@ -705,9 +547,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
       "\\begin{table}\\begin{rsttab}{" &
         texColumns(n) & "|}$n\\hline$n$1\\end{rsttab}\\end{table}"))
   of rnTableRow: 
-    if rsonsLen(n) >= 1: 
+    if len(n) >= 1: 
       result = renderRstToOut(d, n.sons[0])
-      for i in countup(1, rsonsLen(n) - 1): 
+      for i in countup(1, len(n) - 1): 
         dispa(result, "$1", " & $1", [renderRstToOut(d, n.sons[i])])
       result = dispf("<tr>$1</tr>$n", "$1\\\\$n\\hline$n", [result])
     else: 
@@ -770,7 +612,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>", 
       "\\texttt{$1}"))
   of rnSmiley: result = renderSmiley(d, n)
-  of rnLeaf: result = toRope(esc(n.text))
+  of rnLeaf: result = toRope(esc(d.target, n.text))
   of rnContents: d.hasToc = true
   of rnTitle: d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
   
@@ -863,7 +705,9 @@ proc genOutFile(d: PDoc): PRope =
 proc generateIndex(d: PDoc) = 
   if d.theIndex != nil: 
     sortIndex(d.theIndex)
-    writeRope(renderRstToRst(d, d.indexFile), gIndexFile)
+    var content = newStringOfCap(2_000_000)
+    renderRstToRst(d.indexFile, content)
+    writeFile(gIndexFile, content)
 
 proc writeOutput(d: PDoc, filename, outExt: string) = 
   var content = genOutFile(d)
@@ -886,7 +730,7 @@ proc CommandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen)
   initIndexFile(d)
-  var rst = rstParse(readFile(filen), filen, 0, 1, d.hasToc,
+  var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})
   d.modDesc = renderRstToOut(d, rst)
   writeOutput(d, filename, outExt)

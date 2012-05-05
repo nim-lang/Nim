@@ -1897,6 +1897,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc writeStackTrace*()
     ## writes the current stack trace to ``stderr``. This is only works
     ## for debug builds.
+
+  proc getStackTrace*(): string
+    ## gets the current stack trace. This is only works for debug builds.
     
   {.push stack_trace: off.}
   when hostCPU == "avr":

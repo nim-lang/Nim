@@ -1,18 +1,18 @@
 #
 #
-#           The Nimrod Compiler
+#            Nimrod's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# Source highlighter for programming or markup languages.
-# Currently only few languages are supported, other languages may be added.
-# The interface supports one language nested in another.
+## Source highlighter for programming or markup languages.
+## Currently only few languages are supported, other languages may be added.
+## The interface supports one language nested in another.
 
-import 
-  hashes, options, msgs, strutils, platform, idents, lexbase, wordrecg, lexer
+import
+  strutils
 
 type 
   TTokenClass* = enum 
@@ -44,19 +44,15 @@ const
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink", 
     "Label", "Reference", "Other"]
 
-proc getSourceLanguage*(name: string): TSourceLanguage
-proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string)
-proc deinitGeneralTokenizer*(g: var TGeneralTokenizer)
-proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage)
-# implementation
+  nimrodKeywords = slurp("doc/keywords.txt").split
 
-proc getSourceLanguage(name: string): TSourceLanguage = 
+proc getSourceLanguage*(name: string): TSourceLanguage = 
   for i in countup(succ(low(TSourceLanguage)), high(TSourceLanguage)): 
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) == 0: 
       return i
   result = langNone
 
-proc initGeneralTokenizer(g: var TGeneralTokenizer, buf: string) = 
+proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) = 
   g.buf = cstring(buf)
   g.kind = low(TTokenClass)
   g.start = 0
@@ -66,16 +62,20 @@ proc initGeneralTokenizer(g: var TGeneralTokenizer, buf: string) =
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
 
-proc deinitGeneralTokenizer(g: var TGeneralTokenizer) = 
+proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) = 
   nil
 
 proc nimGetKeyword(id: string): TTokenClass = 
-  var i = getIdent(id)
-  if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
-      (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
-    result = gtKeyword
-  else: 
-    result = gtIdentifier
+  for k in nimrodKeywords:
+    if cmpIgnoreStyle(id, k) == 0: return gtKeyword
+  result = gtIdentifier
+  when false:
+    var i = getIdent(id)
+    if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
+        (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
+      result = gtKeyword
+    else: 
+      result = gtIdentifier
   
 proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int = 
   var pos = position
@@ -111,11 +111,16 @@ proc nimNumber(g: var TGeneralTokenizer, position: int): int =
     while g.buf[pos] in decChars: inc(pos)
   result = nimNumberPostfix(g, pos)
 
+const
+  OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.', 
+              '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
+
 proc nimNextToken(g: var TGeneralTokenizer) = 
   const 
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
     octChars = {'0'..'7', '_'}
     binChars = {'0'..'1', '_'}
+    SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   var pos = g.pos
   g.start = g.pos
   if g.state == gtStringLit: 
@@ -154,7 +159,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
       while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): inc(pos)
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
       var id = ""
-      while g.buf[pos] in lexer.SymChars + {'_'}: 
+      while g.buf[pos] in SymChars + {'_'}: 
         add(id, g.buf[pos])
         inc(pos)
       if (g.buf[pos] == '\"'): 
@@ -247,15 +252,15 @@ proc nimNextToken(g: var TGeneralTokenizer) =
     of '\0': 
       g.kind = gtEof
     else: 
-      if g.buf[pos] in lexer.OpChars: 
+      if g.buf[pos] in OpChars: 
         g.kind = gtOperator
-        while g.buf[pos] in lexer.OpChars: inc(pos)
+        while g.buf[pos] in OpChars: inc(pos)
       else: 
         inc(pos)
         g.kind = gtNone
   g.length = pos - g.pos
-  if (g.kind != gtEof) and (g.length <= 0): 
-    InternalError("nimNextToken: " & $(g.buf))
+  if g.kind != gtEof and g.length <= 0:
+    assert false, "nimNextToken: produced an empty token"
   g.pos = pos
 
 proc generalNumber(g: var TGeneralTokenizer, position: int): int = 
@@ -407,7 +412,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
       inc(pos)
       if hasPreprocessor in flags: 
         g.kind = gtPreprocessor
-        while g.buf[pos] in {' ', Tabulator}: inc(pos)
+        while g.buf[pos] in {' ', '\t'}: inc(pos)
         while g.buf[pos] in symChars: inc(pos)
       else: 
         g.kind = gtOperator
@@ -462,14 +467,15 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
     of '\0': 
       g.kind = gtEof
     else: 
-      if g.buf[pos] in lexer.OpChars: 
+      if g.buf[pos] in OpChars: 
         g.kind = gtOperator
-        while g.buf[pos] in lexer.OpChars: inc(pos)
+        while g.buf[pos] in OpChars: inc(pos)
       else:
         inc(pos)
         g.kind = gtNone
   g.length = pos - g.pos
-  if (g.kind != gtEof) and (g.length <= 0): InternalError("clikeNextToken")
+  if g.kind != gtEof and g.length <= 0:
+    assert false, "clikeNextToken: produced an empty token"
   g.pos = pos
 
 proc cNextToken(g: var TGeneralTokenizer) = 
@@ -520,12 +526,12 @@ proc javaNextToken(g: var TGeneralTokenizer) =
       "try", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {})
 
-proc getNextToken(g: var TGeneralTokenizer, lang: TSourceLanguage) = 
+proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage) = 
   case lang
+  of langNone: assert false
   of langNimrod: nimNextToken(g)
   of langCpp: cppNextToken(g)
   of langCsharp: csharpNextToken(g)
   of langC: cNextToken(g)
   of langJava: javaNextToken(g)
-  else: InternalError("getNextToken")
   

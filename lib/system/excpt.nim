@@ -246,6 +246,13 @@ proc WriteStackTrace() =
   else:
     writeToStdErr("No stack traceback available\n")
 
+proc getStackTrace(): string =
+  when hasSomeStackTrace:
+    result = ""
+    rawWriteStackTrace(result)
+  else:
+    result = "No stack traceback available\n"
+
 when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
