@@ -1,6 +1,6 @@
 #
 #    Binding for the IUP GUI toolkit
-#       (c) 2010 Andreas Rumpf 
+#       (c) 2012 Andreas Rumpf 
 #    C header files translated by hand
 #    Licence of IUP follows:
 
@@ -96,9 +96,12 @@ proc Open*(argc: ptr cint, argv: ptr cstringArray): cint {.
 proc Close*() {.importc: "IupClose", cdecl, dynlib: dllname.}
 proc ImageLibOpen*() {.importc: "IupImageLibOpen", cdecl, dynlib: dllname.}
 
-proc MainLoop*(): cint {.importc: "IupMainLoop", cdecl, dynlib: dllname.}
-proc LoopStep*(): cint {.importc: "IupLoopStep", cdecl, dynlib: dllname.}
-proc MainLoopLevel*(): cint {.importc: "IupMainLoopLevel", cdecl, dynlib: dllname.}
+proc MainLoop*(): cint {.importc: "IupMainLoop", cdecl, dynlib: dllname, 
+                         discardable.}
+proc LoopStep*(): cint {.importc: "IupLoopStep", cdecl, dynlib: dllname,
+                         discardable.}
+proc MainLoopLevel*(): cint {.importc: "IupMainLoopLevel", cdecl, 
+                              dynlib: dllname, discardable.}
 proc Flush*() {.importc: "IupFlush", cdecl, dynlib: dllname.}
 proc ExitLoop*() {.importc: "IupExitLoop", cdecl, dynlib: dllname.}
 
@@ -121,9 +124,9 @@ proc GetLanguage*(): cstring {.importc: "IupGetLanguage", cdecl, dynlib: dllname
 proc Destroy*(ih: PIhandle) {.importc: "IupDestroy", cdecl, dynlib: dllname.}
 proc Detach*(child: PIhandle) {.importc: "IupDetach", cdecl, dynlib: dllname.}
 proc Append*(ih, child: PIhandle): PIhandle {.
-  importc: "IupAppend", cdecl, dynlib: dllname.}
+  importc: "IupAppend", cdecl, dynlib: dllname, discardable.}
 proc Insert*(ih, ref_child, child: PIhandle): PIhandle {.
-  importc: "IupInsert", cdecl, dynlib: dllname.}
+  importc: "IupInsert", cdecl, dynlib: dllname, discardable.}
 proc GetChild*(ih: PIhandle, pos: cint): PIhandle {.
   importc: "IupGetChild", cdecl, dynlib: dllname.}
 proc GetChildPos*(ih, child: PIhandle): cint {.
@@ -144,17 +147,17 @@ proc Reparent*(ih, new_parent: PIhandle): cint {.
   importc: "IupReparent", cdecl, dynlib: dllname.}
 
 proc Popup*(ih: PIhandle, x, y: cint): cint {.
-  importc: "IupPopup", cdecl, dynlib: dllname.}
+  importc: "IupPopup", cdecl, dynlib: dllname, discardable.}
 proc Show*(ih: PIhandle): cint {.
-  importc: "IupShow", cdecl, dynlib: dllname.}
+  importc: "IupShow", cdecl, dynlib: dllname, discardable.}
 proc ShowXY*(ih: PIhandle, x, y: cint): cint {.
-  importc: "IupShowXY", cdecl, dynlib: dllname.}
+  importc: "IupShowXY", cdecl, dynlib: dllname, discardable.}
 proc Hide*(ih: PIhandle): cint {.
-  importc: "IupHide", cdecl, dynlib: dllname.}
+  importc: "IupHide", cdecl, dynlib: dllname, discardable.}
 proc Map*(ih: PIhandle): cint {.
-  importc: "IupMap", cdecl, dynlib: dllname.}
+  importc: "IupMap", cdecl, dynlib: dllname, discardable.}
 proc Unmap*(ih: PIhandle) {.
-  importc: "IupUnmap", cdecl, dynlib: dllname.}
+  importc: "IupUnmap", cdecl, dynlib: dllname, discardable.}
 
 proc SetAttribute*(ih: PIhandle, name, value: cstring) {.
   importc: "IupSetAttribute", cdecl, dynlib: dllname.}
@@ -179,7 +182,7 @@ proc SetfAttribute*(ih: PIhandle, name, format: cstring) {.
 proc GetAllAttributes*(ih: PIhandle, names: cstringArray, n: cint): cint {.
   importc: "IupGetAllAttributes", cdecl, dynlib: dllname.}
 proc SetAtt*(handle_name: cstring, ih: PIhandle, name: cstring): PIhandle {.
-  importc: "IupSetAtt", cdecl, dynlib: dllname, varargs.}
+  importc: "IupSetAtt", cdecl, dynlib: dllname, varargs, discardable.}
 
 proc SetGlobal*(name, value: cstring) {.
   importc: "IupSetGlobal", cdecl, dynlib: dllname.}
@@ -200,14 +203,15 @@ proc NextField*(ih: PIhandle): PIhandle {.
 proc GetCallback*(ih: PIhandle, name: cstring): Icallback {.
   importc: "IupGetCallback", cdecl, dynlib: dllname.}
 proc SetCallback*(ih: PIhandle, name: cstring, func: Icallback): Icallback {.
-  importc: "IupSetCallback", cdecl, dynlib: dllname.}
+  importc: "IupSetCallback", cdecl, dynlib: dllname, discardable.}
+  
 proc SetCallbacks*(ih: PIhandle, name: cstring, func: Icallback): PIhandle {.
-  importc: "IupSetCallbacks", cdecl, dynlib: dllname, varargs.}
+  importc: "IupSetCallbacks", cdecl, dynlib: dllname, varargs, discardable.}
 
 proc GetFunction*(name: cstring): Icallback {.
   importc: "IupGetFunction", cdecl, dynlib: dllname.}
 proc SetFunction*(name: cstring, func: Icallback): Icallback {.
-  importc: "IupSetFunction", cdecl, dynlib: dllname.}
+  importc: "IupSetFunction", cdecl, dynlib: dllname, discardable.}
 proc GetActionName*(): cstring {.
   importc: "IupGetActionName", cdecl, dynlib: dllname.}
 
@@ -340,7 +344,7 @@ proc ConvertXYToPos*(ih: PIhandle, x, y: cint): cint {.
 
 # IupTree utilities
 proc TreeSetUserId*(ih: PIhandle, id: cint, userid: pointer): cint {.
-  importc: "IupTreeSetUserId", cdecl, dynlib: dllname.}
+  importc: "IupTreeSetUserId", cdecl, dynlib: dllname, discardable.}
 proc TreeGetUserId*(ih: PIhandle, id: cint): pointer {.
   importc: "IupTreeGetUserId", cdecl, dynlib: dllname.}
 proc TreeGetId*(ih: PIhandle, userid: pointer): cint {.
