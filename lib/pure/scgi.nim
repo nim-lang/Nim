@@ -104,6 +104,9 @@ proc next*(s: var TScgistate, timeout: int = -1): bool =
     var L = 0
     while true:
       var d = s.client.recvChar()
+      if d == '\0':
+        s.client.close()
+        return false
       if d notin strutils.digits: 
         if d != ':': scgiError("':' after length expected")
         break
@@ -159,6 +162,10 @@ proc handleAccept(h: PObject) =
   var L = 0
   while true:
     var d = s.client.recvChar()
+    if d == '\0':
+      # Disconnected
+      s.client.close()
+      return
     if d notin strutils.digits: 
       if d != ':': scgiError("':' after length expected")
       break
