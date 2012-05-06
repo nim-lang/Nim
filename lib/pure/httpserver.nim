@@ -35,26 +35,29 @@ proc sendTextContentType(client: TSocket) =
   send(client, "Content-type: text/html" & wwwNL)
   send(client, wwwNL)
 
+proc sendStatus(client: TSocket, status: string) =
+  send(client, "HTTP/1.1 " & status & wwwNL)
+
 proc badRequest(client: TSocket) =
   # Inform the client that a request it has made has a problem.
-  send(client, "HTTP/1.0 400 BAD REQUEST" & wwwNL)
+  send(client, "HTTP/1.1 400 Bad Request" & wwwNL)
   sendTextContentType(client)
   send(client, "<p>Your browser sent a bad request, " &
-               "such as a POST without a Content-Length." & wwwNL)
+               "such as a POST without a Content-Length.</p>" & wwwNL)
 
 proc cannotExec(client: TSocket) =
-  send(client, "HTTP/1.0 500 Internal Server Error" & wwwNL)
+  send(client, "HTTP/1.1 500 Internal Server Error" & wwwNL)
   sendTextContentType(client)
   send(client, "<P>Error prohibited CGI execution." & wwwNL)
 
 proc headers(client: TSocket, filename: string) =
   # XXX could use filename to determine file type
-  send(client, "HTTP/1.0 200 OK" & wwwNL)
+  send(client, "HTTP/1.1 200 OK" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
 
 proc notFound(client: TSocket) =
-  send(client, "HTTP/1.0 404 NOT FOUND" & wwwNL)
+  send(client, "HTTP/1.1 404 NOT FOUND" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
   send(client, "<html><title>Not Found</title>" & wwwNL)
@@ -64,7 +67,7 @@ proc notFound(client: TSocket) =
   send(client, "</body></html>" & wwwNL)
 
 proc unimplemented(client: TSocket) =
-  send(client, "HTTP/1.0 501 Method Not Implemented" & wwwNL)
+  send(client, "HTTP/1.1 501 Method Not Implemented" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
   send(client, "<html><head><title>Method Not Implemented" &
@@ -207,9 +210,11 @@ type
     socket: TSocket
     port: TPort
     client*: TSocket      ## the socket to write the file data to
+    reqMethod*: string    ## Request method. GET or POST.
     path*, query*: string ## path and query the client requested
     headers*: PStringTable ## headers with which the client made the request
-
+    body*: string          ## only set with POST requests
+    
 proc open*(s: var TServer, port = TPort(80)) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
@@ -223,6 +228,8 @@ proc open*(s: var TServer, port = TPort(80)) =
   else:
     s.port = port
   s.client = InvalidSocket
+  s.reqMethod = ""
+  s.body = ""
   s.path = ""
   s.query = ""
   s.headers = {:}.newStringTable()
@@ -234,7 +241,7 @@ proc port*(s: var TServer): TPort =
 proc next*(s: var TServer) =
   ## proceed to the first/next request.
   s.client = accept(s.socket)
-  s.headers = {:}.newStringTable()
+  s.headers = newStringTable(modeCaseInsensitive)
   #headers(s.client, "")
   var data = ""
   while not s.client.recvLine(data): nil
@@ -252,8 +259,9 @@ proc next*(s: var TServer) =
         var key = ""
         var value = ""
         i = header.parseUntil(key, ':')
+        inc(i) # skip :
         i += header.skipWhiteSpace(i)
-        i += header.parseUntil(value, whitespace, i)
+        i += header.parseUntil(value, {'\c', '\L'}, i)
         s.headers[key] = value
       else:
         s.client.close()
@@ -261,13 +269,61 @@ proc next*(s: var TServer) =
         return
   
   var i = skipWhitespace(data)
-  if skipIgnoreCase(data, "GET") > 0: inc(i, 3)
-  elif skipIgnoreCase(data, "POST") > 0: inc(i, 4)
+  if skipIgnoreCase(data, "GET") > 0: 
+    s.reqMethod = "GET"
+    inc(i, 3)
+  elif skipIgnoreCase(data, "POST") > 0:
+    s.reqMethod = "POST"
+    inc(i, 4)
   else:
     unimplemented(s.client)
     s.client.close()
     next(s)
     return
+  
+  if s.reqMethod == "POST":
+    # Check for Expect header
+    if s.headers.hasKey("Expect"):
+      if s.headers["Expect"].toLower == "100-continue":
+        s.client.sendStatus("100 Continue")
+      else:
+        s.client.sendStatus("417 Expectation Failed")
+  
+    # Read the body
+    # - Check for Content-length header
+    if s.headers.hasKey("Content-Length"):
+      var contentLength = 0
+      if parseInt(s.headers["Content-Length"], contentLength) == 0:
+        badRequest(s.client)
+        s.client.close()
+        next(s)
+        return
+      else:
+        var totalRead = 0
+        var totalBody = ""
+        while totalRead < contentLength:
+          var chunkSize = 8000
+          if (contentLength - totalRead) < 8000:
+            chunkSize = (contentLength - totalRead)
+          var bodyData = newString(chunkSize)
+          var octetsRead = s.client.recv(cstring(bodyData), chunkSize)
+          if octetsRead <= 0:
+            s.client.close()
+            next(s)
+            return
+          totalRead += octetsRead
+          totalBody.add(bodyData)
+        if totalBody.len != contentLength:
+          s.client.close()
+          next(s)
+          return
+
+        s.body = totalBody
+    else:
+      badRequest(s.client)
+      s.client.close()
+      next(s)
+      return
   
   var L = skipWhitespace(data, i)
   inc(i, L)
