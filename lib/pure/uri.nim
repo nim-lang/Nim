@@ -16,7 +16,6 @@ proc `/`*(a, b: TUrl): TUrl =
   ## Joins two URLs together, separating them with / if needed.
   var urlS = $a
   var bS = $b
-  echo(urlS, " & ", bS)
   if urlS == "": return b
   if urlS[urlS.len-1] != '/':
     urlS.add('/')
@@ -25,7 +24,6 @@ proc `/`*(a, b: TUrl): TUrl =
   else:
     urlS.add(bs)
   result = TUrl(urlS)
-  echo(result)
 
 proc add*(url: var TUrl, a: TUrl) =
   ## Appends url to url.
