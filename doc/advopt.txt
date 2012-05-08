@@ -4,6 +4,7 @@ Advanced commands:
   //compileToOC, objc       compile project to Objective C code
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
+  //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
   //pretty                  pretty print the inputfile
   //genDepend               generate a DOT file containing the
@@ -57,7 +58,7 @@ Advanced options:
   --skipParentCfg           do not read the parent dirs' configuration files
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
-  --index:FILE              use FILE to generate a documentation index file
+  --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build

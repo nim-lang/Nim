@@ -38,7 +38,8 @@ type
     meGeneralParseError,
     meInvalidDirective,
     mwRedefinitionOfLabel,
-    mwUnknownSubstitution
+    mwUnknownSubstitution,
+    mwUnsupportedLanguage
   
   TMsgHandler* = proc (filename: string, line, col: int, msgKind: TMsgKind,
                        arg: string) ## what to do in case of an error
@@ -53,7 +54,8 @@ const
     meGeneralParseError: "general parse error",
     meInvalidDirective: "invalid directive: '$1'",
     mwRedefinitionOfLabel: "redefinition of label '$1'", 
-    mwUnknownSubstitution: "unknown substitution '$1'"
+    mwUnknownSubstitution: "unknown substitution '$1'",
+    mwUnsupportedLanguage: "language '$1' not supported"
   ]
 
 proc rstnodeToRefname*(n: PRstNode): string
@@ -280,17 +282,6 @@ type
     hasToc*: bool
 
   EParseError* = object of EInvalidValue
-
-when false:
-  proc tokInfo(p: TRstParser, tok: TToken): TLineInfo = 
-    result = newLineInfo(p.filename, p.line + tok.line, p.col + tok.col)
-
-  proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) = 
-    GlobalError(tokInfo(p, p.tok[p.idx]), msgKind, arg)
-
-  proc rstMessage(p: TRstParser, msgKind: TMsgKind) = 
-    GlobalError(tokInfo(p, p.tok[p.idx]), msgKind, p.tok[p.idx].symbol)
-
 
 proc whichMsgClass*(k: TMsgKind): TMsgClass =
   ## returns which message class `k` belongs to.

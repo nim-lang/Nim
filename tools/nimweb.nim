@@ -162,15 +162,12 @@ proc Exec(cmd: string) =
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    Exec("nimrod rst2html $# -o:$# --index=$#/theindex $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
-       destpath, d])
+    Exec("nimrod rst2html $# -o:$# --index:on $#" %
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc):
-    Exec("nimrod doc $# -o:$# --index=$#/theindex $#" %
-      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
-       destpath, d])
-  Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" %
-       [c.nimrodArgs, destPath])
+    Exec("nimrod doc $# -o:$# --index:on $#" %
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+  Exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:

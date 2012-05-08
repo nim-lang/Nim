@@ -148,7 +148,8 @@ proc boot(args: string) =
 const
   cleanExt = [
     ".ppu", ".o", ".obj", ".dcu", ".~pas", ".~inc", ".~dsk", ".~dpr",
-    ".map", ".tds", ".err", ".bak", ".pyc", ".exe", ".rod", ".pdb", ".idb"
+    ".map", ".tds", ".err", ".bak", ".pyc", ".exe", ".rod", ".pdb", ".idb",
+    ".idx"
   ]
   ignore = [
     ".bzrignore", "nimrod", "nimrod.exe", "koch", "koch.exe"

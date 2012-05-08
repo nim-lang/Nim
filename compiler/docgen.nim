@@ -12,56 +12,19 @@
 # by knowing how the anchors are going to be named.
 
 import 
-  ast, astalgo, strutils, hashes, options, nversion, msgs, os, ropes, idents, 
+  ast, strutils, strtabs, options, msgs, os, ropes, idents, 
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite, 
   importer
 
-proc CommandDoc*()
-proc CommandRst2Html*()
-proc CommandRst2TeX*()
-
-#proc CommandBuildIndex*()
-# implementation
-
-type 
-  TTocEntry{.final.} = object 
-    n*: PRstNode
-    refname*, header*: PRope
-
+type
   TSections = array[TSymKind, PRope]
-  TMetaEnum = enum 
-    metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
-  TDocumentor {.final.} = object # contains a module's documentation
-    target: TOutputTarget
-    options: TRstParseOptions
-    filename*: string         # filename of the source file; without extension
-    modDesc*: PRope           # module description
-    id*: int                  # for generating IDs
-    splitAfter*: int          # split too long entries in the TOC
-    tocPart*: seq[TTocEntry]
-    hasToc*: bool
-    toc*, section*: TSections
-    indexFile*, theIndex*: PRstNode
-    indexValFilename*: string
-    meta*: array[TMetaEnum, PRope]
+  TDocumentor = object of rstgen.TRstGenerator
+    modDesc: PRope           # module description
+    id: int                  # for generating IDs
+    toc, section: TSections
+    indexValFilename: string
 
   PDoc = ref TDocumentor
-
-proc findIndexNode(n: PRstNode): PRstNode = 
-  if n == nil: 
-    result = nil
-  elif n.kind == rnIndex: 
-    result = n.sons[2]
-    if result == nil: 
-      result = newRstNode(rnDefList)
-      n.sons[2] = result
-    elif result.kind == rnInner: 
-      result = result.sons[0]
-  else: 
-    result = nil
-    for i in countup(0, len(n) - 1): 
-      result = findIndexNode(n.sons[i])
-      if result != nil: return 
   
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.TMsgKind, arg: string) {.procvar.} =
@@ -76,6 +39,7 @@ proc compilerMsgHandler(filename: string, line, col: int,
   of meInvalidDirective: k = errInvalidDirectiveX
   of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
   of mwUnknownSubstitution: k = warnUnknownSubstitutionX
+  of mwUnsupportedLanguage: k = warnLanguageXNotSupported
   GlobalError(newLineInfo(filename, line, col), k, arg)
   
 proc parseRst(text, filename: string,
@@ -83,45 +47,17 @@ proc parseRst(text, filename: string,
               rstOptions: TRstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     options.FindFile, compilerMsgHandler)
-  
-proc initIndexFile(d: PDoc) = 
-  var 
-    h: PRstNode
-    dummyHasToc: bool
-  if gIndexFile.len == 0: return 
-  gIndexFile = addFileExt(gIndexFile, "txt")
-  d.indexValFilename = changeFileExt(extractFilename(d.filename), HtmlExt)
-  if ExistsFile(gIndexFile): 
-    d.indexFile = parseRst(readFile(gIndexFile), gIndexFile, 0, 1, 
-                           dummyHasToc, {roSupportRawDirective})
-    d.theIndex = findIndexNode(d.indexFile)
-    if (d.theIndex == nil) or (d.theIndex.kind != rnDefList): 
-      rawMessage(errXisNoValidIndexFile, gIndexFile)
-    clearIndex(d.theIndex, d.indexValFilename)
-  else: 
-    d.indexFile = newRstNode(rnInner)
-    h = newRstNode(rnOverline)
-    h.level = 1
-    add(h, newRstNode(rnLeaf, "Index"))
-    add(d.indexFile, h)
-    h = newRstNode(rnIndex)
-    add(h, nil)            # no argument
-    add(h, nil)            # no options
-    d.theIndex = newRstNode(rnDefList)
-    add(h, d.theIndex)
-    add(d.indexFile, h)
 
-proc newDocumentor(filename: string): PDoc = 
+proc newDocumentor(filename: string, config: PStringTable): PDoc = 
   new(result)
-  if gCmd != cmdRst2Tex: result.target = outHtml
-  else: result.target = outLatex
-  result.tocPart = @[]
-  result.filename = filename
+  initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
+                   options.gConfigVars, filename, {roSupportRawDirective},
+                   options.FindFile, compilerMsgHandler)
   result.id = 100
-  result.splitAfter = 20
-  result.options = {roSupportRawDirective}
-  var s = getConfigVar("split.item.toc")
-  if s != "": result.splitAfter = parseInt(s)
+
+proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) = 
+  if gCmd != cmdRst2Tex: appf(dest, xml, args)
+  else: appf(dest, tex, args)
   
 proc getVarIdx(varnames: openarray[string], id: string): int = 
   for i in countup(0, high(varnames)): 
@@ -183,76 +119,37 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
       else: break 
     if i - 1 >= start: app(result, substr(frmt, start, i - 1))
 
-proc disp(xml, tex: string): string = 
-  if gCmd != cmdRst2Tex: result = xml
-  else: result = tex
-  
-proc dispF(xml, tex: string, args: openarray[PRope]): PRope = 
-  if gCmd != cmdRst2Tex: result = ropef(xml, args)
-  else: result = ropef(tex, args)
-  
-proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) = 
-  if gCmd != cmdRst2Tex: appf(dest, xml, args)
-  else: appf(dest, tex, args)
-  
-proc renderRstToOut(d: PDoc, n: PRstNode): PRope
-
-proc renderAux(d: PDoc, n: PRstNode, outer: string = "$1"): PRope = 
-  result = nil
-  for i in countup(0, len(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
-  result = ropef(outer, [result])
-
-proc setIndexForSourceTerm(d: PDoc, name: PRstNode, id: int) = 
-  if d.theIndex == nil: return 
-  var h = newRstNode(rnHyperlink)
-  var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $id)
-  add(h, a)
-  add(h, a)
-  a = newRstNode(rnIdx)
-  add(a, name)
-  setIndexPair(d.theIndex, a, h)
-
-proc renderIndexTerm(d: PDoc, n: PRstNode): PRope = 
-  inc(d.id)
-  result = dispF("<span id=\"$1\">$2</span>", "$2\\label{$1}", 
-                 [toRope(d.id), renderAux(d, n)])
-  var h = newRstNode(rnHyperlink)
-  var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $d.id)
-  add(h, a)
-  add(h, a)
-  setIndexPair(d.theIndex, n, h)
-
-proc genComment(d: PDoc, n: PNode): PRope = 
+proc genComment(d: PDoc, n: PNode): string =
+  result = ""
   var dummyHasToc: bool
   if n.comment != nil and startsWith(n.comment, "##"):
-    result = renderRstToOut(d, parseRst(n.comment, toFilename(n.info),
-                                        toLineNumber(n.info), toColumn(n.info), 
-                                        dummyHasToc, 
-                                        d.options + {roSkipPounds}))
-  
+    renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+                               toLineNumber(n.info), toColumn(n.info), 
+                               dummyHasToc, d.options + {roSkipPounds}), result)
+
 proc genRecComment(d: PDoc, n: PNode): PRope = 
   if n == nil: return nil
-  result = genComment(d, n)
+  result = genComment(d, n).toRope
   if result == nil: 
-    if not (n.kind in {nkEmpty..nkNilLit}): 
-      for i in countup(0, sonsLen(n) - 1): 
+    if n.kind notin {nkEmpty..nkNilLit}:
+      for i in countup(0, len(n)-1):
         result = genRecComment(d, n.sons[i])
         if result != nil: return 
-  else: 
+  else:
     n.comment = nil
   
 proc isVisible(n: PNode): bool = 
   result = false
   if n.kind == nkPostfix: 
-    if (sonsLen(n) == 2) and (n.sons[0].kind == nkIdent): 
+    if n.len == 2 and n.sons[0].kind == nkIdent: 
       var v = n.sons[0].ident
-      result = (v.id == ord(wStar)) or (v.id == ord(wMinus))
-  elif n.kind == nkSym: 
+      result = v.id == ord(wStar) or v.id == ord(wMinus)
+  elif n.kind == nkSym:
     result = sfExported in n.sym.flags
-  elif n.kind == nkPragmaExpr: 
+  elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
   
-proc getName(d: PDoc, n: PNode, splitAfter: int = - 1): string = 
+proc getName(d: PDoc, n: PNode, splitAfter = -1): string = 
   case n.kind
   of nkPostfix: result = getName(d, n.sons[1], splitAfter)
   of nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
@@ -334,288 +231,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"), 
                                     ["name", "header", "desc", "itemID"], [
       toRope(getName(d, nameNode, d.splitAfter)), result, comm, toRope(d.id)]))
-  setIndexForSourceTerm(d, getRstName(nameNode), d.id)
+  setIndexTerm(d[], $d.id, getName(d, nameNode))
 
-proc renderHeadline(d: PDoc, n: PRstNode): PRope = 
-  result = nil
-  for i in countup(0, len(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
-  var refname = toRope(rstnodeToRefname(n))
-  if d.hasToc: 
-    var length = len(d.tocPart)
-    setlen(d.tocPart, length + 1)
-    d.tocPart[length].refname = refname
-    d.tocPart[length].n = n
-    d.tocPart[length].header = result
-    result = dispF(
-        "<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
-        "\\rsth$4{$3}\\label{$2}$n", [toRope(n.level), 
-        d.tocPart[length].refname, result, 
-        toRope(chr(n.level - 1 + ord('A')) & "")])
-  else: 
-    result = dispF("<h$1 id=\"$2\">$3</h$1>", "\\rsth$4{$3}\\label{$2}$n", [
-        toRope(n.level), refname, result, 
-        toRope(chr(n.level - 1 + ord('A')) & "")])
-  
-proc renderOverline(d: PDoc, n: PRstNode): PRope = 
-  var t: PRope = nil
-  for i in countup(0, len(n) - 1): app(t, renderRstToOut(d, n.sons[i]))
-  result = nil
-  if d.meta[metaTitle] == nil: 
-    d.meta[metaTitle] = t
-  elif d.meta[metaSubtitle] == nil: 
-    d.meta[metaSubtitle] = t
-  else: 
-    result = dispF("<h$1 id=\"$2\"><center>$3</center></h$1>", 
-                   "\\rstov$4{$3}\\label{$2}$n", [toRope(n.level), 
-        toRope(rstnodeToRefname(n)), t, toRope($chr(n.level - 1 + ord('A')))])
-  
-
-proc renderTocEntry(d: PDoc, e: TTocEntry): PRope = 
-  result = dispF(
-    "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>$n", 
-    "\\item\\label{$1_toc} $2\\ref{$1}$n", [e.refname, e.header])
-
-proc renderTocEntries(d: PDoc, j: var int, lvl: int): PRope = 
-  result = nil
-  while j <= high(d.tocPart): 
-    var a = abs(d.tocPart[j].n.level)
-    if a == lvl: 
-      app(result, renderTocEntry(d, d.tocPart[j]))
-      inc(j)
-    elif a > lvl: 
-      app(result, renderTocEntries(d, j, a))
-    else: 
-      break 
-  if lvl > 1: 
-    result = dispF("<ul class=\"simple\">$1</ul>", 
-                   "\\begin{enumerate}$1\\end{enumerate}", [result])
-  
-proc fieldAux(s: string): PRope = 
-  result = toRope(strip(s))
-
-proc renderImage(d: PDoc, n: PRstNode): PRope = 
-  var options: PRope = nil
-  var s = getFieldValue(n, "scale")
-  if s != "": dispA(options, " scale=\"$1\"", " scale=$1", [fieldAux(s)])
-  s = getFieldValue(n, "height")
-  if s != "": dispA(options, " height=\"$1\"", " height=$1", [fieldAux(s)])
-  s = getFieldValue(n, "width")
-  if s != "": dispA(options, " width=\"$1\"", " width=$1", [fieldAux(s)])
-  s = getFieldValue(n, "alt")
-  if s != "": dispA(options, " alt=\"$1\"", "", [fieldAux(s)])
-  s = getFieldValue(n, "align")
-  if s != "": dispA(options, " align=\"$1\"", "", [fieldAux(s)])
-  if options != nil: options = dispF("$1", "[$1]", [options])
-  result = dispF("<img src=\"$1\"$2 />", "\\includegraphics$2{$1}", 
-                 [toRope(getArgument(n)), options])
-  if len(n) >= 3: app(result, renderRstToOut(d, n.sons[2]))
-  
-proc renderSmiley(d: PDoc, n: PRstNode): PRope =
-  result = dispF(
-    """<img src="images/smilies/$1.gif" width="15" 
-        height="17" hspace="2" vspace="2" />""",
-    "\\includegraphics{$1}", [toRope(n.text)])
-  
-proc renderCodeBlock(d: PDoc, n: PRstNode): PRope = 
-  result = nil
-  if n.sons[2] == nil: return 
-  var m = n.sons[2].sons[0]
-  if (m.kind != rnLeaf): InternalError("renderCodeBlock")
-  var langstr = strip(getArgument(n))
-  var lang: TSourceLanguage
-  if langstr == "": 
-    lang = langNimrod         # default language
-  else: 
-    lang = getSourceLanguage(langstr)
-  if lang == langNone: 
-    rawMessage(warnLanguageXNotSupported, langstr)
-    result = toRope(m.text)
-  else: 
-    var g: TGeneralTokenizer
-    initGeneralTokenizer(g, m.text)
-    while true: 
-      getNextToken(g, lang)
-      case g.kind
-      of gtEof: break 
-      of gtNone, gtWhitespace: 
-        app(result, substr(m.text, g.start, g.length + g.start - 1))
-      else: 
-        dispA(result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-          toRope(esc(d.target, substr(m.text, g.start, g.length+g.start-1))),
-          toRope(tokenClassToStr[g.kind])])
-    deinitGeneralTokenizer(g)
-  if result != nil:
-    result = dispF("<pre>$1</pre>", "\\begin{rstpre}$n$1$n\\end{rstpre}$n", 
-                   [result])
-  
-proc renderContainer(d: PDoc, n: PRstNode): PRope = 
-  result = renderRstToOut(d, n.sons[2])
-  var arg = toRope(strip(getArgument(n)))
-  if arg == nil: result = dispF("<div>$1</div>", "$1", [result])
-  else: result = dispF("<div class=\"$1\">$2</div>", "$2", [arg, result])
-  
-proc texColumns(n: PRstNode): string = 
-  result = ""
-  for i in countup(1, len(n)): add(result, "|X")
-  
-proc renderField(d: PDoc, n: PRstNode): PRope = 
-  var b = false
-  if gCmd == cmdRst2Tex: 
-    var fieldname = addNodes(n.sons[0])
-    var fieldval = toRope(esc(d.target, strip(addNodes(n.sons[1]))))
-    if cmpIgnoreStyle(fieldname, "author") == 0: 
-      if d.meta[metaAuthor] == nil: 
-        d.meta[metaAuthor] = fieldval
-        b = true
-    elif cmpIgnoreStyle(fieldName, "version") == 0: 
-      if d.meta[metaVersion] == nil: 
-        d.meta[metaVersion] = fieldval
-        b = true
-  if b: result = nil
-  else: result = renderAux(d, n, disp("<tr>$1</tr>$n", "$1"))
-  
-proc renderRstToOut(d: PDoc, n: PRstNode): PRope = 
-  if n == nil: 
-    return nil
-  case n.kind
-  of rnInner: result = renderAux(d, n)
-  of rnHeadline: result = renderHeadline(d, n)
-  of rnOverline: result = renderOverline(d, n)
-  of rnTransition: result = renderAux(d, n, disp("<hr />\n", "\\hrule\n"))
-  of rnParagraph: result = renderAux(d, n, disp("<p>$1</p>\n", "$1$n$n"))
-  of rnBulletList: 
-    result = renderAux(d, n, disp("<ul class=\"simple\">$1</ul>\n", 
-                                  "\\begin{itemize}$1\\end{itemize}\n"))
-  of rnBulletItem, rnEnumItem: 
-    result = renderAux(d, n, disp("<li>$1</li>\n", "\\item $1\n"))
-  of rnEnumList: 
-    result = renderAux(d, n, disp("<ol class=\"simple\">$1</ol>\n", 
-                                  "\\begin{enumerate}$1\\end{enumerate}\n"))
-  of rnDefList: 
-    result = renderAux(d, n, disp("<dl class=\"docutils\">$1</dl>\n", 
-                       "\\begin{description}$1\\end{description}\n"))
-  of rnDefItem: result = renderAux(d, n)
-  of rnDefName: result = renderAux(d, n, disp("<dt>$1</dt>\n", "\\item[$1] "))
-  of rnDefBody: result = renderAux(d, n, disp("<dd>$1</dd>\n", "$1\n"))
-  of rnFieldList: 
-    result = nil
-    for i in countup(0, len(n) - 1): 
-      app(result, renderRstToOut(d, n.sons[i]))
-    if result != nil: 
-      result = dispf(
-          "<table class=\"docinfo\" frame=\"void\" rules=\"none\">" &
-          "<col class=\"docinfo-name\" />" &
-          "<col class=\"docinfo-content\" />" & 
-          "<tbody valign=\"top\">$1" &
-          "</tbody></table>", 
-          "\\begin{description}$1\\end{description}\n", 
-          [result])
-  of rnField: result = renderField(d, n)
-  of rnFieldName: 
-    result = renderAux(d, n, disp("<th class=\"docinfo-name\">$1:</th>", 
-                                  "\\item[$1:]"))
-  of rnFieldBody: 
-    result = renderAux(d, n, disp("<td>$1</td>", " $1$n"))
-  of rnIndex: 
-    result = renderRstToOut(d, n.sons[2])
-  of rnOptionList: 
-    result = renderAux(d, n, disp("<table frame=\"void\">$1</table>", 
-      "\\begin{description}$n$1\\end{description}\n"))
-  of rnOptionListItem: 
-    result = renderAux(d, n, disp("<tr>$1</tr>$n", "$1"))
-  of rnOptionGroup: 
-    result = renderAux(d, n, disp("<th align=\"left\">$1</th>", "\\item[$1]"))
-  of rnDescription: 
-    result = renderAux(d, n, disp("<td align=\"left\">$1</td>$n", " $1$n"))
-  of rnOption, rnOptionString, rnOptionArgument: 
-    InternalError("renderRstToOut")
-  of rnLiteralBlock: 
-    result = renderAux(d, n, disp("<pre>$1</pre>$n", 
-                                  "\\begin{rstpre}$n$1$n\\end{rstpre}$n"))
-  of rnQuotedLiteralBlock: 
-    InternalError("renderRstToOut")
-  of rnLineBlock: 
-    result = renderAux(d, n, disp("<p>$1</p>", "$1$n$n"))
-  of rnLineBlockItem: 
-    result = renderAux(d, n, disp("$1<br />", "$1\\\\$n"))
-  of rnBlockQuote: 
-    result = renderAux(d, n, disp("<blockquote><p>$1</p></blockquote>$n", 
-                                  "\\begin{quote}$1\\end{quote}$n"))
-  of rnTable, rnGridTable: 
-    result = renderAux(d, n, disp(
-      "<table border=\"1\" class=\"docutils\">$1</table>", 
-      "\\begin{table}\\begin{rsttab}{" &
-        texColumns(n) & "|}$n\\hline$n$1\\end{rsttab}\\end{table}"))
-  of rnTableRow: 
-    if len(n) >= 1: 
-      result = renderRstToOut(d, n.sons[0])
-      for i in countup(1, len(n) - 1): 
-        dispa(result, "$1", " & $1", [renderRstToOut(d, n.sons[i])])
-      result = dispf("<tr>$1</tr>$n", "$1\\\\$n\\hline$n", [result])
-    else: 
-      result = nil
-  of rnTableDataCell: result = renderAux(d, n, disp("<td>$1</td>", "$1"))
-  of rnTableHeaderCell: 
-    result = renderAux(d, n, disp("<th>$1</th>", "\\textbf{$1}"))
-  of rnLabel: 
-    InternalError("renderRstToOut") # used for footnotes and other
-  of rnFootnote: 
-    InternalError("renderRstToOut") # a footnote
-  of rnCitation: 
-    InternalError("renderRstToOut") # similar to footnote
-  of rnRef: 
-    result = dispF("<a class=\"reference external\" href=\"#$2\">$1</a>", 
-                   "$1\\ref{$2}", [renderAux(d, n), toRope(rstnodeToRefname(n))])
-  of rnStandaloneHyperlink: 
-    result = renderAux(d, n, disp(
-      "<a class=\"reference external\" href=\"$1\">$1</a>", 
-      "\\href{$1}{$1}"))
-  of rnHyperlink: 
-    result = dispF("<a class=\"reference external\" href=\"$2\">$1</a>", 
-                   "\\href{$2}{$1}", 
-                   [renderRstToOut(d, n.sons[0]), renderRstToOut(d, n.sons[1])])
-  of rnDirArg, rnRaw: result = renderAux(d, n)
-  of rnRawHtml: 
-    if gCmd != cmdRst2Tex:
-      result = toRope(addNodes(lastSon(n)))
-  of rnRawLatex:
-    if gCmd == cmdRst2Tex:
-      result = toRope(addNodes(lastSon(n)))
-      
-  of rnImage, rnFigure: result = renderImage(d, n)
-  of rnCodeBlock: result = renderCodeBlock(d, n)
-  of rnContainer: result = renderContainer(d, n)
-  of rnSubstitutionReferences, rnSubstitutionDef: 
-    result = renderAux(d, n, disp("|$1|", "|$1|"))
-  of rnDirective: 
-    result = renderAux(d, n, "") # Inline markup:
-  of rnGeneralRole: 
-    result = dispF("<span class=\"$2\">$1</span>", "\\span$2{$1}", 
-                   [renderRstToOut(d, n.sons[0]), renderRstToOut(d, n.sons[1])])
-  of rnSub: result = renderAux(d, n, disp("<sub>$1</sub>", "\\rstsub{$1}"))
-  of rnSup: result = renderAux(d, n, disp("<sup>$1</sup>", "\\rstsup{$1}"))
-  of rnEmphasis: result = renderAux(d, n, disp("<em>$1</em>", "\\emph{$1}"))
-  of rnStrongEmphasis:
-    result = renderAux(d, n, disp("<strong>$1</strong>", "\\textbf{$1}"))
-  of rnTripleEmphasis:
-    result = renderAux(d, n, disp("<strong><em>$1</em></strong>", 
-                                  "\\textbf{emph{$1}}"))
-  of rnInterpretedText:
-    result = renderAux(d, n, disp("<cite>$1</cite>", "\\emph{$1}"))
-  of rnIdx: 
-    if d.theIndex == nil: 
-      result = renderAux(d, n, disp("<span>$1</span>", "\\emph{$1}"))
-    else: 
-      result = renderIndexTerm(d, n)
-  of rnInlineLiteral: 
-    result = renderAux(d, n, disp(
-      "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>", 
-      "\\texttt{$1}"))
-  of rnSmiley: result = renderSmiley(d, n)
-  of rnLeaf: result = toRope(esc(d.target, n.text))
-  of rnContents: d.hasToc = true
-  of rnTitle: d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
-  
 proc checkForFalse(n: PNode): bool = 
   result = n.kind == nkIdent and IdentEq(n.ident, "false")
   
@@ -658,56 +275,52 @@ proc genSection(d: PDoc, kind: TSymKind) =
     "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return 
-  var title = toRope(sectionNames[kind])
+  var title = sectionNames[kind].toRope
   d.section[kind] = ropeFormatNamedVars(getConfigVar("doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      toRope(ord(kind)), title, toRope(ord(kind) + 50), d.section[kind]])
+      ord(kind).toRope, title, toRope(ord(kind) + 50), d.section[kind]])
   d.toc[kind] = ropeFormatNamedVars(getConfigVar("doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      toRope(ord(kind)), title, toRope(ord(kind) + 50), d.toc[kind]])
+      ord(kind).toRope, title, toRope(ord(kind) + 50), d.toc[kind]])
 
 proc genOutFile(d: PDoc): PRope = 
   var 
-    code, toc, title, content: PRope
-    bodyname: string
-    j: int
-  j = 0
-  toc = renderTocEntries(d, j, 1)
-  code = nil
-  content = nil
-  title = nil
+    code, content: PRope = nil
+    title = ""
+  var j = 0
+  var tmp = ""
+  renderTocEntries(d[], j, 1, tmp)
+  var toc = tmp.toRope
   for i in countup(low(TSymKind), high(TSymKind)): 
     genSection(d, i)
     app(toc, d.toc[i])
-  if toc != nil: 
+  if toc != nil:
     toc = ropeFormatNamedVars(getConfigVar("doc.toc"), ["content"], [toc])
   for i in countup(low(TSymKind), high(TSymKind)): app(code, d.section[i])
-  if d.meta[metaTitle] != nil: title = d.meta[metaTitle]
-  else: title = toRope("Module " &
-      extractFilename(changeFileExt(d.filename, "")))
-  if d.hasToc: bodyname = "doc.body_toc"
-  else: bodyname = "doc.body_no_toc"
+  if d.meta[metaTitle].len != 0: title = d.meta[metaTitle]
+  else: title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+  
+  let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title", 
       "tableofcontents", "moduledesc", "date", "time", "content"],
-      [title, toc, d.modDesc, toRope(getDateStr()), 
+      [title.toRope, toc, d.modDesc, toRope(getDateStr()), 
       toRope(getClockStr()), code])
   if optCompileOnly notin gGlobalOptions: 
+    # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title", 
         "tableofcontents", "moduledesc", "date", "time", 
         "content", "author", "version"], 
-        [title, toc, d.modDesc, toRope(getDateStr()), 
-                     toRope(getClockStr()), content, d.meta[metaAuthor], 
-                     d.meta[metaVersion]])
+        [title.toRope, toc, d.modDesc, toRope(getDateStr()), 
+                     toRope(getClockStr()), content, d.meta[metaAuthor].toRope, 
+                     d.meta[metaVersion].toRope])
   else: 
     code = content
   result = code
 
-proc generateIndex(d: PDoc) = 
-  if d.theIndex != nil: 
-    sortIndex(d.theIndex)
-    var content = newStringOfCap(2_000_000)
-    renderRstToRst(d.indexFile, content)
-    writeFile(gIndexFile, content)
+proc generateIndex(d: PDoc) =
+  if optGenIndex in gGlobalOptions:
+    writeIndexFile(d[], splitFile(options.outFile).dir / 
+                        splitFile(d.filename).name & indexExt)
 
 proc writeOutput(d: PDoc, filename, outExt: string) = 
   var content = genOutFile(d)
@@ -716,86 +329,39 @@ proc writeOutput(d: PDoc, filename, outExt: string) =
   else:
     writeRope(content, getOutFile(filename, outExt))
 
-proc CommandDoc =
+proc CommandDoc*() =
   var ast = parseFile(addFileExt(gProjectFull, nimExt))
   if ast == nil: return 
-  var d = newDocumentor(gProjectFull)
-  initIndexFile(d)
+  var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
   generateDoc(d, ast)
   writeOutput(d, gProjectFull, HtmlExt)
   generateIndex(d)
 
-proc CommandRstAux(filename, outExt: string) = 
+proc CommandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen)
-  initIndexFile(d)
+  var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})
-  d.modDesc = renderRstToOut(d, rst)
+  d.modDesc = newMutableRope(30_000)
+  renderRstToOut(d[], rst, d.modDesc.data)
+  freezeMutableRope(d.modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc CommandRst2Html =
+proc CommandRst2Html*() =
   CommandRstAux(gProjectFull, HtmlExt)
 
-proc CommandRst2TeX =
+proc CommandRst2TeX*() =
   splitter = "\\-"
   CommandRstAux(gProjectFull, TexExt)
 
-# ---------- forum ---------------------------------------------------------
-
-proc setupConfig*() =
-  msgs.gErrorMax = 1000_000
-  setConfigVar("split.item.toc", "20")
-  setConfigVar("doc.section", """
-<div class="section" id="$sectionID">
-<h1><a class="toc-backref" href="#$sectionTitleID">$sectionTitle</a></h1>
-<dl class="item">
-$content
-</dl></div>
-""")
-  setConfigVar("doc.section.toc", """
-<li>
-  <a class="reference" href="#$sectionID" id="$sectionTitleID">$sectionTitle</a>
-  <ul class="simple">
-    $content
-  </ul>
-</li>
-""")
-  setConfigVar("doc.item", """
-<dt id="$itemID"><pre>$header</pre></dt>
-<dd>
-$desc
-</dd>
-""")
-  setConfigVar("doc.item.toc", """
-  <li><a class="reference" href="#$itemID">$name</a></li>
-""")
-  setConfigVar("doc.toc", """
-<div class="navigation" id="navigation">
-<ul class="simple">
-$content
-</ul>
-</div>""")
-  setConfigVar("doc.body_toc", """
-$tableofcontents
-<div class="content" id="content">
-$moduledesc
-$content
-</div>
-""")
-  setConfigVar("doc.body_no_toc", "$moduledesc $content")
-  setConfigVar("doc.file", "$content")
-
-proc rstToHtml*(s: string, options: TRstParseOptions): string =
-  ## exported for *nimforum*.
-  const filen = "input"
-  var d = newDocumentor(filen)
-  d.options = options
-  var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
-  d.modDesc = renderRstToOut(d, rst)
-  let res = genOutFile(d)
-  result = res.ropeToStr
-
+proc CommandBuildIndex*() =
+  var content = mergeIndexes(gProjectFull).toRope
+  
+  let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title", 
+      "tableofcontents", "moduledesc", "date", "time", 
+      "content", "author", "version"], 
+      ["Index".toRope, nil, nil, toRope(getDateStr()), 
+                   toRope(getClockStr()), content, nil, nil])
+  writeRope(code, getOutFile("theindex", HtmlExt))
