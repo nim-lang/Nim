@@ -366,8 +366,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: cLinkedLibs.add arg
   of "index": 
-    expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: gIndexFile = arg
+    ProcessOnOffSwitchG({optGenIndex}, arg, pass, info)
   of "import":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: implicitImports.add arg

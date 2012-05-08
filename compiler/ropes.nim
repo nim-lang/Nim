@@ -109,6 +109,9 @@ proc newMutableRope*(capacity = 30): PRope =
   new(result)
   result.data = newStringOfCap(capacity)
 
+proc freezeMutableRope*(r: PRope) {.inline.} =
+  r.length = r.data.len
+
 var 
   cache: array[0..2048 -1, PRope]
 

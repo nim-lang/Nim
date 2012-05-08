@@ -1,6 +1,7 @@
 version 0.9.0
 =============
 
+- docgen: markdown support
 - make templates hygienic by default
 - ``bind`` for overloaded symbols does not work apparently
 - ``=`` should be overloadable; requires specialization for ``=``

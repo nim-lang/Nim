@@ -169,7 +169,7 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
       result.data.add(buf[pos])
       inc pos
   L.bufpos = pos
-  result.length = result.data.len
+  freezeMutableRope(result)
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos

@@ -227,7 +227,7 @@ proc MainCommand =
     gCmd = cmdPretty
     wantMainModule()
     CommandPretty()
-  of "doc": 
+  of "doc":
     gCmd = cmdDoc
     LoadConfigs(DocConfig)
     wantMainModule()
@@ -242,6 +242,10 @@ proc MainCommand =
     LoadConfigs(DocTexConfig)
     wantMainModule()
     CommandRst2TeX()
+  of "buildindex":
+    gCmd = cmdDoc
+    LoadConfigs(DocConfig)
+    CommandBuildIndex()
   of "gendepend": 
     gCmd = cmdGenDepend
     wantMainModule()
