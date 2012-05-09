@@ -953,16 +953,16 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
     frmtstr {.noinit.}: array[0..5, char]
     buf: array[0..80, char]
   frmtstr[0] = '%'
-  frmtstr[1] = '#'
   if precision > 0:
+    frmtstr[1] = '#'
     frmtstr[2] = '.'
     frmtstr[3] = '*'
     frmtstr[4] = floatFormatToChar[format]
     frmtstr[5] = '\0'
     c_sprintf(buf, frmtstr, precision, f)
   else:
-    frmtstr[2] = floatFormatToChar[format]
-    frmtstr[3] = '\0'
+    frmtstr[1] = floatFormatToChar[format]
+    frmtstr[2] = '\0'
     c_sprintf(buf, frmtstr, f)
   result = $buf
 
