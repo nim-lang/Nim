@@ -1135,10 +1135,6 @@ proc parseParagraph(p: var TRstParser, result: PRstNode) =
     of tkWhite, tkWord, tkAdornment, tkOther: 
       parseInline(p, result)
     else: break 
-  
-proc parseParagraphWrapper(p: var TRstParser): PRstNode = 
-  result = newRstNode(rnParagraph)
-  parseParagraph(p, result)
 
 proc parseHeadline(p: var TRstParser): PRstNode = 
   result = newRstNode(rnHeadline)
