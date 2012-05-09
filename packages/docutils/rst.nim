@@ -696,6 +696,36 @@ proc parseUntil(p: var TRstParser, father: PRstNode, postfix: string,
       add(father, newRstNode(rnLeaf, " "))
       inc(p.idx)
     else: rstMessage(p, meExpected, postfix)
+
+proc parseMarkdownCodeblock(p: var TRstParser): PRstNode =
+  var args = newRstNode(rnDirArg)
+  if p.tok[p.idx].kind == tkWord:
+    add(args, newLeaf(p))
+    inc(p.idx)
+  else:
+    args = nil
+  var n = newRstNode(rnLeaf, "")
+  while true:
+    case p.tok[p.idx].kind
+    of tkEof:
+      rstMessage(p, meExpected, "```")
+      break
+    of tkPunct:
+      if isInlineMarkupEnd(p, "```"):
+        inc(p.idx)
+        break
+      else:
+        add(n.text, p.tok[p.idx].symbol)
+        inc(p.idx)
+    else:
+      add(n.text, p.tok[p.idx].symbol)
+      inc(p.idx)
+  var lb = newRstNode(rnLiteralBlock)
+  add(lb, n)
+  result = newRstNode(rnCodeBlock)
+  add(result, args)
+  add(result, nil)
+  add(result, lb)  
   
 proc parseInline(p: var TRstParser, father: PRstNode) = 
   case p.tok[p.idx].kind
@@ -715,7 +745,10 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       add(father, n)
-    elif isInlineMarkupStart(p, "``"): 
+    elif roSupportMarkdown in p.s.options and isInlineMarkupStart(p, "```"):
+      inc(p.idx)
+      add(father, parseMarkdownCodeblock(p))
+    elif isInlineMarkupStart(p, "``"):
       inc(p.idx)
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
@@ -744,7 +777,7 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
       if n != nil:
         add(father, n)
         return
-    parseURL(p, father)
+    parseUrl(p, father)
   of tkAdornment, tkOther, tkWhite: 
     if roSupportSmilies in p.s.options:
       let n = parseSmiley(p)
