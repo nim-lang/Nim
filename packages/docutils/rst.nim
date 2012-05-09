@@ -62,11 +62,7 @@ proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
 proc getFieldValue*(n: PRstNode, fieldname: string): string
 proc getArgument*(n: PRstNode): string
-  # index handling:
-proc setIndexPair*(index, key, val: PRstNode)
-proc sortIndex*(a: PRstNode)
-proc clearIndex*(index: PRstNode, filename: string)
-# implementation
+
 # ----------------------------- scanner part --------------------------------
 
 const 
@@ -419,114 +415,6 @@ proc findRef(p: var TRstParser, key: string): PRstNode =
   for i in countup(0, high(p.s.refs)): 
     if key == p.s.refs[i].key: 
       return p.s.refs[i].value
-
-proc cmpNodes(a, b: PRstNode): int = 
-  assert(a.kind == rnDefItem)
-  assert(b.kind == rnDefItem)
-  var x = a.sons[0]
-  var y = b.sons[0]
-  result = cmpIgnoreStyle(addNodes(x), addNodes(y))
-
-proc sortIndex(a: PRstNode) = 
-  # we use shellsort here; fast and simple
-  assert(a.kind == rnDefList)
-  var N = len(a)
-  var h = 1
-  while true: 
-    h = 3 * h + 1
-    if h > N: break 
-  while true: 
-    h = h div 3
-    for i in countup(h, N - 1): 
-      var v = a.sons[i]
-      var j = i
-      while cmpNodes(a.sons[j - h], v) >= 0: 
-        a.sons[j] = a.sons[j - h]
-        j = j - h
-        if j < h: break 
-      a.sons[j] = v
-    if h == 1: break 
-  
-proc eqRstNodes(a, b: PRstNode): bool = 
-  if a.kind != b.kind: return 
-  if a.kind == rnLeaf: 
-    result = a.text == b.text
-  else: 
-    if len(a) != len(b): return 
-    for i in countup(0, len(a) - 1): 
-      if not eqRstNodes(a.sons[i], b.sons[i]): return 
-    result = true
-
-proc matchesHyperlink(h: PRstNode, filename: string): bool = 
-  if h.kind == rnInner:       # this may happen in broken indexes!
-    assert(len(h) == 1)
-    result = matchesHyperlink(h.sons[0], filename)
-  elif h.kind == rnHyperlink: 
-    var s = addNodes(h.sons[1])
-    if startsWith(s, filename) and (s[len(filename)] == '#'): result = true
-    else: result = false
-  else: 
-    result = false
-  
-proc clearIndex(index: PRstNode, filename: string) = 
-  var 
-    lastItem: int
-  assert(index.kind == rnDefList)
-  for i in countup(0, len(index) - 1): 
-    assert(index.sons[i].sons[1].kind == rnDefBody)
-    var val = index.sons[i].sons[1].sons[0]
-    if val.kind == rnInner: val = val.sons[0]
-    if val.kind == rnBulletList: 
-      var items = len(val)
-      lastItem = - 1          # save the last valid item index
-      for j in countup(0, len(val) - 1): 
-        if val.sons[j] == nil: 
-          dec(items)
-        elif matchesHyperlink(val.sons[j].sons[0], filename): 
-          val.sons[j] = nil
-          dec(items)
-        else: 
-          lastItem = j
-      if items == 1: 
-        index.sons[i].sons[1].sons[0] = val.sons[lastItem].sons[0]
-      elif items == 0: 
-        index.sons[i] = nil
-    elif matchesHyperlink(val, filename): 
-      index.sons[i] = nil
-  var k = 0
-  for i in countup(0, len(index) - 1): 
-    if index.sons[i] != nil: 
-      if k != i: index.sons[k] = index.sons[i]
-      inc(k)
-  setlen(index.sons, k)
-
-proc setIndexPair(index, key, val: PRstNode) = 
-  var e, a, b: PRstNode
-  assert(index.kind == rnDefList)
-  assert(key.kind != rnDefName)
-  a = newRstNode(rnDefName)
-  add(a, key)
-  for i in countup(0, len(index) - 1): 
-    if eqRstNodes(index.sons[i].sons[0], a): 
-      assert(index.sons[i].sons[1].kind == rnDefBody)
-      e = index.sons[i].sons[1].sons[0]
-      if e.kind != rnBulletList: 
-        e = newRstNode(rnBulletList)
-        b = newRstNode(rnBulletItem)
-        add(b, index.sons[i].sons[1].sons[0])
-        add(e, b)
-        index.sons[i].sons[1].sons[0] = e
-      b = newRstNode(rnBulletItem)
-      add(b, val)
-      add(e, b)
-      return                  # key already exists
-  e = newRstNode(rnDefItem)
-  assert(val.kind != rnDefBody)
-  b = newRstNode(rnDefBody)
-  add(b, val)
-  add(e, a)
-  add(e, b)
-  add(index, e)
 
 proc newLeaf(p: var TRstParser): PRstNode = 
   result = newRstNode(rnLeaf, p.tok[p.idx].symbol)
