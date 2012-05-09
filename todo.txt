@@ -1,7 +1,6 @@
 version 0.9.0
 =============
 
-- docgen: markdown support
 - make templates hygienic by default
 - ``bind`` for overloaded symbols does not work apparently
 - ``=`` should be overloadable; requires specialization for ``=``
@@ -24,6 +23,7 @@ version 0.9.0
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
+- extract nimdoc properly and document it finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is

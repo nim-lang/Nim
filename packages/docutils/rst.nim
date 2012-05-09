@@ -287,15 +287,15 @@ proc whichMsgClass*(k: TMsgKind): TMsgClass =
   of 'h', 'H': result = mcHint
   else: assert false, "msgkind does not fit naming scheme"
   
-proc defaultMsgHandler(filename: string, line, col: int, msgkind: TMsgKind,
-                       arg: string) =
+proc defaultMsgHandler*(filename: string, line, col: int, msgkind: TMsgKind,
+                        arg: string) {.procvar.} =
   let mc = msgKind.whichMsgClass
   let a = messages[msgKind] % arg
   let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: Writeln(stdout, message)
 
-proc defaultFindFile(filename: string): string = 
+proc defaultFindFile*(filename: string): string {.procvar.} = 
   if existsFile(filename): result = filename
   else: result = ""
 
@@ -386,7 +386,7 @@ proc findSub(p: var TRstParser, n: PRstNode): int =
   for i in countup(0, high(p.s.subs)): 
     if cmpIgnoreStyle(key, p.s.subs[i].key) == 0: 
       return i
-  result = - 1
+  result = -1
 
 proc setSub(p: var TRstParser, key: string, value: PRstNode) = 
   var length = len(p.s.subs)
@@ -550,7 +550,7 @@ proc parsePostfix(p: var TRstParser, n: PRstNode): PRstNode =
   result = n
   if isInlineMarkupEnd(p, "_"): 
     inc(p.idx)
-    if (p.tok[p.idx - 2].symbol == "`") and (p.tok[p.idx - 3].symbol == ">"): 
+    if p.tok[p.idx-2].symbol == "`" and p.tok[p.idx-3].symbol == ">":
       var a = newRstNode(rnInner)
       var b = newRstNode(rnInner)
       fixupEmbeddedRef(n, a, b)
@@ -711,7 +711,7 @@ proc parseMarkdownCodeblock(p: var TRstParser): PRstNode =
       rstMessage(p, meExpected, "```")
       break
     of tkPunct:
-      if isInlineMarkupEnd(p, "```"):
+      if p.tok[p.idx].symbol == "```":
         inc(p.idx)
         break
       else:
@@ -745,7 +745,7 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       add(father, n)
-    elif roSupportMarkdown in p.s.options and isInlineMarkupStart(p, "```"):
+    elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "```":
       inc(p.idx)
       add(father, parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
