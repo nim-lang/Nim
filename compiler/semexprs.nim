@@ -382,8 +382,9 @@ proc fixAbstractType(c: PContext, n: PNode) =
       # an implicitely constructed array (passed to an open array):
       n.sons[i] = semArrayConstr(c, it)
     else: 
-      if (it.typ == nil): 
-        InternalError(it.info, "fixAbstractType: " & renderTree(it))  
+      nil
+      #if (it.typ == nil): 
+      #  InternalError(it.info, "fixAbstractType: " & renderTree(it))  
   
 proc skipObjConv(n: PNode): PNode = 
   case n.kind
