@@ -1305,7 +1305,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkNilLit: 
     result.typ = getSysType(tyNil)
   of nkIntLit: 
-    if result.typ == nil: result.typ = getSysType(tyInt)
+    if result.typ == nil: 
+      let i = result.intVal
+      if i >= low(int32) and i <= high(int32):
+        result.typ = getSysType(tyInt)
+      else:
+        result.typ = getSysType(tyInt64)
   of nkInt8Lit: 
     if result.typ == nil: result.typ = getSysType(tyInt8)
   of nkInt16Lit: 
