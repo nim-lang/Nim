@@ -255,6 +255,10 @@ proc hasContinue(n: PNode): bool =
 proc transformLoopBody(c: PTransf, n: PNode): PTransNode =  
   # XXX BUG: What if it contains "continue" and "break"? "break" needs 
   # an explicit label too, but not the same!
+  
+  # We fix this here by making every 'break' belong to its enclosing loop
+  # and changing all breaks that belong to a 'block' by annotating it with
+  # a label (if it hasn't one already).
   if hasContinue(n):
     var labl = newSym(skLabel, nil, getCurrOwner(c))
     labl.name = getIdent(genPrefix & $labl.id)

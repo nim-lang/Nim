@@ -1,6 +1,7 @@
 version 0.9.0
 =============
 
+- fix transformLoopBody
 - make templates hygienic by default
 - ``bind`` for overloaded symbols does not work apparently
 - ``=`` should be overloadable; requires specialization for ``=``
