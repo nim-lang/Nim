@@ -7463,7 +7463,7 @@ const
   bp_DCB_fRtsControl* = 12
   bm_DCB_fAbortOnError* = 0x00004000
   bp_DCB_fAbortOnError* = 14
-  bm_DCB_fDummy2* = 0xFFFF8000
+  bm_DCB_fDummy2* = 0xFFFF8000'i32
   bp_DCB_fDummy2* = 15
 
 proc fBinary*(a: var DCB): DWORD
@@ -7593,7 +7593,7 @@ const
   bp_COMSTAT_fEof* = 5
   bm_COMSTAT_fTxim* = 0x00000040
   bp_COMSTAT_fTxim* = 6
-  bm_COMSTAT_fReserved* = 0xFFFFFF80
+  bm_COMSTAT_fReserved* = 0xFFFFFF80'i32
   bp_COMSTAT_fReserved* = 7
 
 proc fCtsHold*(a: var COMSTAT): DWORD

@@ -6,7 +6,7 @@ discard """
 
 var
   i: int
-i = int(0xffffffff)
+i = int(0xffffffff'i32)
 when defined(cpu64):
   if i == 4294967295:
     write(stdout, "works!\n")
