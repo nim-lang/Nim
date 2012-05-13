@@ -204,6 +204,11 @@ Internet Protocols and Support
 * `cookies <cookies.html>`_
   This module contains helper procs for parsing and generating cookies.
 
+* `mimetypes <mimetypes.html>`_
+  This module implements a mimetypes database.
+
+* `uri <uri.html>`_
+  This module provides functions for working with URIs.
 
 Parsers
 -------

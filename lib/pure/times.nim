@@ -407,9 +407,17 @@ proc format*(info: TTimeInfo, f: string): string =
   ##    HH       The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
   ##    m        The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
   ##    mm       Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
-  ##    M
-  
-  
+  ##    M        The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
+  ##    MM       The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
+  ##    MMM      Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
+  ##    MMMM     Full month string, properly capitalized.                                           ``September -> September``
+  ##    s        Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
+  ##    ss       Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
+  ##    t        ``A`` when time is in the AM. ``P`` when time is in the PM.
+  ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
+  ##    y(yyyy)  This displays the year to different digits. You most likely only want 2 or 4 'y's
+  ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
+  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``                                
   ## ==========  =================================================================================  ================================================
 
 
@@ -433,9 +441,9 @@ proc format*(info: TTimeInfo, f: string): string =
       of "dddd":
         result.add($info.month)
       of "h":
-        result.add($(0 - (info.hour - 12)))
+        result.add($(info.hour - 12))
       of "hh":
-        let amerHour = 0 - (info.hour - 12)
+        let amerHour = info.hour - 12
         if amerHour < 10:
           result.add('0')
         result.add($amerHour)
