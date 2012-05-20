@@ -337,7 +337,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
-    """<img src="images/smilies/$1.gif" width="15" 
+    """<img src="/images/smilies/$1.gif" width="15" 
         height="17" hspace="2" vspace="2" />""",
     "\\includegraphics{$1}", [n.text])
   
