@@ -5,6 +5,7 @@ Nimrod's Garbage Collector
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
 
+  "The road to hell is paved with good intentions."
 
 Introduction
 ============
