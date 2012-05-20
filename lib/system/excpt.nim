@@ -194,6 +194,9 @@ proc quitOrDebug() {.inline.} =
 
 proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   e.name = ename
+  when hasSomeStackTrace:
+    e.trace = ""
+    rawWriteStackTrace(e.trace)
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
@@ -252,6 +255,12 @@ proc getStackTrace(): string =
     rawWriteStackTrace(result)
   else:
     result = "No stack traceback available\n"
+
+proc getStackTrace(e: ref E_Base): string =
+  if not isNil(e) and not isNil(e.trace):
+    result = e.trace
+  else:
+    result = ""
 
 when defined(endb):
   var
