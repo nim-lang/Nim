@@ -856,7 +856,7 @@ template sysAssert(cond: bool, msg: string) =
 
 include "system/inclrtl"
 
-when not defined(ecmascript) and not defined(nimrodVm) and not defined(avr):
+when not defined(ecmascript) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1897,12 +1897,12 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc writeStackTrace*()
     ## writes the current stack trace to ``stderr``. This is only works
     ## for debug builds.
-
-  proc getStackTrace*(): string
-    ## gets the current stack trace. This is only works for debug builds.
-    
+  when hostOS != "standalone":
+    proc getStackTrace*(): string
+      ## gets the current stack trace. This is only works for debug builds.
+      
   {.push stack_trace: off.}
-  when hostCPU == "avr":
+  when hostOS == "standalone":
     include "system/embedded"
   else:
     include "system/excpt"
@@ -1941,7 +1941,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   include "system/mmdisp"
   {.push stack_trace: off.}
-  when hostCPU != "avr": include "system/sysstr"
+  when hostOS != "standalone": include "system/sysstr"
   {.pop.}
 
   include "system/sysio"
@@ -1961,7 +1961,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     var res = TaintedString(newStringOfCap(80))
     while f.readLine(res): yield TaintedString(res)
 
-  when hostCPU != "avr":
+  when hostOS != "standalone":
     include "system/assign"
     include "system/repr"
 
