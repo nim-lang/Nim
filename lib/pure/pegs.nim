@@ -258,8 +258,8 @@ proc UnicodeLower*: TPeg {.inline.} =
   result.kind = pkLower 
 
 proc UnicodeUpper*: TPeg {.inline.} = 
-  ## constructs the PEG ``\upper`` which matches any Unicode lowercase letter.
-  result.kind = pkUpper 
+  ## constructs the PEG ``\upper`` which matches any Unicode uppercase letter.
+  result.kind = pkUpper
   
 proc UnicodeTitle*: TPeg {.inline.} = 
   ## constructs the PEG ``\title`` which matches any Unicode title letter.
