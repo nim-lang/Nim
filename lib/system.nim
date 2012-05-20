@@ -190,6 +190,7 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message 
                                         ## is bad style.
+    trace: string
 
   EAsynch* = object of E_Base ## Abstract exception class for
                               ## *asynchronous exceptions* (interrupts).
@@ -1900,6 +1901,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hostOS != "standalone":
     proc getStackTrace*(): string
       ## gets the current stack trace. This is only works for debug builds.
+
+    proc getStackTrace*(e: ref E_Base): string
+      ## gets the stack trace associated with `e`, which is the stack that
+      ## lead to the ``raise`` statement. This is only works for debug builds.
       
   {.push stack_trace: off.}
   when hostOS == "standalone":
