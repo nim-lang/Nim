@@ -46,7 +46,8 @@ type
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
-    blocksyms: seq[PSym]
+    contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
+    inLoop: int              # > 0 if we are in a loop
     transformedInnerProcs: TIntSet
   PTransf = ref TTransfContext
 
@@ -252,6 +253,31 @@ proc hasContinue(n: PNode): bool =
     for i in countup(0, sonsLen(n) - 1): 
       if hasContinue(n.sons[i]): return true
 
+proc newLabel(c: PTransf, n: PNode): PSym =
+  result = newSym(skLabel, nil, getCurrOwner(c))
+  result.name = getIdent(genPrefix & $result.id)
+  result.info = n.info
+
+proc transformBlock(c: PTransf, n: PNode): PTransNode =
+  var labl: PSym
+  if n.sons[0].kind != nkEmpty:
+    # already named block? -> Push symbol on the stack:
+    labl = n.sons[0].sym
+  else:
+    labl = newLabel(c, n)
+  c.breakSyms.add(labl)
+  result = transformSons(c, n)
+  discard c.breakSyms.pop
+  result[0] = newSymNode(labl).PTransNode
+
+proc transformBreak(c: PTransf, n: PNode): PTransNode =
+  if c.inLoop > 0 or n.sons[0].kind != nkEmpty:
+    result = n.ptransNode
+  else:
+    let labl = c.breakSyms[c.breakSyms.high]
+    result = transformSons(c, n)
+    result[0] = newSymNode(labl).PTransNode
+
 proc transformLoopBody(c: PTransf, n: PNode): PTransNode =  
   # XXX BUG: What if it contains "continue" and "break"? "break" needs 
   # an explicit label too, but not the same!
@@ -260,15 +286,13 @@ proc transformLoopBody(c: PTransf, n: PNode): PTransNode =
   # and changing all breaks that belong to a 'block' by annotating it with
   # a label (if it hasn't one already).
   if hasContinue(n):
-    var labl = newSym(skLabel, nil, getCurrOwner(c))
-    labl.name = getIdent(genPrefix & $labl.id)
-    labl.info = n.info
-    c.blockSyms.add(labl)
+    let labl = newLabel(c, n)
+    c.contSyms.add(labl)
 
     result = newTransNode(nkBlockStmt, n.info, 2)
     result[0] = newSymNode(labl).PTransNode
     result[1] = transform(c, n)
-    discard c.blockSyms.pop()
+    discard c.contSyms.pop()
   else: 
     result = transform(c, n)
   
@@ -631,16 +655,22 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       n.sons[bodyPos] = PNode(transform(c, s.getBody))
       if n.kind == nkMethodDef: methodDef(s, false)
     result = PTransNode(n)
-  of nkForStmt: result = transformFor(c, n)
+  of nkForStmt: 
+    inc c.inLoop
+    result = transformFor(c, n)
+    dec c.inLoop
   of nkCaseStmt: result = transformCase(c, n)
   of nkContinueStmt:
     result = PTransNode(newNode(nkBreakStmt))
-    var labl = c.blockSyms[c.blockSyms.high]
+    var labl = c.contSyms[c.contSyms.high]
     add(result, PTransNode(newSymNode(labl)))
+  of nkBreakStmt: result = transformBreak(c, n)
   of nkWhileStmt: 
+    inc c.inLoop
     result = newTransNode(n)
     result[0] = transform(c, n.sons[0])
     result[1] = transformLoopBody(c, n.sons[1])
+    dec c.inLoop
   of nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix, 
      nkCallStrLit: 
     result = transformCall(c, n)
@@ -671,6 +701,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else: 
       result = transformSons(c, n)
+  of nkBlockStmt, nkBlockExpr:
+    result = transformBlock(c, n)
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
@@ -692,7 +724,8 @@ proc processTransf(context: PPassContext, n: PNode): PNode =
 proc openTransf(module: PSym, filename: string): PPassContext = 
   var n: PTransf
   new(n)
-  n.blocksyms = @[]
+  n.contSyms = @[]
+  n.breakSyms = @[]
   n.module = module
   n.transformedInnerProcs = initIntSet()
   result = n

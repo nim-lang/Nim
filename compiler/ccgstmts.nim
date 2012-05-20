@@ -235,6 +235,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
 
   preserveBreakIdx:
     p.breakIdx = startBlock(p, "while (1) {$n")
+    p.blocks[p.breakIdx].isLoop = true
     initLocExpr(p, t.sons[0], a)
     if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
       let label = assignLabel(p.blocks[p.breakIdx])
@@ -265,6 +266,11 @@ proc genBreakStmt(p: BProc, t: PNode) =
     var sym = t.sons[0].sym
     assert(sym.loc.k == locOther)
     idx = sym.loc.a
+  else:
+    # an unnamed 'break' can only break a loop after 'transf' pass:
+    while idx >= 0 and not p.blocks[idx].isLoop: dec idx
+    if idx < 0 or not p.blocks[idx].isLoop:
+      InternalError(t.info, "no loop to break")
   let label = assignLabel(p.blocks[idx])
   blockLeaveActions(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
   genLineDir(p, t)

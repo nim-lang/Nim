@@ -948,6 +948,8 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nimrod's ``biggestFloat`` type.
+  ## 
+  ## If ``precision == 0``, it uses the 
   const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
   var
     frmtstr {.noinit.}: array[0..5, char]

@@ -47,6 +47,7 @@ type
     id*: int                  # the ID of the label; positive means that it
                               # has been used (i.e. the label should be emitted)
     nestedTryStmts*: int      # how many try statements is it nested into
+    isLoop: bool              # whether it's a 'block' or 'while'
   
   TGlobals{.final.} = object 
     typeInfo*, code*: PRope
@@ -467,6 +468,7 @@ proc genWhileStmt(p: var TProc, n: PNode, r: var TCompRes) =
   setlen(p.blocks, length + 1)
   p.blocks[length].id = - p.unique
   p.blocks[length].nestedTryStmts = p.nestedTryStmts
+  p.blocks[length].isLoop = true
   labl = p.unique
   gen(p, n.sons[0], cond)
   genStmt(p, n.sons[1], stmt)
@@ -635,13 +637,18 @@ proc genBreakStmt(p: var TProc, n: PNode, r: var TCompRes) =
     idx: int
     sym: PSym
   genLineDir(p, n, r)
-  idx = len(p.blocks) - 1
   if n.sons[0].kind != nkEmpty: 
     # named break?
     assert(n.sons[0].kind == nkSym)
     sym = n.sons[0].sym
     assert(sym.loc.k == locOther)
     idx = sym.loc.a
+  else:
+    # an unnamed 'break' can only break a loop after 'transf' pass:
+    idx = len(p.blocks) - 1
+    while idx >= 0 and not p.blocks[idx].isLoop: dec idx
+    if idx < 0 or not p.blocks[idx].isLoop:
+      InternalError(n.info, "no loop to break")
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   finishTryStmt(p, r, p.nestedTryStmts - p.blocks[idx].nestedTryStmts)
   appf(r.com, "break L$1;$n", [toRope(p.blocks[idx].id)])

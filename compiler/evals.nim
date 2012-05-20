@@ -162,16 +162,17 @@ proc evalWhile(c: PEvalContext, n: PNode): PNode =
       stackTrace(c, n, errTooManyIterations)
       break 
 
-proc evalBlock(c: PEvalContext, n: PNode): PNode = 
+proc evalBlock(c: PEvalContext, n: PNode): PNode =
   result = evalAux(c, n.sons[1], {})
-  if result.kind == nkBreakStmt: 
+  if result.kind == nkBreakStmt:
     if result.sons[0] != nil: 
       assert(result.sons[0].kind == nkSym)
       if n.sons[0].kind != nkEmpty: 
         assert(n.sons[0].kind == nkSym)
         if result.sons[0].sym.id == n.sons[0].sym.id: result = emptyNode
-    else: 
-      result = emptyNode      # consume ``break`` token
+    # blocks can only be left with an explicit label now!
+    #else: 
+    #  result = emptyNode      # consume ``break`` token
   
 proc evalFinally(c: PEvalContext, n, exc: PNode): PNode = 
   var finallyNode = lastSon(n)

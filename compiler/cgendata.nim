@@ -54,6 +54,7 @@ type
                               # nil if label is not used
     nestedTryStmts*: int      # how many try statements is it nested into
     sections*: TCProcSections # the code beloging
+    isLoop*: bool             # whether block is a loop
   
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nimrod proc that this C proc belongs to
