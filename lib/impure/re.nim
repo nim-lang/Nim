@@ -201,20 +201,20 @@ proc find*(s: string, pattern: TRegEx, start = 0): int =
   return rawMatches[0]
   
 iterator findAll*(s: string, pattern: TRegEx, start = 0): string = 
-  ## yields all matching captures of pattern in `s`.
-  var matches: array[0..MaxSubpatterns-1, string]
-  var i = start
-  while true: 
-    var j = find(s, pattern, matches, i)
-    if j < 0: break
-    i = j
-    for k in 0..maxSubPatterns-1: 
-      if isNil(matches[k]): break
-      inc(i, matches[k].len)
-      yield matches[k]
+  ## yields all matching *substrings* of `s` that match `pattern`.
+  var i = int32(start)
+  var rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
+  while true:
+    let res = pcre.Exec(pattern.h, pattern.e, s, len(s), i, 0'i32,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+    if res < 0'i32: break
+    let a = rawMatches[0]
+    let b = rawMatches[1]
+    yield substr(s, int(a), int(b)-1)
+    i = b
 
 proc findAll*(s: string, pattern: TRegEx, start = 0): seq[string] = 
-  ## returns all matching captures of pattern in `s`.
+  ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
 
@@ -450,3 +450,7 @@ when isMainModule:
   for word in split("00232this02939is39an22example111", re"\d+"):
     writeln(stdout, word)
 
+  for x in findAll("abcdef", re"^{.}", 3):
+    assert x == "d"
+  for x in findAll("abcdef", re".", 3):
+    echo x
