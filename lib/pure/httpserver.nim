@@ -214,6 +214,7 @@ type
     path*, query*: string ## path and query the client requested
     headers*: PStringTable ## headers with which the client made the request
     body*: string          ## only set with POST requests
+    ip*: string            ## ip address of the requesting client
     
 proc open*(s: var TServer, port = TPort(80)) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
@@ -240,7 +241,9 @@ proc port*(s: var TServer): TPort =
 
 proc next*(s: var TServer) =
   ## proceed to the first/next request.
-  s.client = accept(s.socket)
+  let (client, ip) = acceptAddr(s.socket)
+  s.client = client
+  s.ip = ip
   s.headers = newStringTable(modeCaseInsensitive)
   #headers(s.client, "")
   var data = ""
