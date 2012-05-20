@@ -69,6 +69,8 @@ Changes affecting backwards compatibility
   type class matching all proc types. Use ``proc ()`` to get the old meaning
   denoting a proc expecing no arguments and returing no value.
 - Deprecated ``system.GC_setStrategy``.
+- ``re.findAll`` and ``pegs.findAll`` don't return *captures* anymore but
+  matching *substrings*.
 
 
 Compiler Additions

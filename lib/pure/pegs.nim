@@ -829,7 +829,7 @@ proc find*(s: string, pattern: TPeg,
   return -1
   
 iterator findAll*(s: string, pattern: TPeg, start = 0): string = 
-  ## yields all matching captures of pattern in `s`.
+  ## yields all matching *substrings* of `s` that match `pattern`.
   var c: TCaptures
   c.origStart = start
   var i = start
@@ -837,12 +837,12 @@ iterator findAll*(s: string, pattern: TPeg, start = 0): string =
     c.ml = 0
     var L = rawMatch(s, pattern, i, c)
     if L < 0: break
-    for k in 0..c.ml-1: yield substr(s, c.matches[k][0], c.matches[k][1])
+    yield substr(s, i, i+L-1)
     inc(i, L)
     
 proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
   nosideEffect, rtl, extern: "npegs$1".} = 
-  ## returns all matching captures of pattern in `s`.
+  ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
   
@@ -1744,7 +1744,7 @@ when isMainModule:
   else:
     assert false
 
-  for x in findAll("abcdef", peg"{.}", 3):
+  for x in findAll("abcdef", peg".", 3):
     echo x
 
   for x in findAll("abcdef", peg"^{.}", 3):
