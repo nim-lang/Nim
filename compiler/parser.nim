@@ -998,7 +998,14 @@ proc parseTry(p: var TParser): PNode =
     addSon(result, b)
     if b.kind == nkFinally: break 
   if b == nil: parMessage(p, errTokenExpected, "except")
-  
+
+proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
+  result = newNodeP(kind, p)
+  getTok(p)
+  eat(p, tkColon)
+  skipComment(p, result)
+  addSon(result, parseStmt(p))
+
 proc parseFor(p: var TParser): PNode = 
   result = newNodeP(nkForStmt, p)
   getTok(p)
@@ -1393,6 +1400,8 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p)
+  of tkFinally: result = parseExceptBlock(p, nkFinally)
+  of tkExcept: result = parseExceptBlock(p, nkExceptBranch)
   of tkFor: result = parseFor(p)
   of tkBlock: result = parseBlock(p)
   of tkStatic: result = parseStatic(p)

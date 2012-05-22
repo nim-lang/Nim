@@ -97,6 +97,7 @@ Language Additions
 - ``when`` expressions are now allowed just like ``if`` expressions.
 - The precedence for operators starting with ``@`` is different now 
   allowing for *sigil-like* operators.
+- Stand-alone ``finally`` and ``except`` blocks are now supported.
 
 
 2012-02-09 Version 0.8.14 released
