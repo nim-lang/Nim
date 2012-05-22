@@ -49,8 +49,12 @@ type
                                 ## a type description (for templates)
   void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
   
-  TInteger* = int|char|int8|int16|int32|int64|bool|enum
+  TInteger* = int|int8|int16|int32|int64
     ## type class matching all integer types
+
+  TOrdinal* = TInteger|bool|enum
+    ## type class matching all ordinal types; however this includes enums with
+    ## holes.
 
   TNumber* = TInteger|float|float32|float64
     ## type class matching all number types
