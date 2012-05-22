@@ -871,13 +871,33 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   of nkBlockStmt: result = semBlock(c, n)
   of nkStmtList: 
     var length = sonsLen(n)
-    for i in countup(0, length - 1): 
-      n.sons[i] = semStmt(c, n.sons[i])
-      if n.sons[i].kind in LastBlockStmts: 
-        for j in countup(i + 1, length - 1): 
-          case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
-          else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+    for i in countup(0, length - 1):
+      case n.sons[i].kind
+      of nkFinally, nkExceptBranch:
+        # stand-alone finally and except blocks are
+        # transformed into regular try blocks:
+        #
+        # var f = fopen("somefile") | var f = fopen("somefile")
+        # finally: fcsole(f)        | try:
+        # ...                       |   ...
+        #                           | finally:
+        #                           |   fclose(f)
+        var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
+        var body = newNodeI(nkStmtList, n.sons[i].info)
+        if i < n.sonsLen - 1:
+          body.sons = n.sons[(i+1)..(-1)]
+        tryStmt.addSon(body)
+        tryStmt.addSon(n.sons[i])
+        n.sons[i] = semTry(c, tryStmt)
+        n.sons.setLen(i+1)
+        return
+      else:
+        n.sons[i] = semStmt(c, n.sons[i])
+        if n.sons[i].kind in LastBlockStmts: 
+          for j in countup(i + 1, length - 1): 
+            case n.sons[j].kind
+            of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
+            else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)
