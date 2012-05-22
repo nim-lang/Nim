@@ -57,6 +57,8 @@ proc optInd*(p: var TParser, n: PNode)
 proc indAndComment*(p: var TParser, n: PNode)
 proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser): PNode
+proc parseTry(p: var TParser): PNode
+proc parseCase(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) = 
@@ -468,6 +470,11 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       addSon(result, a)
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
       parseDoBlocks(p, result)
+    of tkDo:
+      var a = result
+      result = newNodeP(nkCall, p)
+      addSon(result, a)
+      parseDoBlocks(p, result)
     of tkDot:
       result = dotExpr(p, result)
       result = parseGStrLit(p, result)
@@ -704,6 +711,8 @@ proc parseExpr(p: var TParser): PNode =
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
+  of tkTry: result = parseTry(p)
+  of tkCase: result = parseCase(p)
   else: result = lowestExpr(p)
 
 proc primary(p: var TParser, skipSuffix = false): PNode = 
@@ -944,13 +953,19 @@ proc parseWhile(p: var TParser): PNode =
 proc parseCase(p: var TParser): PNode = 
   var 
     b: PNode
-    inElif: bool
+    inElif= false
+    wasIndented = false
   result = newNodeP(nkCaseStmt, p)
   getTok(p)
   addSon(result, parseExpr(p))
   if p.tok.tokType == tkColon: getTok(p)
   skipComment(p, result)
-  inElif = false
+  
+  if p.tok.tokType == tkInd:
+    pushInd(p.lex, p.tok.indent)
+    getTok(p)
+    wasIndented = true
+  
   while true: 
     if p.tok.tokType == tkSad: getTok(p)
     case p.tok.tokType
@@ -973,8 +988,12 @@ proc parseCase(p: var TParser): PNode =
     skipComment(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
-    if b.kind == nkElse: break 
+    if b.kind == nkElse: break
   
+  if wasIndented:
+    eat(p, tkDed)
+    popInd(p.lex)
+
 proc parseTry(p: var TParser): PNode = 
   result = newNodeP(nkTryStmt, p)
   getTok(p)
