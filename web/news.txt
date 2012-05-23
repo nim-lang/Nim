@@ -46,6 +46,7 @@ Library Additions
 - Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
 - Added ``strutils.continuesWith``.
 - Added ``system.getStackTrace``.
+- Added ``system.||`` for parallel for loop support.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 
@@ -84,6 +85,7 @@ Compiler Additions
   option or pragma.
 - The compiler now generates marker procs that the GC can use instead of RTTI.
   This speeds up the GC quite a bit.
+- The compiler now supports OpenMP's parallel for loop.
 
 
 Language Additions

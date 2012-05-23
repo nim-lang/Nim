@@ -145,6 +145,7 @@ type
     nkIfStmt,             # an if statement
     nkWhenStmt,           # a when expression or statement
     nkForStmt,            # a for statement
+    nkParForStmt,         # a parallel for statement
     nkWhileStmt,          # a while statement
     nkCaseStmt,           # a case statement
     nkTypeSection,        # a type section (consists of type definitions)
@@ -396,7 +397,7 @@ type
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
     mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
     mConTArr, mConTT, mSlice, 
-    mFields, mFieldPairs,
+    mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq, 
     mIsPartOf, mAstToStr, mRand, 

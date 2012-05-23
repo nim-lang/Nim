@@ -465,7 +465,11 @@ proc semFor(c: PContext, n: PNode): PNode =
     else:
       GlobalError(n.sons[length - 2].info, errIteratorExpected)
   elif call.sons[0].sym.magic != mNone:
-    result = semForFields(c, n, call.sons[0].sym.magic)
+    if call.sons[0].sym.magic == mOmpParFor:
+      result = semForVars(c, n)
+      result.kind = nkParForStmt
+    else:
+      result = semForFields(c, n, call.sons[0].sym.magic)
   else:
     result = semForVars(c, n)
   closeScope(c.tab)
@@ -889,7 +893,7 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   of nkWhileStmt: result = semWhile(c, n)
   of nkTryStmt: result = semTry(c, n)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
-  of nkForStmt: result = semFor(c, n)
+  of nkForStmt, nkParForStmt: result = semFor(c, n)
   of nkCaseStmt: result = semCase(c, n)
   of nkReturnStmt: result = semReturn(c, n)
   of nkAsmStmt: result = semAsm(c, n)

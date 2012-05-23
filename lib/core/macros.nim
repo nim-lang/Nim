@@ -36,7 +36,7 @@ type
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
     nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt, 
-    nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
+    nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt, 
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection, 
     nnkConstDef, nnkTypeDef, 
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 

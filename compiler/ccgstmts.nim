@@ -258,6 +258,34 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
     else: genStmts(p, t.sons[1])
     endBlock(p)
   
+proc genParForStmt(p: BProc, t: PNode) =
+  assert(sonsLen(t) == 3)
+  inc(p.withinLoop)
+  genLineDir(p, t)
+
+  preserveBreakIdx:
+    let forLoopVar = t.sons[0].sym
+    var rangeA, rangeB: TLoc
+    assignLocalVar(P, forLoopVar)
+    #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
+    #discard mangleName(forLoopVar)
+    let call = t.sons[1]
+    initLocExpr(p, call.sons[1], rangeA)
+    initLocExpr(p, call.sons[2], rangeB)
+    
+    appf(p.s(cpsStmts), "#pragma omp parallel for $4$n" &
+                        "for ($1 = $2; $1 <= $3; ++$1)", 
+                        forLoopVar.loc.rdLoc,
+                        rangeA.rdLoc, rangeB.rdLoc,
+                        call.sons[3].getStr.toRope)
+    
+    p.breakIdx = startBlock(p)
+    p.blocks[p.breakIdx].isLoop = true
+    genStmts(p, t.sons[2])
+    endBlock(p)
+
+  dec(p.withinLoop)
+  
 proc genBreakStmt(p: BProc, t: PNode) = 
   var idx = p.breakIdx
   if t.sons[0].kind != nkEmpty: 
@@ -815,5 +843,6 @@ proc genStmts(p: BProc, t: PNode) =
         # we have not only the header: 
         if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
           genProc(p.module, prc)
+  of nkParForStmt: genParForStmt(p, t)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
   
