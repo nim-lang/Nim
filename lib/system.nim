@@ -1200,6 +1200,15 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     yield res
     inc res
 
+iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
+  inline, magic: "OmpParFor", sideEffect.} =
+  ## parallel loop iterator. Same as `..` but the loop may run in parallel.
+  ## `annotation` is an additional annotation for the code generator to use.
+  ## Note that the compiler maps that to
+  ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
+  ## such isn't aware of the parallelism in your code. Be careful.
+  nil
+
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}

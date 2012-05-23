@@ -142,7 +142,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         a.sons[j] = semGenericStmt(c, a.sons[j], flags, toBind)
       a.sons[L - 1] = semGenericStmtScope(c, a.sons[L-1], flags, toBind)
     closeScope(c.tab)
-  of nkForStmt: 
+  of nkForStmt, nkParForStmt: 
     var L = sonsLen(n)
     openScope(c.tab)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, toBind)

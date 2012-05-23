@@ -984,7 +984,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCaseStmt, nkRecCase: gcase(g, n)
   of nkMacroStmt: gmacro(g, n)
   of nkTryStmt: gtry(g, n)
-  of nkForStmt: gfor(g, n)
+  of nkForStmt, nkParForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
   of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)

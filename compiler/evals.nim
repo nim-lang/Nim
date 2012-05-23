@@ -1289,7 +1289,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkPragmaBlock:
     result = evalAux(c, n.sons[1], flags)
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
-     nkLambdaKinds, nkContinueStmt, nkIdent: 
+     nkLambdaKinds, nkContinueStmt, nkIdent, nkParForStmt: 
     result = raiseCannotEval(c, n.info)
   of nkRefTy:
     result = evalAux(c, n.sons[0], flags)
