@@ -36,6 +36,9 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
+
+    wDestroy,
+    
     wImmediate, wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct,
@@ -110,7 +113,9 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "objchecks", 
+    "magic", "thread", "final", "profiler", "objchecks",
+
+    "destroy",
     
     "immediate", "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",

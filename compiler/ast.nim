@@ -567,6 +567,9 @@ type
                               # for record types a nkRecord node
                               # for enum types a list of symbols
                               # else: unused
+    destructor*: PSym         # destructor. warning: nil here may not necessary
+                              # mean that there is no destructor.
+                              # see instantiateDestructor in types.nim
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
