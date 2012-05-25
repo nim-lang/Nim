@@ -1054,4 +1054,11 @@ proc getReturnType*(s: PSym): PType =
 proc getSize(typ: PType): biggestInt = 
   result = computeSize(typ)
   if result < 0: InternalError("getSize(" & $typ.kind & ')')
+
+proc instantiateDestructor*(typ: PType): bool =
+  # return true if the type already had a user-defined
+  # destructor or if the compiler generated a default
+  # member-wise one
+  if typ.destructor != nil: return true
+  return false
   

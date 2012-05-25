@@ -768,6 +768,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
+  if result.sons[namePos].sym.name.id == ord(wDestroy):
+    if s.typ.sons.len == 2:
+      let typ = s.typ.sons[1].skipTypes({tyVar})
+      typ.destructor = s
   if s.typ.callConv == ccClosure and s.owner.kind == skModule:
     localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
@@ -856,6 +860,62 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
 
+proc insertDestructors(c: PContext, varSection: PNode):
+  tuple[outer: PNode, inner: PNode] =
+  # Accepts a var or let section.
+  #
+  # When a var section has variables with destructors
+  # the var section is split up and finally blocks are inserted
+  # immediately after all "destructable" vars
+  #
+  # In case there were no destrucable variables, the proc returns
+  # (nil, nil) and the enclosing stmt-list requires no modifications.
+  #
+  # Otherwise, after the try blocks are created, the rest of the enclosing
+  # stmt-list should be inserted in the most `inner` such block (corresponding
+  # to the last variable).
+  #
+  # `outer` is a statement list that should replace the original var section.
+  # It will include the new truncated var section followed by the outermost
+  # try block.
+  let totalVars = varSection.sonsLen
+  for j in countup(0, totalVars - 1):
+    let
+      varId = varSection[j][0]
+      varTyp = varId.sym.typ
+      info = varId.info
+
+    if varTyp != nil and instantiateDestructor(varTyp):
+      var tryStmt = newNodeI(nkTryStmt, info)
+
+      if j < totalVars - 1:
+        var remainingVars = newNodeI(varSection.kind, info)
+        remainingVars.sons = varSection.sons[(j+1)..(-1)]
+        let (outer, inner) = insertDestructors(c, remainingVars)
+        if outer != nil:
+          tryStmt.addSon(outer)
+          result.inner = inner
+        else:
+          result.inner = newNodeI(nkStmtList, info)
+          result.inner.addSon(remainingVars)
+          tryStmt.addSon(result.inner)
+      else:
+        result.inner = newNodeI(nkStmtList, info)
+        tryStmt.addSon(result.inner)
+
+      tryStmt.addSon(
+        newNode(nkFinally, info, @[
+          semStmt(c, newNode(nkCall, info, @[
+            semSym(c, varId, varTyp.destructor, {}),
+            semSym(c, varId, varId.sym, {})]))]))
+
+      result.outer = newNodeI(nkStmtList, info)
+      varSection.sons.setLen(j+1)
+      result.outer.addSon(varSection)
+      result.outer.addSon(tryStmt)
+
+      return
+
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
@@ -893,11 +953,21 @@ proc SemStmt(c: PContext, n: PNode): PNode =
         return
       else:
         n.sons[i] = semStmt(c, n.sons[i])
-        if n.sons[i].kind in LastBlockStmts: 
+        case n.sons[i].kind
+        of nkVarSection, nkLetSection:
+          let (outer, inner) = insertDestructors(c, n.sons[i])
+          if outer != nil:
+            n.sons[i] = outer
+            for j in countup(i+1, length-1):
+              inner.addSon(SemStmt(c, n.sons[j]))
+            n.sons.setLen(i+1)
+            return
+        of LastBlockStmts: 
           for j in countup(i + 1, length - 1): 
             case n.sons[j].kind
             of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
             else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+        else: nil
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)
