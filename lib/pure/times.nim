@@ -24,7 +24,11 @@ type
     mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
   TWeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
-    
+
+var
+  timezone* {.importc, header: "<time.h>".}: int
+  tzname* {.importc, header: "<time.h>" .}: array[0..1, cstring]
+
 when defined(posix): 
   type
     TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int
@@ -41,10 +45,6 @@ when defined(posix):
   
   proc posix_gettimeofday(tp: var Ttimeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
-  
-  var
-    timezone* {.importc, header: "<time.h>".}: int
-    tzname* {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
 elif defined(windows):
   import winlean
