@@ -2290,5 +2290,18 @@ template eval*(blk: stmt): stmt =
     macro payload(x: stmt): stmt = blk
     payload()
 
+proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
+  ## inserts `item` into `x` at position `i`.
+  var xl = x.len
+  setLen(x, xl+item.len)
+  var j = xl-1
+  while j >= i:
+    shallowCopy(x[j+item.len], x[j])
+    dec(j)
+  j = 0
+  while j < item.len:
+    x[j+i] = item[j]
+    inc(j)
+
 when defined(initDebugger):
   initDebugger()
