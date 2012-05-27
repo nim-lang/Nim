@@ -72,6 +72,9 @@ Changes affecting backwards compatibility
 - Deprecated ``system.GC_setStrategy``.
 - ``re.findAll`` and ``pegs.findAll`` don't return *captures* anymore but
   matching *substrings*.
+- RTTI and thus the ``marshall`` module don't contain the proper field names
+  of tuples anymore. This had to be changed as the old behaviour never
+  produced consistent results.
 
 
 Compiler Additions
