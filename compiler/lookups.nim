@@ -21,18 +21,19 @@ proc considerAcc*(n: PNode): PIdent =
     case n.len
     of 0: GlobalError(n.info, errIdentifierExpected, renderTree(n))
     of 1: result = considerAcc(n.sons[0])
-    of 2:
-      if n[0].ident.id == ord(wStar):
+    else:
+      if n.len == 2 and n[0].kind == nkIdent and n[0].ident.id == ord(wStar):
+        # XXX find a better way instead of `*x` for 'genSym'
         result = genSym(n[1].ident.s)
       else:
-        result = getIdent(n[0].ident.s & n[1].ident.s)
-    else:
-      var id = ""
-      for i in 0.. <n.len:
-        if n.sons[i].kind != nkIdent:
-          GlobalError(n.info, errIdentifierExpected, renderTree(n))
-        id.add(n.sons[i].ident.s)
-      result = getIdent(id)
+        var id = ""
+        for i in 0.. <n.len:
+          let x = n.sons[i]
+          case x.kind
+          of nkIdent: id.add(x.ident.s)
+          of nkSym: id.add(x.sym.name.s)
+          else: GlobalError(n.info, errIdentifierExpected, renderTree(n))
+        result = getIdent(id)
   else:
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
 
