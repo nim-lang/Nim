@@ -557,9 +557,9 @@ proc format*(info: TTimeInfo, f: string): string =
           result.add("0")
         result.add($info.monthday)
       of "ddd":
-        result.add(($info.month)[0 .. 2])
+        result.add(($info.monthday)[0 .. 2])
       of "dddd":
-        result.add($info.month)
+        result.add($info.monthday)
       of "h":
         result.add($(info.hour - 12))
       of "hh":
