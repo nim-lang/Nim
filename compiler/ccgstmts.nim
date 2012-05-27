@@ -32,7 +32,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       assignLocalVar(p, v)
       initLocalVar(p, v, immediateAsgn=true)
     initLoc(field, locExpr, t.sons[i], tup.s)
-    if t.n == nil: 
+    if t.kind == tyTuple: 
       field.r = ropef("$1.Field$2", [rdLoc(tup), toRope(i)])
     else: 
       if (t.n.sons[i].kind != nkSym): InternalError(n.info, "genVarTuple")

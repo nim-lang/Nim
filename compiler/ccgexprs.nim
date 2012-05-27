@@ -283,7 +283,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
 
 proc expr(p: BProc, e: PNode, d: var TLoc)
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, getUniqueType(e.typ), OnUnknown)
+  initLoc(result, locNone, e.typ, OnUnknown)
   expr(p, e, result)
 
 proc getDestLoc(p: BProc, d: var TLoc, typ: PType) =
@@ -543,17 +543,17 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
 
 proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc): PType =
   initLocExpr(p, e.sons[0], a)
-  if (e.sons[1].kind != nkSym): InternalError(e.info, "genRecordFieldAux")
+  if e.sons[1].kind != nkSym: InternalError(e.info, "genRecordFieldAux")
   if d.k == locNone: d.s = a.s
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
-  result = getUniqueType(a.t)
+  result = a.t
 
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   var ty = genRecordFieldAux(p, e, d, a)
   var r = rdLoc(a)
   var f = e.sons[1].sym
-  if ty.n == nil:
+  if ty.kind == tyTuple:
     # we found a unique tuple type which lacks field information
     # so we use Field$i
     appf(r, ".Field$1", [toRope(f.position)])
@@ -561,14 +561,14 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   else:
     var field: PSym = nil
     while ty != nil:
-      if not (ty.kind in {tyTuple, tyObject}):
+      if ty.kind notin {tyTuple, tyObject}:
         InternalError(e.info, "genRecordField")
       field = lookupInRecord(ty.n, f.name)
       if field != nil: break
       if gCmd != cmdCompileToCpp: app(r, ".Sup")
       ty = GetUniqueType(ty.sons[0])
-    if field == nil: InternalError(e.info, "genRecordField")
-    if field.loc.r == nil: InternalError(e.info, "genRecordField")
+    if field == nil: InternalError(e.info, "genRecordField 2 ")
+    if field.loc.r == nil: InternalError(e.info, "genRecordField 3")
     appf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r)
 
@@ -579,16 +579,17 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[0], a)
   if d.k == locNone: d.s = a.s
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
-  var ty = getUniqueType(a.t)
+  var ty = a.t
   var r = rdLoc(a)
   case e.sons[1].kind
   of nkIntLit..nkInt64Lit: i = int(e.sons[1].intVal)
   else: internalError(e.info, "genTupleElem")
-  if ty.n != nil:
-    var field = ty.n.sons[i].sym
-    if field == nil: InternalError(e.info, "genTupleElem")
-    if field.loc.r == nil: InternalError(e.info, "genTupleElem")
-    appf(r, ".$1", [field.loc.r])
+  when false:
+    if ty.n != nil:
+      var field = ty.n.sons[i].sym
+      if field == nil: InternalError(e.info, "genTupleElem")
+      if field.loc.r == nil: InternalError(e.info, "genTupleElem")
+      appf(r, ".$1", [field.loc.r])
   else:
     appf(r, ".Field$1", [toRope(i)])
   putIntoDest(p, d, ty.sons[i], r)
@@ -1508,11 +1509,10 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
-      if t.n == nil:
-        initLoc(rec, locExpr, it.typ, d.s)
-        rec.r = ropef("$1.Field$2", [rdLoc(d), toRope(i)])
-        expr(p, it, rec)
-      else:
+      initLoc(rec, locExpr, it.typ, d.s)
+      rec.r = ropef("$1.Field$2", [rdLoc(d), toRope(i)])
+      expr(p, it, rec)
+      when false:
         initLoc(rec, locExpr, it.typ, d.s)
         if (t.n.sons[i].kind != nkSym): InternalError(n.info, "genTupleConstr")
         rec.r = ropef("$1.$2",

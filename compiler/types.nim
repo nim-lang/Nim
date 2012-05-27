@@ -550,6 +550,7 @@ type
 
   TSameTypeClosure = object {.pure.}
     cmp: TDistinctCompare
+    ignoreTupleFields: bool
     recCheck: int
     s: seq[tuple[a,b: int]] # seq for a set as it's hopefully faster
                             # (few elements expected)
@@ -645,7 +646,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
     for i in countup(0, sonsLen(a) - 1): 
       result = SameTypeAux(a.sons[i], b.sons[i], c)
       if not result: return 
-    if a.n != nil and b.n != nil: 
+    if a.n != nil and b.n != nil and not c.ignoreTupleFields: 
       for i in countup(0, sonsLen(a.n) - 1): 
         # check field names: 
         if a.n.sons[i].kind != nkSym: InternalError(a.n.info, "sameTuple")
@@ -785,6 +786,11 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
 proc SameType*(x, y: PType): bool =
   var c = initSameTypeClosure()
+  result = sameTypeAux(x, y, c)
+  
+proc sameBackendType*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  c.ignoreTupleFields = true
   result = sameTypeAux(x, y, c)
   
 proc compareTypes*(x, y: PType, cmp: TDistinctCompare): bool =
