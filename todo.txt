@@ -23,6 +23,7 @@ version 0.9.0
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
+- find a better solution for gensym instead of `*ident`
 - extract nimdoc properly and document it finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
