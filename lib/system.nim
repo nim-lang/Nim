@@ -2184,19 +2184,19 @@ proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
-proc `+=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Increments in placee a floating point number
   x = x + y
 
-proc `-=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Decrements in place a floating point number
   x = x - y
 
-proc `*=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
-proc `/=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Divides in place a floating point number
   x = x / y
 

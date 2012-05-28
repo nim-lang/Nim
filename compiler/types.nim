@@ -869,8 +869,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
       result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, tyTypeClass:
-    result = false            #InternalError('shit found');
+  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, 
+      tyTypeClass:
+    result = false
   of tyEmpty, tyNil:
     result = kind == skConst
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyBigNum, tyCString, tyPointer: 

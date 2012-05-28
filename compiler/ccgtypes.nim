@@ -144,7 +144,7 @@ proc mapSetType(typ: PType): TCTypeKind =
 
 proc mapType(typ: PType): TCTypeKind = 
   case typ.kind
-  of tyNone: result = ctVoid
+  of tyNone, tyStmt: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(typ)
