@@ -1,4 +1,5 @@
 discard """
+disabled: true
 output: '''StmtList
   VarSection
     IdentDefs
@@ -10,6 +11,8 @@ output: '''StmtList
           Ident !"create"
         IntLit 56'''
 """
+
+# disabled; can't work as the output is done by the compiler
 
 import macros
 
