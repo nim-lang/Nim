@@ -1,6 +1,8 @@
 version 0.9.0
 =============
 
+- fix the installer
+- implement 'gorge'
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template
 - ``bind`` for overloaded symbols does not work apparently

@@ -20,7 +20,8 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
   var pl = pl
-  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
+  # getUniqueType() is too expensive here:
+  var typ = skipTypes(ri.sons[0].typ, abstractInst)
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
       if sonsLen(ri) > 1: app(pl, ", ")
@@ -124,7 +125,8 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # this is a hotspot in the compiler
   initLocExpr(p, ri.sons[0], op)
   var pl = con(op.r, "(")
-  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
+  # getUniqueType() is too expensive here:
+  var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
@@ -150,7 +152,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
-  var typ = ri.sons[0].typ
+  
+  var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
@@ -201,7 +204,8 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope = nil
-  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
+  # getUniqueType() is too expensive here:
+  var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
@@ -228,7 +232,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl = toRope"["
-  var typ = ri.sons[0].typ # getUniqueType() is too expensive here!
+  # getUniqueType() is too expensive here:
+  var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
