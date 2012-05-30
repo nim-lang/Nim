@@ -479,7 +479,8 @@ proc setBiggestFloat*(x: TAny, y: biggestFloat) =
 proc getString*(x: TAny): string = 
   ## retrieve the string value out of `x`. `x` needs to represent a string.
   assert x.rawtype.kind == tyString
-  result = cast[ptr string](x.value)[]
+  if not isNil(cast[ptr pointer](x.value)[]):
+    result = cast[ptr string](x.value)[]
 
 proc setString*(x: TAny, y: string) = 
   ## sets the string value of `x`. `x` needs to represent a string.
