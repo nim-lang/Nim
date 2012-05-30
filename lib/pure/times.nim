@@ -580,11 +580,11 @@ proc format*(info: TTimeInfo, f: string): string =
           result.add('0')
         result.add($info.minute)
       of "M":
-        result.add($(int(info.month)))
+        result.add($(int(info.month)+1))
       of "MM":
         if int(info.month) < 10:
           result.add('0')
-        result.add($(int(info.month)))
+        result.add($(int(info.month)+1))
       of "MMM":
         result.add(($info.month)[0..2])
       of "MMMM":
