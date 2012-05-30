@@ -26,8 +26,8 @@ type
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
 var
-  timezone* {.importc, header: "<time.h>".}: int
-  tzname* {.importc, header: "<time.h>" .}: array[0..1, cstring]
+  timezone {.importc, header: "<time.h>".}: int
+  tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
 when defined(posix): 
   type
