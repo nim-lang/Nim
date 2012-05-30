@@ -1719,7 +1719,6 @@ Case statement
 Syntax::
 
   caseStmt ::= 'case' expr [':'] ('of' sliceExprList ':' stmt)*
-                                 ('elif' expr ':' stmt)*
                                  ['else' ':' stmt]
 
 Example:
