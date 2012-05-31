@@ -608,9 +608,16 @@ proc parseSmiley(p: var TRstParser): PRstNode =
       result.text = val
       return
 
+when false:
+  const
+    urlChars = {'A'..'Z', 'a'..'z', '0'..'9', ':', '#', '@', '%', '/', ';',
+                 '$', '(', ')', '~', '_', '?', '+', '-', '=', '\\', '.', '&',
+                 '\128'..'\255'}
+
 proc isURL(p: TRstParser, i: int): bool =
   result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
-          (p.tok[i+3].kind == tkWord) and (p.tok[i+4].symbol == ".")
+          (p.tok[i+3].kind == tkWord) and 
+          (p.tok[i].symbol in ["http", "ftp", "gopher", "telnet", "file"])
 
 proc parseURL(p: var TRstParser, father: PRstNode) = 
   #if p.tok[p.idx].symbol[strStart] == '<':
