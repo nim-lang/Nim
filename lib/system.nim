@@ -2150,10 +2150,21 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## the `typeinfo` module instead.
   
 proc slurp*(filename: string): string {.magic: "Slurp".}
-  ## compiletime ``readFile`` proc for easy `resource`:idx: embedding:
+proc staticRead*(filename: string): string {.magic: "Slurp".}
+  ## compile-time ``readFile`` proc for easy `resource`:idx: embedding:
   ## .. code-block:: nimrod
   ##
-  ##   const myResource = slurp"mydatafile.bin"
+  ##   const myResource = staticRead"mydatafile.bin"
+  ##
+
+proc staticExec*(command: string, input = ""): string {.magic: "StaticExec".}
+  ## executes an external process at compile-time.
+  ## if `input` is not an empty string, it will be passed as a standard input
+  ## to the executed program.
+  ## .. code-block:: nimrod
+  ##
+  ##   const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
+  ##                     "\nCompiled on " & staticExec("uname -v")
   ##
 
 proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}

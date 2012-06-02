@@ -27,7 +27,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     case it.kind
     of nkElifBranch, nkElifExpr: 
       checkSonsLen(it, 2)
-      var e = semAndEvalConstExpr(c, it.sons[0])
+      var e = semConstExpr(c, it.sons[0])
       if e.kind != nkIntLit: InternalError(n.info, "semWhen")
       if e.intVal != 0 and result == nil:
         setResult(it.sons[1]) 

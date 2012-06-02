@@ -491,12 +491,6 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
         skipTypes(t.sons[i], abstractInst).kind == tyVar:
       n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
-
-proc expectStringArg(c: PContext, n: PNode, i: int): PNode =
-  result = c.semAndEvalConstExpr(n.sons[i+1])
-  if result.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    GlobalError(result.info, errStringLiteralExpected)
-  
 include semmagic
 
 proc evalAtCompileTime(c: PContext, n: PNode): PNode =
@@ -901,7 +895,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     # [] operator for tuples requires constant expression:
-    n.sons[1] = semAndEvalConstExpr(c, n.sons[1])
+    n.sons[1] = semConstExpr(c, n.sons[1])
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal}).kind in
         {tyInt..tyInt64}: 
       var idx = getOrdValue(n.sons[1])
