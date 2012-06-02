@@ -36,7 +36,7 @@ type
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
     nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt, 
-    nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
+    nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt, 
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection, 
     nnkConstDef, nnkTypeDef, 
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
@@ -221,6 +221,15 @@ template emit*(s: expr): stmt =
   block:
     const evaluated = s
     eval: result = evaluated.parseStmt
+  when false:
+    template once(x: expr): expr =
+      block:
+        const y = x
+        y
+
+    macro `payload`(x: stmt): stmt = result = once(s).parseStmt
+    `payload`()
+
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
@@ -323,7 +332,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
 
 macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
-  ## tree using the `toTree` function.
+  ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to explore the Nimrod's abstract syntax 
   ## tree and to discover what kind of nodes must be created to represent
@@ -331,7 +340,7 @@ macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
 
 macro dumpLisp*(s: stmt): stmt = echo s[1].lispRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
-  ## tree using the `toLisp` function.
+  ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
 

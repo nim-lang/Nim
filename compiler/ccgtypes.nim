@@ -144,7 +144,7 @@ proc mapSetType(typ: PType): TCTypeKind =
 
 proc mapType(typ: PType): TCTypeKind = 
   case typ.kind
-  of tyNone: result = ctVoid
+  of tyNone, tyStmt: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(typ)
@@ -561,7 +561,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
         appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result])
       IdTablePut(m.forwTypeCache, t, result)
     IdTablePut(m.typeCache, t, result) # always call for sideeffects:
-    if t.n != nil: recdesc = getRecordDesc(m, t, result, check)
+    if t.kind != tyTuple: recdesc = getRecordDesc(m, t, result, check)
     else: recdesc = getTupleDesc(m, t, result, check)
     if not isImportedType(t): app(m.s[cfsTypes], recdesc)
   of tySet: 
@@ -889,8 +889,11 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
   of tyEnum: genEnumInfo(gNimDat, t, result)
   of tyObject: genObjectInfo(gNimDat, t, result)
   of tyTuple: 
-    if t.n != nil: genObjectInfo(gNimDat, t, result)
-    else: genTupleInfo(gNimDat, t, result)
+    # if t.n != nil: genObjectInfo(gNimDat, t, result)
+    # else:
+    # BUGFIX: use consistently RTTI without proper field names; otherwise
+    # results are not deterministic!
+    genTupleInfo(gNimDat, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
 
 proc genTypeSection(m: BModule, n: PNode) = 

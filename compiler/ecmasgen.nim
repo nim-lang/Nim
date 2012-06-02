@@ -1343,7 +1343,8 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkWhileStmt: genWhileStmt(p, n, r)
   of nkVarSection, nkLetSection: genVarStmt(p, n, r)
   of nkConstSection: genConstStmt(p, n, r)
-  of nkForStmt: internalError(n.info, "for statement not eliminated")
+  of nkForStmt, nkParForStmt: 
+    internalError(n.info, "for statement not eliminated")
   of nkCaseStmt: genCaseStmt(p, n, r)
   of nkReturnStmt: genReturnStmt(p, n, r)
   of nkBreakStmt: genBreakStmt(p, n, r)

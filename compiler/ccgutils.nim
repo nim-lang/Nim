@@ -87,14 +87,19 @@ proc GetUniqueType*(key: PType): PType =
   of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
     result = GetUniqueType(lastSon(key))
   of tyArrayConstr, tyGenericInvokation, tyGenericBody,
-     tyOpenArray, tyArray, tyTuple, tySet, tyRange, 
+     tyOpenArray, tyArray, tySet, tyRange, tyTuple,
      tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
+    # tuples are quite horrible as C does not support them directly and
+    # tuple[string, string] is a (strange) subtype of
+    # tuple[nameA, nameB: string]. This bites us here, so we 
+    # use 'sameBackendType' instead of 'sameType'.
+
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
     if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
     for h in countup(0, high(gTypeTable[k].data)): 
       var t = PType(gTypeTable[k].data[h].key)
-      if t != nil and sameType(t, key): 
+      if t != nil and sameBackendType(t, key): 
         return t
     IdTablePut(gTypeTable[k], key, key)
     result = key
