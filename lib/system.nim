@@ -2175,7 +2175,8 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##   const myResource = staticRead"mydatafile.bin"
   ##
 
-proc staticExec*(command: string, input = ""): string {.magic: "StaticExec".}
+proc staticExec*(command: string, input = ""): string {.
+  magic: "StaticExec".} = nil
   ## executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
