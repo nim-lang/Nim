@@ -550,6 +550,7 @@ type
 
   TSameTypeClosure = object {.pure.}
     cmp: TDistinctCompare
+    ignoreTupleFields: bool
     recCheck: int
     s: seq[tuple[a,b: int]] # seq for a set as it's hopefully faster
                             # (few elements expected)
@@ -645,7 +646,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
     for i in countup(0, sonsLen(a) - 1): 
       result = SameTypeAux(a.sons[i], b.sons[i], c)
       if not result: return 
-    if a.n != nil and b.n != nil: 
+    if a.n != nil and b.n != nil and not c.ignoreTupleFields: 
       for i in countup(0, sonsLen(a.n) - 1): 
         # check field names: 
         if a.n.sons[i].kind != nkSym: InternalError(a.n.info, "sameTuple")
@@ -787,6 +788,11 @@ proc SameType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   result = sameTypeAux(x, y, c)
   
+proc sameBackendType*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  c.ignoreTupleFields = true
+  result = sameTypeAux(x, y, c)
+  
 proc compareTypes*(x, y: PType, cmp: TDistinctCompare): bool =
   ## compares two type for equality (modulo type distinction)
   var c = initSameTypeClosure()
@@ -863,8 +869,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
       result = typeAllowedAux(marker, t.sons[0], skResult)
   of tyExpr, tyStmt, tyTypeDesc: 
     result = true
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, tyTypeClass:
-    result = false            #InternalError('shit found');
+  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, 
+      tyTypeClass:
+    result = false
   of tyEmpty, tyNil:
     result = kind == skConst
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyBigNum, tyCString, tyPointer: 

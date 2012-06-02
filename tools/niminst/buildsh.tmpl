@@ -3,6 +3,9 @@
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/buildsh.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
+
+set -e
+
 while :
 do
     case "$1" in
@@ -108,11 +111,11 @@ case $myos in
 #      var linkCmd = ""
 #      for f in items(c.cfiles[osA][cpuA]):
     echo "$CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}"
-    $CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")} || exit 1
+    $CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for    
     echo "$LINKER $LINK_FLAGS -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd"
-    $LINKER $LINK_FLAGS -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd || exit 1
+    $LINKER $LINK_FLAGS -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd
     ;;
 #    end for
   *)

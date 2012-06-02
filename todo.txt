@@ -1,8 +1,10 @@
 version 0.9.0
 =============
 
-- make stack traces part of the exception in debug builds
-- make templates hygienic by default
+- implement 'gorge'
+- implement a warning message for shadowed 'result' variable
+- make templates hygienic by default: try to gensym() everything in the 'block'
+  of a template
 - ``bind`` for overloaded symbols does not work apparently
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
@@ -24,6 +26,7 @@ version 0.9.0
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
+- find a better solution for gensym instead of `*ident`
 - extract nimdoc properly and document it finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
@@ -32,17 +35,9 @@ version 0.9.0
   error handling more light-weight
   people also want ``inc a; inc b``
 
+
 Bugs
 ----
-- bug: generic assign still buggy
-  - special case the generic assign that needs to care about case objects
-
-- bug: returning a tyVar does not mean it is save to return it:
-  proc forward[T](x: var T): var T = result = x
-  proc p(): var int = 
-    var x: int
-    # reject this call via alias analysis:
-    result = forward(x)
 
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?

@@ -40,3 +40,18 @@ template typedef(name: expr, typ: typeDesc) {.immediate.} =
 typedef(myint, int)
 var x: PMyInt
 
+
+# Test UFCS
+
+type
+  Foo = object
+    arg: int
+
+proc initFoo(arg: int): Foo =
+  result.arg = arg
+
+template create(typ: typeDesc, arg: expr): expr = `init typ`(arg)
+
+var ff = Foo.create(12)
+
+echo ff.arg

@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+proc genericResetAux(dest: Pointer, n: ptr TNimNode)
+
 proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool)
 proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
   var
@@ -20,10 +22,16 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
     for i in 0..n.len-1:
       genericAssignAux(dest, src, n.sons[i], shallow)
   of nkCase:
+    var dd = selectBranch(dest, n)
+    var m = selectBranch(src, n)
+    # reset if different branches are in use; note different branches also
+    # imply that's not self-assignment (``x = x``)!
+    if m != dd and dd != nil: 
+      genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
-    var m = selectBranch(src, n)
-    if m != nil: genericAssignAux(dest, src, m, shallow)
+    if m != nil:
+      genericAssignAux(dest, src, m, shallow)
   of nkNone: sysAssert(false, "genericAssignAux")
   #else:
   #  echo "ugh memory corruption! ", n.kind

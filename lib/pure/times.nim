@@ -24,7 +24,11 @@ type
     mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
   TWeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
-    
+
+var
+  timezone {.importc, header: "<time.h>".}: int
+  tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
+
 when defined(posix): 
   type
     TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int
@@ -112,6 +116,20 @@ type
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
                               ## Always 0 if the target is ECMAScript.
+    isDST*: bool              ## Determines whether DST is in effect. Always
+                              ## ``False`` if time is UTC.
+    tzname*: string           ## The timezone this time is in. E.g. GMT
+    timezone*: int            ## The offset of the (non-DST) timezone in seconds
+                              ## west of UTC.
+
+  TTimeInterval* = object
+    miliseconds*: int ## The number of miliseconds
+    seconds*: int     ## The number of seconds
+    minutes*: int     ## The number of minutes
+    hours*: int       ## The number of hours
+    days*: int        ## The number of days
+    months*: int      ## The number of months
+    years*: int       ## The number of years
 
 proc getTime*(): TTime ## gets the current calendar time
 proc getLocalTime*(t: TTime): TTimeInfo
@@ -122,7 +140,7 @@ proc getGMTime*(t: TTime): TTimeInfo
   ## expressed in Coordinated Universal Time (UTC).
 
 proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime
-  ## converts a broken-down time structure, expressed as local time, to
+  ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
@@ -146,9 +164,89 @@ proc `<=` * (a, b: TTime): bool {.
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
+proc getTzname*(): tuple[nonDST, DST: string]
+  ## returns the local timezone; ``nonDST`` is the name of the local non-DST
+  ## timezone, ``DST`` is the name of the local DST timezone.
+
+proc getTimezone*(): int
+  ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
+
 proc getStartMilsecs*(): int {.deprecated.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
+
+proc newInterval*(miliseconds, seconds, minutes, hours, days, months, 
+                  years: int = 0): TTimeInterval =
+  ## creates a new ``TTimeInterval``.
+  result.miliseconds = miliseconds
+  result.seconds = seconds
+  result.minutes = minutes
+  result.hours = hours
+  result.days = days
+  result.months = months
+  result.years = years
+
+proc isLeapYear(year: int): bool =
+  if year mod 400 == 0:
+     return true
+  elif year mod 100 == 0: 
+     return false
+  elif year mod 4 == 0: 
+     return true
+  else:
+     return false
+
+proc getDaysInMonth(month: TMonth, year: int): int =
+  # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
+  if month == mFeb: # Feb
+    if isLeapYear(year):
+      result = 29
+    else:
+      result = 28
+  elif month in [mApr, mJun, mSep, mNov]: result = 30
+  else: result = 31  
+
+proc calculateSeconds(a: TTimeInfo, interval: TTimeInterval): float =
+  var anew = a
+  var newinterv = interval
+  result = 0.0
+  
+  newinterv.months += interval.years * 12
+  var curMonth = anew.month
+  for mth in 1 .. newinterv.months:
+    result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+    if curMonth == mDec:
+      curMonth = mJan
+      anew.year.inc()
+    else:
+      curMonth.inc()
+  result += float(newinterv.days * 24 * 60 * 60)
+  result += float(newinterv.minutes * 60 * 60)
+  result += newinterv.seconds.float
+  result += newinterv.miliseconds / 1000
+
+proc `+`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
+  ## adds ``interval`` time.
+  ##
+  ## **Note:** This has been only briefly tested and it may not be very accurate.
+  let t = timeInfoToTime(a)
+  var secs = calculateSeconds(a, interval)
+  if a.tzname == "UTC":
+    result = getGMTime(TTime(float(t) + secs))
+  else:
+    result = getLocalTime(TTime(float(t) + secs))
+
+proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
+  ## subtracts ``interval`` time.
+  ##
+  ## **Note:** This has been only briefly tested, it is inaccurate especially
+  ## when you subtract so much that you reach the Julian calendar.
+  let t = timeInfoToTime(a)
+  var secs = calculateSeconds(a, interval)
+  if a.tzname == "UTC":
+    result = getGMTime(TTime(float(t) - secs))
+  else:
+    result = getLocalTime(TTime(float(t) - secs))
 
 when not defined(ECMAScript):  
   proc epochTime*(): float {.rtl, extern: "nt$1".}
@@ -169,7 +267,8 @@ when not defined(ECMAScript):
     ##   doWork()
     ##   echo "CPU time [s] ", cpuTime() - t0
 
-when not defined(ECMAScript):  
+when not defined(ECMAScript):
+  
   # C wrapper:
   type
     structTM {.importc: "struct tm", final.} = object
@@ -205,7 +304,7 @@ when not defined(ECMAScript):
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
     
   # our own procs on top of that:
-  proc tmToTimeInfo(tm: structTM): TTimeInfo =
+  proc tmToTimeInfo(tm: structTM, local: bool): TTimeInfo =
     const
       weekDays: array [0..6, TWeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
@@ -217,6 +316,18 @@ when not defined(ECMAScript):
     result.year = tm.year + 1900'i32
     result.weekday = weekDays[int(tm.weekDay)]
     result.yearday = int(tm.yearday)
+    result.isDST = tm.isDST > 0
+    #result.tzname = if local: getTzname()[if result.isDST: 0 else: 1] else: "UTC"
+    # TODO: ^^^ Crashes the compiler.
+    if local:
+      if result.isDST:
+        result.tzname = getTzname()[0]
+      if not result.isDST:
+        result.tzname = getTzname()[1]
+    else:
+      result.tzname = "UTC"
+    
+    result.timezone = if local: getTimezone() else: 0
   
   proc timeInfoToTM(t: TTimeInfo): structTM =
     const
@@ -229,7 +340,7 @@ when not defined(ECMAScript):
     result.year = t.year - 1900
     result.weekday = weekDays[t.weekDay]
     result.yearday = t.yearday
-    result.isdst = -1
+    result.isdst = if t.isDST: 1 else: 0
   
   when not defined(useNimRtl):
     proc `-` (a, b: TTime): int64 =
@@ -251,13 +362,13 @@ when not defined(ECMAScript):
   proc getTime(): TTime = return timec(nil)
   proc getLocalTime(t: TTime): TTimeInfo =
     var a = t
-    result = tmToTimeInfo(localtime(addr(a))[])
+    result = tmToTimeInfo(localtime(addr(a))[], true)
     # copying is needed anyway to provide reentrancity; thus
     # the convertion is not expensive
   
   proc getGMTime(t: TTime): TTimeInfo =
     var a = t
-    result = tmToTimeInfo(gmtime(addr(a))[])
+    result = tmToTimeInfo(gmtime(addr(a))[], false)
     # copying is needed anyway to provide reentrancity; thus
     # the convertion is not expensive
   
@@ -294,7 +405,13 @@ when not defined(ECMAScript):
   proc winTimeToUnixTime*(t: int64): TTime = 
     ## converts a Windows time to a UNIX `TTime` (``time_t``)
     result = TTime((t - epochDiff) div rateDiff)
-    
+ 
+  proc getTzname(): tuple[nonDST, DST: string] =
+    return ($tzname[0], $tzname[1])
+  
+  proc getTimezone(): int =
+    return timezone
+  
   when not defined(useNimRtl):
     proc epochTime(): float = 
       when defined(posix):
@@ -417,18 +534,21 @@ proc format*(info: TTimeInfo, f: string): string =
   ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
   ##    y(yyyy)  This displays the year to different digits. You most likely only want 2 or 4 'y's
   ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
-  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``                                
+  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
+  ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
+  ##    zzz      Same as above but with ``:00``.                                                    ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
+  ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
   ## ==========  =================================================================================  ================================================
-
+  ##
+  ## Other strings can be inserted by putting them in ``''``. For example ``hh'->'mm`` will give ``01->56``.
 
   result = ""
   var i = 0
   var currentF = ""
   while True:
     case f[i]
-    of '\0':
-      break
-    of ' ', '-', '/', ':', '\'':
+    of ' ', '-', '/', ':', '\'', '\0':
       case currentF
       of "d":
         result.add($info.monthday)
@@ -437,9 +557,9 @@ proc format*(info: TTimeInfo, f: string): string =
           result.add("0")
         result.add($info.monthday)
       of "ddd":
-        result.add(($info.month)[0 .. 2])
+        result.add(($info.monthday)[0 .. 2])
       of "dddd":
-        result.add($info.month)
+        result.add($info.monthday)
       of "h":
         result.add($(info.hour - 12))
       of "hh":
@@ -460,11 +580,11 @@ proc format*(info: TTimeInfo, f: string): string =
           result.add('0')
         result.add($info.minute)
       of "M":
-        result.add($(int(info.month)))
+        result.add($(int(info.month)+1))
       of "MM":
         if int(info.month) < 10:
           result.add('0')
-        result.add($(int(info.month)))
+        result.add($(int(info.month)+1))
       of "MMM":
         result.add(($info.month)[0..2])
       of "MMMM":
@@ -500,12 +620,32 @@ proc format*(info: TTimeInfo, f: string): string =
       of "yyyyy":
         result.add('0')
         result.add($info.year)
+      of "z":
+        let hrs = (info.timezone div 60) div 60
+        result.add($hrs)
+      of "zz":
+        let hrs = (info.timezone div 60) div 60
+        
+        result.add($hrs)
+        if hrs.abs < 10:
+          var atIndex = result.len-(($hrs).len-(if hrs < 0: 1 else: 0))
+          result.insert("0", atIndex)
+      of "zzz":
+        let hrs = (info.timezone div 60) div 60
+        
+        result.add($hrs & ":00")
+        if hrs.abs < 10:
+          var atIndex = result.len-(($hrs & ":00").len-(if hrs < 0: 1 else: 0))
+          result.insert("0", atIndex)
+      of "ZZZ":
+        result.add(info.tzname)
       of "":
         nil # Do nothing.
       else:
         raise newException(EInvalidValue, "Invalid format string: " & currentF)
       
       currentF = ""
+      if f[i] == '\0': break
       
       if f[i] == '\'':
         inc(i) # Skip '

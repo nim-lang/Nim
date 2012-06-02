@@ -49,8 +49,12 @@ type
                                 ## a type description (for templates)
   void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
   
-  TInteger* = int|char|int8|int16|int32|int64|bool|enum
+  TInteger* = int|int8|int16|int32|int64
     ## type class matching all integer types
+
+  TOrdinal* = TInteger|bool|enum
+    ## type class matching all ordinal types; however this includes enums with
+    ## holes.
 
   TNumber* = TInteger|float|float32|float64
     ## type class matching all number types
@@ -190,6 +194,7 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message 
                                         ## is bad style.
+    trace: string
 
   EAsynch* = object of E_Base ## Abstract exception class for
                               ## *asynchronous exceptions* (interrupts).
@@ -1195,6 +1200,15 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     yield res
     inc res
 
+iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
+  inline, magic: "OmpParFor", sideEffect.} =
+  ## parallel loop iterator. Same as `..` but the loop may run in parallel.
+  ## `annotation` is an additional annotation for the code generator to use.
+  ## Note that the compiler maps that to
+  ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
+  ## such isn't aware of the parallelism in your code. Be careful.
+  nil
+
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}
@@ -1900,6 +1914,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hostOS != "standalone":
     proc getStackTrace*(): string
       ## gets the current stack trace. This is only works for debug builds.
+
+    proc getStackTrace*(e: ref E_Base): string
+      ## gets the stack trace associated with `e`, which is the stack that
+      ## lead to the ``raise`` statement. This is only works for debug builds.
       
   {.push stack_trace: off.}
   when hostOS == "standalone":
@@ -2177,19 +2195,19 @@ proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
-proc `+=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Increments in placee a floating point number
   x = x + y
 
-proc `-=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Decrements in place a floating point number
   x = x - y
 
-proc `*=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
-proc `/=` *(x: var float, y:float) {.inline, noSideEffect.} =
+proc `/=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
   ## Divides in place a floating point number
   x = x / y
 
@@ -2282,6 +2300,19 @@ template eval*(blk: stmt): stmt =
   block:
     macro payload(x: stmt): stmt = blk
     payload()
+
+proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
+  ## inserts `item` into `x` at position `i`.
+  var xl = x.len
+  setLen(x, xl+item.len)
+  var j = xl-1
+  while j >= i:
+    shallowCopy(x[j+item.len], x[j])
+    dec(j)
+  j = 0
+  while j < item.len:
+    x[j+i] = item[j]
+    inc(j)
 
 when defined(initDebugger):
   initDebugger()
