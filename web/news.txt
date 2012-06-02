@@ -27,6 +27,8 @@ Library Additions
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at
   compile time as if was a macro.
+- Added ``system.staticExec`` for compile-time execution of external programs
+- Added ``system.staticRead`` as a synonym for slurp
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
 - Added ``strutils.parseEnum``.

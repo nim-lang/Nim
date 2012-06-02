@@ -370,7 +370,7 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf,
-    mEcho, mShallowCopy, mSlurp,
+    mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst,
     mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
@@ -541,6 +541,9 @@ type
                               # for easy generation of proper error messages
                               # for variant record fields the discriminant
                               # expression
+                              # for modules, it's a placeholder for compiler
+                              # generated code that will be appended to the
+                              # module after the sem pass (see appendToModule)
     options*: TOptions
     position*: int            # used for many different things:
                               # for enum fields its position;
@@ -742,6 +745,16 @@ proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
   s.typ = t
   result = s
 
+proc appendToModule*(m: PSym, n: PNode) =
+  ## The compiler will use this internally to add nodes that will be
+  ## appended to the module after the sem pass
+  if m.ast == nil:
+    m.ast = newNode(nkStmtList)
+    m.ast.sons = @[n]
+  else:
+    assert m.ast.kind == nkStmtList
+    m.ast.sons.add(n)
+  
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0

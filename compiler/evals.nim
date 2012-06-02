@@ -16,7 +16,7 @@
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
   msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
-  parser, ropes, rodread, idgen
+  parser, ropes, rodread, idgen, osproc, streams
 
 type 
   PStackFrame* = ref TStackFrame
@@ -910,6 +910,43 @@ proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   else:
     internalAssert false
 
+proc expectString(n: PNode) =
+  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+    GlobalError(n.info, errStringLiteralExpected)
+
+proc evalSlurp*(e: PNode, module: PSym): PNode =
+  expectString(e)
+  try:
+    var filename = e.strVal.FindFile
+    var content = readFile(filename)
+    result = newStrNode(nkStrLit, content)
+    result.typ = getSysType(tyString)
+    result.info = e.info
+    # we produce a fake include statement for every slurped filename, so that
+    # the module dependencies are accurate:    
+    appendToModule(module, newNode(nkIncludeStmt, e.info, @[
+      newStrNode(nkStrLit, filename)]))
+  except EIO:
+    GlobalError(e.info, errCannotOpenFile, e.strVal)
+
+proc readOutput(p: PProcess): string =
+  result = ""
+  var output = p.outputStream
+  discard p.waitForExit
+  while not output.atEnd:
+    result.add(output.readLine)
+
+proc evalStaticExec*(cmd, input: PNode): PNode =
+  expectString(cmd)
+  var p = startCmd(cmd.strVal)
+  if input != nil:
+    expectString(input)
+    p.inputStream.write(input.strVal)
+    p.inputStream.close()
+  result = newStrNode(nkStrLit, p.readOutput)
+  result.typ = getSysType(tyString)
+  result.info = cmd.info
+
 proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
   var
     n = original.copyTree
@@ -960,6 +997,11 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mParseStmtToAst: result = evalParseStmt(c, n)
   of mExpandToAst: result = evalExpandToAst(c, n)
   of mTypeTrait: result = evalTypeTrait(n, c.module)
+  of mSlurp: result = evalSlurp(evalAux(c, n.sons[1], {}), c.module)
+  of mStaticExec:
+    let cmd = evalAux(c, n.sons[1], {})
+    let input = if n.sonsLen == 3: evalAux(c, n.sons[2], {}) else: nil
+    result = evalStaticExec(cmd, input)
   of mNLen:
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
