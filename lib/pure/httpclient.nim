@@ -42,6 +42,14 @@
 ##   body.add("--xyz--")
 ##    
 ##   echo(postContent("http://validator.w3.org/check", headers, body))
+##
+## SSL/TLS support
+## ===============
+## This requires the OpenSSL library, fortunately it's widely used and installed
+## on many operating systems. httpclient will use SSL automatically if you give
+## any of the functions a url with the ``https`` schema, for example:
+## ``https://github.com/``, you also have to compile with ``ssl`` defined like so:
+## ``nimrod c -d:ssl ...``.
 
 import sockets, strutils, parseurl, parseutils, strtabs
 
@@ -152,7 +160,7 @@ proc parseBody(d: var string, start: int, s: TSocket,
           result.add(moreData)
 
 proc parseResponse(s: TSocket): TResponse =
-  var d = s.recv.string
+  var d = s.recv.string # Warning: without a Connection: Close header this will not work.
   var i = 0
 
   # Parse the version
@@ -241,11 +249,19 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   headers.add(" HTTP/1.1\c\L")
   
   add(headers, "Host: " & r.hostname & "\c\L")
+  add(headers, "Connection: Close\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
 
   var s = socket()
-  s.connect(r.hostname, TPort(80))
+  var port = TPort(80)
+  if r.scheme == "https":
+    when defined(ssl):
+      s.wrapSocket(verifyMode = CVerifyNone)
+    port = TPort(443)
+  if r.port != "":
+    port = TPort(r.port.parseInt)
+  s.connect(r.hostname, port)
   s.send(headers)
   if body != "":
     s.send(body)
