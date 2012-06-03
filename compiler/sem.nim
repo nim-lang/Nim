@@ -89,9 +89,6 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return nil
   result = evalTypedExpr(c, e)
 
-proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
-  result = semConstExpr(c, n)
-
 include seminst, semcall
 
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
@@ -219,12 +216,8 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   else:
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
-  # we produce a fake include statement for every slurped filename, so that
-  # the module dependencies are accurate:
-  var ics = newNode(nkIncludeStmt)
-  for s in items(c.slurpedFiles): ics.add(newStrNode(nkStrLit, s))
-  result.add(ics)
-  
+  if c.module.ast != nil:
+    result.add(c.module.ast)
   checkThreads(c)
   popOwner()
   popProcCon(c)
