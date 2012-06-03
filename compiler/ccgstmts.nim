@@ -205,15 +205,19 @@ proc blockLeaveActions(p: BProc, howMany: int) =
     stack[i-1] = p.nestedTryStmts[L-i]
   setLen(p.nestedTryStmts, L-howMany)
   
+  var alreadyPoppedCnt = p.inExceptBlock
   for tryStmt in items(stack):
-    appcg(p, cpsStmts, "#popSafePoint();$n", [])
+    if alreadyPoppedCnt > 0:
+      dec alreadyPoppedCnt
+    else:
+      appcg(p, cpsStmts, "#popSafePoint();$n", [])
     var finallyStmt = lastSon(tryStmt)
     if finallyStmt.kind == nkFinally: 
       genStmts(p, finallyStmt.sons[0])
   # push old elements again:
   for i in countdown(howMany-1, 0): 
     p.nestedTryStmts.add(stack[i])
-  for i in countdown(p.popCurrExc-1, 0):
+  for i in countdown(p.inExceptBlock-1, 0):
     appcg(p, cpsStmts, "#popCurrentException();$n", [])
 
 proc genReturnStmt(p: BProc, t: PNode) =
@@ -310,7 +314,13 @@ proc getRaiseFrmt(p: BProc): string =
   #else: 
   result = "#raiseException((#E_Base*)$1, $2);$n"
 
-proc genRaiseStmt(p: BProc, t: PNode) = 
+proc genRaiseStmt(p: BProc, t: PNode) =
+  if p.inExceptBlock > 0:
+    # if the current try stmt have a finally block,
+    # we must execute it before reraising
+    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
+    if finallyBlock.kind == nkFinally:
+      genStmts(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty: 
     var a: TLoc
     InitLocExpr(p, t.sons[0], a)
@@ -628,7 +638,7 @@ proc genTryStmt(p: BProc, t: PNode) =
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   endBlock(p, ropecg(p.module, "#popSafePoint();$n } else {$n#popSafePoint();$n"))
-  discard pop(p.nestedTryStmts)
+  inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
     var blen = sonsLen(t.sons[i])
@@ -637,13 +647,10 @@ proc genTryStmt(p: BProc, t: PNode) =
       if i > 1: appf(p.s(cpsStmts), "else")
       startBlock(p)
       appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
-      inc p.popCurrExc
       genStmts(p, t.sons[i].sons[0])
-      dec p.popCurrExc
       appcg(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
     else:
-      inc p.popCurrExc
       var orExpr: PRope = nil
       for j in countup(0, blen - 2): 
         assert(t.sons[i].sons[j].kind == nkType)
@@ -655,9 +662,10 @@ proc genTryStmt(p: BProc, t: PNode) =
       startBlock(p, "if ($1) {$n", [orExpr])
       appcg(p, cpsStmts, "$1.status = 0;$n", [safePoint])
       genStmts(p, t.sons[i].sons[blen-1])
-      dec p.popCurrExc
       endBlock(p, ropecg(p.module, "#popCurrentException();}$n"))
     inc(i)
+  dec p.inExceptBlock
+  discard pop(p.nestedTryStmts)
   appf(p.s(cpsStmts), "}$n") # end of else block
   if i < length and t.sons[i].kind == nkFinally:
     genSimpleBlock(p, t.sons[i].sons[0])
@@ -820,9 +828,8 @@ proc genStmts(p: BProc, t: PNode) =
     initLocExpr(p, t.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, t)
   of nkTryStmt: 
-    #if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)
-    #else: 
-    genTryStmt(p, t)
+    if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)
+    else: genTryStmt(p, t)
   of nkRaiseStmt: genRaiseStmt(p, t)
   of nkTypeSection: 
     # we have to emit the type information for object types here to support
