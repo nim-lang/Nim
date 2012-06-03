@@ -881,10 +881,15 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   # seq &= x  -->
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
+  let seqAppendPattern = if gCmd != cmdCompileToCpp:
+      "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
+    else:
+      "$1 = ($2) #incrSeq($1, sizeof($3));$n"
+
   var a, b, dest: TLoc
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  appcg(p, cpsStmts, "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n", [
+  appcg(p, cpsStmts, seqAppendPattern, [
       rdLoc(a),
       getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
       getTypeDesc(p.module, skipTypes(e.sons[2].Typ, abstractVar))])
@@ -1114,8 +1119,12 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
   var t = skipTypes(e.sons[1].typ, abstractVar)
-  appcg(p, cpsStmts, 
-      "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n", [
+  let setLenPattern = if gCmd != cmdCompileToCpp:
+      "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n"
+    else:
+      "$1 = ($3) #setLengthSeq($1, sizeof($4), $2);$n"
+
+  appcg(p, cpsStmts, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       getTypeDesc(p.module, t.sons[0])])
   keepAlive(p, a)

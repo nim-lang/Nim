@@ -935,6 +935,8 @@ type # these work for most platforms:
     ## This is the same as the type ``short`` in *C*.
   cint* {.importc: "int", nodecl.} = int32
     ## This is the same as the type ``int`` in *C*.
+  csize* {.importc: "size_t", nodecl.} = int
+    ## This is the same as the type ``size_t`` in *C*.
   clong* {.importc: "long", nodecl.} = int
     ## This is the same as the type ``long`` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
@@ -951,7 +953,7 @@ type # these work for most platforms:
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
-
+  
   PFloat32* = ptr Float32 ## an alias for ``ptr float32``
   PFloat64* = ptr Float64 ## an alias for ``ptr float64``
   PInt64* = ptr Int64 ## an alias for ``ptr int64``
