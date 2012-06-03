@@ -207,18 +207,20 @@ proc blockLeaveActions(p: BProc, howMany: int) =
   
   var alreadyPoppedCnt = p.inExceptBlock
   for tryStmt in items(stack):
-    if alreadyPoppedCnt > 0:
-      dec alreadyPoppedCnt
-    else:
-      appcg(p, cpsStmts, "#popSafePoint();$n", [])
+    if gCmd != cmdCompileToCpp:
+      if alreadyPoppedCnt > 0:
+        dec alreadyPoppedCnt
+      else:
+        appcg(p, cpsStmts, "#popSafePoint();$n", [])
     var finallyStmt = lastSon(tryStmt)
     if finallyStmt.kind == nkFinally: 
       genStmts(p, finallyStmt.sons[0])
   # push old elements again:
   for i in countdown(howMany-1, 0): 
     p.nestedTryStmts.add(stack[i])
-  for i in countdown(p.inExceptBlock-1, 0):
-    appcg(p, cpsStmts, "#popCurrentException();$n", [])
+  if gCmd != cmdCompileToCpp:
+    for i in countdown(p.inExceptBlock-1, 0):
+      appcg(p, cpsStmts, "#popCurrentException();$n", [])
 
 proc genReturnStmt(p: BProc, t: PNode) =
   p.beforeRetNeeded = true
@@ -309,10 +311,10 @@ proc genBreakStmt(p: BProc, t: PNode) =
   appf(p.s(cpsStmts), "goto $1;$n", [label])
 
 proc getRaiseFrmt(p: BProc): string = 
-  #if gCmd == cmdCompileToCpp: 
-  #  result = "throw #nimException($1, $2);$n"
-  #else: 
-  result = "#raiseException((#E_Base*)$1, $2);$n"
+  if gCmd == cmdCompileToCpp: 
+    result = "throw NimException($1, $2);$n"
+  else:
+    result = "#raiseException((#E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
@@ -320,7 +322,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     # we must execute it before reraising
     var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
     if finallyBlock.kind == nkFinally:
-      genStmts(p, finallyBlock.sons[0])
+      genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty: 
     var a: TLoc
     InitLocExpr(p, t.sons[0], a)
@@ -331,10 +333,10 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   else: 
     genLineDir(p, t)
     # reraise the last exception:
-    #if gCmd == cmdCompileToCpp: 
-    #  appcg(p, cpsStmts, "throw;$n")
-    #else: 
-    appcg(p, cpsStmts, "#reraiseException();$n")
+    if gCmd == cmdCompileToCpp:
+      appcg(p, cpsStmts, "throw;$n")
+    else:
+      appcg(p, cpsStmts, "#reraiseException();$n")
 
 proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc, 
                           rangeFormat, eqFormat: TFormatStr, labl: TLabel) = 
@@ -528,79 +530,85 @@ proc hasGeneralExceptSection(t: PNode): bool =
     inc(i)
   result = false
 
-proc genTryStmtCpp(p: BProc, t: PNode) = 
+proc genTryStmtCpp(p: BProc, t: PNode) =
   # code to generate:
   #
-  #   bool tmpRethrow = false;
+  # XXX: There should be a standard dispatch algorithm
+  # that's used both here and with multi-methods
+  #
   #   try
   #   {
   #      myDiv(4, 9);
-  #   } catch (NimException& tmp) {
-  #      tmpRethrow = true;
-  #      switch (tmp.exc)
-  #      {
-  #         case DIVIDE_BY_ZERO:
-  #           tmpRethrow = false;
-  #           printf("Division by Zero\n");
-  #         break;
-  #      default: // used for general except!
-  #         generalExceptPart();
-  #         tmpRethrow = false;
+  #   } catch (NimException& exp) {
+  #      if (isObj(exp, EIO) {
+  #        ...
+  #      } else if (isObj(exp, ESystem) {
+  #        ...
+  #        finallyPart()
+  #        raise;
+  #      } else {
+  #        // general handler
   #      }
   #  }
-  #  excHandler = excHandler->prev; // we handled the exception
   #  finallyPart();
-  #  if (tmpRethrow) throw; 
-  #
-  #  XXX: push blocks
-  var 
-    rethrowFlag: PRope
+  var
     exc: PRope
     i, length, blen: int
   genLineDir(p, t)
-  rethrowFlag = nil
   exc = getTempName()
-  if not hasGeneralExceptSection(t): 
-    rethrowFlag = getTempName()
-    appf(p.s(cpsLocals), "volatile NIM_BOOL $1 = NIM_FALSE;$n", [rethrowFlag])
-  if optStackTrace in p.Options: 
+  if optStackTrace in p.Options:
     appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
-  appf(p.s(cpsStmts), "try {$n")
   add(p.nestedTryStmts, t)
+  startBlock(p, "try {$n")
   genStmts(p, t.sons[0])
   length = sonsLen(t)
-  if t.sons[1].kind == nkExceptBranch: 
-    appf(p.s(cpsStmts), "} catch (NimException& $1) {$n", [exc])
-    if rethrowFlag != nil: 
-      appf(p.s(cpsStmts), "$1 = NIM_TRUE;$n", [rethrowFlag])
-    appf(p.s(cpsStmts), "if ($1.sp.exc) {$n", [exc])
+  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
+  inc p.inExceptBlock
   i = 1
-  while (i < length) and (t.sons[i].kind == nkExceptBranch): 
+  var catchAllPresent = false
+  while (i < length) and (t.sons[i].kind == nkExceptBranch):
     blen = sonsLen(t.sons[i])
-    if blen == 1: 
+    if i > 1: appf(p.s(cpsStmts), "else ")
+    if blen == 1:
       # general except section:
-      appf(p.s(cpsStmts), "default:$n")
-      genStmts(p, t.sons[i].sons[0])
-    else: 
-      for j in countup(0, blen - 2): 
+      catchAllPresent = true
+      genSimpleBlock(p, t.sons[i].sons[0])
+    else:
+      var orExpr: PRope = nil
+      for j in countup(0, blen - 2):
         assert(t.sons[i].sons[j].kind == nkType)
-        appf(p.s(cpsStmts), "case $1:$n", [toRope(t.sons[i].sons[j].typ.id)])
-      genStmts(p, t.sons[i].sons[blen - 1])
-    if rethrowFlag != nil: 
-      appf(p.s(cpsStmts), "$1 = NIM_FALSE;  ", [rethrowFlag])
-    appf(p.s(cpsStmts), "break;$n")
+        if orExpr != nil: app(orExpr, "||")
+        appcg(p.module, orExpr,
+              "#isObj($1.exp->m_type, $2)",
+              [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+      if i > 1: app(p.s(cpsStmts), "else ")
+      appf(p.s(cpsStmts), "if ($1) ", [orExpr])
+      genSimpleBlock(p, t.sons[i].sons[blen-1])
     inc(i)
-  if t.sons[1].kind == nkExceptBranch: 
-    appf(p.s(cpsStmts), "}}$n") # end of catch-switch statement
-  appcg(p, cpsStmts, "#popSafePoint();")
+  
+  # reraise the exception if there was no catch all
+  # and none of the handlers matched
+  if not catchAllPresent:
+    if i > 1: appf(p.s(cpsStmts), "else ")
+    startBlock(p)
+    var finallyBlock = t.lastSon
+    if finallyBlock.kind == nkFinally:
+      genStmts(p, finallyBlock.sons[0])
+    appcg(p, cpsStmts, "throw;$n")
+    endBlock(p)
+  
+  appf(p.s(cpsStmts), "}$n") # end of catch block
+  dec p.inExceptBlock
+  
   discard pop(p.nestedTryStmts)
-  if (i < length) and (t.sons[i].kind == nkFinally): 
-    genStmts(p, t.sons[i].sons[0])
-  if rethrowFlag != nil: 
-    appf(p.s(cpsStmts), "if ($1) { throw; }$n", [rethrowFlag])
-
+  if (i < length) and (t.sons[i].kind == nkFinally):
+    genSimpleBlock(p, t.sons[i].sons[0])
+  
 proc genTryStmt(p: BProc, t: PNode) = 
   # code to generate:
+  #
+  # XXX: There should be a standard dispatch algorithm
+  # that's used both here and with multi-methods
   #
   #  TSafePoint sp;
   #  pushSafePoint(&sp);

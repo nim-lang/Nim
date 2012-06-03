@@ -37,7 +37,7 @@ proc reraise_in_except =
     echo "BEFORE"
     raise newException(EIO, "")
 
-  except:
+  except EIO:
     echo "EXCEPT"
     raise
 
