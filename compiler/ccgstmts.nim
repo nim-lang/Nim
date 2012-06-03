@@ -556,13 +556,14 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     i, length, blen: int
   genLineDir(p, t)
   exc = getTempName()
-  if optStackTrace in p.Options:
-    appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
+  discard cgsym(p.module, "E_Base")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   genStmts(p, t.sons[0])
   length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
+  if optStackTrace in p.Options:
+    appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   i = 1
   var catchAllPresent = false
@@ -581,7 +582,6 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
         appcg(p.module, orExpr,
               "#isObj($1.exp->m_type, $2)",
               [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
-      if i > 1: app(p.s(cpsStmts), "else ")
       appf(p.s(cpsStmts), "if ($1) ", [orExpr])
       genSimpleBlock(p, t.sons[i].sons[blen-1])
     inc(i)
@@ -639,13 +639,13 @@ proc genTryStmt(p: BProc, t: PNode) =
   appcg(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
   appcg(p, cpsStmts, "#pushSafePoint(&$1);$n" &
                      "$1.status = setjmp($1.context);$n", [safePoint])
-  if optStackTrace in p.Options: 
-    appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   endBlock(p, ropecg(p.module, "#popSafePoint();$n } else {$n#popSafePoint();$n"))
+  if optStackTrace in p.Options: 
+    appcg(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
   inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 

@@ -1346,11 +1346,15 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
     setlen(result, len)
 
 when defined(macosx):
+  type
+    cuint32* {.importc: "unsigned int", nodecl.} = int
+    ## This is the same as the type ``uint32_t`` in *C*.
+  
   # a really hacky solution: since we like to include 2 headers we have to
   # define two procs which in reality are the same
-  proc getExecPath1(c: cstring, size: var int32) {.
+  proc getExecPath1(c: cstring, size: var cuint32) {.
     importc: "_NSGetExecutablePath", header: "<sys/param.h>".}
-  proc getExecPath2(c: cstring, size: var int32): bool {.
+  proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
@@ -1379,7 +1383,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
   elif defined(bsd):
     result = getApplAux("/proc/" & $getpid() & "/file")
   elif defined(macosx):
-    var size: int32
+    var size: cuint32
     getExecPath1(nil, size)
     result = newString(int(size))
     if getExecPath2(result, size):
