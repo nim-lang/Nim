@@ -14,6 +14,20 @@ const
   declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs = nkLambdaKinds + declarativeDefs
 
+type
+  TCapture = seq[PSym]
+  
+  TLLShared {.final.} = object
+    transformedInnerProcs: TIntSet
+    c: PTransf
+  
+  TLLContext {.final.} = object
+    outerProc, innerProc: PSym
+    mapping: TIdNodeTable     # mapping from symbols to nodes
+    shared: ref TLLShared
+  
+  PLLContext = ref TLLContext
+
 proc indirectAccess(a, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node
   let x = newSymNode(a)
@@ -26,9 +40,6 @@ proc indirectAccess(a, b: PSym, info: TLineInfo): PNode =
   addSon(result, deref)
   addSon(result, newSymNode(field))
   result.typ = field.typ
-
-type
-  TCapture = seq[PSym]
 
 proc Capture(cap: var TCapture, s: PSym) = 
   for x in cap:
@@ -52,18 +63,21 @@ proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
     sfGlobal notin s.flags
 
-proc gatherVars(c: PTransf, n: PNode, outerProc: PSym, cap: var TCapture) = 
+proc gatherVars(c: PLLContext, n: PNode, cap: var TCapture) = 
   # gather used vars for closure generation into 'cap'
   case n.kind
   of nkSym:
     var s = n.sym
-    if interestingVar(s) and outerProc.id == s.owner.id:
+    if interestingVar(s) and c.innerProc.id != s.owner.id:
+      # we need to compute the path here:
+      var 
+      
       #echo "captured: ", s.name.s
       Capture(cap, s)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   else:
     for i in countup(0, sonsLen(n) - 1): 
-      gatherVars(c, n.sons[i], outerProc, cap)
+      gatherVars(c, n.sons[i], cap)
 
 proc replaceVars(c: PTransf, n: PNode, outerProc, env: PSym) = 
   for i in countup(0, safeLen(n) - 1):

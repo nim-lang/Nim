@@ -279,7 +279,7 @@ proc transformBreak(c: PTransf, n: PNode): PTransNode =
     result[0] = newSymNode(labl).PTransNode
 
 proc transformLoopBody(c: PTransf, n: PNode): PTransNode =  
-  # XXX BUG: What if it contains "continue" and "break"? "break" needs 
+  # What if it contains "continue" and "break"? "break" needs 
   # an explicit label too, but not the same!
   
   # We fix this here by making every 'break' belong to its enclosing loop
@@ -638,17 +638,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
-  of procDefs: 
-    if c.nestedProcs == 0:
-      inc c.nestedProcs
-      result = transformProc(c, n)
-      dec c.nestedProcs
-    else:
-      result = PTransNode(n)
-      if n.sons[namePos].kind == nkSym:
-        let x = transformSym(c, n.sons[namePos])
-        if x.pnode.kind == nkClosure: result = x
-  of nkMacroDef:
+  of procDefs, nkMacroDef:
     # XXX no proper closure support yet:
     if n.sons[genericParamsPos].kind == nkEmpty:
       var s = n.sons[namePos].sym
