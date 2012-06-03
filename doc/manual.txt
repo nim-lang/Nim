@@ -1879,6 +1879,15 @@ handled, it is propagated through the call stack. This means that often
 the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
+`except`:idx: and `finally`:idx: can also be used as a stand-alone statements.
+Any statements following them in the current block will be considered to be 
+in an implicit try block:
+
+.. code-block:: nimrod
+  var f = fopen("numbers.txt", "r")
+  finally: fcsole(f)
+  ...
+
 
 Return statement
 ~~~~~~~~~~~~~~~~

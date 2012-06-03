@@ -27,6 +27,8 @@ Library Additions
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at
   compile time as if was a macro.
+- Added ``system.staticExec`` for compile-time execution of external programs
+- Added ``system.staticRead`` as a synonym for slurp
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
 - Added ``strutils.parseEnum``.
@@ -102,6 +104,7 @@ Language Additions
 - ``when`` expressions are now allowed just like ``if`` expressions.
 - The precedence for operators starting with ``@`` is different now 
   allowing for *sigil-like* operators.
+- Stand-alone ``finally`` and ``except`` blocks are now supported.
 
 
 2012-02-09 Version 0.8.14 released

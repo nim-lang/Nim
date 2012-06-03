@@ -1173,6 +1173,8 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
     localError(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
   of mNewSeq: binaryStmt(p, n, r, "", "$1 = new Array($2)")
   of mEcho: genEcho(p, n, r)
+  of mSlurp, mStaticExec:
+    localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);
