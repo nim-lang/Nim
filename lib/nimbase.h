@@ -192,7 +192,7 @@ __clang__
 **		long int lrint  (double x);
 */
 
-#if defined(__LCC__) || (defined(__GNUC__) && defined(WIN32))
+#if defined(__LCC__) || (defined(__GNUC__))
 /* Linux' GCC does not seem to have these. Why? */
 #  define HAVE_LRINT
 #  define HAVE_LRINTF
