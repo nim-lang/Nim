@@ -139,6 +139,10 @@ proc objectInit(dest: Pointer, typ: PNimType) =
   
 # ---------------------- assign zero -----------------------------------------
 
+proc nimDestroyRange*[T](r: T) =
+  # internal proc used for destroying sequences and arrays
+  for i in countup(0, r.len - 1): destroy(r[i])
+
 proc genericReset(dest: Pointer, mt: PNimType) {.compilerProc.}
 proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
   var d = cast[TAddress](dest)
