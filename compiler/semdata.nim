@@ -212,7 +212,11 @@ proc markUsed*(n: PNode, s: PSym) =
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
     if sfError in s.flags: LocalError(n.info, errWrongSymbolX, s.name.s)
-  
+
+proc useSym*(sym: PSym): PNode =
+  result = newSymNode(sym)
+  markUsed(result, sym)
+
 proc illFormedAst*(n: PNode) = 
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
