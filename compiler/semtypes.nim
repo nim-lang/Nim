@@ -306,7 +306,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
                    covered: var biggestInt) = 
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
-    if isRange(b):
+    if b.kind == nkRange:
+      branch.sons[i] = b
+    elif isRange(b):
       branch.sons[i] = semCaseBranchRange(c, t, b, covered)
     else:
       var r = semConstExpr(c, b)

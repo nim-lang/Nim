@@ -875,15 +875,57 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
 
-# special marker that indicates that we've already tried
-# to generate a destructor for some type, but it turned out
-# to be trivial
-var DestructorIsTrivial: PSym
+# special marker values that indicates that we are
+# 1) AnalyzingDestructor: currenlty analyzing the type for destructor 
+# generation (needed for recursive types)
+# 2) DestructorIsTrivial: completed the anlysis before and determined
+# that the type has a trivial destructor
+var AnalyzingDestructor, DestructorIsTrivial: PSym
+new(AnalyzingDestructor)
 new(DestructorIsTrivial)
 
 var
   destructorParam = getIdent"this_"
   rangeDestructorProc: PSym
+
+proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
+  if instantiateDestructor(c, field.typ):
+    result = newNode(nkCall, field.info, @[
+      useSym(field.typ.destructor),
+      newNode(nkDotExpr, field.info, @[holder, useSym(field)])])
+
+proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
+  var nonTrivialFields = 0
+  result = newNode(nkCaseStmt, n.info, @[])
+  # case x.kind
+  result.addSon(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
+  for i in countup(1, n.len - 1):
+    # of A, B:
+    var caseBranch = newNode(n[i].kind, n[i].info, n[i].sons[0 .. -2])
+    let recList = n[i].lastSon
+    var destroyRecList = newNode(nkStmtList, n[i].info, @[])
+    template addField(f: expr): stmt =
+      let stmt = destroyField(c, f, holder)
+      if stmt != nil:
+        destroyRecList.addSon(stmt)
+        inc nonTrivialFields
+        
+    case recList.kind
+    of nkSym:
+      addField(recList.sym)
+    of nkRecList:
+      for j in countup(0, recList.len - 1):
+        addField(recList[j].sym)
+    else:
+      internalAssert false
+      
+    caseBranch.addSon(destroyRecList)
+    result.addSon(caseBranch)
+  # maybe no fields were destroyed?
+  if nonTrivialFields == 0:
+    result = nil
+  else:
+    debug result
 
 proc generateDestructor(c: PContext, t: PType): PNode =
   ## generate a destructor for a user-defined object ot tuple type
@@ -897,19 +939,19 @@ proc generateDestructor(c: PContext, t: PType): PNode =
   # Tposix_spawnattr
   if t.n == nil or t.n.sons == nil: return
   internalAssert t.n.kind == nkRecList
-  
+  let destructedObj = newIdentNode(destructorParam, UnknownLineInfo())
   # call the destructods of all fields
   for s in countup(0, t.n.sons.len - 1):
-    internalAssert t.n.sons[s].kind == nkSym
-    let field = t.n.sons[s].sym
-    if instantiateDestructor(c, field.typ):
-      addLine(newNode(nkCall, field.info, @[
-        useSym(field.typ.destructor),
-        newNode(nkDotExpr, field.info, @[
-          newIdentNode(destructorParam, t.sym.info),
-          useSym(field)
-          ])
-        ]))
+    case t.n.sons[s].kind
+    of nkRecCase:
+      let stmt = destroyCase(c, t.n.sons[s], destructedObj)
+      if stmt != nil: addLine(stmt)
+    of nkSym:
+      let stmt = destroyField(c, t.n.sons[s].sym, destructedObj)
+      if stmt != nil: addLine(stmt)
+    else:
+      internalAssert false
+
   # base classes' destructors will be automatically called by
   # semProcAux for both auto-generated and user-defined destructors
 
@@ -920,7 +962,9 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
   var t = skipTypes(typ, {tyConst, tyMutable})
   
   if t.destructor != nil:
-    return t.destructor != DestructorIsTrivial
+    # XXX: This is not entirely correct for recursive types, but we need
+    # it temporarily to hide the "destroy is alrady defined" problem
+    return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
   
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray:
@@ -932,6 +976,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
     else:
       return false
   of tyTuple, tyObject:
+    t.destructor = AnalyzingDestructor
     let generated = generateDestructor(c, t)
     if generated != nil:
       internalAssert t.sym != nil
