@@ -893,7 +893,11 @@ proc generateDestructor(c: PContext, t: PType): PNode =
     if result == nil: result = newNode(nkStmtList)
     result.addSon(e)
 
+  # XXX: This may be true for some C-imported types such as
+  # Tposix_spawnattr
+  if t.n == nil or t.n.sons == nil: return
   internalAssert t.n.kind == nkRecList
+  
   # call the destructods of all fields
   for s in countup(0, t.n.sons.len - 1):
     internalAssert t.n.sons[s].kind == nkSym
