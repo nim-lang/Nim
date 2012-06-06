@@ -885,6 +885,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.containerID = src.containerID
+  dest.destructor = src.destructor
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
