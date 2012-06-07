@@ -237,6 +237,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable     # returned value may be discarded implicitely
+    sfDestructor      # proc is destructor
 
   TSymFlags* = set[TSymFlag]
 
