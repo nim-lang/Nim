@@ -745,7 +745,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if result.sons[namePos].sym.name.id == ord(wDestroy) and s.typ.sons.len == 2:
+  if sfDestructor in s.flags:
     let t = s.typ.sons[1].skipTypes({tyVar})
     t.destructor = s
     # automatically insert calls to base classes' destructors
@@ -885,7 +885,9 @@ new(AnalyzingDestructor)
 new(DestructorIsTrivial)
 
 var
+  destructorName = getIdent"destroy_"
   destructorParam = getIdent"this_"
+  destructorPragma = newIdentNode(getIdent"destructor", UnknownLineInfo())
   rangeDestructorProc: PSym
 
 proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
@@ -924,9 +926,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
   # maybe no fields were destroyed?
   if nonTrivialFields == 0:
     result = nil
-  else:
-    debug result
-
+ 
 proc generateDestructor(c: PContext, t: PType): PNode =
   ## generate a destructor for a user-defined object ot tuple type
   ## returns nil if the destructor turns out to be trivial
@@ -982,7 +982,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
       internalAssert t.sym != nil
       var i = t.sym.info
       let fullDef = newNode(nkProcDef, i, @[
-        newIdentNode(getIdent"destroy", i),
+        newIdentNode(destructorName, i),
         emptyNode,
         newNode(nkFormalParams, i, @[
           emptyNode,
@@ -991,7 +991,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
             useSym(t.sym),
             emptyNode]),
           ]),
-        emptyNode,
+        newNode(nkPragma, i, @[destructorPragma]),
         generated
         ])
       discard semProc(c, fullDef)
