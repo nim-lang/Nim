@@ -141,7 +141,7 @@ proc skipTypes(t: PType, kinds: TTypeKinds): PType =
   
 proc isOrdinalType(t: PType): bool = 
   assert(t != nil)
-  result = (t.Kind in {tyChar, tyInt..tyInt64, tyBool, tyEnum}) or
+  result = (t.Kind in {tyChar, tyInt..tyInt64, tyUInt..tyUInt64, tyBool, tyEnum}) or
       (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
@@ -386,10 +386,11 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "GenericInvokation", "GenericBody", "GenericInst", "GenericParam", 
       "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple", 
       "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc", 
-      "pointer", "OpenArray[$1]", "string", "CString", "Forward", "int", "int8", 
-      "int16", "int32", "int64", "float", "float32", "float64", "float128",
-      
-      "uint", "uint8", "uint16", "uint32", "uint64", "bignum", "const ",
+      "pointer", "OpenArray[$1]", "string", "CString", "Forward",
+      "int", "int8", "int16", "int32", "int64",
+      "float", "float32", "float64", "float128",
+      "uint", "uint8", "uint16", "uint32", "uint64",
+      "bignum", "const ",
       "!", "varargs[$1]", "iter[$1]", "proxy[$1]", "TypeClass" ]
   var t = typ
   result = ""
@@ -494,6 +495,7 @@ proc firstOrd(t: PType): biggestInt =
   of tyInt16: result = - 32768
   of tyInt32: result = - 2147483646 - 2
   of tyInt64: result = 0x8000000000000000'i64
+  of tyUInt..tyUInt64: result = 0
   of tyEnum: 
     # if basetype <> nil then return firstOrd of basetype
     if (sonsLen(t) > 0) and (t.sons[0] != nil): 
@@ -524,6 +526,13 @@ proc lastOrd(t: PType): biggestInt =
   of tyInt16: result = 0x00007FFF
   of tyInt32: result = 0x7FFFFFFF
   of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt: 
+    if platform.intSize == 4: result = 0xFFFFFFFF
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt8: result = 0x7F # XXX: Fix these
+  of tyUInt16: result = 0x7FFF
+  of tyUInt32: result = 0x7FFFFFFF
+  of tyUInt64: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyEnum: 
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
@@ -979,6 +988,9 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
     a = result
   of tyInt64, tyUInt64, tyFloat64: 
     result = 8
+    a = result
+  of tyFloat128:
+    result = 16
     a = result
   of tyFloat: 
     result = floatSize

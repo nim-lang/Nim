@@ -52,9 +52,15 @@ type
     nkInt16Lit,
     nkInt32Lit,
     nkInt64Lit,
+    nkUIntLit,            # an unsigned integer literal
+    nkUInt8Lit,
+    nkUInt16Lit,
+    nkUInt32Lit,
+    nkUInt64Lit,
     nkFloatLit,           # a floating point literal
     nkFloat32Lit,
     nkFloat64Lit,
+    nkFloat128Lit,
     nkStrLit,             # a string literal ""
     nkRStrLit,            # a raw string literal r""
     nkTripleStrLit,       # a triple string literal """
@@ -323,6 +329,7 @@ type
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``
+    tfLiteral         # type represents literal value
     tfFromGeneric     # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
@@ -406,8 +413,11 @@ type
     mNewString, mNewStringOfCap,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, 
-    mOrdinal, mInt, mInt8, mInt16, mInt32, 
-    mInt64, mFloat, mFloat32, mFloat64, mBool, mChar, mString, mCstring, 
+    mOrdinal,
+    mInt, mInt8, mInt16, mInt32, mInt64,
+    mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
+    mFloat, mFloat32, mFloat64, mFloat128,
+    mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc, 
     mVoidType, mPNimrodNode,
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, 
@@ -462,11 +472,11 @@ type
     info*: TLineInfo
     flags*: TNodeFlags
     case Kind*: TNodeKind
-    of nkCharLit..nkInt64Lit: 
+    of nkCharLit..nkUInt64Lit:
       intVal*: biggestInt
-    of nkFloatLit..nkFloat64Lit: 
+    of nkFloatLit..nkFloat128Lit:
       floatVal*: biggestFloat
-    of nkStrLit..nkTripleStrLit: 
+    of nkStrLit..nkTripleStrLit:
       strVal*: string
     of nkSym: 
       sym*: PSym
@@ -763,8 +773,8 @@ const                         # for all kind of hash tables:
 
 proc ValueToString*(a: PNode): string = 
   case a.kind
-  of nkCharLit..nkInt64Lit: result = $(a.intVal)
-  of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result = $(a.floatVal)
+  of nkCharLit..nkUInt64Lit: result = $(a.intVal)
+  of nkFloatLit..nkFloat128Lit: result = $(a.floatVal)
   of nkStrLit..nkTripleStrLit: result = a.strVal
   else: 
     InternalError(a.info, "valueToString")
@@ -1019,8 +1029,8 @@ proc copyNode(src: PNode): PNode =
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   case src.Kind
-  of nkCharLit..nkInt64Lit: result.intVal = src.intVal
-  of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result.floatVal = src.floatVal
+  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
+  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1034,8 +1044,8 @@ proc shallowCopy*(src: PNode): PNode =
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   case src.Kind
-  of nkCharLit..nkInt64Lit: result.intVal = src.intVal
-  of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result.floatVal = src.floatVal
+  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
+  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1050,8 +1060,8 @@ proc copyTree(src: PNode): PNode =
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   case src.Kind
-  of nkCharLit..nkInt64Lit: result.intVal = src.intVal
-  of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result.floatVal = src.floatVal
+  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
+  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1101,14 +1111,14 @@ proc sonsNotNil(n: PNode): bool =
 
 proc getInt*(a: PNode): biggestInt = 
   case a.kind
-  of nkIntLit..nkInt64Lit: result = a.intVal
+  of nkIntLit..nkUInt64Lit: result = a.intVal
   else: 
     internalError(a.info, "getInt")
     result = 0
 
 proc getFloat*(a: PNode): biggestFloat = 
   case a.kind
-  of nkFloatLit..nkFloat64Lit: result = a.floatVal
+  of nkFloatLit..nkFloat128Lit: result = a.floatVal
   else: 
     internalError(a.info, "getFloat")
     result = 0.0

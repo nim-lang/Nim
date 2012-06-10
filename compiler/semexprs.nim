@@ -132,10 +132,10 @@ proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
   
 proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
   const 
-    IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyFloat128}
+    IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
   if sameType(castDest, src) and castDest.sym == src.sym: 
     # don't annoy conversions that may be needed on another processor:
-    if not (castDest.kind in {tyInt..tyFloat128, tyNil}): 
+    if not (castDest.kind in {tyInt..tyUInt64, tyNil}): 
       Message(info, hintConvFromXtoItselfNotNeeded, typeToString(castDest))
     return 
   var d = skipTypes(castDest, abstractVar)
@@ -143,7 +143,7 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
   while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind): 
     d = base(d)
     s = base(s)
-  if d == nil: 
+  if d == nil:
     GlobalError(info, errGenerated, msgKindToString(errIllegalConvFromXtoY) % [
         src.typeToString, castDest.typeToString])
   elif d.Kind == tyObject and s.Kind == tyObject: 
@@ -1283,6 +1283,20 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
     GlobalError(n.info, errInvalidExpressionX, 
                 renderTree(a, {renderNoComments}))
 
+proc litIntType(kind: TTypeKind): PType =
+  result = getSysType(kind).copyType(getCurrOwner(), true)
+  result.flags.incl(tfLiteral)
+
+template memoize(e: expr): expr =
+  var `*guard` {.global.} = false
+  var `*memo` {.global.} : type(e)
+
+  if not `*guard`:
+    `*memo` = e
+    `*guard` = true
+
+  `*memo`
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1303,9 +1317,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: 
       let i = result.intVal
       if i >= low(int32) and i <= high(int32):
-        result.typ = getSysType(tyInt)
+        result.typ = litIntType(tyInt).memoize
       else:
-        result.typ = getSysType(tyInt64)
+        result.typ = litIntType(tyInt64).memoize
   of nkInt8Lit: 
     if result.typ == nil: result.typ = getSysType(tyInt8)
   of nkInt16Lit: 
@@ -1314,12 +1328,24 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: result.typ = getSysType(tyInt32)
   of nkInt64Lit: 
     if result.typ == nil: result.typ = getSysType(tyInt64)
+  of nkUIntLit:
+    if result.typ == nil: result.typ = getSysType(tyUInt)
+  of nkUInt8Lit: 
+    if result.typ == nil: result.typ = getSysType(tyUInt8)
+  of nkUInt16Lit: 
+    if result.typ == nil: result.typ = getSysType(tyUInt16)
+  of nkUInt32Lit: 
+    if result.typ == nil: result.typ = getSysType(tyUInt32)
+  of nkUInt64Lit: 
+    if result.typ == nil: result.typ = getSysType(tyUInt64)
   of nkFloatLit: 
     if result.typ == nil: result.typ = getSysType(tyFloat)
   of nkFloat32Lit: 
     if result.typ == nil: result.typ = getSysType(tyFloat32)
   of nkFloat64Lit: 
     if result.typ == nil: result.typ = getSysType(tyFloat64)
+  of nkFloat128Lit: 
+    if result.typ == nil: result.typ = getSysType(tyFloat128)
   of nkStrLit..nkTripleStrLit: 
     if result.typ == nil: result.typ = getSysType(tyString)
   of nkCharLit: 

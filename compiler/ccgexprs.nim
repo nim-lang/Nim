@@ -34,7 +34,7 @@ proc int32Literal(i: Int): PRope =
 proc genHexLiteral(v: PNode): PRope =
   # hex literals are unsigned in C
   # so we don't generate hex literals any longer.
-  if not (v.kind in {nkIntLit..nkInt64Lit}):
+  if not (v.kind in {nkIntLit..nkUInt64Lit}):
     internalError(v.info, "genHexLiteral")
   result = intLiteral(v.intVal)
 
@@ -47,7 +47,7 @@ proc getStrLit(m: BModule, s: string): PRope =
 proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
   if ty == nil: internalError(v.info, "genLiteral: ty is nil")
   case v.kind
-  of nkCharLit..nkInt64Lit:
+  of nkCharLit..nkUInt64Lit:
     case skipTypes(ty, abstractVarRange).kind
     of tyChar, tyInt64, tyNil:
       result = intLiteral(v.intVal)
@@ -277,7 +277,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyFloat128, tyRange:
+     tyInt..tyUInt64, tyRange:
     appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: InternalError("genAssignment(" & $ty.kind & ')')
 
@@ -582,7 +582,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   var ty = a.t
   var r = rdLoc(a)
   case e.sons[1].kind
-  of nkIntLit..nkInt64Lit: i = int(e.sons[1].intVal)
+  of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
   else: internalError(e.info, "genTupleElem")
   when false:
     if ty.n != nil:
@@ -1684,8 +1684,8 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
         InternalError(e.info, "expr: param not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     else: InternalError(e.info, "expr(" & $sym.kind & "); unknown symbol")
-  of nkStrLit..nkTripleStrLit, nkIntLit..nkInt64Lit, nkFloatLit..nkFloat64Lit,
-     nkNilLit, nkCharLit:
+  of nkStrLit..nkTripleStrLit, nkIntLit..nkUInt64Lit,
+     nkFloatLit..nkFloat128Lit, nkNilLit, nkCharLit:
     putIntoDest(p, d, e.typ, genLiteral(p, e))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:

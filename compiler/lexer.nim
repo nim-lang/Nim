@@ -45,8 +45,10 @@ type
     tkTemplate, 
     tkTry, tkTuple, tkType, tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
     tkYield, # end of keywords
-    tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit, tkFloatLit, 
-    tkFloat32Lit, tkFloat64Lit, tkStrLit, tkRStrLit, tkTripleStrLit, 
+    tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
+    tkUIntLit, tkUInt8Lit, tkUInt16Lit, tkUInt32Lit, tkUInt64Lit,
+    tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit,
+    tkStrLit, tkRStrLit, tkTripleStrLit,
     tkGStrLit, tkGTripleStrLit, tkCharLit, tkParLe, tkParRi, tkBracketLe, 
     tkBracketRi, tkCurlyLe, tkCurlyRi, 
     tkBracketDotLe, tkBracketDotRi, # [. and  .]
@@ -77,8 +79,10 @@ const
     "template", 
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",
-    "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit", 
-    "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkStrLit", "tkRStrLit", 
+    "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit",
+    "tkUIntLit", "tkUInt8Lit", "tkUInt16Lit", "tkUInt32Lit", "tkUInt64Lit",
+    "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkFloat128Lit",
+    "tkStrLit", "tkRStrLit",
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
@@ -283,12 +287,17 @@ proc GetNumber(L: var TLexer): TToken =
     case L.buf[endpos]
     of 'f', 'F': 
       inc(endpos)
-      if (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'): 
-        result.tokType = tkFloat64Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'): 
+      if (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'):
         result.tokType = tkFloat32Lit
         inc(endpos, 2)
+      elif (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'):
+        result.tokType = tkFloat64Lit
+        inc(endpos, 2)
+      elif (L.buf[endpos] == '1') and
+           (L.buf[endpos + 1] == '2') and
+           (L.buf[endpos + 2] == '8'):
+        result.tokType = tkFloat128Lit
+        inc(endpos, 3)
       else: 
         lexMessage(L, errInvalidNumber, result.literal & "'f" & L.buf[endpos])
     of 'i', 'I': 
@@ -307,6 +316,22 @@ proc GetNumber(L: var TLexer): TToken =
         inc(endpos)
       else: 
         lexMessage(L, errInvalidNumber, result.literal & "'i" & L.buf[endpos])
+    of 'u', 'U':
+      inc(endpos)
+      if (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'): 
+        result.tokType = tkUInt64Lit
+        inc(endpos, 2)
+      elif (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'): 
+        result.tokType = tkUInt32Lit
+        inc(endpos, 2)
+      elif (L.buf[endpos] == '1') and (L.buf[endpos + 1] == '6'): 
+        result.tokType = tkUInt16Lit
+        inc(endpos, 2)
+      elif (L.buf[endpos] == '8'): 
+        result.tokType = tkUInt8Lit
+        inc(endpos)
+      else:
+        result.tokType = tkUIntLit
     else: lexMessage(L, errInvalidNumber, result.literal & "'" & L.buf[endpos])
   else:
     L.bufpos = pos            # restore position
