@@ -174,7 +174,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyProc: result = if typ.callConv != ccClosure: ctProc else: ctStruct
   of tyString: result = ctNimStr
   of tyCString: result = ctCString
-  of tyInt..tyFloat128:
+  of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   else: InternalError("mapType")
   
@@ -313,8 +313,10 @@ proc typeNameOrLiteral(t: PType, literal: string): PRope =
   
 proc getSimpleTypeDesc(m: BModule, typ: PType): PRope = 
   const 
-    NumericalTypeToStr: array[tyInt..tyFloat128, string] = ["NI", "NI8",
-      "NI16", "NI32", "NI64", "NF", "NF32", "NF64", "NF128"]
+    NumericalTypeToStr: array[tyInt..tyUInt64, string] = [
+      "NI", "NI8", "NI16", "NI32", "NI64",
+      "NF", "NF32", "NF64", "NF128",
+      "NU", "NU8", "NU16", "NU32", "NU64",]
   case typ.Kind
   of tyPointer: 
     result = typeNameOrLiteral(typ, "void*")
@@ -337,7 +339,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
   of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(typ, "NIM_CHAR")
   of tyNil: result = typeNameOrLiteral(typ, "0")
-  of tyInt..tyFloat128, tyUInt..tyUInt64: 
+  of tyInt..tyUInt64: 
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.Kind])
   of tyRange: result = getSimpleTypeDesc(m, typ.sons[0])
   else: result = nil
@@ -871,7 +873,7 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
   if dataGenerated: return 
   case t.kind
   of tyEmpty: result = toRope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyFloat128, tyVar:
+  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
     genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
   of tyProc:
     if t.callConv != ccClosure:

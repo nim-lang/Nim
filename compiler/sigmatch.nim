@@ -163,6 +163,9 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
     elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
+    elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
+    elif f.kind in {tyUInt..tyUInt64} and k == tyInt and tfLiteral in a.flags:
+      result = isIntConv
     elif k >= min and k <= max: result = isConvertible
     else: result = isNone
   
@@ -306,6 +309,11 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
   of tyInt32:    result = handleRange(f, a, tyInt, tyInt32)
   of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
+  of tyUInt:      result = handleRange(f, a, tyUInt8, tyUInt32)
+  of tyUInt8:     result = handleRange(f, a, tyUInt8, tyUInt8)
+  of tyUInt16:    result = handleRange(f, a, tyUInt8, tyUInt16)
+  of tyUInt32:    result = handleRange(f, a, tyUInt, tyUInt32)
+  of tyUInt64:    result = handleRange(f, a, tyUInt, tyUInt64)
   of tyFloat:    result = handleFloatRange(f, a)
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)

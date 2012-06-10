@@ -70,9 +70,7 @@ proc GetUniqueType*(key: PType): PType =
   var k = key.kind
   case k
   of  tyBool, tyChar, 
-      tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-      tyFloat, tyFloat32, tyFloat64, tyFloat128,
-      tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64:
+      tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``.
     result = key
