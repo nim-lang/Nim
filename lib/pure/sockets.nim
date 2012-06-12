@@ -407,7 +407,7 @@ proc acceptAddr*(server: TSocket): tuple[client: TSocket, address: string] =
     when defined(windows):
       var err = WSAGetLastError()
       if err == WSAEINPROGRESS:
-        client = InvalidSocket
+        return (InvalidSocket, "")
       else: OSError()
     else:
       if errno == EAGAIN or errno == EWOULDBLOCK:
@@ -775,15 +775,18 @@ proc readIntoBuf(socket: TSocket, flags: int32): int =
       result = recv(socket.fd, addr(socket.buffer), int(socket.buffer.high), flags)
   else:
     result = recv(socket.fd, addr(socket.buffer), int(socket.buffer.high), flags)
-  if result <= 0: return
+  if result <= 0:
+    socket.buflen = 0
+    socket.currPos = 0
+    return result
   socket.bufLen = result
   socket.currPos = 0
 
-template retRead(flags, read: int) =
+template retRead(flags, readBytes: int) =
   let res = socket.readIntoBuf(flags)
   if res <= 0:
-    if read > 0:
-      return read
+    if readBytes > 0:
+      return readBytes
     else:
       return res
 
@@ -793,16 +796,27 @@ proc recv*(socket: TSocket, data: pointer, size: int): int =
     if socket.bufLen == 0:
       retRead(0'i32, 0)
     
-    var read = 0
-    while read < size:
-      if socket.currPos >= socket.bufLen:
-        retRead(0'i32, read)
-    
-      let chunk = min(socket.bufLen, size-read)
-      var d = cast[cstring](data)
-      copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
-      read.inc(chunk)
-      socket.currPos.inc(chunk)
+    when true:
+      var read = 0
+      while read < size:
+        if socket.currPos >= socket.bufLen:
+          retRead(0'i32, read)
+      
+        let chunk = min(socket.bufLen-socket.currPos, size-read)
+        var d = cast[cstring](data)
+        copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
+        read.inc(chunk)
+        socket.currPos.inc(chunk)
+    else:
+      var read = 0
+      while read < size:
+        if socket.currPos >= socket.bufLen:
+          retRead(0'i32, read)
+      
+        var d = cast[cstring](data)
+        d[read] = socket.buffer[socket.currPos]
+        read.inc(1)
+        socket.currPos.inc(1)
     
     result = read
   else:
@@ -814,8 +828,14 @@ proc recv*(socket: TSocket, data: pointer, size: int): int =
     else:
       result = recv(socket.fd, data, size, 0'i32)
 
-proc waitFor(socket: TSocket, waited: var float, timeout: int) =
-  if socket.bufLen == 0:
+proc waitFor(socket: TSocket, waited: var float, timeout: int): int =
+  ## returns the number of characters available to be read. In unbuffered
+  ## sockets this is always 1, otherwise this may as big as the buffer, currently
+  ## 4000.
+  result = 1
+  if socket.isBuffered and socket.bufLen != 0 and socket.bufLen != socket.currPos:
+    result = socket.bufLen - socket.currPos
+  else:
     if timeout - int(waited * 1000.0) < 1:
       raise newException(ETimeout, "Call to recv() timed out.")
     var s = @[socket]
@@ -824,17 +844,19 @@ proc waitFor(socket: TSocket, waited: var float, timeout: int) =
       raise newException(ETimeout, "Call to recv() timed out.")
     waited += (epochTime() - startTime)
 
-proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
+proc recv*(socket: TSocket, data: pointer, size: int, timeout: int): int =
   ## overload with a ``timeout`` parameter in miliseconds.
   var waited = 0.0 # number of seconds already waited  
   
   var read = 0
   while read < size:
-    waitFor(socket, waited, timeout)
-    result = recv(socket, addr(data[read]), 1)
+    let avail = waitFor(socket, waited, timeout)
+    var d = cast[cstring](data)
+    result = recv(socket, addr(d[read]), avail)
+    if result == 0: break
     if result < 0:
-      return
-    inc(read)
+      return result
+    inc(read, result)
   
   result = read
 
@@ -901,12 +923,12 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool =
   setLen(line.string, 0)
   while true:
     var c: char
-    waitFor(socket, waited, timeout)
+    discard waitFor(socket, waited, timeout)
     var n = recv(socket, addr(c), 1)
     if n < 0: return
     elif n == 0: return true
     if c == '\r':
-      waitFor(socket, waited, timeout)
+      discard waitFor(socket, waited, timeout)
       n = peekChar(socket, c)
       if n > 0 and c == '\L':
         discard recv(socket, addr(c), 1)
