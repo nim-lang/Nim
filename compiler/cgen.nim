@@ -153,6 +153,34 @@ proc appcg(p: BProc, s: TCProcSection, frmt: TFormatStr,
            args: openarray[PRope]) = 
   app(p.s(s), ropecg(p.module, frmt, args))
 
+var indent = "\t".toRope
+proc indentLine(p: BProc, r: PRope): PRope =
+  result = r
+  for i in countup(0, p.blocks.len-1): prepend(result, indent)
+  
+proc line(p: BProc, s: TCProcSection, r: PRope) =
+  app(p.s(s), indentLine(p, r))
+
+proc line(p: BProc, s: TCProcSection, r: string) =
+  app(p.s(s), indentLine(p, r.toRope))
+
+proc lineF(p: BProc, s: TCProcSection, frmt: TFormatStr,
+              args: openarray[PRope]) =
+  app(p.s(s), indentLine(p, ropef(frmt, args)))
+
+proc lineCg(p: BProc, s: TCProcSection, frmt: TFormatStr,
+               args: openarray[PRope]) =
+  app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
+
+proc appLineCg(p: BProc, r: var PRope, frmt: TFormatStr,
+               args: openarray[PRope]) =
+  app(r, indentLine(p, ropecg(p.module, frmt, args)))
+
+proc lineFF(p: BProc, s: TCProcSection, cformat, llvmformat: string,
+               args: openarray[PRope]) =
+  if gCmd == cmdCompileToLLVM: lineF(p, s, llvmformat, args)
+  else: lineF(p, s, cformat, args)
+
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
@@ -171,11 +199,11 @@ proc genLineDir(p: BProc, t: PNode) =
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
-    appcg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
+    lineCg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
-    appf(p.s(cpsStmts), "F.line = $1;F.filename = $2;$n", 
+    lineF(p, cpsStmts, "F.line = $1;F.filename = $2;$n", 
         [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
 include "ccgtypes.nim"
@@ -211,11 +239,11 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
       while (s.kind == tyObject) and (s.sons[0] != nil):
         app(r, ".Sup")
         s = skipTypes(s.sons[0], abstractInst)
-    appcg(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
+    lineCg(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
   of frEmbedded:
     # worst case for performance:
     var r = if takeAddr: addrLoc(a) else: rdLoc(a)
-    appcg(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t)])
+    lineCg(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t)])
 
 type
   TAssignmentFlag = enum
@@ -238,16 +266,16 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       nilLoc.r = toRope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
-      appf(p.s(cpsStmts), "$1 = 0;$n", [rdLoc(loc)])
+      lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
     if loc.s != OnStack:
-      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+      lineCg(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
         [addrLoc(loc), genTypeInfo(p.module, loc.t)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      appf(p.s(cpsStmts), "memset((void*)$1, 0, sizeof($2));$n",
+      lineF(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
         [addrLoc(loc), rdLoc(loc)])
       # XXX: We can be extra clever here and call memset only 
       # on the bytes following the m_type field?
@@ -255,9 +283,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
   if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
-    appf(p.s(section), "$1 = 0;$n", [rdLoc(loc)])
+    lineF(p, section, "$1 = 0;$n", [rdLoc(loc)])
   else:
-    appf(p.s(section), "memset((void*)$1, 0, sizeof($2));$n",
+    lineF(p, section, "memset((void*)$1, 0, sizeof($2));$n",
        [addrLoc(loc), rdLoc(loc)])
     genObjectInit(p, section, loc.t, loc, true)
 
@@ -285,7 +313,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
     result.r = con("%LOC", toRope(p.labels))
   else: 
     result.r = con("LOC", toRope(p.labels))
-    appf(p.s(cpsLocals), "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+    lineF(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   result.k = locTemp
   result.a = - 1
   result.t = getUniqueType(t)
@@ -311,9 +339,9 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     result.flags = {}
 
     if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
+      lineF(p, cpsStmts, "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
     else:
-      appcg(p, cpsStmts,
+      lineCg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            [addrLoc(result), addrLoc(toKeepAlive), rdLoc(result)])
 
@@ -355,7 +383,7 @@ proc allocParam(p: BProc, s: PSym) =
     var tmp = con("%LOC", toRope(p.labels))
     incl(s.loc.flags, lfParamCopy)
     incl(s.loc.flags, lfIndirect)
-    appf(p.s(cpsInit), "$1 = alloca $3$n" & "store $3 $2, $3* $1$n", 
+    lineF(p, cpsInit, "$1 = alloca $3$n" & "store $3 $2, $3* $1$n",
          [tmp, s.loc.r, getTypeDesc(p.module, s.loc.t)])
     s.loc.r = tmp
 
@@ -365,7 +393,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
   if skipTypes(s.typ, abstractVar).kind == tyOpenArray: return
   var a = con("&", s.loc.r)
   if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
-  appf(p.s(cpsInit), 
+  lineF(p, cpsInit,
        "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
        [toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
         genTypeInfo(p.module, s.loc.t)])
@@ -378,13 +406,14 @@ proc assignLocalVar(p: BProc, s: PSym) =
   if s.loc.k == locNone: 
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
-  app(p.s(cpsLocals), getTypeDesc(p.module, s.loc.t))
-  if sfRegister in s.flags: app(p.s(cpsLocals), " register")
+  var decl = getTypeDesc(p.module, s.loc.t)
+  if sfRegister in s.flags: app(decl, " register")
   #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
-  #  app(p.s[cpsLocals], " GC_GUARD")
+  #  app(decl, " GC_GUARD")
   if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
-    app(p.s(cpsLocals), " volatile")
-  appf(p.s(cpsLocals), " $1;$n", [s.loc.r])
+    app(decl, " volatile")
+  appf(decl, " $1;$n", [s.loc.r])
+  line(p, cpsLocals, decl)
   localDebugInfo(p, s)
 
 include ccgthreadvars
@@ -427,7 +456,7 @@ proc getLabel(p: BProc): TLabel =
   result = con("LA", toRope(p.labels))
 
 proc fixLabel(p: BProc, labl: TLabel) = 
-  appf(p.s(cpsStmts), "$1: ;$n", [labl])
+  lineF(p, cpsStmts, "$1: ;$n", [labl])
 
 proc genVarPrototype(m: BModule, sym: PSym)
 proc requestConstImpl(p: BProc, sym: PSym)
@@ -545,28 +574,28 @@ proc getFrameDecl(p: BProc) =
                    [toRope(p.frameLen)])
   else: 
     slots = nil
-  appff(p.s(cpsLocals), "volatile struct {TFrame* prev;" &
-      "NCSTRING procname;NI line;NCSTRING filename;" & 
-      "NI len;$n$1} F;$n", 
+  lineFF(p, cpsLocals, "volatile struct {TFrame* prev;" &
+      "NCSTRING procname;NI line;NCSTRING filename;" &
+      "NI len;$1} F;$n",
       "%TF = type {%TFrame*, i8*, %NI, %NI$1}$n" & 
       "%F = alloca %TF$n", [slots])
   inc(p.labels)
-  prepend(p.s(cpsInit), ropeff("F.len = $1;$n", 
+  prepend(p.s(cpsInit), indentLine(p, ropeff("F.len = $1;$n", 
       "%LOC$2 = getelementptr %TF %F, %NI 4$n" &
-      "store %NI $1, %NI* %LOC$2$n", [toRope(p.frameLen), toRope(p.labels)]))
+      "store %NI $1, %NI* %LOC$2$n", [toRope(p.frameLen), toRope(p.labels)])))
 
 proc retIsNotVoid(s: PSym): bool = 
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
 proc initFrame(p: BProc, procname, filename: PRope): PRope = 
   result = ropecg(p.module, 
-    "F.procname = $1;$n" &
-    "F.filename = $2;$n" & 
-    "F.line = 0;$n" & 
-    "#pushFrame((TFrame*)&F);$n", [procname, filename])
+    "\tF.procname = $1;$n" &
+    "\tF.filename = $2;$n" & 
+    "\tF.line = 0;$n" & 
+    "\t#pushFrame((TFrame*)&F);$n", [procname, filename])
 
 proc deinitFrame(p: BProc): PRope =
-  result = ropecg(p.module, "#popFrame();$n")
+  result = ropecg(p.module, "\t#popFrame();$n")
 
 proc closureSetup(p: BProc, prc: PSym) =
   if prc.typ.callConv != ccClosure: return
@@ -575,8 +604,8 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, env)
   # generate cast assignment:
-  appcg(p, cpsStmts, "$1 = ($2) ClEnv;$n", rdLoc(env.loc), 
-        getTypeDesc(p.module, env.typ))
+  lineCg(p, cpsStmts, "$1 = ($2) ClEnv;$n", rdLoc(env.loc),
+         getTypeDesc(p.module, env.typ))
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
@@ -590,7 +619,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # declare the result symbol:
       assignLocalVar(p, res)
       assert(res.loc.r != nil)
-      returnStmt = ropeff("return $1;$n", "ret $1$n", [rdLoc(res.loc)])
+      returnStmt = ropeff("\treturn $1;$n", "ret $1$n", [rdLoc(res.loc)])
       initLocalVar(p, res, immediateAsgn=false)
     else:
       fillResult(res)
@@ -606,10 +635,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags: 
-    generatedProc = ropeff("$1 {$n$2$3$4}$n", "define $1 {$n$2$3$4}$n",
+    generatedProc = ropeff("$N$1 {$n$2$3$4}$N$N", "define $1 {$n$2$3$4}$N",
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
-    generatedProc = ropeff("$1 {$n", "define $1 {$n", [header])
+    generatedProc = ropeff("$N$1 {$N", "$Ndefine $1 {$N", [header])
     app(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options: 
       getFrameDecl(p)
@@ -623,25 +652,25 @@ proc genProcAux(m: BModule, prc: PSym) =
       if gProcProfile >= 64 * 1024: 
         InternalError(prc.info, "too many procedures for profiling")
       discard cgsym(m, "profileData")
-      appf(p.s(cpsLocals), "ticks NIM_profilingStart;$n")
+      appf(p.s(cpsLocals), "\tticks NIM_profilingStart;$n")
       if prc.loc.a < 0: 
-        appf(m.s[cfsDebugInit], "profileData[$1].procname = $2;$n", [
+        appf(m.s[cfsDebugInit], "\tprofileData[$1].procname = $2;$n", [
             toRope(gProcProfile), 
             makeCString(prc.name.s)])
         prc.loc.a = gProcProfile
         inc(gProcProfile)
-      prepend(p.s(cpsInit), ropef("NIM_profilingStart = getticks();$n"))
+      prepend(p.s(cpsInit), ropef("\tNIM_profilingStart = getticks();$n"))
     app(generatedProc, p.s(cpsInit))
     app(generatedProc, p.s(cpsStmts))
-    if p.beforeRetNeeded: appf(generatedProc, "BeforeRet: $n;")
+    if p.beforeRetNeeded: appf(generatedProc, "\tBeforeRet: ;$n")
     app(generatedProc, deinitGCFrame(p))
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
       appf(generatedProc, 
-        "profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
+        "\tprofileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
         [toRope(prc.loc.a)])
     app(generatedProc, returnStmt)
-    appf(generatedProc, "}$n")
+    appf(generatedProc, "}$N")
   app(m.s[cfsProcs], generatedProc)
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
