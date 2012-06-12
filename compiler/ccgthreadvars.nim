@@ -19,9 +19,8 @@ proc AccessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.ThreadVarAccessed:
     p.ThreadVarAccessed = true
     p.module.usesThreadVars = true
-    appf(p.procSec(cpsLocals), "NimThreadVars* NimTV;$n")
-    app(p.procSec(cpsInit),
-      ropecg(p.module, "NimTV=(NimThreadVars*)#GetThreadLocalVars();$n"))
+    lineF(p, cpsLocals, "NimThreadVars* NimTV;$n")
+    lineCg(p, cpsInit, "NimTV = (NimThreadVars*) #GetThreadLocalVars();$n")
 
 var
   nimtv: PRope                 # nimrod thread vars; the struct body
