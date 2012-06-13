@@ -5825,7 +5825,7 @@ proc glGetVertexAttribPointerv*(index: GLuint, pname: GLenum, pointer: PGLvoid){
 proc glIsProgram*(programObj: GLhandle): GLboolean{.stdcall, importc, ogl.}
 proc glIsShader*(shaderObj: GLhandle): GLboolean{.stdcall, importc, ogl.}
 proc glLinkProgram*(programObj: GLHandle){.stdcall, importc, ogl.}
-proc glShaderSource*(shaderObj: GLHandle, count: glsizei, string: PPGLChar, 
+proc glShaderSource*(shaderObj: GLHandle, count: glsizei, string: cstringArray, 
                      lengths: pglint){.stdcall, importc, ogl.}
 proc glUseProgram*(programObj: GLhandle){.stdcall, importc, ogl.}
 proc glUniform1f*(location: GLint, v0: GLfloat){.stdcall, importc, ogl.}
