@@ -5928,7 +5928,7 @@ proc glBindBufferRange*(target: GLenum, index: GLuint, buffer: GLuint,
                         offset: GLintptr, size: GLsizeiptr){.stdcall, importc, ogl.}
 proc glBindBufferBase*(target: GLenum, index: GLuint, buffer: GLuint){.stdcall, importc, ogl.}
 proc glTransformFeedbackVaryings*(prog: GLuint, count: GLsizei, 
-                                  varyings: PPGLchar, bufferMode: GLenum){.
+                                  varyings: cstringArray, bufferMode: GLenum){.
     stdcall, importc, ogl.}
 proc glGetTransformFeedbackVarying*(prog: GLuint, index: GLuint, 
                                     bufSize: GLsizei, len: PGLsizei, 
@@ -6363,7 +6363,7 @@ proc glGetHandleARB*(pname: GlEnum): GLHandleARB{.stdcall, importc, ogl.}
 proc glDetachObjectARB*(container, attached: GLHandleARB){.stdcall, importc, ogl.}
 proc glCreateShaderObjectARB*(shaderType: glenum): GLHandleARB{.stdcall, importc, ogl.}
 proc glShaderSourceARB*(shaderObj: GLHandleARB, count: glsizei, 
-                        string: PPGLCharARB, lengths: pglint){.stdcall, importc, ogl.}
+                        string: cstringArray, lengths: pglint){.stdcall, importc, ogl.}
 proc glCompileShaderARB*(shaderObj: GLHandleARB){.stdcall, importc, ogl.}
 proc glCreateProgramObjectARB*(): GLHandleARB{.stdcall, importc, ogl.}
 proc glAttachObjectARB*(programObj, shaderObj: GLhandleARB){.stdcall, importc, ogl.}
@@ -6493,7 +6493,7 @@ proc glGenVertexArrays*(n: GLsizei, arrays: PGLuint){.stdcall, importc, ogl.}
 proc glIsVertexArray*(arr: GLuint): GLboolean{.stdcall, importc, ogl.}
   # GL_ARB_uniform_buffer_object
 proc glGetUniformIndices*(prog: GLuint, uniformCount: GLsizei, 
-                          uniformNames: PPGLchar, uniformIndices: PGLuint){.
+                          uniformNames: cstringArray, uniformIndices: PGLuint){.
     stdcall, importc, ogl.}
 proc glGetActiveUniformsiv*(prog: GLuint, uniformCount: GLsizei, 
                             uniformIndices: PGLuint, pname: GLenum, 
@@ -6745,7 +6745,7 @@ proc glProgramParameteri*(prog: GLuint, pname: GLenum, value: GLint){.stdcall, i
 proc glUseProgramStages*(pipeline: GLuint, stages: GLbitfield, prog: GLuint){.
     stdcall, importc, ogl.}
 proc glActiveShaderProgram*(pipeline: GLuint, prog: GLuint){.stdcall, importc, ogl.}
-proc glCreateShaderProgramv*(typ: GLenum, count: GLsizei, strings: PPGLchar): GLuint{.
+proc glCreateShaderProgramv*(typ: GLenum, count: GLsizei, strings: cstringArray): GLuint{.
     stdcall, importc, ogl.}
 proc glBindProgramPipeline*(pipeline: GLuint){.stdcall, importc, ogl.}
 proc glDeleteProgramPipelines*(n: GLsizei, pipelines: PGLuint){.stdcall, importc, ogl.}
