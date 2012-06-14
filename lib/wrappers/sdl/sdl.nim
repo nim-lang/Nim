@@ -756,9 +756,7 @@ type
   PUInt8Array* = ptr TUInt8Array
   TUInt8Array* = array[0..high(int) shr 1, byte]
   PUInt16* = ptr UInt16
-  UInt16* = int16
-  PUInt32* = ptr int32
-  UInt32* = int32
+  PUInt32* = ptr UInt32
   PUInt64* = ptr UInt64
   UInt64*{.final.} = object 
     hi*: int32

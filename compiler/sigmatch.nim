@@ -164,7 +164,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     if k == f.kind: result = isSubtype
     elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
     elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
-    elif f.kind in {tyUInt..tyUInt64} and k == tyInt and tfLiteral in a.flags:
+    elif f.kind in {tyUInt..tyUInt64} and k == tyInt and tfUniIntLit in a.flags:
       result = isIntConv
     elif k >= min and k <= max: result = isConvertible
     else: result = isNone
