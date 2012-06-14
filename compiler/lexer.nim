@@ -403,6 +403,10 @@ proc GetNumber(L: var TLexer): TToken =
       of tkInt8Lit: result.iNumber = biggestInt(int8(toU8(int(xi))))
       of tkInt16Lit: result.iNumber = biggestInt(toU16(int(xi)))
       of tkInt32Lit: result.iNumber = biggestInt(toU32(xi))
+      of tkUIntLit, tkUInt64Lit: result.iNumber = xi
+      of tkUInt8Lit: result.iNumber = biggestInt(int8(toU8(int(xi))))
+      of tkUInt16Lit: result.iNumber = biggestInt(toU16(int(xi)))
+      of tkUInt32Lit: result.iNumber = biggestInt(toU32(xi))
       of tkFloat32Lit: 
         result.fNumber = (cast[PFloat32](addr(xi)))[] 
         # note: this code is endian neutral!

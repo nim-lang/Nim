@@ -329,7 +329,8 @@ type
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``
-    tfLiteral         # type represents literal value
+    tfUniIntLit       # type represents literal value that could be either
+                      # singed or unsigned integer (e.g. 100)
     tfFromGeneric     # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used

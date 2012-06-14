@@ -41,10 +41,6 @@ type  # WinNT.h -- Defines the 32-Bit Windows types and constants
 
 type  # BaseTsd.h -- Type definitions for the basic sized types
       # Give here only the bare minimum, to be expanded as needs arise
-  UINT8* = int8
-  UINT16* = int16
-  UINT32* = int32
-  UINT64* = int64
   LONG32* = int32
   ULONG32* = int32
   DWORD32* = int32
@@ -95,7 +91,6 @@ type  # WinDef.h -- Basic Windows Type Definitions
   LPCVOID* = pointer
 
   # INT* = int  # Cannot work and not necessary anyway
-  UINT* = int
   PUINT* = ptr int
 
   WPARAM* = LONG_PTR
@@ -18518,9 +18513,9 @@ proc DisableThreadLibraryCalls*(hLibModule: HMODULE): WINBOOL{.stdcall,
 proc GetProcAddress*(hModule: HINST, lpProcName: LPCSTR): FARPROC{.stdcall,
     dynlib: "kernel32", importc: "GetProcAddress".}
 proc GetVersion*(): DWORD{.stdcall, dynlib: "kernel32", importc: "GetVersion".}
-proc GlobalAlloc*(uFlags: UINT, dwBytes: DWORD): HGLOBAL{.stdcall,
+proc GlobalAlloc*(uFlags: INT, dwBytes: DWORD): HGLOBAL{.stdcall,
     dynlib: "kernel32", importc: "GlobalAlloc".}
-proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: UINT): HGLOBAL{.
+proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: INT): HGLOBAL{.
     stdcall, dynlib: "kernel32", importc: "GlobalReAlloc".}
 proc GlobalSize*(hMem: HGLOBAL): DWORD{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalSize".}
@@ -23620,8 +23615,8 @@ proc ListView_SetItemPosition32(hwndLV: HWND, i, x, y: int32): LRESULT =
 
 proc ListView_SetItemState(hwndLV: HWND, i, data, mask: int32): LRESULT =
   var gnu_lvi: LV_ITEM
-  gnu_lvi.stateMask = mask
-  gnu_lvi.state = data
+  gnu_lvi.stateMask = uint(mask)
+  gnu_lvi.state = uint(data)
   result = SendMessage(hwndLV, LVM_SETITEMSTATE, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 

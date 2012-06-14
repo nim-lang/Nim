@@ -1283,9 +1283,9 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
     GlobalError(n.info, errInvalidExpressionX, 
                 renderTree(a, {renderNoComments}))
 
-proc litIntType(kind: TTypeKind): PType =
+proc uniIntType(kind: TTypeKind): PType =
   result = getSysType(kind).copyType(getCurrOwner(), true)
-  result.flags.incl(tfLiteral)
+  result.flags.incl(tfUniIntLit)
 
 template memoize(e: expr): expr =
   var `*guard` {.global.} = false
@@ -1317,9 +1317,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: 
       let i = result.intVal
       if i >= low(int32) and i <= high(int32):
-        result.typ = litIntType(tyInt).memoize
+        if i >= 0:
+          result.typ = uniIntType(tyInt).memoize
+        else:
+          result.typ = getSysType(tyInt)
       else:
-        result.typ = litIntType(tyInt64).memoize
+        if i >= 0:
+          result.typ = uniIntType(tyInt64).memoize
+        else:
+          result.typ = getSysType(tyInt64)
   of nkInt8Lit: 
     if result.typ == nil: result.typ = getSysType(tyInt8)
   of nkInt16Lit: 
