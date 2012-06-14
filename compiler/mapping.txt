@@ -67,7 +67,9 @@
 --file:r"compiler/nimcache/suggest.c"
 --file:r"compiler/nimcache/aliases.c"
 --file:r"compiler/nimcache/docgen.c"
+--file:r"compiler/nimcache/rstast.c"
 --file:r"compiler/nimcache/rst.c"
+--file:r"compiler/nimcache/rstgen.c"
 --file:r"compiler/nimcache/highlite.c"
 --file:r"compiler/nimcache/cgen.c"
 --file:r"compiler/nimcache/ccgutils.c"
@@ -83,5 +85,5 @@ Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
 Flags="-ldl -lm"
 [Environment]
-libpath="/home/andreas/projects/nimrod/lib"
+libpath="/Volumes/home/zahary/Projects/nim/lib"
 [Symbols]
