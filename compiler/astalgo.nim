@@ -849,6 +849,10 @@ proc IdNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
     IdNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
 
+iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
+  for i in 0 .. high(t.data):
+    if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
+
 proc initIITable(x: var TIITable) = 
   x.counter = 0
   newSeq(x.data, startSize)

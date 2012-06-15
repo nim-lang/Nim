@@ -19,7 +19,8 @@
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
-  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread
+  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
+  lambdalifting
 
 const 
   genPrefix* = ":tmp"         # prefix for generated names
@@ -193,7 +194,7 @@ proc transformSym(c: PTransf, n: PNode): PTransNode =
 
 proc transformVarSection(c: PTransf, v: PNode): PTransNode =
   result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1): 
+  for i in countup(0, sonsLen(v)-1):
     var it = v.sons[i]
     if it.kind == nkCommentStmt: 
       result[i] = PTransNode(it)
@@ -349,13 +350,6 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     # we need to introduce new local variables:
     add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.pnode))
 
-proc addVar(father, v: PNode) = 
-  var vpart = newNodeI(nkIdentDefs, v.info)
-  addSon(vpart, v)
-  addSon(vpart, ast.emptyNode)
-  addSon(vpart, ast.emptyNode)
-  addSon(father, vpart)
-
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
   var n = result.pnode
@@ -377,7 +371,18 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
 
-include lambdalifting
+proc generateThunk(c: PTransf, prc: PNode, dest: PType): PNode =
+  ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
+  ## a closure.
+  
+  # we cannot generate a proper thunk here for GC-safety reasons (see internal
+  # documentation):
+  result = newNodeIT(nkClosure, prc.info, dest)
+  var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
+  conv.add(emptyNode)
+  conv.add(prc)
+  result.add(conv)
+  result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
   
 proc transformConv(c: PTransf, n: PNode): PTransNode = 
   # numeric types need range checks:
@@ -638,7 +643,14 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
-  of procDefs, nkMacroDef:
+  of procDefs:
+    if n.sons[genericParamsPos].kind == nkEmpty:
+      var s = n.sons[namePos].sym
+      n.sons[bodyPos] = PNode(transform(c, s.getBody))
+      n.sons[bodyPos] = liftLambdas(n)
+      if n.kind == nkMethodDef: methodDef(s, false)
+    result = PTransNode(n)
+  of nkMacroDef:
     # XXX no proper closure support yet:
     if n.sons[genericParamsPos].kind == nkEmpty:
       var s = n.sons[namePos].sym
@@ -737,10 +749,9 @@ proc transfPass(): TPass =
   result.close = processTransf # we need to process generics too!
   
 proc transform*(module: PSym, n: PNode): PNode =
-  if nfTransf in n.flags: 
+  if nfTransf in n.flags:
     result = n
   else:
     var c = openTransf(module, "")
     result = processTransf(c, n)
     incl(result.flags, nfTransf)
-
