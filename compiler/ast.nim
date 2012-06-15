@@ -257,6 +257,9 @@ const
   sfShadowed* = sfInnerProc
     # a variable that was shadowed in some inner scope
 
+  sfByCopy* = sfBorrow
+    # a variable is to be captured by value in a closure
+
 const
   # getting ready for the future expr/stmt merge
   nkWhen* = nkWhenStmt

@@ -10,27 +10,157 @@
 # This include file implements lambda lifting for the transformator.
 # included from transf.nim
 
+import 
+  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
+  idents, renderer, types, magicsys, rodread
+
+discard """
+  The basic approach is that captured vars need to be put on the heap and
+  that the calling chain needs to be explicitely modelled. Things to consider:
+  
+  proc a =
+    var v = 0
+    proc b =
+      var w = 2
+      
+      for x in 0..3:
+        proc c = capture v, w, x
+        c()
+    b()
+    
+    for x in 0..4:
+      proc d = capture x
+      d()
+  
+  Needs to be translated into:
+    
+  proc a =
+    var cl: *
+    new cl
+    cl.v = 0
+    
+    proc b(cl) =
+      var bcl: *
+      new bcl
+      bcl.w = 2
+      bcl.up = cl
+      
+      for x in 0..3:
+        var bcl2: *
+        new bcl2
+        bcl2.up = bcl
+        bcl2.x = x
+      
+        proc c(cl) = capture cl.up.up.v, cl.up.w, cl.x
+        c(bcl2)
+      
+      c(bcl)
+    
+    b(cl)
+    
+    for x in 0..4:
+      var acl2: *
+      new acl2
+      acl2.x = x
+      proc d(cl) = capture cl.x
+      d(acl2)
+    
+  Closures as interfaces:
+  
+  proc outer: T =
+    var captureMe: TObject # value type required for efficiency
+    proc getter(): int = result = captureMe.x
+    proc setter(x: int) = captureMe.x = x
+    
+    result = (getter, setter)
+    
+  Is translated to:
+  
+  proc outer: T =
+    var cl: *
+    new cl
+    
+    proc getter(cl): int = result = cl.captureMe.x
+    proc setter(cl: *, x: int) = cl.captureMe.x = x
+    
+    result = ((cl, getter), (cl, setter))
+    
+    
+  For 'byref' capture, the outer proc needs to access the captured var through
+  the indirection too. For 'bycopy' capture, the outer proc accesses the var
+  not through the indirection.
+    
+  Possible optimizations: 
+  
+  1) If the closure contains a single 'ref' and this
+  reference is not re-assigned (check ``sfAddrTaken`` flag) make this the
+  closure. This is an important optimization if closures are used as 
+  interfaces.
+  2) If the closure does not escape, put it onto the stack, not on the heap.
+  3) Dataflow analysis would help to eliminate the 'up' indirections.
+  4) If the captured var is not actually used in the outer proc (common?),
+  put it into an inner proc.
+
+"""
+
 const
-  declarativeDefs = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
-  procDefs = nkLambdaKinds + declarativeDefs
+  declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  procDefs* = nkLambdaKinds + declarativeDefs
+  upName* = ":up" # field name for the 'up' reference
+  envName* = ":env"
 
 type
-  TCapture = seq[PSym]
-  
   TLLShared {.final.} = object
-    transformedInnerProcs: TIntSet
-    c: PTransf
+    upField: PSym
   
-  TLLContext {.final.} = object
-    outerProc, innerProc: PSym
-    mapping: TIdNodeTable     # mapping from symbols to nodes
-    shared: ref TLLShared
+  PInnerContext = ref TInnerContext
+  POuterContext = ref TOuterContext
+  PLLShared = ref TLLShared
+  PBlock = ref TBlock
   
-  PLLContext = ref TLLContext
+  TBlock {.final.} = object
+    body: PNode
+    closure: PSym
+    used: bool
+  
+  TInnerContext {.final.} = object
+    fn: PSym
+    closureParam: PSym
+    localsToAccess: TIdNodeTable
+    up: POuterContext         # used for chaining
+    levelsUp: int             # counts how many "up levels" are accessed
+    tup: PType
+    
+  TOuterContext {.final.} = object
+    fn: PSym
+    currentBlock: PNode
+    capturedVars: TIntSet
+    localsToEnclosingScope: TIdNodeTable
+    localsToAccess: TIdNodeTable
+    lambdasToEnclosingScope: TIdNodeTable
+  
+    shared: PLLShared
+    up: POuterContext
 
-proc indirectAccess(a, b: PSym, info: TLineInfo): PNode = 
+proc newOuterContext(fn: PSym, shared: PLLShared, 
+                     up: POuterContext = nil): POuterContext =
+  new(result)
+  result.fn = fn
+  result.shared = shared
+  result.capturedVars = initIntSet()
+  initIdNodeTable(result.localsToAccess)
+  initIdNodeTable(result.localsToEnclosingScope)
+  initIdNodeTable(result.lambdasToEnclosingScope)
+  
+proc newInnerContext(fn: PSym, outer: POuterContext): PInnerContext =
+  new(result)
+  result.up = outer
+  result.fn = fn
+  initIdNodeTable(result.localsToAccess)
+  
+proc indirectAccess(a: PNode, b: PSym, info: TLineInfo): PNode = 
   # returns a[].b as a node
-  let x = newSymNode(a)
+  let x = a
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = x.typ.sons[0]
   
@@ -41,54 +171,20 @@ proc indirectAccess(a, b: PSym, info: TLineInfo): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
-proc Capture(cap: var TCapture, s: PSym) = 
-  for x in cap:
-    if x.name.id == s.name.id: return
-  cap.add(s)
+proc indirectAccess(a, b: PSym, info: TLineInfo): PNode =
+  result = indirectAccess(newSymNode(a), b, info)
 
-proc captureToTuple(cap: TCapture, owner: PSym): PType =
-  result = newType(tyTuple, owner)
-  result.n = newNodeI(nkRecList, owner.info)
-  for s in cap:
-    var field = newSym(skField, s.name, s.owner)
-    
-    let typ = s.typ
-    field.typ = typ
-    field.position = sonsLen(result)
-    
-    addSon(result.n, newSymNode(field))
-    addSon(result, typ)
+proc newCall(a, b: PSym): PNode =
+  result = newNodeI(nkCall, a.info)
+  result.add newSymNode(a)
+  result.add newSymNode(b)
 
-proc interestingVar(s: PSym): bool {.inline.} =
-  result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
-    sfGlobal notin s.flags
-
-proc gatherVars(c: PLLContext, n: PNode, cap: var TCapture) = 
-  # gather used vars for closure generation into 'cap'
-  case n.kind
-  of nkSym:
-    var s = n.sym
-    if interestingVar(s) and c.innerProc.id != s.owner.id:
-      # we need to compute the path here:
-      var 
-      
-      #echo "captured: ", s.name.s
-      Capture(cap, s)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
-  else:
-    for i in countup(0, sonsLen(n) - 1): 
-      gatherVars(c, n.sons[i], cap)
-
-proc replaceVars(c: PTransf, n: PNode, outerProc, env: PSym) = 
-  for i in countup(0, safeLen(n) - 1):
-    let a = n.sons[i]
-    if a.kind == nkSym:
-      let s = a.sym
-      if interestingVar(s) and outerProc == s.owner:
-        # access through the closure param:
-        n.sons[i] = indirectAccess(env, s, n.info)
-    else:
-      replaceVars(c, a, outerProc, env)
+proc addField(tup: PType, s: PSym) =
+  var field = newSym(skField, s.name, s.owner)
+  field.typ = s.typ
+  field.position = sonsLen(tup)
+  addSon(tup.n, newSymNode(field))
+  addSon(tup, s.typ)
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
@@ -97,174 +193,248 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   #echo "produced environment: ", param.id, " for ", routine.name.s
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skMacro, skIterator, skMethod, skConverter} and
+  result = s.kind in {skProc, skIterator, skMethod, skConverter} and
     s.owner == outerProc and not isGenericRoutine(s)
   #s.typ.callConv == ccClosure
 
-proc searchForInnerProcs(c: PTransf, n: PNode, outerProc: PSym,
-                         cap: var TCapture) =
+proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
+                info: TLineInfo) =
+  discard """
+    Consider:
+      var x = 0
+      var y = 2
+      capture x, y
+      
+      block:
+        var z = 3
+        capture z
+      
+    We need to merge x, y into a closure, but not z! 
+  """
+  # we need to remember which outer closure belongs to this lambda; we also
+  # use this check to prevent multiple runs over the same inner proc:
+  if IdNodeTableGet(o.lambdasToEnclosingScope, i.fn) != nil: return
+  IdNodeTablePut(o.lambdasToEnclosingScope, i.fn, o.currentBlock)
+
+  if IdNodeTableGet(i.localsToAccess, local) != nil: return
+  if i.closureParam == nil:
+    var cp = newSym(skParam, getIdent(upname), i.fn)
+    cp.info = i.fn.info
+    incl(cp.flags, sfFromGeneric)
+    i.tup = newType(tyTuple, i.fn)
+    i.tup.n = newNodeI(nkRecList, i.fn.info)
+    cp.typ = i.tup
+    i.closureParam = cp
+  addField(i.tup, local)
+  var it = i.up
+  var access = newSymNode(i.closureParam)
+  var levelsUp = 0
+  while it.fn.id != local.owner.id:
+    access = indirectAccess(access, o.shared.upField, info)
+    it = it.up
+    assert it != nil
+    inc levelsUp
+  i.levelsUp = max(i.levelsUp, levelsUp)
+  access = indirectAccess(access, local, info)
+  IdNodeTablePut(i.localsToAccess, local, access)
+  incl(o.capturedVars, local.id)
+
+proc interestingVar(s: PSym): bool {.inline.} =
+  result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
+    sfGlobal notin s.flags
+
+proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) = 
+  # gather used vars for closure generation
   case n.kind
   of nkSym:
-    if isInnerProc(n.sym, outerProc):
-      gatherVars(c, n.sym.getBody, outerProc, cap)
+    var s = n.sym
+    if interestingVar(s) and i.fn.id != s.owner.id:
+      captureVar(o, i, s, n.info)
+      #echo "captured: ", s.name.s
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   else:
-    for i in 0.. <len(n):
-      searchForInnerProcs(c, n.sons[i], outerProc, cap)
-  
-proc makeClosure(c: PTransf, prc, env: PSym, info: TLineInfo): PNode =
+    for k in countup(0, sonsLen(n) - 1): 
+      gatherVars(o, i, n.sons[k])
+
+proc makeClosure(prc, env: PSym, info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
   if env == nil:
     result.add(newNodeIT(nkNilLit, info, getSysType(tyNil)))
   else:
     result.add(newSymNode(env))
-  
-proc transformInnerProcs(c: PTransf, n: PNode, outerProc, env: PSym) =
+
+proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
   case n.kind
-  of nkSym:
-    let innerProc = n.sym
-    if isInnerProc(innerProc, outerProc) and not 
-        containsOrIncl(c.transformedInnerProcs, innerProc.id):
-      if env == nil:
-        innerProc.ast.sons[bodyPos] = transform(c, innerProc.getBody).pnode
-      else:
-        # inner proc could capture outer vars:
-        var param = newTemp(c, env.typ, n.info)
-        param.kind = skParam
-        
-        # recursive calls go through (f, hiddenParam):
-        IdNodeTablePut(c.transCon.mapping, innerProc, 
-                       makeClosure(c, innerProc, param, n.info))
-        # access all non-local vars through the 'env' param:
-        replaceVars(c, innerProc.getBody, outerProc, param)
-
-        innerProc.ast.sons[bodyPos] = transform(c, innerProc.getBody).pnode
-        addHiddenParam(innerProc, param)
-        
-        # 'anon' should be replaced by '(anon, env)' in the outer proc:
-        IdNodeTablePut(c.transCon.mapping, innerProc, 
-                       makeClosure(c, innerProc, env, n.info))
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkSym:
+    if n.sym == i.fn: 
+      # recursive calls go through (lambda, hiddenParam):
+      assert i.closureParam != nil
+      result = makeClosure(n.sym, i.closureParam, n.info)
+    else:
+      # captured symbol?
+      result = IdNodeTableGet(i.localsToAccess, n.sym)
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
+     nkIteratorDef, nkLambdaKinds:
+    # don't recurse here:
+    nil
   else:
-    for i in 0.. <len(n):
-      transformInnerProcs(c, n.sons[i], outerProc, env)
-  
-template checkInvariant(n: PNode, s: PSym) =
-  when false:
-    if s.ast != n:
-      echo renderTree(s.ast)
-      echo " -------------- "
-      echo n.renderTree
-    assert s.ast == n
+    for j in countup(0, sonsLen(n) - 1):
+      let x = transformInnerProc(o, i, n.sons[j])
+      if x != nil: n.sons[j] = x
 
-proc newCall(a, b: PSym): PNode =
-  result = newNodeI(nkCall, a.info)
-  result.add newSymNode(a)
-  result.add newSymNode(b)
+proc searchForInnerProcs(o: POuterContext, n: PNode) =
+  case n.kind
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
+    nil
+  of nkSym:
+    if isInnerProc(n.sym, o.fn):
+      var inner = newInnerContext(n.sym, o)
+      let body = n.sym.getBody
+      gatherVars(o, inner, body)
+      let ti = transformInnerProc(o, inner, body)
+      if ti != nil: n.sym.ast.sons[bodyPos] = ti
+  of nkWhileStmt, nkForStmt, nkParForStmt, nkBlockStmt:
+    # some nodes open a new scope, so they are candidates for the insertion
+    # of closure creation; however for simplicity we merge closures between
+    # branches, in fact, only loops bodies are of interest here as only they 
+    # yield observable changes in semantics. For Zahary we also
+    # include ``nkBlock``.
+    var body = n.len-1
+    for i in countup(0, body - 1): searchForInnerProcs(o, n.sons[i])
+    # special handling for the loop body:
+    let oldBlock = o.currentBlock
+    var ex = newNodeI(nkStmtList, n.info)
+    ex.add(emptyNode)
+    ex.add(n.sons[body])
+    o.currentBlock = ex
+    searchForInnerProcs(o, n.sons[body])
+    n.sons[body] = ex
+    o.currentBlock = oldBlock
+  of nkVarSection, nkLetSection:
+    # we need to compute a mapping var->declaredBlock. Note: The definition
+    # counts, not the block where it is captured!
+    for i in countup(0, sonsLen(n) - 1):
+      var it = n.sons[i]
+      if it.kind == nkCommentStmt: nil
+      elif it.kind == nkIdentDefs:
+        if it.sons[0].kind != nkSym: InternalError(it.info, "transformOuter")
+        IdNodeTablePut(o.localsToEnclosingScope, it.sons[0].sym, o.currentBlock)
+      elif it.kind == nkVarTuple:
+        var L = sonsLen(it)
+        for j in countup(0, L-3):
+          IdNodeTablePut(o.localsToEnclosingScope, it.sons[j].sym, 
+                         o.currentBlock)
+      else:
+        InternalError(it.info, "transformOuter")
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
+     nkIteratorDef, nkLambdaKinds: 
+    # don't recurse here:
+    # XXX recurse here and setup 'up' pointers
+    nil
+  else:
+    for i in countup(0, sonsLen(n) - 1):
+      searchForInnerProcs(o, n.sons[i])
 
-proc createEnvStmt(c: PTransf, varList: TCapture, env: PSym): PTransNode =
-  # 'varlist' can contain parameters or variables. We don't eliminate yet
-  # local vars that end up in an environment. This could even be a for loop
-  # var!
-  result = newTransNode(nkStmtList, env.info, 0)
+proc newAsgnStmt(le, ri: PNode): PNode = 
+  result = newNodeI(nkFastAsgn, ri.info)
+  result.add(le)
+  result.add(ri)
+
+proc addVar*(father, v: PNode) = 
+  var vpart = newNodeI(nkIdentDefs, v.info)
+  addSon(vpart, v)
+  addSon(vpart, ast.emptyNode)
+  addSon(vpart, ast.emptyNode)
+  addSon(father, vpart)
+
+proc generateClosureCreation(o: POuterContext, scope: PNode): PNode =
+  # add assignment if its a parameter that has been captured:
+  var env = newSym(skParam, getIdent(envName), o.fn)
+  env.info = scope.info
+  env.typ = newType(tyTuple, o.fn)
+  env.typ.n = newNodeI(nkRecList, scope.info)
+
+  result = newNodeI(nkStmtList, env.info)
   var v = newNodeI(nkVarSection, env.info)
   addVar(v, newSymNode(env))
-  result.add(v.ptransNode)
+  result.add(v)
   # add 'new' statement:
-  result.add(newCall(getSysSym"internalNew", env).ptransnode)
+  result.add(newCall(getSysSym"internalNew", env))
   
   # add assignment statements:
-  for v in varList:
-    let fieldAccess = indirectAccess(env, v, env.info)
-    if v.kind == skParam:
-      # add ``env.param = param``
-      result.add(newAsgnStmt(c, fieldAccess, newSymNode(v).ptransNode))
-    IdNodeTablePut(c.transCon.mapping, v, fieldAccess)
-  
-proc transformProcFin(c: PTransf, n: PNode, s: PSym): PTransNode =
-  if n.kind in nkLambdaKinds:
-    # for lambdas we transformed 'n.sons[bodyPos]', but not 'ast.n[bodyPos]'!
-    s.ast.sons[bodyPos] = n.sons[bodyPos]
-  else:
-    assert s.ast == n
-  
-  if n.kind == nkMethodDef: methodDef(s, false)
-  # should 's' be replaced by a tuple ('s', env)?
-  var tc = c.transCon
-  var repl: PNode = nil
-  while tc != nil:
-    repl = IdNodeTableGet(tc.mapping, s)
-    if repl != nil: break
-    tc = tc.next
-  if repl != nil:
-    result = PTransNode(repl)
-  else:
-    result = PTransNode(n)
+  for v, scope2 in pairs(o.localsToEnclosingScope):
+    if scope2 == scope:
+      let local = PSym(v)
+      addField(env.typ, local)
+      let fieldAccess = indirectAccess(env, local, env.info)
+      if sfByCopy in local.flags or local.kind == skParam:
+        # add ``env.param = param``
+        result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
+      IdNodeTablePut(o.localsToAccess, local, fieldAccess)
+  # XXX add support for 'up' references!
 
-proc transformProc(c: PTransf, n: PNode): PTransNode =
-  # don't process generics:
-  if n.sons[genericParamsPos].kind != nkEmpty:
-    return PTransNode(n)
+proc transformOuterProc(o: POuterContext, n: PNode): PNode =
+  case n.kind
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
+  of nkSym:
+    var local = n.sym
+    var envBlock = IdNodeTableGet(o.lambdasToEnclosingScope, local)
+    if envBlock != nil:
+      # we need to replace the lambda with '(lambda, env)': 
+      let a = envBlock.sons[0]
+      assert a.kind == nkStmtList
+      assert a.sons[0].kind == nkVarSection
+      assert a.sons[0].sons[0].kind == nkIdentDefs
+      var env = a.sons[0].sons[0].sons[0].sym
+      return makeClosure(local, env, n.info)
   
-  var s = n.sons[namePos].sym
-  var body = s.getBody
-  if body.kind == nkEmpty or n.sons[bodyPos].kind == nkEmpty or
-     containsOrIncl(c.transformedInnerProcs, s.id):
-    return PTransNode(n)
+    if not o.capturedVars.contains(local.id): return
+    var scope = IdNodeTableGet(o.localsToEnclosingScope, local)
+    if scope == nil: return
     
-  checkInvariant(n, s)
-  
-  if not containsNode(body, procDefs) and s.typ.callConv != ccClosure:
+    assert scope.kind == nkStmtList
+    if scope.sons[0].kind == nkEmpty:
+      # change the empty node to contain the closure construction; we need to
+      # gather all variables here that belong to the closure which is a bit
+      # expensive:
+      scope.sons[0] = generateClosureCreation(o, scope)
+    
+    # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
+    if sfByCopy notin local.flags:
+      result = IdNodeTableGet(o.localsToAccess, local)
+      assert result != nil
+    # else it is captured by copy and this means that 'outer' should continue
+    # to access the local as a local.
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
+     nkIteratorDef, nkLambdaKinds: 
+    # don't recurse here:
+    nil
+  else:
+    for i in countup(0, sonsLen(n) - 1):
+      let x = transformOuterProc(o, n.sons[i])
+      if x != nil: n.sons[i] = x
+
+proc liftLambdas(fn: PSym, shared: PLLShared, body: PNode): PNode =
+  if body.kind == nkEmpty:
+    # ignore forward declaration:
+    result = body
+  elif not containsNode(body, procDefs) and fn.typ.callConv != ccClosure:
     # fast path: no inner procs, so no closure needed:
-    n.sons[bodyPos] = PNode(transform(c, body))
-    checkInvariant(n, s)
-    return transformProcFin(c, n, s)
-
-  # create environment:
-  var cap: TCapture = @[]
-  searchForInnerProcs(c, body, s, cap)
-
-  var envType = newType(tyRef, s)
-  addSon(envType, captureToTuple(cap, s))
-  if s.typ.callConv == ccClosure:
-    addHiddenParam(s, newTemp(c, envType, n.info))
-    IdNodeTablePut(c.transCon.mapping, s, 
-                   makeClosure(c, s, nil, n.info))
+    result = body
+  else:
+    var o = newOuterContext(fn, shared)
+    searchForInnerProcs(o, body)
+    result = transformOuterProc(o, body)
+    if result == nil: result = body
   
-  if cap.len == 0:
-    # fast path: no captured variables, so no closure needed:
-    transformInnerProcs(c, body, s, nil)
-    n.sons[bodyPos] = PNode(transform(c, body))
-    return transformProcFin(c, n, s)
-  
-  # Currently we always do a heap allocation. A simple escape analysis
-  # could turn the closure into a stack allocation. Later versions might 
-  # implement that. This would require backend changes too though.
-  var envSym = newTemp(c, envType, s.info)
-  
-  var newBody = createEnvStmt(c, cap, envSym)
-  # modify any local proc to gain a new parameter; this also creates the
-  # mapping entries that turn (localProc) into (localProc, env):
-  transformInnerProcs(c, body, s, envSym)
+# XXX should 's' be replaced by a tuple ('s', env)?
 
-  # now we can transform 'body' as all rewriting entries have been created:
-  newBody.add(transform(c, body))
-  n.sons[bodyPos] = newBody.pnode
-  result = transformProcFin(c, n, s)
-  checkInvariant(n, s)
-
-proc generateThunk(c: PTransf, prc: PNode, dest: PType): PNode =
-  ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
-  ## a closure.
-  
-  # we cannot generate a proper thunk here for GC-safety reasons (see internal
-  # documentation):
-  result = newNodeIT(nkClosure, prc.info, dest)
-  var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
-  conv.add(emptyNode)
-  conv.add(prc)
-  result.add(conv)
-  result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
-  
-
+proc liftLambdas*(n: PNode): PNode =
+  assert n.kind in procDefs
+  var s = n.sons[namePos].sym
+  var shared: ref TLLShared
+  new shared
+  shared.upField = newSym(skField, upName.getIdent, s)
+  result = liftLambdas(s, shared, s.getBody)

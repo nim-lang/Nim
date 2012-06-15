@@ -34,6 +34,14 @@ myData.each do (x: int):
 
 #OUT 2 4 6 8 10
 
+type
+  ITest = tuple[
+    setter: proc(v: Int),
+    getter: proc(): int]
 
-
+proc getInterf(): ITest =
+  var shared: int
+  
+  return (setter: proc (x) = shared = x,
+          getter: proc (): int = return shared)
 
