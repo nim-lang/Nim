@@ -23,14 +23,15 @@ when true:
     proc bx =
       if i > 10: return
       i += 1
-      for j in 0 .. 0: echo i
+      #for j in 0 .. 0: echo i
       bx()
     
     bx()
+    echo i
 
   ax()
 
-when true:
+when false:
   proc accumulator(start: int): (proc(): int {.closure.}) =
     var x = start-1
     #let dummy = proc =
