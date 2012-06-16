@@ -165,6 +165,9 @@ proc indirectAccess(a: PNode, b: PSym, info: TLineInfo): PNode =
   deref.typ = x.typ.sons[0]
   
   let field = getSymFromList(deref.typ.n, b.name)
+  if field == nil:
+    echo b.name.s
+    assert false
   addSon(deref, x)
   result = newNodeI(nkDotExpr, info)
   addSon(result, deref)
@@ -223,13 +226,16 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     incl(cp.flags, sfFromGeneric)
     i.tup = newType(tyTuple, i.fn)
     i.tup.n = newNodeI(nkRecList, i.fn.info)
-    cp.typ = i.tup
+    cp.typ = newType(tyRef, i.fn)
+    addSon(cp.typ, i.tup)
     i.closureParam = cp
+    addHiddenParam(i.fn, i.closureParam)
   addField(i.tup, local)
   var it = i.up
   var access = newSymNode(i.closureParam)
   var levelsUp = 0
   while it.fn.id != local.owner.id:
+    assert false
     access = indirectAccess(access, o.shared.upField, info)
     it = it.up
     assert it != nil
@@ -284,6 +290,11 @@ proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
       let x = transformInnerProc(o, i, n.sons[j])
       if x != nil: n.sons[j] = x
 
+proc closureCreationPoint(n: PNode): PNode =
+  result = newNodeI(nkStmtList, n.info)
+  result.add(emptyNode)
+  result.add(n)
+
 proc searchForInnerProcs(o: POuterContext, n: PNode) =
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
@@ -305,9 +316,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
     for i in countup(0, body - 1): searchForInnerProcs(o, n.sons[i])
     # special handling for the loop body:
     let oldBlock = o.currentBlock
-    var ex = newNodeI(nkStmtList, n.info)
-    ex.add(emptyNode)
-    ex.add(n.sons[body])
+    let ex = closureCreationPoint(n.sons[body])
     o.currentBlock = ex
     searchForInnerProcs(o, n.sons[body])
     n.sons[body] = ex
@@ -320,10 +329,12 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       if it.kind == nkCommentStmt: nil
       elif it.kind == nkIdentDefs:
         if it.sons[0].kind != nkSym: InternalError(it.info, "transformOuter")
+        #echo "set: ", it.sons[0].sym.name.s, " ", o.currentBlock == nil
         IdNodeTablePut(o.localsToEnclosingScope, it.sons[0].sym, o.currentBlock)
       elif it.kind == nkVarTuple:
         var L = sonsLen(it)
         for j in countup(0, L-3):
+          #echo "set: ", it.sons[j].sym.name.s, " ", o.currentBlock == nil
           IdNodeTablePut(o.localsToEnclosingScope, it.sons[j].sym, 
                          o.currentBlock)
       else:
@@ -350,11 +361,14 @@ proc addVar*(father, v: PNode) =
   addSon(father, vpart)
 
 proc generateClosureCreation(o: POuterContext, scope: PNode): PNode =
-  # add assignment if its a parameter that has been captured:
-  var env = newSym(skParam, getIdent(envName), o.fn)
+  # add assignment if it's a parameter that has been captured:
+  var env = newSym(skVar, getIdent(envName), o.fn)
+  incl(env.flags, sfShadowed)
   env.info = scope.info
-  env.typ = newType(tyTuple, o.fn)
-  env.typ.n = newNodeI(nkRecList, scope.info)
+  env.typ = newType(tyRef, o.fn)
+  var tup = newType(tyTuple, o.fn)
+  tup.n = newNodeI(nkRecList, scope.info)
+  env.typ.addSon(tup)
 
   result = newNodeI(nkStmtList, env.info)
   var v = newNodeI(nkVarSection, env.info)
@@ -367,7 +381,7 @@ proc generateClosureCreation(o: POuterContext, scope: PNode): PNode =
   for v, scope2 in pairs(o.localsToEnclosingScope):
     if scope2 == scope:
       let local = PSym(v)
-      addField(env.typ, local)
+      addField(tup, local)
       let fieldAccess = indirectAccess(env, local, env.info)
       if sfByCopy in local.flags or local.kind == skParam:
         # add ``env.param = param``
@@ -404,7 +418,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
     # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
     if sfByCopy notin local.flags:
       result = IdNodeTableGet(o.localsToAccess, local)
-      assert result != nil
+      assert result != nil, "cannot find: " & local.name.s
     # else it is captured by copy and this means that 'outer' should continue
     # to access the local as a local.
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
@@ -425,9 +439,12 @@ proc liftLambdas(fn: PSym, shared: PLLShared, body: PNode): PNode =
     result = body
   else:
     var o = newOuterContext(fn, shared)
+    let ex = closureCreationPoint(body)
+    o.currentBlock = ex
     searchForInnerProcs(o, body)
-    result = transformOuterProc(o, body)
-    if result == nil: result = body
+    let a = transformOuterProc(o, body)
+    result = ex
+    #echo renderTree(result)
   
 # XXX should 's' be replaced by a tuple ('s', env)?
 
