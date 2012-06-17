@@ -193,9 +193,13 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
   param.position = params.len
   addSon(params, newSymNode(param))
-  #echo "produced environment: ", param.id, " for ", routine.name.s
+  echo "produced environment: ", param.id, " for ", routine.name.s
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
+  if s.name.s[0] == ':':
+    debug s
+    debug s.owner
+    debug outerProc
   result = s.kind in {skProc, skIterator, skMethod, skConverter} and
     s.owner == outerProc and not isGenericRoutine(s)
   #s.typ.callConv == ccClosure
@@ -216,6 +220,7 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
   """
   # we need to remember which outer closure belongs to this lambda; we also
   # use this check to prevent multiple runs over the same inner proc:
+  echo "enter"
   if IdNodeTableGet(o.lambdasToEnclosingScope, i.fn) != nil: return
   IdNodeTablePut(o.lambdasToEnclosingScope, i.fn, o.currentBlock)
 
@@ -244,6 +249,7 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
   access = indirectAccess(access, local, info)
   IdNodeTablePut(i.localsToAccess, local, access)
   incl(o.capturedVars, local.id)
+  echo "exit"
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
@@ -256,7 +262,6 @@ proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) =
     var s = n.sym
     if interestingVar(s) and i.fn.id != s.owner.id:
       captureVar(o, i, s, n.info)
-      #echo "captured: ", s.name.s
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   else:
     for k in countup(0, sonsLen(n) - 1): 
@@ -281,8 +286,10 @@ proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
     else:
       # captured symbol?
       result = IdNodeTableGet(i.localsToAccess, n.sym)
+  of nkLambdaKinds:
+    result = transformInnerProc(o, i, n.sons[namePos])
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
-     nkIteratorDef, nkLambdaKinds:
+     nkIteratorDef:
     # don't recurse here:
     nil
   else:
@@ -306,6 +313,8 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       gatherVars(o, inner, body)
       let ti = transformInnerProc(o, inner, body)
       if ti != nil: n.sym.ast.sons[bodyPos] = ti
+  of nkLambdaKinds:
+    searchForInnerProcs(o, n.sons[namePos])
   of nkWhileStmt, nkForStmt, nkParForStmt, nkBlockStmt:
     # some nodes open a new scope, so they are candidates for the insertion
     # of closure creation; however for simplicity we merge closures between
@@ -340,7 +349,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       else:
         InternalError(it.info, "transformOuter")
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
-     nkIteratorDef, nkLambdaKinds: 
+     nkIteratorDef:
     # don't recurse here:
     # XXX recurse here and setup 'up' pointers
     nil
@@ -421,8 +430,10 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       assert result != nil, "cannot find: " & local.name.s
     # else it is captured by copy and this means that 'outer' should continue
     # to access the local as a local.
+  of nkLambdaKinds:
+    result = transformOuterProc(o, n.sons[namePos])
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
-     nkIteratorDef, nkLambdaKinds: 
+     nkIteratorDef: 
     # don't recurse here:
     nil
   else:
