@@ -541,7 +541,8 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
   else: nil
 
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
-                   paramType: PType, paramName: string): PType =
+                   paramType: PType, paramName: string,
+                   info: TLineInfo): PType =
   ## Params having implicit generic types or pseudo types such as 'expr'
   ## need to be added to the generic params lists. 
   ## 'expr' is different from 'expr{string}' so we must first call 
@@ -554,7 +555,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if genericParams == nil:
       # genericParams is nil when the proc is being instantiated
       # the resolved type will be in scope then
-      result = SymtabGet(c.tab, paramTypId).AssertNotNil.typ
+      let s = SymtabGet(c.tab, paramTypId)
+      # tests/run/tinterf triggers this:
+      if s != nil: result = s.typ
+      else: GlobalError(info, errCannotInstantiateX, paramName)
     else:
       block addImplicitGeneric:
         # is this a bindOnce type class already present in the param list?
@@ -617,7 +621,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymS(skParam, a.sons[j], c)
-      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s)
+      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s,
+                                    arg.info)
       arg.typ = finalType
       arg.position = counter
       inc(counter)
@@ -634,7 +639,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       if r.sym == nil or sfAnon notin r.sym.flags:
-        r = liftParamType(c, kind, genericParams, r, "result")
+        r = liftParamType(c, kind, genericParams, r, "result", n.sons[0].info)
       result.sons[0] = r
       res.typ = result.sons[0]
 

@@ -19,15 +19,16 @@ py'''
 
 when true:
   proc ax =
-    var i = 0
-    proc bx =
-      if i > 10: return
-      i += 1
-      #for j in 0 .. 0: echo i
+    for xxxx in 0..9:
+      var i = 0
+      proc bx =
+        if i > 10: return
+        i += 1
+        #for j in 0 .. 0: echo i
+        bx()
+      
       bx()
-    
-    bx()
-    echo i
+      echo i
 
   ax()
 
