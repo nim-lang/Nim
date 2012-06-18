@@ -12,7 +12,8 @@ version 0.9.0
   - deactivate lambda lifting for JS backend
   - Test capture of for loop vars; test generics;
   - test constant closures
-  - implement closures that support nesting > 1
+  - implement closures that support nesting of blocks > 1
+  - implement closures that support nesting of *procs* > 1
 - implement proper coroutines
 
 - document 'do' notation
