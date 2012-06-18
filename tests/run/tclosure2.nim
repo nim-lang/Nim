@@ -22,7 +22,9 @@ when true:
     for xxxx in 0..9:
       var i = 0
       proc bx =
-        if i > 10: return
+        if i > 10: 
+          echo xxxx
+          return
         i += 1
         #for j in 0 .. 0: echo i
         bx()
