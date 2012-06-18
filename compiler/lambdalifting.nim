@@ -404,14 +404,12 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
   result.add(newCall(getSysSym"internalNew", env))
   
   # add assignment statements:
-  for v, scope2 in idTablePairs(o.localsToEnv):
-    if scope2 == scope:
-      let local = PSym(v)
-      let fieldAccess = indirectAccess(env, local, env.info)
-      if sfByCopy in local.flags or local.kind == skParam:
-        # add ``env.param = param``
-        result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
-      IdNodeTablePut(o.localsToAccess, local, fieldAccess)
+  for local in scope.capturedVars:
+    let fieldAccess = indirectAccess(env, local, env.info)
+    if sfByCopy in local.flags or local.kind == skParam:
+      # add ``env.param = param``
+      result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
+    IdNodeTablePut(o.localsToAccess, local, fieldAccess)
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
