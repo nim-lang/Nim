@@ -48,8 +48,8 @@ proc toSdlRect*(r: TRect): sdl.TRect =
   ## Convert ``graphics.TRect`` to ``sdl.TRect``.
   result.x = int16(r.x)
   result.y = int16(r.y)
-  result.w = int16(r.width)
-  result.h = int16(r.height)
+  result.w = uint16(r.width)
+  result.h = uint16(r.height)
 
 proc raiseEGraphics = 
   raise newException(EGraphics, $SDL.GetError())
@@ -106,10 +106,10 @@ type
   PPixels = ptr TPixels
 
 template setPix(video, pitch, x, y, col: expr): stmt =
-  video[y * pitch + x] = int32(col)
+  video[y * pitch.int + x] = int32(col)
 
 template getPix(video, pitch, x, y: expr): expr = 
-  colors.TColor(video[y * pitch + x])
+  colors.TColor(video[y * pitch.int + x])
 
 const
   ColSize = 4
@@ -117,14 +117,15 @@ const
 proc getPixel(sur: PSurface, x, y: Natural): colors.TColor {.inline.} =
   assert x <% sur.w
   assert y <% sur.h
-  result = getPix(cast[PPixels](sur.s.pixels), sur.s.pitch div ColSize, x, y)
+  result = getPix(cast[PPixels](sur.s.pixels), sur.s.pitch div ColSize.uint16, 
+                  x, y)
 
 proc setPixel(sur: PSurface, x, y: Natural, col: colors.TColor) {.inline.} =
   assert x <% sur.w
   assert y <% sur.h
   var pixs = cast[PPixels](sur.s.pixels)
   #pixs[y * (sur.s.pitch div colSize) + x] = int(col)
-  setPix(pixs, sur.s.pitch div ColSize, x, y, col)
+  setPix(pixs, sur.s.pitch div ColSize.uint16, x, y, col)
 
 proc `[]`*(sur: PSurface, p: TPoint): TColor =
   ## get pixel at position `p`. No range checking is done!
@@ -149,13 +150,13 @@ proc blit*(destSurf: PSurface, destRect: TRect, srcSurf: PSurface,
 
   destTRect.x = int16(destRect.x)
   destTRect.y = int16(destRect.y)
-  destTRect.w = int16(destRect.width)
-  destTRect.h = int16(destRect.height)
+  destTRect.w = uint16(destRect.width)
+  destTRect.h = uint16(destRect.height)
 
   srcTRect.x = int16(srcRect.x)
   srcTRect.y = int16(srcRect.y)
-  srcTRect.w = int16(srcRect.width)
-  srcTRect.h = int16(srcRect.height)
+  srcTRect.w = uint16(srcRect.width)
+  srcTRect.h = uint16(srcRect.height)
 
   if SDL.blitSurface(srcSurf.s, addr(srcTRect), destSurf.s, addr(destTRect)) != 0:
     raiseEGraphics()
@@ -191,7 +192,7 @@ proc drawCircle*(sur: PSurface, p: TPoint, r: Natural, color: TColor) =
   ## draws a circle with center `p` and radius `r` with the given color
   ## onto the surface `sur`.
   var video = cast[PPixels](sur.s.pixels)
-  var pitch = sur.s.pitch div ColSize
+  var pitch = sur.s.pitch.int div ColSize
   var a = 1 - r
   var py = r
   var px = 0

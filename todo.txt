@@ -11,6 +11,8 @@ version 0.9.0
   - make toplevel but in a scope vars local; make procs there inner procs
   - fix evals.nim with closures
   - test sequence of closures; especially that the GC does not leak for those!
+  - proc types shall have closure calling convention per default
+  - implement ``byCopy`` pragma
 - implement proper coroutines
 
 - document 'do' notation
