@@ -145,7 +145,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.friendModule = getModule(fn)
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
-  result.owner = getCurrOwner().owner
+  # keep the owner if it's an inner proc (for proper closure transformations):
+  if fn.owner.kind == skModule:
+    result.owner = getCurrOwner().owner
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
   result.ast = n

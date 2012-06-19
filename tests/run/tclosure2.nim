@@ -1,20 +1,30 @@
 discard """
-  output: '''1
+  output: '''0
+11
+1
+11
 2
+11
 3
+11
 4
+11
 5
+11
 6
+11
 7
+11
 8
+11
 9
-10
-11
 11
 py
 py
 py
-py'''
+py
+px
+6'''
 """
 
 when true:
@@ -34,7 +44,7 @@ when true:
 
   ax()
 
-when false:
+when true:
   proc accumulator(start: int): (proc(): int {.closure.}) =
     var x = start-1
     #let dummy = proc =
@@ -62,8 +72,14 @@ when false:
   outer()
 
 
-when false:
-  proc outer =
+when true:
+  proc outer2 =
+    var errorValue = 3
+    proc fac[T](n: T): T =
+      if n < 0: result = errorValue
+      elif n <= 1: result = 1
+      else: result = n * fac(n-1)
+  
     proc px() {.closure.} =
       echo "px"
 
@@ -76,7 +92,9 @@ when false:
         "xyz": py
       }
     mapping[0][1]()
+    
+    echo fac(3)
 
 
-  outer()
+  outer2()
 
