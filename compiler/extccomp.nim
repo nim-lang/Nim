@@ -597,7 +597,7 @@ proc CallCCompiler*(projectfile: string) =
 proc genMappingFiles(list: TLinkedList): PRope = 
   var it = PStrEntry(list.head)
   while it != nil: 
-    appf(result, "--file:r\"$1\"$n", [toRope(AddFileExt(it.data, cExt))])
+    appf(result, "--file:r\"$1\"$N", [toRope(AddFileExt(it.data, cExt))])
     it = PStrEntry(it.next)
 
 proc writeMapping*(gSymbolMapping: PRope) = 

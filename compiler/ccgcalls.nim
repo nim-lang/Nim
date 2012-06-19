@@ -33,16 +33,14 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
           # reset before pass as 'result' var:
           resetLoc(p, d)
         app(pl, addrLoc(d))
-        app(pl, ")")
-        app(p.s(cpsStmts), pl)
-        appf(p.s(cpsStmts), ";$n")
+        appf(pl, ");$n")
+        line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
-        app(pl, ")")
-        app(p.s(cpsStmts), pl)
-        appf(p.s(cpsStmts), ";$n")
+        appf(pl, ");$n")
+        line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       app(pl, ")")
@@ -53,9 +51,8 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    app(pl, ")")
-    app(p.s(cpsStmts), pl)
-    appf(p.s(cpsStmts), ";$n")
+    appf(pl, ");$n")
+    line(p, cpsStmts, pl)
 
 proc isInCurrentFrame(p: BProc, n: PNode): bool =
   # checks if `n` is an expression that refers to the current frame;
@@ -148,7 +145,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: PRope): PRope =
     result = if r == nil: r else: con(r, ", ")
 
-  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2)"
+  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2);$n"
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
@@ -166,7 +163,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if i < length - 1: app(pl, ", ")
   
   template genCallPattern =
-    appf(p.s(cpsStmts), CallPattern, op.r, pl, pl.addComma, rawProc)
+    lineF(p, cpsStmts, CallPattern, op.r, pl, pl.addComma, rawProc)
 
   let rawProc = getRawProcType(p, typ)
   if typ.sons[0] != nil:
@@ -181,13 +178,11 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           resetLoc(p, d)
         app(pl, addrLoc(d))
         genCallPattern()
-        appf(p.s(cpsStmts), ";$n")
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
-        app(pl, addrLoc(tmp))        
+        app(pl, addrLoc(tmp))
         genCallPattern()
-        appf(p.s(cpsStmts), ";$n")
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       if d.k == locNone: getTemp(p, typ.sons[0], d)
@@ -198,7 +193,6 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
-    appf(p.s(cpsStmts), ";$n")
   
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
@@ -264,16 +258,14 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         app(pl, "Result: ")
         app(pl, addrLoc(d))
-        app(pl, "]")
-        app(p.s(cpsStmts), pl)
-        appf(p.s(cpsStmts), ";$n")
+        appf(pl, "];$n")
+        line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
-        app(pl, "]")
-        app(p.s(cpsStmts), pl)
-        appf(p.s(cpsStmts), ";$n")
+        appf(pl, "];$n")
+        line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       app(pl, "]")
@@ -284,9 +276,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    app(pl, "]")
-    app(p.s(cpsStmts), pl)
-    appf(p.s(cpsStmts), ";$n")
+    appf(pl, "];$n")
+    line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e.sons[0].typ.callConv == ccClosure:

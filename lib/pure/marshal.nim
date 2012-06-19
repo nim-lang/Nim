@@ -86,7 +86,7 @@ proc storeAny(s: PStream, a: TAny, stored: var TIntSet) =
     var x = getString(a)
     if IsNil(x): s.write("null")
     else: s.write(escapeJson(x))
-  of akInt..akInt64: s.write($getBiggestInt(a))
+  of akInt..akInt64, akUInt..akUInt64: s.write($getBiggestInt(a))
   of akFloat..akFloat128: s.write($getBiggestFloat(a))
 
 proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
@@ -197,7 +197,7 @@ proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
       setString(a, p.str)
       next(p)
     else: raiseParseErr(p, "string expected")
-  of akInt..akInt64: 
+  of akInt..akInt64, akUInt..akUInt64: 
     if p.kind == jsonInt:
       setBiggestInt(a, getInt(p))
       next(p)

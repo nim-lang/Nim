@@ -258,15 +258,15 @@ proc partialOrExpr(c: PSym, n: PNode): PNode =
 proc leValueConv(a, b: PNode): bool = 
   result = false
   case a.kind
-  of nkCharLit..nkInt64Lit: 
+  of nkCharLit..nkUInt64Lit: 
     case b.kind
-    of nkCharLit..nkInt64Lit: result = a.intVal <= b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.intVal <= round(b.floatVal)
+    of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
+    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal)
     else: InternalError(a.info, "leValueConv")
-  of nkFloatLit..nkFloat64Lit: 
+  of nkFloatLit..nkFloat128Lit: 
     case b.kind
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal <= b.floatVal
-    of nkCharLit..nkInt64Lit: result = a.floatVal <= toFloat(int(b.intVal))
+    of nkFloatLit..nkFloat128Lit: result = a.floatVal <= b.floatVal
+    of nkCharLit..nkUInt64Lit: result = a.floatVal <= toFloat(int(b.intVal))
     else: InternalError(a.info, "leValueConv")
   else: InternalError(a.info, "leValueConv")
   

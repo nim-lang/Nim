@@ -42,6 +42,14 @@
 ##   body.add("--xyz--")
 ##    
 ##   echo(postContent("http://validator.w3.org/check", headers, body))
+##
+## SSL/TLS support
+## ===============
+## This requires the OpenSSL library, fortunately it's widely used and installed
+## on many operating systems. httpclient will use SSL automatically if you give
+## any of the functions a url with the ``https`` schema, for example:
+## ``https://github.com/``, you also have to compile with ``ssl`` defined like so:
+## ``nimrod c -d:ssl ...``.
 
 import sockets, strutils, parseurl, parseutils, strtabs
 
@@ -79,10 +87,11 @@ proc charAt(d: var string, i: var int, s: TSocket): char {.inline.} =
     i = 0
     result = d[i]
 
-proc parseChunks(d: var string, start: int, s: TSocket): string =
+proc parseChunks(s: TSocket): string =
   # get chunks:
-  var i = start
+  var i = 0
   result = ""
+  var d = s.recv().string
   while true:
     var chunkSize = 0
     var digitFound = false
@@ -128,88 +137,87 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
     # skip trailing CR-LF:
     while charAt(d, i, s) in {'\C', '\L'}: inc(i)
   
-proc parseBody(d: var string, start: int, s: TSocket,
+proc parseBody(s: TSocket,
                headers: PStringTable): string =
+  result = ""
   if headers["Transfer-Encoding"] == "chunked":
-    result = parseChunks(d, start, s)
+    result = parseChunks(s)
   else:
-    result = substr(d, start)
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
     var contentLengthHeader = headers["Content-Length"]
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
-      while result.len() < length: result.add(s.recv.string)
+      result = newString(length)
+      var received = 0
+      while true:
+        if received >= length: break
+        let r = s.recv(addr(result[received]), length-received)
+        if r == 0: break
+        received += r
+      if received != length:
+        httpError("Got invalid content length. Expected: " & $length &
+                  " got: " & $received)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
       
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
       if headers["Connection"] == "close":
+        var buf = ""
         while True:
-          var moreData = recv(s).string
-          if moreData.len == 0: break
-          result.add(moreData)
+          buf = newString(4000)
+          let r = s.recv(addr(buf[0]), 4000)
+          if r == 0: break
+          buf.setLen(r)
+          result.add(buf)
 
-proc parseResponse(s: TSocket): TResponse =
-  var d = s.recv.string
-  var i = 0
-
-  # Parse the version
-  # Parses the first line of the headers
-  # ``HTTP/1.1`` 200 OK
-  var L = skipIgnoreCase(d, "HTTP/1.1", i)
-  if L > 0:
-    result.version = "1.1"
-    inc(i, L)
-  else:
-    L = skipIgnoreCase(d, "HTTP/1.0", i)
-    if L > 0:
-      result.version = "1.0"
-      inc(i, L)
-    else: 
-      httpError("invalid HTTP header")
-  L = skipWhiteSpace(d, i)
-  if L <= 0: httpError("invalid HTTP header")
-  inc(i, L)
-  
-  result.status = ""
-  while d[i] notin {'\C', '\L', '\0'}:
-    result.status.add(d[i])
-    inc(i)
-  if d[i] == '\C': inc(i)
-  if d[i] == '\L': inc(i)
-  else: httpError("invalid HTTP header, CR-LF expected")
-
-  # Parse the headers
-  # Everything after the first line leading up to the body
-  # htype: hvalue
+proc parseResponse(s: TSocket, getBody: bool): TResponse =
+  var parsedStatus = false
+  var linei = 0
+  var fullyRead = false
+  var line = ""
   result.headers = newStringTable(modeCaseInsensitive)
-  while true:
-    var key = ""
-    while d[i] != ':':
-      if d[i] == '\0': httpError("invalid HTTP header, ':' expected")
-      key.add(d[i])
-      inc(i)
-    inc(i) # skip ':'
-    if d[i] == ' ': inc(i) # skip if the character is a space
-    var val = ""
-    while d[i] notin {'\C', '\L', '\0'}:
-      val.add(d[i])
-      inc(i)
-    
-    result.headers[key] = val
-    
-    if d[i] == '\C': inc(i)
-    if d[i] == '\L': inc(i)
-    else: httpError("invalid HTTP header, CR-LF expected")
-    
-    if d[i] == '\C': inc(i)
-    if d[i] == '\L':
-      inc(i)
-      break
-    
-  result.body = parseBody(d, i, s, result.headers) 
+  while True:
+    line = ""
+    linei = 0
+    if s.recvLine(line):
+      if line == "": break # We've been disconnected.
+      if line == "\c\L":
+        fullyRead = true
+        break
+      if not parsedStatus:
+        # Parse HTTP version info and status code.
+        var le = skipIgnoreCase(line, "HTTP/", linei)
+        if le <= 0: httpError("invalid http version")
+        inc(linei, le)
+        le = skipIgnoreCase(line, "1.1", linei)
+        if le > 0: result.version = "1.1"
+        else:
+          le = skipIgnoreCase(line, "1.0", linei)
+          if le <= 0: httpError("unsupported http version")
+          result.version = "1.0"
+        inc(linei, le)
+        # Status code
+        linei.inc skipWhitespace(line, linei)
+        result.status = line[linei .. -1]
+        parsedStatus = true
+      else:
+        # Parse headers
+        var name = ""
+        var le = parseUntil(line, name, ':', linei)
+        if le <= 0: httpError("invalid headers")
+        inc(linei, le)
+        if line[linei] != ':': httpError("invalid headers")
+        inc(linei) # Skip :
+        linei += skipWhitespace(line, linei)
+        
+        result.headers[name] = line[linei.. -1]
+  if not fullyRead: httpError("Connection was closed before full request has been made")
+  if getBody:
+    result.body = parseBody(s, result.headers)
+  else:
+    result.body = ""
 
 type
   THttpMethod* = enum ## the requested HttpMethod
@@ -238,6 +246,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   
   var headers = substr($httpMethod, len("http"))
   headers.add(" /" & r.path & r.query)
+
   headers.add(" HTTP/1.1\c\L")
   
   add(headers, "Host: " & r.hostname & "\c\L")
@@ -245,12 +254,21 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   add(headers, "\c\L")
 
   var s = socket()
-  s.connect(r.hostname, TPort(80))
+  var port = TPort(80)
+  if r.scheme == "https":
+    when defined(ssl):
+      s.wrapSocket(verifyMode = CVerifyNone)
+    else:
+      raise newException(EHttpRequestErr, "SSL support was not compiled in. Cannot connect over SSL.")
+    port = TPort(443)
+  if r.port != "":
+    port = TPort(r.port.parseInt)
+  s.connect(r.hostname, port)
   s.send(headers)
   if body != "":
     s.send(body)
   
-  result = parseResponse(s)
+  result = parseResponse(s, httpMethod != httpHEAD)
   s.close()
   
 proc redirection(status: string): bool =

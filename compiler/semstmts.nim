@@ -681,7 +681,9 @@ proc semLambda(c: PContext, n: PNode): PNode =
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   result.typ = s.typ
-  
+ 
+proc instantiateDestructor*(c: PContext, typ: PType): bool
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
   result = n
@@ -743,6 +745,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
+  if sfDestructor in s.flags:
+    let t = s.typ.sons[1].skipTypes({tyVar})
+    t.destructor = s
+    # automatically insert calls to base classes' destructors
+    if n.sons[bodyPos].kind != nkEmpty:
+      for i in countup(0, t.sonsLen - 1):
+        # when inheriting directly from object
+        # there will be a single nil son
+        if t.sons[i] == nil: continue
+        if instantiateDestructor(c, t.sons[i]):
+          n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
+              useSym(t.sons[i].destructor),
+              n.sons[paramsPos][1][0]]))
   if n.sons[bodyPos].kind != nkEmpty: 
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags: 
@@ -772,10 +787,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
-  if result.sons[namePos].sym.name.id == ord(wDestroy):
-    if s.typ.sons.len == 2:
-      let typ = s.typ.sons[1].skipTypes({tyVar})
-      typ.destructor = s
   if s.typ.callConv == ccClosure and s.owner.kind == skModule:
     localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
@@ -864,6 +875,134 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
 
+# special marker values that indicates that we are
+# 1) AnalyzingDestructor: currenlty analyzing the type for destructor 
+# generation (needed for recursive types)
+# 2) DestructorIsTrivial: completed the anlysis before and determined
+# that the type has a trivial destructor
+var AnalyzingDestructor, DestructorIsTrivial: PSym
+new(AnalyzingDestructor)
+new(DestructorIsTrivial)
+
+var
+  destructorName = getIdent"destroy_"
+  destructorParam = getIdent"this_"
+  destructorPragma = newIdentNode(getIdent"destructor", UnknownLineInfo())
+  rangeDestructorProc: PSym
+
+proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
+  if instantiateDestructor(c, field.typ):
+    result = newNode(nkCall, field.info, @[
+      useSym(field.typ.destructor),
+      newNode(nkDotExpr, field.info, @[holder, useSym(field)])])
+
+proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
+  var nonTrivialFields = 0
+  result = newNode(nkCaseStmt, n.info, @[])
+  # case x.kind
+  result.addSon(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
+  for i in countup(1, n.len - 1):
+    # of A, B:
+    var caseBranch = newNode(n[i].kind, n[i].info, n[i].sons[0 .. -2])
+    let recList = n[i].lastSon
+    var destroyRecList = newNode(nkStmtList, n[i].info, @[])
+    template addField(f: expr): stmt =
+      let stmt = destroyField(c, f, holder)
+      if stmt != nil:
+        destroyRecList.addSon(stmt)
+        inc nonTrivialFields
+        
+    case recList.kind
+    of nkSym:
+      addField(recList.sym)
+    of nkRecList:
+      for j in countup(0, recList.len - 1):
+        addField(recList[j].sym)
+    else:
+      internalAssert false
+      
+    caseBranch.addSon(destroyRecList)
+    result.addSon(caseBranch)
+  # maybe no fields were destroyed?
+  if nonTrivialFields == 0:
+    result = nil
+ 
+proc generateDestructor(c: PContext, t: PType): PNode =
+  ## generate a destructor for a user-defined object ot tuple type
+  ## returns nil if the destructor turns out to be trivial
+  
+  template addLine(e: expr): stmt =
+    if result == nil: result = newNode(nkStmtList)
+    result.addSon(e)
+
+  # XXX: This may be true for some C-imported types such as
+  # Tposix_spawnattr
+  if t.n == nil or t.n.sons == nil: return
+  internalAssert t.n.kind == nkRecList
+  let destructedObj = newIdentNode(destructorParam, UnknownLineInfo())
+  # call the destructods of all fields
+  for s in countup(0, t.n.sons.len - 1):
+    case t.n.sons[s].kind
+    of nkRecCase:
+      let stmt = destroyCase(c, t.n.sons[s], destructedObj)
+      if stmt != nil: addLine(stmt)
+    of nkSym:
+      let stmt = destroyField(c, t.n.sons[s].sym, destructedObj)
+      if stmt != nil: addLine(stmt)
+    else:
+      internalAssert false
+
+  # base classes' destructors will be automatically called by
+  # semProcAux for both auto-generated and user-defined destructors
+
+proc instantiateDestructor*(c: PContext, typ: PType): bool =
+  # returns true if the type already had a user-defined
+  # destructor or if the compiler generated a default
+  # member-wise one
+  var t = skipTypes(typ, {tyConst, tyMutable})
+  
+  if t.destructor != nil:
+    # XXX: This is not entirely correct for recursive types, but we need
+    # it temporarily to hide the "destroy is alrady defined" problem
+    return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
+  
+  case t.kind
+  of tySequence, tyArray, tyArrayConstr, tyOpenArray:
+    if instantiateDestructor(c, t.sons[0]):
+      if rangeDestructorProc == nil:
+        rangeDestructorProc = SymtabGet(c.tab, getIdent"nimDestroyRange")
+      t.destructor = rangeDestructorProc
+      return true
+    else:
+      return false
+  of tyTuple, tyObject:
+    t.destructor = AnalyzingDestructor
+    let generated = generateDestructor(c, t)
+    if generated != nil:
+      internalAssert t.sym != nil
+      var i = t.sym.info
+      let fullDef = newNode(nkProcDef, i, @[
+        newIdentNode(destructorName, i),
+        emptyNode,
+        newNode(nkFormalParams, i, @[
+          emptyNode,
+          newNode(nkIdentDefs, i, @[
+            newIdentNode(destructorParam, i),
+            useSym(t.sym),
+            emptyNode]),
+          ]),
+        newNode(nkPragma, i, @[destructorPragma]),
+        generated
+        ])
+      discard semProc(c, fullDef)
+      internalAssert t.destructor != nil
+      return true
+    else:
+      t.destructor = DestructorIsTrivial
+      return false
+  else:
+    return false
+
 proc insertDestructors(c: PContext, varSection: PNode):
   tuple[outer: PNode, inner: PNode] =
   # Accepts a var or let section.
@@ -889,7 +1028,7 @@ proc insertDestructors(c: PContext, varSection: PNode):
       varTyp = varId.sym.typ
       info = varId.info
 
-    if varTyp != nil and instantiateDestructor(varTyp):
+    if varTyp != nil and instantiateDestructor(c, varTyp):
       var tryStmt = newNodeI(nkTryStmt, info)
 
       if j < totalVars - 1:
@@ -910,8 +1049,8 @@ proc insertDestructors(c: PContext, varSection: PNode):
       tryStmt.addSon(
         newNode(nkFinally, info, @[
           semStmt(c, newNode(nkCall, info, @[
-            semSym(c, varId, varTyp.destructor, {}),
-            semSym(c, varId, varId.sym, {})]))]))
+            useSym(varTyp.destructor),
+            useSym(varId.sym)]))]))
 
       result.outer = newNodeI(nkStmtList, info)
       varSection.sons.setLen(j+1)

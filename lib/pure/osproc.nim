@@ -123,7 +123,7 @@ when defined(macosx) or defined(bsd):
     HW_AVAILCPU = 25
     HW_NCPU = 3
   proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
-              a: var int, b: pointer, c: int): cint {.
+              a: var csize, b: pointer, c: int): cint {.
              importc: "sysctl", header: "<sys/sysctl.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
@@ -135,7 +135,8 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   elif defined(macosx) or defined(bsd):
     var
       mib: array[0..3, cint]
-      len, numCPU: int
+      numCPU: int
+      len: csize
     mib[0] = CTL_HW
     mib[1] = HW_AVAILCPU
     len = sizeof(numCPU)

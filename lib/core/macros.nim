@@ -17,8 +17,9 @@ type
   TNimrodNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym, 
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
-    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
-    nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
+    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit, 
+    nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit, 
+    nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit, 
     nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall, 
     nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
     nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 

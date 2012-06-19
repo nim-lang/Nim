@@ -10,6 +10,8 @@
 ## This module provides an easy to use sockets-style 
 ## nimrod interface to the OpenSSL library.
 
+{.deprecate.}
+
 import openssl, strutils, os
 
 type

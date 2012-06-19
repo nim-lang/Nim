@@ -31,17 +31,17 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, n: PNode) =
     if (n.sons[0].kind != nkSym): InternalError(n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
-    p.s(cpsStmts).appf("switch ($1.$2) {$n", accessor, disc.loc.r)
+    lineF(p, cpsStmts, "switch ($1.$2) {$n", accessor, disc.loc.r)
     for i in countup(1, sonsLen(n) - 1):
       let branch = n.sons[i]
       assert branch.kind in {nkOfBranch, nkElse}
       if branch.kind == nkOfBranch:
         genCaseRange(c.p, branch)
       else:
-        p.s(cpsStmts).appf("default:$n")
+        lineF(p, cpsStmts, "default:$n")
       genTraverseProc(c, accessor, lastSon(branch))
-      p.s(cpsStmts).appf("break;$n")
-    p.s(cpsStmts).appf("} $n")
+      lineF(p, cpsStmts, "break;$n")
+    lineF(p, cpsStmts, "} $n")
   of nkSym:
     let field = n.sym
     genTraverseProc(c, ropef("$1.$2", accessor, field.loc.r), field.loc.t)
@@ -63,10 +63,10 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(tyInt), i)
-    appf(p.s(cpsStmts), "for ($1 = 0; $1 < $2; $1++) {$n",
+    lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
         i.r, arraySize.toRope)
     genTraverseProc(c, ropef("$1[$2]", accessor, i.r), typ.sons[1])
-    appf(p.s(cpsStmts), "}$n")
+    lineF(p, cpsStmts, "}$n")
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
       genTraverseProc(c, accessor.parentObj, typ.sons[i])
@@ -79,7 +79,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
       for i in countup(0, sonsLen(typ) - 1):
         genTraverseProc(c, ropef("$1.Field$2", accessor, i.toRope), typ.sons[i])
   of tyRef, tyString, tySequence:
-    appcg(p, cpsStmts, c.visitorFrmt, accessor)
+    lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   else: 
     # no marker procs for closures yet
     nil
@@ -89,10 +89,10 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   assert typ.kind == tySequence  
   var i: TLoc
   getTemp(p, getSysType(tyInt), i)
-  appf(p.s(cpsStmts), "for ($1 = 0; $1 < $2->$3; $1++) {$n",
+  lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
       i.r, accessor, toRope(if gCmd != cmdCompileToCpp: "Sup.len" else: "len"))
   genTraverseProc(c, ropef("$1->data[$2]", accessor, i.r), typ.sons[0])
-  appf(p.s(cpsStmts), "}$n")
+  lineF(p, cpsStmts, "}$n")
   
 proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   var c: TTraversalClosure
@@ -106,8 +106,8 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   let header = ropef("N_NIMCALL(void, $1)(void* p, NI op)", result)
   
   let t = getTypeDesc(m, typ)
-  p.s(cpsLocals).appf("$1 a;$n", t)
-  p.s(cpsInit).appf("a = ($1)p;$n", t)
+  lineF(p, cpsLocals, "$1 a;$n", t)
+  lineF(p, cpsInit, "a = ($1)p;$n", t)
   
   c.p = p
   if typ.kind == tySequence:

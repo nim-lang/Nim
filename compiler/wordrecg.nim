@@ -39,7 +39,7 @@ type
 
     wDestroy,
     
-    wImmediate, wImportCpp, wImportObjC,
+    wImmediate, wDestructor, wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wIncompleteStruct,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
@@ -117,7 +117,7 @@ const
 
     "destroy",
     
-    "immediate", "importcpp", "importobjc",
+    "immediate", "destructor", "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
     "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 

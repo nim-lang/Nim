@@ -51,7 +51,11 @@ Library Additions
 - Added ``system.||`` for parallel for loop support.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
-
+- The sockets module now supports ssl through the OpenSSL library, ``recvLine``
+  is now much more efficient thanks to the newly implemented sockets buffering.
+- The httpclient module now supports ssl/tls.
+- Added ``times.format`` as well as many other utility functions
+  for managing time.
 
 Changes affecting backwards compatibility
 -----------------------------------------
@@ -77,7 +81,7 @@ Changes affecting backwards compatibility
 - RTTI and thus the ``marshall`` module don't contain the proper field names
   of tuples anymore. This had to be changed as the old behaviour never
   produced consistent results.
-
+- Deprecated the ``ssl`` module.
 
 Compiler Additions
 ------------------

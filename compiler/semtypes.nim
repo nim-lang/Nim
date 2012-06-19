@@ -306,7 +306,9 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
                    covered: var biggestInt) = 
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
-    if isRange(b):
+    if b.kind == nkRange:
+      branch.sons[i] = b
+    elif isRange(b):
       branch.sons[i] = semCaseBranchRange(c, t, b, covered)
     else:
       var r = semConstExpr(c, b)
@@ -825,9 +827,15 @@ proc processMagicType(c: PContext, m: PSym) =
   of mInt16: setMagicType(m, tyInt16, 2)
   of mInt32: setMagicType(m, tyInt32, 4)
   of mInt64: setMagicType(m, tyInt64, 8)
+  of mUInt: setMagicType(m, tyUInt, intSize)
+  of mUInt8: setMagicType(m, tyUInt8, 1)
+  of mUInt16: setMagicType(m, tyUInt16, 2)
+  of mUInt32: setMagicType(m, tyUInt32, 4)
+  of mUInt64: setMagicType(m, tyUInt64, 8)
   of mFloat: setMagicType(m, tyFloat, floatSize)
   of mFloat32: setMagicType(m, tyFloat32, 4)
   of mFloat64: setMagicType(m, tyFloat64, 8)
+  of mFloat128: setMagicType(m, tyFloat128, 16)
   of mBool: setMagicType(m, tyBool, 1)
   of mChar: setMagicType(m, tyChar, 1)
   of mString: 

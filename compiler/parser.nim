@@ -416,6 +416,26 @@ proc identOrLiteral(p: var TParser): PNode =
     result = newIntNodeP(nkInt64Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
+  of tkUIntLit: 
+    result = newIntNodeP(nkUIntLit, p.tok.iNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
+  of tkUInt8Lit: 
+    result = newIntNodeP(nkUInt8Lit, p.tok.iNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
+  of tkUInt16Lit: 
+    result = newIntNodeP(nkUInt16Lit, p.tok.iNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
+  of tkUInt32Lit: 
+    result = newIntNodeP(nkUInt32Lit, p.tok.iNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
+  of tkUInt64Lit: 
+    result = newIntNodeP(nkUInt64Lit, p.tok.iNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
   of tkFloatLit: 
     result = newFloatNodeP(nkFloatLit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
@@ -426,6 +446,10 @@ proc identOrLiteral(p: var TParser): PNode =
     getTok(p)
   of tkFloat64Lit: 
     result = newFloatNodeP(nkFloat64Lit, p.tok.fNumber, p)
+    setBaseFlags(result, p.tok.base)
+    getTok(p)
+  of tkFloat128Lit:
+    result = newFloatNodeP(nkFloat128Lit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkStrLit: 
