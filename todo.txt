@@ -8,12 +8,9 @@ version 0.9.0
 - ``=`` should be overloadable; requires specialization for ``=``
 - fix remaining generics bugs
 - fix remaining closure bugs:
+  - make toplevel but in a scope vars local; make procs there inner procs
   - fix evals.nim with closures
-  - deactivate lambda lifting for JS backend
-  - Test capture of for loop vars; test generics;
-  - test constant closures
-  - implement closures that support nesting of blocks > 1
-  - implement closures that support nesting of *procs* > 1
+  - test sequence of closures; especially that the GC does not leak for those!
 - implement proper coroutines
 
 - document 'do' notation
@@ -129,6 +126,7 @@ Low priority
 - activate more thread tests
 - implement ``--script:sh|bat`` command line option; think about script 
   generation
+- implement closures that support nesting of *procs* > 1
 
 
 Further optimization ideas

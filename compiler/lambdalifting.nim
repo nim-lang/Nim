@@ -218,8 +218,29 @@ proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
     s.owner == outerProc and not isGenericRoutine(s)
   #s.typ.callConv == ccClosure
 
+proc addClosureParam(i: PInnerContext, e: PEnv) =
+  var cp = newSym(skParam, getIdent(paramname), i.fn)
+  cp.info = i.fn.info
+  incl(cp.flags, sfFromGeneric)
+  cp.typ = newType(tyRef, i.fn)
+  addSon(cp.typ, e.tup)
+  i.closureParam = cp
+  addHiddenParam(i.fn, i.closureParam)
+  #echo "closure param added for ", i.fn.name.s, " ", i.fn.id
+
+proc dummyClosureParam(o: POuterContext, i: PInnerContext) =
+  var e = o.currentEnv
+  if IdTableGet(o.lambdasToEnv, i.fn) == nil:
+    IdTablePut(o.lambdasToEnv, i.fn, e)
+  if i.closureParam == nil: addClosureParam(i, e)
+
 proc captureVar(o: POuterContext, i: PInnerContext, local: PSym, 
                 info: TLineInfo) =
+  # for inlined variables the owner is still wrong, so it can happen that it's
+  # not a captured variable at all ... *sigh* 
+  var it = PEnv(IdTableGet(o.localsToEnv, local))
+  if it == nil: return
+
   # we need to remember which inner most closure belongs to this lambda:
   var e = o.currentEnv
   if IdTableGet(o.lambdasToEnv, i.fn) == nil:
@@ -227,19 +248,10 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
 
   # variable already captured:
   if IdNodeTableGet(i.localsToAccess, local) != nil: return
-  if i.closureParam == nil:
-    var cp = newSym(skParam, getIdent(paramname), i.fn)
-    cp.info = i.fn.info
-    incl(cp.flags, sfFromGeneric)
-    cp.typ = newType(tyRef, i.fn)
-    addSon(cp.typ, e.tup)
-    i.closureParam = cp
-    addHiddenParam(i.fn, i.closureParam)
+  if i.closureParam == nil: addClosureParam(i, e)
   
   # check which environment `local` belongs to:
   var access = newSymNode(i.closureParam)
-  var it = PEnv(IdTableGet(o.localsToEnv, local))
-  assert it != nil
   addCapturedVar(it, local)
   if it == e:
     # common case: local directly in current environment:
@@ -325,6 +337,9 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       var inner = newInnerContext(n.sym)
       let body = n.sym.getBody
       gatherVars(o, inner, body)
+      # dummy closure param needed?
+      if inner.closureParam == nil and n.sym.typ.callConv == ccClosure:
+        dummyClosureParam(o, inner)
       let ti = transformInnerProc(o, inner, body)
       if ti != nil: n.sym.ast.sons[bodyPos] = ti
   of nkLambdaKinds:
@@ -425,9 +440,19 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
     if closure != nil:
       # we need to replace the lambda with '(lambda, env)': 
       let a = closure.closure
-      assert a != nil
-      return makeClosure(local, a, n.info)
-  
+      if a != nil:
+        return makeClosure(local, a, n.info)
+      else:
+        # can happen for dummy closures:
+        var scope = closure.attachedNode
+        assert scope.kind == nkStmtList
+        if scope.sons[0].kind == nkEmpty:
+          # change the empty node to contain the closure construction:
+          scope.sons[0] = generateClosureCreation(o, closure)
+        let x = closure.closure
+        assert x != nil
+        return makeClosure(local, x, n.info)
+    
     if not contains(o.capturedVars, local.id): return
     var env = PEnv(IdTableGet(o.localsToEnv, local))
     if env == nil: return
@@ -474,5 +499,6 @@ proc liftLambdas(fn: PSym, body: PNode): PNode =
 
 proc liftLambdas*(n: PNode): PNode =
   assert n.kind in procDefs
+  if gCmd == cmdCompileToEcmaScript: return n
   var s = n.sons[namePos].sym
   result = liftLambdas(s, s.getBody)

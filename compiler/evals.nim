@@ -501,7 +501,8 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       result = evalGlobalVar(c, s, flags)
   of skParam:
     # XXX what about LValue?
-    result = c.tos.params[s.position + 1]
+    if s.position + 1 <% c.tos.params.len:
+      result = c.tos.params[s.position + 1]
   of skConst: result = s.ast
   of skEnumField: result = newIntNodeT(s.position, n)
   else: result = nil

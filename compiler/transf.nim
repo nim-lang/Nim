@@ -377,6 +377,7 @@ proc generateThunk(c: PTransf, prc: PNode, dest: PType): PNode =
   
   # we cannot generate a proper thunk here for GC-safety reasons (see internal
   # documentation):
+  if gCmd == cmdCompileToEcmaScript: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
   conv.add(emptyNode)
@@ -506,15 +507,18 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym:
     InternalError(call.info, "transformFor")
   
-  var newC = newTransCon(call.sons[0].sym)
+  # Bugfix: inlined locals belong to the invoking routine, not to the invoked
+  # iterator!
+  let iter = call.sons[0].sym
+  var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
-  if newC.owner.kind != skIterator: InternalError(call.info, "transformFor") 
+  if iter.kind != skIterator: InternalError(call.info, "transformFor") 
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1): 
     var arg = transform(c, call.sons[i]).pnode
-    var formal = skipTypes(newC.owner.typ, abstractInst).n.sons[i].sym 
+    var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym 
     case putArgInto(arg, formal.typ)
     of paDirectMapping: 
       IdNodeTablePut(newC.mapping, formal, arg)
@@ -528,7 +532,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       IdNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
-  var body = newC.owner.getBody
+  var body = iter.getBody
   pushInfoContext(n.info)
   inc(c.inlining)
   add(result, transform(c, body))
@@ -647,6 +651,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     if n.sons[genericParamsPos].kind == nkEmpty:
       var s = n.sons[namePos].sym
       n.sons[bodyPos] = PNode(transform(c, s.getBody))
+      if s.ast.sons[bodyPos] != n.sons[bodyPos]:
+        # somehow this can happen ... :-/
+        s.ast.sons[bodyPos] = n.sons[bodyPos]
       n.sons[bodyPos] = liftLambdas(n)
       if n.kind == nkMethodDef: methodDef(s, false)
     result = PTransNode(n)
