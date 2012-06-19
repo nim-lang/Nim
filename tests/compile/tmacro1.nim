@@ -19,3 +19,12 @@ macro test*(a: stmt): stmt =
 test:
   "hi"
 
+macro dump(n: stmt): stmt =
+  dump(n)
+  if kind(n) == nnkNone:
+    nil
+  else:
+    hint($kind(n))
+    for i in countUp(0, len(n)-1):
+      nil
+

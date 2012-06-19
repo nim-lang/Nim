@@ -1081,7 +1081,7 @@ proc SemStmt(c: PContext, n: PNode): PNode =
         # transformed into regular try blocks:
         #
         # var f = fopen("somefile") | var f = fopen("somefile")
-        # finally: fcsole(f)        | try:
+        # finally: fclose(f)        | try:
         # ...                       |   ...
         #                           | finally:
         #                           |   fclose(f)
