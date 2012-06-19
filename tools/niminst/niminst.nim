@@ -391,7 +391,7 @@ proc srcdist(c: var TConfigData) =
       if existsDir(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
-                 "--gen_mapping --cc:gcc" &
+                 "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
                  [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs,
                  changeFileExt(c.infile, "nim")]

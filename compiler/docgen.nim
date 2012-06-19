@@ -206,10 +206,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     of tkCharLit: 
       dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}", 
             [toRope(esc(d.target, literal))])
-    of tkIntLit..tkInt64Lit: 
+    of tkIntLit..tkUInt64Lit: 
       dispA(result, "<span class=\"DecNumber\">$1</span>", 
             "\\spanDecNumber{$1}", [toRope(esc(d.target, literal))])
-    of tkFloatLit..tkFloat64Lit: 
+    of tkFloatLit..tkFloat128Lit: 
       dispA(result, "<span class=\"FloatNumber\">$1</span>", 
             "\\spanFloatNumber{$1}", [toRope(esc(d.target, literal))])
     of tkSymbol: 

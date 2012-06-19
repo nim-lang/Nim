@@ -186,10 +186,12 @@ when not defined(ECMAScript):
 
   proc trunc*(x: float): float {.importc: "trunc", nodecl.}
   proc floor*(x: float): float {.importc: "floor", nodecl.}
+  proc ceil*(x: float): float {.importc: "ceil", nodecl.}
 
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
+  proc ceil*(x: float): float {.importc: "Math.ceil", nodecl.}
   proc random*(max: int): int = return int(floor(mathrandom() * float(max)))
   proc randomize*() = nil
   

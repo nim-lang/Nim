@@ -192,18 +192,43 @@ const
   BIO_C_DO_STATE_MACHINE = 101
   BIO_C_GET_SSL = 110
 
-proc SSL_library_init*(): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_library_init*(): cInt{.cdecl, dynlib: DLLSSLName, importc, discardable.}
 proc SSL_load_error_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSLv23_client_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSLv23_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSLv2_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSLv3_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
+proc SSL_new*(context: PSSL_CTX): PSSL{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_free*(ssl: PSSL){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: PSSL_CTX, CAfile: cstring,
     CApath: cstring): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_free*(arg0: PSSL_CTX){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_verify*(s: PSSL_CTX, mode: int, cb: proc (a: int, b: pointer): int){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
     dynlib: DLLSSLName, importc.}
+
+proc SSL_CTX_set_cipher_list*(s: PSSLCTX, ciphers: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_use_certificate_file*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
+    cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_use_PrivateKey_file*(ctx: PSSL_CTX,
+    filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_check_private_key*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 
+    importc.}
+
+proc SSL_set_fd*(ssl: PSSL, fd: cint): cint{.cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSL_shutdown*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_connect*(ssl: PSSL): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_read*(ssl: PSSL, buf: pointer, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_write*(ssl: PSSL, buf: cstring, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_error*(s: PSSL, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_accept*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc BIO_new_ssl_connect*(ctx: PSSL_CTX): PBIO{.cdecl,
     dynlib: DLLSSLName, importc.}
@@ -227,16 +252,27 @@ proc BIO_free*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc ERR_print_errors_fp*(fp: TFile){.cdecl, dynlib: DLLSSLName, importc.}
 
+proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl, 
+    dynlib: DLLUtilName, importc.}
+proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
+
+proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLSSLName, importc: "OPENSSL_add_all_algorithms_conf".}
+
+proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
+
+proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, dynlib: DLLSSLName, importc.}
+
+proc CRYPTO_malloc_init*() =
+  CRYPTO_set_mem_functions(alloc, realloc, dealloc)
+
 when True:
   nil
 else:
-  proc SslGetError*(s: PSSL, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName, 
-      importc.}
   proc SslCtxSetCipherList*(arg0: PSSL_CTX, str: cstring): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
   proc SslCtxNew*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
       dynlib: DLLSSLName, importc.}
-  proc SslCtxFree*(arg0: PSSL_CTX){.cdecl, dynlib: DLLSSLName, importc.}
+
   proc SslSetFd*(s: PSSL, fd: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslCtrl*(ssl: PSSL, cmd: cInt, larg: int, parg: Pointer): int{.cdecl, 
       dynlib: DLLSSLName, importc.}
@@ -255,19 +291,15 @@ else:
       dynlib: DLLSSLName, importc.}
   proc SslCtxUsePrivateKeyASN1*(pk: cInt, ctx: PSSL_CTX,
       d: cstring, length: int): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-  proc SslCtxUsePrivateKeyFile*(ctx: PSSL_CTX,
-      filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+
   proc SslCtxUseCertificate*(ctx: PSSL_CTX, x: SslPtr): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
   proc SslCtxUseCertificateASN1*(ctx: PSSL_CTX, length: int, d: cstring): cInt{.
       cdecl, dynlib: DLLSSLName, importc.}
-  proc SslCtxUseCertificateFile*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
-      cdecl, dynlib: DLLSSLName, importc.}
+
     #  function SslCtxUseCertificateChainFile(ctx: PSSL_CTX; const filename: PChar):cInt;
   proc SslCtxUseCertificateChainFile*(ctx: PSSL_CTX, filename: cstring): cInt{.
       cdecl, dynlib: DLLSSLName, importc.}
-  proc SslCtxCheckPrivateKeyFile*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 
-      importc.}
   proc SslCtxSetDefaultPasswdCb*(ctx: PSSL_CTX, cb: PPasswdCb){.cdecl, 
       dynlib: DLLSSLName, importc.}
   proc SslCtxSetDefaultPasswdCbUserdata*(ctx: PSSL_CTX, u: SslPtr){.cdecl, 
@@ -276,10 +308,10 @@ else:
   proc SslCtxLoadVerifyLocations*(ctx: PSSL_CTX, CAfile: cstring, CApath: cstring): cInt{.
       cdecl, dynlib: DLLSSLName, importc.}
   proc SslNew*(ctx: PSSL_CTX): PSSL{.cdecl, dynlib: DLLSSLName, importc.}
-  proc SslFree*(ssl: PSSL){.cdecl, dynlib: DLLSSLName, importc.}
-  proc SslAccept*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+
+
   proc SslConnect*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
-  proc SslShutdown*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+
   proc SslRead*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
   proc SslPeek*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
@@ -339,9 +371,7 @@ else:
   proc EVPcleanup*(){.cdecl, dynlib: DLLUtilName, importc.}
     #  function ErrErrorString(e: cInt; buf: PChar): PChar;
   proc SSLeayversion*(t: cInt): cstring{.cdecl, dynlib: DLLUtilName, importc.}
-  proc ErrErrorString*(e: cInt, buf: cstring, length: cInt){.cdecl, 
-      dynlib: DLLUtilName, importc.}
-  proc ErrGetError*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
+
   proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc.}
   proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc.}

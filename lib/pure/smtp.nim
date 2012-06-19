@@ -25,20 +25,17 @@
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##   
 ## 
-## For SSL support this module relies on the SSL module. If you want to 
-## disable SSL, compile with ``-d:NoSSL``.
+## For SSL support this module relies on OpenSSL. If you want to 
+## enable SSL, compile with ``-d:ssl``.
+
+when not defined(ssl):
+  {.error: "The SMTP module should be compiled with SSL support. Compile with -d:ssl."}
 
 import sockets, strutils, strtabs, base64, os
-
-when not defined(noSSL):
-  import ssl
 
 type
   TSMTP* {.final.} = object
     sock: TSocket
-    when not defined(noSSL):
-      sslSock: TSecureSocket
-    ssl: Bool
     debug: Bool
   
   TMessage* {.final.} = object
@@ -53,20 +50,13 @@ type
 proc debugSend(smtp: TSMTP, cmd: string) =
   if smtp.debug:
     echo("C:" & cmd)
-  if not smtp.ssl:
-    smtp.sock.send(cmd)
-  else:
-    when not defined(noSSL):
-      smtp.sslSock.send(cmd)
+  smtp.sock.send(cmd)
 
-proc debugRecv(smtp: TSMTP): TaintedString =
+proc debugRecv(smtp: var TSMTP): TaintedString =
   var line = TaintedString""
   var ret = False
-  if not smtp.ssl:
-    ret = smtp.sock.recvLine(line)
-  else:
-    when not defined(noSSL):
-      ret = smtp.sslSock.recvLine(line)
+  ret = smtp.sock.recvLine(line)
+
   if ret:
     if smtp.debug:
       echo("S:" & line.string)
@@ -79,7 +69,7 @@ proc quitExcpt(smtp: TSMTP, msg: string) =
   smtp.debugSend("QUIT")
   raise newException(EInvalidReply, msg)
 
-proc checkReply(smtp: TSMTP, reply: string) =
+proc checkReply(smtp: var TSMTP, reply: string) =
   var line = smtp.debugRecv()
   if not line.string.startswith(reply):
     quitExcpt(smtp, "Expected " & reply & " reply, got: " & line.string)
@@ -88,25 +78,21 @@ proc connect*(address: string, port = 25,
               ssl = false, debug = false): TSMTP =
   ## Establishes a connection with a SMTP server.
   ## May fail with EInvalidReply or with a socket error.
-
-  if not ssl:
-    result.sock = socket()
-    result.sock.connect(address, TPort(port))
-  else:
-    when not defined(noSSL):
-      result.ssl = True
-      discard result.sslSock.connect(address, port)
+  result.sock = socket()
+  if ssl:
+    when defined(ssl):
+      result.sock.wrapSocket(verifyMode = CVerifyNone)
     else:
-      raise newException(EInvalidReply, 
+      raise newException(ESystem, 
                          "SMTP module compiled without SSL support")
-
+  result.sock.connect(address, TPort(port))
   result.debug = debug
   
   result.checkReply("220")
   result.debugSend("HELO " & address & "\c\L")
   result.checkReply("250")
 
-proc auth*(smtp: TSMTP, username, password: string) =
+proc auth*(smtp: var TSMTP, username, password: string) =
   ## Sends an AUTH command to the server to login as the `username` 
   ## using `password`.
   ## May fail with EInvalidReply.
@@ -120,7 +106,7 @@ proc auth*(smtp: TSMTP, username, password: string) =
   smtp.debugSend(encode(password) & "\c\L")
   smtp.checkReply("235") # Check whether the authentification was successful.
 
-proc sendmail*(smtp: TSMTP, fromaddr: string,
+proc sendmail*(smtp: var TSMTP, fromaddr: string,
                toaddrs: seq[string], msg: string) =
   ## Sends `msg` from `fromaddr` to `toaddr`. 
   ## Messages may be formed using ``createMessage`` by converting the
@@ -142,10 +128,7 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
 proc close*(smtp: TSMTP) =
   ## Disconnects from the SMTP server and closes the socket.
   smtp.debugSend("QUIT\c\L")
-  if not smtp.ssl:
-    smtp.sock.close()
-  else:
-    smtp.sslSock.close()
+  smtp.sock.close()
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): TMessage =

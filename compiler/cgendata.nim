@@ -37,9 +37,11 @@ type
     cfsDynLibDeinit           # section for deinitialization of dynamic
                               # libraries
   TCTypeKind* = enum          # describes the type kind of a C type
-    ctVoid, ctChar, ctBool, ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64, 
-    ctInt, ctInt8, ctInt16, ctInt32, ctInt64, ctFloat, ctFloat32, ctFloat64, 
-    ctFloat128, ctArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc, ctCString
+    ctVoid, ctChar, ctBool,
+    ctInt, ctInt8, ctInt16, ctInt32, ctInt64,
+    ctFloat, ctFloat32, ctFloat64, ctFloat128,
+    ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64,
+    ctArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc, ctCString
   TCFileSections* = array[TCFileSection, PRope] # represents a generated C file
   TCProcSection* = enum       # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
@@ -62,8 +64,9 @@ type
     ThreadVarAccessed*: bool  # true if the proc already accessed some threadvar
     nestedTryStmts*: seq[PNode] # in how many nested try statements we are
                                 # (the vars must be volatile then)
-    popCurrExc*: Natural      # how often to emit 'popCurrentException()'
-                              # before 'break'|'return'
+    inExceptBlock*: int       # are we currently inside an except block?
+                              # leaving such scopes by raise or by return must
+                              # execute any applicable finally blocks
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
     breakIdx*: int            # the block that will be exited

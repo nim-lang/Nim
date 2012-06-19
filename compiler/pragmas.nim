@@ -23,7 +23,7 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit}
+    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError}
@@ -508,6 +508,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             incl(sym.loc.Flags, lfNoDecl) 
             # implies nodecl, because otherwise header would not make sense
             if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+          of wDestructor:
+            if sym.typ.sons.len == 2:
+              sym.flags.incl sfDestructor
+            else:
+              invalidPragma(it)
           of wNosideeffect: 
             noVal(it)
             incl(sym.flags, sfNoSideEffect)

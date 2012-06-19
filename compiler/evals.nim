@@ -235,6 +235,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64: 
     result = newNodeIT(nkIntLit, info, t)
+  of tyUInt..tyUInt64:
+    result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128: 
     result = newNodeIt(nkFloatLit, info, t)
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr, 

@@ -192,7 +192,7 @@ __clang__
 **		long int lrint  (double x);
 */
 
-#if defined(__LCC__) || (defined(__GNUC__) && defined(WIN32))
+#if defined(__LCC__) || (defined(__GNUC__))
 /* Linux' GCC does not seem to have these. Why? */
 #  define HAVE_LRINT
 #  define HAVE_LRINTF
@@ -281,6 +281,13 @@ static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
 #  endif
 #  define NIM_BOOL bool
 #  define NIM_NIL 0
+struct NimException
+{
+  NimException(struct E_Base* exp, const char* msg): exp(exp), msg(msg) {}
+
+  struct E_Base* exp;
+  const char* msg;
+};
 #else
 #  ifdef bool
 #    define NIM_BOOL bool

@@ -43,8 +43,13 @@ type
     akFloat = 36,       ## any represents a float
     akFloat32 = 37,     ## any represents a float32
     akFloat64 = 38,     ## any represents a float64
-    akFloat128 = 39     ## any represents a float128
-
+    akFloat128 = 39,    ## any represents a float128
+    akUInt = 40,        ## any represents an unsigned int
+    akUInt8 = 41,       ## any represents an unsigned int8
+    akUInt16 = 42,      ## any represents an unsigned in16
+    akUInt32 = 43,      ## any represents an unsigned int32
+    akUInt64 = 44,      ## any represents an unsigned int64
+    
   TAny* = object {.pure.} ## can represent any nimrod value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
                           ## that ``TAny`` keeps a non-traced pointer to its

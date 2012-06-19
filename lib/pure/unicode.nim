@@ -18,9 +18,9 @@ type
   TRune* = distinct irune   ## type that can hold any Unicode character
   TRune16* = distinct int16 ## 16 bit Unicode character
   
-proc `<=%`*(a, b: TRune): bool {.borrow.}
-proc `<%`*(a, b: TRune): bool {.borrow.}
-proc `==`*(a, b: TRune): bool {.borrow.}
+proc `<=%`*(a, b: TRune): bool = return int(a) <=% int(b)
+proc `<%`*(a, b: TRune): bool = return int(a) <% int(b)
+proc `==`*(a, b: TRune): bool = return int(a) == int(b)
 
 template ones(n: expr): expr = ((1 shl n)-1)
 
