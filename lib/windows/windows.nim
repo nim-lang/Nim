@@ -14524,7 +14524,7 @@ proc GetWindowTextA*(wnd: HWND, lpString: LPSTR, nMaxCount: int32): int32{.
     stdcall, dynlib: "user32", importc: "GetWindowTextA".}
 proc GetWindowTextLengthA*(wnd: HWND): int32{.stdcall, dynlib: "user32",
     importc: "GetWindowTextLengthA".}
-proc MessageBoxA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT): int32{.
+proc MessageBoxA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: int): int32{.
     stdcall, dynlib: "user32", importc: "MessageBoxA".}
 proc MessageBoxExA*(wnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT,
                     wLanguageId: int16): int32{.stdcall, dynlib: "user32",

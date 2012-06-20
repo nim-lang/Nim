@@ -15,7 +15,7 @@ import
   lua, lualib, lauxlib, mysql, sqlite3, python, tcl,
   db_postgres, db_mysql, db_sqlite, ropes, sockets, browsers, httpserver,
   httpclient, parseutils, unidecode, xmldom, xmldomparser, xmltree, xmlparser,
-  htmlparser, re, graphics, colors, pegs, subexes
+  htmlparser, re, graphics, colors, pegs, subexes, dialogs
   
 when defined(linux):
   import
