@@ -184,6 +184,9 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
       :"=a"(`result`)
       :"a"(`a`), "c"(`b`)
     """
+    #".intel_syntax noprefix"
+    #/* Intel syntax here */
+    #".att_syntax"
 
   proc subInt(a, b: int): int {.compilerProc, inline.} =
     asm """ "subl %%ecx,%%eax\n"

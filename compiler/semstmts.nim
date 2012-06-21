@@ -767,7 +767,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       pushProcCon(c, s)
       if s.typ.sons[0] != nil and kind != skIterator: 
         addResult(c, s.typ.sons[0], n.info, kind)
-      if sfImportc notin s.flags: 
+      if sfImportc notin s.flags:
         # no semantic checking for importc:
         n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
       if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
