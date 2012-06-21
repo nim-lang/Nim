@@ -366,14 +366,17 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       var it = n.sons[i]
       if it.kind == nkCommentStmt: nil
       elif it.kind == nkIdentDefs:
+        var L = sonsLen(it)
         if it.sons[0].kind != nkSym: InternalError(it.info, "transformOuter")
         #echo "set: ", it.sons[0].sym.name.s, " ", o.currentBlock == nil
         IdTablePut(o.localsToEnv, it.sons[0].sym, o.currentEnv)
+        searchForInnerProcs(o, it.sons[L-1])
       elif it.kind == nkVarTuple:
         var L = sonsLen(it)
         for j in countup(0, L-3):
           #echo "set: ", it.sons[j].sym.name.s, " ", o.currentBlock == nil
           IdTablePut(o.localsToEnv, it.sons[j].sym, o.currentEnv)
+        searchForInnerProcs(o, it.sons[L-1])
       else:
         InternalError(it.info, "transformOuter")
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
@@ -493,7 +496,6 @@ proc liftLambdas(fn: PSym, body: PNode): PNode =
     searchForInnerProcs(o, body)
     let a = transformOuterProc(o, body)
     result = ex
-    #echo renderTree(result)
   
 # XXX should 's' be replaced by a tuple ('s', env)?
 

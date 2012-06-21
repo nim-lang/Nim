@@ -124,8 +124,18 @@ proc GetUniqueType*(key: PType): PType =
       result = key
   of tyProc:
     # tyVar is not 100% correct, but would speeds things up a little:
-    result = key
-
+    if key.callConv != ccClosure:
+      result = key
+    else:
+      # ugh, we need the canon here:
+      if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
+      for h in countup(0, high(gTypeTable[k].data)): 
+        var t = PType(gTypeTable[k].data[h].key)
+        if t != nil and sameBackendType(t, key): 
+          return t
+      IdTablePut(gTypeTable[k], key, key)
+      result = key
+      
 proc TableGetType*(tab: TIdTable, key: PType): PObject = 
   # returns nil if we need to declare this type
   result = IdTableGet(tab, key)

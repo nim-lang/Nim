@@ -596,14 +596,14 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
     writeContext(unknownLineInfo())
     frmt = rawErrorFormat
   of warnMin..warnMax: 
-    if not (optWarns in gOptions): return 
-    if not (msg in gNotes): return 
+    if optWarns notin gOptions: return 
+    if msg notin gNotes: return 
     writeContext(unknownLineInfo())
     frmt = rawWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 
-    if not (optHints in gOptions): return 
-    if not (msg in gNotes): return 
+    if optHints notin gOptions: return 
+    if msg notin gNotes: return 
     frmt = rawHintFormat
     inc(gHintCounter)
   let s = `%`(frmt, `%`(msgKindToString(msg), args))

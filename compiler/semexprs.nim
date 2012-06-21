@@ -135,9 +135,9 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
     IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
   if sameType(castDest, src) and castDest.sym == src.sym: 
     # don't annoy conversions that may be needed on another processor:
-    if not (castDest.kind in {tyInt..tyUInt64, tyNil}): 
+    if castDest.kind notin {tyInt..tyUInt64, tyNil}:
       Message(info, hintConvFromXtoItselfNotNeeded, typeToString(castDest))
-    return 
+    return
   var d = skipTypes(castDest, abstractVar)
   var s = skipTypes(src, abstractVar)
   while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind): 
@@ -538,9 +538,11 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     result = semOverloadedCall(c, n, nOrig, {skIterator})
   elif efInTypeOf in flags:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
-    result = semOverloadedCall(c, n, nOrig, {skIterator, skProc, skMethod, skConverter, skMacro, skTemplate})
+    result = semOverloadedCall(c, n, nOrig, 
+      {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
   else:
-    result = semOverloadedCall(c, n, nOrig, {skProc, skMethod, skConverter, skMacro, skTemplate})
+    result = semOverloadedCall(c, n, nOrig, 
+      {skProc, skMethod, skConverter, skMacro, skTemplate})
   if result != nil:
     if result.sons[0].kind != nkSym: 
       InternalError("semDirectCallAnalyseEffects")
@@ -838,7 +840,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # if f != nil and f.kind == skStub: loadStub(f)
       # ``loadStub`` is not correct here as we don't care for ``f`` really
       if f != nil: 
-        # BUGFIX: do not check for (f.kind in [skProc, skMethod, skIterator]) here
+        # BUGFIX: do not check for (f.kind in {skProc, skMethod, skIterator}) here
         # This special node kind is to merge with the call handler in `semExpr`.
         result = newNodeI(nkDotCall, n.info)
         addSon(result, newIdentNode(i, n.info))
