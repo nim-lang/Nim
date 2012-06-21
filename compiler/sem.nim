@@ -117,6 +117,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
 proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
+  if sym == c.p.owner:
+    GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
   if c.evalContext == nil:
     c.evalContext = newEvalContext(c.module, "", emStatic)
   result = evalMacroCall(c.evalContext, n, sym)
