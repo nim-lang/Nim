@@ -340,7 +340,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   # which can be modified.
   var x = c
   while x != nil: 
-    if sym.kind == skResult:
+    if sym.kind == skResult and x.params.len > 0:
       result = x.params[0]
       if result == nil: result = emptyNode
       return

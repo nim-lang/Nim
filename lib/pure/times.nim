@@ -317,8 +317,6 @@ when not defined(ECMAScript):
     result.weekday = weekDays[int(tm.weekDay)]
     result.yearday = int(tm.yearday)
     result.isDST = tm.isDST > 0
-    #result.tzname = if local: getTzname()[if result.isDST: 0 else: 1] else: "UTC"
-    # TODO: ^^^ Crashes the compiler.
     if local:
       if result.isDST:
         result.tzname = getTzname()[0]
