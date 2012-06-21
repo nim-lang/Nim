@@ -53,3 +53,15 @@ proc `$`*(status: TStatusEnum): string =
 proc makeCommitPath*(platform, hash: string): string =
   return platform / "nimrod_" & hash.substr(0, 11) # 11 Chars.
 
+type
+  TFlag = enum
+    A, B, C, D
+
+  TFlags = set[TFlag]
+
+  TObj = object
+    x: int
+    flags: TFlags
+
+# have a proc taking TFlags as param and returning object having TFlags field
+proc foo(flags: TFlags): TObj = nil
