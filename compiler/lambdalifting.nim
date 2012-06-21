@@ -302,7 +302,7 @@ proc transformInnerProc(o: POuterContext, i: PInnerContext, n: PNode): PNode =
     let s = n.sym
     if s == i.fn: 
       # recursive calls go through (lambda, hiddenParam):
-      assert i.closureParam != nil
+      assert i.closureParam != nil, i.fn.name.s
       result = makeClosure(s, i.closureParam, n.info)
     elif isInnerProc(s, o.fn) and s.typ.callConv == ccClosure:
       # ugh: call to some other inner proc; 
@@ -340,8 +340,10 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       # dummy closure param needed?
       if inner.closureParam == nil and n.sym.typ.callConv == ccClosure:
         dummyClosureParam(o, inner)
-      let ti = transformInnerProc(o, inner, body)
-      if ti != nil: n.sym.ast.sons[bodyPos] = ti
+      # only transform if it really needs a closure:
+      if inner.closureParam != nil:
+        let ti = transformInnerProc(o, inner, body)
+        if ti != nil: n.sym.ast.sons[bodyPos] = ti
   of nkLambdaKinds:
     searchForInnerProcs(o, n.sons[namePos])
   of nkWhileStmt, nkForStmt, nkParForStmt, nkBlockStmt:
