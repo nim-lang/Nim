@@ -583,6 +583,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
   else: 
     InternalError("getTypeDescAux(" & $t.kind & ')')
     result = nil
+  # fixes bug #145:
+  excl(check, t.id)
 
 proc getTypeDesc(m: BModule, typ: PType): PRope = 
   var check = initIntSet()
