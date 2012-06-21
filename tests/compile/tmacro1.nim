@@ -18,3 +18,4 @@ macro test*(a: stmt): stmt =
 
 test:
   "hi"
+

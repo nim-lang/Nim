@@ -38,8 +38,6 @@ version 0.9.0
 Bugs
 ----
 
-- result.tzname = if local: getTzname()[if result.isDST: 0 else: 1] else: "UTC"
-  Crashes the compiler.
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
 - bug: pragma statements in combination with symbol files are evaluated twice
