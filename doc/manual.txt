@@ -2688,18 +2688,46 @@ The "types" of templates can be the symbols ``expr`` (stands for *expression*),
 ``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
 description*). These are no real types, they just help the compiler parsing.
 Real types can be used too; this implies that expressions are expected.
-However, for parameter type checking the arguments are semantically checked
-before being passed to the template. Other arguments are not semantically
-checked before being passed to the template.
+
+
+Ordinary vs immediate templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are two different kinds of templates: `immediate`:idx: templates and
+ordinary templates. Ordinary templates take part in overloading resolution. As
+such their arguments needs to be type checked before the template is invoked.
+So ordinary templates cannot receive undeclared identifiers:
+
+.. code-block:: nimrod
+
+  template declareInt(x: expr) = 
+    var x: int
+
+  declareInt(x) # error: unknown identifier: 'x'
+
+An ``immediate`` template does not participate in overload resolution and so
+its arguments are not checked for semantics before invokation. So they can
+receive undeclared identifiers:
+
+.. code-block:: nimrod
+
+  template declareInt(x: expr) {.immediate.} = 
+    var x: int
+
+  declareInt(x) # valid
+
+
+Scoping in templates
+~~~~~~~~~~~~~~~~~~~~
 
 The template body does not open a new scope. To open a new scope a ``block``
 statement can be used:
 
 .. code-block:: nimrod
-  template declareInScope(x: expr, t: typeDesc): stmt = 
+  template declareInScope(x: expr, t: typeDesc): stmt {.immediate.} = 
     var x: t
     
-  template declareInNewScope(x: expr, t: typeDesc): stmt = 
+  template declareInNewScope(x: expr, t: typeDesc): stmt {.immediate.} = 
     # open a new scope:
     block: 
       var x: t
@@ -2711,13 +2739,16 @@ statement can be used:
   b = 42  # does not work, `b` is unknown
 
 
+Passing a code block to a template
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 If there is a ``stmt`` parameter it should be the last in the template
 declaration, because statements are passed to a template via a
 special ``:`` syntax:
 
 .. code-block:: nimrod
 
-  template withFile(f, fn, mode: expr, actions: stmt): stmt =
+  template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
     block:
       var f: TFile
       if open(f, fn, mode):
@@ -2793,7 +2824,7 @@ In templates identifiers can be constructed with the backticks notation:
 
 .. code-block:: nimrod
 
-  template typedef(name: expr, typ: typeDesc) = 
+  template typedef(name: expr, typ: typeDesc) {.immediate.} = 
     type
       `T name`* = typ
       `P name`* = ref `T name`
@@ -2808,8 +2839,9 @@ In the example ``name`` is instantiated with ``myint``, so \`T name\` becomes
 Macros
 ------
 
-`Macros`:idx: are the most powerful feature of Nimrod. They can be used
-to implement `domain specific languages`:idx:.
+A `macro`:idx: is a special kind of low level template. They can be used
+to implement `domain specific languages`:idx:. Like templates, macros come in
+the 2 flavors *immediate* and *ordinary*.
 
 While macros enable advanced compile-time code transformations, they
 cannot change Nimrod's syntax. However, this is no real restriction because
@@ -3245,6 +3277,12 @@ factor.
 **Note**: Currently the compiler recognizes but ignores this pragma.
 
 
+immediate pragma
+----------------
+
+See `Ordinary vs immediate templates`_.
+
+
 compilation option pragmas
 --------------------------
 The listed pragmas here can be used to override the code generation options
@@ -3307,22 +3345,23 @@ though and for good reasons: Often they do a better job without it anyway.
 In highly specific cases (a dispatch loop of an bytecode interpreter for
 example) it may provide benefits, though.
 
+
 global pragma
----------------
-The `global`:idx pragma can be applied to a variable within a proc to instruct
+-------------
+The `global`:idx: pragma can be applied to a variable within a proc to instruct
 the compiler to store it in a global location and initialize it once at program
 startup.
 
 .. code-block:: nimrod
-proc isHexNumber(s: string): bool =
-  var pattern {.global.} = re"[0-9a-fA-F]+"
-  result = s.match(pattern)
+  proc isHexNumber(s: string): bool =
+    var pattern {.global.} = re"[0-9a-fA-F]+"
+    result = s.match(pattern)
 
 When used within a generic proc, a separate unique global variable will be
 created for each instantiation of the proc. The order of initialization of
 the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
-and before any variable in a module that imports it. 
+and before any variable in a module that imports it.
 
 DeadCodeElim pragma
 -------------------
