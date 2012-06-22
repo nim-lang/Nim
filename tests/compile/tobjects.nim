@@ -12,6 +12,16 @@ type
     else: nil
     n: bool
 
+type
+  TMyObject = object of TObject
+    case disp: range[0..4]:
+      of 0: arg: char
+      of 1: s: string
+      else: wtf: bool
+      
+var
+  x: TMyObject
+
 var
   global: int
 

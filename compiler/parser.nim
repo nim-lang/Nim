@@ -1279,7 +1279,13 @@ proc parseObjectCase(p: var TParser): PNode =
   addSon(a, parseTypeDesc(p))
   addSon(a, ast.emptyNode)
   addSon(result, a)
+  if p.tok.tokType == tkColon: getTok(p)
   skipComment(p, result)
+  var wasIndented = false
+  if p.tok.tokType == tkInd:
+    pushInd(p.lex, p.tok.indent)
+    getTok(p)
+    wasIndented = true
   while true: 
     if p.tok.tokType == tkSad: getTok(p)
     var b: PNode
@@ -1300,6 +1306,9 @@ proc parseObjectCase(p: var TParser): PNode =
     addSon(b, fields)
     addSon(result, b)
     if b.kind == nkElse: break 
+  if wasIndented:
+    eat(p, tkDed)
+    popInd(p.lex)
   
 proc parseObjectPart(p: var TParser): PNode = 
   case p.tok.tokType
