@@ -17,6 +17,8 @@ Bugfixes
   produce segmentation faults.
 - Fixed ambiguity in recvLine which meant that receiving ``\r\L`` was
   indistinguishable from disconnections.
+- Many more bugfixes, too many to list them all.
+
 
 Library Additions
 -----------------
@@ -83,6 +85,9 @@ Changes affecting backwards compatibility
   of tuples anymore. This had to be changed as the old behaviour never
   produced consistent results.
 - Deprecated the ``ssl`` module.
+- Deprecated ``nimrod pretty`` as it never worked good enough and has some
+  inherent problems.
+
 
 Compiler Additions
 ------------------
