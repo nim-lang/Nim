@@ -23,7 +23,7 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor}
+    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wHoist}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError}
@@ -51,7 +51,8 @@ const
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
-    wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal}
+    wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal,
+    wByCopy}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportcpp, wImportobjc, wError}
   letPragmas* = varPragmas
@@ -597,6 +598,12 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wNoInit:
             noVal(it)
             if sym != nil: incl(sym.flags, sfNoInit)
+          of wByCopy:
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfByCopy)
+          of wHoist:
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfHoist)
           of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
              wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
              wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef,

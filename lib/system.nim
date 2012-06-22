@@ -1246,7 +1246,9 @@ iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   ## `annotation` is an additional annotation for the code generator to use.
   ## Note that the compiler maps that to
   ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
-  ## such isn't aware of the parallelism in your code. Be careful.
+  ## such isn't aware of the parallelism in your code! Be careful! Later
+  ## versions of ``||`` will get proper support by Nimrod's code generator
+  ## and GC.
   nil
 
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
@@ -2214,7 +2216,10 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ##   const myResource = staticRead"mydatafile.bin"
   ##
+  ## ``slurp`` is an alias for ``staticRead``.
 
+proc gorge*(command: string, input = ""): string {.
+  magic: "StaticExec".} = nil
 proc staticExec*(command: string, input = ""): string {.
   magic: "StaticExec".} = nil
   ## executes an external process at compile-time.
@@ -2225,6 +2230,7 @@ proc staticExec*(command: string, input = ""): string {.
   ##   const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
   ##                     "\nCompiled on " & staticExec("uname -v")
   ##
+  ## ``gorge`` is an alias for ``staticExec``.
 
 proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal

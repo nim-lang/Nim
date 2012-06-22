@@ -1,5 +1,5 @@
 discard """
-  output: "02468101214161820"
+  output: "02468101214161820\n15"
 """
 
 proc filter[T](list: seq[T], f: proc (item: T): bool {.closure.}): seq[T] =
@@ -24,5 +24,18 @@ proc outer =
                )
 
   for n in nums2: stdout.write(n)
+  stdout.write("\n")
 
 outer()
+
+import math
+proc compose[T](f1, f2: proc (x: T): T {.closure.}): proc (x: T): T {.closure.} =
+  result = (proc (x: T): T =
+             result = f1(f2(x)))
+
+
+proc add5(x: int): int = result = x + 5
+
+var test = compose(add5, add5)
+echo test(5)
+

@@ -1,6 +1,10 @@
 version 0.9.0
 =============
 
+New pragmas:
+  - ``hoist`` pragma for loop hoisting
+  - implement ``byCopy`` pragma
+
 - complete and document optional indentation for 'case' statement
 - implement a warning message for shadowed 'result' variable
 - make templates hygienic by default: try to gensym() everything in the 'block'
@@ -13,7 +17,7 @@ version 0.9.0
   - fix evals.nim with closures
   - test sequence of closures; especially that the GC does not leak for those!
   - proc types shall have closure calling convention per default
-  - implement ``byCopy`` pragma
+  - implement "closure tuple consists of a single 'ref'" optimization
 - implement proper coroutines
 
 - document 'do' notation
@@ -22,7 +26,6 @@ version 0.9.0
   use tyInt+node for that
 - implement the high level optimizer
 - change overloading resolution
-- ``hoist`` pragma for loop hoisting
 - we need to support iteration of 2 different data structures in parallel
 - make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
