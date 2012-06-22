@@ -6,7 +6,6 @@ Advanced commands:
   //rst2tex                 convert a reStructuredText file to TeX
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
-  //pretty                  pretty print the inputfile
   //genDepend               generate a DOT file containing the
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
