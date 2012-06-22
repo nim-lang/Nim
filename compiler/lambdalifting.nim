@@ -495,6 +495,13 @@ proc liftLambdas(fn: PSym, body: PNode): PNode =
     var o = newOuterContext(fn)
     let ex = closureCreationPoint(body)
     o.currentEnv = newEnv(fn, nil, ex)
+    # put all params into the environment so they can be captured:
+    let params = fn.typ.n
+    for i in 1.. <params.len: 
+      if params.sons[i].kind != nkSym:
+        InternalError(params.info, "liftLambdas: strange params")
+      let param = params.sons[i].sym
+      IdTablePut(o.localsToEnv, param, o.currentEnv)
     searchForInnerProcs(o, body)
     let a = transformOuterProc(o, body)
     result = ex

@@ -1,35 +1,30 @@
 version 0.9.0
 =============
 
+Debug GC session:
+- bug: stress testing basic method example (eval example) 
+  without ``-d:release`` leaks memory?
+- test sequence of closures; especially that the GC does not leak for those!
+
 New pragmas:
-  - ``hoist`` pragma for loop hoisting
-  - implement ``byCopy`` pragma
+- ``hoist`` pragma for loop hoisting
+- implement ``byCopy`` pragma
 
 - complete and document optional indentation for 'case' statement
-- implement a warning message for shadowed 'result' variable
 - make templates hygienic by default: try to gensym() everything in the 'block'
-  of a template
+  of a template; find a better solution for gensym instead of `*ident`
 - ``bind`` for overloaded symbols does not work apparently
 - ``=`` should be overloadable; requires specialization for ``=``
-- fix remaining generics bugs
 - fix remaining closure bugs:
   - make toplevel but in a scope vars local; make procs there inner procs
   - fix evals.nim with closures
-  - test sequence of closures; especially that the GC does not leak for those!
   - proc types shall have closure calling convention per default
   - implement "closure tuple consists of a single 'ref'" optimization
-- implement proper coroutines
 
 - document 'do' notation
-- dead code elim for JS backend; 'of' operator for JS backend
 - unsigned ints and bignums; requires abstract integer literal type: 
   use tyInt+node for that
-- implement the high level optimizer
-- change overloading resolution
-- we need to support iteration of 2 different data structures in parallel
-- make exceptions compatible with C++ exceptions
 - change how comments are part of the AST
-- find a better solution for gensym instead of `*ident`
 - extract nimdoc properly and document it finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
@@ -42,8 +37,6 @@ New pragmas:
 Bugs
 ----
 
-- bug: stress testing basic method example (eval example) 
-  without ``-d:release`` leaks memory?
 - bug: pragma statements in combination with symbol files are evaluated twice
   but this can lead to compilation errors
 
@@ -51,10 +44,16 @@ Bugs
 version 0.9.XX
 ==============
 
+- implement a warning message for shadowed 'result' variable
+- implement the high level optimizer
+- change overloading resolution
+- we need to support iteration of 2 different data structures in parallel
+- implement proper coroutines
 - implicit ref/ptr->var conversion; the compiler may store an object
   implicitly on the heap for write barrier efficiency; better: 
   proc specialization in the code gen
 - EcmaScript needs a new and better code gen: simply adapt the C code gen to it
+- dead code elim for JS backend; 'of' operator for JS backend
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking; tuple unpacking in non-var-context
 - 'nimrod def': does not always work?
