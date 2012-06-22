@@ -33,10 +33,7 @@ with ``'``. An example::
   ifStmt ::= 'if' expr ':' stmts ('elif' expr ':' stmts)* ['else' stmts]
 
 Other parts of Nimrod - like scoping rules or runtime semantics are only
-described in an informal manner. The reason is that formal semantics are
-difficult to write and understand. However, there is only one Nimrod
-implementation, so one may consider it as the formal specification;
-especially since the compiler's code is pretty clean (well, some parts of it).
+described in an informal manner for now.
 
 
 Definitions
@@ -156,6 +153,11 @@ underscores ``__`` are not allowed::
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
+
+Currently any unicode character with an ordinal value > 127 (non ASCII) is
+classified as a ``letter`` and may thus be part of an identifier but later
+versions of the language may assign some Unicode characters to belong to the
+operator characters instead.
 
 The following `keywords`:idx: are reserved and cannot be used as identifiers:
 

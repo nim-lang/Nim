@@ -27,8 +27,9 @@ Library Additions
   assignments.
 - Added ``system.eval`` that can execute an anonymous block of code at
   compile time as if was a macro.
-- Added ``system.staticExec`` for compile-time execution of external programs
-- Added ``system.staticRead`` as a synonym for slurp
+- Added ``system.staticExec`` and ``system.gorge`` for compile-time execution 
+  of external programs.
+- Added ``system.staticRead`` as a synonym for ``system.slurp``.
 - Added ``macros.emit`` that can emit an arbitrary computed string as nimrod
   code during compilation.
 - Added ``strutils.parseEnum``.
@@ -41,10 +42,10 @@ Library Additions
 - Added a wrapper for ``libsvm``.
 - Added a wrapper for ``mongodb``.
 - Added ``terminal.isatty``.
-- Added overload for ``system.items`` that can be used to iterate over the
+- Added an overload for ``system.items`` that can be used to iterate over the
   values of an enum.
 - Added ``system.TInteger`` and ``system.TNumber`` type classes matching
-  any of the corresponding types available in nimrod.
+  any of the corresponding types available in Nimrod.
 - Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
 - Added ``strutils.continuesWith``.
 - Added ``system.getStackTrace``.

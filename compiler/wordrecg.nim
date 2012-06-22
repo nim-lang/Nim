@@ -61,7 +61,7 @@ type
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wNoStackFrame,
-    wImplicitStatic, wGlobal,
+    wImplicitStatic, wGlobal, wHoist
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -139,7 +139,7 @@ const
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "nostackframe", "implicitstatic", "global",
+    "nostackframe", "implicitstatic", "global", "hoist",
     
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",

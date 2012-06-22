@@ -266,6 +266,8 @@ const
 
   sfByCopy* = sfBorrow
     # a variable is to be captured by value in a closure
+    
+  sfHoist* = sfVolatile ## proc return value can be hoisted
 
 const
   # getting ready for the future expr/stmt merge
