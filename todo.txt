@@ -10,6 +10,7 @@ New pragmas:
 - ``hoist`` pragma for loop hoisting
 - implement ``byCopy`` pragma
 
+- ``borrow`` needs to take type classes into account
 - complete and document optional indentation for 'case' statement
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
