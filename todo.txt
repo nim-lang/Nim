@@ -8,7 +8,7 @@ Debug GC session:
 
 New pragmas:
 - ``hoist`` pragma for loop hoisting
-- implement ``byCopy`` pragma
+- test & document ``byCopy`` pragma
 
 - ``borrow`` needs to take type classes into account
 - make templates hygienic by default: try to gensym() everything in the 'block'
