@@ -933,6 +933,9 @@ As can been seen from the example, an advantage to an object hierarchy is that
 no casting between different object types is needed. Yet, access to invalid
 object fields raises an exception.
 
+The syntax of ``case`` in an object declaration follows closely the syntax of
+the ``case`` statement: The branches in a ``case`` section may be indented too.
+
 
 Set type
 ~~~~~~~~
@@ -1733,6 +1736,15 @@ Example:
     echo("permission denied")
   of "go-for-a-walk":     echo("please yourself")
   else:                   echo("unknown command")
+  
+  # indentation of the branches is also allowed; and so is an optional colon
+  # after the selecting expression:
+  case readline(stdin):
+    of "delete-everything", "restart-computer":
+      echo("permission denied")
+    of "go-for-a-walk":     echo("please yourself")
+    else:                   echo("unknown command")
+  
 
 The `case`:idx: statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is

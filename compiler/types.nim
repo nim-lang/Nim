@@ -97,7 +97,8 @@ proc getOrdValue(n: PNode): biggestInt =
   case n.kind
   of nkCharLit..nkInt64Lit: result = n.intVal
   of nkNilLit: result = 0
-  else: 
+  of nkHiddenStdConv: result = getOrdValue(n.sons[1])
+  else:
     LocalError(n.info, errOrdinalTypeExpected)
     result = 0
 
