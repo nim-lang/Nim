@@ -1,8 +1,6 @@
 version 0.9.0
 =============
 
-- test new doc2 generator
-
 Debug GC session:
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
