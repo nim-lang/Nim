@@ -100,7 +100,8 @@ Compiler Additions
   option or pragma.
 - The compiler now generates marker procs that the GC can use instead of RTTI.
   This speeds up the GC quite a bit.
-- The compiler now supports OpenMP's parallel for loop.
+- The compiler now includes a new advanced documentation generator 
+  via ``doc2``.
 
 
 Language Additions

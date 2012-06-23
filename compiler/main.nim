@@ -16,7 +16,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
   platform, nimconf, importer, passaux, depends, transf, evals, types, idgen,
-  tables
+  tables, docgen2
 
 const
   has_LLVM_Backend = false
@@ -102,6 +102,14 @@ proc CommandCheck =
   semanticPasses()            # use an empty backend for semantic checking only
   registerPass(rodwrite.rodwritePass())
   compileProject(mainCommandArg())
+
+proc CommandDoc2 =
+  msgs.gErrorMax = high(int)  # do not stop after first error
+  semanticPasses()
+  registerPass(docgen2Pass())
+  registerPass(cleanupPass())
+  compileProject(mainCommandArg())
+  finishDoc2Pass(gProjectFull)
 
 proc CommandCompileToC =
   semanticPasses()
@@ -232,6 +240,11 @@ proc MainCommand =
     LoadConfigs(DocConfig)
     wantMainModule()
     CommandDoc()
+  of "doc2":
+    gCmd = cmdDoc
+    LoadConfigs(DocConfig)
+    wantMainModule()
+    CommandDoc2()
   of "rst2html": 
     gCmd = cmdRst2html
     LoadConfigs(DocConfig)
