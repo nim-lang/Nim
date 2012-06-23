@@ -145,7 +145,7 @@ proc isVisible(n: PNode): bool =
       var v = n.sons[0].ident
       result = v.id == ord(wStar) or v.id == ord(wMinus)
   elif n.kind == nkSym:
-    result = sfExported in n.sym.flags
+    result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
   elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
   
