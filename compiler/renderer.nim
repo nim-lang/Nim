@@ -243,13 +243,13 @@ const
 proc shouldRenderComment(g: var TSrcGen, n: PNode): bool = 
   result = false
   if n.comment != nil: 
-    result = not (renderNoComments in g.flags) or
+    result = (renderNoComments notin g.flags) or
         (renderDocComments in g.flags) and startsWith(n.comment, "##")
   
 proc gcom(g: var TSrcGen, n: PNode) = 
   assert(n != nil)
   if shouldRenderComment(g, n): 
-    if (g.pendingNL < 0) and (len(g.buf) > 0) and (g.buf[len(g.buf)] != ' '): 
+    if (g.pendingNL < 0) and (len(g.buf) > 0) and (g.buf[len(g.buf)-1] != ' '):
       put(g, tkSpaces, Space) 
       # Before long comments we cannot make sure that a newline is generated,
       # because this might be wrong. But it is no problem in practice.
@@ -265,11 +265,29 @@ proc gcoms(g: var TSrcGen) =
   popAllComs(g)
 
 proc lsub(n: PNode): int
-proc litAux(n: PNode, x: biggestInt, size: int): string = 
+proc litAux(n: PNode, x: biggestInt, size: int): string =
+  proc skip(t: PType): PType = 
+    result = t
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                          tyConst, tyMutable}:
+      result = lastSon(result)
+  if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
+    let enumfields = n.typ.skip.n
+    # we need a slow linear search because of enums with holes:
+    for e in items(enumfields):
+      if e.sym.position == x: return e.sym.name.s
+    
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
-  else: result = $(x)
+  else: result = $x
+
+proc ulitAux(n: PNode, x: biggestInt, size: int): string = 
+  if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
+  elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
+  elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
+  else: result = $x
+  # XXX proper unsigned output!
   
 proc atom(n: PNode): string = 
   var f: float32
@@ -286,20 +304,25 @@ proc atom(n: PNode): string =
   of nkInt16Lit: result = litAux(n, n.intVal, 2) & "\'i16"
   of nkInt32Lit: result = litAux(n, n.intVal, 4) & "\'i32"
   of nkInt64Lit: result = litAux(n, n.intVal, 8) & "\'i64"
-  of nkFloatLit: 
+  of nkUIntLit: result = ulitAux(n, n.intVal, 4) & "\'u"
+  of nkUInt8Lit: result = ulitAux(n, n.intVal, 1) & "\'u8"
+  of nkUInt16Lit: result = ulitAux(n, n.intVal, 2) & "\'u16"
+  of nkUInt32Lit: result = ulitAux(n, n.intVal, 4) & "\'u32"
+  of nkUInt64Lit: result = ulitAux(n, n.intVal, 8) & "\'u64"
+  of nkFloatLit:
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: result = $(n.floatVal)
     else: result = litAux(n, (cast[PInt64](addr(n.floatVal)))[] , 8)
   of nkFloat32Lit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
-      result = $(n.floatVal) & "\'f32"
+      result = $n.floatVal & "\'f32"
     else: 
       f = n.floatVal
-      result = litAux(n, (cast[PInt32](addr(f)))[] , 4) & "\'f32"
+      result = litAux(n, (cast[PInt32](addr(f)))[], 4) & "\'f32"
   of nkFloat64Lit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
-      result = $(n.floatVal) & "\'f64"
+      result = $n.floatVal & "\'f64"
     else: 
-      result = litAux(n, (cast[PInt64](addr(n.floatVal)))[] , 8) & "\'f64"
+      result = litAux(n, (cast[PInt64](addr(n.floatVal)))[], 8) & "\'f64"
   of nkNilLit: result = "nil"
   of nkType: 
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s

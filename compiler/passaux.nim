@@ -34,7 +34,7 @@ proc verbosePass*(): TPass =
 proc cleanUp(c: PPassContext, n: PNode): PNode = 
   result = n                  
   # we cannot clean up if dead code elimination is activated
-  if optDeadCodeElim in gGlobalOptions: return 
+  if optDeadCodeElim in gGlobalOptions or n == nil: return 
   case n.kind
   of nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): discard cleanup(c, n.sons[i])
