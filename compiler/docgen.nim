@@ -18,13 +18,13 @@ import
 
 type
   TSections = array[TSymKind, PRope]
-  TDocumentor = object of rstgen.TRstGenerator
+  TDocumentor* = object of rstgen.TRstGenerator
     modDesc: PRope           # module description
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
 
-  PDoc = ref TDocumentor
+  PDoc* = ref TDocumentor
   
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.TMsgKind, arg: string) {.procvar.} =
@@ -48,7 +48,7 @@ proc parseRst(text, filename: string,
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     options.FindFile, compilerMsgHandler)
 
-proc newDocumentor(filename: string, config: PStringTable): PDoc = 
+proc newDocumentor*(filename: string, config: PStringTable): PDoc = 
   new(result)
   initRstGenerator(result[], (if gCmd != cmdRst2Tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
@@ -114,9 +114,9 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         else: rawMessage(errUnkownSubstitionVar, id)
       else: InternalError("ropeFormatNamedVars")
     var start = i
-    while i < L: 
-      if (frmt[i] != '$'): inc(i)
-      else: break 
+    while i < L:
+      if frmt[i] != '$': inc(i)
+      else: break
     if i - 1 >= start: app(result, substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
@@ -243,7 +243,7 @@ proc traceDeps(d: PDoc, n: PNode) =
         "<a class=\"reference external\" href=\"$1.html\">$1</a>", 
         "$1", [toRope(getModuleName(n))])
 
-proc generateDoc(d: PDoc, n: PNode) = 
+proc generateDoc*(d: PDoc, n: PNode) = 
   case n.kind
   of nkCommentStmt: app(d.modDesc, genComment(d, n))
   of nkProcDef: genItem(d, n, n.sons[namePos], skProc)
@@ -317,12 +317,12 @@ proc genOutFile(d: PDoc): PRope =
     code = content
   result = code
 
-proc generateIndex(d: PDoc) =
+proc generateIndex*(d: PDoc) =
   if optGenIndex in gGlobalOptions:
     writeIndexFile(d[], splitFile(options.outFile).dir / 
                         splitFile(d.filename).name & indexExt)
 
-proc writeOutput(d: PDoc, filename, outExt: string) = 
+proc writeOutput*(d: PDoc, filename, outExt: string) = 
   var content = genOutFile(d)
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
