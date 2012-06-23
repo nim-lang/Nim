@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Pragmas for RTL generation. Has to be an include, because user-defined
-## pragmas cannot be exported.
+# Pragmas for RTL generation. Has to be an include, because user-defined
+# pragmas cannot be exported.
 
 # There are 3 different usages:
 # 1) Ordinary imported code.

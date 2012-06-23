@@ -44,6 +44,17 @@ proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string)
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
 
+proc isKeyword*(s: string): bool =
+  var i = getIdent(s)
+  if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
+      (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
+    result = true
+
+proc renderDefinitionName*(s: PSym): string =
+  let x = s.name.s
+  if x[0] in SymStartChars and not renderer.isKeyword(x): result = x
+  else: result = '`' & x & '`'
+
 const 
   IndentWidth = 2
   longIndentWid = 4
@@ -633,11 +644,14 @@ proc gcase(g: var TSrcGen, n: PNode) =
 
 proc gproc(g: var TSrcGen, n: PNode) = 
   var c: TContext
-  gsub(g, n.sons[0])
+  if n.sons[namePos].kind == nkSym:
+    put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
+  else:
+    gsub(g, n.sons[namePos])
   gsub(g, n.sons[1])
   gsub(g, n.sons[2])
   gsub(g, n.sons[3])
-  if not (renderNoBody in g.flags): 
+  if renderNoBody notin g.flags:
     if n.sons[4].kind != nkEmpty: 
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")

@@ -107,7 +107,7 @@ proc CommandDoc2 =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(docgen2Pass())
-  registerPass(cleanupPass())
+  #registerPass(cleanupPass())
   compileProject(mainCommandArg())
   finishDoc2Pass(gProjectFull)
 
