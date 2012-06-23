@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## not really an AVL tree anymore, but still balanced ...
+# not really an AVL tree anymore, but still balanced ...
 
 template IsBottom(n: PAvlNode): bool = n == bottom
 

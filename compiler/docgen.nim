@@ -18,7 +18,7 @@ import
 
 type
   TSections = array[TSymKind, PRope]
-  TDocumentor* = object of rstgen.TRstGenerator
+  TDocumentor = object of rstgen.TRstGenerator
     modDesc: PRope           # module description
     id: int                  # for generating IDs
     toc, section: TSections
@@ -148,12 +148,12 @@ proc isVisible(n: PNode): bool =
     result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
   elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
-  
+    
 proc getName(d: PDoc, n: PNode, splitAfter = -1): string = 
   case n.kind
   of nkPostfix: result = getName(d, n.sons[1], splitAfter)
   of nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
-  of nkSym: result = esc(d.target, n.sym.name.s, splitAfter)
+  of nkSym: result = esc(d.target, n.sym.renderDefinitionName, splitAfter)
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted: 
     result = esc(d.target, "`") 
@@ -167,7 +167,7 @@ proc getRstName(n: PNode): PRstNode =
   case n.kind
   of nkPostfix: result = getRstName(n.sons[1])
   of nkPragmaExpr: result = getRstName(n.sons[0])
-  of nkSym: result = newRstNode(rnLeaf, n.sym.name.s)
+  of nkSym: result = newRstNode(rnLeaf, n.sym.renderDefinitionName)
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted: 
     result = getRstName(n.sons[0])

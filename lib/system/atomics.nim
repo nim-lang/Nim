@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Atomic operations for Nimrod.
+# Atomic operations for Nimrod.
 
 when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport and 
     not defined(windows):
