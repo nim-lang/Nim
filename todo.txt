@@ -1,6 +1,8 @@
 version 0.9.0
 =============
 
+- change how comments are part of the AST
+
 Debug GC session:
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
@@ -23,7 +25,6 @@ New pragmas:
 - document 'do' notation
 - unsigned ints and bignums; requires abstract integer literal type: 
   use tyInt+node for that
-- change how comments are part of the AST
 - document nimdoc properly finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling

@@ -2212,9 +2212,9 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
 proc slurp*(filename: string): string {.magic: "Slurp".}
 proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## compile-time ``readFile`` proc for easy `resource`:idx: embedding:
-  ## .. code-block:: nimrod
   ##
-  ##   const myResource = staticRead"mydatafile.bin"
+  ## .. code-block:: nimrod
+  ##     const myResource = staticRead"mydatafile.bin"
   ##
   ## ``slurp`` is an alias for ``staticRead``.
 
@@ -2225,10 +2225,10 @@ proc staticExec*(command: string, input = ""): string {.
   ## executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
-  ## .. code-block:: nimrod
   ##
-  ##   const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
-  ##                     "\nCompiled on " & staticExec("uname -v")
+  ## .. code-block:: nimrod
+  ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
+  ##                       "\nCompiled on " & staticExec("uname -v")
   ##
   ## ``gorge`` is an alias for ``staticExec``.
 
