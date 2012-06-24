@@ -897,7 +897,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
           s = newSymS(skType, a.sons[j], c)
           s.typ = newTypeS(tyGenericParam, c)
         of tyExpr:
-          echo "GENERIC EXPR ", a.info.toFileLineCol
+          #echo "GENERIC EXPR ", a.info.toFileLineCol
           # not a type param, but an expression
           # proc foo[x: expr](bar: int) what is this?
           s = newSymS(skGenericParam, a.sons[j], c)
