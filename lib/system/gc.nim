@@ -100,6 +100,8 @@ proc usrToCell(usr: pointer): PCell {.inline.} =
   result = cast[PCell](cast[TAddress](usr)-%TAddress(sizeof(TCell)))
 
 proc canbeCycleRoot(c: PCell): bool {.inline.} =
+  if c.typ == nil:
+    echo "ARRGHHHHHHH"
   result = ntfAcyclic notin c.typ.flags
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =

@@ -558,10 +558,10 @@ The template body does not open a new scope. To open a new scope use a ``block``
 statement:
 
 .. code-block:: nimrod
-  template declareInScope(x: expr, t: typeDesc): stmt =
+  template declareInScope(x: expr, t: typeDesc): stmt {.immediate.} =
     var x: t
 
-  template declareInNewScope(x: expr, t: typeDesc): stmt =
+  template declareInNewScope(x: expr, t: typeDesc): stmt {.immediate.} =
     # open a new scope:
     block:
       var x: t
@@ -572,6 +572,8 @@ statement:
   declareInNewScope(b, int)
   b = 42  # does not work, `b` is unknown
 
+(The manual explains why the ``immediate`` pragma is needed for these 
+templates.)
 
 If there is a ``stmt`` parameter it should be the last in the template
 declaration. The reason is that statements can be passed to a template
@@ -580,7 +582,7 @@ via a special ``:`` syntax:
 .. code-block:: nimrod
 
   template withFile(f: expr, filename: string, mode: TFileMode,
-                    body: stmt): stmt =
+                    body: stmt): stmt {.immediate.} =
     block:
       let fn = filename
       var f: TFile
