@@ -322,7 +322,7 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
   var t = skipTypes(typ, abstractInst)
   if tfAcyclic in t.flags: return 
   case t.kind
-  of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray: 
+  of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray:
     if not ContainsOrIncl(marker, t.id): 
       for i in countup(0, sonsLen(t) - 1): 
         result = canFormAcycleAux(marker, t.sons[i], startId)
@@ -330,8 +330,10 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
     else: 
       result = t.id == startId
-  else: 
-    nil
+    if t.kind == tyObject and tfFinal notin t.flags:
+      # damn inheritance may introduce cycles:
+      result = true
+  else: nil
 
 proc canFormAcycle(typ: PType): bool = 
   # XXX as I expect cycles introduced by closures are very rare, we pretend 
