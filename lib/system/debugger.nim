@@ -632,7 +632,12 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
     else:
       result = h
       var s = cast[ppointer](dest)[]
-      if s != nil: result = genericHashAux(s, mt.base, shallow, result)
+      if s != nil:
+        result = result !& genericHashAux(s, mt.base, shallow, result)
+        # hash the object header:
+        #const headerSize = sizeof(int)*2
+        #result = result !& hash(cast[pointer](cast[int](s) -% headerSize),
+        #                        headerSize)
   else:
     result = h !& hash(dest, mt.size) # hash raw bits
 
