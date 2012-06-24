@@ -703,8 +703,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
+  of nkTypeSection:
+    # no need to transform type sections:
+    return PTransNode(n)
   of nkVarSection, nkLetSection:
-    if c.inlining > 0: 
+    if c.inlining > 0:
       # we need to copy the variables for multiple yield statements:
       result = transformVarSection(c, n)
     else:

@@ -1,8 +1,6 @@
 version 0.9.0
 =============
 
-- change how comments are part of the AST
-
 Debug GC session:
 - bug: stress testing basic method example (eval example) 
   without ``-d:release`` leaks memory?
@@ -25,7 +23,6 @@ New pragmas:
 - document 'do' notation
 - unsigned ints and bignums; requires abstract integer literal type: 
   use tyInt+node for that
-- document nimdoc properly finally
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
@@ -44,6 +41,7 @@ Bugs
 version 0.9.XX
 ==============
 
+- document nimdoc properly finally
 - implement a warning message for shadowed 'result' variable
 - implement the high level optimizer
 - change overloading resolution
@@ -61,8 +59,7 @@ version 0.9.XX
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?
 - 'const' objects including case objects
-- improve docgen to use the semantic pass
-- 'export' feature (requires improved docgen)
+- 'export' feature
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:
   o.p(x) --> p(o, x) -->  myMacro(p, o, x)
@@ -103,6 +100,7 @@ Library
 Low priority
 ------------
 
+- change how comments are part of the AST
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
 - implement the "easy" constructors idea; document destructors

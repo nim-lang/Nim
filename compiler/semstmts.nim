@@ -267,7 +267,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         GlobalError(a.info, errWrongNumberOfVariables)
       b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
-      b.sons[length-2] = ast.emptyNode # no type desc
+      b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
       b.sons[length-1] = def
       addSon(result, b)
     for j in countup(0, length-3):
@@ -286,7 +286,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
         addSon(b, newSymNode(v))
-        addSon(b, ast.emptyNode)        # no type description
+        addSon(b, a.sons[length-2])      # keep type desc for doc generator
         addSon(b, copyTree(def))
         addSon(result, b)
       else: 

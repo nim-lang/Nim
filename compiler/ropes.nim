@@ -82,7 +82,6 @@ proc prepend*(a: var PRope, b: PRope)
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
 proc ropeLen*(a: PRope): int
-proc WriteRope*(head: PRope, filename: string)
 proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropeToStr*(p: PRope): string
 proc ropef*(frmt: TFormatStr, args: openarray[PRope]): PRope
@@ -204,13 +203,14 @@ proc writeRope*(f: TFile, c: PRope) =
     assert(it.data != nil)
     write(f, it.data)
 
-proc WriteRope(head: PRope, filename: string) = 
+proc WriteRope*(head: PRope, filename: string, useWarning = false) =
   var f: tfile
-  if open(f, filename, fmWrite): 
+  if open(f, filename, fmWrite):
     if head != nil: WriteRope(f, head)
     close(f)
-  else: 
-    rawMessage(errCannotOpenFile, filename)
+  else:
+    rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
+               filename)
 
 proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope = 
   var i = 0

@@ -4,6 +4,7 @@ Usage::
 Command:
   //compile, c                compile project with default code generator (C)
   //doc                       generate the documentation for inputfile
+  //doc2                      generate the documentation for the whole project
   //i                         start Nimrod in interactive mode (limited)
 
 Arguments:
@@ -33,4 +34,3 @@ Options:
   -r, --run                 run the compiled program with given arguments
   --advanced                show advanced command line switches
   -h, --help                show this help
-

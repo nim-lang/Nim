@@ -101,7 +101,9 @@ Compiler Additions
 - The compiler now generates marker procs that the GC can use instead of RTTI.
   This speeds up the GC quite a bit.
 - The compiler now includes a new advanced documentation generator 
-  via ``doc2``.
+  via the ``doc2`` command. This new generator uses all of the semantic passes
+  of the compiler and can thus generate documentation for symbols hiding in
+  macros.
 
 
 Language Additions

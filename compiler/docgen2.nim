@@ -22,8 +22,12 @@ type
 
 proc close(p: PPassContext, n: PNode): PNode =
   var g = PGen(p)
-  writeOutput(g.doc, g.filename, HtmlExt)
-  generateIndex(g.doc)
+  let useWarning = sfMainModule notin g.module.flags
+  writeOutput(g.doc, g.filename, HtmlExt, useWarning)
+  try:
+    generateIndex(g.doc)
+  except EIO:
+    nil
 
 proc processNode(c: PPassContext, n: PNode): PNode = 
   result = n

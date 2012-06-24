@@ -322,12 +322,12 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], splitFile(options.outFile).dir / 
                         splitFile(d.filename).name & indexExt)
 
-proc writeOutput*(d: PDoc, filename, outExt: string) = 
+proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) = 
   var content = genOutFile(d)
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    writeRope(content, getOutFile(filename, outExt))
+    writeRope(content, getOutFile(filename, outExt), useWarning)
 
 proc CommandDoc*() =
   var ast = parseFile(addFileExt(gProjectFull, nimExt))
