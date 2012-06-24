@@ -632,6 +632,7 @@ else:
   const stackIncreases = false
 
 when not defined(useNimRtl):
+  {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
     #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
     # the first init must be the one that defines the stack bottom:
@@ -644,6 +645,7 @@ when not defined(useNimRtl):
         gch.stackBottom = cast[pointer](min(a, b))
       else:
         gch.stackBottom = cast[pointer](max(a, b))
+  {.pop.}
 
 proc stackSize(): int {.noinline.} =
   var stackTop {.volatile.}: pointer

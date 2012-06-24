@@ -2,8 +2,6 @@ version 0.9.0
 =============
 
 Debug GC session:
-- bug: stress testing basic method example (eval example) 
-  without ``-d:release`` leaks memory?
 - test sequence of closures; especially that the GC does not leak for those!
 
 New pragmas:
@@ -14,6 +12,7 @@ New pragmas:
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
 - ``=`` should be overloadable; requires specialization for ``=``
+- optimize genericAssign in the code generator
 - fix remaining closure bugs:
   - make toplevel but in a scope vars local; make procs there inner procs
   - fix evals.nim with closures
