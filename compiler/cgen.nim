@@ -792,8 +792,9 @@ proc getFileHeader(cfilenoext: string): PRope =
 proc genMainProc(m: BModule) = 
   const 
     CommonMainBody = 
-        "  nim__datInit();$n" &
-        "  systemInit();$n" & 
+        "#initStackBottom();$n" &
+        "\tnim__datInit();$n" &
+        "\tsystemInit();$n" & 
         "$1" & 
         "$2"
     PosixNimMain = 
@@ -803,27 +804,27 @@ proc genMainProc(m: BModule) =
         "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
-        "  cmdLine = args;$n" & "  cmdCount = argc;$n" & "  gEnv = env;$n" &
-        "  NimMain();$n" & "  return nim_program_result;$n" & "}$n"
+        "\tcmdLine = args;$n" & "\tcmdCount = argc;$n" & "\tgEnv = env;$n" &
+        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
     StandaloneCMain = "int main(void) {$n" &
-        "  NimMain();$n" & 
-        "  return 0;$n" & "}$n"
+        "\tNimMain();$n" & 
+        "\treturn 0;$n" & "}$n"
     WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
         "                        HINSTANCE hPrevInstance, $n" &
         "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
-        "  NimMain();$n" & "  return nim_program_result;$n" & "}$n"
+        "\tNimMain();$n" & "\treturn nim_program_result;$n" & "}$n"
     WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCDllMain = 
         "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
-        "                    LPVOID lpvReserved) {$n" & "  NimMain();$n" &
-        "  return 1;$n" & "}$n"
+        "                    LPVOID lpvReserved) {$n" & "\tNimMain();$n" &
+        "\treturn 1;$n" & "}$n"
     PosixNimDllMain = WinNimDllMain
     PosixCDllMain = 
         "void NIM_POSIX_INIT NimMainInit(void) {$n" &
-        "  NimMain();$n}$n"
+        "\tNimMain();$n}$n"
   var nimMain, otherMain: TFormatStr
   if platform.targetOS == osWindows and
       gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}: 
@@ -847,7 +848,7 @@ proc genMainProc(m: BModule) =
   inc(m.labels)
   appcg(m, m.s[cfsProcs], nimMain, [
         gBreakpoints, mainModInit, toRope(m.labels)])
-  if not (optNoMain in gGlobalOptions): 
+  if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
   
 proc getInitName(m: PSym): PRope = 
