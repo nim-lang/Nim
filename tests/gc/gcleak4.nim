@@ -10,8 +10,10 @@ type
   PLiteral = ref TLiteral
   TLiteral = object of TExpr
     x: int
+    op1: string
   TPlusExpr = object of TExpr
     a, b: ref TExpr
+    op2: string
     
 method eval(e: ref TExpr): int =
   # override this base method
@@ -27,16 +29,21 @@ proc newLit(x: int): ref TLiteral =
   new(result)
   {.watchpoint: result.}
   result.x = x
+  result.op1 = $getOccupiedMem()
   
 proc newPlus(a, b: ref TExpr): ref TPlusExpr =
   new(result)
   {.watchpoint: result.}
   result.a = a
   result.b = b
+  result.op2 = $getOccupiedMem()
 
 for i in 0..100_000:
-  if eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4))) != 7:
-    quit "error: wrong result"
-  if getOccupiedMem() > 3000_000: quit("still a leak!")
+  var s: array[0..11, ref TExpr]
+  for j in 0..high(s):
+    s[j] = newPlus(newPlus(newLit(j), newLit(2)), newLit(4))
+    if eval(s[j]) != j+6:
+      quit "error: wrong result"
+  if getOccupiedMem() > 500_000: quit("still a leak!")
 
 echo "no leak: ", getOccupiedMem()

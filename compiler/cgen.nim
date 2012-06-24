@@ -792,11 +792,11 @@ proc getFileHeader(cfilenoext: string): PRope =
 proc genMainProc(m: BModule) = 
   const 
     CommonMainBody = 
-        "#initStackBottom();$n" &
+        "$1" &
         "\tnim__datInit();$n" &
         "\tsystemInit();$n" & 
-        "$1" & 
-        "$2"
+        "$2" & 
+        "$3"
     PosixNimMain = 
         "int cmdCount;$n" & 
         "char** cmdLine;$n" & 
@@ -845,8 +845,11 @@ proc genMainProc(m: BModule) =
     nimMain = PosixNimMain
     otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
+  
+  let initStackBottomCall = if emulatedThreadVars(): "".toRope
+                            else: ropecg(m, "\t#initStackBottom();$n")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], nimMain, [
+  appcg(m, m.s[cfsProcs], nimMain, [initStackBottomCall,
         gBreakpoints, mainModInit, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
