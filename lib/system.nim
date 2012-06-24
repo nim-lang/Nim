@@ -1680,11 +1680,11 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when not defined(boehmgc) and not defined(useMalloc):
     proc initAllocator() {.inline.}
 
-  when not defined(nogc):
-    proc initStackBottom() {.inline.} = 
-      # WARNING: This is very fragile! An array size of 8 does not work on my
-      # Linux 64bit system. Very strange, but we are at the will of GCC's 
-      # optimizer...
+  proc initStackBottom() {.inline, compilerproc.} =
+    # WARNING: This is very fragile! An array size of 8 does not work on my
+    # Linux 64bit system. Very strange, but we are at the will of GCC's 
+    # optimizer...
+    when defined(setStackBottom):
       var locals {.volatile.}: pointer
       locals = addr(locals)
       setStackBottom(locals)

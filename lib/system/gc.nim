@@ -639,6 +639,7 @@ when not defined(useNimRtl):
     else:
       var a = cast[TAddress](theStackBottom) # and not PageMask - PageSize*2
       var b = cast[TAddress](gch.stackBottom)
+      #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
       when stackIncreases:
         gch.stackBottom = cast[pointer](min(a, b))
       else:
