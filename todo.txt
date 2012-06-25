@@ -11,6 +11,7 @@ New pragmas:
 - ``borrow`` needs to take type classes into account
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
+- make use of ``tyIter`` to fix the implicit items/pairs issue
 - ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
 - fix remaining closure bugs:

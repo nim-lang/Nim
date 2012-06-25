@@ -139,6 +139,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # generates an instantiated proc
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)
+  # careful! we copy the whole AST including the possibly nil body!
+  var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   var oldFriend = c.friendModule
@@ -148,8 +150,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # keep the owner if it's an inner proc (for proper closure transformations):
   if fn.owner.kind == skModule:
     result.owner = getCurrOwner().owner
-  # careful! we copy the whole AST including the possibly nil body!
-  var n = copyTree(fn.ast)
   result.ast = n
   pushOwner(result)
   openScope(c.tab)

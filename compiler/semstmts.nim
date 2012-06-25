@@ -644,8 +644,42 @@ proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
 
 proc addResultNode(c: PContext, n: PNode) = 
   if c.p.resultSym != nil: addSon(n, newSymNode(c.p.resultSym))
+
+proc copyExcept(n: PNode, i: int): PNode =
+  result = copyNode(n)
+  for j in 0.. <n.len:
+    if j != i: result.add(n.sons[j])
+
+proc lookupMacro(c: PContext, n: PNode): PSym =
+  if n.kind == nkSym:
+    result = n.sym
+    if result.kind notin {skMacro, skTemplate}: result = nil
+  else:
+    result = SymtabGet(c.Tab, considerAcc(n), {skMacro, skTemplate})
+
+proc semProcAnnotation(c: PContext, prc: PNode): PNode =
+  var n = prc.sons[pragmasPos]
+  if n == nil or n.kind == nkEmpty: return
+  for i in countup(0, <n.len):
+    var it = n.sons[i]
+    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
+    let m = lookupMacro(c, key)
+    if m == nil: continue
+    # we transform ``proc p {.m, rest.}`` into ``m: proc p {.rest.}`` and
+    # let the semantic checker deal with it:
+    var x = newNodeI(nkMacroStmt, n.info)
+    x.add(newSymNode(m))
+    prc.sons[pragmasPos] = copyExcept(n, i)
+    if it.kind == nkExprColonExpr:
+      # pass pragma argument to the macro too:
+      x.add(it.sons[1])
+    x.add(prc)
+    # recursion assures that this works for multiple macro annotations too:
+    return semStmt(c, x)
   
 proc semLambda(c: PContext, n: PNode): PNode = 
+  result = semProcAnnotation(c, n)
+  if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
   var s = newSym(skProc, getIdent":anonymous", getCurrOwner())
@@ -686,6 +720,8 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
+  result = semProcAnnotation(c, n)
+  if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
   var s = semIdentDef(c, n.sons[0], kind)

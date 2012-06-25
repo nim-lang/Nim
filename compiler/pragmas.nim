@@ -431,17 +431,20 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
   userPragma.ast = body
   StrTableAdd(c.userPragmas, userPragma)
-        
-proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) = 
-  if n == nil: return 
+
+proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+  if n == nil: return
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent: 
       var userPragma = StrTableGet(c.userPragmas, key.ident)
       if userPragma != nil: 
+        inc c.InstCounter
+        if c.InstCounter > 100: 
+          GlobalError(it.info, errRecursiveDependencyX, userPragma.name.s)
         pragma(c, sym, userPragma.ast, validPragmas)
-        # XXX BUG: possible infinite recursion!
+        dec c.InstCounter
       else:
         var k = whichKeyword(key.ident)
         if k in validPragmas: 

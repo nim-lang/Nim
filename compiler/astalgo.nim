@@ -91,6 +91,7 @@ type
 proc InitSymTab*(tab: var TSymTab)
 proc DeinitSymTab*(tab: var TSymTab)
 proc SymTabGet*(tab: TSymTab, s: PIdent): PSym
+proc SymTabGet*(tab: TSymTab, s: PIdent, filter: TSymKinds): PSym
 proc SymTabLocalGet*(tab: TSymTab, s: PIdent): PSym
 proc SymTabAdd*(tab: var TSymTab, e: PSym)
 proc SymTabAddAt*(tab: var TSymTab, e: PSym, at: Natural)
@@ -701,6 +702,12 @@ proc SymTabGet(tab: TSymTab, s: PIdent): PSym =
   for i in countdown(tab.tos - 1, 0): 
     result = StrTableGet(tab.stack[i], s)
     if result != nil: return 
+  result = nil
+
+proc SymTabGet*(tab: TSymTab, s: PIdent, filter: TSymKinds): PSym =
+  for i in countdown(tab.tos - 1, 0): 
+    result = StrTableGet(tab.stack[i], s)
+    if result != nil and result.kind in filter: return
   result = nil
 
 proc SymTabAddAt(tab: var TSymTab, e: PSym, at: Natural) = 
