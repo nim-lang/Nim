@@ -1680,7 +1680,8 @@ code that has side effects:
   static:
     echo "echo at compile time"
 
-It's a static error if the compiler cannot perform the evaluation at compile time.
+It's a static error if the compiler cannot perform the evaluation at compile 
+time.
 
 The current implementation poses some restrictions for compile time
 evaluation: Code which contains ``cast`` or makes use of the foreign function
@@ -2958,6 +2959,26 @@ powerful programming construct that still suffices. So the "check list" is:
 (2) Else: Use a generic proc/iterator, if possible.
 (3) Else: Use a template, if possible.
 (4) Else: Use a macro.
+
+
+Macros as pragmas
+~~~~~~~~~~~~~~~~~
+
+Whole routines (procs, iterators etc.) can also be passed to a template or 
+a macro via the pragma notation: 
+
+.. code-block:: nimrod
+  template m(s: stmt) = nil
+
+  proc p() {.m.} = nil
+
+This is a simple syntactic transformation into:
+
+.. code-block:: nimrod
+  template m(s: stmt) = nil
+
+  m:
+    proc p() = nil
 
 
 Modules
