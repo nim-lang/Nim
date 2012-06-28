@@ -12,7 +12,7 @@
 #
 # * inlines iterators
 # * inlines constants
-# * performes contant folding
+# * performes constant folding
 # * converts "continue" to "break"
 # * introduces method dispatchers
 # * performs lambda lifting for closure support
@@ -401,7 +401,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result = transformSons(c, n)
     else: 
       # generate a range check:
-      if (dest.kind == tyInt64) or (source.kind == tyInt64): 
+      if dest.kind == tyInt64 or source.kind == tyInt64: 
         result = newTransNode(nkChckRange64, n, 3)
       else: 
         result = newTransNode(nkChckRange, n, 3)

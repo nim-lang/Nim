@@ -23,7 +23,7 @@ when defined(posix):
   const
     PROT_READ  = 1             # page can be read 
     PROT_WRITE = 2             # page can be written 
-    MAP_PRIVATE = 2            # Changes are private 
+    MAP_PRIVATE = 2'i32        # Changes are private 
   
   when defined(macosx) or defined(bsd):
     const MAP_ANONYMOUS = 0x1000
@@ -40,7 +40,7 @@ when defined(posix):
   
   proc osAllocPages(size: int): pointer {.inline.} = 
     result = mmap(nil, size, PROT_READ or PROT_WRITE, 
-                           MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
       

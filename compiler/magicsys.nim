@@ -24,7 +24,7 @@ proc FinishSystem*(tab: TStrTable)
 proc getSysSym*(name: string): PSym
 # implementation
 
-var 
+var
   gSysTypes: array[TTypeKind, PType]
   compilerprocs: TStrTable
 
@@ -73,7 +73,26 @@ proc getSysType(kind: TTypeKind): PType =
   if result.kind != kind: 
     InternalError("wanted: " & $kind & " got: " & $result.kind)
   if result == nil: InternalError("type not found: " & $kind)
-  
+
+when false:
+  var
+    intTypeCache: array[-5..64, PType]
+
+  proc getIntLitType*(literal: PNode): PType =
+    # we cache some common integer literal types for performance:
+    let value = literal.intVal
+    if value >= low(intTypeCache) and value <= high(intTypeCache):
+      result = intTypeCache[value.int]
+      if result == nil:
+        let ti = getSysType(tyInt)
+        result = copyType(ti, ti.owner, false)
+        result.n = literal
+        intTypeCache[value.int] = result
+    else:
+      let ti = getSysType(tyInt)
+      result = copyType(ti, ti.owner, false)
+      result.n = literal
+
 proc getCompilerProc(name: string): PSym = 
   var ident = getIdent(name, hashIgnoreStyle(name))
   result = StrTableGet(compilerprocs, ident)

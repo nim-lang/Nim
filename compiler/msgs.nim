@@ -102,7 +102,7 @@ type
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnXisPassedToProcVar, warnAnalysisLoophole,
-    warnDifferentHeaps, warnWriteToForeignHeap,
+    warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitNarrowing,
     warnUser, 
     hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
@@ -345,6 +345,7 @@ const
     warnAnalysisLoophole: "thread analysis incomplete due to unkown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
+    warnImplicitNarrowing: "implicit narrowing conversion: '$1'",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
@@ -362,13 +363,14 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..16, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..17, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "XisPassedToProcVar",
-    "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap", "User"]
+    "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
+    "ImplicitNarrowing,", "User"]
 
   HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 

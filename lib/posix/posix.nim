@@ -188,7 +188,7 @@ type
   Tid* {.importc: "id_t", header: "<sys/types.h>".} = int
   Tino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   TKey* {.importc: "key_t", header: "<sys/types.h>".} = int
-  TMode* {.importc: "mode_t", header: "<sys/types.h>".} = int
+  TMode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
   TNlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   TOff* {.importc: "off_t", header: "<sys/types.h>".} = int64
   TPid* {.importc: "pid_t", header: "<sys/types.h>".} = int

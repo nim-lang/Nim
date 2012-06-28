@@ -188,6 +188,8 @@ when not defined(ECMAScript):
   proc floor*(x: float): float {.importc: "floor", nodecl.}
   proc ceil*(x: float): float {.importc: "ceil", nodecl.}
 
+  proc fmod*(x, y: float): float {.importc: "fmod", header: "<math.h>".}
+
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
@@ -230,10 +232,13 @@ else:
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
+proc `mod`*(x, y: float): float =
+  result = if y == 0.0: x else: x - y * (x/y).floor
+
 type
-  TRunningStat* = object  ## an accumulator for statistical data
-    n*: int               ## number of pushed data
-    sum*, min*, max*, mean*: float ## self-explaining
+  TRunningStat* {.pure,final.} = object  ## an accumulator for statistical data
+    n*: int                              ## number of pushed data
+    sum*, min*, max*, mean*: float       ## self-explaining
     oldM, oldS, newS: float
 
 proc push*(s: var TRunningStat, x: float) = 

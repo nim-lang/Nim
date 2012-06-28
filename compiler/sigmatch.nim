@@ -159,16 +159,29 @@ proc concreteType(mapping: TIdTable, t: PType): PType =
 proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation = 
   if a.kind == f.kind: 
     result = isEqual
-  else: 
+  else:
     var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
-    elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
-    elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
-    elif f.kind in {tyUInt..tyUInt64} and k == tyInt and tfUniIntLit in a.flags:
+    elif k == tyInt:
+      # and a.n != nil and a.n.intVal >= firstOrd(f) and
+      #                    a.n.intVal <= lastOrd(f):
+      # integer literal in the proper range; we want ``i16 + 4`` to stay an
+      # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isIntConv
     elif k >= min and k <= max: result = isConvertible
     else: result = isNone
-  
+    #elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
+    #elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
+
+proc isConvertibleToRange(f, a: PType): bool =
+  # be less picky for tyRange, as that it is used for array indexing:
+  if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
+     a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
+    result = true
+  elif f.kind in {tyFloat..tyFloat128} and
+       a.kind in {tyFloat..tyFloat128}:
+    result = true
+
 proc handleFloatRange(f, a: PType): TTypeRelation = 
   if a.kind == f.kind: 
     result = isEqual
@@ -227,10 +240,10 @@ proc matchTypeClass(mapping: var TIdTable, f, a: PType): TTypeRelation =
       else: nil
 
     if tfAny in f.flags:
-      if match == true:
+      if match:
         return isGeneric
     else:
-      if match == false:
+      if not match:
         return isNone
 
   # if the loop finished without returning, either all constraints matched
@@ -287,9 +300,9 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvokation,
-        tyGenericParam, tyTypeClass }:
+        tyGenericParam, tyTypeClass}:
     return typeRel(mapping, f, lastSon(a))
-  if a.kind == tyVar and f.kind != tyVar: 
+  if a.kind == tyVar and f.kind != tyVar:
     return typeRel(mapping, f, a.sons[0])
   case f.kind
   of tyEnum: 
@@ -302,18 +315,20 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     if a.kind == f.kind: 
       result = typeRel(mapping, base(a), base(f))
       if result < isGeneric: result = isNone
-    elif skipTypes(f, {tyRange}).kind == a.kind: 
+    elif skipTypes(f, {tyRange}).kind == a.kind:
+      result = isIntConv
+    elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
       result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
   of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
-  of tyInt32:    result = handleRange(f, a, tyInt, tyInt32)
+  of tyInt32:    result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
-  of tyUInt:      result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt8:     result = handleRange(f, a, tyUInt8, tyUInt8)
-  of tyUInt16:    result = handleRange(f, a, tyUInt8, tyUInt16)
-  of tyUInt32:    result = handleRange(f, a, tyUInt, tyUInt32)
-  of tyUInt64:    result = handleRange(f, a, tyUInt, tyUInt64)
+  of tyUInt:     result = handleRange(f, a, tyUInt8, tyUInt32)
+  of tyUInt8:    result = handleRange(f, a, tyUInt8, tyUInt8)
+  of tyUInt16:   result = handleRange(f, a, tyUInt8, tyUInt16)
+  of tyUInt32:   result = handleRange(f, a, tyUInt8, tyUInt32)
+  of tyUInt64:   result = handleRange(f, a, tyUInt, tyUInt64)
   of tyFloat:    result = handleFloatRange(f, a)
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
@@ -789,12 +804,3 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
-
-  when false:
-    if sfSystemModule notin c.module.flags:
-      if fileInfoIdx("temp.nim") == c.module.info.fileIndex:
-        echo "########################"
-        echo m.call.renderTree
-        for i in 1..m.call.len-1:
-          debug m.call[i].typ
-
