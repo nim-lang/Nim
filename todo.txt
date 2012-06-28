@@ -11,6 +11,7 @@ New pragmas:
 - ``borrow`` needs to take type classes into account
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
+- introduce ``;`` to the parser
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
@@ -21,8 +22,7 @@ New pragmas:
   - implement "closure tuple consists of a single 'ref'" optimization
 
 - document 'do' notation
-- unsigned ints and bignums; requires abstract integer literal type: 
-  use tyInt+node for that
+- finish support for unsigned ints
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
   indentation handling is quite complex too; problem with exception handling
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
@@ -100,6 +100,7 @@ Library
 Low priority
 ------------
 
+- bignums
 - change how comments are part of the AST
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``

@@ -334,12 +334,10 @@ type
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``
-    tfUniIntLit       # type represents literal value that could be either
-                      # singed or unsigned integer (e.g. 100)
-    tfFromGeneric     # type is an instantiation of a generic; this is needed
+    tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfAll             # type class requires all constraints to be met (default)
+    tfAll,            # type class requires all constraints to be met (default)
     tfAny             # type class requires any constraint to be met
 
   TTypeFlags* = set[TTypeFlag]
@@ -587,6 +585,7 @@ type
                               # for range types a nkRange node
                               # for record types a nkRecord node
                               # for enum types a list of symbols
+                              # for tyInt it can be the int literal
                               # else: unused
     destructor*: PSym         # destructor. warning: nil here may not necessary
                               # mean that there is no destructor.

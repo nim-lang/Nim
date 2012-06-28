@@ -14,9 +14,9 @@
 {.push hints:off}
 
 proc c_strcmp(a, b: CString): cint {.nodecl, noSideEffect, importc: "strcmp".}
-proc c_memcmp(a, b: CString, size: cint): cint {.
+proc c_memcmp(a, b: CString, size: int): cint {.
   nodecl, noSideEffect, importc: "memcmp".}
-proc c_memcpy(a, b: CString, size: cint) {.nodecl, importc: "memcpy".}
+proc c_memcpy(a, b: CString, size: int) {.nodecl, importc: "memcpy".}
 proc c_strlen(a: CString): int {.nodecl, noSideEffect, importc: "strlen".}
 proc c_memset(p: pointer, value: cint, size: int) {.nodecl, importc: "memset".}
 

@@ -13,7 +13,7 @@
 import 
   strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times, 
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands
+  commands, magicsys
 
 proc getConstExpr*(m: PSym, n: PNode): PNode
   # evaluates the constant expression or returns nil if it is no constant
