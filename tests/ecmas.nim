@@ -13,8 +13,12 @@ var
   inputElement {.importc: "document.form1.input1", nodecl.}: ref TElement
 
 proc OnButtonClick() {.exportc.} =
-  var x = parseInt($inputElement.value)
-  echo x*x
+  let v = $inputElement.value
+  if v.allCharsInSet(whiteSpace):
+    echo "only whitespace, hu?"
+  else:
+    var x = parseInt(v)
+    echo x*x
 
 proc OnLoad() {.exportc.} = 
   echo "Welcome! Please take your time to fill in this formular!"
