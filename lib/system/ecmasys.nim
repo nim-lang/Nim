@@ -85,7 +85,10 @@ proc raiseException(e: ref E_Base, ename: cstring) {.
   if excHandler != nil:
     excHandler.exc = e
   else:
-    var buf = rawWriteStackTrace()
+    when nimrodStackTrace:
+      var buf = rawWriteStackTrace()
+    else:
+      var buf = ""
     if e.msg != nil and e.msg[0] != '\0':
       add(buf, "Error: unhandled exception: ")
       add(buf, e.msg)
@@ -388,6 +391,76 @@ proc modInt64(a, b: int): int {.noStackFrame, compilerproc.} =
     return Math.floor(`a` % `b`);
   """
 
+proc NegInt(a: int): int {.compilerproc.} =
+  result = a*(-1)
+
+proc NegInt64(a: int64): int64 {.compilerproc.} =
+  result = a*(-1)
+
+proc AbsInt(a: int): int {.compilerproc.} =
+  result = if a < 0: a*(-1) else: a
+
+proc AbsInt64(a: int64): int64 {.compilerproc.} =
+  result = if a < 0: a*(-1) else: a
+
+proc LeU(a, b: int): bool {.compilerproc.} =
+  result = abs(a) <= abs(b)
+
+proc LtU(a, b: int): bool {.compilerproc.} =
+  result = abs(a) < abs(b)
+
+proc LeU64(a, b: int64): bool {.compilerproc.} =
+  result = abs(a) <= abs(b)
+
+proc LtU64(a, b: int64): bool {.compilerproc.} =
+  result = abs(a) < abs(b)
+
+proc AddU(a, b: int): int {.compilerproc.} =
+  result = abs(a) + abs(b)
+proc AddU64(a, b: int64): int64 {.compilerproc.} =
+  result = abs(a) + abs(b)
+
+proc SubU(a, b: int): int {.compilerproc.} =
+  result = abs(a) - abs(b)
+proc SubU64(a, b: int64): int64 {.compilerproc.} =
+  result = abs(a) - abs(b)
+
+proc MulU(a, b: int): int {.compilerproc.} =
+  result = abs(a) * abs(b)
+proc MulU64(a, b: int64): int64 {.compilerproc.} =
+  result = abs(a) * abs(b)
+
+proc DivU(a, b: int): int {.compilerproc.} =
+  result = abs(a) div abs(b)
+proc DivU64(a, b: int64): int64 {.compilerproc.} =
+  result = abs(a) div abs(b)
+
+proc ModU(a, b: int): int {.compilerproc.} =
+  result = abs(a) mod abs(b)
+proc ModU64(a, b: int64): int64 {.compilerproc.} =
+  result = abs(a) mod abs(b)
+
+proc Ze(a: int): int {.compilerproc.} =
+  result = a
+proc Ze64(a: int64): int64 {.compilerproc.} =
+  result = a
+
+proc toU8(a: int): int8 {.noStackFrame, compilerproc.} =
+  asm """
+    return `a`;
+  """
+
+proc toU16(a: int): int16 {.noStackFrame, compilerproc.} =
+  asm """
+    return `a`;
+  """
+
+proc toU32(a: int): int32 {.noStackFrame, compilerproc.} =
+  asm """
+    return `a`;
+  """
+
+
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
@@ -480,28 +553,3 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
     x = x.base
 
 {.pop.}
-
-#proc AddU($1, $2)
-#SubU($1, $2)
-#MulU($1, $2)
-#DivU($1, $2)
-#ModU($1, $2)
-#AddU64($1, $2)
-#SubU64($1, $2)
-#MulU64($1, $2)
-#DivU64($1, $2)
-#ModU64($1, $2)
-#LeU($1, $2)
-#LtU($1, $2)
-#LeU64($1, $2)
-#LtU64($1, $2)
-#Ze($1)
-#Ze64($1)
-#ToU8($1)
-#ToU16($1)
-#ToU32($1)
-
-#NegInt($1)
-#NegInt64($1)
-#AbsInt($1)
-#AbsInt64($1)

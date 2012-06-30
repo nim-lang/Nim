@@ -510,6 +510,6 @@ proc liftLambdas(fn: PSym, body: PNode): PNode =
 
 proc liftLambdas*(n: PNode): PNode =
   assert n.kind in procDefs
-  if gCmd == cmdCompileToEcmaScript: return n
   var s = n.sons[namePos].sym
+  if gCmd == cmdCompileToEcmaScript: return s.getBody
   result = liftLambdas(s, s.getBody)
