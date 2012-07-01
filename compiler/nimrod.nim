@@ -98,9 +98,14 @@ proc HandleCmdLine() =
                    formatFloat(epochTime() - start, ffDecimal, 3),
                    formatSize(getTotalMem())])
       if optRun in gGlobalOptions:
-        var ex = quoteIfContainsWhite(
+        if gCmd == cmdCompileToEcmaScript:
+          var ex = quoteIfContainsWhite(
+            completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
+          execExternalProgram("node " & ex & ' ' & arguments)
+        else:
+          var ex = quoteIfContainsWhite(
             changeFileExt(gProjectFull, exeExt).prependCurDir)
-        execExternalProgram(ex & ' ' & arguments)
+          execExternalProgram(ex & ' ' & arguments)
 
 #GC_disableMarkAndSweep()
 

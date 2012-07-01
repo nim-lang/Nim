@@ -261,7 +261,10 @@ proc compileSingleTest(r: var TResults, test, options: string) =
   r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
   if not given.err: inc(r.passed)
 
-proc runSingleTest(r: var TResults, test, options: string) =
+type
+  TTarget = enum targetC, targetJS
+
+proc runSingleTest(r: var TResults, test, options: string, target: TTarget) =
   var test = test.addFileExt(".nim")
   var t = extractFilename(test)
   echo t
@@ -275,9 +278,16 @@ proc runSingleTest(r: var TResults, test, options: string) =
     if given.err:
       r.addResult(t, "", given.msg, reFailure)
     else:
-      var exeFile = changeFileExt(test, ExeExt)
+      var exeFile: string
+      if target == targetC:
+        exeFile = changeFileExt(test, ExeExt)
+      else:
+        let (dir, file, ext) = splitFile(test)
+        exeFile = dir / "nimcache" / file & ".js"
+      
       if existsFile(exeFile):
-        var (buf, exitCode) = execCmdEx(exeFile)
+        var (buf, exitCode) = execCmdEx(
+          (if target==targetJS: "node " else: "") & exeFile)
         if exitCode != expected.ExitCode:
           r.addResult(t, "exitcode: " & $expected.ExitCode,
                          "exitcode: " & $exitCode, reFailure)
@@ -291,6 +301,9 @@ proc runSingleTest(r: var TResults, test, options: string) =
       else:
         r.addResult(t, expected.outp, "executable not found", reFailure)
 
+proc runSingleTest(r: var TResults, test, options: string) =
+  runSingleTest(r, test, options, targetC)
+  
 proc run(r: var TResults, dir, options: string) =
   for test in os.walkFiles(dir / "t*.nim"): runSingleTest(r, test, options)
 
@@ -349,6 +362,12 @@ proc main() =
     var runRes = initResults()
     run(runRes, "tests/run", p.cmdLineRest.string)
     runSpecialTests(runRes, p.cmdLineRest.string)
+    writeResults(runJson, runRes)
+  of "js":
+    var runRes = initResults()
+    if existsFile(runJSon):
+      runRes = readResults(runJson)
+    runJsTests(runRes, p.cmdLineRest.string)
     writeResults(runJson, runRes)
   of "merge":
     var rejectRes = readResults(rejectJson)
