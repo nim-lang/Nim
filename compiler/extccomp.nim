@@ -16,7 +16,7 @@ import
 type 
   TSystemCC* = enum 
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, 
-    ccTcc, ccPcc, ccUcc, ccIcc, ccGpp
+    ccTcc, ccPcc, ccUcc, ccIcl, ccGpp
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -121,16 +121,16 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     props: {hasCpp, hasAssume})
 
-compiler icc:
+compiler icl:
   # Intel compilers try to imitate the native ones (gcc and msvc)
   when defined(windows):
     result = vcc()
   else:
     result = gcc()
 
-  result.name = "icc"
-  result.compilerExe = "icc"
-  result.linkerExe = "icc"
+  result.name = "icl"
+  result.compilerExe = "icl"
+  result.linkerExe = "icl"
 
 compiler lcc:
   result = (
@@ -293,7 +293,7 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icc(),
+    icl(),
     gpp()]
 
 const
