@@ -22,8 +22,8 @@ proc ecmasgenPass*(): TPass
 
 type 
   TEcmasGen = object of TPassContext
-    filename*: string
-    module*: PSym
+    filename: string
+    module: PSym
 
   BModule = ref TEcmasGen
   TEcmasTypeKind = enum       # necessary JS "types"
@@ -37,17 +37,17 @@ type
     etyObject,                # Ecmascript's reference to an object
     etyBaseIndex              # base + index needed
   TCompRes{.final.} = object 
-    kind*: TEcmasTypeKind
-    com*: PRope               # computation part
-                              # address if this is a (address, index)-tuple
-    res*: PRope               # result part; index if this is an
-                              # (address, index)-tuple
+    kind: TEcmasTypeKind
+    com: PRope               # computation part
+                             # address if this is a (address, index)-tuple
+    res: PRope               # result part; index if this is an
+                             # (address, index)-tuple
   
   TBlock{.final.} = object 
-    id*: int                  # the ID of the label; positive means that it
-                              # has been used (i.e. the label should be emitted)
-    nestedTryStmts*: int      # how many try statements is it nested into
-    isLoop: bool              # whether it's a 'block' or 'while'
+    id: int                  # the ID of the label; positive means that it
+                             # has been used (i.e. the label should be emitted)
+    nestedTryStmts: int      # how many try statements is it nested into
+    isLoop: bool             # whether it's a 'block' or 'while'
   
   TGlobals{.final.} = object 
     typeInfo, code: PRope
@@ -101,7 +101,7 @@ proc mapType(typ: PType): TEcmasTypeKind =
       result = etyObject
     else: 
       result = etyBaseIndex
-  of tyPointer: 
+  of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyInt
   of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter, tyVarargs,
@@ -863,7 +863,14 @@ proc genArrayAddr(p: var TProc, n: PNode, r: var TCompRes) =
   r.res = mergeExpr(b)
 
 proc genArrayAccess(p: var TProc, n: PNode, r: var TCompRes) = 
-  genArrayAddr(p, n, r)
+  var ty = skipTypes(n.sons[0].typ, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
+  case ty.kind
+  of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString: 
+    genArrayAddr(p, n, r)
+  of tyTuple: 
+    genFieldAddr(p, n, r)
+  else: InternalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   r.kind = etyNone
   r.res = ropef("$1[$2]", [r.com, r.res])
   r.com = nil
@@ -936,6 +943,9 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
     discard mangleName(s)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s): nil
+    elif s.kind == skMethod and s.getBody.kind == nkEmpty:
+      # we cannot produce code for the dispatcher yet:
+      nil
     elif sfForward in s.flags:
       p.g.forwarded.add(s)
     elif not p.g.generatedSyms.containsOrIncl(s.id):
@@ -1032,8 +1042,9 @@ proc createVar(p: var TProc, typ: PType, indirect: bool): PRope =
       app(result, "]")
   of tyTuple: 
     result = toRope("{")
-    var c = 0
-    app(result, createRecordVarAux(p, t.n, c))
+    for i in 0.. <t.sonslen:
+      if i > 0: app(result, ", ")
+      appf(result, "Field$1: $2", i.toRope, createVar(p, t.sons[i], false))
     app(result, "}")
   of tyObject: 
     result = toRope("{")
@@ -1123,6 +1134,16 @@ proc genNew(p: var TProc, n: PNode, r: var TCompRes) =
   if a.com != nil: appf(r.com, "$1;$n", [a.com])
   appf(r.com, "$1 = $2;$n", [a.res, createVar(p, t, true)])
 
+proc genNewSeq(p: var TProc, n: PNode, r: var TCompRes) =
+  var x, y: TCompRes
+  gen(p, n.sons[1], x)
+  gen(p, n.sons[2], y)
+  if x.com != nil: appf(r.com, "$1;$n", [x.com])
+  if y.com != nil: appf(r.com, "$1;$n", [y.com])
+  var t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
+  appf(r.com, "$1 = new Array($2); for (var i=0;i<$2;++i) {$1[i]=$3;}", [
+    x.res, y.res, createVar(p, t, false)])
+
 proc genOrd(p: var TProc, n: PNode, r: var TCompRes) =
   case skipTypes(n.sons[1].typ, abstractVar).kind
   of tyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r)
@@ -1168,7 +1189,7 @@ proc genRepr(p: var TProc, n: PNode, r: var TCompRes) =
 
 proc genOf(p: var TProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
-  let t = n.sons[2].typ
+  let t = skipTypes(n.sons[2].typ, abstractVarRange+{tyRef, tyPtr})
   gen(p, n.sons[1], x)
   if tfFinal in t.flags:
     r.res = ropef("($1.m_type == $2)", [x.res, genTypeInfo(p, t)])
@@ -1254,7 +1275,7 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   of mInSet: binaryExpr(p, n, r, "", "($1[$2] != undefined)")
   of mNLen..mNError:
     localError(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
-  of mNewSeq: binaryStmt(p, n, r, "", "$1 = new Array($2)")
+  of mNewSeq: genNewSeq(p, n, r)
   of mOf: genOf(p, n, r)
   of mReset: genReset(p, n, r)
   of mEcho: genEcho(p, n, r)
@@ -1576,12 +1597,14 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: 
-      var 
-        p: TProc
-        r: TCompRes
-      initProc(p, globals, m, nil, m.module.options)
-      genProc(p, disp.sons[i].sym, r)
-      app(p.g.code, mergeStmt(r))
+      let prc = disp.sons[i].sym
+      if not globals.generatedSyms.containsOrIncl(prc.id):
+        var 
+          p: TProc
+          r: TCompRes
+        initProc(p, globals, m, nil, m.module.options)
+        genProc(p, prc, r)
+        app(p.g.code, mergeStmt(r))
 
     # write the file:
     var code = con(globals.typeInfo, globals.code)

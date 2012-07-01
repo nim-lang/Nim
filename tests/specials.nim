@@ -176,7 +176,7 @@ proc runJsTests(r: var TResults, options: string) =
     runSingleTest(r, filename, options & " -d:nodejs", targetJS)
     runSingleTest(r, filename, options & " -d:nodejs -d:release", targetJS)
     
-  # tactiontable, texceptions, texcpt1, texcsub, tfinally, tfinally2,
+  # texceptions, texcpt1, texcsub, tfinally, tfinally2,
   # tfinally3
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
