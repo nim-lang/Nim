@@ -35,7 +35,11 @@ proc `!$`*(h: THash): THash {.inline.} =
 proc hashData*(Data: Pointer, Size: int): THash = 
   ## hashes an array of bytes of size `size`
   var h: THash = 0
-  var p = cast[cstring](Data)
+  when defined(ecmascript):
+    var p: cstring
+    asm """`p` = `Data`;"""
+  else:
+    var p = cast[cstring](Data)
   var i = 0
   var s = size
   while s > 0: 
@@ -44,9 +48,24 @@ proc hashData*(Data: Pointer, Size: int): THash =
     Dec(s)
   result = !$h
 
+when defined(ecmascript):
+  var objectID = 0
+
 proc hash*(x: Pointer): THash {.inline.} = 
   ## efficient hashing of pointers
-  result = (cast[THash](x)) shr 3 # skip the alignment
+  when defined(ecmascript):
+    asm """
+      if (typeof `x` == "object") {
+        if ("_NimID" in `x`)
+          `result` = `x`["_NimID"];
+        else {
+          `result` = ++`objectID`;
+          `x`["_NimID"] = `result`;
+        }
+      }
+    """
+  else:
+    result = (cast[THash](x)) shr 3 # skip the alignment
   
 proc hash*(x: int): THash {.inline.} = 
   ## efficient hashing of integers

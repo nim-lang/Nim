@@ -145,6 +145,7 @@ Define               Effect
 ``useRealtimeGC``    Enables support of Nimrod's GC for *soft* realtime 
                      systems. See the documentation of the `gc <gc.html>`_ 
                      for further information.
+``nodejs``           The EcmaScript target is actually ``node.js``.
 ==================   =========================================================
 
 
