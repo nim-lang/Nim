@@ -44,7 +44,7 @@ version 0.9.XX
 
 - JS gen:
   - document it
-  - test & fix bugs
+  - fix exception handling
 
 - document nimdoc properly finally
 - implement a warning message for shadowed 'result' variable
