@@ -343,7 +343,7 @@ defined. The suffix starting with an apostrophe ('\'') is called a
 unless the literal contains a dot or ``E|e`` in which case it is of
 type ``float``. For notational convenience the apostrophe of a type suffix
 is optional if it is not ambiguous (only hexadecimal floating point literals
-can be ambiguous).
+with a type suffix can be ambiguous).
 
 
 The type suffixes are:
@@ -504,7 +504,8 @@ Ordinal types
   than the largest value gives a checked runtime or static error.
 
 Integers, bool, characters and enumeration types (and subranges of these
-types) belong to ordinal types.
+types) belong to ordinal types. For reasons of simplicity of implementation
+the types ``uint`` and ``uint64`` are no ordinal types.
 
 
 Pre-defined integer types
@@ -522,11 +523,27 @@ intXX
   The current implementation supports ``int8``, ``int16``, ``int32``, ``int64``.
   Literals of these types have the suffix 'iXX.
 
+``uint``
+  the generic `unsigned integer`:idx: type; its size is platform dependent and
+  has the same size as a pointer. An integer literal with the type 
+  suffix ``'u`` is of this type.
 
-There are no `unsigned integer`:idx: types, only `unsigned operations`:idx:
-that treat their arguments as unsigned. Unsigned operations all wrap around;
-they cannot lead to over- or underflow errors. Unsigned operations use the
-``%`` suffix as convention:
+uintXX
+  additional signed integer types of XX bits use this naming scheme
+  (example: uint16 is a 16 bit wide unsigned integer).
+  The current implementation supports ``uint8``, ``uint16``, ``uint32``,
+  ``uint64``. Literals of these types have the suffix 'uXX.
+  Unsigned operations all wrap around; they cannot lead to over- or 
+  underflow errors.
+
+
+In addition to the usual arithmetic operators for signed and unsigned integers
+(``+ - *`` etc.) there are also operators that formally work on *signed* 
+integers but treat their arguments as *unsigned*: They are mostly provided 
+for backwards compatibility with older versions of the language that lacked 
+unsigned integer types. These unsigned operations for signed integers use 
+the ``%`` suffix as convention:
+
 
 ======================   ======================================================
 operation                meaning

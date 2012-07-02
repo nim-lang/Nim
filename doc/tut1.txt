@@ -846,9 +846,8 @@ object on the heap, so there is a trade-off to be made here.
 
 Integers
 --------
-Nimrod has these integer types built-in: ``int int8 int16 int32 int64``. These
-are all signed integer types, there are no `unsigned integer`:idx: types, only
-`unsigned operations`:idx: that treat their arguments as unsigned.
+Nimrod has these integer types built-in: 
+``int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64``.
 
 The default integer type is ``int``. Integer literals can have a *type suffix*
 to mark them to be of another integer type:
@@ -859,6 +858,7 @@ to mark them to be of another integer type:
     x = 0     # x is of type ``int``
     y = 0'i8  # y is of type ``int8``
     z = 0'i64 # z is of type ``int64``
+    u = 0'u   # u is of type ``uint``
 
 Most often integers are used for counting objects that reside in memory, so
 ``int`` has the same size as a pointer.
@@ -871,19 +871,7 @@ arguments as *unsigned*. For `arithmetic bit shifts`:idx: ordinary
 multiplication or division can be used.
 
 Unsigned operations all wrap around; they cannot lead to over- or underflow
-errors. Unsigned operations use the ``%`` suffix as convention:
-
-======================   ======================================================
-operation                meaning
-======================   ======================================================
-``a +% b``               unsigned integer addition
-``a -% b``               unsigned integer subtraction
-``a *% b``               unsigned integer multiplication
-``a /% b``               unsigned integer division
-``a %% b``               unsigned integer modulo operation
-``a <% b``               treat ``a`` and ``b`` as unsigned and compare
-``a <=% b``              treat ``a`` and ``b`` as unsigned and compare
-======================   ======================================================
+errors.
 
 `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion

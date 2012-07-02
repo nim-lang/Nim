@@ -1,7 +1,10 @@
 version 0.9.0
 =============
 
-- finish support for unsigned ints
+- finish support for unsigned ints:
+  - document new type conversion rules
+  - test codegen
+  - provide ``$`` for unsigned ints
 
 Debug GC session:
 - test sequence of closures; especially that the GC does not leak for those!
