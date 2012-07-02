@@ -266,7 +266,10 @@ proc GetNumber(L: var TLexer): TToken =
   result.literal = ""
   result.base = base10        # BUGFIX
   pos = L.bufpos     # make sure the literal is correct for error messages:
-  matchUnderscoreChars(L, result, {'A'..'Z', 'a'..'z', '0'..'9'})
+  if L.buf[pos] == '0' and L.buf[pos+1] in {'X', 'x'}:
+    matchUnderscoreChars(L, result, {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x'})
+  else:
+    matchUnderscoreChars(L, result, {'0'..'9', 'b', 'B', 'o', 'c', 'C'})
   if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
     add(result.literal, '.')
     inc(L.bufpos) 
@@ -280,9 +283,9 @@ proc GetNumber(L: var TLexer): TToken =
         inc(L.bufpos)
       matchUnderscoreChars(L, result, {'0'..'9'})
   endpos = L.bufpos
-  if L.buf[endpos] == '\'':
+  if L.buf[endpos] in {'\'', 'f', 'F', 'i', 'I', 'u', 'U'}:
     #matchUnderscoreChars(L, result, ['''', 'f', 'F', 'i', 'I', '0'..'9']);
-    inc(endpos)
+    if L.buf[endpos] == '\'': inc(endpos)
     L.bufpos = pos            # restore position
     case L.buf[endpos]
     of 'f', 'F': 
