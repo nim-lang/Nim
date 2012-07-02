@@ -15,7 +15,7 @@ const
 
 type
   THandle* = int
-  LONG* = int
+  LONG* = int32
   WINBOOL* = int32
   DWORD* = int32
   HDC* = THandle

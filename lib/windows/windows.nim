@@ -18,7 +18,7 @@ type
 
 type  # WinNT.h -- Defines the 32-Bit Windows types and constants
   SHORT* = int16
-  LONG* = int
+  LONG* = int32
   # UNICODE (Wide Character) types
   PWCHAR* = PWideChar
   LPWCH* = PWideChar

@@ -140,9 +140,10 @@ proc skipTypes(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
   
-proc isOrdinalType(t: PType): bool = 
+proc isOrdinalType(t: PType): bool =
   assert(t != nil)
-  result = (t.Kind in {tyChar, tyInt..tyInt64, tyUInt..tyUInt64, tyBool, tyEnum}) or
+  # caution: uint, uint64 are no ordinal types!
+  result = t.Kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
       (t.Kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
        isOrdinalType(t.sons[0])
 
@@ -532,10 +533,10 @@ proc lastOrd(t: PType): biggestInt =
   of tyUInt: 
     if platform.intSize == 4: result = 0xFFFFFFFF
     else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyUInt8: result = 0x7F # XXX: Fix these
-  of tyUInt16: result = 0x7FFF
-  of tyUInt32: result = 0x7FFFFFFF
-  of tyUInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt8: result = 0xFF
+  of tyUInt16: result = 0xFFFF
+  of tyUInt32: result = 0xFFFFFFFF
+  of tyUInt64: result = -1
   of tyEnum: 
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
