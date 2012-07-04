@@ -190,8 +190,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mCopyStr: result = newStrNodeT(substr(getStr(a), int(getOrdValue(b))), n)
   of mCopyStrLast: 
     result = newStrNodeT(substr(getStr(a), int(getOrdValue(b)), 
-                                         int(getOrdValue(c))), n)
-  of mFloatToStr: result = newStrNodeT($(getFloat(a)), n)
+                                           int(getOrdValue(c))), n)
+  of mFloatToStr: result = newStrNodeT($getFloat(a), n)
   of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
   of mStrToStr: result = a
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a), n)
@@ -298,6 +298,7 @@ proc getAppType(n: PNode): PNode =
     result = newStrNodeT("console", n)
 
 proc foldConv*(n, a: PNode): PNode = 
+  # XXX range checks?
   case skipTypes(n.typ, abstractRange).kind
   of tyInt..tyInt64: 
     case skipTypes(a.typ, abstractRange).kind

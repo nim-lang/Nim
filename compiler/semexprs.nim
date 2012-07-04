@@ -1302,6 +1302,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkNilLit: 
     result.typ = getSysType(tyNil)
   of nkIntLit: 
+    # XXX this is stupid:
     if result.typ == nil: 
       let i = result.intVal
       if i >= low(int32) and i <= high(int32):

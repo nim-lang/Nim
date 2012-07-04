@@ -794,7 +794,7 @@ variadic proc, it is implicitely converted to ``cstring`` too:
   
   printf("This works %s", "as expected")
 
-Even though the conversion is implict, it is not *safe*: The garbage collector
+Even though the conversion is implicit, it is not *safe*: The garbage collector
 does not consider a ``cstring`` to be a root and may collect the underlying 
 memory. However in practice this almost never happens as the GC considers
 stack roots conservatively. One can use the builtin procs ``GC_ref`` and
@@ -1461,22 +1461,28 @@ algorithm returns true:
   # XXX range types?
   proc isImplicitlyConvertible(a, b: PType): bool =
     case a.kind
-    of int8:    result = b.kind in {int16, int32, int64, int}
-    of int16:   result = b.kind in {int32, int64, int}
-    of int32:   result = b.kind in {int64, int}
-    of float:   result = b.kind in {float32, float64}
-    of float32: result = b.kind in {float64, float}
-    of float64: result = b.kind in {float32, float}
+    of int:     result = b in {int8, int16, int32, int64, uint, uint8, uint16,
+                               uint32, uint64, float, float32, float64}
+    of int8:    result = b in {int16, int32, int64, int}
+    of int16:   result = b in {int32, int64, int}
+    of int32:   result = b in {int64, int}
+    of uint:    result = b in {uint32, uint64}
+    of uint8:   result = b in {uint16, uint32, uint64}
+    of uint16:  result = b in {uint32, uint64}
+    of uint32:  result = b in {uint64}
+    of float:   result = b in {float32, float64}
+    of float32: result = b in {float64, float}
+    of float64: result = b in {float32, float}
     of seq:
-      result = b.kind == openArray and typeEquals(a.baseType, b.baseType)
+      result = b == openArray and typeEquals(a.baseType, b.baseType)
     of array:
-      result = b.kind == openArray and typeEquals(a.baseType, b.baseType)
+      result = b == openArray and typeEquals(a.baseType, b.baseType)
       if a.baseType == char and a.indexType.rangeA == 0:
-        result = b.kind = cstring
+        result = b = cstring
     of cstring, ptr:
-      result = b.kind == pointer
+      result = b == pointer
     of string:
-      result = b.kind == cstring
+      result = b == cstring
 
 A type ``a`` is **explicitly** convertible to type ``b`` iff the following
 algorithm returns true:

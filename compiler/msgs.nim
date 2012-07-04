@@ -345,7 +345,7 @@ const
     warnAnalysisLoophole: "thread analysis incomplete due to unkown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
-    warnImplicitNarrowing: "implicit narrowing conversion: '$1'",
+    warnImplicitNarrowing: "implicit narrowing conversion: '$1' [ImplicitNarrowing]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 

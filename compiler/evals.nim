@@ -829,7 +829,7 @@ proc isEmpty(n: PNode): bool =
 # Maybe the lexer should mark both the beginning and the end of expressions,
 # then this function could be removed.
 proc stringStartingLine(s: PNode): int =
-  result = s.info.line - countLines(s.strVal)
+  result = s.info.line.int - countLines(s.strVal)
 
 proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})

@@ -131,7 +131,7 @@ proc runGcTests(r: var TResults, options: string) =
   test "gctest"
   # disabled for now as it somehow runs very slowly ('delete' bug?) but works:
   test "gcleak3"
-  
+  test "weakrefs"
 
 # ------------------------- threading tests -----------------------------------
 

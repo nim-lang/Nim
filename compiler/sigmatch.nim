@@ -162,7 +162,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
   else:
     var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
-    elif k == tyInt:
+    elif k == tyInt and f.kind in {tyRange, tyInt8..tyUInt64}:
       # and a.n != nil and a.n.intVal >= firstOrd(f) and
       #                    a.n.intVal <= lastOrd(f):
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
@@ -188,7 +188,9 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
   else: 
     var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
-    elif (k >= tyFloat) and (k <= tyFloat128): result = isConvertible
+    elif k == tyInt and f.kind >= tyFloat and f.kind <= tyFloat128:
+      result = isIntConv
+    elif k >= tyFloat and k <= tyFloat128: result = isConvertible
     else: result = isNone
   
 proc isObjectSubtype(a, f: PType): bool =

@@ -1209,8 +1209,8 @@ proc initTokRender(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
 proc getNextTok(r: var TSrcGen, kind: var TTokType, literal: var string) = 
   if r.idx < len(r.tokens): 
     kind = r.tokens[r.idx].kind
-    var length = r.tokens[r.idx].length
-    literal = substr(r.buf, r.pos + 0, r.pos + 0 + length - 1)
+    var length = r.tokens[r.idx].length.int
+    literal = substr(r.buf, r.pos, r.pos + length - 1)
     inc(r.pos, length)
     inc(r.idx)
   else: 
