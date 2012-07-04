@@ -640,6 +640,14 @@ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkBracket} and 
       cnst.len != 0
 
+proc warnNarrowingConversion(n: PNode) =
+  if n.kind == nkHiddenStdConv:
+    var dest = skipTypes(n.typ, abstractVarRange)
+    var source = skipTypes(n.sons[1].typ, abstractVarRange)
+    if source.kind == tyInt and
+       source.size > dest.size and n.sons[1].kind != nkIntLit:
+      Message(n.info, warnImplicitNarrowing, renderTree(n.sons[1]))
+
 proc transform(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 
@@ -725,8 +733,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   var cnst = getConstExpr(c.module, PNode(result))
   # we inline constants if they are not complex constants:
   if cnst != nil and not dontInlineConstant(n, cnst):
-    result = PTransNode(cnst) # do not miss an optimization  
- 
+    result = PTransNode(cnst) # do not miss an optimization
+  warnNarrowingConversion(result.pnode)
+
 proc processTransf(context: PPassContext, n: PNode): PNode = 
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous

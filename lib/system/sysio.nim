@@ -199,7 +199,7 @@ proc Open(f: var TFile, filename: string,
   var p: pointer = fopen(filename, FormatOpen[mode])
   result = (p != nil)
   f = cast[TFile](p)
-  if bufSize > 0 and bufSize <= high(cint):
+  if bufSize > 0 and bufSize <= high(cint).int:
     if setvbuf(f, nil, IOFBF, bufSize.cint) != 0'i32:
       raise newException(EOutOfMemory, "out of memory")
   elif bufSize == 0:

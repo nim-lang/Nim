@@ -75,7 +75,7 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) =
   of tyBool: add result, reprBool(bool(elem))
   of tyChar: add result, reprChar(chr(elem))
   of tyRange: addSetElem(result, elem, typ.base)
-  of tyInt..tyInt64: add result, reprInt(elem)
+  of tyInt..tyInt64, tyUInt8, tyUInt16: add result, reprInt(elem)
   else: # data corrupt --> inform the user
     add result, " (invalid data!)"
 
@@ -221,6 +221,9 @@ when not defined(useNimRtl):
     of tyInt16: add result, $int(cast[ptr Int16](p)[])
     of tyInt32: add result, $int(cast[ptr Int32](p)[])
     of tyInt64: add result, $(cast[ptr Int64](p)[])
+    of tyUInt8: add result, $ze(cast[ptr Int8](p)[])
+    of tyUInt16: add result, $ze(cast[ptr Int16](p)[])
+    
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
     of tyFloat64: add result, $(cast[ptr float64](p)[])
