@@ -195,9 +195,45 @@ if [ $# -eq 1 ] ; then
     cp doc/tut2.txt $docdir/tut2.txt
     chmod 644 $docdir/tut2.txt
   fi
+  if [ -f doc/manual.html ]; then
+    cp doc/manual.html $docdir/manual.html
+    chmod 644 $docdir/manual.html
+  fi
   if [ -f doc/mytest.cfg ]; then
     cp doc/mytest.cfg $docdir/mytest.cfg
     chmod 644 $docdir/mytest.cfg
+  fi
+  if [ -f doc/c2nim.pdf ]; then
+    cp doc/c2nim.pdf $docdir/c2nim.pdf
+    chmod 644 $docdir/c2nim.pdf
+  fi
+  if [ -f doc/gc.pdf ]; then
+    cp doc/gc.pdf $docdir/gc.pdf
+    chmod 644 $docdir/gc.pdf
+  fi
+  if [ -f doc/lib.pdf ]; then
+    cp doc/lib.pdf $docdir/lib.pdf
+    chmod 644 $docdir/lib.pdf
+  fi
+  if [ -f doc/manual.pdf ]; then
+    cp doc/manual.pdf $docdir/manual.pdf
+    chmod 644 $docdir/manual.pdf
+  fi
+  if [ -f doc/niminst.pdf ]; then
+    cp doc/niminst.pdf $docdir/niminst.pdf
+    chmod 644 $docdir/niminst.pdf
+  fi
+  if [ -f doc/nimrodc.pdf ]; then
+    cp doc/nimrodc.pdf $docdir/nimrodc.pdf
+    chmod 644 $docdir/nimrodc.pdf
+  fi
+  if [ -f doc/tut1.pdf ]; then
+    cp doc/tut1.pdf $docdir/tut1.pdf
+    chmod 644 $docdir/tut1.pdf
+  fi
+  if [ -f doc/tut2.pdf ]; then
+    cp doc/tut2.pdf $docdir/tut2.pdf
+    chmod 644 $docdir/tut2.pdf
   fi
   cp lib/nimbase.h $libdir/nimbase.h
   chmod 644 $libdir/nimbase.h
@@ -373,8 +409,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/strutils.nim
   cp lib/pure/subexes.nim $libdir/pure/subexes.nim
   chmod 644 $libdir/pure/subexes.nim
-  cp lib/pure/templateutil.nim $libdir/pure/templateutil.nim
-  chmod 644 $libdir/pure/templateutil.nim
   cp lib/pure/terminal.nim $libdir/pure/terminal.nim
   chmod 644 $libdir/pure/terminal.nim
   cp lib/pure/times.nim $libdir/pure/times.nim
