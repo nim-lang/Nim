@@ -1037,8 +1037,9 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   InitLocExpr(p, e.sons[1], a)
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
   case t.kind
-  of tyInt..tyInt64:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprInt($1)", [rdLoc(a)]))
+  of tyInt..tyInt64, tyUInt..tyUInt64:
+    putIntoDest(p, d, e.typ, 
+                ropecg(p.module, "#reprInt((NI64)$1)", [rdLoc(a)]))
   of tyFloat..tyFloat128:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprFloat($1)", [rdLoc(a)]))
   of tyBool:

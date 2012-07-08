@@ -16257,7 +16257,7 @@ proc COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32 =
     MaxWidth = column.max_width
   else: 
     MaxWidth = column.requested_width
-  result = CLAMP(column.requested_width, MinWidth, MaxWidth)
+  result = CLAMP(column.requested_width, MinWidth, MaxWidth).int32
 
 proc DRAW_EXPANDERS*(tree_view: PTreeView): bool = 
   result = (not (FLAG_SET(tree_view, TREE_VIEW_IS_LIST))) and

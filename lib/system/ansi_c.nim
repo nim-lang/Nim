@@ -71,7 +71,8 @@ proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", nodecl.}
 proc c_fclose(f: C_TextFileStar) {.importc: "fclose", nodecl.}
 
-proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs.}
+proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
+                                     noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
 proc c_fread(buf: Pointer, size, n: int, f: C_BinaryFileStar): int {.

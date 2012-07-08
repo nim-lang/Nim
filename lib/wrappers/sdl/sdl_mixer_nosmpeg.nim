@@ -15,9 +15,9 @@ else:
   const 
     MixerLibName = "libSDL_mixer.so"
 const 
-  MAJOR_VERSION* = 1'i8
-  MINOR_VERSION* = 2'i8
-  PATCHLEVEL* = 7'i8    # Backwards compatibility
+  MAJOR_VERSION* = 1
+  MINOR_VERSION* = 2
+  PATCHLEVEL* = 7    # Backwards compatibility
    
   CHANNELS* = 8           # Good default values for a PC soundcard 
   DEFAULT_FREQUENCY* = 22050

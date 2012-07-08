@@ -182,8 +182,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include "system/hti"
 
 type
-  Byte* = Int8 ## this is an alias for ``int8``, that is a signed
-               ## int 8 bits wide.
+  Byte* = uInt8 ## this is an alias for ``uint8``, that is an unsigned
+                ## int 8 bits wide.
 
   Natural* = range[0..high(int)]
     ## is an int type ranging from zero to the maximum value
@@ -967,7 +967,7 @@ type
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
     ## This is the same as the type ``char`` in *C*.
-  cschar* {.importc: "signed char", nodecl.} = byte
+  cschar* {.importc: "signed char", nodecl.} = int8
     ## This is the same as the type ``signed char`` in *C*.
   cshort* {.importc: "short", nodecl.} = int16
     ## This is the same as the type ``short`` in *C*.
@@ -1156,6 +1156,10 @@ proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stingify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
+proc `$` *(x: uint64): string {.noSideEffect.}
+  ## The stingify operator for an unsigned integer argument. Returns `x`
+  ## converted to a decimal string.
+
 proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## The stingify operator for a float argument. Returns `x`
   ## converted to a decimal string.
@@ -1177,7 +1181,7 @@ proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
-proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
+proc `$` *[TEnum: enum](x: TEnum): string {.magic: "EnumToStr", noSideEffect.}
   ## The stingify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
@@ -1850,7 +1854,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc getFileSize*(f: TFile): int64
     ## retrieves the file size (in bytes) of `f`.
 
-  proc ReadBytes*(f: TFile, a: var openarray[byte], start, len: int): int
+  proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int
     ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
     ## the actual number of bytes that have been read which may be less than
     ## `len` (if not as many bytes are remaining), but not greater.
@@ -1865,7 +1869,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## the actual number of bytes that have been read which may be less than
     ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc writeBytes*(f: TFile, a: openarray[byte], start, len: int): int
+  proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int
     ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
     ## the number of actual written bytes, which may be less than `len` in case
     ## of an error.

@@ -1066,7 +1066,8 @@ proc createVar(p: var TProc, typ: PType, indirect: bool): PRope =
     result = nil
 
 proc isIndirect(v: PSym): bool = 
-  result = (sfAddrTaken in v.flags) and (mapType(v.typ) != etyObject)
+  result = (sfAddrTaken in v.flags) and (mapType(v.typ) != etyObject) and
+    v.kind notin {skProc, skConverter, skMethod, skIterator}
 
 proc genVarInit(p: var TProc, v: PSym, n: PNode, r: var TCompRes) = 
   var 

@@ -1,12 +1,11 @@
 version 0.9.0
 =============
 
+- deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 - finish support for unsigned ints:
-  - document new type conversion rules
+  - support more unsigned operations
   - test codegen
-  - provide ``$`` for unsigned ints
 
-Debug GC session:
 - test sequence of closures; especially that the GC does not leak for those!
 
 New pragmas:
@@ -15,8 +14,6 @@ New pragmas:
 - document destructors
 
 - ``borrow`` needs to take type classes into account
-- make templates hygienic by default: try to gensym() everything in the 'block'
-  of a template; find a better solution for gensym instead of `*ident`
 - introduce ``;`` to the parser
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - ``=`` should be overloadable; requires specialization for ``=``
@@ -50,7 +47,10 @@ version 0.9.XX
   - document it
   - fix exception handling
 
+- make templates hygienic by default: try to gensym() everything in the 'block'
+  of a template; find a better solution for gensym instead of `*ident`
 - document nimdoc properly finally
+- make 'clamp' a magic for the range stuff
 - implement a warning message for shadowed 'result' variable
 - implement the high level optimizer
 - change overloading resolution
@@ -101,7 +101,7 @@ Library
     newSeq(result, a.len)
     for i in 0..a.len-1: result[i] = a[i]
     
-  --> ensure @[] calls the array version!
+  --> ensure @[] still calls the array version!
 
 
 Low priority
@@ -146,7 +146,6 @@ Further optimization ideas
 
 Version 2 and beyond
 ====================
-
 
 - shared memory heap: ``shared ref`` etc. The only hard part in the GC is to
   "stop the world". However, it may be worthwhile to generate explicit 

@@ -222,17 +222,17 @@ proc fwrite(buf: Pointer, size, n: int, f: TFile): int {.
 proc readBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
 
-proc ReadBytes(f: TFile, a: var openarray[byte], start, len: int): int =
+proc ReadBytes(f: TFile, a: var openarray[int8], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 proc ReadChars(f: TFile, a: var openarray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
-proc writeBytes(f: TFile, a: openarray[byte], start, len: int): int =
-  var x = cast[ptr array[0..1000_000_000, byte]](a)
+proc writeBytes(f: TFile, a: openarray[int8], start, len: int): int =
+  var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeChars(f: TFile, a: openarray[char], start, len: int): int =
-  var x = cast[ptr array[0..1000_000_000, byte]](a)
+  var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fwrite(buffer, 1, len, f)

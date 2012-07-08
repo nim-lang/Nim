@@ -122,9 +122,9 @@ else:
   const 
     NetLibName = "libSDL_net.so"
 const                         #* Printable format: "%d.%d.%d", MAJOR, MINOR, PATCHLEVEL *
-  MAJOR_VERSION* = 1'i8
-  MINOR_VERSION* = 2'i8
-  PATCHLEVEL* = 5'i8     # SDL_Net.h constants
+  MAJOR_VERSION* = 1
+  MINOR_VERSION* = 2
+  PATCHLEVEL* = 5        # SDL_Net.h constants
                          #* Resolve a host name and port to an IP address in network form.
                          #   If the function succeeds, it will return 0.
                          #   If the host couldn't be resolved, the host portion of the returned

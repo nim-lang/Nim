@@ -74,8 +74,10 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         smoduleId != c.module.id and smoduleId != c.friendModule.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
-    if result.kind == nkSym and isGenericRoutine(result.sym):
-      LocalError(n.info, errInstantiateXExplicitely, s.name.s)
+    if result.kind == nkSym:
+      markIndirect(c, result.sym)
+      if isGenericRoutine(result.sym):
+        LocalError(n.info, errInstantiateXExplicitely, s.name.s)
   of skConst:
     markUsed(n, s)
     case skipTypes(s.typ, abstractInst).kind
@@ -129,10 +131,11 @@ proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
   if diff == high(int):
     GlobalError(info, errGenerated, MsgKindToString(errIllegalConvFromXtoY) % [
         src.typeToString, castDest.typeToString])
-  
+
+const 
+  IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
+
 proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
-  const 
-    IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
   if sameType(castDest, src) and castDest.sym == src.sym: 
     # don't annoy conversions that may be needed on another processor:
     if castDest.kind notin {tyInt..tyUInt64, tyNil}:
@@ -177,8 +180,8 @@ proc isCastable(dst, src: PType): bool =
     result = false
   else: 
     result = (ds >= ss) or
-        (skipTypes(dst, abstractInst).kind in {tyInt..tyFloat128}) or
-        (skipTypes(src, abstractInst).kind in {tyInt..tyFloat128})
+        (skipTypes(dst, abstractInst).kind in IntegralTypes) or
+        (skipTypes(src, abstractInst).kind in IntegralTypes)
   
 proc semConv(c: PContext, n: PNode, s: PSym): PNode = 
   if sonsLen(n) != 2: GlobalError(n.info, errConvNeedsOneArg)
@@ -190,10 +193,12 @@ proc semConv(c: PContext, n: PNode, s: PSym): PNode =
   if op.kind != nkSymChoice: 
     checkConvertible(result.info, result.typ, op.typ)
   else: 
-    for i in countup(0, sonsLen(op) - 1): 
-      if sameType(result.typ, op.sons[i].typ): 
-        markUsed(n, op.sons[i].sym)
-        return op.sons[i]
+    for i in countup(0, sonsLen(op) - 1):
+      let it = op.sons[i]
+      if sameType(result.typ, it.typ): 
+        markUsed(n, it.sym)
+        markIndirect(c, it.sym)
+        return it
     localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
 
 proc semCast(c: PContext, n: PNode): PNode = 
@@ -222,7 +227,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       n.typ = getSysType(tyInt)
     of tyArrayConstr, tyArray: 
       n.typ = n.sons[1].typ.sons[0] # indextype
-    of tyInt..tyInt64, tyChar, tyBool, tyEnum: 
+    of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32: 
       n.typ = n.sons[1].typ
     else: GlobalError(n.info, errInvalidArgForX, opToStr[m])
   result = n
@@ -498,6 +503,24 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   if n.kind notin nkCallKinds or n.sons[0].kind != nkSym: return
   var callee = n.sons[0].sym
   
+  # constant folding that is necessary for correctness of semantic pass:
+  if callee.magic != mNone and callee.magic in ctfeWhitelist and n.typ != nil:
+    var call = newNodeIT(nkCall, n.info, n.typ)
+    call.add(n.sons[0])
+    var allConst = true
+    for i in 1 .. < n.len:
+      let a = getConstExpr(c.module, n.sons[i])
+      if a != nil: call.add(a)
+      else:
+        allConst = false
+        call.add(n.sons[i])
+    if allConst:
+      result = semfold.getConstExpr(c.module, call)
+      if result.isNil: result = n
+      else: return result
+    result.typ = semfold.getIntervalType(callee.magic, call)
+    
+  # optimization pass: not necessary for correctness of the semantic pass
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {}:
     if sfCompileTime notin callee.flags and 
@@ -901,7 +924,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal}).kind in
         {tyInt..tyInt64}: 
       var idx = getOrdValue(n.sons[1])
-      if (idx >= 0) and (idx < sonsLen(arr)): n.typ = arr.sons[int(idx)]
+      if idx >= 0 and idx < sonsLen(arr): n.typ = arr.sons[int(idx)]
       else: GlobalError(n.info, errInvalidIndexValueForTuple)
     else: 
       GlobalError(n.info, errIndexTypesDoNotMatch)
@@ -1301,15 +1324,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     nil
   of nkNilLit: 
     result.typ = getSysType(tyNil)
-  of nkIntLit: 
-    # XXX this is stupid:
-    if result.typ == nil: 
-      let i = result.intVal
-      if i >= low(int32) and i <= high(int32):
-        result.typ = getSysType(tyInt)
-      else:
-        result.typ = getSysType(tyInt64)
-  of nkInt8Lit: 
+  of nkIntLit:
+    if result.typ == nil: setIntLitType(result)
+  of nkInt8Lit:
     if result.typ == nil: result.typ = getSysType(tyInt8)
   of nkInt16Lit: 
     if result.typ == nil: result.typ = getSysType(tyInt16)

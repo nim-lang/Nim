@@ -53,7 +53,8 @@ proc oidToString*(oid: TOid, str: cstring) =
   str[24] = '\0'
 
 var
-  incr, fuzz: int
+  incr: int 
+  fuzz: int32
 
 proc genOid*(): TOid =
   ## generates a new OID.

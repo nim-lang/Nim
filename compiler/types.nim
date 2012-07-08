@@ -102,6 +102,9 @@ proc getOrdValue(n: PNode): biggestInt =
     LocalError(n.info, errOrdinalTypeExpected)
     result = 0
 
+proc isIntLit*(t: PType): bool {.inline.} =
+  result = t.n != nil and t.n.kind == nkIntLit
+
 proc isCompatibleToCString(a: PType): bool = 
   if a.kind == tyArray: 
     if (firstOrd(a.sons[0]) == 0) and
@@ -400,8 +403,15 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   result = ""
   if t == nil: return 
   if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
+    if t.kind == tyInt and isIntLit(t):
+      return t.sym.Name.s & "(" & $t.n.intVal & ")"
     return t.sym.Name.s
   case t.Kind
+  of tyInt:
+    if not isIntLit(t):
+      result = typeToStr[t.kind]
+    else:
+      result = "intLit(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
@@ -536,7 +546,7 @@ proc lastOrd(t: PType): biggestInt =
   of tyUInt8: result = 0xFF
   of tyUInt16: result = 0xFFFF
   of tyUInt32: result = 0xFFFFFFFF
-  of tyUInt64: result = -1
+  of tyUInt64: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyEnum: 
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position

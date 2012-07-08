@@ -343,7 +343,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
     name.sin_port = sockets.htons(int16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(socket.fd, cast[ptr TSockAddr](addr(name)),
-                  sizeof(name)) < 0'i32:
+                  sizeof(name).TSockLen) < 0'i32:
       OSError()
   else:
     var hints: TAddrInfo
@@ -366,7 +366,7 @@ when false:
     name.sin_port = sockets.htons(int16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(cint(socket), cast[ptr TSockAddr](addr(name)),
-                  sizeof(name)) < 0'i32:
+                  sizeof(name).TSockLen) < 0'i32:
       OSError()
   
 proc getSockName*(socket: TSocket): TPort = 
@@ -378,7 +378,7 @@ proc getSockName*(socket: TSocket): TPort =
     name.sin_family = posix.AF_INET
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
-  var namelen: cint = sizeof(name)
+  var namelen = sizeof(name).TSockLen
   if getsockname(socket.fd, cast[ptr TSockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     OSError()
@@ -398,7 +398,7 @@ proc acceptAddr*(server: TSocket): tuple[client: TSocket, address: string] =
   ## **Warning:** This function might block even if socket is non-blocking
   ## when using SSL.
   var sockAddress: Tsockaddr_in
-  var addrLen: cint = sizeof(sockAddress)
+  var addrLen = sizeof(sockAddress).TSockLen
   var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
                     addr(addrLen))
   
@@ -477,9 +477,9 @@ proc getServByName*(name, proto: string): TServent =
 proc getServByPort*(port: TPort, proto: string): TServent = 
   ## well-known getservbyport proc.
   when defined(Windows):
-    var s = winlean.getservbyport(ze(int16(port)), proto)
+    var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
-    var s = posix.getservbyport(ze(int16(port)), proto)
+    var s = posix.getservbyport(ze(int16(port)).cint, proto)
   if s == nil: OSError()
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
@@ -492,11 +492,11 @@ proc getHostByAddr*(ip: string): THostEnt =
   myaddr.s_addr = inet_addr(ip)
   
   when defined(windows):
-    var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr),
+    var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cint,
                                   cint(sockets.AF_INET))
     if s == nil: OSError()
   else:
-    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr), 
+    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).cint, 
                                 cint(posix.AF_INET))
     if s == nil:
       raise newException(EOS, $hStrError(h_errno))
@@ -539,7 +539,7 @@ proc getHostByName*(name: string): THostEnt =
 proc getSockOptInt*(socket: TSocket, level, optname: int): int = 
   ## getsockopt for integer options.
   var res: cint
-  var size: cint = sizeof(res)
+  var size = sizeof(res).cint
   if getsockopt(socket.fd, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
     OSError()
@@ -549,7 +549,7 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) =
   ## setsockopt for integer options.
   var value = cint(optval)
   if setsockopt(socket.fd, cint(level), cint(optname), addr(value),  
-                sizeof(value)) < 0'i32:
+                sizeof(value).cint) < 0'i32:
     OSError()
 
 proc connect*(socket: TSocket, name: string, port = TPort(0), 
@@ -608,7 +608,7 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
       of AF_INET: s.sin_family = posix.AF_INET
       of AF_INET6: s.sin_family = posix.AF_INET6
       else: nil
-    if connect(socket.fd, cast[ptr TSockAddr](addr(s)), sizeof(s)) < 0'i32:
+    if connect(socket.fd, cast[ptr TSockAddr](addr(s)), sizeof(s).cint) < 0'i32:
       OSError()
 
 proc connectAsync*(socket: TSocket, name: string, port = TPort(0),

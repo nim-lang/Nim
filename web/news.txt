@@ -87,7 +87,11 @@ Changes affecting backwards compatibility
 - Deprecated the ``ssl`` module.
 - Deprecated ``nimrod pretty`` as it never worked good enough and has some
   inherent problems.
-- The integer promotion rules changed.
+- The integer promotion rules changed; the compiler is now less picky in some
+  situations and more picky in other situations: In particular implicit 
+  conversions from ``int`` to ``int32`` are now forbidden.
+- ``system.byte`` is now an alias for ``uint8``; it used to be an alias 
+  to ``int8``.
 
 
 Compiler Additions
@@ -123,6 +127,7 @@ Language Additions
 - The apostrophe in type suffixes for numerical literal is now optional.
 - Unsigned integer types have been added.
 - The integer promotion rules changed.
+- Nimrod now tracks proper intervals for ``range`` over some built-in operators.
 
 
 2012-02-09 Version 0.8.14 released

@@ -84,7 +84,7 @@ proc setupQuery(db: TDbConn, query: TSqlQuery,
   result = PQExec(db, q)
   if PQresultStatus(result) != PGRES_TUPLES_OK: dbError(db)
   
-proc setRow(res: PPGresult, r: var TRow, line, cols: int) =
+proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
     var x = PQgetvalue(res, line, col)
@@ -96,7 +96,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
   var res = setupQuery(db, query, args)
-  var L = int(PQnfields(res))
+  var L = PQnfields(res)
   var result = newRow(L)
   for i in 0..PQntuples(res)-1:
     setRow(res, result, i, L)
@@ -107,7 +107,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
              args: openarray[string]): TRow =
   ## retrieves a single row.
   var res = setupQuery(db, query, args)
-  var L = int(PQnfields(res))
+  var L = PQnfields(res)
   result = newRow(L)
   setRow(res, result, 0, L)
   PQclear(res)

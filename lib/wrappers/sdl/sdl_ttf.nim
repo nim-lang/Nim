@@ -165,9 +165,9 @@ else:
   const 
     ttfLibName = "libSDL_ttf.so(|.1|.0)"
 const 
-  MAJOR_VERSION* = 2'i8
-  MINOR_VERSION* = 0'i8
-  PATCHLEVEL* = 8'i8      # Backwards compatibility
+  MAJOR_VERSION* = 2
+  MINOR_VERSION* = 0
+  PATCHLEVEL* = 8      # Backwards compatibility
 
   STYLE_NORMAL* = 0x00000000
   STYLE_BOLD* = 0x00000001

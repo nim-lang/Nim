@@ -878,10 +878,10 @@ proc get_tab*(tab_array: PTabArray, tab_index: gint,
 proc get_positions_in_pixels*(tab_array: PTabArray): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_tab_array_get_positions_in_pixels".}
 proc ASCENT*(rect: TRectangle): int32 = 
-  result = - int(rect.y)
+  result = -rect.y
 
 proc DESCENT*(rect: TRectangle): int32 = 
-  result = int(rect.y) + int(rect.height)
+  result = (rect.y) + (rect.height)
 
 proc LBEARING*(rect: TRectangle): int32 = 
   result = rect.x

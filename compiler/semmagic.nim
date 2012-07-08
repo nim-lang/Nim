@@ -40,6 +40,11 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
     # pass unmodified to evals
     result = n
 
+proc semOrd(c: PContext, n: PNode): PNode =
+  result = n
+  result.typ = makeRangeType(c, firstOrd(n.sons[1].typ),
+                                lastOrd(n.sons[1].typ), n.info)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -49,5 +54,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
+  of mOrd: result = semOrd(c, n)
   else: result = n
 

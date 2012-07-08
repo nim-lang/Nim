@@ -224,7 +224,8 @@ type
     sfMainModule,     # module is the main module
     sfSystemModule,   # module is the system module
     sfNoReturn,       # proc never returns (an exit proc)
-    sfAddrTaken,      # the variable's address is taken (ex- or implicitely)
+    sfAddrTaken,      # the variable's address is taken (ex- or implicitely);
+                      # *OR*: a proc is indirectly called (used as first class)
     sfCompilerProc,   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
     sfProcvar,        # proc can be passed to a proc var

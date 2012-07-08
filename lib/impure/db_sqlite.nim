@@ -64,7 +64,7 @@ proc TryExec*(db: TDbConn, query: TSqlQuery,
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   var stmt: sqlite3.PStmt
-  if prepare_v2(db, q, q.len, stmt, nil) == SQLITE_OK:
+  if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
       result = finalize(stmt) == SQLITE_OK
 
@@ -79,9 +79,9 @@ proc newRow(L: int): TRow =
 proc setupQuery(db: TDbConn, query: TSqlQuery, 
                 args: openarray[string]): PStmt = 
   var q = dbFormat(query, args)
-  if prepare_v2(db, q, q.len, result, nil) != SQLITE_OK: dbError(db)
+  if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
   
-proc setRow(stmt: PStmt, r: var TRow, cols: int) =
+proc setRow(stmt: PStmt, r: var TRow, cols: cint) =
   for col in 0..cols-1:
     setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
@@ -94,7 +94,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Sqlite it is safe though.
   var stmt = setupQuery(db, query, args)
-  var L = int(columnCount(stmt))
+  var L = (columnCount(stmt))
   var result = newRow(L)
   while step(stmt) == SQLITE_ROW: 
     setRow(stmt, result, L)
@@ -105,7 +105,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
              args: openarray[string]): TRow =
   ## retrieves a single row.
   var stmt = setupQuery(db, query, args)
-  var L = int(columnCount(stmt))
+  var L = (columnCount(stmt))
   result = newRow(L)
   if step(stmt) == SQLITE_ROW: 
     setRow(stmt, result, L)
