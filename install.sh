@@ -199,6 +199,10 @@ if [ $# -eq 1 ] ; then
     cp doc/manual.html $docdir/manual.html
     chmod 644 $docdir/manual.html
   fi
+  if [ -f doc/nimrodc.html ]; then
+    cp doc/nimrodc.html $docdir/nimrodc.html
+    chmod 644 $docdir/nimrodc.html
+  fi
   if [ -f doc/mytest.cfg ]; then
     cp doc/mytest.cfg $docdir/mytest.cfg
     chmod 644 $docdir/mytest.cfg
