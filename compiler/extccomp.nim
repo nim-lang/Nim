@@ -490,10 +490,12 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     includeCmd = ""
     compilePattern = cc[c].compilerExe
   
-  # XXX fix the grammar finally, we need multi-line if expressions:
-  var cfile = if noAbsolutePaths(): extractFileName(cfilename) else: cfilename
-  var objfile = if not isExternal or noAbsolutePaths(): toObjFile(
-                      cfile) else: completeCFilePath(toObjFile(cfile))
+  var cfile = if noAbsolutePaths(): extractFileName(cfilename) 
+              else: cfilename
+  var objfile = if not isExternal or noAbsolutePaths(): 
+                  toObjFile(cfile) 
+                else: 
+                  completeCFilePath(toObjFile(cfile))
   cfile = quoteIfContainsWhite(AddFileExt(cfile, cExt))
   objfile = quoteIfContainsWhite(objfile)
   result = quoteIfContainsWhite(compilePattern % [

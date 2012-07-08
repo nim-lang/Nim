@@ -1188,8 +1188,9 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     if gCmd == cmdInteractive:
       result = buildEchoStmt(c, semExpr(c, n))
     else:
-      LocalError(n.info, errStmtExpected)
-      result = ast.emptyNode
+      result = semExprNoType(c, n)
+      #LocalError(n.info, errStmtExpected)
+      #result = ast.emptyNode
   if result == nil: InternalError(n.info, "SemStmt: result = nil")
   incl(result.flags, nfSem)
 
