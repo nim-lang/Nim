@@ -105,6 +105,19 @@ To `cross compile`:idx:, use for example::
 Then move the C code and the compile script ``compile_myproject.sh`` to your 
 Linux i386 machine and run the script.
 
+Another way is to make Nimrod invoke a cross compiler toolchain::
+  
+  nimrod c --cpu:arm --os:linux myproject.nim
+  
+For cross compilation, the compiler invokes a C compiler named 
+like ``$cpu.$os.$cc`` (for example arm.linux.gcc) and the configuration 
+system is used to provide meaningful defaults. For example for ``ARM`` your
+configuration file should contain something like::
+
+  arm.linux.gcc.path = "/usr/bin"
+  arm.linux.gcc.exe = "arm-linux-gcc"
+  arm.linux.gcc.linkerexe = "arm-linux-gcc"
+
 
 DLL generation
 ==============

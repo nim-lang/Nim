@@ -386,7 +386,6 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       if theOS == osNone: LocalError(info, errUnknownOS, arg)
       elif theOS != platform.hostOS: 
         setTarget(theOS, targetCPU)
-        incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()
   of "cpu": 
     expectArg(switch, arg, pass, info)
@@ -395,7 +394,6 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       if cpu == cpuNone: LocalError(info, errUnknownCPU, arg)
       elif cpu != platform.hostCPU: 
         setTarget(targetOS, cpu)
-        incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()
   of "run", "r": 
     expectNoArg(switch, arg, pass, info)
