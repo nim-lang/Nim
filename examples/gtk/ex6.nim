@@ -38,7 +38,7 @@ add(window, windowbox)
 discard signal_connect(window, "destroy", SIGNAL_FUNC(ex6.destroy), nil)
 QuitState.Obj = QuitButton
 quitState.SignalID = signal_connect_object(QuitState.Obj, "clicked", 
-                       SIGNAL_FUNC(widgetDestroy), window)
+                       SIGNAL_FUNC(widgetDestroy), window).int32
 QuitState.Disable = True
 discard signal_connect(disablebutton, "clicked", 
                    SIGNAL_FUNC(disablesignal), addr(QuitState))

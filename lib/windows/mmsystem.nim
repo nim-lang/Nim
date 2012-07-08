@@ -2649,7 +2649,7 @@ proc MCI_TMSF_FRAME(tmsf: int32): int8 =
   result = toU8(tmsf shr 24)
 
 proc mci_Make_TMSF(t, m, s, f: int8): int32 =
-  result = ze(t) or ze(m) shl 8 or ze(s) shl 16 or ze(f) shl 24
+  result = (ze(t) or ze(m) shl 8 or ze(s) shl 16 or ze(f) shl 24).int32
 
 proc DIBINDEX(n: int32): int32 =
   result = n Or 0x000010FF'i32 shl 16'i32

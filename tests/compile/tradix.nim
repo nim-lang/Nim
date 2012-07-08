@@ -12,8 +12,8 @@ type
   TRadixNode {.pure.} = object
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
-    len: byte
-    keys: array [0..31, byte]
+    len: int8
+    keys: array [0..31, int8]
     vals: array [0..31, PRadixNode]
   
   TRadixNodeFull = object of TRadixNode
@@ -21,8 +21,8 @@ type
   TRadixNodeLeafBits = object of TRadixNode
     b: array [0..7, int]
   TRadixNodeLeafLinear = object of TRadixNode
-    len: byte
-    keys: array [0..31, byte]
+    len: int8
+    keys: array [0..31, int8]
 
 var
   root: PRadixNode

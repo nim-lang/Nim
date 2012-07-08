@@ -6,7 +6,7 @@ type
   TRadixNode = object
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
-    len: byte
+    len: int8
     keys: array [0..31, char]
     vals: array [0..31, PRadixNode]  
   TRadixNodeFull = object of TRadixNode

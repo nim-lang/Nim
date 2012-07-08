@@ -17,7 +17,7 @@ proc lastOrd*(t: PType): biggestInt
 proc lengthOrd*(t: PType): biggestInt
 type 
   TPreferedDesc* = enum 
-    preferName, preferDesc
+    preferName, preferDesc, preferExported
 
 proc TypeToString*(typ: PType, prefer: TPreferedDesc = preferName): string
 proc getProcHeader*(sym: PSym): string
@@ -404,14 +404,14 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   if t == nil: return 
   if prefer == preferName and t.sym != nil and sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
-      return t.sym.Name.s & "(" & $t.n.intVal & ")"
+      return t.sym.Name.s & " literal(" & $t.n.intVal & ")"
     return t.sym.Name.s
   case t.Kind
   of tyInt:
-    if not isIntLit(t):
+    if not isIntLit(t) or prefer == preferExported:
       result = typeToStr[t.kind]
     else:
-      result = "intLit(" & $t.n.intVal & ")"
+      result = "int literal(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvokation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
@@ -667,7 +667,13 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   if sonsLen(a) == sonsLen(b): 
     result = true
     for i in countup(0, sonsLen(a) - 1): 
-      result = SameTypeAux(a.sons[i], b.sons[i], c)
+      var x = a.sons[i]
+      var y = b.sons[i]
+      if c.ignoreTupleFields:
+        x = skipTypes(x, {tyRange})
+        y = skipTypes(y, {tyRange})
+      
+      result = SameTypeAux(x, y, c)
       if not result: return 
     if a.n != nil and b.n != nil and not c.ignoreTupleFields: 
       for i in countup(0, sonsLen(a.n) - 1): 
@@ -746,7 +752,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
     # again: Since the recursion check is only to not get caught in an endless
     # recursion, we use a counter and only if it's value is over some 
-    # threshold we perform the expansive exact cycle check:
+    # threshold we perform the expensive exact cycle check:
     if c.recCheck < 3:
       inc c.recCheck
     else:
