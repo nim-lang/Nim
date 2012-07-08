@@ -570,8 +570,66 @@ operation                meaning
 
 `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used: the smaller type is converted to the larger.
+
+A `narrowing type conversion`:idx: converts a larger to a smaller type (for
+example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
+smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
+widening type conversion are *implicit*:
+
+.. code-block:: nimrod
+  var myInt16 = 5i16
+  var myInt: int
+  myInt16 + 34     # of type ``int16``
+  myInt16 + myInt  # of type ``int``
+  myInt16 + 2i32   # of type ``int32``
+
+However, ``int`` literals are implicitely convertible to a smaller integer type
+if the literal's value fits this smaller type and such a conversion is less
+expensive than other implicit conversions, so ``myInt16 + 34`` produces 
+an ``int16`` result.
+
 For further details, see `Convertible relation`_.
 
+
+Subrange types
+~~~~~~~~~~~~~~
+A `subrange`:idx: type is a range of values from an ordinal type (the base
+type). To define a subrange type, one must specify it's limiting values: the
+lowest and highest value of the type:
+
+.. code-block:: nimrod
+  type
+    TSubrange = range[0..5]
+
+
+``TSubrange`` is a subrange of an integer which can only hold the values 0
+to 5. Assigning any other value to a variable of type ``TSubrange`` is a
+checked runtime error (or static error if it can be statically
+determined). Assignments from the base type to one of its subrange types
+(and vice versa) are allowed.
+
+A subrange type has the same size as its base type (``int`` in the example).
+
+Nimrod requires `interval arithmetic`:idx: for subrange types over a set
+of built-in operators that involve constants: ``x mod 3`` is of 
+type ``range[0..2]``. The following built-in operators for integers are 
+affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
+``pred``, ``mod``, ``div``, ``and`` (bitwise and). 
+
+Bitwise and only produces a ``range`` if one of its operands is a 
+constant *x* so that (x+1) is a number of two.
+(Bitwise and then behaves as a ``mod`` operation.)
+
+This means that the following code is accepted:
+
+.. code-block:: nimrod
+  case (x and 3) + 7
+  of 7: echo "A"
+  of 8: echo "B"
+  of 9: echo "C"
+  of 10: echo "D"
+  # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
+  
 
 Pre-defined floating point types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -727,26 +785,6 @@ values to use:
 As can be seen from the example, it is possible to both specify a field's 
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
-
-
-Subrange types
-~~~~~~~~~~~~~~
-A `subrange`:idx: type is a range of values from an ordinal type (the base
-type). To define a subrange type, one must specify it's limiting values: the
-lowest and highest value of the type:
-
-.. code-block:: nimrod
-  type
-    TSubrange = range[0..5]
-
-
-``TSubrange`` is a subrange of an integer which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``TSubrange`` is a
-checked runtime error (or static error if it can be statically
-determined). Assignments from the base type to one of its subrange types
-(and vice versa) are allowed.
-
-A subrange type has the same size as its base type (``int`` in the example).
 
 
 String type
@@ -1798,7 +1836,9 @@ evaluated and if its value is in a *slicelist* the corresponding statements
 given *slicelist* the ``else`` part is executed. If there is no ``else``
 part and not all possible values that ``expr`` can hold occur in a 
 ``slicelist``, a static error occurs. This holds only for expressions of 
-ordinal types.
+ordinal types. "All possible values" of ``expr`` are determined by ``expr``'s
+type. 
+
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control passes after the ``case`` statement.
 

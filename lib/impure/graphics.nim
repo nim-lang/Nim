@@ -35,14 +35,15 @@ type
 proc toSdlColor*(c: TColor): Sdl.TColor =
   ## Convert colors.TColor to SDL.TColor
   var x = c.extractRGB  
-  result.r = toU8(x.r)
-  result.g = toU8(x.g)
-  result.b = toU8(x.b)
+  result.r = x.r and 0xff
+  result.g = x.g and 0xff
+  result.b = x.b and 0xff
 
 proc createSdlColor*(sur: PSurface, c: TColor, alpha: int = 0): int32 =
   ## Creates a color using ``sdl.MapRGBA``.
   var x = c.extractRGB
-  return sdl.MapRGBA(sur.s.format, toU8(x.r), toU8(x.g), toU8(x.b), toU8(alpha))
+  return sdl.MapRGBA(sur.s.format, x.r and 0xff, x.g and 0xff, 
+                     x.b and 0xff, alpha and 0xff)
 
 proc toSdlRect*(r: TRect): sdl.TRect =
   ## Convert ``graphics.TRect`` to ``sdl.TRect``.

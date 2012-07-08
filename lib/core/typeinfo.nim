@@ -59,7 +59,7 @@ type
     rawType: PNimType
 
   ppointer = ptr pointer
-  pbyteArray = ptr array[0.. 0xffff, byte]
+  pbyteArray = ptr array[0.. 0xffff, int8]
 
   TGenSeq {.pure.} = object
     len, space: int

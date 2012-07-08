@@ -141,9 +141,9 @@ else:
   const 
     ImageLibName = "libSDL_image.so"
 const 
-  IMAGE_MAJOR_VERSION* = 1'i8
-  IMAGE_MINOR_VERSION* = 2'i8
-  IMAGE_PATCHLEVEL* = 5'i8
+  IMAGE_MAJOR_VERSION* = 1
+  IMAGE_MINOR_VERSION* = 2
+  IMAGE_PATCHLEVEL* = 5
 
 # This macro can be used to fill a version structure with the compile-time
 #  version of the SDL_image library. 

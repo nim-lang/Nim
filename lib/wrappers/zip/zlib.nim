@@ -160,19 +160,20 @@ proc inflateSyncPoint*(z: PZstream): int32{.cdecl, dynlib: libz,
 proc get_crc_table*(): pointer{.cdecl, dynlib: libz, importc: "get_crc_table".}
 
 proc deflateInit(strm: var TZStream, level: int32): int32 = 
-  result = deflateInitu(strm, level, ZLIB_VERSION(), sizeof(TZStream))
+  result = deflateInitu(strm, level, ZLIB_VERSION(), sizeof(TZStream).cint)
 
 proc inflateInit(strm: var TZStream): int32 = 
-  result = inflateInitu(strm, ZLIB_VERSION(), sizeof(TZStream))
+  result = inflateInitu(strm, ZLIB_VERSION(), sizeof(TZStream).cint)
 
 proc deflateInit2(strm: var TZStream, 
                   level, `method`, windowBits, memLevel,
                   strategy: int32): int32 = 
   result = deflateInit2u(strm, level, `method`, windowBits, memLevel, 
-                         strategy, ZLIB_VERSION(), sizeof(TZStream))
+                         strategy, ZLIB_VERSION(), sizeof(TZStream).cint)
 
 proc inflateInit2(strm: var TZStream, windowBits: int32): int32 = 
-  result = inflateInit2u(strm, windowBits, ZLIB_VERSION(), sizeof(TZStream))
+  result = inflateInit2u(strm, windowBits, ZLIB_VERSION(), 
+                         sizeof(TZStream).cint)
 
 proc zlibAllocMem*(AppData: Pointer, Items, Size: int): Pointer {.cdecl.} = 
   result = Alloc(Items * Size)

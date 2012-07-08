@@ -244,7 +244,7 @@ when defined(Windows) and not defined(useNimRtl):
     var s = PFileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
-    var a = winlean.ReadFile(s.handle, buffer, bufLen, br, nil)
+    var a = winlean.ReadFile(s.handle, buffer, bufLen.cint, br, nil)
     # TRUE and zero bytes returned (EOF).
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
@@ -255,7 +255,7 @@ when defined(Windows) and not defined(useNimRtl):
   proc hsWriteData(s: PStream, buffer: pointer, bufLen: int) =
     var s = PFileHandleStream(s)
     var bytesWritten: int32
-    var a = winlean.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
+    var a = winlean.writeFile(s.handle, buffer, bufLen.cint, bytesWritten, nil)
     if a == 0: OSError()
 
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
@@ -293,7 +293,7 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc CreatePipeHandles(Rdhandle, WrHandle: var THandle) =
     var piInheritablePipe: TSecurityAttributes
-    piInheritablePipe.nlength = SizeOF(TSecurityAttributes)
+    piInheritablePipe.nlength = SizeOF(TSecurityAttributes).cint
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.Binherithandle = 1
     if CreatePipe(Rdhandle, Wrhandle, piInheritablePipe, 1024) == 0'i32:
@@ -313,7 +313,7 @@ when defined(Windows) and not defined(useNimRtl):
       success: int
       hi, ho, he: THandle
     new(result)
-    SI.cb = SizeOf(SI)
+    SI.cb = SizeOf(SI).cint
     if poParentStreams notin options:
       SI.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
       CreatePipeHandles(SI.hStdInput, HI)
@@ -323,16 +323,16 @@ when defined(Windows) and not defined(useNimRtl):
         HE = HO
       else:
         CreatePipeHandles(HE, Si.hStdError)
-      result.inputHandle = hi
-      result.outputHandle = ho
-      result.errorHandle = he
+      result.inputHandle = TFileHandle(hi)
+      result.outputHandle = TFileHandle(ho)
+      result.errorHandle = TFileHandle(he)
     else:
       SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
       SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
       SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
-      result.inputHandle = si.hStdInput
-      result.outputHandle = si.hStdOutput
-      result.errorHandle = si.hStdError
+      result.inputHandle = TFileHandle(si.hStdInput)
+      result.outputHandle = TFileHandle(si.hStdOutput)
+      result.errorHandle = TFileHandle(si.hStdError)
 
     var cmdl: cstring
     when false: # poUseShell in options:
@@ -394,7 +394,7 @@ when defined(Windows) and not defined(useNimRtl):
       discard TerminateProcess(p.FProcessHandle, 0)
 
   proc waitForExit(p: PProcess, timeout: int = -1): int =
-    discard WaitForSingleObject(p.FProcessHandle, timeout)
+    discard WaitForSingleObject(p.FProcessHandle, timeout.int32)
 
     var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
@@ -424,7 +424,7 @@ when defined(Windows) and not defined(useNimRtl):
       ProcInfo: TProcessInformation
       process: THandle
       L: int32
-    SI.cb = SizeOf(SI)
+    SI.cb = SizeOf(SI).cint
     SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
     SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
     SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
@@ -454,7 +454,7 @@ when defined(Windows) and not defined(useNimRtl):
     for i in 0..readfds.len()-1:
       rfds[i] = readfds[i].FProcessHandle
     
-    var ret = waitForMultipleObjects(readfds.len, 
+    var ret = waitForMultipleObjects(readfds.len.int32, 
                                      addr(rfds), 0'i32, timeout)
     case ret
     of WAIT_TIMEOUT:

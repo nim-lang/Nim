@@ -171,9 +171,9 @@ proc filter_deblocking*(): PFilter{.cdecl,
   # SMPEG.h
   #------------------------------------------------------------------------------
 const 
-  MAJOR_VERSION* = 0'i8
-  MINOR_VERSION* = 4'i8
-  PATCHLEVEL* = 2'i8
+  MAJOR_VERSION* = 0
+  MINOR_VERSION* = 4
+  PATCHLEVEL* = 2
 
 type 
   TVersion*{.final.} = object 

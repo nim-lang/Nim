@@ -111,7 +111,7 @@ type
                               ## in the range 0 to 23.
     monthday*: range[1..31]   ## The day of the month, in the range 1 to 31.
     month*: TMonth            ## The current month.
-    year*: int                ## The current year.
+    year*: range[-10_000..10_000] ## The current year.
     weekday*: TWeekDay        ## The current day of the week.
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
@@ -122,7 +122,7 @@ type
     timezone*: int            ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC.
 
-  TTimeInterval* = object
+  TTimeInterval* {.pure.} = object ## a time interval
     miliseconds*: int ## The number of miliseconds
     seconds*: int     ## The number of seconds
     minutes*: int     ## The number of minutes
@@ -150,11 +150,11 @@ proc `$` *(timeInfo: TTimeInfo): string
 proc `$` *(time: TTime): string
   ## converts a calendar time to a string representation.
 
-proc `-` *(a, b: TTime): int64{.
+proc `-`*(a, b: TTime): int64 {.
   rtl, extern: "ntDiffTime".}
   ## computes the difference of two calendar times. Result is in seconds.
 
-proc `<` * (a, b: TTime): bool {.
+proc `<`*(a, b: TTime): bool {.
   rtl, extern: "ntLtTime".} = 
   ## returns true iff ``a < b``, that is iff a happened before b.
   result = a - b < 0
@@ -175,8 +175,8 @@ proc getStartMilsecs*(): int {.deprecated.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
-proc newInterval*(miliseconds, seconds, minutes, hours, days, months, 
-                  years: int = 0): TTimeInterval =
+proc initInterval*(miliseconds, seconds, minutes, hours, days, months, 
+                   years: int = 0): TTimeInterval =
   ## creates a new ``TTimeInterval``.
   result.miliseconds = miliseconds
   result.seconds = seconds
@@ -188,23 +188,20 @@ proc newInterval*(miliseconds, seconds, minutes, hours, days, months,
 
 proc isLeapYear(year: int): bool =
   if year mod 400 == 0:
-     return true
+    return true
   elif year mod 100 == 0: 
-     return false
+    return false
   elif year mod 4 == 0: 
-     return true
+    return true
   else:
-     return false
+    return false
 
 proc getDaysInMonth(month: TMonth, year: int): int =
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
-  if month == mFeb: # Feb
-    if isLeapYear(year):
-      result = 29
-    else:
-      result = 28
-  elif month in [mApr, mJun, mSep, mNov]: result = 30
-  else: result = 31  
+  case month 
+  of mFeb: result = if isLeapYear(year): 29 else: 28
+  of mApr, mJun, mSep, mNov: result = 30
+  else: result = 31
 
 proc calculateSeconds(a: TTimeInfo, interval: TTimeInterval): float =
   var anew = a
@@ -228,9 +225,10 @@ proc calculateSeconds(a: TTimeInfo, interval: TTimeInterval): float =
 proc `+`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ## adds ``interval`` time.
   ##
-  ## **Note:** This has been only briefly tested and it may not be very accurate.
+  ## **Note:** This has been only briefly tested and it may not be
+  ## very accurate.
   let t = timeInfoToTime(a)
-  var secs = calculateSeconds(a, interval)
+  let secs = calculateSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(TTime(float(t) + secs))
   else:
@@ -242,7 +240,7 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
   let t = timeInfoToTime(a)
-  var secs = calculateSeconds(a, interval)
+  let secs = calculateSeconds(a, interval)
   if a.tzname == "UTC":
     result = getGMTime(TTime(float(t) - secs))
   else:
@@ -329,7 +327,7 @@ when not defined(ECMAScript):
   
   proc timeInfoToTM(t: TTimeInfo): structTM =
     const
-      weekDays: array [TWeekDay, int] = [1, 2, 3, 4, 5, 6, 0]
+      weekDays: array [TWeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
     result.second = t.second
     result.minute = t.minute
     result.hour = t.hour
@@ -362,13 +360,13 @@ when not defined(ECMAScript):
     var a = t
     result = tmToTimeInfo(localtime(addr(a))[], true)
     # copying is needed anyway to provide reentrancity; thus
-    # the convertion is not expensive
+    # the conversion is not expensive
   
   proc getGMTime(t: TTime): TTimeInfo =
     var a = t
     result = tmToTimeInfo(gmtime(addr(a))[], false)
     # copying is needed anyway to provide reentrancity; thus
-    # the convertion is not expensive
+    # the conversion is not expensive
   
   proc TimeInfoToTime(timeInfo: TTimeInfo): TTime =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,

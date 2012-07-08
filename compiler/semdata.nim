@@ -213,6 +213,11 @@ proc markUsed*(n: PNode, s: PSym) =
     if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
     if sfError in s.flags: LocalError(n.info, errWrongSymbolX, s.name.s)
 
+proc markIndirect*(c: PContext, s: PSym) =
+  if s.kind in {skProc, skConverter, skMethod, skIterator}:
+    incl(s.flags, sfAddrTaken)
+    # XXX add to 'c' for global analysis
+
 proc useSym*(sym: PSym): PNode =
   result = newSymNode(sym)
   markUsed(result, sym)

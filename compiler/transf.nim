@@ -734,7 +734,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   # we inline constants if they are not complex constants:
   if cnst != nil and not dontInlineConstant(n, cnst):
     result = PTransNode(cnst) # do not miss an optimization
-  warnNarrowingConversion(result.pnode)
 
 proc processTransf(context: PPassContext, n: PNode): PNode = 
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip

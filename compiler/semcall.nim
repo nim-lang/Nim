@@ -18,8 +18,8 @@ proc sameMethodDispatcher(a, b: PSym): bool =
     if aa.kind == nkSym and bb.kind == nkSym and aa.sym == bb.sym: 
       result = true
   
-proc resolveOverloads(c: PContext, n, orig: PNode,
-                         filter: TSymKinds): TCandidate =
+proc resolveOverloads(c: PContext, n, orig: PNode, 
+                      filter: TSymKinds): TCandidate =
   var initialBinding: PNode
   var f = n.sons[0]
   if f.kind == nkBracketExpr:
@@ -67,9 +67,17 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       not sameMethodDispatcher(best.calleeSym, alt.calleeSym):
     if best.state != csMatch:
       InternalError(n.info, "x.state is not csMatch")
+    #writeMatches(best)
+    #writeMatches(alt)
+    var args = "("
+    for i in countup(1, sonsLen(n) - 1):
+      if i > 1: add(args, ", ")
+      add(args, typeToString(n.sons[i].typ))
+    add(args, ")")
+
     LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
       getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
-      best.calleeSym.Name.s])
+      args])
 
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch

@@ -20,6 +20,11 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
   c_sprintf(buf, "%p", x)
   return $buf
 
+proc `$`(x: uint64): string =
+  var buf: array [0..59, char]
+  c_sprintf(buf, "%llu", x)
+  return $buf
+
 proc reprStrAux(result: var string, s: string) =
   if cast[pointer](s) == nil:
     add result, "nil"
@@ -67,7 +72,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  pbyteArray = ptr array[0.. 0xffff, byte]
+  pbyteArray = ptr array[0.. 0xffff, int8]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
   case typ.kind

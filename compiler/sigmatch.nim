@@ -34,8 +34,13 @@ type
                              # for example
   
   TTypeRelation* = enum      # order is important!
-    isNone, isConvertible, isIntConv, isSubtype, 
-    isGeneric
+    isNone, isConvertible,
+    isIntConv,
+    isSubtype,
+    isSubrange,              # subrange of the wanted type; no type conversion
+                             # but apart from that counts as ``isSubtype``
+    isGeneric,
+    isFromIntLit,            # conversion *from* int literal; proven safe
     isEqual
   
 proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
@@ -56,10 +61,6 @@ proc initCandidate*(c: var TCandidate, callee: PType) =
 
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
   IdTablePut(t, key, val)
-  when false:
-    if val.kind == tyObject and isDefined"testme" and 
-        IdentEq(val.sym.name, "TTable"):
-      assert false
 
 proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, calleeScope = -1) = 
   initCandidateAux(c, callee.typ)
@@ -100,7 +101,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if (a.calleeScope != -1) and (b.calleeScope != -1):
     result = a.calleeScope - b.calleeScope
 
-proc writeMatches(c: TCandidate) = 
+proc writeMatches*(c: TCandidate) = 
   Writeln(stdout, "exact matches: " & $c.exactMatches)
   Writeln(stdout, "subtype matches: " & $c.subtypeMatches)
   Writeln(stdout, "conv matches: " & $c.convMatches)
@@ -160,15 +161,25 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
   if a.kind == f.kind: 
     result = isEqual
   else:
-    var k = skipTypes(a, {tyRange}).kind
-    if k == f.kind: result = isSubtype
-    elif k == tyInt and f.kind in {tyRange, tyInt8..tyUInt64}:
-      # and a.n != nil and a.n.intVal >= firstOrd(f) and
-      #                    a.n.intVal <= lastOrd(f):
+    let ab = skipTypes(a, {tyRange})
+    let k = ab.kind
+    if k == f.kind: result = isSubrange
+    elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64, 
+                                   tyUInt..tyUInt64} and
+        isIntLit(ab) and ab.n.intVal >= firstOrd(f) and
+                         ab.n.intVal <= lastOrd(f):
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
+      result = isFromIntLit
+    elif f.kind == tyInt and k in {tyInt8..tyInt32}:
       result = isIntConv
-    elif k >= min and k <= max: result = isConvertible
+    elif k >= min and k <= max: 
+      result = isConvertible
+    elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64, 
+                                                  tyUInt8..tyUInt32} and
+                         a.n[0].intVal >= firstOrd(f) and
+                         a.n[1].intVal <= lastOrd(f):
+      result = isConvertible
     else: result = isNone
     #elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
     #elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
@@ -186,10 +197,10 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind: 
     result = isEqual
   else: 
-    var k = skipTypes(a, {tyRange}).kind
-    if k == f.kind: result = isSubtype
-    elif k == tyInt and f.kind >= tyFloat and f.kind <= tyFloat128:
-      result = isIntConv
+    let ab = skipTypes(a, {tyRange})
+    var k = ab.kind
+    if k == f.kind: result = isSubrange
+    elif isIntLit(ab): result = isConvertible
     elif k >= tyFloat and k <= tyFloat128: result = isConvertible
     else: result = isNone
   
@@ -229,7 +240,7 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
 proc matchTypeClass(mapping: var TIdTable, f, a: PType): TTypeRelation =
   for i in countup(0, f.sonsLen - 1):
     let son = f.sons[i]
-    var match = son.kind == a.kind
+    var match = son.kind == skipTypes(a, {tyRange}).kind
 
     if not match:
       case son.kind
@@ -584,12 +595,17 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isConvertible: 
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
-  of isIntConv: 
+  of isIntConv:
+    # too lazy to introduce another ``*matches`` field, so we conflate
+    # ``isIntConv`` and ``isIntLit`` here:
     inc(m.intConvMatches)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isSubtype: 
     inc(m.subtypeMatches)
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
+  of isSubrange:
+    inc(m.subtypeMatches)
+    result = copyTree(arg)
   of isGeneric:
     inc(m.genericMatches)
     if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
@@ -601,6 +617,11 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
       if skipTypes(result.typ, abstractVar).kind in {tyTuple}:
         result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
         # BUGFIX: use ``result.typ`` and not `f` here
+  of isFromIntLit:
+    # too lazy to introduce another ``*matches`` field, so we conflate
+    # ``isIntConv`` and ``isIntLit`` here:
+    inc(m.intConvMatches, 256)
+    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isEqual: 
     inc(m.exactMatches)
     result = copyTree(arg)

@@ -280,9 +280,9 @@ else:
   const 
     LibName = "libSDL.so(|.1|.0)"
 const 
-  MAJOR_VERSION* = 1'i8
-  MINOR_VERSION* = 2'i8
-  PATCHLEVEL* = 11'i8         # SDL.h constants
+  MAJOR_VERSION* = 1
+  MINOR_VERSION* = 2
+  PATCHLEVEL* = 11         # SDL.h constants
   INIT_TIMER* = 0x00000001
   INIT_AUDIO* = 0x00000010
   INIT_VIDEO* = 0x00000020
@@ -2523,8 +2523,8 @@ proc AllocSurface(flags: int32, width, height, depth: int,
                             AMask)
 
 proc MustLock(Surface: PSurface): bool = 
-  Result = ((surface[] .offset != 0) or
-      ((surface[] .flags and (HWSURFACE or ASYNCBLIT or RLEACCEL)) != 0))
+  Result = ((surface[].offset != 0) or
+      ((surface[].flags and (HWSURFACE or ASYNCBLIT or RLEACCEL)) != 0))
 
 proc LockMutex(mutex: Pmutex): int = 
   Result = mutexP(mutex)

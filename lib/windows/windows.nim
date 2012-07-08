@@ -13,8 +13,8 @@
 {.deadCodeElim: on.}
 
 type
-  WideChar* = int16
-  PWideChar* = ptr int16
+  WideChar* = uint16
+  PWideChar* = ptr uint16
 
 type  # WinNT.h -- Defines the 32-Bit Windows types and constants
   SHORT* = int16
@@ -72,7 +72,6 @@ type  # WinDef.h -- Basic Windows Type Definitions
 
   DWORD* = int32
   WINBOOL* = int32
-  BYTE* = char
   WORD* = int16
   # FLOAT* = float
   PFLOAT* = ptr FLOAT
@@ -296,13 +295,13 @@ type
 
 when defined(winUnicode):
   type
-    PTBYTE* = ptr int16
+    PTBYTE* = ptr uint16
     PTCH* = PWideChar
     PTCHAR* = PWideChar
     PTSTR* = PWideChar
 else:
   type
-    PTBYTE* = ptr int8
+    PTBYTE* = ptr byte
     PTCH* = cstring
     PTCHAR* = cstring
     PTSTR* = cstring
@@ -316,12 +315,12 @@ type
 
 when defined(winUnicode):
   type
-    TBYTE* = int16
+    TBYTE* = uint16
     TCHAR* = widechar
     BCHAR* = int16
 else:
   type
-    TBYTE* = int8
+    TBYTE* = uint8
     TCHAR* = char
     BCHAR* = int8
 type
@@ -7432,34 +7431,34 @@ type
   PDCB* = ptr DCB
 
 const
-  bm_DCB_fBinary* = 0x00000001
-  bp_DCB_fBinary* = 0
+  bm_DCB_fBinary* = 1
+  bp_DCB_fBinary* = 0'i32
   bm_DCB_fParity* = 0x00000002
-  bp_DCB_fParity* = 1
+  bp_DCB_fParity* = 1'i32
   bm_DCB_fOutxCtsFlow* = 0x00000004
-  bp_DCB_fOutxCtsFlow* = 2
+  bp_DCB_fOutxCtsFlow* = 2'i32
   bm_DCB_fOutxDsrFlow* = 0x00000008
-  bp_DCB_fOutxDsrFlow* = 3
+  bp_DCB_fOutxDsrFlow* = 3'i32
   bm_DCB_fDtrControl* = 0x00000030
-  bp_DCB_fDtrControl* = 4
+  bp_DCB_fDtrControl* = 4'i32
   bm_DCB_fDsrSensitivity* = 0x00000040
-  bp_DCB_fDsrSensitivity* = 6
+  bp_DCB_fDsrSensitivity* = 6'i32
   bm_DCB_fTXContinueOnXoff* = 0x00000080
-  bp_DCB_fTXContinueOnXoff* = 7
+  bp_DCB_fTXContinueOnXoff* = 7'i32
   bm_DCB_fOutX* = 0x00000100
-  bp_DCB_fOutX* = 8
+  bp_DCB_fOutX* = 8'i32
   bm_DCB_fInX* = 0x00000200
-  bp_DCB_fInX* = 9
+  bp_DCB_fInX* = 9'i32
   bm_DCB_fErrorChar* = 0x00000400
-  bp_DCB_fErrorChar* = 10
+  bp_DCB_fErrorChar* = 10'i32
   bm_DCB_fNull* = 0x00000800
-  bp_DCB_fNull* = 11
+  bp_DCB_fNull* = 11'i32
   bm_DCB_fRtsControl* = 0x00003000
-  bp_DCB_fRtsControl* = 12
+  bp_DCB_fRtsControl* = 12'i32
   bm_DCB_fAbortOnError* = 0x00004000
-  bp_DCB_fAbortOnError* = 14
+  bp_DCB_fAbortOnError* = 14'i32
   bm_DCB_fDummy2* = 0xFFFF8000'i32
-  bp_DCB_fDummy2* = 15
+  bp_DCB_fDummy2* = 15'i32
 
 proc fBinary*(a: var DCB): DWORD
 proc set_fBinary*(a: var DCB, fBinary: DWORD)
@@ -7575,21 +7574,21 @@ type
 
 const
   bm_COMSTAT_fCtsHold* = 0x00000001
-  bp_COMSTAT_fCtsHold* = 0
+  bp_COMSTAT_fCtsHold* = 0'i32
   bm_COMSTAT_fDsrHold* = 0x00000002
-  bp_COMSTAT_fDsrHold* = 1
+  bp_COMSTAT_fDsrHold* = 1'i32
   bm_COMSTAT_fRlsdHold* = 0x00000004
-  bp_COMSTAT_fRlsdHold* = 2
+  bp_COMSTAT_fRlsdHold* = 2'i32
   bm_COMSTAT_fXoffHold* = 0x00000008
-  bp_COMSTAT_fXoffHold* = 3
+  bp_COMSTAT_fXoffHold* = 3'i32
   bm_COMSTAT_fXoffSent* = 0x00000010
-  bp_COMSTAT_fXoffSent* = 4
+  bp_COMSTAT_fXoffSent* = 4'i32
   bm_COMSTAT_fEof* = 0x00000020
-  bp_COMSTAT_fEof* = 5
+  bp_COMSTAT_fEof* = 5'i32
   bm_COMSTAT_fTxim* = 0x00000040
-  bp_COMSTAT_fTxim* = 6
+  bp_COMSTAT_fTxim* = 6'i32
   bm_COMSTAT_fReserved* = 0xFFFFFF80'i32
-  bp_COMSTAT_fReserved* = 7
+  bp_COMSTAT_fReserved* = 7'i32
 
 proc fCtsHold*(a: var COMSTAT): DWORD
   # should be renamed to get_<x>?
@@ -9984,25 +9983,25 @@ type
 
 const
   bm_LDT_ENTRY_BaseMid* = 0x000000FF
-  bp_LDT_ENTRY_BaseMid* = 0
+  bp_LDT_ENTRY_BaseMid* = 0'i32
   bm_LDT_ENTRY_Type* = 0x00001F00
-  bp_LDT_ENTRY_Type* = 8
+  bp_LDT_ENTRY_Type* = 8'i32
   bm_LDT_ENTRY_Dpl* = 0x00006000
-  bp_LDT_ENTRY_Dpl* = 13
+  bp_LDT_ENTRY_Dpl* = 13'i32
   bm_LDT_ENTRY_Pres* = 0x00008000
-  bp_LDT_ENTRY_Pres* = 15
+  bp_LDT_ENTRY_Pres* = 15'i32
   bm_LDT_ENTRY_LimitHi* = 0x000F0000
-  bp_LDT_ENTRY_LimitHi* = 16
+  bp_LDT_ENTRY_LimitHi* = 16'i32
   bm_LDT_ENTRY_Sys* = 0x00100000
-  bp_LDT_ENTRY_Sys* = 20
+  bp_LDT_ENTRY_Sys* = 20'i32
   bm_LDT_ENTRY_Reserved_0* = 0x00200000
-  bp_LDT_ENTRY_Reserved_0* = 21
+  bp_LDT_ENTRY_Reserved_0* = 21'i32
   bm_LDT_ENTRY_Default_Big* = 0x00400000
-  bp_LDT_ENTRY_Default_Big* = 22
+  bp_LDT_ENTRY_Default_Big* = 22'i32
   bm_LDT_ENTRY_Granularity* = 0x00800000
-  bp_LDT_ENTRY_Granularity* = 23
+  bp_LDT_ENTRY_Granularity* = 23'i32
   bm_LDT_ENTRY_BaseHi* = 0xFF000000
-  bp_LDT_ENTRY_BaseHi* = 24
+  bp_LDT_ENTRY_BaseHi* = 24'i32
 
 type
   LOCALESIGNATURE* {.final, pure.} = object
@@ -22820,7 +22819,7 @@ proc SEXT_HIWORD*(L: int32): int32 =
 
 proc ZEXT_HIWORD*(L: int32): int32 =
   # return type might be wrong
-  result = ze(HIWORD(L))
+  result = HIWORD(L) and 0xffff'i32
 
 proc SEXT_LOWORD*(L: int32): int32 =
   result = LOWORD(L)
@@ -22869,13 +22868,13 @@ proc MAKEWPARAM*(L, h: int32): WPARAM =
   result = WPARAM(MAKELONG(L, h))
 
 proc GET_X_LPARAM*(lp: Windows.LParam): int32 =
-  result = int16(LOWORD(lp))
+  result = LOWORD(lp.int32)
 
 proc GET_Y_LPARAM*(lp: Windows.LParam): int32 =
-  result = int16(HIWORD(lp))
+  result = HIWORD(lp.int32)
 
 proc UNICODE_NULL*(): WCHAR =
-  result = 0'i16
+  result = 0'u16
 
 
 
@@ -23500,7 +23499,8 @@ proc ListView_EnsureVisible(hwndLV: HWND, i, fPartialOK: int32): LRESULT =
                        MAKELPARAM(fPartialOK, 0))
 
 proc ListView_FindItem(wnd: HWND, iStart: int32, lvfi: var LV_FINDINFO): int32 =
-  result = SendMessage(wnd, LVM_FINDITEM, WPARAM(iStart), cast[LPARAM](addr(lvfi)))
+  result = SendMessage(wnd, LVM_FINDITEM, WPARAM(iStart), 
+                       cast[LPARAM](addr(lvfi))).int32
 
 proc ListView_GetBkColor(wnd: HWND): LRESULT =
   result = SendMessage(wnd, LVM_GETBKCOLOR, 0, 0)
@@ -23534,7 +23534,7 @@ proc ListView_GetItemCount(wnd: HWND): LRESULT =
 
 proc ListView_GetItemPosition(hwndLV: HWND, i: int32, pt: var POINT): int32 =
   result = SendMessage(hwndLV, LVM_GETITEMPOSITION, WPARAM(int32(i)),
-                       cast[LPARAM](addr(pt)))
+                       cast[LPARAM](addr(pt))).int32
 
 proc ListView_GetItemSpacing(hwndLV: HWND, fSmall: int32): LRESULT =
   result = SendMessage(hwndLV, LVM_GETITEMSPACING, fSmall, 0)
@@ -23878,10 +23878,10 @@ proc GetLargestConsoleWindowSize(hConsoleOutput: HANDLE): COORD =
   result.x = toU16(res shr 16)
 
 proc Succeeded(Status: HRESULT): WINBOOL =
-  result = (Status and 0x80000000'i32)
+  result = (Status and 0x80000000).WinBool
 
 proc Failed(Status: HRESULT): WINBOOL =
-  result = (Status and 0x80000000'i32)
+  result = (Status and 0x80000000).WinBool
 
 proc IsError(Status: HRESULT): WINBOOL =
   result = ord((int(Status) shr 31) == SEVERITY_ERROR)
@@ -23920,7 +23920,7 @@ proc MAKELCID(LangId, SortId: int16): DWORD =
   result = toU32((ze(SortId) shl 16) or ze(LangId))
 
 proc MAKESORTLCID(LangId, SortId, SortVersion: int16): DWORD =
-  result = MAKELCID(LangId, SortId) or int(SortVersion shl 20'i32)
+  result = MAKELCID(LangId, SortId) or (SortVersion shl 20'i32)
 
 proc LANGIDFROMLCID(LocaleId: LCID): int16 =
   result = toU16(LocaleId)
