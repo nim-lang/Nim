@@ -41,7 +41,7 @@ proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   if path != "":
     var file = readFile(path)
     if file != nil:
-      set_text(InputTextBuffer, file, len(file))
+      set_text(InputTextBuffer, file, len(file).gint)
     else:
       error(w, "Unable to read from file")
 
@@ -69,7 +69,7 @@ proc inputKeyPressed(widget: PWidget, event: PEventKey,
     shiftPressed = True
   
 proc setError(msg: string) = 
-  outputTextBuffer.setText(msg, msg.len)
+  outputTextBuffer.setText(msg, msg.len.gint)
   
 proc inputKeyReleased(widget: PWidget, event: PEventKey, 
                       userdata: pgpointer): bool =
@@ -91,7 +91,7 @@ proc inputKeyReleased(widget: PWidget, event: PEventKey,
 
       try:
         var r = execCode($InputText)
-        set_text(OutputTextBuffer, r, len(r))
+        set_text(OutputTextBuffer, r, len(r).gint)
       except EIO:
         setError("Error: Could not open file temp.nim")
 

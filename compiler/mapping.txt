@@ -57,8 +57,10 @@
 --file:r"compiler/nimcache/treetab.c"
 --file:r"compiler/nimcache/evals.c"
 --file:r"compiler/nimcache/semfold.c"
+--file:r"compiler/nimcache/saturate.c"
 --file:r"compiler/nimcache/transf.c"
 --file:r"compiler/nimcache/cgmeth.c"
+--file:r"compiler/nimcache/lambdalifting.c"
 --file:r"compiler/nimcache/sem.c"
 --file:r"compiler/nimcache/procfind.c"
 --file:r"compiler/nimcache/pragmas.c"
@@ -78,6 +80,7 @@
 --file:r"compiler/nimcache/ecmasgen.c"
 --file:r"compiler/nimcache/passaux.c"
 --file:r"compiler/nimcache/depends.c"
+--file:r"compiler/nimcache/docgen2.c"
 --file:r"compiler/nimcache/parseopt.c"
 
 [C_Compiler]
@@ -85,5 +88,5 @@ Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
 Flags="-ldl -lm"
 [Environment]
-libpath="/Volumes/home/zahary/Projects/nim/lib"
+libpath="/home/andreas/projects/nimrod/lib"
 [Symbols]
