@@ -1,6 +1,6 @@
 discard """
-  line: 15
-  errormsg: "type mismatch: got (int)"
+  line: 16
+  errormsg: "type mismatch: got (int literal(232))"
 """
 
 proc myGenericProc[T: object|tuple|ptr|ref|distinct](x: T): string = 
@@ -12,7 +12,7 @@ type
 var
   x: TMyObj
 
-assert myGenericProc(232) == "232"
 assert myGenericProc(x) == "(x: 0, y: 0)"
+assert myGenericProc(232) == "232"
 
 

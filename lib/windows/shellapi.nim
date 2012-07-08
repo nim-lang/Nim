@@ -860,4 +860,4 @@ const
 # implementation
 
 proc EIRESID(x: int32): int32 =
-  result = - int(x)
+  result = -x

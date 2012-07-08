@@ -5,7 +5,7 @@ const
   WINDOW_HEIGHT = 300
   
 var
-  width, height: int
+  width, height: cint
   display: PDisplay
   screen: cint
   depth: int

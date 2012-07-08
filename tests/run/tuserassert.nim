@@ -1,5 +1,5 @@
 discard """
-  output: "454 == 45ugh"
+  output: "x == 45ugh"
 """
 
 template myAssert(cond: expr) = 
@@ -8,6 +8,6 @@ template myAssert(cond: expr) =
     if not cond:
       echo c, "ugh"
   
-
-myAssert(454 == 45)
+var x = 454
+myAssert(x == 45)
 

@@ -1156,9 +1156,11 @@ proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stingify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$` *(x: uint64): string {.noSideEffect.}
-  ## The stingify operator for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
+when not defined(NimrodVM):
+  when not defined(ECMAScript):
+    proc `$` *(x: uint64): string {.noSideEffect.}
+      ## The stingify operator for an unsigned integer argument. Returns `x`
+      ## converted to a decimal string.
 
 proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## The stingify operator for a float argument. Returns `x`
