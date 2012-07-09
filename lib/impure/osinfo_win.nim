@@ -67,7 +67,7 @@ type
     SuiteMask*: int
     ProductType*: int
     
-  TPartitionInfo* = tuple[FreeSpace, TotalSpace: filetime]
+  TPartitionInfo* = tuple[FreeSpace, TotalSpace: Tfiletime]
   
 const
   # SuiteMask - VersionInfo.SuiteMask
@@ -157,7 +157,7 @@ proc GlobalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall, dynlib: "ker
 proc getMemoryInfo*(): TMemoryInfo =
   ## Retrieves memory info
   var statex: TMEMORYSTATUSEX
-  statex.dwLength = sizeof(statex)
+  statex.dwLength = sizeof(statex).int32
 
   GlobalMemoryStatusEx(statex)
   result.MemoryLoad = statex.dwMemoryLoad
@@ -180,7 +180,7 @@ proc GetModuleHandleA*(lpModuleName: cstring): int{.stdcall,
 proc getVersionInfo*(): TVersionInfo =
   ## Retrieves operating system info
   var osvi: TOSVERSIONINFOEX
-  osvi.dwOSVersionInfoSize = sizeof(osvi)
+  osvi.dwOSVersionInfoSize = sizeof(osvi).int32
   discard GetVersionEx(osvi)
   result.majorVersion = osvi.dwMajorVersion
   result.minorVersion = osvi.dwMinorVersion
@@ -367,7 +367,13 @@ proc `$`*(osvi: TVersionInfo): string =
 
 proc getFileSize*(file: string): biggestInt =
   var fileData: TWIN32_FIND_DATA
-  var hFile = FindFirstFileA(file, fileData)
+
+  when useWinUnicode:
+    var aa = allocWideCString(file)
+    var hFile = FindFirstFileW(aa, fileData)
+    dealloc aa
+  else:
+    var hFile = FindFirstFileA(file, fileData)
   
   if hFile == INVALID_HANDLE_VALUE:
     raise newException(EIO, $GetLastError())
@@ -376,12 +382,12 @@ proc getFileSize*(file: string): biggestInt =
 
 proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
                          lpTotalNumberOfBytes,
-                         lpTotalNumberOfFreeBytes: var filetime): WINBOOL{.
+                         lpTotalNumberOfFreeBytes: var TFiletime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExA".}
 
 proc getPartitionInfo*(partition: string): TPartitionInfo =
   ## Retrieves partition info, for example ``partition`` may be ``"C:\"``
-  var FreeBytes, TotalBytes, TotalFreeBytes: filetime 
+  var FreeBytes, TotalBytes, TotalFreeBytes: TFiletime 
   var res = GetDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes, 
                                TotalFreeBytes)
   return (FreeBytes, TotalBytes)

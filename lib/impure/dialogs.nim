@@ -65,13 +65,13 @@ proc ChooseFileToOpen*(window: PWindow, root: string = ""): string =
     var
       opf: TOPENFILENAME
       buf: array [0..2047, char]
-    opf.lStructSize = sizeof(opf)
+    opf.lStructSize = sizeof(opf).int32
     if root.len > 0:
       opf.lpstrInitialDir = root
     opf.lpstrFilter = "All Files\0*.*\0\0"
     opf.flags = OFN_FILEMUSTEXIST
     opf.lpstrFile = buf
-    opf.nMaxFile = sizeof(buf)
+    opf.nMaxFile = sizeof(buf).int32
     var res = GetOpenFileName(addr(opf))
     if res != 0:
       result = $buf
@@ -100,13 +100,13 @@ proc ChooseFilesToOpen*(window: PWindow, root: string = ""): seq[string] =
     var
       opf: TOPENFILENAME
       buf: array [0..2047*4, char]
-    opf.lStructSize = sizeof(opf)
+    opf.lStructSize = sizeof(opf).int32
     if root.len > 0:
       opf.lpstrInitialDir = root
     opf.lpstrFilter = "All Files\0*.*\0\0"
     opf.flags = OFN_FILEMUSTEXIST or OFN_ALLOWMULTISELECT or OFN_EXPLORER
     opf.lpstrFile = buf
-    opf.nMaxFile = sizeof(buf)
+    opf.nMaxFile = sizeof(buf).int32
     var res = GetOpenFileName(addr(opf))
     result = @[]
     if res != 0:
@@ -161,13 +161,13 @@ proc ChooseFileToSave*(window: PWindow, root: string = ""): string =
     var
       opf: TOPENFILENAME
       buf: array [0..2047, char]
-    opf.lStructSize = sizeof(opf)
+    opf.lStructSize = sizeof(opf).int32
     if root.len > 0:
       opf.lpstrInitialDir = root
     opf.lpstrFilter = "All Files\0*.*\0\0"
     opf.flags = OFN_OVERWRITEPROMPT
     opf.lpstrFile = buf
-    opf.nMaxFile = sizeof(buf)
+    opf.nMaxFile = sizeof(buf).int32
     var res = GetSaveFileName(addr(opf))
     if res != 0:
       result = $buf
