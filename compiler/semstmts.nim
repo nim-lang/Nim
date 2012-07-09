@@ -569,7 +569,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
       # like: mydata.seq
-      addSon(s.typ, newTypeS(tyEmpty, c))
+      rawAddSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
       inc c.InGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
@@ -695,7 +695,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
-    addSon(s.typ, nil)
+    rawAddSon(s.typ, nil)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
@@ -746,7 +746,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else: 
     s.typ = newTypeS(tyProc, c)
-    addSon(s.typ, nil)
+    rawAddSon(s.typ, nil)
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
                                                # open for parameters
   if proto == nil: 

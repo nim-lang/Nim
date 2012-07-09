@@ -324,9 +324,9 @@ proc changeType(n: PNode, newType: PType) =
 proc semArrayConstr(c: PContext, n: PNode): PNode = 
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArrayConstr, c)
-  addSon(result.typ, nil)     # index type
+  rawAddSon(result.typ, nil)     # index type
   if sonsLen(n) == 0: 
-    addSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
+    rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else: 
     var x = n.sons[0]
     var lastIndex: biggestInt = 0
@@ -351,7 +351,7 @@ proc semArrayConstr(c: PContext, n: PNode): PNode =
       n.sons[i] = semExprWithType(c, x)
       addSon(result, fitNode(c, typ, n.sons[i]))
       inc(lastIndex)
-    addSon(result.typ, typ)
+    addSonSkipIntLit(result.typ, typ)
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) = 
@@ -1151,7 +1151,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
   result = newNodeI(nkCurly, n.info)
   result.typ = newTypeS(tySet, c)
   if sonsLen(n) == 0: 
-    addSon(result.typ, newTypeS(tyEmpty, c))
+    rawAddSon(result.typ, newTypeS(tyEmpty, c))
   else: 
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
@@ -1178,7 +1178,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
       return 
     if lengthOrd(typ) > MaxSetElements: 
       typ = makeRangeType(c, 0, MaxSetElements - 1, n.info)
-    addSon(result.typ, typ)
+    addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1): 
       var m: PNode
       if isRange(n.sons[i]):
@@ -1245,8 +1245,8 @@ proc semTupleFieldsConstr(c: PContext, n: PNode): PNode =
       localError(n.sons[i].info, errFieldInitTwice, id.s)
     n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1])
     var f = newSymS(skField, n.sons[i].sons[0], c)
-    f.typ = n.sons[i].sons[1].typ
-    addSon(typ, f.typ)
+    f.typ = skipIntLit(n.sons[i].sons[1].typ)
+    rawAddSon(typ, f.typ)
     addSon(typ.n, newSymNode(f))
     n.sons[i].sons[0] = newSymNode(f)
     addSon(result, n.sons[i])
@@ -1257,7 +1257,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode): PNode =
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in countup(0, sonsLen(n) - 1): 
     n.sons[i] = semExprWithType(c, n.sons[i])
-    addSon(typ, n.sons[i].typ)
+    addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
 proc semStmtListExpr(c: PContext, n: PNode): PNode = 
