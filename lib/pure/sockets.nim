@@ -1021,7 +1021,7 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
     when defined(ssl):
       if socket.isSSL:
         if bytesRead <= 0:
-          var ret = SSLGetError(socket.sslHandle, bytesRead)
+          var ret = SSLGetError(socket.sslHandle, bytesRead.cint)
           case ret
           of SSL_ERROR_ZERO_RETURN:
             SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -1088,7 +1088,7 @@ proc sendAsync*(socket: TSocket, data: string): bool =
   when defined(ssl):
     if socket.isSSL:
       if bytesSent <= 0:
-          let ret = SSLGetError(socket.sslHandle, bytesSent)
+          let ret = SSLGetError(socket.sslHandle, bytesSent.cint)
           case ret
           of SSL_ERROR_ZERO_RETURN:
             SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
