@@ -193,16 +193,16 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/filter_tmpl.c -o build/1_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passes.c -o build/1_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/passes.c -o build/1_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nimsets.c -o build/1_1/nimsets.o"
@@ -317,11 +317,11 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/types.o \
+build/1_1/trees.o \
 build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
-build/1_1/types.o \
-build/1_1/trees.o \
 build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
@@ -401,11 +401,11 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/types.o \
+build/1_1/trees.o \
 build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
-build/1_1/types.o \
-build/1_1/trees.o \
 build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
@@ -529,16 +529,16 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/magicsys.c -o build/1_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/magicsys.c -o build/1_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nimsets.c -o build/1_2/nimsets.o"
@@ -653,11 +653,11 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/types.o \
+build/1_2/trees.o \
 build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
-build/1_2/types.o \
-build/1_2/trees.o \
 build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
@@ -737,11 +737,11 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/types.o \
+build/1_2/trees.o \
 build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
-build/1_2/types.o \
-build/1_2/trees.o \
 build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
@@ -865,16 +865,16 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filter_tmpl.c -o build/1_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/memfiles.c -o build/1_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passes.c -o build/1_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/types.c -o build/1_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/trees.c -o build/1_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/magicsys.c -o build/1_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/magicsys.c -o build/1_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nimsets.c -o build/1_2/nimsets.o"
@@ -989,11 +989,11 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/types.o \
+build/1_2/trees.o \
 build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
-build/1_2/types.o \
-build/1_2/trees.o \
 build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
@@ -1073,11 +1073,11 @@ build/1_2/filters.o \
 build/1_2/renderer.o \
 build/1_2/filter_tmpl.o \
 build/1_2/rodread.o \
+build/1_2/types.o \
+build/1_2/trees.o \
 build/1_2/memfiles.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
-build/1_2/types.o \
-build/1_2/trees.o \
 build/1_2/magicsys.o \
 build/1_2/nimsets.o \
 build/1_2/bitsets.o \
@@ -1201,16 +1201,16 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/filter_tmpl.c -o build/1_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/memfiles.c -o build/1_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passes.c -o build/1_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/passes.c -o build/1_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nimsets.c -o build/1_1/nimsets.o"
@@ -1325,11 +1325,11 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/types.o \
+build/1_1/trees.o \
 build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
-build/1_1/types.o \
-build/1_1/trees.o \
 build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
@@ -1409,11 +1409,11 @@ build/1_1/filters.o \
 build/1_1/renderer.o \
 build/1_1/filter_tmpl.o \
 build/1_1/rodread.o \
+build/1_1/types.o \
+build/1_1/trees.o \
 build/1_1/memfiles.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
-build/1_1/types.o \
-build/1_1/trees.o \
 build/1_1/magicsys.o \
 build/1_1/nimsets.o \
 build/1_1/bitsets.o \
@@ -1545,16 +1545,16 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/filter_tmpl.c -o build/2_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/magicsys.c -o build/2_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/magicsys.c -o build/2_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nimsets.c -o build/2_1/nimsets.o"
@@ -1669,11 +1669,11 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/types.o \
+build/2_1/trees.o \
 build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
-build/2_1/types.o \
-build/2_1/trees.o \
 build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -1753,11 +1753,11 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/types.o \
+build/2_1/trees.o \
 build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
-build/2_1/types.o \
-build/2_1/trees.o \
 build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -1881,16 +1881,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/magicsys.c -o build/2_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/magicsys.c -o build/2_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nimsets.c -o build/2_2/nimsets.o"
@@ -2005,11 +2005,11 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/types.o \
+build/2_2/trees.o \
 build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
-build/2_2/types.o \
-build/2_2/trees.o \
 build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -2089,11 +2089,11 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/types.o \
+build/2_2/trees.o \
 build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
-build/2_2/types.o \
-build/2_2/trees.o \
 build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -2217,16 +2217,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filter_tmpl.c -o build/2_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/memfiles.c -o build/2_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/types.c -o build/2_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/magicsys.c -o build/2_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/magicsys.c -o build/2_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nimsets.c -o build/2_2/nimsets.o"
@@ -2341,11 +2341,11 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/types.o \
+build/2_2/trees.o \
 build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
-build/2_2/types.o \
-build/2_2/trees.o \
 build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -2425,11 +2425,11 @@ build/2_2/filters.o \
 build/2_2/renderer.o \
 build/2_2/filter_tmpl.o \
 build/2_2/rodread.o \
+build/2_2/types.o \
+build/2_2/trees.o \
 build/2_2/memfiles.o \
 build/2_2/rodwrite.o \
 build/2_2/passes.o \
-build/2_2/types.o \
-build/2_2/trees.o \
 build/2_2/magicsys.o \
 build/2_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -2553,16 +2553,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/filter_tmpl.c -o build/2_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/memfiles.c -o build/2_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/types.c -o build/2_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/magicsys.c -o build/2_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/magicsys.c -o build/2_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nimsets.c -o build/2_1/nimsets.o"
@@ -2677,11 +2677,11 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/types.o \
+build/2_1/trees.o \
 build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
-build/2_1/types.o \
-build/2_1/trees.o \
 build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -2761,11 +2761,11 @@ build/2_1/filters.o \
 build/2_1/renderer.o \
 build/2_1/filter_tmpl.o \
 build/2_1/rodread.o \
+build/2_1/types.o \
+build/2_1/trees.o \
 build/2_1/memfiles.o \
 build/2_1/rodwrite.o \
 build/2_1/passes.o \
-build/2_1/types.o \
-build/2_1/trees.o \
 build/2_1/magicsys.o \
 build/2_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -2897,16 +2897,16 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filter_tmpl.c -o build/3_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/nimsets.c -o build/3_1/nimsets.o"
@@ -3021,11 +3021,11 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/types.o \
+build/2_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
-build/3_1/types.o \
-build/2_1/trees.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -3105,11 +3105,11 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/types.o \
+build/2_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
-build/3_1/types.o \
-build/2_1/trees.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -3233,16 +3233,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/nimsets.c -o build/3_2/nimsets.o"
@@ -3357,11 +3357,11 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/types.o \
+build/2_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
-build/3_2/types.o \
-build/2_2/trees.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -3441,11 +3441,11 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/types.o \
+build/2_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
-build/3_2/types.o \
-build/2_2/trees.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -3569,16 +3569,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filter_tmpl.c -o build/3_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/nimsets.c -o build/3_2/nimsets.o"
@@ -3693,11 +3693,11 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/types.o \
+build/2_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
-build/3_2/types.o \
-build/2_2/trees.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -3777,11 +3777,11 @@ build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
+build/3_2/types.o \
+build/2_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
 build/2_2/passes.o \
-build/3_2/types.o \
-build/2_2/trees.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -3905,16 +3905,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filter_tmpl.c -o build/3_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/nimsets.c -o build/3_1/nimsets.o"
@@ -4029,11 +4029,11 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/types.o \
+build/2_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
-build/3_1/types.o \
-build/2_1/trees.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -4113,11 +4113,11 @@ build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
+build/3_1/types.o \
+build/2_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
 build/2_1/passes.o \
-build/3_1/types.o \
-build/2_1/trees.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -4249,16 +4249,16 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -4373,11 +4373,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -4457,11 +4457,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -4585,16 +4585,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -4709,11 +4709,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -4793,11 +4793,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -4921,16 +4921,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -5045,11 +5045,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -5129,11 +5129,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -5257,16 +5257,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -5381,11 +5381,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -5465,11 +5465,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -5601,16 +5601,16 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -5725,11 +5725,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -5809,11 +5809,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -5937,16 +5937,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -6061,11 +6061,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -6145,11 +6145,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -6273,16 +6273,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -6397,11 +6397,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -6481,11 +6481,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -6609,16 +6609,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -6733,11 +6733,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -6817,11 +6817,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -6953,16 +6953,16 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -7077,11 +7077,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -7161,11 +7161,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -7289,16 +7289,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -7413,11 +7413,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -7497,11 +7497,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -7625,16 +7625,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodwrite.c -o build/4_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_2/types.c -o build/4_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/magicsys.c -o build/4_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -7749,11 +7749,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -7833,11 +7833,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/4_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/4_2/rodwrite.o \
 build/2_2/passes.o \
-build/4_2/types.o \
-build/2_2/trees.o \
 build/4_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -7961,16 +7961,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodwrite.c -o build/4_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/4_1/types.c -o build/4_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/magicsys.c -o build/4_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -8085,11 +8085,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -8169,11 +8169,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/4_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/4_1/rodwrite.o \
 build/2_1/passes.o \
-build/4_1/types.o \
-build/2_1/trees.o \
 build/4_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -8305,16 +8305,16 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/rodwrite.c -o build/7_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/rodwrite.c -o build/7_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/magicsys.c -o build/7_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/magicsys.c -o build/7_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -8429,11 +8429,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/7_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/7_1/rodwrite.o \
 build/2_1/passes.o \
-build/7_1/types.o \
-build/2_1/trees.o \
 build/7_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -8513,11 +8513,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/7_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/7_1/rodwrite.o \
 build/2_1/passes.o \
-build/7_1/types.o \
-build/2_1/trees.o \
 build/7_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -8641,16 +8641,16 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/rodwrite.c -o build/7_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/rodwrite.c -o build/7_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/magicsys.c -o build/7_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/magicsys.c -o build/7_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -8765,11 +8765,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/7_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/7_2/rodwrite.o \
 build/2_2/passes.o \
-build/7_2/types.o \
-build/2_2/trees.o \
 build/7_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -8849,11 +8849,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/7_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/7_2/rodwrite.o \
 build/2_2/passes.o \
-build/7_2/types.o \
-build/2_2/trees.o \
 build/7_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -8977,16 +8977,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/filter_tmpl.c -o build/4_2/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/rodread.c -o build/4_2/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/memfiles.c -o build/4_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/rodwrite.c -o build/7_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/rodwrite.c -o build/7_2/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/7_2/types.c -o build/7_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/magicsys.c -o build/7_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/magicsys.c -o build/7_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/nimsets.c -o build/4_2/nimsets.o"
@@ -9101,11 +9101,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/7_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/7_2/rodwrite.o \
 build/2_2/passes.o \
-build/7_2/types.o \
-build/2_2/trees.o \
 build/7_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -9185,11 +9185,11 @@ build/4_2/filters.o \
 build/4_2/renderer.o \
 build/4_2/filter_tmpl.o \
 build/4_2/rodread.o \
+build/7_2/types.o \
+build/2_2/trees.o \
 build/4_2/memfiles.o \
 build/7_2/rodwrite.o \
 build/2_2/passes.o \
-build/7_2/types.o \
-build/2_2/trees.o \
 build/7_2/magicsys.o \
 build/4_2/nimsets.o \
 build/2_2/bitsets.o \
@@ -9313,16 +9313,16 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/filter_tmpl.c -o build/4_1/filter_tmpl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/rodread.c -o build/4_1/rodread.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/memfiles.c -o build/4_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/rodwrite.c -o build/7_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/rodwrite.c -o build/7_1/rodwrite.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/7_1/types.c -o build/7_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/magicsys.c -o build/7_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/magicsys.c -o build/7_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/nimsets.c -o build/4_1/nimsets.o"
@@ -9437,11 +9437,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/7_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/7_1/rodwrite.o \
 build/2_1/passes.o \
-build/7_1/types.o \
-build/2_1/trees.o \
 build/7_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \
@@ -9521,11 +9521,11 @@ build/4_1/filters.o \
 build/4_1/renderer.o \
 build/4_1/filter_tmpl.o \
 build/4_1/rodread.o \
+build/7_1/types.o \
+build/2_1/trees.o \
 build/4_1/memfiles.o \
 build/7_1/rodwrite.o \
 build/2_1/passes.o \
-build/7_1/types.o \
-build/2_1/trees.o \
 build/7_1/magicsys.o \
 build/4_1/nimsets.o \
 build/2_1/bitsets.o \

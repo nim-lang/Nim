@@ -481,13 +481,17 @@ proc getLinkOptions: string =
   for libDir in items(cLibs):
     result.add cc[ccompiler].linkDirCmd, libDir.quoteIfContainsWhite
 
+proc needsExeExt(): bool {.inline.} =
+  result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
+                                       (platform.hostOS == osWindows)
+
 proc getCompileCFileCmd*(cfilename: string, isExternal = false): string = 
   var c = ccompiler
   var options = CFileSpecificOptions(cfilename)
   var exe = getConfigVar(c, ".exe")
   if exe.len == 0: exe = cc[c].compilerExe
   
-  if targetOS == osWindows: exe = addFileExt(exe, "exe")
+  if needsExeExt(): exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
       ospNeedsPIC in platform.OS[targetOS].props: 
     add(options, ' ' & cc[c].pic)
@@ -578,7 +582,7 @@ proc CallCCompiler*(projectfile: string) =
     else:
       var linkerExe = getConfigVar(c, ".linkerexe")
       if len(linkerExe) == 0: linkerExe = cc[c].linkerExe
-      if targetOS == osWindows: linkerExe = addFileExt(linkerExe, "exe")
+      if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
       if noAbsolutePaths(): linkCmd = quoteIfContainsWhite(linkerExe)
       else: linkCmd = quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe))
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
