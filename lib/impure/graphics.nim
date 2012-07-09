@@ -74,7 +74,7 @@ proc fontFinalizer(f: PFont) = closeFont(f.f)
 proc newFont*(name = "VeraMono.ttf", size = 9, color = colBlack): PFont =  
   ## Creates a new font object. Raises ``EIO`` if the font cannot be loaded.
   new(result, fontFinalizer)
-  result.f = OpenFont(name, size)
+  result.f = OpenFont(name, size.cint)
   if result.f == nil:
     raise newException(EIO, "Could not open font file: " & name)
   result.color = toSdlColor(color)

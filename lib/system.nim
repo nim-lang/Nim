@@ -55,23 +55,23 @@ type
                                 ## a type description (for templates)
   void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
   
-  TSignedInt* = distinct int|int8|int16|int32|int64
+  TSignedInt* = int|int8|int16|int32|int64
     ## type class matching all signed integer types
 
-  TUnsignedInt* = distinct uint|uint8|uint16|uint32|uint64
+  TUnsignedInt* = uint|uint8|uint16|uint32|uint64
     ## type class matching all unsigned integer types
 
-  TInteger* = distinct TSignedInt|TUnsignedInt
+  TInteger* = TSignedInt|TUnsignedInt
     ## type class matching all integer types
 
-  TOrdinal* = distinct TInteger|bool|enum
+  TOrdinal* = TInteger|bool|enum
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
   
-  TReal* = distinct float|float32|float64
+  TReal* = float|float32|float64
     ## type class matching all floating point number types
 
-  TNumber* = distinct TInteger|TReal
+  TNumber* = TInteger|TReal
     ## type class matching all number types
 
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
@@ -1234,14 +1234,14 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` with the given
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive.
-  var res: T = a
+  var res: T = T(a)
   while res <= b:
     yield res
     inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
-  var res: T = a
+  var res: T = T(a)
   while res <= b:
     yield res
     inc res
@@ -2242,13 +2242,13 @@ proc staticExec*(command: string, input = ""): string {.
   ##
   ## ``gorge`` is an alias for ``staticExec``.
 
-proc `+=`*[T](x, y: ordinal[T]) {.magic: "Inc", noSideEffect.}
+proc `+=`*[T: TOrdinal](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
 
-proc `-=`*[T](x, y: ordinal[T]) {.magic: "Dec", noSideEffect.}
+proc `-=`*[T: TOrdinal](x: var T, y: T) {.magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T](x: var ordinal[T], y: ordinal[T]) {.inline, noSideEffect.} =
+proc `*=`*[T: TOrdinal](x: var T, y: T) {.inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 

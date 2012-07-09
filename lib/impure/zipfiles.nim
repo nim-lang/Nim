@@ -137,8 +137,8 @@ proc getStream*(z: var TZipArchive, filename: string): PZipFileStream =
 iterator walkFiles*(z: var TZipArchive): string = 
   ## walks over all files in the archive `z` and returns the filename 
   ## (including the path).
-  var i = 0
-  var num = int(zip_get_num_files(z.w))
+  var i = 0'i32
+  var num = zip_get_num_files(z.w)
   while i < num:
     yield $zip_get_name(z.w, i, 0'i32)
     inc(i)

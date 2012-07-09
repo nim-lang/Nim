@@ -251,8 +251,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       # BUGFIX: ``fitNode`` is needed here!
       # check type compability between def.typ and typ:
       if typ != nil: def = fitNode(c, typ, def)
-      else: typ = def.typ
-    else: 
+      else: typ = skipIntLit(def.typ)
+    else:
       def = ast.emptyNode
       if symkind == skLet: GlobalError(a.info, errLetNeedsInit)
       
