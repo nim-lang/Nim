@@ -10,7 +10,7 @@ import
   osproc,
   cairowin32, cairoxlib,
   gl, glut, glu, glx, glext, wingl,
-  lua, lualib, lauxlib, mysql, sqlite3, db_mongo
+  lua, lualib, lauxlib, mysql, sqlite3, db_mongo, osproc
   
 
 writeln(stdout, "test compilation of binding modules")

@@ -391,6 +391,7 @@ proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): PRope =
   var marker = InitIntSet()
   result = symToYamlAux(n, marker, indent, maxRecDepth)
 
+proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope
 proc debugType(n: PType): PRope = 
   if n == nil: 
     result = toRope("null")
@@ -407,6 +408,9 @@ proc debugType(n: PType): PRope =
           app(result, "null")
         else: 
           app(result, debugType(n.sons[i])) 
+      if n.kind == tyObject and n.n != nil: 
+        app(result, ", node: ")
+        app(result, debugTree(n.n, 2, 100))
       app(result, ")")
 
 proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope = 

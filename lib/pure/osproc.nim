@@ -455,7 +455,7 @@ when defined(Windows) and not defined(useNimRtl):
       rfds[i] = readfds[i].FProcessHandle
     
     var ret = waitForMultipleObjects(readfds.len.int32, 
-                                     addr(rfds), 0'i32, timeout)
+                                     addr(rfds), 0'i32, timeout.int32)
     case ret
     of WAIT_TIMEOUT:
       return 0
