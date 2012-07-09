@@ -18,6 +18,8 @@
 ##
 ## 
 
+import strutils, os, times
+
 type
   TLevel* = enum  ## logging level
     lvlAll,       ## all levels active
@@ -25,11 +27,12 @@ type
     lvlInfo,      ## info level (and any above) active
     lvlWarn,      ## warn level (and any above) active
     lvlError,     ## error level (and any above) active
-    lvlFatal      ## fatal level (and any above) active
+    lvlFatal,     ## fatal level (and any above) active
+    lvlNone
 
 const
   LevelNames*: array [TLevel, string] = [
-    "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
+    "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"
   ]
 
 type
@@ -44,7 +47,7 @@ type
     
   TRollingFileLogger* = object of TFileLogger ## logger that writes the 
                                               ## message to a file
-    maxlines: int # maximum number of lines
+    maxLines: int # maximum number of lines
     lines: seq[string]
 
 method log*(L: ref TLogger, level: TLevel,
@@ -102,7 +105,7 @@ proc newFileLogger*(filename = defaultFilename(),
 proc newRollingFileLogger*(filename = defaultFilename(), 
                            mode: TFileMode = fmAppend,
                            levelThreshold = lvlNone,
-                           maxLines = 1000): ref TFileLogger = 
+                           maxLines = 1000): ref TRollingFileLogger = 
   new(result)
   result.levelThreshold = levelThreshold
   result.maxLines = maxLines
@@ -112,34 +115,34 @@ var
   level* = lvlNone
   handlers*: seq[ref TLogger] = @[]
 
-proc logLoop(level: TLevel, msg: string) =
+proc logLoop(level: TLevel, frmt: string, args: openarray[string]) =
   for logger in items(handlers): 
     if level >= logger.levelThreshold:
-      log(logger, level, msg)
+      log(logger, level, frmt, args)
 
-template log*(level: TLevel, msg: string) =
+template log*(level: TLevel, frmt: string, args: openarray[string]) =
   ## logs a message of the given level
   bind logLoop
   if level >= logging.Level:
     logLoop(level, frmt, args)
 
-template debug*(msg: string) =
+template debug*(frmt: string, args: openarray[string]) =
   ## logs a debug message
-  log(lvlDebug, msg)
+  log(lvlDebug, frmt, args)
 
-template info*(msg: string) = 
+template info*(frmt: string, args: openarray[string]) = 
   ## logs an info message
-  log(lvlInfo, msg)
+  log(lvlInfo, frmt, args)
 
-template warn*(msg: string) = 
+template warn*(frmt: string, args: openarray[string]) = 
   ## logs a warning message
-  log(lvlWarn, msg)
+  log(lvlWarn, frmt, args)
 
-template error*(msg: string) = 
+template error*(frmt: string, args: openarray[string]) = 
   ## logs an error message
-  log(lvlError, msg)
+  log(lvlError, frmt, args)
   
-template fatal*(msg: string) =  
+template fatal*(frmt: string, args: openarray[string]) =  
   ## logs a fatal error message
-  log(lvlFatal, msg)
+  log(lvlFatal, frmt, args)
 
