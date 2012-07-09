@@ -103,7 +103,7 @@ proc getOrdValue(n: PNode): biggestInt =
     result = 0
 
 proc isIntLit*(t: PType): bool {.inline.} =
-  result = t.n != nil and t.n.kind == nkIntLit
+  result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
 
 proc isCompatibleToCString(a: PType): bool = 
   if a.kind == tyArray: 

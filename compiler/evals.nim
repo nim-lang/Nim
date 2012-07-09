@@ -592,7 +592,7 @@ proc evalAddr(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   if isSpecial(result): return 
   var a = result
   var t = newType(tyPtr, c.module)
-  addSon(t, a.typ)
+  addSonSkipIntLit(t, a.typ)
   result = newNodeIT(nkRefTy, n.info, t)
   addSon(result, a)
 

@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import ast, astalgo, msgs, types, semdata, renderer
+import ast, astalgo, msgs, types, magicsys, semdata, renderer
 
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
@@ -167,14 +167,14 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     for i in countup(0, sonsLen(t) - 1): 
       # if one of the params is not concrete, we cannot do anything
       # but we already raised an error!
-      addSon(result, header.sons[i])
+      rawAddSon(result, header.sons[i])
     
     var newbody = ReplaceTypeVarsT(cl, lastSon(body))
     newbody.flags = newbody.flags + t.flags + body.flags
     result.flags = result.flags + newbody.flags
     newbody.callConv = body.callConv
     newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-    addSon(result, newbody)
+    rawAddSon(result, newbody)
     checkPartialConstructedType(cl.info, newbody)
   else:
     for i in countup(1, sonsLen(t) - 1):
@@ -214,6 +214,8 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericBody: 
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
     result = ReplaceTypeVarsT(cl, lastSon(t))
+  of tyInt:
+    result = skipIntLit(t)
   else:
     if containsGenericType(t):
       result = copyType(t, t.owner, false)

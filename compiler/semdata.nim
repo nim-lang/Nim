@@ -180,15 +180,15 @@ proc addToLib(lib: PLib, sym: PSym) =
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyPtr, c)
-  addSon(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.AssertNotNil)
 
 proc makeVarType(c: PContext, baseType: PType): PType = 
   result = newTypeS(tyVar, c)
-  addSon(result, baseType.AssertNotNil)
+  addSonSkipIntLit(result, baseType.AssertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
-  result.addSon(typ.AssertNotNil)
+  result.addSonSkipIntLit(typ.AssertNotNil)
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType = 
   result = newType(kind, getCurrOwner())
@@ -205,7 +205,7 @@ proc makeRangeType*(c: PContext, first, last: biggestInt,
   addSon(n, newIntNode(nkIntLit, last))
   result = newTypeS(tyRange, c)
   result.n = n
-  addSon(result, getSysType(tyInt)) # basetype of range
+  rawAddSon(result, getSysType(tyInt)) # basetype of range
   
 proc markUsed*(n: PNode, s: PSym) = 
   incl(s.flags, sfUsed)

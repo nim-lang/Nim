@@ -172,7 +172,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       semParamList(c, n.sons[ParamsPos], nil, result)
   else:
     result.typ = newTypeS(tyProc, c)
-    addSon(result.typ, nil)
+    rawAddSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
   ParamsTypeCheck(c, result.typ)
   var oldPrc = GenericCacheGet(c, entry)
