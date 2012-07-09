@@ -324,10 +324,11 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyBool, tyChar: 
     if a.kind == f.kind: result = isEqual
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
-  of tyRange: 
-    if a.kind == f.kind: 
-      result = typeRel(mapping, base(a), base(f))
-      if result < isGeneric: result = isNone
+  of tyRange:
+    if a.kind == f.kind:
+      result = typeRel(mapping, base(f), base(a))
+      # bugfix: accept integer conversions here
+      #if result < isGeneric: result = isNone
     elif skipTypes(f, {tyRange}).kind == a.kind:
       result = isIntConv
     elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
