@@ -138,7 +138,7 @@ const
 proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
   if sameType(castDest, src) and castDest.sym == src.sym: 
     # don't annoy conversions that may be needed on another processor:
-    if castDest.kind notin {tyInt..tyUInt64, tyNil}:
+    if castDest.kind notin IntegralTypes+{tyRange}:
       Message(info, hintConvFromXtoItselfNotNeeded, typeToString(castDest))
     return
   var d = skipTypes(castDest, abstractVar)
