@@ -368,7 +368,7 @@ when defined(windows):
       lpWideCharStr = cstring(result),
       cchWideChar = cint(result.len div 2),
       lpMultiByteStr = cstring(res),
-      cbMultiByte = cap)
+      cbMultiByte = cap.cint)
     if m == 0:
       # try again; ask for capacity:
       cap = WideCharToMultiByte(
@@ -386,7 +386,7 @@ when defined(windows):
         lpWideCharStr = cstring(result),
         cchWideChar = cint(result.len div 2),
         lpMultiByteStr = cstring(res),
-        cbMultiByte = cap)
+        cbMultiByte = cap.cint)
       if m == 0: OSError()
       setLen(res, m)
       result = res

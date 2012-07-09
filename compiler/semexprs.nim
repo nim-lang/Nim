@@ -906,7 +906,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.sons[i] = semExprWithType(c, n.sons[i], flags)
     var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(tyInt)
     var arg = IndexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
-    if arg != nil: 
+    if arg != nil:
       n.sons[1] = arg
       result = n
       result.typ = elemType(arr)
