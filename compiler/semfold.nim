@@ -115,7 +115,7 @@ proc makeRange(typ: PType, first, last: biggestInt): PType =
   addSon(n, newIntNode(nkIntLit, max(first, last)))
   result = newType(tyRange, typ.owner)
   result.n = n
-  addSon(result, skipTypes(typ, {tyRange}))
+  addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc makeRangeF(typ: PType, first, last: biggestFloat): PType =
   var n = newNode(nkRange)
@@ -123,7 +123,7 @@ proc makeRangeF(typ: PType, first, last: biggestFloat): PType =
   addSon(n, newFloatNode(nkFloatLit, max(first.float, last.float)))
   result = newType(tyRange, typ.owner)
   result.n = n
-  addSon(result, skipTypes(typ, {tyRange}))
+  addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc getIntervalType*(m: TMagic, n: PNode): PType =
   # Nimrod requires interval arithmetic for ``range`` types. Lots of tedious

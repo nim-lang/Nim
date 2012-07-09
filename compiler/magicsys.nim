@@ -92,6 +92,16 @@ proc getIntLitType*(literal: PNode): PType =
     result = copyType(ti, ti.owner, false)
     result.n = literal
 
+proc skipIntLit*(t: PType): PType {.inline.} =
+  if t.kind == tyInt and t.n != nil:
+    result = getSysType(tyInt)
+  else:
+    result = t
+
+proc AddSonSkipIntLit*(father, son: PType) =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son.skipIntLit)
+
 proc setIntLitType*(result: PNode) =
   let i = result.intVal
   case platform.IntSize

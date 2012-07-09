@@ -718,7 +718,6 @@ proc lastSon*(n: PType): PType {.inline.}
 proc newSons*(father: PNode, length: int)
 proc newSons*(father: PType, length: int)
 proc addSon*(father, son: PNode)
-proc addSon*(father, son: PType)
 proc delSon*(father: PNode, idx: int)
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool
@@ -996,11 +995,6 @@ proc newSons(father: PType, length: int) =
   else:
     setlen(father.sons, length)
 
-proc addSon(father, son: PType) = 
-  if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-  #assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
-
 proc sonsLen(n: PNode): int = 
   if isNil(n.sons): result = 0
   else: result = len(n.sons)
@@ -1010,6 +1004,15 @@ proc newSons(father: PNode, length: int) =
     newSeq(father.sons, length)
   else:
     setlen(father.sons, length)
+
+proc addSon*(father, son: PType) {.deprecated.} =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)
+  #assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
+
+proc rawAddSon*(father, son: PType) =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)
 
 proc addSon(father, son: PNode) = 
   assert son != nil

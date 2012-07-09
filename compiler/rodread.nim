@@ -88,7 +88,7 @@
 
 import 
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms, 
-  ropes, idents, crc, idgen, rodutils, memfiles
+  ropes, idents, crc, idgen, types, rodutils, memfiles
 
 type 
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -335,10 +335,10 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
       inc(r.pos)
       if r.s[r.pos] == ')': inc(r.pos)
       else: InternalError(info, "decodeType ^(" & r.s[r.pos])
-      addSon(result, nil)
+      rawAddSon(result, nil)
     else: 
       var d = decodeVInt(r.s, r.pos)
-      addSon(result, rrGetType(r, d, info))
+      rawAddSon(result, rrGetType(r, d, info))
 
 proc decodeLib(r: PRodReader, info: TLineInfo): PLib = 
   result = nil

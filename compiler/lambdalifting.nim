@@ -164,10 +164,11 @@ proc newEnv(outerProc: PSym, up: PEnv, n: PNode): PEnv =
 
 proc addField(tup: PType, s: PSym) =
   var field = newSym(skField, s.name, s.owner)
-  field.typ = s.typ
+  let t = skipIntLit(s.typ)
+  field.typ = t
   field.position = sonsLen(tup)
   addSon(tup.n, newSymNode(field))
-  addSon(tup, s.typ)
+  rawAddSon(tup, t)
   
 proc addCapturedVar(e: PEnv, v: PSym) =
   for x in e.capturedVars:
@@ -183,7 +184,7 @@ proc addDep(e, d: PEnv, owner: PSym): PSym =
   result.typ = newType(tyRef, owner)
   result.position = pos
   assert d.tup != nil
-  addSon(result.typ, d.tup)
+  rawAddSon(result.typ, d.tup)
   addField(e.tup, result)
   e.deps.add((d, result))
   
@@ -223,7 +224,7 @@ proc addClosureParam(i: PInnerContext, e: PEnv) =
   cp.info = i.fn.info
   incl(cp.flags, sfFromGeneric)
   cp.typ = newType(tyRef, i.fn)
-  addSon(cp.typ, e.tup)
+  rawAddSon(cp.typ, e.tup)
   i.closureParam = cp
   addHiddenParam(i.fn, i.closureParam)
   #echo "closure param added for ", i.fn.name.s, " ", i.fn.id
@@ -408,7 +409,7 @@ proc getClosureVar(o: POuterContext, e: PEnv): PSym =
     incl(result.flags, sfShadowed)
     result.info = e.attachedNode.info
     result.typ = newType(tyRef, o.fn)
-    result.typ.addSon(e.tup)
+    result.typ.rawAddSon(e.tup)
     e.closure = result
   else:
     result = e.closure

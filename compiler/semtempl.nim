@@ -113,7 +113,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # use ``stmt`` as implicit result type
     s.typ = newTypeS(tyProc, c)
     s.typ.n = newNodeI(nkFormalParams, n.info)
-    addSon(s.typ, newTypeS(tyStmt, c))
+    rawAddSon(s.typ, newTypeS(tyStmt, c))
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
   else: 
     semParamList(c, n.sons[ParamsPos], nil, s)

@@ -139,9 +139,9 @@ proc concreteType(mapping: TIdTable, t: PType): PType =
   of tyArrayConstr: 
     # make it an array
     result = newType(tyArray, t.owner)
-    addSon(result, t.sons[0]) # XXX: t.owner is wrong for ID!
-    addSon(result, t.sons[1]) # XXX: semantic checking for the type?
-  of tyNil: 
+    addSonSkipIntLit(result, t.sons[0]) # XXX: t.owner is wrong for ID!
+    addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
+  of tyNil:
     result = nil              # what should it be?
   of tyGenericParam: 
     result = t
