@@ -30,12 +30,6 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
         localError(info, errInheritanceOnlyWithNonFinalObjects)
-  
-proc containsGenericTypeIter(t: PType, closure: PObject): bool = 
-  result = t.kind in GenericTypes
-
-proc containsGenericType*(t: PType): bool = 
-  result = iterOverType(t, containsGenericTypeIter, nil)
 
 proc searchInstTypes(tab: TIdTable, key: PType): PType = 
   # returns nil if we need to declare this type

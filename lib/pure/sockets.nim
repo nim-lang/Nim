@@ -352,7 +352,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
     hints.ai_socktype = toInt(SOCK_STREAM)
     hints.ai_protocol = toInt(IPPROTO_TCP)
     gaiNim(address, port, hints, aiList)
-    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrLen) < 0'i32:
+    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrLen.cint) < 0'i32:
       OSError()
 
 when false:
@@ -570,7 +570,7 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
   var success = false
   var it = aiList
   while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen) == 0'i32:
+    if connect(socket.fd, it.ai_addr, it.ai_addrlen.cint) == 0'i32:
       success = true
       break
     it = it.ai_next
@@ -624,7 +624,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   var success = false
   var it = aiList
   while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen)
+    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.cint)
     if ret == 0'i32:
       success = true
       break
@@ -669,8 +669,8 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
 proc timeValFromMilliseconds(timeout = 500): TTimeVal =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds
-    result.tv_usec = (timeout - seconds * 1000) * 1000
+    result.tv_sec = seconds.int32
+    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 #proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
 #               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
 
@@ -772,9 +772,9 @@ proc readIntoBuf(socket: TSocket, flags: int32): int =
     if socket.isSSL:
       result = SSLRead(socket.sslHandle, addr(socket.buffer), int(socket.buffer.high))
     else:
-      result = recv(socket.fd, addr(socket.buffer), int(socket.buffer.high), flags)
+      result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   else:
-    result = recv(socket.fd, addr(socket.buffer), int(socket.buffer.high), flags)
+    result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   if result <= 0:
     socket.buflen = 0
     socket.currPos = 0
@@ -824,9 +824,9 @@ proc recv*(socket: TSocket, data: pointer, size: int): int =
       if socket.isSSL:
         result = SSLRead(socket.sslHandle, data, size)
       else:
-        result = recv(socket.fd, data, size, 0'i32)
+        result = recv(socket.fd, data, size.cint, 0'i32)
     else:
-      result = recv(socket.fd, data, size, 0'i32)
+      result = recv(socket.fd, data, size.cint, 0'i32)
 
 proc waitFor(socket: TSocket, waited: var float, timeout: int): int =
   ## returns the number of characters available to be read. In unbuffered
@@ -1068,7 +1068,7 @@ proc send*(socket: TSocket, data: pointer, size: int): int =
       return SSLWrite(socket.sslHandle, cast[cstring](data), size)
   
   when defined(windows) or defined(macosx):
-    result = send(socket.fd, data, size, 0'i32)
+    result = send(socket.fd, data, size.cint, 0'i32)
   else:
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 

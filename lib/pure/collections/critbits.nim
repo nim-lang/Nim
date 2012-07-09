@@ -297,6 +297,6 @@ when isMainModule:
   for w in r.items:
     echo w
     
-  for w in r.allPrefixed("de"):
+  for w in r.itemsWithPrefix("de"):
     echo w
 

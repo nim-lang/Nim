@@ -601,7 +601,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         else:
           result = magicCall(m, n)
       of mIs:
-        result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
+        # BUGFIX: don't evaluate this too early: ``T is void``
+        if not containsGenericType(n[1].typ) and 
+           not containsGenericType(n[2].typ):
+          result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
       of mConStrStr:
