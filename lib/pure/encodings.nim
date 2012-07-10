@@ -298,7 +298,7 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): PConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `EIO` if it cannot fullfill the request.
   when not defined(windows):
-    result = iconvOpen(srcEncoding, destEncoding)
+    result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:
       raise newException(EInvalidEncoding, 
         "cannot create encoding converter from " & 
