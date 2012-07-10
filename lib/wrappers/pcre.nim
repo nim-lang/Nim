@@ -35,7 +35,7 @@
 #-----------------------------------------------------------------------------
 #
 
-when defined(pcreDll):
+when not defined(pcreDll):
   when hostOS == "windows":
     const pcreDll = "pcre.dll"
   elif hostOS == "macosx":
