@@ -1,5 +1,5 @@
 discard """
-  disabled: true
+  output: "b"
 """
 
 type
@@ -12,8 +12,8 @@ type
   TC = object of TB
     whatever: string
   
-proc p(a: var TA) = nil
-proc p(b: var TB) = nil
+proc p(a: var TA) = echo "a"
+proc p(b: var TB) = echo "b"
 
 var c: TC
 
