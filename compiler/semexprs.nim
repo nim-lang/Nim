@@ -762,10 +762,11 @@ proc makeDeref(n: PNode): PNode =
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, n)
     t = skipTypes(t.sons[0], {tyGenericInst})
-  if t.kind in {tyPtr, tyRef}: 
+  while t.kind in {tyPtr, tyRef}:
     var a = result
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, a)
+    t = skipTypes(t.sons[0], {tyGenericInst})
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
