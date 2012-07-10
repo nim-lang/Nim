@@ -1,6 +1,5 @@
 *.o
 *.exe
-*.dll
 *.so
 *.zip
 *.iss
