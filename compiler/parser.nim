@@ -1247,6 +1247,8 @@ proc parseEnum(p: var TParser): PNode =
       getTok(p)
       optInd(p, a)
     addSon(result, a)
+  if result.len <= 1:
+    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
 
 proc parseObjectPart(p: var TParser): PNode
 proc parseObjectWhen(p: var TParser): PNode = 
