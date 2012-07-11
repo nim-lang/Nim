@@ -115,7 +115,7 @@ Low priority
 - timeout for locks
 - compilation cache:
   - adapt thread var emulation to care about the new merge operation
-  - check for interface changes; if only the implemenation changes, no
+  - check for interface changes; if only the implementation changes, no
     need to recompile clients; er ... what about templates, macros or anything
     that has inlining semantics?
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
