@@ -35,13 +35,15 @@
 #-----------------------------------------------------------------------------
 #
 
+{.deadcodeElim: on.}
+
 when not defined(pcreDll):
   when hostOS == "windows":
     const pcreDll = "pcre.dll"
   elif hostOS == "macosx":
-    const pcreDll = "libpcre(.1|).dylib"
+    const pcreDll = "libpcre(.3|.1|).dylib"
   else:
-    const pcreDll = "libpcre.so(.1|)"
+    const pcreDll = "libpcre.so(.3|.1|)"
   {.pragma: pcreImport, dynlib: pcreDll.}
 else:
   {.pragma: pcreImport, header: "<pcre.h>".}
@@ -246,10 +248,10 @@ type
     study_data*: pointer        ## Opaque data from pcre_study() 
     match_limit*: int           ## Maximum number of calls to match() 
     callout_data*: pointer      ## Data passed back in callouts 
-    tables*: ptr char           ## Pointer to character tables 
+    tables*: cstring            ## Pointer to character tables 
     match_limit_recursion*: int ## Max recursive calls to match() 
-    mark*: ptr ptr char         ## For passing back a mark pointer 
-    executable_jit* = pointer   ## Contains a pointer to a compiled jit code
+    mark*: ptr cstring          ## For passing back a mark pointer 
+    executable_jit*: pointer    ## Contains a pointer to a compiled jit code
   
 
 # The structure for passing out data via the pcre_callout_function. We use a
@@ -271,7 +273,7 @@ type
     callout_data*: pointer    ## Data passed in with the call 
     pattern_position*: cint   ## Offset to next item in the pattern 
     next_item_length*: cint   ## Length of next item in the pattern
-    mark*: ptr char           ## Pointer to current mark or NULL
+    mark*: cstring            ## Pointer to current mark or NULL
 
 # Indirection for store get and free functions. These can be set to
 #alternative malloc/free functions if required. Special ones are used in the
