@@ -10,7 +10,7 @@
 ## This module provides an easy to use sockets-style 
 ## nimrod interface to the OpenSSL library.
 
-{.deprecate.}
+{.deprecated.}
 
 import openssl, strutils, os
 
@@ -59,10 +59,10 @@ proc recvLine*(sock: TSecureSocket, line: var TaintedString): bool =
   setLen(line.string, 0)
   while True:
     var c: array[0..0, char]
-    var n = BIO_read(sock.bio, c, c.len)
+    var n = BIO_read(sock.bio, c, c.len.cint)
     if n <= 0: return False
     if c[0] == '\r':
-      n = BIO_read(sock.bio, c, c.len)
+      n = BIO_read(sock.bio, c, c.len.cint)
       if n > 0 and c[0] == '\L':
         return True
       elif n <= 0:
@@ -73,7 +73,7 @@ proc recvLine*(sock: TSecureSocket, line: var TaintedString): bool =
 
 proc send*(sock: TSecureSocket, data: string) =
   ## Writes `data` to the socket.
-  if BIO_write(sock.bio, data, data.len()) <= 0:
+  if BIO_write(sock.bio, data, data.len.cint) <= 0:
     OSError()
 
 proc close*(sock: TSecureSocket) =
