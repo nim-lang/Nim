@@ -629,7 +629,7 @@ proc parseTuple(p: var TParser): PNode =
     while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
       var a = parseIdentColonEquals(p, {})
       addSon(result, a)
-      if p.tok.tokType != tkComma: break 
+      if p.tok.tokType notin {tkComma, tkSemicolon}: break 
       getTok(p)
       optInd(p, a)
     optPar(p)
@@ -652,7 +652,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
         parMessage(p, errTokenExpected, ")")
         break 
       addSon(result, a)
-      if p.tok.tokType != tkComma: break 
+      if p.tok.tokType notin {tkComma, tkSemicolon}: break 
       getTok(p)
       optInd(p, a)
     optPar(p)
@@ -1135,7 +1135,7 @@ proc parseGenericParamList(p: var TParser): PNode =
   while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
     var a = parseGenericParam(p)
     addSon(result, a)
-    if p.tok.tokType != tkComma: break 
+    if p.tok.tokType notin {tkComma, tkSemicolon}: break 
     getTok(p)
     optInd(p, a)
   optPar(p)
