@@ -485,14 +485,14 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
   put(g, tkSpaces, Space)
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0, 
-               theEnd: int = - 1) = 
+               theEnd: int = - 1, separator = tkComma) = 
   for i in countup(start, sonsLen(n) + theEnd): 
     var c = i < sonsLen(n) + theEnd
     var sublen = lsub(n.sons[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < maxLineLen): optNL(g, ind)
     gsub(g, n.sons[i])
     if c: 
-      putWithSpace(g, tkComma, ",")
+      putWithSpace(g, separator, TokTypeToStr[separator])
       if hasCom(n.sons[i]): 
         gcoms(g)
         optNL(g, ind)
@@ -511,6 +511,11 @@ proc gcomma(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) =
   var ind = g.lineLen
   if ind > maxLineLen div 2: ind = g.indent + longIndentWid
   gcommaAux(g, n, ind, start, theEnd)
+
+proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) = 
+  var ind = g.lineLen
+  if ind > maxLineLen div 2: ind = g.indent + longIndentWid
+  gcommaAux(g, n, ind, start, theEnd, tkSemicolon)
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0, 
            theEnd: int = - 1) = 
@@ -719,7 +724,7 @@ proc gident(g: var TSrcGen, n: PNode) =
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
     put(g, tkParLe, "(")
-    gcomma(g, params, 1)
+    gsemicolon(g, params, 1)
     put(g, tkParRi, ")")
   
   if params.sons[0].kind != nkEmpty: 
@@ -1159,7 +1164,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketRi, "]")
   of nkFormalParams: 
     put(g, tkParLe, "(")
-    gcomma(g, n, 1)
+    gsemicolon(g, n, 1)
     put(g, tkParRi, ")")
     if n.sons[0].kind != nkEmpty: 
       putWithSpace(g, tkColon, ":")

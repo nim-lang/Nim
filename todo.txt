@@ -15,7 +15,7 @@ New pragmas:
 - document destructors
 
 - ``borrow`` needs to take type classes into account
-- introduce ``;`` to the parser
+- introduce ``;`` to the parser: inc a; inc b
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
@@ -31,7 +31,6 @@ New pragmas:
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
-  people also want ``inc a; inc b``
 
 
 Bugs

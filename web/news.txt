@@ -128,6 +128,8 @@ Language Additions
 - Unsigned integer types have been added.
 - The integer promotion rules changed.
 - Nimrod now tracks proper intervals for ``range`` over some built-in operators.
+- In parameter lists a semicolon instead of a comma can be used to improve 
+  readability: ``proc divmod(a, b: int; resA, resB: var int)``.
 
 
 2012-02-09 Version 0.8.14 released

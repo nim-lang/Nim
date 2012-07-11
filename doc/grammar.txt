@@ -1,6 +1,8 @@
 module ::= ([COMMENT] [SAD] stmt)*
 
 comma ::= ',' [COMMENT] [IND]
+semicolon ::= ';' [COMMENT] [IND]
+
 operator ::=  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
            | 'or' | 'xor' | 'and'
            | 'is' | 'isnot' | 'in' | 'notin' | 'of'
@@ -141,14 +143,14 @@ fromStmt ::= 'from' filename 'import' symbol (comma symbol)*
 pragma ::= '{.' optInd (colonExpr [comma])* optPar ('.}' | '}')
 
 param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
-paramList ::= ['(' [param (comma param)*] optPar ')'] [':' typeDesc]
+paramList ::= ['(' [param (comma|semicolon param)*] optPar ')'] [':' typeDesc]
 
 genericConstraint ::= 'object' | 'tuple' | 'enum' | 'proc' | 'ref' | 'ptr' 
                     | 'var' | 'distinct' | primary
 genericConstraints ::= genericConstraint ( '|' optInd genericConstraint )*
 
 genericParam ::= symbol [':' genericConstraints] ['=' expr]
-genericParams ::= '[' genericParam (comma genericParam)* optPar ']'
+genericParams ::= '[' genericParam (comma|semicolon genericParam)* optPar ']'
 
 
 routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
@@ -180,7 +182,7 @@ objectCase ::= 'case' expr ':' typeDesc [COMMENT]
 
 objectPart ::= objectWhen | objectCase | objectIdentPart | 'nil'
              | indPush objectPart (SAD objectPart)* DED indPop
-tupleDesc ::= '[' optInd [param (comma param)*] optPar ']'
+tupleDesc ::= '[' optInd [param (comma|semicolon param)*] optPar ']'
 
 objectDef ::= 'object' [pragma] ['of' typeDesc] objectPart
 enumField ::= symbol ['=' expr]
