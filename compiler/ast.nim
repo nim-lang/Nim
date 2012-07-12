@@ -245,6 +245,7 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable     # returned value may be discarded implicitely
     sfDestructor      # proc is destructor
+    sfByCopy          # a variable is to be captured by value in a closure
 
   TSymFlags* = set[TSymFlag]
 
@@ -264,9 +265,6 @@ const
   
   sfShadowed* = sfInnerProc
     # a variable that was shadowed in some inner scope
-
-  sfByCopy* = sfBorrow
-    # a variable is to be captured by value in a closure
     
   sfHoist* = sfVolatile ## proc return value can be hoisted
 
