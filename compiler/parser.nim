@@ -1481,7 +1481,7 @@ proc parseStmt(p: var TParser): PNode =
     getTok(p)
     while true: 
       case p.tok.tokType
-      of tkSad: getTok(p)
+      of tkSad, tkSemicolon: getTok(p)
       of tkEof: break 
       of tkDed: 
         getTok(p)
@@ -1494,16 +1494,17 @@ proc parseStmt(p: var TParser): PNode =
           break 
         addSon(result, a)
     popInd(p.lex)
-  else: 
+  else:
     # the case statement is only needed for better error messages:
     case p.tok.tokType
-    of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkIterator, 
-       tkMacro, tkType, tkConst, tkWhen, tkVar: 
+    of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkIterator,
+       tkMacro, tkType, tkConst, tkWhen, tkVar:
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
-    else: 
+    else:
       result = simpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+      if p.tok.tokType == tkSemicolon: getTok(p)
       if p.tok.tokType == tkSad: getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
@@ -1522,7 +1523,7 @@ proc parseTopLevelStmt(p: var TParser): PNode =
   result = ast.emptyNode
   while true: 
     case p.tok.tokType
-    of tkSad: getTok(p)
+    of tkSad, tkSemicolon: getTok(p)
     of tkDed, tkInd: 
       parMessage(p, errInvalidIndentation)
       getTok(p)

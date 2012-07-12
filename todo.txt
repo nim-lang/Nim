@@ -15,7 +15,6 @@ New pragmas:
 - document destructors
 
 - ``borrow`` needs to take type classes into account
-- introduce ``;`` to the parser: inc a; inc b
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
@@ -38,6 +37,8 @@ Bugs
 
 - bug: pragma statements in combination with symbol files are evaluated twice
   but this can lead to compilation errors
+- bug: the parser is not strict enough with newlines: 'echo "a" echo "b"' 
+  compiles
 
 
 version 0.9.XX

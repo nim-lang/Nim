@@ -614,11 +614,11 @@ Nimrod requires `interval arithmetic`:idx: for subrange types over a set
 of built-in operators that involve constants: ``x mod 3`` is of 
 type ``range[0..2]``. The following built-in operators for integers are 
 affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
-``pred``, ``mod``, ``div``, ``and`` (bitwise and). 
+``pred``, ``mod``, ``div``, ``and`` (bitwise ``and``).
 
-Bitwise and only produces a ``range`` if one of its operands is a 
+Bitwise ``and`` only produces a ``range`` if one of its operands is a 
 constant *x* so that (x+1) is a number of two.
-(Bitwise and then behaves as a ``mod`` operation.)
+(Bitwise ``and`` is then a ``mod`` operation.)
 
 This means that the following code is accepted:
 
