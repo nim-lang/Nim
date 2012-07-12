@@ -124,12 +124,14 @@ Language Additions
   allowing for *sigil-like* operators.
 - Stand-alone ``finally`` and ``except`` blocks are now supported.
 - Macros and templates can now be invoked as pragmas.
-- The apostrophe in type suffixes for numerical literal is now optional.
+- The apostrophe in type suffixes for numerical literals is now optional.
 - Unsigned integer types have been added.
 - The integer promotion rules changed.
 - Nimrod now tracks proper intervals for ``range`` over some built-in operators.
 - In parameter lists a semicolon instead of a comma can be used to improve 
   readability: ``proc divmod(a, b: int; resA, resB: var int)``.
+- A semicolon can now be used to have multiple simple statements on a single
+  line: ``inc i; inc j``.
 
 
 2012-02-09 Version 0.8.14 released
