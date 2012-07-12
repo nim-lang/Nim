@@ -11,7 +11,7 @@ version 0.9.0
 
 New pragmas:
 - ``hoist`` pragma for loop hoisting
-- test & document ``byCopy`` pragma
+- fix & document ``byCopy`` pragma
 - document destructors
 
 - ``borrow`` needs to take type classes into account
