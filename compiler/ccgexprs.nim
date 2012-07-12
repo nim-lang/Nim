@@ -51,12 +51,6 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
     case skipTypes(ty, abstractVarRange).kind
     of tyChar, tyInt64, tyNil:
       result = intLiteral(v.intVal)
-    of tyInt8:
-      result = ropef("((NI8) $1)", [intLiteral(biggestInt(int8(v.intVal)))])
-    of tyInt16:
-      result = ropef("((NI16) $1)", [intLiteral(biggestInt(int16(v.intVal)))])
-    of tyInt32:
-      result = ropef("((NI32) $1)", [intLiteral(biggestInt(int32(v.intVal)))])
     of tyInt:
       if (v.intVal >= low(int32)) and (v.intVal <= high(int32)):
         result = int32Literal(int32(v.intVal))
