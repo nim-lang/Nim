@@ -646,7 +646,7 @@ proc `-+-` *[T](x, y: set[T]): set[T] {.magic: "SymDiffSet", noSideEffect.}
   ## ``(A - B) + (B - A)``, but more efficient.
 
 # comparison operators:
-proc `==` *[T](x, y: ordinal[T]): bool {.magic: "EqEnum", noSideEffect.}
+proc `==` *[TEnum: enum](x, y: TEnum): bool {.magic: "EqEnum", noSideEffect.}
 proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
@@ -656,7 +656,7 @@ proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
 proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
 
-proc `<=` *[T](x, y: ordinal[T]): bool {.magic: "LeEnum", noSideEffect.}
+proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
 proc `<=` *(x, y: char): bool {.magic: "LeCh", noSideEffect.}
 proc `<=` *[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
@@ -664,7 +664,7 @@ proc `<=` *(x, y: bool): bool {.magic: "LeB", noSideEffect.}
 proc `<=` *[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
 proc `<=` *(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
 
-proc `<` *[T](x, y: ordinal[T]): bool {.magic: "LtEnum", noSideEffect.}
+proc `<` *[TEnum: enum](x, y: TEnum): bool {.magic: "LtEnum", noSideEffect.}
 proc `<` *(x, y: string): bool {.magic: "LtStr", noSideEffect.}
 proc `<` *(x, y: char): bool {.magic: "LtCh", noSideEffect.}
 proc `<` *[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
