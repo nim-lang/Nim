@@ -263,15 +263,17 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     of tyInt8: result = newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n)
     of tyInt16: result = newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n)
     of tyInt32: result = newIntNodeT(int32(getInt(a)) shl int32(getInt(b)), n)
-    of tyInt64, tyInt: result = newIntNodeT(`shl`(getInt(a), getInt(b)), n)
+    of tyInt64, tyInt, tyUInt..tyUInt64: 
+      result = newIntNodeT(`shl`(getInt(a), getInt(b)), n)
     else: InternalError(n.info, "constant folding for shl")
   of mShrI, mShrI64: 
     case skipTypes(n.typ, abstractRange).kind
     of tyInt8: result = newIntNodeT(int8(getInt(a)) shr int8(getInt(b)), n)
     of tyInt16: result = newIntNodeT(int16(getInt(a)) shr int16(getInt(b)), n)
     of tyInt32: result = newIntNodeT(int32(getInt(a)) shr int32(getInt(b)), n)
-    of tyInt64, tyInt: result = newIntNodeT(`shr`(getInt(a), getInt(b)), n)
-    else: InternalError(n.info, "constant folding for shl")
+    of tyInt64, tyInt, tyUInt..tyUInt64:
+      result = newIntNodeT(`shr`(getInt(a), getInt(b)), n)
+    else: InternalError(n.info, "constant folding for shr")
   of mDivI, mDivI64: result = newIntNodeT(getInt(a) div getInt(b), n)
   of mModI, mModI64: result = newIntNodeT(getInt(a) mod getInt(b), n)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n)

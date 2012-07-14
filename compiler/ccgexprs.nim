@@ -409,32 +409,32 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 - $2)",            # SubF64
       "($1 * $2)",            # MulF64
       "($1 / $2)",            # DivF64
-      "(NI$3)((NU$3)($1) >> (NU$3)($2))", # ShrI
-      "(NI$3)((NU$3)($1) << (NU$3)($2))", # ShlI
-      "(NI$3)($1 & $2)",      # BitandI
-      "(NI$3)($1 | $2)",      # BitorI
-      "(NI$3)($1 ^ $2)",      # BitxorI
+      "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
+      "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
+      "($4)($1 & $2)",      # BitandI
+      "($4)($1 | $2)",      # BitorI
+      "($4)($1 ^ $2)",      # BitxorI
       "(($1 <= $2) ? $1 : $2)", # MinI
       "(($1 >= $2) ? $1 : $2)", # MaxI
-      "(NI64)((NU64)($1) >> (NU64)($2))", # ShrI64
-      "(NI64)((NU64)($1) << (NU64)($2))", # ShlI64
-      "($1 & $2)",            # BitandI64
-      "($1 | $2)",            # BitorI64
-      "($1 ^ $2)",            # BitxorI64
+      "($4)((NU64)($1) >> (NU64)($2))", # ShrI64
+      "($4)((NU64)($1) << (NU64)($2))", # ShlI64
+      "($4)($1 & $2)",            # BitandI64
+      "($4)($1 | $2)",            # BitorI64
+      "($4)($1 ^ $2)",            # BitxorI64
       "(($1 <= $2) ? $1 : $2)", # MinI64
       "(($1 >= $2) ? $1 : $2)", # MaxI64
       "(($1 <= $2) ? $1 : $2)", # MinF64
       "(($1 >= $2) ? $1 : $2)", # MaxF64
-      "(NI$3)((NU$3)($1) + (NU$3)($2))", # AddU
-      "(NI$3)((NU$3)($1) - (NU$3)($2))", # SubU
-      "(NI$3)((NU$3)($1) * (NU$3)($2))", # MulU
-      "(NI$3)((NU$3)($1) / (NU$3)($2))", # DivU
-      "(NI$3)((NU$3)($1) % (NU$3)($2))", # ModU
-      "(NI64)((NU64)($1) + (NU64)($2))", # AddU64
-      "(NI64)((NU64)($1) - (NU64)($2))", # SubU64
-      "(NI64)((NU64)($1) * (NU64)($2))", # MulU64
-      "(NI64)((NU64)($1) / (NU64)($2))", # DivU64
-      "(NI64)((NU64)($1) % (NU64)($2))", # ModU64
+      "($4)((NU$3)($1) + (NU$3)($2))", # AddU
+      "($4)((NU$3)($1) - (NU$3)($2))", # SubU
+      "($4)((NU$3)($1) * (NU$3)($2))", # MulU
+      "($4)((NU$3)($1) / (NU$3)($2))", # DivU
+      "($4)((NU$3)($1) % (NU$3)($2))", # ModU
+      "($4)((NU64)($1) + (NU64)($2))", # AddU64
+      "($4)((NU64)($1) - (NU64)($2))", # SubU64
+      "($4)((NU64)($1) * (NU64)($2))", # MulU64
+      "($4)((NU64)($1) / (NU64)($2))", # DivU64
+      "($4)((NU64)($1) % (NU64)($2))", # ModU64
       "($1 == $2)",           # EqI
       "($1 <= $2)",           # LeI
       "($1 < $2)",            # LtI
@@ -474,28 +474,29 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
   putIntoDest(p, d, e.typ,
-              ropef(binArithTab[op], [rdLoc(a), rdLoc(b), toRope(s)]))
+              ropef(binArithTab[op], [rdLoc(a), rdLoc(b), toRope(s),
+                                      getSimpleTypeDesc(p.module, e.typ)]))
 
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
       "$1",                   # UnaryPlusI
-      "(NI$2)((NU$2) ~($1))", # BitnotI
+      "($3)((NU$2) ~($1))",   # BitnotI
       "$1",                   # UnaryPlusI64
-      "~($1)",                # BitnotI64
+      "($3)((NU$2) ~($1))",   # BitnotI64
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
       "($1 > 0? ($1) : -($1))", # AbsF64; BUGFIX: fabs() makes problems
                                 # for Tiny C, so we don't use it
-      "((NI)(NU)(NU8)($1))",  # mZe8ToI
-      "((NI64)(NU64)(NU8)($1))", # mZe8ToI64
-      "((NI)(NU)(NU16)($1))", # mZe16ToI
-      "((NI64)(NU64)(NU16)($1))", # mZe16ToI64
-      "((NI64)(NU64)(NU32)($1))", # mZe32ToI64
-      "((NI64)(NU64)(NU)($1))", # mZeIToI64
-      "((NI8)(NU8)(NU)($1))", # ToU8
-      "((NI16)(NU16)(NU)($1))", # ToU16
-      "((NI32)(NU32)(NU64)($1))", # ToU32
+      "(($3)(NU)(NU8)($1))",  # mZe8ToI
+      "(($3)(NU64)(NU8)($1))", # mZe8ToI64
+      "(($3)(NU)(NU16)($1))", # mZe16ToI
+      "(($3)(NU64)(NU16)($1))", # mZe16ToI64
+      "(($3)(NU64)(NU32)($1))", # mZe32ToI64
+      "(($3)(NU64)(NU)($1))", # mZeIToI64
+      "(($3)(NU8)(NU)($1))", # ToU8
+      "(($3)(NU16)(NU)($1))", # ToU16
+      "(($3)(NU32)(NU64)($1))", # ToU32
       "((double) ($1))",      # ToFloat
       "((double) ($1))",      # ToBiggestFloat
       "float64ToInt32($1)",   # ToInt XXX: this is not correct!
@@ -507,7 +508,8 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   InitLocExpr(p, e.sons[1], a)
   t = skipTypes(e.typ, abstractRange)
   putIntoDest(p, d, e.typ,
-              ropef(unArithTab[op], [rdLoc(a), toRope(getSize(t) * 8)]))
+              ropef(unArithTab[op], [rdLoc(a), toRope(getSize(t) * 8),
+                    getSimpleTypeDesc(p.module, e.typ)]))
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc

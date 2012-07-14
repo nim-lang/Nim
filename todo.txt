@@ -3,10 +3,6 @@ version 0.9.0
 
 - implicit deref for parameter matching
 - deprecate ``var x, y = 0`` as it's confusing for tuple consistency
-- finish support for unsigned ints:
-  - support more unsigned operations
-  - test codegen
-
 - test sequence of closures; especially that the GC does not leak for those!
 
 New pragmas:

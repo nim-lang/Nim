@@ -64,7 +64,8 @@ proc initCandidate*(c: var TCandidate, callee: PType) =
 proc put(t: var TIdTable, key, val: PType) {.inline.} =
   IdTablePut(t, key, val)
 
-proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, calleeScope = -1) = 
+proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode, 
+                    calleeScope = -1) =
   initCandidateAux(c, callee.typ)
   c.calleeSym = callee
   c.calleeScope = calleeScope
