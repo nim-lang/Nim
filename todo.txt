@@ -90,13 +90,6 @@ Library
 
 - pdcurses bindings
 
-- for system:
-  proc `@` [T](a: openArray[T]): seq[T] = 
-    newSeq(result, a.len)
-    for i in 0..a.len-1: result[i] = a[i]
-    
-  --> ensure @[] still calls the array version!
-
 
 Low priority
 ------------

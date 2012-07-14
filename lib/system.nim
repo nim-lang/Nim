@@ -687,7 +687,7 @@ proc `@` * [IDX, T](a: array[IDX, T]): seq[T] {.
   magic: "ArrToSeq", nosideeffect.}
   ## turns an array into a sequence. This most often useful for constructing
   ## sequences with the array constructor: ``@[1, 2, 3]`` has the type 
-  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``. 
+  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
 
 proc setLen*[T](s: var seq[T], newlen: int) {.
   magic: "SetLengthSeq", noSideEffect.}
@@ -1338,6 +1338,13 @@ proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
+
+proc `@`*[T](a: openArray[T]): seq[T] = 
+  ## turns an openarray into a sequence. This is not as efficient as turning
+  ## a fixed length array into a sequence as it always copies every element
+  ## of `a`.
+  newSeq(result, a.len)
+  for i in 0..a.len-1: result[i] = a[i]
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + y.len)

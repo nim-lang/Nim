@@ -59,6 +59,9 @@ Library Additions
 - The httpclient module now supports ssl/tls.
 - Added ``times.format`` as well as many other utility functions
   for managing time.
+- Added ``system.@`` for converting an ``openarray`` to a ``seq`` (it used to
+  only support fixed length arrays).
+
 
 Changes affecting backwards compatibility
 -----------------------------------------
