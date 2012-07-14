@@ -64,7 +64,7 @@ type
   TInteger* = TSignedInt|TUnsignedInt
     ## type class matching all integer types
 
-  TOrdinal* = TInteger|bool|enum
+  TOrdinal* = int|int8|int16|int32|int64|bool|enum|uint8|uint16|uint32
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
   
@@ -533,12 +533,7 @@ proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
   ## checking is turned on).
 
 type
-  UIntMax32 = distinct uint|uint8|uint16|uint32
   IntMax32  = distinct int|int8|int16|int32
-
-proc `+` *(x, y: UIntMax32): UIntMax32 {.magic: "AddU", noSideEffect.}
-proc `+` *(x, y: UInt64): uint64 {.magic: "AddU64", noSideEffect.}
-  ## Binary `+` operator for unsigned integers.
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: Int64): Int64 {.magic: "AddU64", noSideEffect.}
@@ -546,19 +541,11 @@ proc `+%` *(x, y: Int64): Int64 {.magic: "AddU64", noSideEffect.}
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
 
-proc `-` *(x, y: UIntMax32): UIntMax32 {.magic: "SubU", noSideEffect.}
-proc `-` *(x, y: UInt64): UInt64 {.magic: "SubU64", noSideEffect.}
-  ## Binary `-` operator for unsigned integers.
-
 proc `-%` *(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
 proc `-%` *(x, y: Int64): Int64 {.magic: "SubU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
-
-proc `*` *(x, y: UIntMax32): UIntMax32 {.magic: "MulU", noSideEffect.}
-proc `*` *(x, y: UInt64): UInt64 {.magic: "MulU64", noSideEffect.}
-  ## Binary `*` operator for unsigned integers.
 
 proc `*%` *(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
 proc `*%` *(x, y: Int64): Int64 {.magic: "MulU64", noSideEffect.}
@@ -566,31 +553,11 @@ proc `*%` *(x, y: Int64): Int64 {.magic: "MulU64", noSideEffect.}
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
-proc `div` *(x, y: UIntMax32): UIntMax32 {.magic: "DivU", noSideEffect.}
-proc `div` *(x, y: UInt64): UInt64 {.magic: "DivU64", noSideEffect.}
-  ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
-  
-proc `/` *(x, y: UIntMax32): UIntMax32 {.magic: "DivU", noSideEffect.}
-proc `/` *(x, y: UInt64): UInt64 {.magic: "DivU64", noSideEffect.}
-  ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
-
 proc `/%` *(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
 proc `/%` *(x, y: Int64): Int64 {.magic: "DivU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
-
-proc `%` *(x, y: UIntMax32): UIntMax32 {.magic: "DivU", noSideEffect.}
-proc `%` *(x, y: UInt64): UInt64 {.magic: "DivU64", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
-  ## ``x - (x div y) * y``.
-
-proc `mod` *(x, y: UIntMax32): UIntMax32 {.magic: "DivU", noSideEffect.}
-proc `mod` *(x, y: UInt64): UInt64 {.magic: "DivU64", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
-  ## ``x - (x div y) * y``.
 
 proc `%%` *(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
 proc `%%` *(x, y: Int64): Int64 {.magic: "ModU64", noSideEffect.}
@@ -598,19 +565,11 @@ proc `%%` *(x, y: Int64): Int64 {.magic: "ModU64", noSideEffect.}
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
   ## No overflow errors are possible.
-
-proc `<=` *(x, y: UIntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=` *(x, y: UInt64): bool {.magic: "LeU64", noSideEffect.}
-  ## Returns true iff ``x <= y``.
   
 proc `<=%` *(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
 proc `<=%` *(x, y: Int64): bool {.magic: "LeU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) <= unsigned(y)``.
-
-proc `<` *(x, y: UIntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<` *(x, y: UInt64): bool {.magic: "LtU64", noSideEffect.}
-  ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
 proc `<%` *(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
 proc `<%` *(x, y: Int64): bool {.magic: "LtU64", noSideEffect.}
