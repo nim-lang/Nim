@@ -16,8 +16,6 @@ const
   X_PROTOCOL_REVISION* = 0
 
 type
-  culong* = int
-  cuchar* = char
   PXID* = ptr TXID
   TXID* = culong
   PMask* = ptr TMask

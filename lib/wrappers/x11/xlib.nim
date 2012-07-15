@@ -6,19 +6,17 @@ const
   libX11* = "libX11.so"
 
 type
-  cuint* = cint
   cunsigned* = cint
-  cushort* = int16
   Pcint* = ptr cint
   PPcint* = ptr Pcint
   PPcuchar* = ptr ptr cuchar
   PWideChar* = ptr int16
   PPChar* = ptr cstring
   PPPChar* = ptr ptr cstring
-  Pculong* = ptr int
+  Pculong* = ptr culong
   Pcuchar* = cstring
-  Pcuint* = ptr cint
-  Pcushort* = ptr int16
+  Pcuint* = ptr cuint
+  Pcushort* = ptr uint16
 #  Automatically converted by H2Pas 0.99.15 from xlib.h
 #  The following command line parameters were used:
 #    -p
