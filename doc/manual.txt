@@ -3590,10 +3590,8 @@ strings automatically:
 Dynlib pragma for import
 ------------------------
 With the `dynlib`:idx: pragma a procedure can be imported from
-
-a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
-
-non-optional argument has to be the name of the dynamic library:
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
+The non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nimrod
   proc gtk_image_new(): PGtkWidget {.
