@@ -946,6 +946,17 @@ type # these work for most platforms:
     ## This is the same as the type ``long double`` in *C*.
     ## This C type is not supported by Nimrod's code generator
 
+  cuchar* {.importc: "unsigned char", nodecl.} = char
+    ## This is the same as the type ``unsigned char`` in *C*.
+  cushort* {.importc: "unsigned short", nodecl.} = uint16
+    ## This is the same as the type ``unsigned short`` in *C*.
+  cuint* {.importc: "int", nodecl.} = uint32
+    ## This is the same as the type ``unsigned int`` in *C*.
+  culong* {.importc: "unsigned long", nodecl.} = uint
+    ## This is the same as the type ``unsigned long`` in *C*.
+  culonglong* {.importc: "unsigned long long", nodecl.} = uint64
+    ## This is the same as the type ``unsigned long long`` in *C*.
+
   cstringArray* {.importc: "char**", nodecl.} = ptr array [0..50_000, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
