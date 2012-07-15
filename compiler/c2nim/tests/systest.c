@@ -15,6 +15,8 @@ typedef const char* (*callback2)(int rc, long L, const char* buffer);
 int   aw_callback_set (AW_CALLBACK c, callback_t callback );
 int   aw_instance_callback_set (AW_CALLBACK c, callback_t callback);
 
+unsigned long int wawa;
+
 #define AW_BUILD 85 // AW 5.0
 // Limits
 #define AW_MAX_AVCHANGE_PER_SECOND 10
@@ -34,7 +36,7 @@ int   aw_instance_callback_set (AW_CALLBACK c, callback_t callback);
 #mangle "'XML_'{.*}" "$1"
 #private "'XML_ParserStruct'"
 
-#mangle cunsignedint cint
+#mangle cuint cint
 
 unsigned int uiVar;
 

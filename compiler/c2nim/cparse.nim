@@ -434,14 +434,21 @@ proc typeAtom(p: var TParser): PNode =
     getTok(p, nil)
     result = skipIdent(p)
   elif isIntType(p.tok.s):
-    var x = "c" & p.tok.s
-    getTok(p, nil)
-    while p.tok.xkind == pxSymbol and 
-        (isIntType(p.tok.s) or p.tok.s == "char"):
-      add(x, p.tok.s)
+    var x = ""
+    #getTok(p, nil)
+    var isUnsigned = false
+    while p.tok.xkind == pxSymbol and (isIntType(p.tok.s) or p.tok.s == "char"):
+      if p.tok.s == "unsigned":
+        isUnsigned = true
+      elif p.tok.s == "signed" or p.tok.s == "int":
+        nil
+      else:
+        add(x, p.tok.s)
       getTok(p, nil)
-    result = mangledIdent(x, p)
-  else: 
+    if x.len == 0: x = "int"
+    let xx = if isUnsigned: "cu" & x else: "c" & x
+    result = mangledIdent(xx, p)
+  else:
     result = mangledIdent(p.tok.s, p)
     getTok(p, result)
     
