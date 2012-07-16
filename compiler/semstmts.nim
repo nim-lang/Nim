@@ -616,7 +616,7 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
   typeSectionFinalPass(c, n)
   result = n
 
-proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) = 
+proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
   s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind)
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) = 

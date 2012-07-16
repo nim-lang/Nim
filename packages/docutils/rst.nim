@@ -42,8 +42,8 @@ type
     mwUnsupportedLanguage
   
   TMsgHandler* = proc (filename: string, line, col: int, msgKind: TMsgKind,
-                       arg: string) ## what to do in case of an error
-  TFindFileHandler* = proc (filename: string): string
+                       arg: string) {.nimcall.} ## what to do in case of an error
+  TFindFileHandler* = proc (filename: string): string {.nimcall.}
 
 const
   messages: array [TMsgKind, string] = [
@@ -1353,10 +1353,10 @@ proc parseDoc(p: var TRstParser): PRstNode =
   if p.tok[p.idx].kind != tkEof: rstMessage(p, meGeneralParseError)
   
 type
-  TDirFlag = enum 
+  TDirFlag = enum
     hasArg, hasOptions, argIsFile, argIsWord
   TDirFlags = set[TDirFlag]
-  TSectionParser = proc (p: var TRstParser): PRstNode
+  TSectionParser = proc (p: var TRstParser): PRstNode {.nimcall.}
 
 proc parseDirective(p: var TRstParser, flags: TDirFlags): PRstNode = 
   result = newRstNode(rnDirective)

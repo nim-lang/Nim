@@ -33,14 +33,14 @@ type
   TDelegate = object
     deleVal*: PObject
 
-    handleRead*: proc (h: PObject)
-    handleWrite*: proc (h: PObject)
-    handleConnect*: proc (h: PObject)
+    handleRead*: proc (h: PObject) {.nimcall.}
+    handleWrite*: proc (h: PObject) {.nimcall.}
+    handleConnect*: proc (h: PObject) {.nimcall.}
 
-    handleAccept*: proc (h: PObject)
-    getSocket*: proc (h: PObject): tuple[info: TInfo, sock: TSocket]
+    handleAccept*: proc (h: PObject) {.nimcall.}
+    getSocket*: proc (h: PObject): tuple[info: TInfo, sock: TSocket] {.nimcall.}
 
-    task*: proc (h: PObject)
+    task*: proc (h: PObject) {.nimcall.}
     mode*: TMode
     
   PDelegate* = ref TDelegate
@@ -56,10 +56,10 @@ type
 
     userArg: PObject
 
-    handleRead*: proc (s: PAsyncSocket, arg: PObject)
-    handleConnect*: proc (s:  PAsyncSocket, arg: PObject)
+    handleRead*: proc (s: PAsyncSocket, arg: PObject) {.nimcall.}
+    handleConnect*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
 
-    handleAccept*: proc (s:  PAsyncSocket, arg: PObject)
+    handleAccept*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
 
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
 

@@ -35,9 +35,10 @@ proc ObjectSetContainsOrIncl*(t: var TObjectSet, obj: PObject): bool
 proc TablePut*(t: var TTable, key, val: PObject)
 proc TableGet*(t: TTable, key: PObject): PObject
 type 
-  TCmpProc* = proc (key, closure: PObject): bool # should return true if found
+  TCmpProc* = proc (key, closure: PObject): bool {.nimcall.} # true if found
 
-proc TableSearch*(t: TTable, key, closure: PObject, comparator: TCmpProc): PObject
+proc TableSearch*(t: TTable, key, closure: PObject, 
+                  comparator: TCmpProc): PObject
   # return val as soon as comparator returns true; if this never happens,
   # nil is returned
 

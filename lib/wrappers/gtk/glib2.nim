@@ -2676,7 +2676,7 @@ when false:
   proc g_critical*(format: cstring){.varargs.}
   proc g_warning*(format: cstring){.varargs.}
 type 
-  TGPrintFunc* = proc (str: cstring)
+  TGPrintFunc* = proc (str: cstring){.cdecl, varargs.}
 
 proc g_set_print_handler*(func: TGPrintFunc): TGPrintFunc{.cdecl, 
     dynlib: gliblib, importc: "g_set_print_handler".}

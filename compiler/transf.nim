@@ -640,14 +640,6 @@ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkBracket} and 
       cnst.len != 0
 
-proc warnNarrowingConversion(n: PNode) =
-  if n.kind == nkHiddenStdConv:
-    var dest = skipTypes(n.typ, abstractVarRange)
-    var source = skipTypes(n.sons[1].typ, abstractVarRange)
-    if source.kind == tyInt and
-       source.size > dest.size and n.sons[1].kind != nkIntLit:
-      Message(n.info, warnImplicitNarrowing, renderTree(n.sons[1]))
-
 proc transform(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 

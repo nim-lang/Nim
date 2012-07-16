@@ -111,7 +111,7 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
 
-proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.
+proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   magic: "NewFinalize", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``. When the garbage collector frees the object,
@@ -1416,13 +1416,13 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   result = s[L]
   setLen(s, L)
 
-proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] = 
+proc each*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] = 
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data` and returns the result as a sequence.
   newSeq(result, data.len)
   for i in 0..data.len-1: result[i] = op(data[i])
 
-proc each*[T](data: var openArray[T], op: proc (x: var T)) =
+proc each*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
@@ -1567,11 +1567,11 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc ()
+  dbgLineHook*: proc () {.nimcall.}
     ## set this variable to provide a procedure that should be called before
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
-  globalRaiseHook*: proc (e: ref E_Base): bool
+  globalRaiseHook*: proc (e: ref E_Base): bool {.nimcall.}
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
     ## application code should never set this hook! You better know what you
@@ -1579,7 +1579,7 @@ var
     ## exception is caught and does not propagate further through the call
     ## stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref E_Base): bool
+  localRaiseHook* {.threadvar.}: proc (e: ref E_Base): bool {.nimcall.}
     ## with this hook you can influence exception handling on a
     ## thread local level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -1587,7 +1587,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
-  outOfMemHook*: proc ()
+  outOfMemHook*: proc () {.nimcall.}
     ## set this variable to provide a procedure that should be called 
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can

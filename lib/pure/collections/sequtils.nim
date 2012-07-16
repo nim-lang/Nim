@@ -39,14 +39,14 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
-iterator filter*[T](seq1: seq[T], pred: proc(item: T): bool): T =
+iterator filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): T =
   ## Iterates through a sequence and yields every item that fulfills the
   ## predicate.
   for i in countup(0, len(seq1) -1):
     var item = seq1[i]
     if pred(item): yield seq1[i]
 
-proc filter*[T](seq1: seq[T], pred: proc(item: T): bool): seq[T] =
+proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ## Returns all items in a sequence that fulfilled the predicate.
   accumulateResult(filter(seq1, pred))
 

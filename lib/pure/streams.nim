@@ -23,13 +23,14 @@ type
                                ## here shouldn't be used directly. They are
                                ## accessible so that a stream implementation
                                ## can override them.
-    closeImpl*: proc (s: PStream)
-    atEndImpl*: proc (s: PStream): bool
-    setPositionImpl*: proc (s: PStream, pos: int)
-    getPositionImpl*: proc (s: PStream): int
-    readDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int): int
-    writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int)
-    flushImpl*: proc (s: PStream)
+    closeImpl*: proc (s: PStream) {.nimcall.}
+    atEndImpl*: proc (s: PStream): bool {.nimcall.}
+    setPositionImpl*: proc (s: PStream, pos: int) {.nimcall.}
+    getPositionImpl*: proc (s: PStream): int {.nimcall.}
+    readDataImpl*: proc (s: PStream, buffer: pointer,
+                         bufLen: int): int {.nimcall.}
+    writeDataImpl*: proc (s: PStream, buffer: pointer, bufLen: int) {.nimcall.}
+    flushImpl*: proc (s: PStream) {.nimcall.}
 
 proc flush*(s: PStream) =
   ## flushes the buffers that the stream `s` might use.

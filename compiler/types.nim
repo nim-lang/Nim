@@ -24,9 +24,9 @@ proc getProcHeader*(sym: PSym): string
 proc base*(t: PType): PType
   # ------------------- type iterator: ----------------------------------------
 type 
-  TTypeIter* = proc (t: PType, closure: PObject): bool # should return true if the iteration should stop
-  TTypeMutator* = proc (t: PType, closure: PObject): PType # copy t and mutate it
-  TTypePredicate* = proc (t: PType): bool
+  TTypeIter* = proc (t: PType, closure: PObject): bool {.nimcall.} # true if iteration should stop
+  TTypeMutator* = proc (t: PType, closure: PObject): PType {.nimcall.} # copy t and mutate it
+  TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
 proc IterOverType*(t: PType, iter: TTypeIter, closure: PObject): bool
   # Returns result of `iter`.

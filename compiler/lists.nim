@@ -22,7 +22,7 @@ type
     head*, tail*: PListEntry
     Counter*: int
 
-  TCompareProc* = proc (entry: PListEntry, closure: Pointer): bool
+  TCompareProc* = proc (entry: PListEntry, closure: Pointer): bool {.nimcall.}
 
 proc InitLinkedList*(list: var TLinkedList) = 
   list.Counter = 0

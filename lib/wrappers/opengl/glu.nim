@@ -12,6 +12,11 @@ import
   GL
 
 when defined(windows): 
+  {.push, callconv: stdcall.}
+else: 
+  {.push, callconv: cdecl.}
+
+when defined(windows): 
   const 
     dllname = "glu32.dll"
 elif defined(macosx): 
@@ -326,4 +331,5 @@ const                         # Contours types -- obsolete!
   GLU_ERROR* = GLU_TESS_ERROR
   GLU_EDGE_FLAG* = GLU_TESS_EDGE_FLAG
 
+{.pop.}
 # implementation

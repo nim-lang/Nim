@@ -1156,7 +1156,7 @@ proc PyWeakref_NewProxy*(ob, callback: PPyObject): PPyObject{.cdecl, importc, dy
 proc PyWeakref_NewRef*(ob, callback: PPyObject): PPyObject{.cdecl, importc, dynlib: dllname.}
 proc PyWrapper_New*(ob1, ob2: PPyObject): PPyObject{.cdecl, importc, dynlib: dllname.}
 proc PyBool_FromLong*(ok: int): PPyObject{.cdecl, importc, dynlib: dllname.} #-
-proc Py_AtExit*(prc: proc ()): int{.cdecl, importc, dynlib: dllname.} #-
+proc Py_AtExit*(prc: proc () {.cdecl.}): int{.cdecl, importc, dynlib: dllname.} #-
 #Py_Cleanup:procedure; cdecl, importc, dynlib: dllname;
 #-
 proc Py_CompileString*(s1, s2: cstring, i: int): PPyObject{.cdecl, importc, dynlib: dllname.} #-

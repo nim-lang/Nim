@@ -137,7 +137,7 @@ const
   XrmEnumOneLevel* = 1
 
 type 
-  funcbool* = proc (): TBool
+  funcbool* = proc (): TBool {.cdecl.}
 
 proc XrmEnumerateDatabase*(para1: TXrmDatabase, para2: TXrmNameList, 
                            para3: TXrmClassList, para4: int32, para5: funcbool, 

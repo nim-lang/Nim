@@ -26,11 +26,11 @@ type
     
   PPassContext* = ref TPassContext
   TPass* = tuple[
-    open: proc (module: PSym, filename: string): PPassContext, 
+    open: proc (module: PSym, filename: string): PPassContext {.nimcall.},
     openCached: proc (module: PSym, filename: string,
-                     rd: PRodReader): PPassContext, 
-    close: proc (p: PPassContext, n: PNode): PNode, 
-    process: proc (p: PPassContext, topLevelStmt: PNode): PNode] 
+                     rd: PRodReader): PPassContext {.nimcall.},
+    close: proc (p: PPassContext, n: PNode): PNode {.nimcall.},
+    process: proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}]
     
 # a pass is a tuple of procedure vars ``TPass.close`` may produce additional 
 # nodes. These are passed to the other close procedures. 
@@ -47,8 +47,8 @@ proc processModule*(module: PSym, filename: string, stream: PLLStream,
 
 # the semantic checker needs these:
 var 
-  gImportModule*: proc (filename: string): PSym
-  gIncludeFile*: proc (filename: string): PNode
+  gImportModule*: proc (filename: string): PSym {.nimcall.}
+  gIncludeFile*: proc (filename: string): PNode {.nimcall.}
 
 # implementation
 
