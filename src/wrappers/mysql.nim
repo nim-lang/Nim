@@ -8,6 +8,8 @@
 #
 
 {.deadCodeElim: on.}
+{.push, callconv: cdecl.}
+
 when defined(Unix): 
   const 
     lib = "libmysqlclient.so.15"
@@ -1071,3 +1073,5 @@ proc INTERNAL_NUM_FIELD(f: Pst_mysql_field): bool =
 
 proc reload(mysql: PMySQL): cint = 
   result = refresh(mysql, REFRESH_GRANT)
+
+{.pop.}
