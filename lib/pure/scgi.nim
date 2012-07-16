@@ -67,7 +67,8 @@ type
   
   TAsyncScgiState* = object of TScgiState
     handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
-                         input: string, headers: PStringTable,userArg: PObject)
+                         input: string, headers: PStringTable,
+                         userArg: PObject) {.nimcall.}
     userArg: PObject
   PAsyncScgiState* = ref TAsyncScgiState
     
@@ -128,7 +129,7 @@ proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") =
          "Content-Type: $1\r\L\r\L" % contentType)
 
 proc run*(handleRequest: proc (client: TSocket, input: string, 
-                               headers: PStringTable): bool,
+                               headers: PStringTable): bool {.nimcall.},
           port = TPort(4000)) = 
   ## encapsulates the SCGI object and main loop.
   var s: TScgiState
@@ -142,7 +143,7 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
 
 proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
                                 input: string, headers: PStringTable,
-                                userArg: PObject),
+                                userArg: PObject) {.nimcall.},
            port = TPort(4000), address = "127.0.0.1",
            userArg: PObject = nil): PAsyncScgiState =
   ## Alternative of ``open`` for asyncio compatible SCGI.

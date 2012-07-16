@@ -45,7 +45,8 @@ type
   PAsyncIRC* = ref TAsyncIRC
   TAsyncIRC* = object of TIRC
     userArg: PObject
-    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent, userArg: PObject)
+    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent, 
+                       userArg: PObject) {.nimcall.}
     lineBuffer: TaintedString
 
   TIRCMType* = enum
@@ -366,7 +367,7 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               joinChans: seq[string] = @[],
               msgLimit: bool = true,
               ircEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent,
-                  userArg: PObject),
+                  userArg: PObject) {.nimcall.},
               userArg: PObject = nil): PAsyncIRC =
   ## Use this function if you want to use asyncio's dispatcher.
   ## 

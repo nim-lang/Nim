@@ -21,7 +21,7 @@ const
 
 type                          # Network Control Block
   PNCB* = ptr TNCB
-  TNCBPostProc* = proc (P: PNCB)
+  TNCBPostProc* = proc (P: PNCB) {.stdcall.}
   TNCB* {.final.} = object # Structure returned to the NCB command NCBASTAT is ADAPTER_STATUS followed
                            # by an array of NAME_BUFFER structures.
     ncb_command*: Char        # command code

@@ -614,6 +614,7 @@ proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
 proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
 proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
 
 proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}

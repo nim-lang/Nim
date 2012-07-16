@@ -43,7 +43,7 @@ type
     JRetrText, JRetr, JStore
 
   TFTPJob = object
-    prc: proc (ftp: var TFTPClient, async: bool): bool
+    prc: proc (ftp: var TFTPClient, async: bool): bool {.nimcall.}
     case typ*: FTPJobType
     of JRetrText:
       lines: string
@@ -60,7 +60,7 @@ type
   PAsyncFTPClient* = ref TAsyncFTPClient ## Async alternative to TFTPClient.
   TAsyncFTPClient* = object of TFTPClient
     handleEvent*: proc (ftp: var TAsyncFTPClient, ev: TFTPEvent, 
-                        userArg: PObject)
+                        userArg: PObject) {.nimcall.}
     dele: PDelegate
     userArg: PObject
 
@@ -116,8 +116,8 @@ proc assertReply(received: TaintedString, expected: openarray[string]) =
                      [expected.join("' or '"), received.string])
 
 proc createJob(ftp: var TFTPClient,
-                 prc: proc (ftp: var TFTPClient, async: bool): bool,
-                 cmd: FTPJobType) =
+               prc: proc (ftp: var TFTPClient, async: bool): bool {.nimcall.},
+               cmd: FTPJobType) =
   if ftp.jobInProgress:
     raise newException(EFTP, "Unable to do two jobs at once.")
   ftp.jobInProgress = true

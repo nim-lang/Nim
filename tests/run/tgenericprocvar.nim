@@ -18,7 +18,7 @@ threadProcWrapper[int]()
 threadProcWrapper[bool]()
 
 type
-  TFilterProc[T,D] = proc (item: T, env:D): bool
+  TFilterProc[T,D] = proc (item: T, env:D): bool {.nimcall.}
 
 proc filter[T,D](data: seq[T], env:D, pred: TFilterProc[T,D]): seq[T] =
   result = @[]

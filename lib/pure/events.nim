@@ -36,7 +36,7 @@
 
 type
   TEventArgs* = object of TObject ## Base object for event arguments that are passed to callback functions.
-  TEventHandler* = tuple[name: string, handlers: seq[proc(e:TEventArgs)]] ## An eventhandler for an event.
+  TEventHandler* = tuple[name: string, handlers: seq[proc(e:TEventArgs) {.closure.}]] ## An eventhandler for an event.
 
 type
   TEventEmitter* = object {.pure, final.} ## An object that fires events and holds event handlers for an object.

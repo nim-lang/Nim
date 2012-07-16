@@ -11,7 +11,7 @@ proc ReturnT[T](x: T): T =
 proc nothing(x, y: void): void =
   echo "ha"
 
-proc callProc[T](p: proc (x: T), x: T) =
+proc callProc[T](p: proc (x: T) {.nimcall.}, x: T) =
   when T is void: 
     p()
   else:

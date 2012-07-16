@@ -1032,7 +1032,7 @@ proc identVis(p: var TParser): PNode =
   getTok(p)
 
 type 
-  TSymbolParser = proc (p: var TParser): PNode
+  TSymbolParser = proc (p: var TParser): PNode {.nimcall.}
 
 proc rawIdent(p: var TParser): PNode = 
   result = createIdentNodeP(p.tok.ident, p)

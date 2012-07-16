@@ -11,7 +11,7 @@ import
   cairowin32, cairoxlib,
   gl, glut, glu, glx, glext, wingl,
   lua, lualib, lauxlib, mysql, sqlite3, db_mongo, md5, asyncio, mimetypes,
-  cookies, events, ftpclient
+  cookies, events, ftpclient, scgi, irc
   
 
 writeln(stdout, "test compilation of binding modules")

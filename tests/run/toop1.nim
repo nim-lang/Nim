@@ -7,7 +7,7 @@ import macros
 
 type
   TFigure = object of TObject    # abstract base class:
-    draw: proc (my: var TFigure) # concrete classes implement this proc
+    draw: proc (my: var TFigure) {.nimcall.} # concrete classes implement this
   
 proc init(f: var TFigure) = 
   f.draw = nil
@@ -21,7 +21,7 @@ proc drawCircle(my: var TCircle) = stdout.writeln("o " & $my.radius)
 proc init(my: var TCircle) = 
   init(TFigure(my)) # call base constructor
   my.radius = 5
-  my.draw = cast[proc (my: var TFigure)](drawCircle)
+  my.draw = cast[proc (my: var TFigure) {.nimcall.}](drawCircle)
 
 type
   TRectangle = object of TFigure
@@ -33,7 +33,7 @@ proc init(my: var TRectangle) =
   init(TFigure(my)) # call base constructor
   my.width = 5
   my.height = 10
-  my.draw = cast[proc (my: var TFigure)](drawRectangle)
+  my.draw = cast[proc (my: var TFigure) {.nimcall.}](drawRectangle)
 
 macro `!` (n: expr): stmt = 
   result = newNimNode(nnkCall, n)
