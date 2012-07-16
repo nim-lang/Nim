@@ -3589,7 +3589,7 @@ strings automatically:
 
 Dynlib pragma for import
 ------------------------
-With the `dynlib`:idx: pragma a procedure can be imported from
+With the `dynlib`:idx: pragma a procedure or a variable can be imported from
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
 The non-optional argument has to be the name of the dynamic library:
 

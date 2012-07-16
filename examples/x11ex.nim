@@ -5,7 +5,7 @@ const
   WINDOW_HEIGHT = 300
   
 var
-  width, height: cint
+  width, height: cuint
   display: PDisplay
   screen: cint
   depth: int
@@ -29,10 +29,10 @@ proc create_window =
                             XBlackPixel(display, screen),
                             XWhitePixel(display, screen))
   size_hints.flags = PSize or PMinSize or PMaxSize
-  size_hints.min_width =  width
-  size_hints.max_width =  width
-  size_hints.min_height = height
-  size_hints.max_height = height
+  size_hints.min_width =  width.cint
+  size_hints.max_width =  width.cint
+  size_hints.min_height = height.cint
+  size_hints.max_height = height.cint
   discard XSetStandardProperties(display, win, "Simple Window", "window",
                          0, nil, 0, addr(size_hints))
   discard XSelectInput(display, win, ButtonPressMask or KeyPressMask or 

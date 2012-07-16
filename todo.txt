@@ -1,7 +1,6 @@
 version 0.9.0
 =============
 
-- implement ``dynlib`` for variables
 - implicit deref for parameter matching
 - deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 - test sequence of closures; especially that the GC does not leak for those!

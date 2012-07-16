@@ -112,6 +112,7 @@ Compiler Additions
   via the ``doc2`` command. This new generator uses all of the semantic passes
   of the compiler and can thus generate documentation for symbols hiding in
   macros.
+- The compiler now supports the ``dynlib`` pragma for variables.
 
 
 Language Additions
