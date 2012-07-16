@@ -14,26 +14,26 @@ when not defined(ecmascript):
 
 type
   TEventHandlers* {.importc.} = object of TObject
-    onabort*: proc (event: ref TEvent)
-    onblur*: proc (event: ref TEvent)
-    onchange*: proc (event: ref TEvent)
-    onclick*: proc (event: ref TEvent)
-    ondblclick*: proc (event: ref TEvent)
-    onerror*: proc (event: ref TEvent)
-    onfocus*: proc (event: ref TEvent)
-    onkeydown*: proc (event: ref TEvent)
-    onkeypress*: proc (event: ref TEvent)
-    onkeyup*: proc (event: ref TEvent)
-    onload*: proc (event: ref TEvent)
-    onmousedown*: proc (event: ref TEvent)
-    onmousemove*: proc (event: ref TEvent)
-    onmouseout*: proc (event: ref TEvent)
-    onmouseover*: proc (event: ref TEvent)
-    onmouseup*: proc (event: ref TEvent)
-    onreset*: proc (event: ref TEvent)
-    onselect*: proc (event: ref TEvent)
-    onsubmit*: proc (event: ref TEvent)
-    onunload*: proc (event: ref TEvent)
+    onabort*: proc (event: ref TEvent) {.nimcall.}
+    onblur*: proc (event: ref TEvent) {.nimcall.}
+    onchange*: proc (event: ref TEvent) {.nimcall.}
+    onclick*: proc (event: ref TEvent) {.nimcall.}
+    ondblclick*: proc (event: ref TEvent) {.nimcall.}
+    onerror*: proc (event: ref TEvent) {.nimcall.}
+    onfocus*: proc (event: ref TEvent) {.nimcall.}
+    onkeydown*: proc (event: ref TEvent) {.nimcall.}
+    onkeypress*: proc (event: ref TEvent) {.nimcall.}
+    onkeyup*: proc (event: ref TEvent) {.nimcall.}
+    onload*: proc (event: ref TEvent) {.nimcall.}
+    onmousedown*: proc (event: ref TEvent) {.nimcall.}
+    onmousemove*: proc (event: ref TEvent) {.nimcall.}
+    onmouseout*: proc (event: ref TEvent) {.nimcall.}
+    onmouseover*: proc (event: ref TEvent) {.nimcall.}
+    onmouseup*: proc (event: ref TEvent) {.nimcall.}
+    onreset*: proc (event: ref TEvent) {.nimcall.}
+    onselect*: proc (event: ref TEvent) {.nimcall.}
+    onsubmit*: proc (event: ref TEvent) {.nimcall.}
+    onunload*: proc (event: ref TEvent) {.nimcall.}
 
   TWindow* {.importc.} = object of TEventHandlers
     document*: ref TDocument
@@ -54,36 +54,37 @@ type
     status*: cstring
     toolbar*: ref TToolBar
 
-    alert*: proc (msg: cstring)
-    back*: proc ()
-    blur*: proc ()
-    captureEvents*: proc (eventMask: int)
-    clearInterval*: proc (interval: ref TInterval)
-    clearTimeout*: proc (timeout: ref TTimeOut)
-    close*: proc ()
-    confirm*: proc (msg: cstring): bool
-    disableExternalCapture*: proc ()
-    enableExternalCapture*: proc ()
-    find*: proc (text: cstring, caseSensitive = false, backwards = false)
-    focus*: proc ()
-    forward*: proc ()
-    handleEvent*: proc (e: ref TEvent)
-    home*: proc ()
-    moveBy*: proc (x, y: int)
-    moveTo*: proc (x, y: int)
+    alert*: proc (msg: cstring) {.nimcall.}
+    back*: proc () {.nimcall.}
+    blur*: proc () {.nimcall.}
+    captureEvents*: proc (eventMask: int) {.nimcall.}
+    clearInterval*: proc (interval: ref TInterval) {.nimcall.}
+    clearTimeout*: proc (timeout: ref TTimeOut) {.nimcall.}
+    close*: proc () {.nimcall.}
+    confirm*: proc (msg: cstring): bool {.nimcall.}
+    disableExternalCapture*: proc () {.nimcall.}
+    enableExternalCapture*: proc () {.nimcall.}
+    find*: proc (text: cstring, caseSensitive = false, 
+                 backwards = false) {.nimcall.}
+    focus*: proc () {.nimcall.}
+    forward*: proc () {.nimcall.}
+    handleEvent*: proc (e: ref TEvent) {.nimcall.}
+    home*: proc () {.nimcall.}
+    moveBy*: proc (x, y: int) {.nimcall.}
+    moveTo*: proc (x, y: int) {.nimcall.}
     open*: proc (uri, windowname: cstring,
-                 properties: cstring = nil): ref TWindow
-    print*: proc ()
-    prompt*: proc (text, default: cstring): cstring
-    releaseEvents*: proc (eventMask: int)
-    resizeBy*: proc (x, y: int)
-    resizeTo*: proc (x, y: int)
-    routeEvent*: proc (event: ref TEvent)
-    scrollBy*: proc (x, y: int)
-    scrollTo*: proc (x, y: int)
-    setInterval*: proc (code: cstring, pause: int): ref TInterval
-    setTimeout*: proc (code: cstring, pause: int): ref TTimeOut
-    stop*: proc ()
+                 properties: cstring = nil): ref TWindow {.nimcall.}
+    print*: proc () {.nimcall.}
+    prompt*: proc (text, default: cstring): cstring {.nimcall.}
+    releaseEvents*: proc (eventMask: int) {.nimcall.}
+    resizeBy*: proc (x, y: int) {.nimcall.}
+    resizeTo*: proc (x, y: int) {.nimcall.}
+    routeEvent*: proc (event: ref TEvent) {.nimcall.}
+    scrollBy*: proc (x, y: int) {.nimcall.}
+    scrollTo*: proc (x, y: int) {.nimcall.}
+    setInterval*: proc (code: cstring, pause: int): ref TInterval {.nimcall.}
+    setTimeout*: proc (code: cstring, pause: int): ref TTimeOut {.nimcall.}
+    stop*: proc () {.nimcall.}
     frames*: seq[TFrame]
 
   TFrame* {.importc.} = object of TWindow
@@ -101,20 +102,20 @@ type
     title*: cstring
     URL*: cstring
     vlinkColor*: cstring
-    captureEvents*: proc (eventMask: int)
-    createAttribute*: proc (identifier: cstring): ref TNode
-    createElement*: proc (identifier: cstring): ref TNode
-    createTextNode*: proc (identifier: cstring): ref TNode
-    getElementById*: proc (id: cstring): ref TNode
-    getElementsByName*: proc (name: cstring): seq[ref TNode]
-    getElementsByTagName*: proc (name: cstring): seq[ref TNode]
-    getSelection*: proc (): cstring
-    handleEvent*: proc (event: ref TEvent)
-    open*: proc ()
-    releaseEvents*: proc (eventMask: int)
-    routeEvent*: proc (event: ref TEvent)
-    write*: proc (text: cstring)
-    writeln*: proc (text: cstring)
+    captureEvents*: proc (eventMask: int) {.nimcall.}
+    createAttribute*: proc (identifier: cstring): ref TNode {.nimcall.}
+    createElement*: proc (identifier: cstring): ref TNode {.nimcall.}
+    createTextNode*: proc (identifier: cstring): ref TNode {.nimcall.}
+    getElementById*: proc (id: cstring): ref TNode {.nimcall.}
+    getElementsByName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getSelection*: proc (): cstring {.nimcall.}
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    open*: proc () {.nimcall.}
+    releaseEvents*: proc (eventMask: int) {.nimcall.}
+    routeEvent*: proc (event: ref TEvent) {.nimcall.}
+    write*: proc (text: cstring) {.nimcall.}
+    writeln*: proc (text: cstring) {.nimcall.}
     anchors*: seq[ref TAnchor]
     forms*: seq[ref TForm]
     images*: seq[ref TImage]
@@ -137,8 +138,8 @@ type
     width*: int
     `type`*: cstring
     vspace*: int
-    play*: proc ()
-    stop*: proc ()
+    play*: proc () {.nimcall.}
+    stop*: proc () {.nimcall.}
 
   TAnchor* {.importc.} = object of TObject
     name*: cstring
@@ -157,11 +158,11 @@ type
     readOnly*: bool
     `type`*: cstring
     value*: cstring
-    blur*: proc ()
-    click*: proc ()
-    focus*: proc ()
-    handleEvent*: proc (event: ref TEvent)
-    select*: proc ()
+    blur*: proc () {.nimcall.}
+    click*: proc () {.nimcall.}
+    focus*: proc () {.nimcall.}
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    select*: proc () {.nimcall.}
     options*: seq[ref TOption]
 
   TOption* {.importc.} = object of TObject
@@ -177,9 +178,9 @@ type
     `method`*: cstring
     name*: cstring
     target*: cstring
-    handleEvent*: proc (event: ref TEvent)
-    reset*: proc ()
-    submit*: proc ()
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    reset*: proc () {.nimcall.}
+    submit*: proc () {.nimcall.}
     elements*: seq[ref TElement]
 
   TImage* {.importc.} = object of TEventHandlers
@@ -192,7 +193,7 @@ type
     src*: cstring
     vspace*: int
     width*: int
-    handleEvent*: proc (event: ref TEvent)
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
 
   TNodeType* = enum
     ElementNode = 1,
@@ -219,24 +220,24 @@ type
     nodeValue*: cstring
     parentNode*: ref TNode
     previousSibling*: ref TNode
-    appendChild*: proc (child: ref TNode)
-    appendData*: proc (data: cstring)
-    cloneNode*: proc (copyContent: bool)
-    deleteData*: proc (start, len: int)
-    getAttribute*: proc (attr: cstring): cstring
-    getAttributeNode*: proc (attr: cstring): ref TNode
-    getElementsByTagName*: proc (): seq[ref TNode]
-    hasChildNodes*: proc (): bool
+    appendChild*: proc (child: ref TNode) {.nimcall.}
+    appendData*: proc (data: cstring) {.nimcall.}
+    cloneNode*: proc (copyContent: bool) {.nimcall.}
+    deleteData*: proc (start, len: int) {.nimcall.}
+    getAttribute*: proc (attr: cstring): cstring {.nimcall.}
+    getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
+    getElementsByTagName*: proc (): seq[ref TNode] {.nimcall.}
+    hasChildNodes*: proc (): bool {.nimcall.}
     innerHTML*: cstring
-    insertBefore*: proc (newNode, before: ref TNode)
-    insertData*: proc (position: int, data: cstring)
-    removeAttribute*: proc (attr: cstring)
-    removeAttributeNode*: proc (attr: ref TNode)
-    removeChild*: proc (child: ref TNode)
-    replaceChild*: proc (newNode, oldNode: ref TNode)
-    replaceData*: proc (start, len: int, text: cstring)
-    setAttribute*: proc (name, value: cstring)
-    setAttributeNode*: proc (attr: ref TNode)
+    insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
+    insertData*: proc (position: int, data: cstring) {.nimcall.}
+    removeAttribute*: proc (attr: cstring) {.nimcall.}
+    removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
+    removeChild*: proc (child: ref TNode) {.nimcall.}
+    replaceChild*: proc (newNode, oldNode: ref TNode) {.nimcall.}
+    replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
+    setAttribute*: proc (name, value: cstring) {.nimcall.}
+    setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     style*: ref TStyle
 
   TStyle* {.importc.} = object of TObject
@@ -329,9 +330,9 @@ type
     width*: cstring
     wordSpacing*: cstring
     zIndex*: int
-    getAttribute*: proc (attr: cstring, caseSensitive=false): cstring
-    removeAttribute*: proc (attr: cstring, caseSensitive=false)
-    setAttribute*: proc (attr, value: cstring, caseSensitive=false)
+    getAttribute*: proc (attr: cstring, caseSensitive=false): cstring {.nimcall.}
+    removeAttribute*: proc (attr: cstring, caseSensitive=false) {.nimcall.}
+    setAttribute*: proc (attr, value: cstring, caseSensitive=false) {.nimcall.}
 
   TEvent* {.importc.} = object of TObject
     altKey*, ctrlKey*, shiftKey*: bool
@@ -380,14 +381,14 @@ type
     port*: cstring
     protocol*: cstring
     search*: cstring
-    reload*: proc ()
-    replace*: proc (s: cstring)
+    reload*: proc () {.nimcall.}
+    replace*: proc (s: cstring) {.nimcall.}
 
   THistory* {.importc.} = object of TObject
     length*: int
-    back*: proc ()
-    forward*: proc ()
-    go*: proc (pagesToJump: int)
+    back*: proc () {.nimcall.}
+    forward*: proc () {.nimcall.}
+    go*: proc (pagesToJump: int) {.nimcall.}
 
   TNavigator* {.importc.} = object of TObject
     appCodeName*: cstring
@@ -397,7 +398,7 @@ type
     language*: cstring
     platform*: cstring
     userAgent*: cstring
-    javaEnabled*: proc (): bool
+    javaEnabled*: proc (): bool {.nimcall.}
     mimeTypes*: seq[ref TMimeType]
 
   TPlugin* {.importc.} = object of TObject

@@ -398,7 +398,7 @@ type
     mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, 
     mLeU, mLtU, mLeU64, mLtU64, 
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef, 
-    mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI, 
+    mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
     mUnaryMinusI64, mAbsI, mAbsI64, mNot, 
     mUnaryPlusI, mBitnotI, mUnaryPlusI64, 
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64, 

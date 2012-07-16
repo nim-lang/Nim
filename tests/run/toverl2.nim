@@ -16,7 +16,7 @@ iterator toverl2(x: int): int =
     inc(res)
 
 var
-  pp: proc (x: bool): string = toverl2
+  pp: proc (x: bool): string {.nimcall.} = toverl2
 
 stdout.write(pp(true))
 

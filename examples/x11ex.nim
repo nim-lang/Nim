@@ -51,7 +51,7 @@ proc process_event =
   case int(xev.theType)
   of KeyPress:
     key = XLookupKeysym(cast[ptr TXKeyEvent](addr(xev)), 0)
-    if key != 0:
+    if key.int != 0:
       echo("keyboard event")
   of ButtonPressMask, PointerMotionMask:
     Echo("Mouse event")

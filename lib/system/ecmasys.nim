@@ -247,14 +247,14 @@ proc eqStrings(a, b: string): bool {.noStackFrame, compilerProc.} =
 
 type
   TDocument {.importc.} = object of TObject
-    write: proc (text: cstring)
-    writeln: proc (text: cstring)
-    createAttribute: proc (identifier: cstring): ref TNode
-    createElement: proc (identifier: cstring): ref TNode
-    createTextNode: proc (identifier: cstring): ref TNode
-    getElementById: proc (id: cstring): ref TNode
-    getElementsByName: proc (name: cstring): seq[ref TNode]
-    getElementsByTagName: proc (name: cstring): seq[ref TNode]
+    write: proc (text: cstring) {.nimcall.}
+    writeln: proc (text: cstring) {.nimcall.}
+    createAttribute: proc (identifier: cstring): ref TNode {.nimcall.}
+    createElement: proc (identifier: cstring): ref TNode {.nimcall.}
+    createTextNode: proc (identifier: cstring): ref TNode {.nimcall.}
+    getElementById: proc (id: cstring): ref TNode {.nimcall.}
+    getElementsByName: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getElementsByTagName: proc (name: cstring): seq[ref TNode] {.nimcall.}
 
   TNodeType* = enum
     ElementNode = 1,
@@ -281,23 +281,23 @@ type
     nodeValue*: cstring
     parentNode*: ref TNode
     previousSibling*: ref TNode
-    appendChild*: proc (child: ref TNode)
-    appendData*: proc (data: cstring)
-    cloneNode*: proc (copyContent: bool)
-    deleteData*: proc (start, len: int)
-    getAttribute*: proc (attr: cstring): cstring
-    getAttributeNode*: proc (attr: cstring): ref TNode
-    getElementsByTagName*: proc (): seq[ref TNode]
-    hasChildNodes*: proc (): bool
-    insertBefore*: proc (newNode, before: ref TNode)
-    insertData*: proc (position: int, data: cstring)
-    removeAttribute*: proc (attr: cstring)
-    removeAttributeNode*: proc (attr: ref TNode)
-    removeChild*: proc (child: ref TNode)
-    replaceChild*: proc (newNode, oldNode: ref TNode)
-    replaceData*: proc (start, len: int, text: cstring)
-    setAttribute*: proc (name, value: cstring)
-    setAttributeNode*: proc (attr: ref TNode)
+    appendChild*: proc (child: ref TNode) {.nimcall.}
+    appendData*: proc (data: cstring) {.nimcall.}
+    cloneNode*: proc (copyContent: bool) {.nimcall.}
+    deleteData*: proc (start, len: int) {.nimcall.}
+    getAttribute*: proc (attr: cstring): cstring {.nimcall.}
+    getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
+    getElementsByTagName*: proc (): seq[ref TNode] {.nimcall.}
+    hasChildNodes*: proc (): bool {.nimcall.}
+    insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
+    insertData*: proc (position: int, data: cstring) {.nimcall.}
+    removeAttribute*: proc (attr: cstring) {.nimcall.}
+    removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
+    removeChild*: proc (child: ref TNode) {.nimcall.}
+    replaceChild*: proc (newNode, oldNode: ref TNode) {.nimcall.}
+    replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
+    setAttribute*: proc (name, value: cstring) {.nimcall.}
+    setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     
 when defined(nodejs):
   proc ewriteln(x: cstring) = log(x)

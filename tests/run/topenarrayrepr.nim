@@ -3,7 +3,7 @@ discard """
   output: "5 - [1]"
 """
 type
-  TProc = proc (n: int, m: openarray[int64])
+  TProc = proc (n: int, m: openarray[int64]) {.nimcall.}
 
 proc Foo(x: int, P: TProc) =
   P(x, [ 1'i64 ])
