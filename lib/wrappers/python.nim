@@ -60,12 +60,14 @@ import
 
 
 when defined(windows): 
-  const dllname = "python(26|25|24|23|22|21|20|16|15).dll"
+  const dllname = "python(27|26|25|24|23|22|21|20|16|15).dll"
 elif defined(macosx):
-  const dllname = "libpython(2.6|2.5|2.4|2.3|2.2|2.1|2.0|1.6|1.5).dylib"
+  const dllname = "libpython(2.7|2.6|2.5|2.4|2.3|2.2|2.1|2.0|1.6|1.5).dylib"
 else: 
   const dllver = ".1"
-  const dllname = "libpython(2.6|2.5|2.4|2.3|2.2|2.1|2.0|1.6|1.5).so" & dllver
+  const dllname = "libpython(2.7|2.6|2.5|2.4|2.3|2.2|2.1|2.0|1.6|1.5).so" & 
+                  dllver
+
   
 const 
   PYT_METHOD_BUFFER_INCREASE* = 10
@@ -1545,26 +1547,28 @@ proc init(lib: TLibHandle) =
   PyEnum_Type = cast[PPyTypeObject](symAddr(lib, "PyEnum_Type"))
 
 # Unfortunately we have to duplicate the loading mechanism here, because Nimrod
-# does not support variables from dynamic libraries. Well designed API's don't
-# require this anyway. Python is an exception.
+# used to not support variables from dynamic libraries. Well designed API's
+# don't require this anyway. Python is an exception.
 
 var
   lib: TLibHandle
 
-when defined(windows): 
+when defined(windows):
   const
-    LibNames = ["python26.dll", "python25.dll", 
-      "python24.dll", "python23.dll", "python22.dll", "python21.dll", 
+    LibNames = ["python27.dll", "python26.dll", "python25.dll",
+      "python24.dll", "python23.dll", "python22.dll", "python21.dll",
       "python20.dll", "python16.dll", "python15.dll"]
 elif defined(macosx):
   const
-    LibNames = ["libpython2.6.dylib", "libpython2.5.dylib", 
-      "libpython2.4.dylib", "libpython2.3.dylib", "libpython2.2.dylib", 
-      "libpython2.1.dylib", "libpython2.0.dylib",
+    LibNames = ["libpython2.7.dylib", "libpython2.6.dylib",
+      "libpython2.5.dylib", "libpython2.4.dylib", "libpython2.3.dylib", 
+      "libpython2.2.dylib", "libpython2.1.dylib", "libpython2.0.dylib",
       "libpython1.6.dylib", "libpython1.5.dylib"]
-else: 
+else:
   const
-    LibNames = ["libpython2.6.so" & dllver, 
+    LibNames = [
+      "libpython2.7.so" & dllver,
+      "libpython2.6.so" & dllver, 
       "libpython2.5.so" & dllver, 
       "libpython2.4.so" & dllver, 
       "libpython2.3.so" & dllver, 

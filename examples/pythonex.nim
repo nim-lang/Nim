@@ -9,4 +9,3 @@ Py_Initialize()
 discard PyRun_SimpleString("from time import time,ctime\L" &
                            "print 'Today is',ctime(time())\L")
 Py_Finalize()
-
