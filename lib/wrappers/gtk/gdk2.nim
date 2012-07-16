@@ -291,7 +291,7 @@ type
   PEvent* = ptr TEvent
   TEventFunc* = proc (event: PEvent, data: gpointer){.cdecl.}
   PXEvent* = ptr TXEvent
-  TXEvent* = proc ()
+  TXEvent* = proc () {.cdecl.}
   PFilterReturn* = ptr TFilterReturn
   TFilterReturn* = enum 
     FILTER_CONTINUE, FILTER_TRANSLATE, FILTER_REMOVE
@@ -775,7 +775,7 @@ type
   PWindowObjectClass* = ptr TWindowObjectClass
   TWindowObjectClass* = object of TDrawableClass
   window_invalidate_maybe_recurse_child_func* = proc (para1: PWindow, 
-      para2: gpointer): gboolean
+      para2: gpointer): gboolean {.cdecl.}
 
 proc TYPE_COLORMAP*(): GType
 proc COLORMAP*(anObject: pointer): PColormap

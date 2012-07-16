@@ -1164,7 +1164,7 @@ proc newCommentStmt(p: var TParser): PNode =
   result.info.line = result.info.line - int16(1)
 
 type 
-  TDefParser = proc (p: var TParser): PNode
+  TDefParser = proc (p: var TParser): PNode {.nimcall.}
 
 proc parseSection(p: var TParser, kind: TNodeKind, 
                   defparser: TDefParser): PNode = 

@@ -104,7 +104,7 @@ type
   Tfree_callback* = proc (p: pointer){.cdecl.}
   Trealloc_callback* = proc (p: pointer, size: int): pointer{.cdecl.}
   Tstrdup_callback* = proc (str: cstring): cstring{.cdecl.}
-  Tcalloc_callback* = proc (nmemb: int, size: int): pointer
+  Tcalloc_callback* = proc (nmemb: int, size: int): pointer{.noconv.}
   Tinfotype* = enum 
     INFO_TEXT = 0, INFO_HEADER_IN, INFO_HEADER_OUT, INFO_DATA_IN, INFO_DATA_OUT, 
     INFO_SSL_DATA_IN, INFO_SSL_DATA_OUT, INFO_END

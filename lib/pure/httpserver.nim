@@ -347,7 +347,8 @@ proc close*(s: TServer) =
   ## closes the server (and the socket the server uses).
   close(s.socket)
 
-proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
+proc run*(handleRequest: proc (client: TSocket, 
+                               path, query: string): bool {.closure.},
           port = TPort(80)) =
   ## encapsulates the server object and main loop
   var s: TServer

@@ -56,7 +56,7 @@ const
   onlySafeCode = true
 
 proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
-              cmp: proc (x, y: T): int, order: TSortOrder) =
+              cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
   template `<-` (a, b: expr) = 
     when false:
       a = b
@@ -102,7 +102,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
 proc sort*[T](a: var openArray[T],
-              cmp: proc (x, y: T): int,
+              cmp: proc (x, y: T): int {.closure.},
               order = TSortOrder.Ascending) =
   ## Default Nimrod sort. The sorting is guaranteed to be stable and 
   ## the worst case is guaranteed to be O(n log n).

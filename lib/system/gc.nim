@@ -45,7 +45,7 @@ type
   TWalkOp = enum
     waZctDecRef, waPush, waCycleDecRef
 
-  TFinalizer {.compilerproc.} = proc (self: pointer)
+  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 

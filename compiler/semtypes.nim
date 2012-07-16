@@ -566,7 +566,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       block addImplicitGeneric:
         # is this a bindOnce type class already present in the param list?
         for i in countup(0, genericParams.len - 1):
-          if genericParams.sons[i].sym.name == paramTypId:
+          if genericParams.sons[i].sym.name.id == paramTypId.id:
             result = genericParams.sons[i].typ
             break addImplicitGeneric
 
@@ -800,7 +800,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
-  of nkProcTy: 
+  of nkProcTy:
     if n.sonsLen == 0: return newConstraint(c, tyProc)
     checkSonsLen(n, 2)
     openScope(c.tab)
@@ -808,7 +808,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     # dummy symbol for `pragma`:
     var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
-    pragma(c, s, n.sons[1], procTypePragmas)
+    if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
+      if result.callConv == ccDefault:
+        #result.callConv = ccClosure
+        Message(n.info, warnImplicitClosure, renderTree(n))
+    else:
+      pragma(c, s, n.sons[1], procTypePragmas)
     closeScope(c.tab)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ

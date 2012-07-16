@@ -457,7 +457,9 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     case a.kind
     of tyPointer: result = isEqual
     of tyNil: result = isSubtype
-    of tyPtr, tyProc, tyCString: result = isConvertible
+    of tyProc:
+      if a.callConv != ccClosure: result = isConvertible
+    of tyPtr, tyCString: result = isConvertible
     else: nil
   of tyString: 
     case a.kind

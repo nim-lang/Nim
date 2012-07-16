@@ -1177,6 +1177,17 @@ that expects a proc of the calling convention ``closure``.
 
 Nimrod supports these `calling conventions`:idx:\:
 
+`nimcall`:idx:
+    is the default convention used for a Nimrod **proc**. It is the
+    same as ``fastcall``, but only for C compilers that support ``fastcall``.
+
+`closure`:idx:
+    is the default calling convention for a **procedural type** that lacks
+    any pragma annotations. It indicates that the procedure has a hidden
+    implicit parameter (an *environment*). Proc vars that have the calling
+    convention ``closure`` take up two machine words: One for the proc pointer
+    and another one for the pointer to implicitely passed environment.
+
 `stdcall`:idx:
     This the stdcall convention as specified by Microsoft. The generated C
     procedure is declared with the ``__stdcall`` keyword.
@@ -1202,16 +1213,6 @@ Nimrod supports these `calling conventions`:idx:\:
 `fastcall`:idx:
     Fastcall means different things to different C compilers. One gets whatever
     the C ``__fastcall`` means.
-
-`nimcall`:idx:
-    Nimcall is the default convention used for Nimrod procedures. It is the
-    same as ``fastcall``, but only for C compilers that support ``fastcall``.
-
-`closure`:idx:
-    indicates that the procedure has a hidden implicit parameter
-    (an *environment*). Proc vars that have the calling convention ``closure``
-    take up two machine words: One for the proc pointer and another one for
-    the pointer to implicitely passed environment.
 
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for

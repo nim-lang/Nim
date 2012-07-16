@@ -419,7 +419,7 @@ type
     pad32*: TFunction
 
   TEventListener* = proc (para1: PObject){.cdecl.}
-  TEventListenerInitProc* = proc ()
+  TEventListenerInitProc* = proc (){.cdecl.}
   TEventListenerInit* = proc (para1: TEventListenerInitProc){.cdecl.}
   PKeyEventStruct* = ptr TKeyEventStruct
   TKeyEventStruct*{.final, pure.} = object 

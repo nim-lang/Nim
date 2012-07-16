@@ -255,9 +255,9 @@ type
                           ## that **must not** be part of a message! Use
                           ## a ``TThreadId`` for that.
     when TArg is void:
-      dataFn: proc ()
+      dataFn: proc () {.nimcall.}
     else:
-      dataFn: proc (m: TArg)
+      dataFn: proc (m: TArg) {.nimcall.}
       data: TArg
   TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
                                        ## a pointer as a thread ID.

@@ -1279,7 +1279,6 @@ type                          # This is the system-independent thread info struc
   TByteArray* = array[0..32767, int8]
   PWordArray* = ptr TWordArray
   TWordArray* = array[0..16383, int16] # Generic procedure pointer
-  TProcedure* = proc ()
 
 type TEventSeq = set[TEventKind]
 template evconv(procName: expr, ptrName: typeDesc, assertions: TEventSeq): stmt {.immediate.} =

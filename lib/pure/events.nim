@@ -11,7 +11,8 @@
 ##
 ## This module implements an event system that is not dependant on external
 ## graphical toolkits. It was originally called ``NimEE`` because 
-## it was inspired by Python's PyEE module. There are two ways you can use events: one is a python-inspired way; the other is more of a C-style way.
+## it was inspired by Python's PyEE module. There are two ways you can use
+## events: one is a python-inspired way; the other is more of a C-style way.
 ##
 ## .. code-block:: Nimrod
 ##    var ee = initEventEmitter()
@@ -44,22 +45,21 @@ type
     
 proc initEventHandler*(name: string): TEventHandler =
   ## Initializes an EventHandler with the specified name and returns it.
-  #new(result)
   result.handlers = @[]
   result.name = name
 
-proc addHandler*(handler: var TEventHandler, func: proc(e: TEventArgs)) =
+proc addHandler*(handler: var TEventHandler, func: proc(e: TEventArgs) {.closure.}) =
   ## Adds the callback to the specified event handler.
   handler.handlers.add(func)
 
-proc removeHandler*(handler: var TEventHandler, func: proc(e: TEventArgs)) =
+proc removeHandler*(handler: var TEventHandler, func: proc(e: TEventArgs) {.closure.}) =
   ## Removes the callback from the specified event handler.
   for i in countup(0, len(handler.handlers) -1):
     if func == handler.handlers[i]:
       handler.handlers.del(i)
       break
     
-proc containsHandler*(handler: var TEventHandler, func: proc(e: TEventArgs)): bool =
+proc containsHandler*(handler: var TEventHandler, func: proc(e: TEventArgs) {.closure.}): bool =
   ## Checks if a callback is registered to this event handler.
   return handler.handlers.contains(func)
 
@@ -73,7 +73,7 @@ proc getEventhandler(emitter: var TEventEmitter, event: string): int =
     if emitter.s[k].name == event: return k
   return -1
 
-proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs)) =
+proc on*(emitter: var TEventEmitter, event: string, func: proc(e: TEventArgs) {.closure.}) =
   ## Assigns a event handler with the specified callback. If the event
   ## doesn't exist, it will be created.
   var i = getEventHandler(emitter, event)
@@ -99,5 +99,4 @@ proc emit*(emitter: var TEventEmitter, event: string, args: TEventArgs) =
 
 proc initEventEmitter*(): TEventEmitter =
   ## Creates and returns a new EventEmitter.
-  #new(result)
   result.s = @[]
