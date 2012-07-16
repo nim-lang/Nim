@@ -80,8 +80,10 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
         genTraverseProc(c, ropef("$1.Field$2", accessor, i.toRope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
-  else: 
-    # no marker procs for closures yet
+  of tyProc:
+    if typ.callConv == ccClosure:
+      lineCg(p, cpsStmts, c.visitorFrmt, ropef("$1.ClEnv", accessor))
+  else:
     nil
 
 proc genTraverseProcSeq(c: var TTraversalClosure, accessor: PRope, typ: PType) =

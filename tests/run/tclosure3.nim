@@ -1,7 +1,6 @@
 discard """
   file: "tclosure3.nim"
   output: "success"
-  disabled: true
 """
 
 proc main =
