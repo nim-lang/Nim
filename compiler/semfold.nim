@@ -604,9 +604,15 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = magicCall(m, n)
       of mIs:
         # BUGFIX: don't evaluate this too early: ``T is void``
-        if not containsGenericType(n[1].typ) and 
-           not containsGenericType(n[2].typ):
-          result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
+        if not containsGenericType(n[1].typ):
+          if n[2].kind in {nkStrLit..nkTripleStrLit}:
+            case n[2].strVal.normalize
+            of "closure":
+              let t = skipTypes(n[1].typ, abstractRange)
+              result = newIntNodeT(ord(t.kind == tyProc and
+                                       t.callConv == ccClosure), n)
+          elif not containsGenericType(n[2].typ):
+            result = newIntNodeT(ord(sameType(n[1].typ, n[2].typ)), n)
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
       of mConStrStr:

@@ -262,11 +262,12 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc semIs(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3:
-    var a = semTypeNode(c, n[1], nil)
-    var b = semTypeNode(c, n[2], nil)
     n.typ = getSysType(tyBool)
+    let a = semTypeNode(c, n[1], nil)
     n.sons[1] = newNodeIT(nkType, n[1].info, a)
-    n.sons[2] = newNodeIT(nkType, n[2].info, b)
+    if n[2].kind notin {nkStrLit..nkTripleStrLit}:
+      let b = semTypeNode(c, n[2], nil)
+      n.sons[2] = newNodeIT(nkType, n[2].info, b)
     result = n
   else:
     GlobalError(n.info, errXExpectsTwoArguments, "is")

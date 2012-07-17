@@ -900,16 +900,15 @@ proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   ## XXX: This should be pretty much guaranteed to be true
   # by the type traits procs' signatures, but until the
   # code is more mature it doesn't hurt to be extra safe
-  internalAssert n.sons.len >= 2 and
+  internalAssert n.sons.len >= 2 and n.sons[1].kind == nkSym and
                  n.sons[1].sym.typ.kind == tyTypeDesc
   
   let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
-  case n.sons[0].sym.name.s
+  case n.sons[0].sym.name.s.normalize
   of "name":
     result = newStrNode(nkStrLit, typ.typeToString(preferExported))
     result.typ = newType(tyString, context)
     result.info = n.info
-
   else:
     internalAssert false
 
