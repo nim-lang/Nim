@@ -5,8 +5,8 @@ discard """
 import events
 type
   TProperty*[T] = object of TObject
-    getProc: proc(property: TProperty[T]): T
-    setProc: proc(property: var TProperty[T], value: T)
+    getProc: proc(property: TProperty[T]): T {.nimcall.}
+    setProc: proc(property: var TProperty[T], value: T) {.nimcall.}
     value: T
     ValueChanged*: TEventHandler
     Binders: seq[TProperty[T]]

@@ -6,7 +6,6 @@ version 0.9.0
 
 New pragmas:
 - ``hoist`` pragma for loop hoisting
-- fix & document ``byCopy`` pragma
 - document destructors
 
 - ``borrow`` needs to take type classes into account
@@ -95,6 +94,7 @@ Low priority
 ------------
 
 - change how comments are part of the AST
+- fix & document ``byCopy`` pragma
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
 - implement the "easy" constructors idea

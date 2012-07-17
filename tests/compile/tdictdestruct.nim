@@ -5,7 +5,7 @@ type
     v: TV
   PDict[TK, TV] = ref TDict[TK, TV]
 
-proc fakeNew[T](x: var ref T, destroy: proc (a: ref T)) =
+proc fakeNew[T](x: var ref T, destroy: proc (a: ref T) {.nimcall.}) =
   nil
 
 proc destroyDict[TK, TV](a: PDict[TK, TV]) =

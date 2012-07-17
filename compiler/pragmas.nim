@@ -51,8 +51,7 @@ const
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
-    wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal,
-    wByCopy}
+    wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportcpp, wImportobjc, wError}
   letPragmas* = varPragmas
