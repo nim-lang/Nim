@@ -1,5 +1,5 @@
 
-var funcs: seq[proc (): int] = @[]
+var funcs: seq[proc (): int {.nimcall.}] = @[]
 for i in 0..10:
   funcs.add((proc (): int = return i * i))
 

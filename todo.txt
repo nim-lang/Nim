@@ -1,6 +1,8 @@
 version 0.9.0
 =============
 
+- fix DLLs
+- fix 'bind' for templates
 - implicit deref for parameter matching
 - deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 
@@ -44,6 +46,9 @@ version 0.9.XX
 
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
+- introduce 'callsite' magic and make macros and templates the same
+- better support for macros that rewrite procs
+- macros need access to types and symbols
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
 - implement a warning message for shadowed 'result' variable
@@ -85,8 +90,6 @@ Library
 - suffix trees
 - locale support; i18n module
 - bignums
-
-- pdcurses bindings
 
 
 Low priority
