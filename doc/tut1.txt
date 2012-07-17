@@ -221,6 +221,16 @@ value cannot change:
   let x = "abc" # introduces a new variable `x` and binds a value to it
   x = "xyz"     # Illegal: assignment to `x`
 
+The difference between ``let`` and ``const`` is: ``let`` introduces a variable
+that can not be re-assigned, ``const`` means "enforce compile time evaluation
+and put it into a data section":
+
+.. code-block::
+  const input = readline(stdin) # Error: constant expression expected
+  
+.. code-block::
+  let input = readline(stdin)   # works
+
 
 Control flow statements
 =======================
@@ -356,15 +366,12 @@ Counting down can be achieved as easily (but is less often needed):
   for i in countdown(10, 1):
     echo($i)
 
-Since counting up occurs so often in programs, Nimrod has a special syntax that
-calls the ``countup`` iterator implicitly:
+Since counting up occurs so often in programs, Nimrod also has a ``..`` iterator
+that does the same:
 
 .. code-block:: nimrod
   for i in 1..10:
     ...
-
-The syntax ``for i in 1..10`` is sugar for ``for i in countup(1, 10)``.
-``countdown`` does not have any such sugar.
 
 
 Scopes and the block statement
@@ -387,14 +394,14 @@ statement can be used to open a new block explicitly:
     var x = "hi"
   echo(x) # does not work either
 
-The block's `label` (``myblock`` in the example) is optional.
+The block's *label* (``myblock`` in the example) is optional.
 
 
 Break statement
 ---------------
 A block can be left prematurely with a ``break`` statement. The break statement
-can leave a while, for, or a block statement. It leaves the innermost construct,
-unless a label of a block is given:
+can leave a ``while``, ``for``, or a ``block`` statement. It leaves the 
+innermost construct, unless a label of a block is given:
 
 .. code-block:: nimrod
   block myblock:
@@ -451,9 +458,6 @@ differences:
   
 The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
-
-**Note**: The documentation generator currently always follows the first branch
-of when statements.
 
 **Note**: To comment out a large piece of code, it is often better to use a
 ``when false:`` statement than to use real comments. This way nesting is
@@ -566,7 +570,7 @@ efficient way. If the procedure needs to modify the argument for the
 caller, a ``var`` parameter can be used:
 
 .. code-block:: nimrod
-  proc divmod(a, b: int, res, remainder: var int) =
+  proc divmod(a, b: int; res, remainder: var int) =
     res = a div b        # integer division
     remainder = a mod b  # integer modulo operation
 
@@ -611,7 +615,7 @@ complex data type. Therefore the arguments to a procedure can be named, so
 that it is clear which argument belongs to which parameter:
 
 .. code-block:: nimrod
-  proc createWindow(x, y, width, height: int, title: string,
+  proc createWindow(x, y, width, height: int; title: string;
                     show: bool): Window =
      ...
 
@@ -698,8 +702,8 @@ To define a new operator enclose the operator in "``":
   # now the $ operator also works with myDataType, overloading resolution
   # ensures that $ works for built-in types just like before
 
-The "``" notation can also be used to call an operator just like a procedure
-with a real name:
+The "``" notation can also be used to call an operator just like any other
+procedure:
 
 .. code-block:: nimrod
   if `==`( `+`(3, 4), 7): echo("True")
@@ -728,6 +732,9 @@ Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
 such a `forward declaration`:idx: is simple: just omit the ``=`` and the
 procedure's body.
+
+Later versions of the language may get rid of the need for forward
+declarations.
 
 
 Iterators
@@ -1248,7 +1255,7 @@ Example:
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention. The different calling conventions are
-listed in the `user guide <nimrodc.html>`_.
+listed in the `manual <manual.html>`_.
 
 
 Modules
