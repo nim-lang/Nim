@@ -17,7 +17,6 @@ New pragmas:
   - fix evals.nim with closures
   - implement "closure tuple consists of a single 'ref'" optimization
   - make closure default calling convention for proc types
-  - fix '==' for closures
 
 - document 'do' notation
 - rethink the syntax: distinction between expr and stmt is unfortunate; 

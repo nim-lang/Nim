@@ -489,6 +489,13 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   else:
     putIntoDest(p, d, e.typ, ropef("($1 == $2)", [rdLoc(a), rdLoc(b)]))
 
+proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
+  let t = skipTypes(e.sons[1].typ, abstractRange)
+  if t.kind == tyProc and t.callConv == ccClosure:
+    unaryExpr(p, e, d, "$1.ClPrc == 0")
+  else:
+    unaryExpr(p, e, d, "$1 == 0")
+
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
@@ -1419,7 +1426,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mEqStr: genStrEquals(p, e, d)
   of mLeStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) < 0)")
-  of mIsNil: unaryExpr(p, e, d, "$1 == 0")
+  of mIsNil: genIsNil(p, e, d)
   of mIntToStr: genDollar(p, e, d, "#nimIntToStr($1)")
   of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")

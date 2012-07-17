@@ -67,6 +67,13 @@ proc hash*(x: Pointer): THash {.inline.} =
   else:
     result = (cast[THash](x)) shr 3 # skip the alignment
   
+proc hash*[T: proc](x: T): THash {.inline.} =
+  ## efficient hashing of proc vars; closures are supported too.
+  when T is "closure":
+    result = hash(rawProc(x)) !& hash(rawEnv(x))
+  else:
+    result = hash(pointer(x))
+  
 proc hash*(x: int): THash {.inline.} = 
   ## efficient hashing of integers
   result = x
