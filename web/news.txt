@@ -95,6 +95,8 @@ Changes affecting backwards compatibility
   conversions from ``int`` to ``int32`` are now forbidden.
 - ``system.byte`` is now an alias for ``uint8``; it used to be an alias 
   to ``int8``.
+- ``bind`` expressions in templates are not properly supported anymore. Use
+  the declarative ``bind`` statement instead.
 
 
 Compiler Additions
@@ -136,6 +138,7 @@ Language Additions
   readability: ``proc divmod(a, b: int; resA, resB: var int)``.
 - A semicolon can now be used to have multiple simple statements on a single
   line: ``inc i; inc j``.
+- ``bind`` supports overloaded symbols and operators.
 
 
 2012-02-09 Version 0.8.14 released

@@ -2,7 +2,6 @@ version 0.9.0
 =============
 
 - fix DLLs
-- fix 'bind' for templates
 - implicit deref for parameter matching
 - deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 
@@ -35,7 +34,7 @@ Bugs
   but this can lead to compilation errors
 - bug: the parser is not strict enough with newlines: 'echo "a" echo "b"' 
   compiles
-
+- bug: blocks can "export" an identifier but the CCG generates {} for them ...
 
 version 0.9.XX
 ==============

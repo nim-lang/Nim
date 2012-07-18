@@ -1412,13 +1412,12 @@ proc parseBind(p: var TParser): PNode =
   result = newNodeP(nkBindStmt, p)
   getTok(p)
   optInd(p, result)
-  while p.tok.tokType == tkSymbol: 
-    var a = newIdentNodeP(p.tok.ident, p)
-    getTok(p)
+  while true:
+    var a = qualifiedIdent(p)
     addSon(result, a)
-    if p.tok.tokType != tkComma: break 
+    if p.tok.tokType != tkComma: break
     getTok(p)
-    optInd(p, a)
+    optInd(p, a)  
   expectNl(p)
   
 proc parseStmtPragma(p: var TParser): PNode =

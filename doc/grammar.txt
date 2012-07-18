@@ -137,7 +137,7 @@ staticStmt ::= 'static' ':' stmt
 filename ::= symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
 importStmt ::= 'import' filename (comma filename)*
 includeStmt ::= 'include' filename (comma filename)*
-bindStmt ::= 'bind' IDENT (comma IDENT)*
+bindStmt ::= 'bind' qualifiedIdent (comma qualifiedIdent)*
 fromStmt ::= 'from' filename 'import' symbol (comma symbol)*
 
 pragma ::= '{.' optInd (colonExpr [comma])* optPar ('.}' | '}')
