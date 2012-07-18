@@ -491,35 +491,34 @@ proc libCandidates(s: string, dest: var TStringSeq) =
   else: 
     add(dest, s)
 
-proc loadDynamicLib(m: BModule, lib: PLib) =
-  let g = gNimDat
+proc loadDynamicLib(m: BModule, lib: PLib) = 
   assert(lib != nil)
   if not lib.generated: 
     lib.generated = true
     var tmp = getGlobalTempName()
     assert(lib.name == nil)
     lib.name = tmp # BUGFIX: cgsym has awful side-effects
-    appf(g.s[cfsVars], "static void* $1;$n", [tmp])
+    appf(m.s[cfsVars], "static void* $1;$n", [tmp])
     if lib.path.kind in {nkStrLit..nkTripleStrLit}:
       var s: TStringSeq = @[]
       libCandidates(lib.path.strVal, s)
       var loadlib: PRope = nil
       for i in countup(0, high(s)): 
-        inc(g.labels)
+        inc(m.labels)
         if i > 0: app(loadlib, "||")
-        appcg(g, loadlib, "($1 = #nimLoadLibrary((#NimStringDesc*) &$2))$n", 
-              [tmp, getStrLit(g, s[i])])
-      appcg(g, g.s[cfsDynLibInit], 
+        appcg(m, loadlib, "($1 = #nimLoadLibrary((#NimStringDesc*) &$2))$n", 
+              [tmp, getStrLit(m, s[i])])
+      appcg(m, m.s[cfsDynLibInit], 
             "if (!($1)) #nimLoadLibraryError((#NimStringDesc*) &$2);$n", 
-            [loadlib, getStrLit(g, lib.path.strVal)]) 
+            [loadlib, getStrLit(m, lib.path.strVal)]) 
     else:
-      var p = newProc(nil, g)
+      var p = newProc(nil, m)
       var dest: TLoc
       initLocExpr(p, lib.path, dest)
-      app(g.s[cfsVars], p.s(cpsLocals))
-      app(g.s[cfsDynLibInit], p.s(cpsInit))
-      app(g.s[cfsDynLibInit], p.s(cpsStmts))
-      appcg(g, g.s[cfsDynLibInit], 
+      app(m.s[cfsVars], p.s(cpsLocals))
+      app(m.s[cfsDynLibInit], p.s(cpsInit))
+      app(m.s[cfsDynLibInit], p.s(cpsStmts))
+      appcg(m, m.s[cfsDynLibInit], 
            "if (!($1 = #nimLoadLibrary($2))) #nimLoadLibraryError($2);$n", 
            [tmp, rdLoc(dest)])
       
@@ -532,8 +531,7 @@ proc mangleDynLibProc(sym: PSym): PRope =
   else:
     result = ropef("Dl_$1", [toRope(sym.id)])
   
-proc SymInDynamicLib(m: BModule, sym: PSym) =
-  let g = gNimDat
+proc SymInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
@@ -541,33 +539,28 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
   var tmp = mangleDynLibProc(sym)
   sym.loc.r = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
-  inc(g.labels, 2)
-  appcg(g, g.s[cfsDynLibInit], 
+  inc(m.labels, 2)
+  appcg(m, m.s[cfsDynLibInit], 
       "$1 = ($2) #nimGetProcAddr($3, $4);$n", 
-      [tmp, getTypeDesc(g, sym.typ), 
-      lib.name, cstringLit(g, g.s[cfsDynLibInit], ropeToStr(extname))])
-  appff(g.s[cfsVars], "$2 $1;$n",
-      "$1 = linkonce global $2 zeroinitializer$n",
-      [sym.loc.r, getTypeDesc(g, sym.loc.t)])
-  appf(m.s[cfsVars], "extern $2 $1;$n",
+      [tmp, getTypeDesc(m, sym.typ), 
+      lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
+  appff(m.s[cfsVars], "$2 $1;$n", 
+      "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
-  
-proc VarInDynamicLib(m: BModule, sym: PSym) =
-  let g = gNimDat
+
+proc VarInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
   incl(sym.loc.flags, lfIndirect)
   var tmp = mangleDynLibProc(sym)
   sym.loc.r = tmp             # from now on we only need the internal name
-  inc(g.labels, 2)
-  appcg(g, g.s[cfsDynLibInit], 
+  inc(m.labels, 2)
+  appcg(m, m.s[cfsDynLibInit], 
       "$1 = ($2*) #nimGetProcAddr($3, $4);$n", 
-      [tmp, getTypeDesc(g, sym.typ), 
-      lib.name, cstringLit(g, g.s[cfsDynLibInit], ropeToStr(extname))])
-  appf(g.s[cfsVars], "$2* $1;$n",
-      [sym.loc.r, getTypeDesc(g, sym.loc.t)])
-  appf(m.s[cfsVars], "extern $2* $1;$n",
+      [tmp, getTypeDesc(m, sym.typ), 
+      lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
+  appf(m.s[cfsVars], "$2* $1;$n",
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc SymInDynamicLibPartial(m: BModule, sym: PSym) =
@@ -827,8 +820,8 @@ proc genMainProc(m: BModule) =
   const 
     CommonMainBody =
         "\tnim__datInit();$n" &
-        "$1" &
         "\tsystemInit();$n" &
+        "$1" &
         "$2" &
         "$3"
     PosixNimMain = 
