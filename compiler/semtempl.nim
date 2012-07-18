@@ -50,7 +50,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, owner: PSym,
                            toBind: var TIntSet): PNode = 
   var s: PSym
   case n.kind
-  of nkIdent, nkAccQuoted:
+  of nkIdent:
     result = n
     let s = QualifiedLookUp(c, n, {})
     if s != nil:
@@ -59,6 +59,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, owner: PSym,
         result.info = n.info
       elif Contains(toBind, s.id):
         result = symChoice(c, n, s)
+    
   of nkEmpty, nkSym..nkNilLit:         # atom
     result = n
   of nkBind:
@@ -68,7 +69,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, owner: PSym,
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
-    if n.kind == nkDotExpr:
+    if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = QualifiedLookUp(c, n, {})
       if s != nil and Contains(toBind, s.id):
         return symChoice(c, n, s)
