@@ -13,12 +13,12 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
   var 
     a: PSym
     o: TOverloadIter
-    i: int
-  i = 0
+  var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil: 
     a = nextOverloadIter(o, c, n)
     inc(i)
+    if i > 1: break
   if i <= 1: 
     result = newSymNode(s)
     result.info = n.info
@@ -36,41 +36,45 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
 proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
   for i in 0 .. < n.len:
     var a = n.sons[i]
-    if a.kind == nkIdent:
-      var s = SymtabGet(c.Tab, a.ident)
-      if s != nil:
-        toBind.incl(s.name.id)
-      else:
-        localError(a.info, errUndeclaredIdentifier, a.ident.s)
-    else: 
+    # If 'a' is an overloaded symbol, we use the first symbol as a 'witness'
+    # and use the fact that subsequent lookups will yield the same symbol!
+    # This is currently the case due to the hash table's implementation...
+    let s = QualifiedLookUp(c, a)
+    if s != nil:
+      toBind.incl(s.id)
+    else:
       illFormedAst(a)
   result = newNodeI(nkEmpty, n.info)
 
-proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool, 
+proc resolveTemplateParams(c: PContext, n: PNode, owner: PSym, 
                            toBind: var TIntSet): PNode = 
   var s: PSym
   case n.kind
-  of nkIdent: 
-    if not withinBind and not Contains(toBind, n.ident.id): 
-      s = SymTabLocalGet(c.Tab, n.ident)
-      if s != nil: 
+  of nkIdent, nkAccQuoted:
+    result = n
+    let s = QualifiedLookUp(c, n, {})
+    if s != nil:
+      if s.owner == owner and s.kind == skParam:
         result = newSymNode(s)
         result.info = n.info
-      else: 
-        result = n
-    else: 
-      Incl(toBind, n.ident.id)
-      result = symChoice(c, n, lookup(c, n))
+      elif Contains(toBind, s.id):
+        result = symChoice(c, n, s)
   of nkEmpty, nkSym..nkNilLit:         # atom
     result = n
-  of nkBind: 
-    result = resolveTemplateParams(c, n.sons[0], true, toBind)
+  of nkBind:
+    result = resolveTemplateParams(c, n.sons[0], owner, toBind)
   of nkBindStmt:
     result = semBindStmt(c, n, toBind)
-  else: 
+  else:
+    # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
+    # so we use the generic code for nkDotExpr too
+    if n.kind == nkDotExpr:
+      let s = QualifiedLookUp(c, n, {})
+      if s != nil and Contains(toBind, s.id):
+        return symChoice(c, n, s)
     result = n
     for i in countup(0, sonsLen(n) - 1): 
-      result.sons[i] = resolveTemplateParams(c, n.sons[i], withinBind, toBind)
+      result.sons[i] = resolveTemplateParams(c, n.sons[i], owner, toBind)
   
 proc transformToExpr(n: PNode): PNode = 
   var realStmt: int
@@ -122,7 +126,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
   var toBind = initIntSet()
-  n.sons[bodyPos] = resolveTemplateParams(c, n.sons[bodyPos], false, toBind)
+  n.sons[bodyPos] = resolveTemplateParams(c, n.sons[bodyPos], s, toBind)
   if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
     n.sons[bodyPos] = transformToExpr(n.sons[bodyPos]) 
     # only parameters are resolved, no type checking is performed
