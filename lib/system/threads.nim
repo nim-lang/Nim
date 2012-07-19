@@ -317,7 +317,8 @@ proc joinThreads*[TArg](t: openArray[TThread[TArg]]) =
     var a: array[0..255, TSysThread]
     sysAssert a.len >= t.len, "a.len >= t.len"
     for i in 0..t.high: a[i] = t[i].sys
-    discard WaitForMultipleObjects(t.len, cast[ptr TSysThread](addr(a)), 1, -1)
+    discard WaitForMultipleObjects(t.len.int32, 
+                                   cast[ptr TSysThread](addr(a)), 1, -1)
   else:
     for i in 0..t.high: joinThread(t[i])
 
