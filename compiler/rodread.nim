@@ -407,7 +407,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   if r.s[r.pos] == '%': 
     inc(r.pos)
     result.position = decodeVInt(r.s, r.pos)
-  elif result.kind notin routineKinds:
+  elif result.kind notin routineKinds + {skModule}:
     result.position = 0
     # this may have been misused as reader index! But we still
     # need it for routines as the body is loaded lazily.

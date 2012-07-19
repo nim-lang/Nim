@@ -942,9 +942,9 @@ proc genInitCode(m: BModule) =
   app(prc, genSectionStart(cpsStmts))
   app(prc, m.preInitProc.s(cpsStmts))
   app(prc, m.initProc.s(cpsStmts))
+  app(prc, genSectionEnd(cpsStmts))
   if optStackTrace in m.initProc.options and not m.PreventStackTrace:
     app(prc, deinitFrame(m.initProc))
-  app(prc, genSectionEnd(cpsStmts))
   app(prc, deinitGCFrame(m.initProc))
   appf(prc, "}$N$N")
 
