@@ -23,14 +23,10 @@ proc delNimCache() =
   except EOS:
     echo "[Warning] could not delete: ", nimcacheDir
     
-proc plusCache(options: string): string = return options &
-  " --symbolFiles:on --nimcache:" & nimcacheDir
-
 proc runRodFiles(r: var TResults, options: string) =
   template test(filename: expr): stmt =
     runSingleTest(r, rodfilesDir / filename, options)
   
-  var options = options.plusCache
   delNimCache()
   
   # test basic recompilation scheme:
@@ -64,7 +60,6 @@ proc compileRodFiles(r: var TResults, options: string) =
   template test(filename: expr): stmt =
     compileSingleTest(r, rodfilesDir / filename, options)
     
-  var options = options.plusCache
   delNimCache()
   # test DLL interfacing:
   test "gtkex1"

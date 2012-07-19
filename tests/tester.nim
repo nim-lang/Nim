@@ -17,7 +17,9 @@ const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
   resultsFile = "testresults.html"
   jsonFile = "testresults.json"
-  Usage = "usage: tester reject|compile|examples|run|merge [nimrod options]\n" &
+  Usage = "usage: tester [--print] " &
+                    "reject|compile|examples|run|" &
+                    "merge|special|rodfiles| [nimrod options]\n" &
           "   or: tester test|comp|rej singleTest"
 
 type
@@ -335,40 +337,48 @@ proc main() =
     runJson = "run.json"
     rejectJson = "reject.json"
   
+  var optPrintResults = false
   var p = initOptParser()
   p.next()
+  if p.kind == cmdLongoption:
+    case p.key
+      of "print": optPrintResults = true
+      else: quit usage
+    p.next()
   if p.kind != cmdArgument: quit usage
   var action = p.key.string.normalize
   p.next()
+  var r = initResults()
   case action
   of "reject":
-    var rejectRes = initResults()
-    reject(rejectRes, "tests/reject", p.cmdLineRest.string)
-    rejectSpecialTests(rejectRes, p.cmdLineRest.string)
-    writeResults(rejectJson, rejectRes)
+    reject(r, "tests/reject", p.cmdLineRest.string)
+    rejectSpecialTests(r, p.cmdLineRest.string)
+    writeResults(rejectJson, r)
   of "compile":
-    var compileRes = initResults()
-    compile(compileRes, "tests/compile/t*.nim", p.cmdLineRest.string)
-    compile(compileRes, "tests/ecmas.nim", p.cmdLineRest.string)
-    compileSpecialTests(compileRes, p.cmdLineRest.string)
-    writeResults(compileJson, compileRes)
+    compile(r, "tests/compile/t*.nim", p.cmdLineRest.string)
+    compile(r, "tests/ecmas.nim", p.cmdLineRest.string)
+    compileSpecialTests(r, p.cmdLineRest.string)
+    writeResults(compileJson, r)
   of "examples":
-    var compileRes = readResults(compileJson)
-    compileExample(compileRes, "lib/pure/*.nim", p.cmdLineRest.string)
-    compileExample(compileRes, "examples/*.nim", p.cmdLineRest.string)
-    compileExample(compileRes, "examples/gtk/*.nim", p.cmdLineRest.string)
-    writeResults(compileJson, compileRes)
+    compileExample(r, "lib/pure/*.nim", p.cmdLineRest.string)
+    compileExample(r, "examples/*.nim", p.cmdLineRest.string)
+    compileExample(r, "examples/gtk/*.nim", p.cmdLineRest.string)
+    writeResults(compileJson, r)
   of "run":
-    var runRes = initResults()
-    run(runRes, "tests/run", p.cmdLineRest.string)
-    runSpecialTests(runRes, p.cmdLineRest.string)
-    writeResults(runJson, runRes)
+    run(r, "tests/run", p.cmdLineRest.string)
+    runSpecialTests(r, p.cmdLineRest.string)
+    writeResults(runJson, r)
+  of "special":
+    runSpecialTests(r, p.cmdLineRest.string)
+    writeResults(runJson, r)
+  of "rodfiles":
+    runRodFiles(r, p.cmdLineRest.string)
+    writeResults(runJson, r)
   of "js":
-    var runRes = initResults()
     if existsFile(runJSon):
-      runRes = readResults(runJson)
-    runJsTests(runRes, p.cmdLineRest.string)
-    writeResults(runJson, runRes)
+      r = readResults(runJson)
+    runJsTests(r, p.cmdLineRest.string)
+    writeResults(runJson, r)
   of "merge":
     var rejectRes = readResults(rejectJson)
     var compileRes = readResults(compileJson)
@@ -376,15 +386,10 @@ proc main() =
     listResults(rejectRes, compileRes, runRes)
     outputJSON(rejectRes, compileRes, runRes)
   of "dll":
-    var r = initResults()
     runDLLTests r, p.cmdLineRest.string
-    echo r.data, r
   of "gc":
-    var r = initResults()
     runGCTests(r, p.cmdLineRest.string)
-    echo r.data, r
   of "test", "comp", "rej":
-    var r = initResults()
     if p.kind != cmdArgument: quit usage
     var testFile = p.key.string
     p.next()
@@ -394,9 +399,10 @@ proc main() =
       compileSingleTest(r, testFile, p.cmdLineRest.string)
     else:
       runSingleTest(r, testFile, p.cmdLineRest.string)
-    echo r.data, r
   else:
     quit usage
+
+  if optPrintResults: echo r, r.data
 
 if paramCount() == 0:
   quit usage
