@@ -62,3 +62,26 @@ proc Foo(n: int): int =
 
 # We should come till here :-)
 discard Foo(345)
+
+# test the new type symbol lookup feature:
+
+type
+  MyType[T] = tuple[
+    x, y, z: T]
+  MyType2 = tuple[x, y: float]
+
+proc main[T]() =
+  var myType: MyType[T]
+  var b: MyType[T]
+  b = (1, 2, 3)
+  myType = b
+  echo myType
+  
+  var myType2: MyType2
+  var c: MyType2
+  c = (1.0, 2.0)
+  myType2 = c
+  echo myType2
+
+main[int]()
+
