@@ -198,7 +198,14 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
             return result.typ.sym
         else:
           return result.typ.sym
-      if result.kind != skType: GlobalError(n.info, errTypeExpected)
+      if result.kind != skType: 
+        # this implements the wanted ``var v: V, x: V`` feature ...
+        var ov: TOverloadIter
+        var amb = InitOverloadIter(ov, c, n)
+        while amb != nil and amb.kind != skType:
+          amb = nextOverloadIter(ov, c, n)
+        if amb != nil: result = amb
+        else: GlobalError(n.info, errTypeExpected)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
         reset(n[])

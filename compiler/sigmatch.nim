@@ -249,7 +249,7 @@ proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
   for i in countup(0, f.sonsLen - 1):
     let son = f.sons[i]
-    var match = son.kind == skipTypes(a, {tyRange}).kind
+    var match = son.kind == skipTypes(a, {tyRange, tyGenericInst}).kind
 
     if not match:
       case son.kind
