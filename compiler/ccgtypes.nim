@@ -886,41 +886,43 @@ include ccgtrav
 
 proc genTypeInfo(m: BModule, typ: PType): PRope = 
   var t = getUniqueType(typ)
-  # gNimDat contains all the type information nowadays:
-  var dataGenerated = ContainsOrIncl(gNimDat.typeInfoMarker, t.id)
   result = ropef("NTI$1", [toRope(t.id)])
-  if not ContainsOrIncl(m.typeInfoMarker, t.id): 
-    # declare type information structures:
+  let owner = typ.skipTypes(abstractPtrs).owner.getModule
+  if owner != m.module:
+    # make sure the type info is created in the owner module
+    discard genTypeInfo(owner.bmod, typ)
+    # refenrece the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     appf(m.s[cfsVars], "extern TNimType* $1; /* $2 */$n", 
          [result, toRope(typeToString(t))])
-  if dataGenerated: return 
+    return
+  if ContainsOrIncl(m.typeInfoMarker, t.id): return
   case t.kind
   of tyEmpty: result = toRope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
-    genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
+    genTypeInfoAuxBase(m, t, result, toRope"0")
   of tyProc:
     if t.callConv != ccClosure:
-      genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
+      genTypeInfoAuxBase(m, t, result, toRope"0")
     else:
-      genTupleInfo(gNimDat, fakeClosureType(t.owner), result)
+      genTupleInfo(m, fakeClosureType(t.owner), result)
   of tySequence, tyRef:
-    genTypeInfoAux(gNimDat, t, result)
+    genTypeInfoAux(m, t, result)
     if optRefcGC in gGlobalOptions:
-      let markerProc = genTraverseProc(gNimDat, t, tiNew)
-      appf(gNimDat.s[cfsTypeInit3], "$1->marker = $2;$n", [result, markerProc])
-  of tyPtr, tyRange: genTypeInfoAux(gNimDat, t, result)
-  of tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result)
-  of tySet: genSetInfo(gNimDat, t, result)
-  of tyEnum: genEnumInfo(gNimDat, t, result)
-  of tyObject: genObjectInfo(gNimDat, t, result)
+      let markerProc = genTraverseProc(m, t, tiNew)
+      appf(m.s[cfsTypeInit3], "$1->marker = $2;$n", [result, markerProc])
+  of tyPtr, tyRange: genTypeInfoAux(m, t, result)
+  of tyArrayConstr, tyArray: genArrayInfo(m, t, result)
+  of tySet: genSetInfo(m, t, result)
+  of tyEnum: genEnumInfo(m, t, result)
+  of tyObject: genObjectInfo(m, t, result)
   of tyTuple: 
-    # if t.n != nil: genObjectInfo(gNimDat, t, result)
+    # if t.n != nil: genObjectInfo(m, t, result)
     # else:
     # BUGFIX: use consistently RTTI without proper field names; otherwise
     # results are not deterministic!
-    genTupleInfo(gNimDat, t, result)
+    genTupleInfo(m, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
 
 proc genTypeSection(m: BModule, n: PNode) = 

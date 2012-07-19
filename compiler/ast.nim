@@ -567,6 +567,8 @@ type
                               # for a conditional:
                               # 1 iff the symbol is defined, else 0
                               # (or not in symbol table)
+                              # for modules, a unique index correspinding
+                              # to the order of compilation 
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
