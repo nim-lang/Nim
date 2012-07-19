@@ -123,6 +123,9 @@ proc logLoop(level: TLevel, frmt: string, args: openarray[string]) =
 template log*(level: TLevel, frmt: string, args: openarray[string]) =
   ## logs a message of the given level
   bind logLoop
+  bind `%`
+  bind logging.Level
+  
   if level >= logging.Level:
     logLoop(level, frmt, args)
 
