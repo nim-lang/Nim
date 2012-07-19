@@ -11,6 +11,27 @@
 
 # ------------------------- Name Mangling --------------------------------
 
+proc mangleField(name: string): string = 
+  case name[0]
+  of 'a'..'z': 
+    result = ""
+    add(result, chr(ord(name[0]) - ord('a') + ord('A')))
+  of '0'..'9', 'A'..'Z': 
+    result = ""
+    add(result, name[0])
+  else: result = "HEX" & toHex(ord(name[0]), 2)
+  for i in countup(1, len(name) - 1): 
+    case name[i]
+    of 'A'..'Z': 
+      add(result, chr(ord(name[i]) - ord('A') + ord('a')))
+    of '_': 
+      nil
+    of 'a'..'z', '0'..'9': 
+      add(result, name[i])
+    else: 
+      add(result, "HEX")
+      add(result, toHex(ord(name[i]), 2))
+
 proc mangle(name: string): string = 
   when false:
     case name[0]
@@ -373,8 +394,8 @@ proc mangleRecFieldName(field: PSym, rectype: PType): PRope =
   if (rectype.sym != nil) and
       ({sfImportc, sfExportc} * rectype.sym.flags != {}): 
     result = field.loc.r
-  else: 
-    result = toRope(mangle(field.name.s))
+  else:
+    result = toRope(mangleField(field.name.s))
   if result == nil: InternalError(field.info, "mangleRecFieldName")
   
 proc genRecordFieldsAux(m: BModule, n: PNode, 
