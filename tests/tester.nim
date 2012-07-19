@@ -341,9 +341,9 @@ proc main() =
   var p = initOptParser()
   p.next()
   if p.kind == cmdLongoption:
-    case p.key
-      of "print": optPrintResults = true
-      else: quit usage
+    case p.key.string
+    of "print": optPrintResults = true
+    else: quit usage
     p.next()
   if p.kind != cmdArgument: quit usage
   var action = p.key.string.normalize
