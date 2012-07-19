@@ -924,8 +924,8 @@ order.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator for objects is not possible, but this may change in
-future versions of the compiler.
+of the assignment operator for objects is not possible, but this will change
+in future versions of the compiler.
 
 .. code-block:: nimrod
 
@@ -940,7 +940,16 @@ future versions of the compiler.
   person = ("Peter", 30)
 
 The implementation aligns the fields for best access performance. The alignment
-is compatible with the way the C compiler does it.
+is compatible with the way the C compiler does it. For consistency 
+with ``object`` declarations, tuples in a ``type`` section can also be defined
+with indentation instead of ``[]``:
+
+.. code-block:: nimrod
+
+  type
+    TPerson = tuple   # type representing a person
+      name: string    # a person consists of a name
+      age: natural    # and an age
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
