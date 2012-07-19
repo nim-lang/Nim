@@ -1390,6 +1390,18 @@ proc parseDistinct(p: var TParser): PNode =
   optInd(p, result)
   addSon(result, parseTypeDesc(p))
 
+proc parsePointerInTypeSection(p: var TParser, kind: TNodeKind): PNode =
+  result = newNodeP(kind, p)
+  getTok(p)
+  optInd(p, result)
+  if not isOperator(p.tok):
+    case p.tok.tokType
+    of tkObject: addSon(result, parseObject(p))
+    of tkTuple: addSon(result, parseTuple(p, true))
+    else:
+      if isExprStart(p):
+        addSon(result, parseTypeDesc(p))
+
 proc parseTypeDef(p: var TParser): PNode = 
   result = newNodeP(nkTypeDef, p)
   addSon(result, identWithPragma(p))
@@ -1404,9 +1416,11 @@ proc parseTypeDef(p: var TParser): PNode =
     of tkEnum: a = parseEnum(p)
     of tkDistinct: a = parseDistinct(p)
     of tkTuple: a = parseTuple(p, true)
+    of tkRef: a = parsePointerInTypeSection(p, nkRefTy)
+    of tkPtr: a = parsePointerInTypeSection(p, nkPtrTy)
     else: a = parseTypeDesc(p)
     addSon(result, a)
-  else: 
+  else:
     addSon(result, ast.emptyNode)
   indAndComment(p, result)    # special extension!
   

@@ -1096,6 +1096,18 @@ dereferencing operations for reference types:
   n.data = 9 
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
+As a syntactical extension ``object`` types can be anonymous if
+declared in a type section via the ``ref object`` or ``ptr object`` notations.
+This feature is useful if an object should only gain reference semantics:
+
+.. code-block:: nimrod
+
+  type
+    Node = ref object
+      le, ri: Node
+      data: int
+
+
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 ``realloc`` can be used. The documentation of the system module contains

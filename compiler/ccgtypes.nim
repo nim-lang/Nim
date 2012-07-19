@@ -12,15 +12,17 @@
 # ------------------------- Name Mangling --------------------------------
 
 proc mangle(name: string): string = 
-  case name[0]
-  of 'a'..'z': 
-    result = ""
-    add(result, chr(ord(name[0]) - ord('a') + ord('A')))
-  of '0'..'9', 'A'..'Z': 
-    result = ""
-    add(result, name[0])
-  else: result = "HEX" & toHex(ord(name[0]), 2)
-  for i in countup(0 + 1, len(name) + 0 - 1): 
+  when false:
+    case name[0]
+    of 'a'..'z': 
+      result = ""
+      add(result, chr(ord(name[0]) - ord('a') + ord('A')))
+    of '0'..'9', 'A'..'Z': 
+      result = ""
+      add(result, name[0])
+    else: result = "HEX" & toHex(ord(name[0]), 2)
+  result = ""
+  for i in countup(0, len(name) - 1): 
     case name[i]
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
@@ -103,7 +105,7 @@ proc mangleName(s: PSym): PRope =
       # These are not properly scoped now - we need to add blocks
       # around for loops in transf
       if keepOrigName:
-        result = s.name.s.toRope
+        result = s.name.s.mangle.toRope
       else:
         app(result, toRope(mangle(s.name.s)))
         app(result, "_")
@@ -120,7 +122,7 @@ proc isCompileTimeOnly(t: PType): bool =
 var anonTypeName = toRope"TY"
 
 proc typeName(typ: PType): PRope =
-  result = if typ.sym != nil: typ.sym.name.s.toRope
+  result = if typ.sym != nil: typ.sym.name.s.mangle.toRope
            else: anonTypeName
 
 proc getTypeName(typ: PType): PRope = 

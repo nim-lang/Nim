@@ -609,6 +609,15 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
+    let aa = a.sons[2]
+    if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
+       aa.sons[0].kind == nkObjectTy:
+      # give anonymous object a dummy symbol:
+      assert s.typ.sons[0].sym == nil
+      var anonObj = newSym(skType, getIdent(s.name.s & ":ObjectType"), 
+                                 getCurrOwner())
+      anonObj.info = s.info
+      s.typ.sons[0].sym = anonObj
 
 proc SemTypeSection(c: PContext, n: PNode): PNode =
   typeSectionLeftSidePass(c, n)

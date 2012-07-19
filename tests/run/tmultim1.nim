@@ -5,21 +5,21 @@ discard """
 # Test multi methods
 
 type
-  TExpr = object
-  TLiteral = object of TExpr
+  Expression = ref object
+  Literal = ref object of Expression
     x: int
-  TPlusExpr = object of TExpr
-    a, b: ref TExpr
+  PlusExpr = ref object of Expression
+    a, b: Expression
     
-method eval(e: ref TExpr): int = quit "to override!"
-method eval(e: ref TLiteral): int = return e.x
-method eval(e: ref TPlusExpr): int = return eval(e.a) + eval(e.b)
+method eval(e: Expression): int = quit "to override!"
+method eval(e: Literal): int = return e.x
+method eval(e: PlusExpr): int = return eval(e.a) + eval(e.b)
 
-proc newLit(x: int): ref TLiteral =
+proc newLit(x: int): Literal =
   new(result)
   result.x = x
   
-proc newPlus(a, b: ref TExpr): ref TPlusExpr =
+proc newPlus(a, b: Expression): PlusExpr =
   new(result)
   result.a = a
   result.b = b
