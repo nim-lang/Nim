@@ -1,7 +1,9 @@
 
 type
     PNode = ref TNode
-    TNode = tuple[self: PNode]
+    TNode = tuple # comment
+      self: PNode # comment
+      a, b: int # comment
 
 var node: PNode
 new(node)

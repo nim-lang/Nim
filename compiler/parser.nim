@@ -620,7 +620,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
   else: 
     addSon(result, ast.emptyNode)
   
-proc parseTuple(p: var TParser): PNode = 
+proc parseTuple(p: var TParser, indentAllowed = false): PNode = 
   result = newNodeP(nkTupleTy, p)
   getTok(p)
   if p.tok.tokType == tkBracketLe:
@@ -634,6 +634,29 @@ proc parseTuple(p: var TParser): PNode =
       optInd(p, a)
     optPar(p)
     eat(p, tkBracketRi)
+  elif indentAllowed:
+    skipComment(p, result)
+    if p.tok.tokType == tkInd:
+      pushInd(p.lex, p.tok.indent)
+      getTok(p)
+      skipComment(p, result)
+      while true:
+        case p.tok.tokType
+        of tkSad:
+          getTok(p)
+        of tkSymbol, tkAccent:
+          var a = parseIdentColonEquals(p, {})
+          skipComment(p, a)
+          addSon(result, a)
+        of tkDed:
+          getTok(p)
+          break
+        of tkEof:
+          break
+        else:
+          parMessage(p, errIdentifierExpected, p.tok)
+          break
+      popInd(p.lex)
 
 proc parseParamList(p: var TParser, retColon = true): PNode = 
   var a: PNode
@@ -1380,6 +1403,7 @@ proc parseTypeDef(p: var TParser): PNode =
     of tkObject: a = parseObject(p)
     of tkEnum: a = parseEnum(p)
     of tkDistinct: a = parseDistinct(p)
+    of tkTuple: a = parseTuple(p, true)
     else: a = parseTypeDesc(p)
     addSon(result, a)
   else: 
