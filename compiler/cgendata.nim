@@ -112,14 +112,14 @@ type
     labels*: natural          # for generating unique module-scope names
 
 var
-  mainModProcs*, mainModInit*: PRope # parts of the main module
+  mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module
   gMapping*: PRope             # the generated mapping file (if requested)
   gProcProfile*: Natural       # proc profile counter
   gPendingModules*: seq[BModule] = @[] # list of modules that are not
                                        # finished with code generation
+  gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0
-  gNimDat*: BModule            # generated global data
-
+ 
 proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
   # section in the current block
   result = p.blocks[p.blocks.len - 1].sections[s]
@@ -127,6 +127,10 @@ proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
 proc procSec*(p: BProc, s: TCProcSection): var PRope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
+
+proc bmod*(module: PSym): BModule =
+  # obtains the BModule for a given module PSym
+  result = gModules[module.position]
 
 proc newProc*(prc: PSym, module: BModule): BProc = 
   new(result)

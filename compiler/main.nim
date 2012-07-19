@@ -39,6 +39,7 @@ proc registerModule(filename: string, module: PSym) =
 proc getModule(filename: string): PSym =
   result = compMods[filename]
 
+var gModulesCount = 0
 proc newModule(filename: string): PSym = 
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID. 
@@ -51,6 +52,8 @@ proc newModule(filename: string): PSym =
   
   result.owner = result       # a module belongs to itself
   result.info = newLineInfo(filename, 1, 1)
+  result.position = gModulesCount
+  inc gModulesCount
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   RegisterModule(filename, result)

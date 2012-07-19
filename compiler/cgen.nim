@@ -819,11 +819,12 @@ proc getFileHeader(cfilenoext: string): PRope =
 proc genMainProc(m: BModule) = 
   const 
     CommonMainBody =
-        "\tnim__datInit();$n" &
-        "\tsystemInit();$n" &
+        "\tsystemDatInit();$n" &
         "$1" &
         "$2" &
-        "$3"
+        "\tsystemInit();$n" &
+        "$3" &
+        "$4"
     PosixNimMain = 
         "int cmdCount;$n" & 
         "char** cmdLine;$n" & 
@@ -877,7 +878,7 @@ proc genMainProc(m: BModule) =
                               platform.targetOS == osStandalone: "".toRope
                             else: ropecg(m, "\t#initStackBottom();$n")
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], nimMain, [initStackBottomCall,
+  appcg(m, m.s[cfsProcs], nimMain, [mainDatInit, initStackBottomCall,
         gBreakpoints, mainModInit, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
@@ -885,12 +886,20 @@ proc genMainProc(m: BModule) =
 proc getInitName(m: PSym): PRope = 
   result = ropeff("$1Init", "@$1Init", [toRope(m.name.s)])
 
+proc getDatInitName(m: PSym): PRope =
+  result = ropeff("$1DatInit", "@$1DatInit", [toRope(m.name.s)])
+
 proc registerModuleToMain(m: PSym) = 
-  var initname = getInitName(m)
-  appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
-        "declare void $1() noinline$n", [initname])
-  if not (sfSystemModule in m.flags): 
-    appff(mainModInit, "$1();$n", "call void ()* $1$n", [initname])
+  var
+    init = m.getInitName
+    datInit = m.getDatInitName
+  appff(mainModProcs, "N_NOINLINE(void, $1)(void);$N",
+                      "declare void $1() noinline$N", [init])
+  appff(mainModProcs, "N_NOINLINE(void, $1)(void);$N",
+                      "declare void $1() noinline$N", [datInit])
+  if not (sfSystemModule in m.flags):
+    appff(mainModInit, "\t$1();$n", "call void ()* $1$n", [init])
+    appff(mainDatInit, "\t$1();$n", "call void ()* $1$n", [datInit])
   
 proc genInitCode(m: BModule) = 
   if optProfiler in m.initProc.options: 
@@ -914,25 +923,17 @@ proc genInitCode(m: BModule) =
     getFrameDecl(m.initProc)
   
   app(prc, initGCFrame(m.initProc))
-  
+ 
   app(prc, genSectionStart(cpsLocals))
   app(prc, m.initProc.s(cpsLocals))
   app(prc, m.preInitProc.s(cpsLocals))
   app(prc, genSectionEnd(cpsLocals))
 
-  app(prc, genSectionStart(cfsTypeInit1))
-  app(prc, m.s[cfsTypeInit1])
   if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
     var procname = CStringLit(m.initProc, prc, m.module.name.s)
     var filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
     app(prc, initFrame(m.initProc, procname, filename))
-  app(prc, genSectionEnd(cfsTypeInit1))
-  
-  for i in cfsTypeInit2..cfsDynLibInit:
-    app(prc, genSectionStart(i))
-    app(prc, m.s[i])
-    app(prc, genSectionEnd(i))
-  
+ 
   app(prc, genSectionStart(cpsInit))
   app(prc, m.preInitProc.s(cpsInit))
   app(prc, m.initProc.s(cpsInit))
@@ -945,7 +946,17 @@ proc genInitCode(m: BModule) =
     app(prc, deinitFrame(m.initProc))
   app(prc, genSectionEnd(cpsStmts))
   app(prc, deinitGCFrame(m.initProc))
-  appf(prc, "}$n$n")
+  appf(prc, "}$N$N")
+
+  prc.appff("N_NOINLINE(void, $1)(void) {$n",
+            "define void $1() noinline {$n", [getDatInitName(m.module)])
+
+  for i in cfsTypeInit1..cfsDynLibInit:
+    app(prc, genSectionStart(i))
+    app(prc, m.s[i])
+    app(prc, genSectionEnd(i))
+  
+  appf(prc, "}$N$N")
   # we cannot simply add the init proc to ``m.s[cfsProcs]`` anymore because
   # that would lead to a *nesting* of merge sections which the merger does
   # not support. So we add it to another special section: ``cfsInitProc``
@@ -987,22 +998,15 @@ proc rawNewModule(module: PSym, filename: string): BModule =
 
 proc newModule(module: PSym, filename: string): BModule = 
   result = rawNewModule(module, filename)
+  if gModules.len <= module.position: gModules.setLen(module.position + 1)
+  gModules[module.position] = result
+
   if (optDeadCodeElim in gGlobalOptions): 
     if (sfDeadCodeElim in module.flags): 
       InternalError("added pending module twice: " & filename)
     addPendingModule(result)
 
-proc registerTypeInfoModule() = 
-  const moduleName = "nim__dat"
-  var s = NewSym(skModule, getIdent(moduleName), nil)
-  gNimDat = rawNewModule(s, (options.gProjectPath / moduleName) & ".nim")
-  gNimDat.PreventStackTrace = true
-  addPendingModule(gNimDat)
-  appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
-        "declare void $1() noinline$n", [getInitName(s)])
-
 proc myOpen(module: PSym, filename: string): PPassContext = 
-  if gNimDat == nil: registerTypeInfoModule()
   result = newModule(module, filename)
 
 proc getCFile(m: BModule): string =
@@ -1010,11 +1014,6 @@ proc getCFile(m: BModule): string =
 
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
-  if gNimDat == nil:
-    registerTypeInfoModule()
-    gNimDat.fromCache = true
-    readMergeInfo(getCFile(gNimDat), gNimDat)
-    
   var m = newModule(module, filename)
   readMergeInfo(getCFile(m), m)
   result = m
@@ -1100,9 +1099,6 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   # cached modules need to registered too: 
   registerModuleToMain(m.module)
   
-  if optDeadCodeElim notin gGlobalOptions and
-      sfDeadCodeElim notin m.module.flags: 
-    finishModule(m)
   if sfMainModule in m.module.flags: 
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
@@ -1111,16 +1107,12 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     # deps are allowed (and the system module is processed in the wrong
     # order anyway)
     while gForwardedProcsCounter > 0: 
-      for i in countup(0, high(gPendingModules)): 
-        finishModule(gPendingModules[i])
-    for i in countup(0, high(gPendingModules)): 
-      writeModule(gPendingModules[i], pending=true)
-    setlen(gPendingModules, 0)
-  if optDeadCodeElim notin gGlobalOptions and
-      sfDeadCodeElim notin m.module.flags:
-    writeModule(m, pending=false)
-  if sfMainModule in m.module.flags: writeMapping(gMapping)
-      
+      for i in countup(0, high(gModules)): 
+        finishModule(gModules[i])
+    for i in countup(0, high(gModules)): 
+      writeModule(gModules[i], pending=true)
+    writeMapping(gMapping)
+
 proc cgenPass(): TPass = 
   initPass(result)
   result.open = myOpen

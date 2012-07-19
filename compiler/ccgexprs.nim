@@ -1004,15 +1004,10 @@ proc genNewFinalize(p: BProc, e: PNode) =
     oldModule: BModule
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   InitLocExpr(p, e.sons[1], a)
-  # This is a little hack:
-  # XXX this is also a bug, if the finalizer expression produces side-effects
-  oldModule = p.module
-  p.module = gNimDat
   InitLocExpr(p, e.sons[2], f)
-  p.module = oldModule
   initLoc(b, locExpr, a.t, OnHeap)
   ti = genTypeInfo(p.module, refType)
-  appf(gNimDat.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
+  appf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
       ti, getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
