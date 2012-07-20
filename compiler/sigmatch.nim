@@ -118,6 +118,7 @@ proc getNotFoundError*(c: PContext, n: PNode): string =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
+  if c.InCompilesContext > 0: return ""
   result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1): 
     #debug(n.sons[i].typ)

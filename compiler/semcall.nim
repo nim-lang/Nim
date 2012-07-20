@@ -69,15 +69,19 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       InternalError(n.info, "x.state is not csMatch")
     #writeMatches(best)
     #writeMatches(alt)
-    var args = "("
-    for i in countup(1, sonsLen(n) - 1):
-      if i > 1: add(args, ", ")
-      add(args, typeToString(n.sons[i].typ))
-    add(args, ")")
+    if c.inCompilesContext > 0: 
+      # quick error message for performance of 'compiles' built-in:
+      LocalError(n.Info, errAmbiguousCallXYZ, "")
+    else:
+      var args = "("
+      for i in countup(1, sonsLen(n) - 1):
+        if i > 1: add(args, ", ")
+        add(args, typeToString(n.sons[i].typ))
+      add(args, ")")
 
-    LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
-      getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
-      args])
+      LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+        getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
+        args])
 
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
