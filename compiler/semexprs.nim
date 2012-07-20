@@ -607,14 +607,18 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     var m: TCandidate
     initCandidate(m, t)
     matches(c, n, nOrig, m)
-    if m.state != csMatch: 
-      var msg = msgKindToString(errTypeMismatch)
-      for i in countup(1, sonsLen(n) - 1): 
-        if i > 1: add(msg, ", ")
-        add(msg, typeToString(n.sons[i].typ))
-      add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
-          typeToString(n.sons[0].typ))
-      GlobalError(n.Info, errGenerated, msg)
+    if m.state != csMatch:
+      if c.inCompilesContext > 0:
+        # speed up error generation:
+        GlobalError(n.Info, errTypeMismatch, "")
+      else:
+        var msg = msgKindToString(errTypeMismatch)
+        for i in countup(1, sonsLen(n) - 1): 
+          if i > 1: add(msg, ", ")
+          add(msg, typeToString(n.sons[i].typ))
+        add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
+            typeToString(n.sons[0].typ))
+        GlobalError(n.Info, errGenerated, msg)
       result = nil
     else: 
       result = m.call
