@@ -381,7 +381,8 @@ const
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf,
+    mDefined, mDefinedInScope, mCompiles,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst,
     mUnaryLt, mSucc, 

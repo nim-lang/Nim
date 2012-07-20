@@ -1103,12 +1103,42 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
   else:
     result = semDirectOp(c, n, flags)
 
+proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # we replace this node by a 'true' or 'false' node:
+  if sonsLen(n) != 2: return semDirectOp(c, n, flags)
+  result = newIntNode(nkIntLit, 0)
+  result.info = n.info
+  result.typ = getSysType(tyBool)
+  # watch out, hacks ahead:
+  let oldErrorCount = msgs.gErrorCounter
+  let oldErrorMax = msgs.gErrorMax
+  inc c.InCompilesContext
+  inc msgs.gSilence
+  # do not halt after first error:
+  msgs.gErrorMax = high(int)
+  
+  let oldTos = c.tab.tos
+  let oldOwnerLen = len(gOwners)
+  try:
+    discard semExpr(c, n.sons[1])
+    result.intVal = ord(msgs.gErrorCounter == oldErrorCount)
+  except ERecoverableError:
+    nil
+  # undo symbol table changes (as far as it's possible):
+  setlen(gOwners, oldOwnerLen)
+  while c.tab.tos > oldTos: rawCloseScope(c.tab)
+  dec c.InCompilesContext
+  dec msgs.gSilence
+  msgs.gErrorCounter = oldErrorCount
+  msgs.gErrorMax = oldErrorMax
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
   result = n
   case s.magic # magics that need special treatment
   of mDefined: result = semDefined(c, setMs(n, s), false)
   of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
+  of mCompiles: result = semCompiles(c, setMs(n, s), flags)
   of mLow: result = semLowHigh(c, setMs(n, s), mLow)
   of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
   of mSizeOf: result = semSizeof(c, setMs(n, s))

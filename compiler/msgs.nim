@@ -458,6 +458,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gSilence*: int              # == 0 if we produce any output at all 
   
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
@@ -528,12 +529,13 @@ proc addCheckpoint*(filename: string, line: int) =
 
 proc OutWriteln*(s: string) = 
   ## Writes to stdout. Always.
-  Writeln(stdout, s)
+  if gSilence == 0: Writeln(stdout, s)
  
 proc MsgWriteln*(s: string) = 
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
-  if optStdout in gGlobalOptions: Writeln(stderr, s)
-  else: Writeln(stdout, s)
+  if gSilence == 0:
+    if optStdout in gGlobalOptions: Writeln(stderr, s)
+    else: Writeln(stdout, s)
 
 proc coordToStr(coord: int): string = 
   if coord == -1: result = "???"

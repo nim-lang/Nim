@@ -61,6 +61,8 @@ Library Additions
   for managing time.
 - Added ``system.@`` for converting an ``openarray`` to a ``seq`` (it used to
   only support fixed length arrays).
+- Added ``system.compiles`` which can be used to check whether a type supports
+  some operation.
 
 
 Changes affecting backwards compatibility
