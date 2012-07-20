@@ -181,11 +181,11 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     if isIntRange(a) and isIntLit(b):
       result = makeRange(a, pickMinInt(n.sons[1]) |-| pickMinInt(n.sons[2]),
                             pickMaxInt(n.sons[1]) |-| pickMaxInt(n.sons[2]))
-  of mAddI, mAddI64, mAddU, mAddU64:
+  of mAddI, mAddI64, mAddU:
     commutativeOp(`|+|`)
-  of mMulI, mMulI64, mMulU, mMulU64:
+  of mMulI, mMulI64, mMulU:
     commutativeOp(`|*|`)
-  of mSubI, mSubI64, mSubU, mSubU64:
+  of mSubI, mSubI64, mSubU:
     binaryOp(`|-|`)
   of mBitandI, mBitandI64:
     var a = n.sons[1]
@@ -196,7 +196,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
         result = makeRange(a.typ, 0, b.intVal)
-  of mModI, mModI64, mModU, mModU64:
+  of mModI, mModI64, mModU:
     # so ... if you ever wondered about modulo's signedness; this defines it:
     let a = n.sons[1]
     let b = n.sons[2]
@@ -205,7 +205,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
         result = makeRange(a.typ, b.intVal+1, 0)
-  of mDivI, mDivI64, mDivU, mDivU64:
+  of mDivI, mDivI64, mDivU:
     binaryOp(`|div|`)
   of mMinI, mMinI64:
     commutativeOp(min)
@@ -311,11 +311,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mBitandI, mBitandI64, mAnd: result = newIntNodeT(a.getInt and b.getInt, n)
   of mBitorI, mBitorI64, mOr: result = newIntNodeT(getInt(a) or getInt(b), n)
   of mBitxorI, mBitxorI64, mXor: result = newIntNodeT(a.getInt xor b.getInt, n)
-  of mAddU, mAddU64: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n)
-  of mSubU, mSubU64: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n)
-  of mMulU, mMulU64: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n)
-  of mModU, mModU64: result = newIntNodeT(`%%`(getInt(a), getInt(b)), n)
-  of mDivU, mDivU64: result = newIntNodeT(`/%`(getInt(a), getInt(b)), n)
+  of mAddU: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n)
+  of mSubU: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n)
+  of mMulU: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n)
+  of mModU: result = newIntNodeT(`%%`(getInt(a), getInt(b)), n)
+  of mDivU: result = newIntNodeT(`/%`(getInt(a), getInt(b)), n)
   of mLeSet: result = newIntNodeT(Ord(containsSets(a, b)), n)
   of mEqSet: result = newIntNodeT(Ord(equalSets(a, b)), n)
   of mLtSet: 

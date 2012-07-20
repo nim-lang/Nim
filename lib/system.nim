@@ -533,34 +533,34 @@ proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
   ## checking is turned on).
 
 type
-  IntMax32  = distinct int|int8|int16|int32
+  IntMax32 = distinct int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
-proc `+%` *(x, y: Int64): Int64 {.magic: "AddU64", noSideEffect.}
+proc `+%` *(x, y: Int64): Int64 {.magic: "AddU", noSideEffect.}
   ## treats `x` and `y` as unsigned and adds them. The result is truncated to
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
 
 proc `-%` *(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
-proc `-%` *(x, y: Int64): Int64 {.magic: "SubU64", noSideEffect.}
+proc `-%` *(x, y: Int64): Int64 {.magic: "SubU", noSideEffect.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `*%` *(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
-proc `*%` *(x, y: Int64): Int64 {.magic: "MulU64", noSideEffect.}
+proc `*%` *(x, y: Int64): Int64 {.magic: "MulU", noSideEffect.}
   ## treats `x` and `y` as unsigned and multiplies them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `/%` *(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
-proc `/%` *(x, y: Int64): Int64 {.magic: "DivU64", noSideEffect.}
+proc `/%` *(x, y: Int64): Int64 {.magic: "DivU", noSideEffect.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
 
 proc `%%` *(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
-proc `%%` *(x, y: Int64): Int64 {.magic: "ModU64", noSideEffect.}
+proc `%%` *(x, y: Int64): Int64 {.magic: "ModU", noSideEffect.}
   ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
