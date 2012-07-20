@@ -63,6 +63,7 @@ type
                                # store this info in the syms themselves!)
     InGenericContext*: int     # > 0 if we are in a generic
     InUnrolledContext*: int    # > 0 if we are unrolling a loop
+    InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
     converters*: TSymSeq       # sequence of converters
     optionStack*: TLinkedList
     libs*: TLinkedList         # all libs used by this module
@@ -100,7 +101,7 @@ proc PushOwner*(owner: PSym)
 proc PopOwner*()
 # implementation
 
-var gOwners: seq[PSym] = @[]
+var gOwners*: seq[PSym] = @[]
 
 proc getCurrOwner(): PSym = 
   # owner stack (used for initializing the

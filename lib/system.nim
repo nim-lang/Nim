@@ -2350,5 +2350,15 @@ proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} =
     x[j+i] = item[j]
     inc(j)
 
+proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+  ## Special compile-time procedure that checks whether `x` can be compiled
+  ## without any semantic error.
+  ## This can be used to check whether a type supports some operation:
+  ##
+  ## .. code-block:: Nimrod
+  ##   when not compiles(3 + 4):
+  ##     echo "'+' for integers is available"
+  nil
+
 when defined(initDebugger):
   initDebugger()
