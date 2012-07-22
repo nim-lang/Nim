@@ -415,7 +415,7 @@ when hasSpawnH:
                                  header: "<spawn.h>", final, pure.} = object
 
 type
-  TSocklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cint
+  TSocklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
   
   TSockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>", 
