@@ -215,7 +215,7 @@ proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
 
 proc SSL_CTX_set_cipher_list*(s: PSSLCTX, ciphers: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_use_certificate_file*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
-    cdecl, dynlib: DLLSSLName, importc.}
+    stdcall, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_use_PrivateKey_file*(ctx: PSSL_CTX,
     filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_check_private_key*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 

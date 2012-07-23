@@ -237,7 +237,7 @@ template `=~` *(s: string, pattern: TRegEx): expr =
   ##     echo("syntax error")
   ##
   when not definedInScope(matches):
-    var matches: array[0..maxSubPatterns-1, string]
+    var matches: array[0..re.maxSubPatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

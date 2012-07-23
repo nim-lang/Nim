@@ -86,6 +86,7 @@ proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1") =
   s.input = newString(s.buflen) # will be reused
   
   s.server = socket()
+  new(s.client) # Initialise s.client for `next`
   if s.server == InvalidSocket: scgiError("could not open socket")
   #s.server.connect(connectionName, port)
   bindAddr(s.server, port, address)
@@ -101,7 +102,7 @@ proc next*(s: var TScgistate, timeout: int = -1): bool =
   ## Returns `True` if a new request has been processed.
   var rsocks = @[s.server]
   if select(rsocks, timeout) == 1 and rsocks.len == 0:
-    s.client = accept(s.server)
+    accept(s.server, s.client)
     var L = 0
     while true:
       var d = s.client.recvChar()
@@ -159,7 +160,7 @@ proc getSocket(h: PObject): tuple[info: TInfo, sock: TSocket] =
 proc handleAccept(h: PObject) =
   var s = PAsyncScgiState(h)
   
-  s.client = accept(s.server)
+  accept(s.server, s.client)
   var L = 0
   while true:
     var d = s.client.recvChar()
