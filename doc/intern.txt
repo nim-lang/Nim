@@ -518,5 +518,3 @@ backend somehow. We deal with this by modifying ``s.ast[paramPos]`` to contain
 the formal hidden parameter, but not ``s.typ``!
 
 
-
-

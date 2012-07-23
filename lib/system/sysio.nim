@@ -228,6 +228,7 @@ proc ReadBytes(f: TFile, a: var openarray[int8], start, len: int): int =
 proc ReadChars(f: TFile, a: var openarray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
+{.push stackTrace:off.}
 proc writeBytes(f: TFile, a: openarray[int8], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
@@ -240,6 +241,7 @@ proc writeBuffer(f: TFile, buffer: pointer, len: int): int =
 proc write(f: TFile, s: string) =
   if writeBuffer(f, cstring(s), s.len) != s.len:
     raiseEIO("cannot write string to file")
+{.pop.}
 
 proc setFilePos(f: TFile, pos: int64) =
   if fseek(f, clong(pos), 0) != 0:

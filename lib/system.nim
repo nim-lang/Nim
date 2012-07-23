@@ -85,6 +85,9 @@ proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
+when defined(useNimRtl):
+  {.deadCodeElim: on.}
+
 proc definedInScope*(x: expr): bool {.
   magic: "DefinedInScope", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is

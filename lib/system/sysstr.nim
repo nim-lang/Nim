@@ -69,10 +69,10 @@ proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   c_memcpy(result.data, str, (len+1) * sizeof(Char))
   #result.data[len] = '\0' # readline relies on this!
 
-proc cstrToNimstr(str: CString): NimString {.compilerProc.} =
+proc cstrToNimstr(str: CString): NimString {.compilerRtl.} =
   result = toNimstr(str, c_strlen(str))
 
-proc copyString(src: NimString): NimString {.compilerProc.} =
+proc copyString(src: NimString): NimString {.compilerRtl.} =
   if (src.reserved and seqShallowFlag) != 0:
     result = src
   elif src != nil:
@@ -80,7 +80,7 @@ proc copyString(src: NimString): NimString {.compilerProc.} =
     result.len = src.len
     c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
 
-proc copyStringRC1(src: NimString): NimString {.compilerProc.} =
+proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     var s = src.space
     if s < 8: s = 7
@@ -148,7 +148,7 @@ proc addChar(s: NimString, c: char): NimString =
 #   <generated C code>
 #   s = rawNewString(0);
 
-proc resizeString(dest: NimString, addlen: int): NimString {.compilerproc.} =
+proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
   if dest.len + addLen <= dest.space:
     result = dest
   else: # slow path:
@@ -168,7 +168,7 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len+1] = '\0'
   inc(dest.len)
 
-proc setLengthStr(s: NimString, newLen: int): NimString {.compilerProc.} =
+proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
   if n <= s.space:
     result = s
@@ -254,10 +254,10 @@ proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   for j in 0..i div 2 - 1:
     swap(result[j], result[i-j-1])
 
-proc nimBoolToStr(x: bool): string {.compilerproc.} =
+proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
 
-proc nimCharToStr(x: char): string {.compilerproc.} =
+proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 

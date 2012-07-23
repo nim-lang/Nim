@@ -536,7 +536,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
     sysAssert(c.refcount >=% rcIncrement, "doOperation 3")
     c.refcount = c.refcount -% rcIncrement
 
-proc nimGCvisit(d: pointer, op: int) {.compilerProc.} =
+proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
 # we now use a much simpler and non-recursive algorithm for cycle removal
