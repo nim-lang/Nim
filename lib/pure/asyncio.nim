@@ -262,8 +262,9 @@ proc accept*(server: PAsyncSocket): PAsyncSocket {.deprecated.} =
   ## Equivalent to ``sockets.accept``.
   ##
   ## **Warning**: This is deprecated.
-  var (client, a) = server.acceptAddr()
-  return client
+  new(result)
+  var address = ""
+  server.acceptAddr(result, address)
 
 proc newDispatcher*(): PDispatcher =
   new(result)
@@ -435,7 +436,10 @@ when isMainModule:
 
   proc testAccept(s: PAsyncSocket, arg: PObject) =
     echo("Accepting client! " & $PMyArg(arg).val)
-    var (client, address) = s.acceptAddr()
+    var client: PAsyncSocket
+    new(client)
+    var address = ""
+    s.acceptAddr(client, address)
     echo("Accepted ", address)
     client.handleRead = testRead
     var userArg: PIntType

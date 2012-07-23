@@ -232,7 +232,9 @@ when isMainModule:
     # check for new new connection & handle it
     var list: seq[TSocket] = @[server.socket]
     if select(list, 10) > 0:
-      var client = accept(server.socket)
+      var client: TSocket
+      new(client)
+      accept(server.socket, client)
       try:
         acceptRequest(server, client)
       except:
