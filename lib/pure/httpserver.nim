@@ -241,7 +241,10 @@ proc port*(s: var TServer): TPort =
 
 proc next*(s: var TServer) =
   ## proceed to the first/next request.
-  let (client, ip) = acceptAddr(s.socket)
+  var client: TSocket
+  new(client)
+  var ip: string
+  acceptAddr(s.socket, client, ip)
   s.client = client
   s.ip = ip
   s.headers = newStringTable(modeCaseInsensitive)
