@@ -537,8 +537,9 @@ proc acceptAddr*(server: TSocket): tuple[client: TSocket, address: string] {.dep
 
 proc accept*(server: TSocket): TSocket {.deprecated.} =
   ## **Warning**: This function is now deprecated, you shouldn't use it!
-  let (client, a) = acceptAddr(server)
-  return client
+  new(result)
+  var address = ""
+  acceptAddr(server, result, address)
 
 proc close*(socket: TSocket) =
   ## closes a socket.

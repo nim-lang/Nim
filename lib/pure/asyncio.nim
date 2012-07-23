@@ -46,7 +46,7 @@ import sockets, os
 ## 
 ## An example ``handleAccept`` follows:
 ## 
-## .. code:: nimrod
+## .. code-block:: nimrod
 ##   
 ##    var disp: PDispatcher = newDispatcher()
 ##    ...
