@@ -44,45 +44,56 @@ proc getStrLit(m: BModule, s: string): PRope =
   appf(m.s[cfsData], "STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), ToRope(len(s))])
 
-proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
-  if ty == nil: internalError(v.info, "genLiteral: ty is nil")
-  case v.kind
+proc genLiteral(p: BProc, n: PNode, ty: PType): PRope =
+  if ty == nil: internalError(n.info, "genLiteral: ty is nil")
+  case n.kind
   of nkCharLit..nkUInt64Lit:
     case skipTypes(ty, abstractVarRange).kind
     of tyChar, tyInt64, tyNil:
-      result = intLiteral(v.intVal)
+      result = intLiteral(n.intVal)
     of tyInt:
-      if (v.intVal >= low(int32)) and (v.intVal <= high(int32)):
-        result = int32Literal(int32(v.intVal))
+      if (n.intVal >= low(int32)) and (n.intVal <= high(int32)):
+        result = int32Literal(int32(n.intVal))
       else:
-        result = intLiteral(v.intVal)
+        result = intLiteral(n.intVal)
     of tyBool:
-      if v.intVal != 0: result = toRope("NIM_TRUE")
+      if n.intVal != 0: result = toRope("NIM_TRUE")
       else: result = toRope("NIM_FALSE")
     else:
       result = ropef("(($1) $2)", [getTypeDesc(p.module,
-          skipTypes(ty, abstractVarRange)), intLiteral(v.intVal)])
+          skipTypes(ty, abstractVarRange)), intLiteral(n.intVal)])
   of nkNilLit:
-    result = toRope("NIM_NIL")
+    let t = skipTypes(ty, abstractVarRange)
+    if t.kind == tyProc and t.callConv == ccClosure:
+      var id = NodeTableTestOrSet(p.module.dataCache, n, gBackendId)
+      result = con("TMP", toRope(id))
+      if id == gBackendId:
+        # not found in cache:
+        inc(gBackendId)
+        appf(p.module.s[cfsData],
+             "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
+             [getTypeDesc(p.module, t), result])
+    else:
+      result = toRope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
     if skipTypes(ty, abstractVarRange).kind == tyString:
-      var id = NodeTableTestOrSet(p.module.dataCache, v, gBackendId)
+      var id = NodeTableTestOrSet(p.module.dataCache, n, gBackendId)
       if id == gBackendId:
         # string literal not found in the cache:
         result = ropecg(p.module, "((#NimStringDesc*) &$1)", 
-                        [getStrLit(p.module, v.strVal)])
+                        [getStrLit(p.module, n.strVal)])
       else:
         result = ropecg(p.module, "((#NimStringDesc*) &TMP$1)", [toRope(id)])
     else:
-      result = makeCString(v.strVal)
+      result = makeCString(n.strVal)
   of nkFloatLit..nkFloat64Lit:
-    result = toRope(v.floatVal.ToStrMaxPrecision)
+    result = toRope(n.floatVal.ToStrMaxPrecision)
   else:
-    InternalError(v.info, "genLiteral(" & $v.kind & ')')
+    InternalError(n.info, "genLiteral(" & $n.kind & ')')
     result = nil
 
-proc genLiteral(p: BProc, v: PNode): PRope =
-  result = genLiteral(p, v, v.typ)
+proc genLiteral(p: BProc, n: PNode): PRope =
+  result = genLiteral(p, n, n.typ)
 
 proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
   result = 0
