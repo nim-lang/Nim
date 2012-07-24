@@ -10,7 +10,7 @@ var msgCount = 0
 
 when defined(ssl):
   var ctx = newContext(verifyMode = CVerifyNone, 
-      certFile = "mycert.pem", keyFile = "mycert.pem")
+      certFile = "tests/testdata/mycert.pem", keyFile = "tests/testdata/mycert.pem")
 
   var ctx1 = newContext(verifyMode = CVerifyNone)
 
