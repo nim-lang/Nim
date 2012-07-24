@@ -72,7 +72,7 @@ type
   PASN1_UTCTIME* = SslPtr
   PASN1_cInt* = SslPtr
   PPasswdCb* = SslPtr
-  PFunction* = proc ()
+  PFunction* = proc () {.cdecl.}
   DES_cblock* = array[0..7, int8]
   PDES_cblock* = ptr DES_cblock
   des_ks_struct*{.final.} = object 
@@ -209,7 +209,7 @@ proc SSL_CTX_new*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
 proc SSL_CTX_load_verify_locations*(ctx: PSSL_CTX, CAfile: cstring,
     CApath: cstring): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_free*(arg0: PSSL_CTX){.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_set_verify*(s: PSSL_CTX, mode: int, cb: proc (a: int, b: pointer): int){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_verify*(s: PSSL_CTX, mode: int, cb: proc (a: int, b: pointer): int {.cdecl.}){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
     dynlib: DLLSSLName, importc.}
 
