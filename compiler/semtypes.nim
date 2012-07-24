@@ -817,7 +817,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     s.typ = result
     if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
       if result.callConv == ccDefault:
-        #result.callConv = ccClosure
+        result.callConv = ccClosure
         Message(n.info, warnImplicitClosure, renderTree(n))
     else:
       pragma(c, s, n.sons[1], procTypePragmas)
