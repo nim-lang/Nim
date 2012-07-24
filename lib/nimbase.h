@@ -352,14 +352,14 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NI32, float64ToInt32)(double val) {
-  val = val + 68719476736.0*1.5;
-  /* 2^36 * 1.5,  (52-_shiftamt=36) uses limited precisicion to floor */
-  return ((NI32*)&val)[NIM_IMAN] >> 16; /* 16.16 fixed point representation */
+static N_INLINE(NI, float64ToInt32)(double x) {
+  /* nowadays no hack necessary anymore */
+  return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
 }
 
-static N_INLINE(NI32, float32ToInt32)(float val) {
-  return float64ToInt32((double)val);
+static N_INLINE(NI32, float32ToInt32)(float x) {
+  /* nowadays no hack necessary anymore */
+  return x >= 0 ? (NI32)(x+0.5) : (NI32)(x-0.5);
 }
 
 #define float64ToInt64(x) ((NI64) (x))
