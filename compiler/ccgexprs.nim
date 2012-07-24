@@ -524,7 +524,7 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($3)(NU32)(NU64)($1))", # ToU32
       "((double) ($1))",      # ToFloat
       "((double) ($1))",      # ToBiggestFloat
-      "float64ToInt32($1)",   # ToInt XXX: this is not correct!
+      "float64ToInt32($1)",   # ToInt
       "float64ToInt64($1)"]   # ToBiggestInt
   var
     a: TLoc
