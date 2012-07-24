@@ -68,16 +68,16 @@ proc semGenericStmt(c: PContext, n: PNode,
   result = n
   if gCmd == cmdIdeTools: suggestStmt(c, n)
   case n.kind
-  of nkIdent:
+  of nkIdent, nkAccQuoted:
     var s = SymtabGet(c.Tab, n.ident)
     if s == nil:
       # no error if symbol cannot be bound, unless in ``bind`` context:
       if withinBind in flags:
         localError(n.info, errUndeclaredIdentifier, n.ident.s)
     else:
-      if withinBind in flags or s.name.id in toBind: result = symChoice(c, n, s)
+      if withinBind in flags or s.id in toBind: result = symChoice(c, n, s)
       else: result = semGenericStmtSymbol(c, n, s)
-  of nkDotExpr: 
+  of nkDotExpr:
     var s = QualifiedLookUp(c, n, {})
     if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
