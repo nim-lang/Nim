@@ -216,6 +216,8 @@ proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
 proc SSL_CTX_set_cipher_list*(s: PSSLCTX, ciphers: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_use_certificate_file*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
     stdcall, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_use_certificate_chain_file*(ctx: PSSL_CTX, filename: cstring): cInt{.
+    stdcall, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_use_PrivateKey_file*(ctx: PSSL_CTX,
     filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_check_private_key*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 
@@ -255,6 +257,7 @@ proc ERR_print_errors_fp*(fp: TFile){.cdecl, dynlib: DLLSSLName, importc.}
 proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl, 
     dynlib: DLLUtilName, importc.}
 proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
+proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLSSLName, importc: "OPENSSL_add_all_algorithms_conf".}
 
