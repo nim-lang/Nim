@@ -68,7 +68,7 @@ proc RawGet[A](s: TSet[A], key: A): int =
 
 proc contains*[A](s: TSet[A], key: A): bool =
   ## returns true iff `key` is in `s`.
-  var index = RawGet(t, key)
+  var index = RawGet(s, key)
   result = index >= 0
 
 proc RawInsert[A](s: var TSet[A], data: var TKeyValuePairSeq[A], key: A) =
@@ -103,7 +103,7 @@ proc incl*[A](s: var TSet[A], key: A) =
 
 proc excl*[A](s: var TSet[A], key: A) =
   ## excludes `key` from the set `s`.
-  var index = RawGet(t, key)
+  var index = RawGet(s, key)
   if index >= 0:
     s.data[index].slot = seDeleted
     dec(s.counter)
@@ -149,11 +149,11 @@ type
 
 proc len*[A](s: TOrderedSet[A]): int {.inline.} =
   ## returns the number of keys in `s`.
-  result = t.counter
+  result = s.counter
 
 proc card*[A](s: TOrderedSet[A]): int {.inline.} =
   ## alias for `len`.
-  result = t.counter
+  result = s.counter
 
 template forAllOrderedPairs(yieldStmt: stmt) =
   var h = s.first
