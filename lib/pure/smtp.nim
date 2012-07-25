@@ -81,7 +81,8 @@ proc connect*(address: string, port = 25,
   result.sock = socket()
   if ssl:
     when defined(ssl):
-      result.sock.wrapSocket(verifyMode = CVerifyNone)
+      let ctx = newContext(verifyMode = CVerifyNone)
+      ctx.wrapSocket(result.sock)
     else:
       raise newException(ESystem, 
                          "SMTP module compiled without SSL support")
