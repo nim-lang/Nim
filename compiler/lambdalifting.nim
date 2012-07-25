@@ -131,7 +131,7 @@ type
     localsToAccess: TIdNodeTable
     
   TOuterContext {.final.} = object
-    fn: PSym
+    fn: PSym # may also be a module!
     currentEnv: PEnv
     capturedVars, processed: TIntSet
     localsToEnv: TIdTable # PSym->PEnv mapping
@@ -282,7 +282,7 @@ proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) =
       if env == nil: InternalError(n.info, "no environment computed")
       if o.currentEnv != env:
         discard addDep(o.currentEnv, env, i.fn)
-        InternalError(n.info, "too complex enviroment handling required")
+        InternalError(n.info, "too complex environment handling required")
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   else:
     for k in countup(0, sonsLen(n) - 1): 
@@ -438,6 +438,8 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
                newSymNode(getClosureVar(o, e))))
 
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
+  # XXX I with I knew where these 'nil' nodes come from: 'array[.. |X]'
+  if n == nil: return nil
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
   of nkSym:
@@ -485,11 +487,12 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       let x = transformOuterProc(o, n.sons[i])
       if x != nil: n.sons[i] = x
 
-proc liftLambdas(fn: PSym, body: PNode): PNode =
+proc liftLambdas*(fn: PSym, body: PNode): PNode =
   if body.kind == nkEmpty:
     # ignore forward declaration:
     result = body
-  elif not containsNode(body, procDefs) and fn.typ.callConv != ccClosure:
+  elif (fn.typ == nil or fn.typ.callConv != ccClosure) and 
+      not containsNode(body, procDefs):
     # fast path: no inner procs, so no closure needed:
     result = body
   else:

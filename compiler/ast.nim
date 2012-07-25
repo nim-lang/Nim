@@ -1092,6 +1092,14 @@ proc hasSonWith(n: PNode, kind: TNodeKind): bool =
       return true
   result = false
 
+proc hasNilSon*(n: PNode): bool = 
+  for i in countup(0, safeLen(n) - 1): 
+    if n.sons[i] == nil: 
+      return true
+    elif hasNilSon(n.sons[i]):
+      return true
+  result = false
+
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   if n == nil: return
   case n.kind

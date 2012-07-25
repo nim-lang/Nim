@@ -108,7 +108,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       incl(c.p.owner.flags, sfSideEffect)
     elif s.kind == skParam and s.typ.kind == tyExpr:
       return s.typ.n
-    elif s.owner != c.p.owner and s.owner.kind != skModule and 
+    elif s.owner != c.p.owner and 
         c.p.owner.typ != nil and not IsGenericRoutine(s.owner):
       c.p.owner.typ.callConv = ccClosure
       if illegalCapture(s) or c.p.next.owner != s.owner:

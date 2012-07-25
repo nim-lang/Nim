@@ -87,7 +87,7 @@ proc AddInterfaceDeclAux(c: PContext, sym: PSym) =
     # add to interface:
     if c.module == nil: InternalError(sym.info, "AddInterfaceDeclAux")
     StrTableAdd(c.module.tab, sym)
-  if getCurrOwner().kind == skModule: incl(sym.flags, sfGlobal)
+  #if getCurrOwner().kind == skModule: incl(sym.flags, sfGlobal)
 
 proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) = 
   addDeclAt(c, sym, at)
