@@ -2959,6 +2959,47 @@ In the example ``name`` is instantiated with ``myint``, so \`T name\` becomes
 ``Tmyint``.
 
 
+Lookup rules for template parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A parameter ``p`` in a template is even substituted in the expression ``x.p``.
+Thus template arguments can be used as field names and a global symbol can be
+covered by the same argument name even when fully qualified:
+
+.. code-block:: nimrod
+  # module 'm'
+
+  type
+    TLev = enum
+      levA, levB
+
+  var abclev = levB
+
+  template tstLev(abclev: TLev) =
+    echo abclev, " ", m.abclev
+
+  tstLev(levA)
+  # produces: 'levA levA'
+  
+But the global symbol can properly be captured by a ``bind`` statement:
+
+.. code-block:: nimrod
+  # module 'm'
+
+  type
+    TLev = enum
+      levA, levB
+
+  var abclev = levB
+
+  template tstLev(abclev: TLev) =
+    bind m.abclev
+    echo abclev, " ", m.abclev
+
+  tstLev(levA)
+  # produces: 'levA levB'
+
+
 Macros
 ------
 
