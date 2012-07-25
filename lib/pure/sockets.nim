@@ -202,9 +202,9 @@ when defined(ssl):
   proc SSLError(s = "") =
     if s != "":
       raise newException(ESSL, s)
-    let err = ErrGetError()
+    let err = ErrPeekLastError()
     if err == 0:
-      raise newException(ESSL, "An EOF was observed that violates the protocol.")
+      raise newException(ESSL, "No error reported.")
     if err == -1:
       OSError()
     var errStr = ErrErrorString(err, nil)
@@ -212,9 +212,13 @@ when defined(ssl):
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: PSSL_CTX, certFile, keyFile: string) =
+    if certFile != "" and not existsFile(certFile):
+      raise newException(system.EIO, "Certificate file could not be found: " & certFile)
+    if keyFile != "" and not existsFile(keyFile):
+      raise newException(system.EIO, "Key file could not be found: " & keyFile)
+    
     if certFile != "":
-      var ret = SSLCTXUseCertificateFile(ctx, certFile,
-                                  SSL_FILETYPE_PEM)
+      var ret = SSLCTXUseCertificateChainFile(ctx, certFile)
       if ret != 1:
         SSLError()
     
@@ -350,7 +354,7 @@ proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
     hints.ai_socktype = toInt(SOCK_STREAM)
     hints.ai_protocol = toInt(IPPROTO_TCP)
     gaiNim(address, port, hints, aiList)
-    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrLen.cuint) < 0'i32:
+    if bindSocket(socket.fd, aiList.ai_addr, aiList.ai_addrLen.TSockLen) < 0'i32:
       OSError()
 
 when false:
@@ -586,7 +590,7 @@ proc getHostByAddr*(ip: string): THostEnt =
                                   cint(sockets.AF_INET))
     if s == nil: OSError()
   else:
-    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint, 
+    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).TSockLen, 
                                 cint(posix.AF_INET))
     if s == nil:
       raise newException(EOS, $hStrError(h_errno))
@@ -629,7 +633,7 @@ proc getHostByName*(name: string): THostEnt =
 proc getSockOptInt*(socket: TSocket, level, optname: int): int = 
   ## getsockopt for integer options.
   var res: cint
-  var size = sizeof(res).cuint
+  var size = sizeof(res).TSockLen
   if getsockopt(socket.fd, cint(level), cint(optname), 
                 addr(res), addr(size)) < 0'i32:
     OSError()
@@ -639,7 +643,7 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) =
   ## setsockopt for integer options.
   var value = cint(optval)
   if setsockopt(socket.fd, cint(level), cint(optname), addr(value),  
-                sizeof(value).cuint) < 0'i32:
+                sizeof(value).TSockLen) < 0'i32:
     OSError()
 
 proc connect*(socket: TSocket, name: string, port = TPort(0), 
@@ -661,7 +665,7 @@ proc connect*(socket: TSocket, name: string, port = TPort(0),
   var success = false
   var it = aiList
   while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen.cuint) == 0'i32:
+    if connect(socket.fd, it.ai_addr, it.ai_addrlen.TSockLen) == 0'i32:
       success = true
       break
     it = it.ai_next
@@ -722,7 +726,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   var success = false
   var it = aiList
   while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.cuint)
+    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.TSockLen)
     if ret == 0'i32:
       success = true
       break
