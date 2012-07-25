@@ -1316,7 +1316,8 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
-  if optRangeCheck notin p.options:
+  # range checks for unsigned turned out to be buggy and annoying:
+  if optRangeCheck notin p.options or dest.kind in {tyUInt..tyUInt64}:
     InitLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n.typ, ropef("(($1) ($2))",
         [getTypeDesc(p.module, dest), rdCharLoc(a)]))
