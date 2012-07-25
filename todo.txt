@@ -6,10 +6,6 @@ version 0.9.0
 - implicit deref for parameter matching
 - deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 
-New pragmas:
-- ``hoist`` pragma for loop hoisting
-- document destructors
-
 - ``borrow`` needs to take type classes into account
 - ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
@@ -41,6 +37,8 @@ version 0.9.XX
   - document it
   - fix exception handling
 
+- ``hoist`` pragma for loop hoisting
+- document destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - make templates hygienic by default: try to gensym() everything in the 'block'
   of a template; find a better solution for gensym instead of `*ident`
