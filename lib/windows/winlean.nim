@@ -430,20 +430,20 @@ proc socket*(af, typ, protocol: cint): TWinSocket {.
 proc closesocket*(s: TWinSocket): cint {.
   stdcall, importc: "closesocket", dynlib: ws2dll.}
 
-proc accept*(s: TWinSocket, a: ptr TSockAddr, addrlen: ptr cuint): TWinSocket {.
+proc accept*(s: TWinSocket, a: ptr TSockAddr, addrlen: ptr TSockLen): TWinSocket {.
   stdcall, importc: "accept", dynlib: ws2dll.}
-proc bindSocket*(s: TWinSocket, name: ptr TSockAddr, namelen: cuint): cint {.
+proc bindSocket*(s: TWinSocket, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "bind", dynlib: ws2dll.}
-proc connect*(s: TWinSocket, name: ptr TSockAddr, namelen: cuint): cint {.
+proc connect*(s: TWinSocket, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "connect", dynlib: ws2dll.}
 proc getsockname*(s: TWinSocket, name: ptr TSockAddr, 
-                  namelen: ptr cuint): cint {.
+                  namelen: ptr TSockLen): cint {.
   stdcall, importc: "getsockname", dynlib: ws2dll.}
 proc getsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
-                 optlen: ptr cuint): cint {.
+                 optlen: ptr TSockLen): cint {.
   stdcall, importc: "getsockopt", dynlib: ws2dll.}
 proc setsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
-                 optlen: cuint): cint {.
+                 optlen: TSockLen): cint {.
   stdcall, importc: "setsockopt", dynlib: ws2dll.}
 
 proc listen*(s: TWinSocket, backlog: cint): cint {.
