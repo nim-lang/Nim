@@ -284,8 +284,8 @@ proc genSection(d: PDoc, kind: TSymKind) =
       ord(kind).toRope, title, toRope(ord(kind) + 50), d.toc[kind]])
 
 proc genOutFile(d: PDoc): PRope = 
-  var 
-    code, content: PRope = nil
+  var
+    code, content: PRope
     title = ""
   var j = 0
   var tmp = ""

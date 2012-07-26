@@ -270,6 +270,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
       b.sons[length-1] = def
       addSon(result, b)
+    elif tup.kind == tyTuple and def.kind == nkPar and 
+        a.kind == nkIdentDefs and a.len > 3:
+      Message(a.info, warnEachIdentIsTuple)
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
       addInterfaceDecl(c, v)
