@@ -4,7 +4,6 @@ version 0.9.0
 - closure: implement closure support for procs capturing nested
   module vars
 - implicit deref for parameter matching
-- deprecate ``var x, y = 0`` as it's confusing for tuple consistency
 
 - ``borrow`` needs to take type classes into account
 - ``=`` should be overloadable; requires specialization for ``=``
