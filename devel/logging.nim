@@ -44,7 +44,8 @@ type
   
   TFileLogger* = object of TLogger ## logger that writes the messages to a file
     f: TFile
-    
+  
+  # TODO: implement rolling log
   TRollingFileLogger* = object of TFileLogger ## logger that writes the 
                                               ## message to a file
     maxLines: int # maximum number of lines
@@ -58,11 +59,11 @@ method log*(L: ref TLogger, level: TLevel,
   
 method log*(L: ref TConsoleLogger, level: TLevel,
             frmt: string, args: openArray[string]) = 
-  Writeln(stdout, LevelNames[level], " ", frmt % args)
+    Writeln(stdout, LevelNames[level], " ", frmt % args)
 
 method log*(L: ref TFileLogger, level: TLevel, 
             frmt: string, args: openArray[string]) = 
-  Writeln(L.f, LevelNames[level], " ", frmt % args)
+    Writeln(L.f, LevelNames[level], " ", frmt % args)
 
 proc defaultFilename*(): string = 
   ## returns the default filename for a logger
@@ -112,8 +113,8 @@ proc newRollingFileLogger*(filename = defaultFilename(),
   result.f = open(filename, mode)
 
 var
-  level* = lvlNone
-  handlers*: seq[ref TLogger] = @[]
+  level* = lvlAll  ## global log filter
+  handlers*: seq[ref TLogger] = @[] ## handlers with their own log levels
 
 proc logLoop(level: TLevel, frmt: string, args: openarray[string]) =
   for logger in items(handlers): 
