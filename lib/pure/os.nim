@@ -1380,7 +1380,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
     result = getApplAux("/proc/self/exe")
   elif defined(solaris):
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-  elif defined(bsd):
+  elif defined(freebsd):
     result = getApplAux("/proc/" & $getpid() & "/file")
   elif defined(macosx):
     var size: cuint32
