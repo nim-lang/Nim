@@ -68,7 +68,8 @@ proc InitDefines*() =
   of osWindows: 
     DefineSymbol("mswindows")
     DefineSymbol("win32")
-  of osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix: 
+  of osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix, 
+     osHaiku:
     # these are all 'unix-like'
     DefineSymbol("unix")
     DefineSymbol("posix")
