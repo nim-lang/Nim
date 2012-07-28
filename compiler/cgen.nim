@@ -800,20 +800,9 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   if sfExportc in sym.flags and generatedHeader != nil:
     genVarPrototypeAux(generatedHeader, sym)
 
-proc addIntTypes(result: var PRope) =
-  case platform.CPU[targetCPU].intSize
-  of 16:
-    appff(result, 
-          "$ntypedef short int NI;$n" & "typedef unsigned short int NU;$n", 
-          "$n%NI = type i16$n", [])
-  of 32: 
-    appff(result, 
-          "$ntypedef long int NI;$n" & "typedef unsigned long int NU;$n", 
-          "$n%NI = type i32$n", [])
-  of 64: 
-    appff(result, "$ntypedef long long int NI;$n" &
-        "typedef unsigned long long int NU;$n", "$n%NI = type i64$n", [])
-  else: nil
+proc addIntTypes(result: var PRope) {.inline.} =
+  appf(result, "#define NIM_INTBITS $1", [
+    platform.CPU[targetCPU].intSize.toRope])
 
 proc getCopyright(cfilenoext: string): PRope = 
   if optCompileOnly in gGlobalOptions: 
