@@ -112,7 +112,7 @@ proc freezeMutableRope*(r: PRope) {.inline.} =
   r.length = r.data.len
 
 var 
-  cache: array[0..2048 -1, PRope]
+  cache: array[0..2048*2 -1, PRope]
 
 proc RopeInvariant(r: PRope): bool = 
   if r == nil: 

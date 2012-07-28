@@ -238,7 +238,6 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   else: 
     n.sons[1] = semExprWithType(c, n.sons[1])
     restoreOldStyleType(n.sons[1])
-
   n.typ = getSysType(tyInt)
   result = n
 
@@ -252,8 +251,19 @@ proc semOf(c: PContext, n: PNode): PNode =
     var b = skipTypes(n.sons[2].typ, abstractPtrs)
     if b.kind != tyObject or a.kind != tyObject: 
       GlobalError(n.info, errXExpectsObjectTypes, "of")
-    while b != nil and b.id != a.id: b = b.sons[0]
-    if b == nil:
+    let diff = inheritanceDiff(a, b)
+    # | returns: 0 iff `a` == `b`
+    # | returns: -x iff `a` is the x'th direct superclass of `b`
+    # | returns: +x iff `a` is the x'th direct subclass of `b`
+    # | returns: `maxint` iff `a` and `b` are not compatible at all
+    if diff <= 0:
+      # optimize to true:
+      Message(n.info, hintConditionAlwaysTrue, renderTree(n))
+      result = newIntNode(nkIntLit, 1)
+      result.info = n.info
+      result.typ = getSysType(tyBool)
+      return result
+    elif diff == high(int):
       GlobalError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
     n.typ = getSysType(tyBool)
   else: 

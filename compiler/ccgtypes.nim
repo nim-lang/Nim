@@ -653,7 +653,10 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
   genCLineDir(result, prc.info)
   # using static is needed for inline procs
   if gCmd != cmdCompileToLLVM and lfExportLib in prc.loc.flags:
-    result.app "N_LIB_EXPORT "
+    if m.isHeaderFile:
+      result.app "N_LIB_IMPORT "
+    else:
+      result.app "N_LIB_EXPORT "
   elif prc.typ.callConv == ccInline:
     result.app "static "
   var check = initIntSet()

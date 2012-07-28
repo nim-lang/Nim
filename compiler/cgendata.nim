@@ -91,6 +91,7 @@ type
     usesThreadVars*: bool     # true if the module uses a thread var
     FrameDeclared*: bool      # hack for ROD support so that we don't declare
                               # a frame var twice in an init proc
+    isHeaderFile*: bool       # C source file is the header file
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
@@ -119,7 +120,7 @@ var
                                        # finished with code generation
   gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0
- 
+
 proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
   # section in the current block
   result = p.blocks[p.blocks.len - 1].sections[s]
