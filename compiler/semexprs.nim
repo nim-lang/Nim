@@ -245,11 +245,16 @@ proc semOf(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 3: 
     n.sons[1] = semExprWithType(c, n.sons[1])
     n.sons[2] = semExprWithType(c, n.sons[2])
-    restoreOldStyleType(n.sons[1])
-    restoreOldStyleType(n.sons[2])
-    var a = skipTypes(n.sons[1].typ, abstractPtrs)
-    var b = skipTypes(n.sons[2].typ, abstractPtrs)
-    if b.kind != tyObject or a.kind != tyObject: 
+    #restoreOldStyleType(n.sons[1])
+    #restoreOldStyleType(n.sons[2])
+    let a = skipTypes(n.sons[1].typ, typedescPtrs)
+    let b = skipTypes(n.sons[2].typ, typedescPtrs)
+    let x = skipTypes(n.sons[1].typ, abstractPtrs)
+    let y = skipTypes(n.sons[2].typ, abstractPtrs)
+
+    if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
+      GlobalError(n.info, errXExpectsObjectTypes, "of")
+    elif b.kind != tyObject or a.kind != tyObject:
       GlobalError(n.info, errXExpectsObjectTypes, "of")
     let diff = inheritanceDiff(a, b)
     # | returns: 0 iff `a` == `b`
