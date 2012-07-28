@@ -174,7 +174,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyConst, tyMutable, tyIter: 
+     tyConst, tyMutable, tyIter, tyTypeDesc: 
     result = mapType(lastSon(typ))
   of tyEnum: 
     if firstOrd(typ) < 0: 
@@ -601,9 +601,10 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
       if not isImportedType(t): 
         appf(m.s[cfsTypes], "typedef NU8 $1[$2];$n", 
              [result, toRope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter: 
+  of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable, 
+      tyIter, tyTypeDesc:
     result = getTypeDescAux(m, lastSon(t), check)
-  else: 
+  else:
     InternalError("getTypeDescAux(" & $t.kind & ')')
     result = nil
   # fixes bug #145:

@@ -1185,7 +1185,7 @@ proc genRepr(p: var TProc, n: PNode, r: var TCompRes) =
 
 proc genOf(p: var TProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
-  let t = skipTypes(n.sons[2].typ, abstractVarRange+{tyRef, tyPtr})
+  let t = skipTypes(n.sons[2].typ, abstractVarRange+{tyRef, tyPtr, tyTypeDesc})
   gen(p, n.sons[1], x)
   if tfFinal in t.flags:
     r.res = ropef("($1.m_type == $2)", [x.res, genTypeInfo(p, t)])

@@ -1024,18 +1024,18 @@ proc genNewFinalize(p: BProc, e: PNode) =
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, x, a)
-  var dest = skipTypes(typ, abstractPtrs)
+  var dest = skipTypes(typ, typedescPtrs)
   var r = rdLoc(a)
   var nilCheck: PRope = nil
   var t = skipTypes(a.t, abstractInst)
   while t.kind in {tyVar, tyPtr, tyRef}:
     if t.kind != tyVar: nilCheck = r
     r = ropef("(*$1)", [r])
-    t = skipTypes(t.sons[0], abstractInst)
+    t = skipTypes(t.sons[0], typedescInst)
   if gCmd != cmdCompileToCpp:
     while (t.kind == tyObject) and (t.sons[0] != nil):
       app(r, ".Sup")
-      t = skipTypes(t.sons[0], abstractInst)
+      t = skipTypes(t.sons[0], typedescInst)
   if nilCheck != nil:
     r = ropecg(p.module, "(($1) && #isObj($2.m_type, $3))",
               [nilCheck, r, genTypeInfo(p.module, dest)])
