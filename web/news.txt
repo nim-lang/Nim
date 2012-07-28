@@ -99,6 +99,10 @@ Changes affecting backwards compatibility
   to ``int8``.
 - ``bind`` expressions in templates are not properly supported anymore. Use
   the declarative ``bind`` statement instead.
+- The default calling convention for a procedural **type** is now ``closure``,
+  for procs it remains ``nimcall`` (which is compatible to ``closure``).
+  Activate the warning ``ImplicitClosure`` to make the compiler list the 
+  occurances of proc types which are affected.
 
 
 Compiler Additions

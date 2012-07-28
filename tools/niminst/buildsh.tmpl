@@ -8,23 +8,23 @@ set -e
 
 while :
 do
-    case "$1" in
-      --extraBuildArgs)
-	  extraBuildArgs=" $2"
-	  shift 2
-	  ;;
-      --) # End of all options
-	  shift
-	  break;
-	  ;;
-      -*)
-	  echo "Error: Unknown option: $1" >&2
-	  exit 1
-	  ;;
-      *)  # No more options
-	  break
-	  ;;
-    esac
+  case "$1" in
+    --extraBuildArgs)
+      extraBuildArgs=" $2"
+      shift 2
+      ;;
+    --) # End of all options
+      shift
+      break;
+      ;;
+    -*)
+      echo "Error: Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)  # No more options
+      break
+      ;;
+  esac
 done
 
 CC="gcc"
@@ -71,6 +71,10 @@ case $uos in
     myos="solaris"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
+  *haiku* )
+    myos="haiku"
+    # Haiku does not need -ldl nor -lm
+    ;;
   *) 
     echo "Error: unknown operating system: $uos"
     exit 1
@@ -78,7 +82,7 @@ case $uos in
 esac
 
 case $ucpu in
-  *i386* | *i486* | *i586* | *i686* ) 
+  *i386* | *i486* | *i586* | *i686* | *bepc* ) 
     mycpu="i386" ;;
   *amd*64* | *x86-64* | *x86_64* ) 
     mycpu="amd64" ;;

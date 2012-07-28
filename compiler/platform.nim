@@ -21,7 +21,7 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris, 
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osAix, osPalmos, osQnx, osAmiga, 
-    osAtari, osNetware, osMacos, osMacosx, osEcmaScript, osNimrodVM, 
+    osAtari, osNetware, osMacos, osMacosx, osHaiku, osEcmaScript, osNimrodVM, 
     osStandalone
 
 type 
@@ -129,6 +129,10 @@ const
       objExt: ".o", newLine: "\x0D", pathSep: ",", dirSep: ":", scriptExt: "", 
       curDir: ":", exeExt: "", extSep: ".", props: {ospCaseInsensitive}), 
      (name: "MacOSX", parDir: "..", dllFrmt: "lib$1.dylib", altDirSep: ":", 
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
+      props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}), 
+     (name: "Haiku", parDir: "..", dllFrmt: "lib$1.so", altDirSep: ":", 
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}), 
