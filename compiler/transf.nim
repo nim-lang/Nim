@@ -49,7 +49,6 @@ type
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     inLoop: int              # > 0 if we are in a loop
-    transformedInnerProcs: TIntSet
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} = 
@@ -753,7 +752,6 @@ proc openTransf(module: PSym, filename: string): PPassContext =
   n.contSyms = @[]
   n.breakSyms = @[]
   n.module = module
-  n.transformedInnerProcs = initIntSet()
   result = n
 
 proc openTransfCached(module: PSym, filename: string, 

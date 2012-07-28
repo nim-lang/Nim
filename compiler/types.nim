@@ -59,6 +59,7 @@ const
   abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable, tyOrdinal}
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable}
+  typeclassPtrs* = abstractPtrs + {tyTypeClass}
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType
 proc containsObject*(t: PType): bool

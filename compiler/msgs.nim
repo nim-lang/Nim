@@ -107,7 +107,9 @@ type
     hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
-    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, hintUser
+    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, 
+    hintConditionAlwaysTrue,
+    hintUser
 
 const 
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -361,6 +363,7 @@ const
     hintCodeEnd: "end of listing [CodeEnd]", 
     hintConf: "used config file \'$1\' [Conf]", 
     hintPath: "added path: '$1' [Path]",
+    hintConditionAlwaysTrue: "condition is always true: '$1' [CondTrue]",
     hintUser: "$1 [User]"]
 
 const
@@ -373,10 +376,10 @@ const
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "User"]
 
-  HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
+  HintsToStr*: array[0..14, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf", 
-    "Path",
+    "Path", "CondTrue",
     "User"]
 
 const 
