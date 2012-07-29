@@ -1137,8 +1137,8 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   msgs.gErrorMax = high(int)
   
   # open a scope for temporary symbol inclusions:
-  openScope(c.tab)
   let oldTos = c.tab.tos
+  openScope(c.tab)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
   let oldContextLen = msgs.getInfoContextLen()
@@ -1153,7 +1153,6 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   except ERecoverableError:
     nil
   # undo symbol table changes (as far as it's possible):
-  closeScope(c.tab)
   c.generics = oldGenerics
   c.InGenericContext = oldInGenericContext
   c.InUnrolledContext = oldInUnrolledContext
@@ -1164,6 +1163,17 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
+
+proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) == 3:
+    # XXX ugh this is really a hack: shallowCopy() can be overloaded only
+    # with procs that take not 2 parameters:
+    result = newNodeI(nkFastAsgn, n.info)
+    result.add(n[1])
+    result.add(n[2])
+    result = semAsgn(c, result)
+  else:
+    result = semDirectOp(c, n, flags)
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
@@ -1178,16 +1188,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mIs: result = semIs(c, setMs(n, s))
   of mOf: result = semOf(c, setMs(n, s))
   of mEcho: result = semEcho(c, setMs(n, s))
-  of mShallowCopy:
-    if sonsLen(n) == 3:
-      # XXX ugh this is really a hack: shallowCopy() can be overloaded only
-      # with procs that take not 2 parameters:
-      result = newNodeI(nkFastAsgn, n.info)
-      result.add(n[1])
-      result.add(n[2])
-      result = semAsgn(c, result)
-    else:
-      result = semDirectOp(c, n, flags)
+  of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   else: result = semDirectOp(c, n, flags)
 
