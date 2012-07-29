@@ -50,6 +50,8 @@ type
                                               ## message to a file
     maxLines: int # maximum number of lines
     lines: seq[string]
+    curLine : int
+    
 
 method log*(L: ref TLogger, level: TLevel,
             frmt: string, args: openArray[string]) =
@@ -98,19 +100,40 @@ proc substituteLog*(frmt: string): string =
 
 proc newFileLogger*(filename = defaultFilename(), 
                     mode: TFileMode = fmAppend,
-                    levelThreshold = lvlNone): ref TFileLogger = 
+                    levelThreshold = lvlAll): ref TFileLogger = 
   new(result)
   result.levelThreshold = levelThreshold
   result.f = open(filename, mode)
 
+# ------
+
 proc newRollingFileLogger*(filename = defaultFilename(), 
-                           mode: TFileMode = fmAppend,
-                           levelThreshold = lvlNone,
+                           mode: TFileMode = fmReadWrite,
+                           levelThreshold = lvlAll,
                            maxLines = 1000): ref TRollingFileLogger = 
   new(result)
   result.levelThreshold = levelThreshold
   result.maxLines = maxLines
   result.f = open(filename, mode)
+  result.curLine = 0
+  if mode in {fmReadWrite, fmReadWriteExisting}:
+    readLogLines(result)
+
+proc readLogLines(logger : ref TRollingFileLogger) =
+  f.readLine # TODO read all lines, update curLine
+
+
+method log*(L: ref TRollingFileLogger, level: TLevel, 
+            frmt: string, args: openArray[string]) = 
+  # TODO 
+  # if more than maxlines, then set cursor to zero
+  # otherwise add new line
+  # update line in the lines
+  # increment cursor
+  # store lines into file
+  Writeln(L.f, LevelNames[level], " ", frmt % args)
+
+# --------
 
 var
   level* = lvlAll  ## global log filter
