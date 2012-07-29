@@ -483,6 +483,9 @@ proc UnknownLineInfo*(): TLineInfo =
 var 
   msgContext: seq[TLineInfo] = @[]
 
+proc getInfoContextLen*(): int = return msgContext.len
+proc setInfoContextLen*(L: int) = setLen(msgContext, L)
+
 proc pushInfoContext*(info: TLineInfo) = 
   msgContext.add(info)
   

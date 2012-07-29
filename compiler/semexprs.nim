@@ -1136,14 +1136,28 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # do not halt after first error:
   msgs.gErrorMax = high(int)
   
+  # open a scope for temporary symbol inclusions:
+  openScope(c.tab)
   let oldTos = c.tab.tos
   let oldOwnerLen = len(gOwners)
+  let oldGenerics = c.generics
+  let oldContextLen = msgs.getInfoContextLen()
+  
+  let oldInGenericContext = c.InGenericContext
+  let oldInUnrolledContext = c.InUnrolledContext
+  
+  c.generics = newGenericsCache()
   try:
     discard semExpr(c, n.sons[1])
     result.intVal = ord(msgs.gErrorCounter == oldErrorCount)
   except ERecoverableError:
     nil
   # undo symbol table changes (as far as it's possible):
+  closeScope(c.tab)
+  c.generics = oldGenerics
+  c.InGenericContext = oldInGenericContext
+  c.InUnrolledContext = oldInUnrolledContext
+  msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
   while c.tab.tos > oldTos: rawCloseScope(c.tab)
   dec c.InCompilesContext
