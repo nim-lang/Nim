@@ -45,6 +45,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   result.typ = makeRangeType(c, firstOrd(n.sons[1].typ),
                                 lastOrd(n.sons[1].typ), n.info)
 
+proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -55,5 +56,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = getSysType(tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
+  of mShallowCopy: result = semShallowCopy(c, n, flags)
   else: result = n
 
