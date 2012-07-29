@@ -1199,8 +1199,12 @@ proc SemStmt(c: PContext, n: PNode): PNode =
       result = semExprNoType(c, n)
       #LocalError(n.info, errStmtExpected)
       #result = ast.emptyNode
-  if result == nil: InternalError(n.info, "SemStmt: result = nil")
-  incl(result.flags, nfSem)
+  if result == nil: 
+    InternalError(n.info, "SemStmt: result = nil")
+    # error correction:
+    result = emptyNode
+  else: 
+    incl(result.flags, nfSem)
 
 proc semStmtScope(c: PContext, n: PNode): PNode = 
   openScope(c.tab)

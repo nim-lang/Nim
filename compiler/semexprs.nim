@@ -1256,10 +1256,10 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil: 
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyOrdinal})
-    if not isOrdinalType(typ): 
+    if not isOrdinalType(typ):
       LocalError(n.info, errOrdinalTypeExpected)
-      return 
-    if lengthOrd(typ) > MaxSetElements: 
+      typ = makeRangeType(c, 0, MaxSetElements - 1, n.info)
+    elif lengthOrd(typ) > MaxSetElements: 
       typ = makeRangeType(c, 0, MaxSetElements - 1, n.info)
     addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1): 
