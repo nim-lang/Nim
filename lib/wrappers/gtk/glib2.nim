@@ -198,6 +198,14 @@ const
   G_TYPE_PARAM* = GType(19 shl G_TYPE_FUNDAMENTAL_SHIFT)
   G_TYPE_OBJECT* = GType(20 shl G_TYPE_FUNDAMENTAL_SHIFT)
 
+const
+  G_PRIORITY_HIGH_IDLE* = 100
+  G_PRIORITY_DEFAULT_IDLE* = 200
+  G_PRIORITY_LOW* = 300
+  G_PRIORITY_HIGH* = -100
+  G_PRIORITY_DEFAULT* = 0
+  
+
 proc G_TYPE_MAKE_FUNDAMENTAL*(x: int): GType
 const 
   G_TYPE_RESERVED_GLIB_FIRST* = 21
@@ -4508,8 +4516,16 @@ proc g_thread_init*(vtable: pointer) {.
 proc g_timeout_add*(interval: guint, function, data: gpointer): guint {.
   cdecl, dynlib: gliblib, importc: "g_timeout_add".}
 
+proc g_timeout_add_full*(priority: guint, interval: guint, function,
+  data, notify: gpointer): guint {.cdecl, dynlib: gliblib, 
+  importc: "g_timeout_add_full".}
+
 proc g_idle_add*(function, data: gpointer): guint {.
   cdecl, dynlib: gliblib, importc: "g_idle_add".}
+
+proc g_idle_add_full*(priority: guint, function,
+  data, notify: gpointer): guint {.cdecl, dynlib: gliblib, 
+  importc: "g_idle_add_full".}
 
 proc g_source_remove*(tag: guint): gboolean {.
   cdecl, dynlib: gliblib, importc: "g_source_remove".}
