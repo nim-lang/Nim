@@ -7804,6 +7804,10 @@ proc set_scrollable*(notebook: PNotebook, scrollable: gboolean){.cdecl,
     dynlib: lib, importc: "gtk_notebook_set_scrollable".}
 proc get_scrollable*(notebook: PNotebook): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_get_scrollable".}
+proc set_tab_reorderable*(notebook: PNotebook, child: PWidget, b: bool){.cdecl,
+    dynlib: lib, importc: "gtk_notebook_set_tab_reorderable".}
+proc get_tab_reorderable*(notebook: PNotebook, child: PWidget): bool {.cdecl,
+    dynlib: lib, importc: "gtk_notebook_get_tab_reorderable".}
 proc popup_enable*(notebook: PNotebook){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_popup_enable".}
 proc popup_disable*(notebook: PNotebook){.cdecl, dynlib: lib, 
