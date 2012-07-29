@@ -198,11 +198,14 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
   if msgs.gErrorMax <= 1:
     result = SemStmtAndGenerateGenerics(c, n)
   else:
+    let oldContextLen = msgs.getInfoContextLen()
     try:
       result = SemStmtAndGenerateGenerics(c, n)
     except ERecoverableError:
       RecoverContext(c)
       result = ast.emptyNode
+      msgs.setInfoContextLen(oldContextLen)
+      if gCmd == cmdIdeTools: findSuggest(c, n)
   
 proc checkThreads(c: PContext) =
   if not needsGlobalAnalysis(): return

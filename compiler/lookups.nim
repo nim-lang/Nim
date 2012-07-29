@@ -58,9 +58,14 @@ proc CloseScope*(tab: var TSymTab) =
   if tab.tos > len(tab.stack): InternalError("CloseScope")
   var it: TTabIter
   var s = InitTabIter(it, tab.stack[tab.tos-1])
+  var missingImpls = 0
   while s != nil:
     if sfForward in s.flags:
-      LocalError(s.info, errImplOfXexpected, getSymRepr(s))
+      # too many 'implementation of X' errors are annoying
+      # and slow 'suggest' down:
+      if missingImpls == 0:
+        LocalError(s.info, errImplOfXexpected, getSymRepr(s))
+      inc missingImpls
     elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options: 
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
