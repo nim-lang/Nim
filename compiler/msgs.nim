@@ -12,7 +12,7 @@ import
 
 type 
   TMsgKind* = enum 
-    errUnknown, errIllFormedAstX, errCannotOpenFile, errInternal, errGenerated, 
+    errUnknown, errIllFormedAstX, errInternal, errCannotOpenFile, errGenerated, 
     errXCompilerDoesNotSupportCpp, errStringLiteralExpected, 
     errIntLiteralExpected, errInvalidCharacterConstant, 
     errClosingTripleQuoteExpected, errClosingQuoteExpected, 
@@ -115,8 +115,8 @@ const
   MsgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error", 
     errIllFormedAstX: "illformed AST: $1",
-    errCannotOpenFile: "cannot open \'$1\'", 
     errInternal: "internal error: $1", 
+    errCannotOpenFile: "cannot open \'$1\'", 
     errGenerated: "$1", 
     errXCompilerDoesNotSupportCpp: "\'$1\' compiler does not support C++", 
     errStringLiteralExpected: "string literal expected", 
@@ -576,7 +576,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
     assert(false)             # we want a stack trace here
   if msg >= fatalMin and msg <= fatalMax: 
     if gVerbosity >= 3: assert(false)
-    if gCmd != cmdIdeTools: quit(1)
+    quit(1)
   if msg >= errMin and msg <= errMax: 
     if gVerbosity >= 3: assert(false)
     inc(gErrorCounter)
@@ -661,16 +661,19 @@ proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doRaise)
 
 proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  if gCmd == cmdIdeTools and gErrorCounter > 10: return
   liMessage(info, msg, arg, doNothing)
 
 proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
 proc InternalError*(info: TLineInfo, errMsg: string) = 
+  if gCmd == cmdIdeTools: return
   writeContext(info)
   liMessage(info, errInternal, errMsg, doAbort)
 
 proc InternalError*(errMsg: string) = 
+  if gCmd == cmdIdeTools: return
   writeContext(UnknownLineInfo())
   rawMessage(errInternal, errMsg)
 
@@ -680,4 +683,3 @@ template AssertNotNil*(e: expr): expr =
 
 template InternalAssert*(e: bool): stmt =
   if not e: InternalError($InstantiationInfo())
-
