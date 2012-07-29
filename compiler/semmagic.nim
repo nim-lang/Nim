@@ -18,7 +18,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: GlobalError(n.info, errIntLiteralExpected)
+  else: LocalError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkPar, n.info, n.typ)

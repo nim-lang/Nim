@@ -119,7 +119,8 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
-    GlobalError(t.sym.info, errCannotInstantiateX, typeToString(t))
+    LocalError(t.sym.info, errCannotInstantiateX, typeToString(t))
+    result = errorType(cl.c)
   elif result.kind == tyGenericParam: 
     InternalError(cl.info, "substitution with generic parameter")
   

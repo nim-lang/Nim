@@ -163,18 +163,20 @@ proc SemReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if c.p.owner.kind notin {skConverter, skMethod, skProc, skMacro}:
-    globalError(n.info, errXNotAllowedHere, "\'return\'")
-  if n.sons[0].kind != nkEmpty:
+    LocalError(n.info, errXNotAllowedHere, "\'return\'")
+  elif n.sons[0].kind != nkEmpty:
     # transform ``return expr`` to ``result = expr; return``
-    if c.p.resultSym == nil: globalError(n.info, errNoReturnTypeDeclared)
-    var a = newNodeI(nkAsgn, n.sons[0].info)
-    addSon(a, newSymNode(c.p.resultSym))
-    addSon(a, n.sons[0])
-    n.sons[0] = semAsgn(c, a)
-    # optimize away ``result = result``:
-    if n[0][1].kind == nkSym and n[0][1].sym.kind == skResult: 
-      n.sons[0] = ast.emptyNode
-  
+    if c.p.resultSym != nil: 
+      var a = newNodeI(nkAsgn, n.sons[0].info)
+      addSon(a, newSymNode(c.p.resultSym))
+      addSon(a, n.sons[0])
+      n.sons[0] = semAsgn(c, a)
+      # optimize away ``result = result``:
+      if n[0][1].kind == nkSym and n[0][1].sym.kind == skResult: 
+        n.sons[0] = ast.emptyNode
+    else:
+      LocalError(n.info, errNoReturnTypeDeclared)
+
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst})
   case t.kind
@@ -198,8 +200,8 @@ proc SemYield(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if c.p.owner == nil or c.p.owner.kind != skIterator: 
-    GlobalError(n.info, errYieldNotAllowedHere)
-  if n.sons[0].kind != nkEmpty:
+    LocalError(n.info, errYieldNotAllowedHere)
+  elif n.sons[0].kind != nkEmpty:
     n.sons[0] = SemExprWithType(c, n.sons[0]) # check for type compatibility:
     var restype = c.p.owner.typ.sons[0]
     if restype != nil: 
@@ -254,22 +256,24 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       else: typ = skipIntLit(def.typ)
     else:
       def = ast.emptyNode
-      if symkind == skLet: GlobalError(a.info, errLetNeedsInit)
+      if symkind == skLet: LocalError(a.info, errLetNeedsInit)
       
     # this can only happen for errornous var statements:
     if typ == nil: continue
     if not typeAllowed(typ, symkind): 
-      GlobalError(a.info, errXisNoType, typeToString(typ))
+      LocalError(a.info, errXisNoType, typeToString(typ))
     var tup = skipTypes(typ, {tyGenericInst})
     if a.kind == nkVarTuple: 
-      if tup.kind != tyTuple: GlobalError(a.info, errXExpected, "tuple")
-      if length-2 != sonsLen(tup): 
-        GlobalError(a.info, errWrongNumberOfVariables)
-      b = newNodeI(nkVarTuple, a.info)
-      newSons(b, length)
-      b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
-      b.sons[length-1] = def
-      addSon(result, b)
+      if tup.kind != tyTuple: 
+        localError(a.info, errXExpected, "tuple")
+      elif length-2 != sonsLen(tup): 
+        localError(a.info, errWrongNumberOfVariables)
+      else:
+        b = newNodeI(nkVarTuple, a.info)
+        newSons(b, length)
+        b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
+        b.sons[length-1] = def
+        addSon(result, b)
     elif tup.kind == tyTuple and def.kind == nkPar and 
         a.kind == nkIdentDefs and a.len > 3:
       Message(a.info, warnEachIdentIsTuple)
@@ -308,33 +312,19 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
 
-    when true:
-      var def = semConstExpr(c, a.sons[2])
-      if def == nil: GlobalError(a.sons[2].info, errConstExprExpected)
-      # check type compatibility between def.typ and typ:
-      if typ != nil:
-        def = fitRemoveHiddenConv(c, typ, def)
-      else:
-        typ = def.typ
-      if not typeAllowed(typ, skConst):
-        GlobalError(a.info, errXisNoType, typeToString(typ))
+    var def = semConstExpr(c, a.sons[2])
+    if def == nil:
+      LocalError(a.sons[2].info, errConstExprExpected)
+      continue
+    # check type compatibility between def.typ and typ:
+    if typ != nil:
+      def = fitRemoveHiddenConv(c, typ, def)
     else:
-      var e = semExprWithType(c, a.sons[2])
-      if e == nil: GlobalError(a.sons[2].info, errConstExprExpected)
-      var def = getConstExpr(c.module, e)
-      if def == nil: 
-        v.flags.incl(sfFakeConst)
-        def = evalConstExpr(c.module, e)
-        if def == nil or def.kind == nkEmpty: def = e
-      # check type compatibility between def.typ and typ:
-      if typ != nil:
-        def = fitRemoveHiddenConv(c, typ, def)
-      else:
-        typ = def.typ
-      if not typeAllowed(typ, skConst):
-        v.flags.incl(sfFakeConst)
-        if not typeAllowed(typ, skVar):
-          GlobalError(a.info, errXisNoType, typeToString(typ))
+      typ = def.typ
+    if typ == nil: continue
+    if not typeAllowed(typ, skConst):
+      LocalError(a.info, errXisNoType, typeToString(typ))
+      continue
     v.typ = typ
     v.ast = def               # no need to copy
     addInterfaceDecl(c, v)
@@ -382,7 +372,10 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info)
   var trueSymbol = StrTableGet(magicsys.systemModule.Tab, getIdent"true")
-  if trueSymbol == nil: GlobalError(n.info, errSystemNeeds, "true")
+  if trueSymbol == nil: 
+    LocalError(n.info, errSystemNeeds, "true")
+    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner())
+    trueSymbol.typ = getSysType(tyBool)
 
   result.add(newSymNode(trueSymbol, n.info))
   var stmts = newNodeI(nkStmtList, n.info)
@@ -391,7 +384,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var length = sonsLen(n)
   var call = n.sons[length-2]
   if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
-    GlobalError(n.info, errWrongNumberOfVariables)
+    LocalError(n.info, errWrongNumberOfVariables)
+    return result
   
   var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar)
   if tupleTypeA.kind != tyTuple: InternalError(n.info, "no tuple type!")
@@ -422,18 +416,20 @@ proc semForVars(c: PContext, n: PNode): PNode =
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3: 
-    if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
-    var v = newSymS(skForVar, n.sons[0], c)
-    if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
-    # BUGFIX: don't use `iter` here as that would strip away
-    # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
-    # for an example:
-    v.typ = n.sons[length-2].typ
-    n.sons[0] = newSymNode(v)
-    addDecl(c, v)
-  else: 
-    if length-2 != sonsLen(iter):
-      GlobalError(n.info, errWrongNumberOfVariables)
+    if length == 3:
+      var v = newSymS(skForVar, n.sons[0], c)
+      if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
+      # BUGFIX: don't use `iter` here as that would strip away
+      # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
+      # for an example:
+      v.typ = n.sons[length-2].typ
+      n.sons[0] = newSymNode(v)
+      addDecl(c, v)
+    else:
+      LocalError(n.info, errWrongNumberOfVariables)
+  elif length-2 != sonsLen(iter):
+    LocalError(n.info, errWrongNumberOfVariables)
+  else:
     for i in countup(0, length - 3): 
       var v = newSymS(skForVar, n.sons[i], c)
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
@@ -461,12 +457,11 @@ proc semFor(c: PContext, n: PNode): PNode =
       call.sons[0].sym.kind != skIterator: 
     if length == 3:
       n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])
-      result = semForVars(c, n)
     elif length == 4:
       n.sons[length-2] = implicitIterator(c, "pairs", n.sons[length-2])
-      result = semForVars(c, n)
     else:
-      GlobalError(n.sons[length - 2].info, errIteratorExpected)
+      LocalError(n.sons[length-2].info, errIteratorExpected)
+    result = semForVars(c, n)
   elif call.sons[0].sym.magic != mNone:
     if call.sons[0].sym.magic == mOmpParFor:
       result = semForVars(c, n)
@@ -504,7 +499,7 @@ proc semTry(c: PContext, n: PNode): PNode =
         var typ = semTypeNode(c, a.sons[j], nil)
         if typ.kind == tyRef: typ = typ.sons[0]
         if typ.kind != tyObject:
-          GlobalError(a.sons[j].info, errExprCannotBeRaised)
+          LocalError(a.sons[j].info, errExprCannotBeRaised)
         a.sons[j] = newNodeI(nkType, a.sons[j].info)
         a.sons[j].typ = typ
         if ContainsOrIncl(check, typ.id):
@@ -549,7 +544,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if (a.sons[0].kind != nkSym): IllFormedAst(a)
     var s = a.sons[0].sym
     if s.magic == mNone and a.sons[2].kind == nkEmpty: 
-      GlobalError(a.info, errImplOfXexpected, s.name.s)
+      LocalError(a.info, errImplOfXexpected, s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     if a.sons[1].kind != nkEmpty: 
       # We have a generic type declaration here. In generic types,
@@ -901,9 +896,10 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     var f = checkModuleName(n.sons[i])
     var fileIndex = f.fileInfoIdx
     if ContainsOrIncl(c.includedFiles, fileIndex): 
-      GlobalError(n.info, errRecursiveDependencyX, f.extractFilename)
-    addSon(result, semStmt(c, gIncludeFile(f)))
-    Excl(c.includedFiles, fileIndex)
+      LocalError(n.info, errRecursiveDependencyX, f.extractFilename)
+    else:
+      addSon(result, semStmt(c, gIncludeFile(f)))
+      Excl(c.includedFiles, fileIndex)
   
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 .. <safeLen(n): setLine(n.sons[i], info)

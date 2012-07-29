@@ -109,14 +109,23 @@ proc processImportObjC(s: PSym, extname: string) =
   incl(s.flags, sfNamedParamCall)
   excl(s.flags, sfForward)
 
+proc newEmptyStrNode(n: PNode): PNode {.noinline.} =
+  result = newNodeIT(nkStrLit, n.info, getSysType(tyString))
+  result.strVal = ""
+
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr: 
-    GlobalError(n.info, errStringLiteralExpected)
-  else: 
+    LocalError(n.info, errStringLiteralExpected)
+    # error correction:
+    result = newEmptyStrNode(n)
+  else:
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     case n.sons[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.sons[1]
-    else: GlobalError(n.info, errStringLiteralExpected)
+    else: 
+      LocalError(n.info, errStringLiteralExpected)
+      # error correction:
+      result = newEmptyStrNode(n)
 
 proc expectStrLit(c: PContext, n: PNode): string = 
   result = getStrLitNode(c, n).strVal
@@ -190,13 +199,17 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   Append(c.libs, result)
 
 proc expectDynlibNode(c: PContext, n: PNode): PNode = 
-  if n.kind != nkExprColonExpr: GlobalError(n.info, errStringLiteralExpected)
-  else: 
+  if n.kind != nkExprColonExpr: 
+    LocalError(n.info, errStringLiteralExpected)
+    # error correction:
+    result = newEmptyStrNode(n)
+  else:
     result = c.semExpr(c, n.sons[1])
     if result.kind == nkSym and result.sym.kind == skConst:
       result = result.sym.ast # look it up
     if result.typ == nil or result.typ.kind != tyString: 
-      GlobalError(n.info, errStringLiteralExpected)
+      LocalError(n.info, errStringLiteralExpected)
+      result = newEmptyStrNode(n)
     
 proc processDynLib(c: PContext, n: PNode, sym: PSym) = 
   if (sym == nil) or (sym.kind == skModule): 
@@ -359,7 +372,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   of nkStrLit, nkRStrLit, nkTripleStrLit: 
     result = copyNode(n)
     var str = n.sons[1].strVal
-    if str == "": GlobalError(n.info, errEmptyAsm) 
+    if str == "":
+      LocalError(n.info, errEmptyAsm)
+      return
     # now parse the string literal and substitute symbols:
     var a = 0
     while true: 
@@ -405,15 +420,20 @@ proc PragmaLine(c: PContext, n: PNode) =
   if n.kind == nkExprColonExpr:
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     let a = n.sons[1]
-    if a.kind != nkPar: GlobalError(n.info, errXExpected, "tuple")
-    var x = a.sons[0]
-    var y = a.sons[1]
-    if x.kind == nkExprColonExpr: x = x.sons[1]
-    if y.kind == nkExprColonExpr: y = y.sons[1]
-    if x.kind != nkStrLit: GlobalError(n.info, errStringLiteralExpected)
-    if y.kind != nkIntLit: GlobalError(n.info, errIntLiteralExpected)
-    n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
-    n.info.line = int16(y.intVal)
+    if a.kind == nkPar: 
+      var x = a.sons[0]
+      var y = a.sons[1]
+      if x.kind == nkExprColonExpr: x = x.sons[1]
+      if y.kind == nkExprColonExpr: y = y.sons[1]
+      if x.kind != nkStrLit: 
+        LocalError(n.info, errStringLiteralExpected)
+      elif y.kind != nkIntLit: 
+        LocalError(n.info, errIntLiteralExpected)
+      else:
+        n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
+        n.info.line = int16(y.intVal)
+    else:
+      LocalError(n.info, errXExpected, "tuple")
   else:
     # sensible default:
     n.info = getInfoContext(-1)

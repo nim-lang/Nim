@@ -918,18 +918,17 @@ proc expectString(n: PNode) =
 
 proc evalSlurp*(e: PNode, module: PSym): PNode =
   expectString(e)
+  result = newNodeIT(nkStrLit, e.info, getSysType(tyString))
   try:
     var filename = e.strVal.FindFile
-    var content = readFile(filename)
-    result = newStrNode(nkStrLit, content)
-    result.typ = getSysType(tyString)
-    result.info = e.info
+    result.strVal = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:    
     appendToModule(module, newNode(nkIncludeStmt, e.info, @[
       newStrNode(nkStrLit, filename)]))
   except EIO:
-    GlobalError(e.info, errCannotOpenFile, e.strVal)
+    result.strVal = ""
+    LocalError(e.info, errCannotOpenFile, e.strVal)
 
 proc readOutput(p: PProcess): string =
   result = ""
