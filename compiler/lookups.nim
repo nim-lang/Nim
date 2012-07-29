@@ -36,6 +36,11 @@ proc considerAcc*(n: PNode): PIdent =
         result = getIdent(id)
   else:
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
+ 
+proc errorSym*(n: PNode): PSym =
+  ## creates an error symbol to avoid cascading errors (for IDE support)
+  result = newSym(skUnknown, considerAcc(n), getCurrOwner())
+  result.info = n.info
 
 type 
   TOverloadIterMode* = enum 
@@ -122,13 +127,17 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   case n.kind
   of nkIdent:
     result = SymtabGet(c.Tab, n.ident)
-    if result == nil: GlobalError(n.info, errUndeclaredIdentifier, n.ident.s)
+    if result == nil: 
+      LocalError(n.info, errUndeclaredIdentifier, n.ident.s)
+      result = errorSym(n)
   of nkSym:
     result = n.sym
   of nkAccQuoted:
     var ident = considerAcc(n)
     result = SymtabGet(c.Tab, ident)
-    if result == nil: GlobalError(n.info, errUndeclaredIdentifier, ident.s)
+    if result == nil:
+      LocalError(n.info, errUndeclaredIdentifier, ident.s)
+      result = errorSym(n)
   else: InternalError(n.info, "lookUp")
   if Contains(c.AmbiguousSymbols, result.id): 
     LocalError(n.info, errUseQualifier, result.name.s)
@@ -144,7 +153,8 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
     var ident = considerAcc(n)
     result = SymtabGet(c.Tab, ident)
     if result == nil and checkUndeclared in flags: 
-      GlobalError(n.info, errUndeclaredIdentifier, ident.s)
+      LocalError(n.info, errUndeclaredIdentifier, ident.s)
+      result = errorSym(n)
     elif checkAmbiguity in flags and result != nil and 
         Contains(c.AmbiguousSymbols, result.id): 
       LocalError(n.info, errUseQualifier, ident.s)
@@ -167,10 +177,12 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         else: 
           result = StrTableGet(m.tab, ident)
         if result == nil and checkUndeclared in flags: 
-          GlobalError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
-      elif checkUndeclared in flags: 
-        GlobalError(n.sons[1].info, errIdentifierExpected, 
-                    renderTree(n.sons[1]))
+          LocalError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
+          result = errorSym(n.sons[1])
+      elif checkUndeclared in flags:
+        LocalError(n.sons[1].info, errIdentifierExpected, 
+                   renderTree(n.sons[1]))
+        result = errorSym(n.sons[1])
   else:
     result = nil
   if result != nil and result.kind == skStub: loadStub(result)
@@ -205,8 +217,9 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         else: 
           result = InitIdentIter(o.it, o.m.tab, ident)
       else: 
-        GlobalError(n.sons[1].info, errIdentifierExpected, 
-                    renderTree(n.sons[1]))
+        LocalError(n.sons[1].info, errIdentifierExpected, 
+                   renderTree(n.sons[1]))
+        result = errorSym(n.sons[1])
   of nkSymChoice: 
     o.mode = oimSymChoice
     result = n.sons[0].sym

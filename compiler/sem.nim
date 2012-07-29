@@ -37,7 +37,7 @@ proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
-  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+  LocalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
       typeToString(actual) & ") " &
       `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
@@ -45,6 +45,9 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   result = IndexTypesMatch(c, formal, arg.typ, arg)
   if result == nil:
     typeMismatch(arg, formal, arg.typ)
+    # error correction:
+    result = copyNode(arg)
+    result.typ = formal
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
   result = c.tab.tos <= 2
@@ -62,7 +65,7 @@ proc semStmtScope(c: PContext, n: PNode): PNode
 
 proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
   if not typeAllowed(typ, skConst):
-    GlobalError(typ.n.info, errXisNoType, typeToString(typ))
+    LocalError(typ.n.info, errXisNoType, typeToString(typ))
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 
@@ -80,13 +83,15 @@ proc evalTypedExpr(c: PContext, e: PNode): PNode =
   if result == nil:
     result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
-      GlobalError(e.info, errConstExprExpected)
+      LocalError(e.info, errConstExprExpected)
+      # error correction:
+      result = e
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:
-    GlobalError(n.info, errConstExprExpected)
-    return nil
+    LocalError(n.info, errConstExprExpected)
+    return n
   result = evalTypedExpr(c, e)
 
 include seminst, semcall
@@ -129,12 +134,15 @@ proc forceBool(c: PContext, n: PNode): PNode =
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode = 
-  result = fitNode(c, getSysType(tyBool), semExprWithType(c, n))
-  if result == nil: 
-    GlobalError(n.info, errConstExprExpected)
-    return 
+  let nn = semExprWithType(c, n)
+  result = fitNode(c, getSysType(tyBool), nn)
+  if result == nil:
+    LocalError(n.info, errConstExprExpected)
+    return nn
   result = getConstExpr(c.module, result)
-  if result == nil: GlobalError(n.info, errConstExprExpected)
+  if result == nil: 
+    LocalError(n.info, errConstExprExpected)
+    result = nn
 
 include semtypes, semexprs, semgnrc, semstmts
 

@@ -76,21 +76,23 @@ proc rawImportSymbol(c: PContext, s: PSym) =
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) = 
   let ident = lookups.considerAcc(n)
   let s = StrTableGet(fromMod.tab, ident)
-  if s == nil: GlobalError(n.info, errUndeclaredIdentifier, ident.s)
-  if s.kind == skStub: loadStub(s)
-  if s.Kind notin ExportableSymKinds:
-    InternalError(n.info, "importSymbol: 2")
-  # for an enumeration we have to add all identifiers
-  case s.Kind
-  of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter:
-    # for a overloadable syms add all overloaded routines
-    var it: TIdentIter
-    var e = InitIdentIter(it, fromMod.tab, s.name)
-    while e != nil:
-      if e.name.id != s.Name.id: InternalError(n.info, "importSymbol: 3")
-      rawImportSymbol(c, e)
-      e = NextIdentIter(it, fromMod.tab)
-  else: rawImportSymbol(c, s)
+  if s == nil:
+    LocalError(n.info, errUndeclaredIdentifier, ident.s)
+  else:
+    if s.kind == skStub: loadStub(s)
+    if s.Kind notin ExportableSymKinds:
+      InternalError(n.info, "importSymbol: 2")
+    # for an enumeration we have to add all identifiers
+    case s.Kind
+    of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter:
+      # for a overloadable syms add all overloaded routines
+      var it: TIdentIter
+      var e = InitIdentIter(it, fromMod.tab, s.name)
+      while e != nil:
+        if e.name.id != s.Name.id: InternalError(n.info, "importSymbol: 3")
+        rawImportSymbol(c, e)
+        e = NextIdentIter(it, fromMod.tab)
+    else: rawImportSymbol(c, s)
   
 proc importAllSymbols(c: PContext, fromMod: PSym) = 
   var i: TTabIter

@@ -224,6 +224,10 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 proc newTypeS(kind: TTypeKind, c: PContext): PType = 
   result = newType(kind, getCurrOwner())
 
+proc errorType*(c: PContext): PType =
+  ## creates a type representing an error state
+  result = newTypeS(tyEmpty, c)
+
 proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) = 
   dest.kind = kind
   dest.owner = getCurrOwner()
