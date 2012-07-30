@@ -29,7 +29,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2)
       var e = semConstExpr(c, it.sons[0])
       if e.kind != nkIntLit: InternalError(n.info, "semWhen")
-      if e.intVal != 0 and result == nil:
+      elif e.intVal != 0 and result == nil:
         setResult(it.sons[1]) 
     of nkElse, nkElseExpr:
       checkSonsLen(it, 1)
@@ -514,8 +514,8 @@ proc addGenericParamListToScope(c: PContext, n: PNode) =
     InternalError(n.info, "addGenericParamListToScope")
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
-    if a.kind != nkSym: internalError(a.info, "addGenericParamListToScope")
-    addDecl(c, a.sym)
+    if a.kind == nkSym: addDecl(c, a.sym)
+    else: internalError(a.info, "addGenericParamListToScope")
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) = 
   # process the symbols on the left side for the whole type section, before
@@ -628,8 +628,8 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) = 
   for i in countup(1, sonsLen(n)-1): 
-    if (n.sons[i].kind != nkSym): InternalError(n.info, "addParams")
-    addParamOrResult(c, n.sons[i].sym, kind)
+    if n.sons[i].kind == nkSym: addParamOrResult(c, n.sons[i].sym, kind)
+    else: InternalError(n.info, "addParams")
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) = 
   # search for the correct alias:

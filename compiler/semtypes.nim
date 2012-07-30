@@ -367,7 +367,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
   checkMinSonsLen(n, 2)
   semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
   if a.sons[0].kind != nkSym: 
-    internalError("semRecordCase: dicriminant is no symbol")
+    internalError("semRecordCase: discriminant is no symbol")
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: biggestInt = 0
@@ -412,7 +412,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
         if c.InGenericContext == 0:
           var e = semConstBoolExpr(c, it.sons[0])
           if e.kind != nkIntLit: InternalError(e.info, "semRecordNodeAux")
-          if e.intVal != 0 and branch == nil: branch = it.sons[1]
+          elif e.intVal != 0 and branch == nil: branch = it.sons[1]
         else:
           it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
       of nkElse:
@@ -735,6 +735,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     isConcrete = false
   elif s.typ.containerID == 0: 
     InternalError(n.info, "semtypes.semGeneric")
+    return errorType(c)
   elif sonsLen(n) != sonsLen(s.typ): 
     LocalError(n.info, errWrongNumberOfArguments)
     return errorType(c)
@@ -930,7 +931,9 @@ proc semGenericConstraints(c: PContext, n: PNode, result: PType) =
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
   result = copyNode(n)
-  if n.kind != nkGenericParams: InternalError(n.info, "semGenericParamList")
+  if n.kind != nkGenericParams: 
+    InternalError(n.info, "semGenericParamList")
+    return
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)

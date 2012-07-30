@@ -31,7 +31,9 @@ proc cardSet*(s: PNode): BiggestInt
 # implementation
 
 proc inSet(s: PNode, elem: PNode): bool = 
-  if s.kind != nkCurly: InternalError(s.info, "inSet")
+  if s.kind != nkCurly: 
+    InternalError(s.info, "inSet")
+    return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 
       if leValue(s.sons[i].sons[0], elem) and
@@ -48,17 +50,19 @@ proc overlap(a, b: PNode): bool =
       result = leValue(a.sons[0], b.sons[1]) and
           leValue(b.sons[1], a.sons[1]) or
           leValue(a.sons[0], b.sons[0]) and leValue(b.sons[0], a.sons[1])
-    else: 
+    else:
       result = leValue(a.sons[0], b) and leValue(b, a.sons[1])
-  else: 
-    if b.kind == nkRange: 
+  else:
+    if b.kind == nkRange:
       result = leValue(b.sons[0], a) and leValue(a, b.sons[1])
-    else: 
+    else:
       result = sameValue(a, b)
 
 proc SomeInSet(s: PNode, a, b: PNode): bool = 
   # checks if some element of a..b is in the set s
-  if s.kind != nkCurly: InternalError(s.info, "SomeInSet")
+  if s.kind != nkCurly:
+    InternalError(s.info, "SomeInSet")
+    return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 
       if leValue(s.sons[i].sons[0], b) and leValue(b, s.sons[i].sons[1]) or
@@ -164,7 +168,9 @@ proc cardSet(s: PNode): BiggestInt =
       Inc(result)
   
 proc SetHasRange(s: PNode): bool = 
-  if s.kind != nkCurly: InternalError(s.info, "SetHasRange")
+  if s.kind != nkCurly:
+    InternalError(s.info, "SetHasRange")
+    return false
   for i in countup(0, sonsLen(s) - 1): 
     if s.sons[i].kind == nkRange: 
       return true

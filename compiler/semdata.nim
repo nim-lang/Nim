@@ -146,14 +146,16 @@ proc PushOwner(owner: PSym) =
 
 proc PopOwner() = 
   var length = len(gOwners)
-  if (length <= 0): InternalError("popOwner")
-  setlen(gOwners, length - 1)
+  if length > 0: setlen(gOwners, length - 1)
+  else: InternalError("popOwner")
 
 proc lastOptionEntry(c: PContext): POptionEntry = 
   result = POptionEntry(c.optionStack.tail)
 
 proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
-  if owner == nil: InternalError("owner is nil")
+  if owner == nil: 
+    InternalError("owner is nil")
+    return
   var x: PProcCon
   new(x)
   x.owner = owner

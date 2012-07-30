@@ -455,7 +455,10 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "context":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optContext)
-  of "stdout": 
+  of "usages":
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optUsages)
+  of "stdout":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optStdout)
   else:

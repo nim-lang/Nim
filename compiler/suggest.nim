@@ -19,7 +19,7 @@ const
   sectionDef = "def"
   sectionContext = "con"
 
-proc SymToStr(s: PSym, isLocal: bool, section: string): string = 
+proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
   result.add($s.kind)
@@ -33,11 +33,14 @@ proc SymToStr(s: PSym, isLocal: bool, section: string): string =
   if s.typ != nil: 
     result.add(typeToString(s.typ))
   result.add(sep)
-  result.add(toFilename(s.info))
+  result.add(toFilename(li))
   result.add(sep)
-  result.add($ToLinenumber(s.info))
+  result.add($ToLinenumber(li))
   result.add(sep)
-  result.add($ToColumn(s.info))
+  result.add($ToColumn(li))
+
+proc SymToStr(s: PSym, isLocal: bool, section: string): string = 
+  result = SymToStr(s, isLocal, section, s.info)
 
 proc filterSym(s: PSym): bool {.inline.} = 
   result = s.name.s[0] in lexer.SymChars
@@ -196,6 +199,9 @@ proc fuzzySemCheck(c: PContext, n: PNode): PNode =
     if n.kind notin {nkNone..nkNilLit}:
       for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
 
+var
+  usageSym: PSym
+
 proc suggestExpr*(c: PContext, node: PNode) = 
   var cp = msgs.inCheckpoint(node.info)
   if cp == cpNone: return
@@ -233,13 +239,26 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestCall(c, a, n, outputs)
   
   if optDef in gGlobalOptions:
-    var n = findClosestSym(fuzzySemCheck(c, node))
-    if n != nil: 
+    let n = findClosestSym(fuzzySemCheck(c, node))
+    if n != nil:
       OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef))
       inc outputs
       
+  if optUsages in gGlobalOptions:
+    if usageSym == nil:
+      let n = findClosestSym(fuzzySemCheck(c, node))
+      if n != nil: 
+        usageSym = n.sym
+        OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef))
+        inc outputs
+    else:
+      let n = node
+      if n.kind == nkSym and n.sym == usageSym:
+        OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef, n.info))
+        inc outputs
+    
   dec(c.InCompilesContext)
-  if outputs > 0: quit(0)
+  if outputs > 0 and optUsages notin gGlobalOptions: quit(0)
 
 proc suggestStmt*(c: PContext, n: PNode) = 
   suggestExpr(c, n)
