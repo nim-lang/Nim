@@ -60,7 +60,9 @@ proc getSymRepr*(s: PSym): string =
   
 proc CloseScope*(tab: var TSymTab) = 
   # check if all symbols have been used and defined:
-  if tab.tos > len(tab.stack): InternalError("CloseScope")
+  if tab.tos > len(tab.stack): 
+    InternalError("CloseScope")
+    return
   var it: TTabIter
   var s = InitTabIter(it, tab.stack[tab.tos-1])
   var missingImpls = 0
@@ -95,8 +97,8 @@ proc addDeclAt*(c: PContext, sym: PSym, at: Natural) =
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
   if sfExported in sym.flags:
     # add to interface:
-    if c.module == nil: InternalError(sym.info, "AddInterfaceDeclAux")
-    StrTableAdd(c.module.tab, sym)
+    if c.module != nil: StrTableAdd(c.module.tab, sym)
+    else: InternalError(sym.info, "AddInterfaceDeclAux")
   #if getCurrOwner().kind == skModule: incl(sym.flags, sfGlobal)
 
 proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) = 
@@ -106,6 +108,7 @@ proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) =
 proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) = 
   if fn.kind notin OverloadableSyms: 
     InternalError(fn.info, "addOverloadableSymAt")
+    return
   var check = StrTableGet(c.tab.stack[at], fn.name)
   if check != nil and check.Kind notin OverloadableSyms: 
     LocalError(fn.info, errAttemptToRedefine, fn.Name.s)
@@ -138,7 +141,9 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil:
       LocalError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(n)
-  else: InternalError(n.info, "lookUp")
+  else:
+    InternalError(n.info, "lookUp")
+    return
   if Contains(c.AmbiguousSymbols, result.id): 
     LocalError(n.info, errUseQualifier, result.name.s)
   if result.kind == skStub: loadStub(result)

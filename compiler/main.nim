@@ -78,7 +78,8 @@ proc CompileModule(filename: string, flags: TSymFlags): PSym =
     rd = handleSymbolFile(result, f)
     if result.id < 0: 
       InternalError("handleSymbolFile should have set the module\'s ID")
-  else: 
+      return
+  else:
     result.id = getID()
   processModule(result, f, nil, rd)
 

@@ -30,8 +30,10 @@ proc equalGenericParams(procA, procB: PNode): bool =
   for i in countup(0, sonsLen(procA) - 1): 
     if procA.sons[i].kind != nkSym: 
       InternalError(procA.info, "equalGenericParams")
+      return
     if procB.sons[i].kind != nkSym: 
       InternalError(procB.info, "equalGenericParams")
+      return
     a = procA.sons[i].sym
     b = procB.sons[i].sym
     if (a.name.id != b.name.id) or not sameTypeOrNil(a.typ, b.typ): return 
