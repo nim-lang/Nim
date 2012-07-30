@@ -56,8 +56,9 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
 
 proc suggestSymList(list: PNode, outputs: var int) = 
   for i in countup(0, sonsLen(list) - 1): 
-    if list.sons[i].kind != nkSym: InternalError(list.info, "getSymFromList")
-    suggestField(list.sons[i].sym, outputs)
+    if list.sons[i].kind == nkSym:
+      suggestField(list.sons[i].sym, outputs)
+    #else: InternalError(list.info, "getSymFromList")
 
 proc suggestObject(n: PNode, outputs: var int) = 
   case n.kind

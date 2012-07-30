@@ -121,11 +121,13 @@ proc getProcHeader(sym: PSym): string =
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1): 
     var p = n.sons[i]
-    if p.kind != nkSym: InternalError("getProcHeader")
-    add(result, p.sym.name.s)
-    add(result, ": ")
-    add(result, typeToString(p.sym.typ))
-    if i != sonsLen(n)-1: add(result, ", ")
+    if p.kind == nkSym: 
+      add(result, p.sym.name.s)
+      add(result, ": ")
+      add(result, typeToString(p.sym.typ))
+      if i != sonsLen(n)-1: add(result, ", ")
+    else:
+      InternalError("getProcHeader")
   add(result, ')')
   if n.sons[0].typ != nil: result.add(": " & typeToString(n.sons[0].typ))
   
@@ -680,13 +682,13 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
     if a.n != nil and b.n != nil and not c.ignoreTupleFields: 
       for i in countup(0, sonsLen(a.n) - 1): 
         # check field names: 
-        if a.n.sons[i].kind != nkSym: InternalError(a.n.info, "sameTuple")
-        if b.n.sons[i].kind != nkSym: InternalError(b.n.info, "sameTuple")
-        var x = a.n.sons[i].sym
-        var y = b.n.sons[i].sym
-        result = x.name.id == y.name.id
-        if not result: break 
-  else: 
+        if a.n.sons[i].kind == nkSym and b.n.sons[i].kind == nkSym:
+          var x = a.n.sons[i].sym
+          var y = b.n.sons[i].sym
+          result = x.name.id == y.name.id
+          if not result: break 
+        else: InternalError(a.n.info, "sameTuple")
+  else:
     result = false
 
 template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) =
@@ -1094,7 +1096,7 @@ proc getReturnType*(s: PSym): PType =
 
 proc getSize(typ: PType): biggestInt = 
   result = computeSize(typ)
-  if result < 0: InternalError("getSize(" & $typ.kind & ')')
+  if result < 0: InternalError("getSize: " & $typ.kind)
 
   
 proc containsGenericTypeIter(t: PType, closure: PObject): bool = 

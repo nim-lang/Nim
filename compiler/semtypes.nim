@@ -368,6 +368,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
   semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
   if a.sons[0].kind != nkSym: 
     internalError("semRecordCase: dicriminant is no symbol")
+    return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: biggestInt = 0
   var typ = skipTypes(a.sons[0].Typ, abstractVar)

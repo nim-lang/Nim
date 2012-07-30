@@ -208,9 +208,10 @@ proc getModule(s: PSym): PSym =
   
 proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym = 
   for i in countup(start, sonsLen(list) - 1): 
-    if list.sons[i].kind != nkSym: InternalError(list.info, "getSymFromList")
-    result = list.sons[i].sym
-    if result.name.id == ident.id: return 
+    if list.sons[i].kind == nkSym:
+      result = list.sons[i].sym
+      if result.name.id == ident.id: return 
+    else: InternalError(list.info, "getSymFromList")
   result = nil
 
 proc hashNode(p: PObject): THash = 
@@ -576,7 +577,9 @@ proc StrTableContains(t: TStrTable, n: PSym): bool =
 proc StrTableRawInsert(data: var TSymSeq, n: PSym) = 
   var h: THash = n.name.h and high(data)
   while data[h] != nil: 
-    if data[h] == n: InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+    if data[h] == n: 
+      InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+      return
     h = nextTry(h, high(data))
   assert(data[h] == nil)
   data[h] = n

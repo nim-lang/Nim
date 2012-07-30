@@ -237,7 +237,8 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
         num = j
         if j > high(args) + 1: 
           internalError("ropes: invalid format string $" & $(j))
-        app(result, args[j - 1])
+        else:
+          app(result, args[j - 1])
       of 'n':
         if optLineDir notin gOptions: app(result, tnl)
         inc i
@@ -263,6 +264,7 @@ proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool =
   if r.data != nil:
     if r.length > bufSize: 
       internalError("ropes: token too long")
+      return
     var readBytes = readBuffer(bin, buf, r.length)
     result = readBytes == r.length and
         equalMem(buf, addr(r.data[0]), r.length) # BUGFIX

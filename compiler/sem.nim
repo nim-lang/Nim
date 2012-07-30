@@ -152,7 +152,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
     if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone: 
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil: 
         InternalError(prc.info, "no code for " & prc.name.s)
-      addSon(n, prc.ast)
+      else:
+        addSon(n, prc.ast)
   c.generics.lastGenericIdx = Len(c.generics.generics)
 
 proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} = 
@@ -160,7 +161,7 @@ proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} =
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
   var c = newContext(module, filename)
-  if (c.p != nil): InternalError(module.info, "sem.myOpen")
+  if c.p != nil: InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExprNoFlags
   c.semConstBoolExpr = semConstBoolExpr
@@ -224,9 +225,8 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   closeScope(c.tab)         # close module's scope
   rawCloseScope(c.tab)      # imported symbols; don't check for unused ones!
-  if n == nil: 
-    result = newNode(nkStmtList)
-  else:
+  result = newNode(nkStmtList)
+  if n != nil:
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
