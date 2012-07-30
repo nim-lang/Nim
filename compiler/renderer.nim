@@ -338,7 +338,9 @@ proc atom(n: PNode): string =
   of nkType: 
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
-  else: InternalError("rnimsyn.atom " & $n.kind)
+  else: 
+    InternalError("rnimsyn.atom " & $n.kind)
+    result = ""
   
 proc lcomma(n: PNode, start: int = 0, theEnd: int = - 1): int = 
   assert(theEnd < 0)

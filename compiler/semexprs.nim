@@ -118,8 +118,10 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         LocalError(n.info, errIllegalCaptureX, s.name.s)
     result = newSymNode(s, n.info)
   of skGenericParam:
-    if s.ast == nil: InternalError(n.info, "no default for")
-    result = semExpr(c, s.ast)
+    if s.ast != nil: result = semExpr(c, s.ast)
+    else:
+      InternalError(n.info, "no default for")
+      result = emptyNode
   of skType:
     markUsed(n, s)
     result = newSymNode(s, n.info)
@@ -322,14 +324,17 @@ proc changeType(n: PNode, newType: PType) =
   of nkPar: 
     if newType.kind != tyTuple: 
       InternalError(n.info, "changeType: no tuple type for constructor")
-    if newType.n == nil: nil
+    elif newType.n == nil: nil
     elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr: 
       for i in countup(0, sonsLen(n) - 1): 
         var m = n.sons[i].sons[0]
         if m.kind != nkSym: 
           internalError(m.info, "changeType(): invalid tuple constr")
+          return
         var f = getSymFromList(newType.n, m.sym.name)
-        if f == nil: internalError(m.info, "changeType(): invalid identifier")
+        if f == nil: 
+          internalError(m.info, "changeType(): invalid identifier")
+          return
         changeType(n.sons[i].sons[1], f.typ)
     else:
       for i in countup(0, sonsLen(n) - 1):
@@ -485,7 +490,9 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
       result = newHiddenAddrTaken(c, n)
   of nkDotExpr: 
     checkSonsLen(n, 2)
-    if n.sons[1].kind != nkSym: internalError(n.info, "analyseIfAddressTaken")
+    if n.sons[1].kind != nkSym: 
+      internalError(n.info, "analyseIfAddressTaken")
+      return
     if skipTypes(n.sons[1].sym.typ, abstractInst).kind != tyVar: 
       incl(n.sons[1].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
@@ -590,6 +597,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
   if result != nil:
     if result.sons[0].kind != nkSym: 
       InternalError("semDirectCallAnalyseEffects")
+      return
     let callee = result.sons[0].sym
     case callee.kind
     of skMacro, skTemplate: nil
@@ -1225,8 +1233,8 @@ proc semIfExpr(c: PContext, n: PNode): PNode =
     of nkElseExpr: 
       checkSonsLen(it, 1)
       it.sons[0] = semExprWithType(c, it.sons[0])
-      if typ == nil: InternalError(it.info, "semIfExpr")
-      it.sons[0] = fitNode(c, typ, it.sons[0])
+      if typ != nil: it.sons[0] = fitNode(c, typ, it.sons[0])
+      else: InternalError(it.info, "semIfExpr")
     else: illFormedAst(n)
   result.typ = typ
 

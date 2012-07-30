@@ -51,6 +51,7 @@ type                          # please make sure we have under 32 options
     optSuggest,               # ideTools: 'suggest'
     optContext,               # ideTools: 'context'
     optDef,                   # ideTools: 'def'
+    optUsages,                # ideTools: 'usages'
     optThreadAnalysis,        # thread analysis pass
     optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on

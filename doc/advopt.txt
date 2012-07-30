@@ -13,8 +13,9 @@ Advanced commands:
   //idetools                compiler support for IDEs: possible options:
     --track:FILE,LINE,COL   track a file/cursor position
     --suggest               suggest all possible symbols at position
-    --def                   list all possible symbols at position
+    --def                   list all possible definitions at position
     --context               list possible invokation context
+    --usages                list all usages of the symbol at position
 
 Advanced options:
   -m, --mainmodule:FILE     set the project main module
