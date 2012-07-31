@@ -1935,7 +1935,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     include "system/syslocks"
     include "system/threads"
   elif not defined(nogc):
-    initStackBottom()
     initGC()
 
   proc setControlCHook*(hook: proc () {.noconv.})
