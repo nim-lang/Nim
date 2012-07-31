@@ -150,7 +150,7 @@ Define               Effect
 ``release``          Turns off runtime checks and turns on the optimizer.
 ``useWinAnsi``       Modules like ``os`` and ``osproc`` use the Ansi versions
                      of the Windows API. The default build uses the Unicode
-                     version.s
+                     version.
 ``useFork``          Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``        Compile and link against ``nimrtl.dll``.
 ``useMalloc``        Makes Nimrod use C's `malloc`:idx: instead of Nimrod's 
@@ -410,7 +410,7 @@ Nimrod for embedded systems
 ===========================
 
 The standard library can be avoided to a point where C code generation 
-for a 16bit micro controllers is feasible. Use the `standalone`:idx: target
+for 16bit micro controllers is feasible. Use the `standalone`:idx: target
 (``--os:standalone``) for a bare bones standard library that lacks any
 OS features.
 
