@@ -212,16 +212,22 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
       result = newEmptyStrNode(n)
     
 proc processDynLib(c: PContext, n: PNode, sym: PSym) = 
-  if (sym == nil) or (sym.kind == skModule): 
+  if (sym == nil) or (sym.kind == skModule):
     POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic, 
         expectDynlibNode(c, n))
-  elif n.kind == nkExprColonExpr: 
-    var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
-    addToLib(lib, sym)
-    incl(sym.loc.flags, lfDynamicLib)
-  else: 
-    incl(sym.loc.flags, lfExportLib)
-  
+  else:
+    if n.kind == nkExprColonExpr:
+      var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
+      addToLib(lib, sym)
+      incl(sym.loc.flags, lfDynamicLib)
+    else:
+      incl(sym.loc.flags, lfExportLib)
+    # since we'll be loading the dynlib symbols dynamically, we must use
+    # a calling convention that doesn't introduce custom name mangling
+    # cdecl is the default - the use can override this explicitly
+    if sym.typ.callConv == ccDefault:
+      sym.typ.callConv = ccCDecl
+
 proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
