@@ -35,42 +35,31 @@ const
     "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"
   ]
 
+  defaultFmtStr = "" ## default string between log level and message per logger
+  verboseFmtStr = "$date $time "
+
 type
   TLogger* = object of TObject ## abstract logger; the base type of all loggers
     levelThreshold*: TLevel    ## only messages of level >= levelThreshold 
                                ## should be processed
+    fmtStr: string ## = defaultFmtStr by default, see substituteLog for $date etc.
+    
   TConsoleLogger* = object of TLogger ## logger that writes the messages to the
                                       ## console
   
   TFileLogger* = object of TLogger ## logger that writes the messages to a file
     f: TFile
   
-  # TODO: implement rolling log
+  # TODO: implement rolling log, will produce filename.1, filename.2 etc.
   TRollingFileLogger* = object of TFileLogger ## logger that writes the 
                                               ## message to a file
-    maxLines: int # maximum number of lines
-    lines: seq[string]
+    maxLines: int # maximum number of lines    
     curLine : int
+    baseName: string # initial filename
+    logFiles: int # how many log files already created, e.g. basename.1, basename.2...
+    
     
 
-method log*(L: ref TLogger, level: TLevel,
-            frmt: string, args: openArray[string]) =
-  ## override this method in custom loggers. Default implementation does
-  ## nothing.
-  nil
-  
-method log*(L: ref TConsoleLogger, level: TLevel,
-            frmt: string, args: openArray[string]) = 
-    Writeln(stdout, LevelNames[level], " ", frmt % args)
-
-method log*(L: ref TFileLogger, level: TLevel, 
-            frmt: string, args: openArray[string]) = 
-    Writeln(L.f, LevelNames[level], " ", frmt % args)
-
-proc defaultFilename*(): string = 
-  ## returns the default filename for a logger
-  var (path, name, ext) = splitFile(getAppFilename())
-  result = changeFileExt(path / name & "_" & getDateStr(), "log")
 
 proc substituteLog*(frmt: string): string = 
   ## converts $date to the current date
@@ -96,7 +85,35 @@ proc substituteLog*(frmt: string): string =
       of "app":  result.add(app)
       of "appdir": result.add(app.splitFile.dir)
       of "appname": result.add(app.splitFile.name)
+
+
+
+method log*(L: ref TLogger, level: TLevel,
+            frmt: string, args: openArray[string]) =
+  ## override this method in custom loggers. Default implementation does
+  ## nothing.
+  nil
+  
+method log*(L: ref TConsoleLogger, level: TLevel,
+            frmt: string, args: openArray[string]) = 
+    Writeln(stdout, LevelNames[level], " ", substituteLog(L.fmtStr), frmt % args)
+
+method log*(L: ref TFileLogger, level: TLevel, 
+            frmt: string, args: openArray[string]) = 
+    Writeln(L.f, LevelNames[level], " ", substituteLog(L.fmtStr), frmt % args)
+
+proc defaultFilename*(): string = 
+  ## returns the default filename for a logger
+  var (path, name, ext) = splitFile(getAppFilename())
+  result = changeFileExt(path / name & "_" & getDateStr(), "log")
+
       
+
+
+proc newConsoleLogger*(levelThreshold = lvlAll) : ref TConsoleLogger =
+  new result
+  result.fmtStr = defaultFmtStr
+  result.levelThreshold = levelThreshold
 
 proc newFileLogger*(filename = defaultFilename(), 
                     mode: TFileMode = fmAppend,
@@ -104,8 +121,13 @@ proc newFileLogger*(filename = defaultFilename(),
   new(result)
   result.levelThreshold = levelThreshold
   result.f = open(filename, mode)
+  result.fmtStr = defaultFmtStr
 
 # ------
+
+proc readLogLines(logger : ref TRollingFileLogger) = nil
+  #f.readLine # TODO read all lines, update curLine
+
 
 proc newRollingFileLogger*(filename = defaultFilename(), 
                            mode: TFileMode = fmReadWrite,
@@ -113,24 +135,25 @@ proc newRollingFileLogger*(filename = defaultFilename(),
                            maxLines = 1000): ref TRollingFileLogger = 
   new(result)
   result.levelThreshold = levelThreshold
+  result.fmtStr = defaultFmtStr
   result.maxLines = maxLines
   result.f = open(filename, mode)
   result.curLine = 0
-  if mode in {fmReadWrite, fmReadWriteExisting}:
-    readLogLines(result)
+  
+  # TODO count all number files
+  # count lines in existing filename file
+  # if >= maxLines then rename to next numbered file and create new file
+  
+  #if mode in {fmReadWrite, fmReadWriteExisting}:
+  #  readLogLines(result)
 
-proc readLogLines(logger : ref TRollingFileLogger) =
-  f.readLine # TODO read all lines, update curLine
 
 
 method log*(L: ref TRollingFileLogger, level: TLevel, 
             frmt: string, args: openArray[string]) = 
   # TODO 
   # if more than maxlines, then set cursor to zero
-  # otherwise add new line
-  # update line in the lines
-  # increment cursor
-  # store lines into file
+  
   Writeln(L.f, LevelNames[level], " ", frmt % args)
 
 # --------
@@ -172,4 +195,16 @@ template error*(frmt: string, args: openarray[string]) =
 template fatal*(frmt: string, args: openarray[string]) =  
   ## logs a fatal error message
   log(lvlFatal, frmt, args)
+
+
+# --------------
+
+when isMainModule:
+  var L = newConsoleLogger()
+  var fL = newFileLogger("test.log")
+  fL.fmtStr = verboseFmtStr
+  handlers.add(L)
+  handlers.add(fL)
+  info("hello", [])
+  
 
