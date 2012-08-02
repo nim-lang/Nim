@@ -37,7 +37,7 @@ proc checkModuleName*(n: PNode): string =
   var modulename = n.getModuleName
   result = findModule(modulename)
   if result.len == 0:
-    Fatal(n.info, errCannotOpenFile, modulename)
+    LocalError(n.info, errCannotOpenFile, modulename)
 
 proc rawImportSymbol(c: PContext, s: PSym) = 
   # This does not handle stubs, because otherwise loading on demand would be
@@ -109,19 +109,20 @@ proc evalImport(c: PContext, n: PNode): PNode =
   result = n
   for i in countup(0, sonsLen(n) - 1): 
     var f = checkModuleName(n.sons[i])
-    var m = gImportModule(f)
-    if sfDeprecated in m.flags: 
-      Message(n.sons[i].info, warnDeprecated, m.name.s) 
-    # ``addDecl`` needs to be done before ``importAllSymbols``!
-    addDecl(c, m)             # add symbol to symbol table of module
-    importAllSymbols(c, m)
+    if f.len > 0:
+      var m = gImportModule(f)
+      if sfDeprecated in m.flags: 
+        Message(n.sons[i].info, warnDeprecated, m.name.s) 
+      # ``addDecl`` needs to be done before ``importAllSymbols``!
+      addDecl(c, m)             # add symbol to symbol table of module
+      importAllSymbols(c, m)
 
 proc evalFrom(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 2)
   var f = checkModuleName(n.sons[0])
-  var m = gImportModule(f)
-  n.sons[0] = newSymNode(m)
-  addDecl(c, m)               # add symbol to symbol table of module
-  for i in countup(1, sonsLen(n) - 1): importSymbol(c, n.sons[i], m)
-  
+  if f.len > 0:
+    var m = gImportModule(f)
+    n.sons[0] = newSymNode(m)
+    addDecl(c, m)               # add symbol to symbol table of module
+    for i in countup(1, sonsLen(n) - 1): importSymbol(c, n.sons[i], m)

@@ -344,7 +344,7 @@ const
     warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnXisPassedToProcVar: "\'$1\' is passed to a procvar; deprecated [XisPassedToProcVar]", 
-    warnAnalysisLoophole: "thread analysis incomplete due to unkown call '$1' [AnalysisLoophole]",
+    warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
     warnImplicitClosure: "implicit closure convention: '$1' [ImplicitClosure]",

@@ -1468,6 +1468,8 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}: 
       var r2: TCompRes
       genSym(p, n.sons[namePos], r2)
+  of nkGotoState, nkState:
+    internalError(n.info, "first class iterators not implemented")
   else:
     genLineDir(p, n, r)
     gen(p, n, r)

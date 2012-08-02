@@ -70,7 +70,7 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
   c.calleeSym = callee
   c.calleeScope = calleeScope
   initIdTable(c.bindings)
-  if binding != nil:
+  if binding != nil and callee.kind in RoutineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ

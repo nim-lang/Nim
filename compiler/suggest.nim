@@ -214,7 +214,6 @@ proc suggestExpr*(c: PContext, node: PNode) =
     var n = findClosestDot(node)
     if n == nil: n = node
     else: cp = cpExact
-    
     if n.kind == nkDotExpr and cp == cpExact:
       var obj = safeSemExpr(c, n.sons[0])
       suggestFieldAccess(c, obj, outputs)

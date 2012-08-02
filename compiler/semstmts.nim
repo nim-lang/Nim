@@ -835,13 +835,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   
-proc semIterator(c: PContext, n: PNode): PNode = 
+proc semIterator(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skIterator, iteratorPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil: 
+  if t.sons[0] == nil:
     LocalError(n.info, errXNeedsReturnType, "iterator")
-  if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone: 
+  # iterators are either 'inline' or 'closure':
+  if s.typ.callConv != ccInline: s.typ.callConv = ccClosure
+  if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
 proc semProc(c: PContext, n: PNode): PNode = 
@@ -894,12 +896,13 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
     var f = checkModuleName(n.sons[i])
-    var fileIndex = f.fileInfoIdx
-    if ContainsOrIncl(c.includedFiles, fileIndex): 
-      LocalError(n.info, errRecursiveDependencyX, f.extractFilename)
-    else:
-      addSon(result, semStmt(c, gIncludeFile(f)))
-      Excl(c.includedFiles, fileIndex)
+    if f.len > 0:
+      var fileIndex = f.fileInfoIdx
+      if ContainsOrIncl(c.includedFiles, fileIndex): 
+        LocalError(n.info, errRecursiveDependencyX, f.extractFilename)
+      else:
+        addSon(result, semStmt(c, gIncludeFile(f)))
+        Excl(c.includedFiles, fileIndex)
   
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 .. <safeLen(n): setLine(n.sons[i], info)
