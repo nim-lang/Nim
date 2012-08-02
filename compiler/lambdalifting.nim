@@ -8,7 +8,6 @@
 #
 
 # This include file implements lambda lifting for the transformator.
-# included from transf.nim
 
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
@@ -517,3 +516,30 @@ proc liftLambdas*(n: PNode): PNode =
   var s = n.sons[namePos].sym
   if gCmd == cmdCompileToEcmaScript: return s.getBody
   result = liftLambdas(s, s.getBody)
+
+proc transformIterator*(fn: PSym, body: PNode): PNode =
+  if body.kind == nkEmpty:
+    # ignore forward declaration:
+    result = body
+  # it(a, b) --> (it(a, b), createClosure())
+  # it(a, b) --> ?
+  discard """
+  let c = chain(f, g)
+  
+  for x in c: echo x
+  
+  iterator chain[S, T](a, b: *S->T, args: *S): T =
+    for x in a(args): yield x
+    for x in b(args): yield x
+  
+  # translated to:
+  
+  
+  
+  let c = chain( (f, newClosure(f)), (g, newClosure(g)), newClosure(chain))
+  
+  
+"""
+
+
+

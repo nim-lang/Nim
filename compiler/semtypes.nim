@@ -870,9 +870,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
-  else: 
+  else:
     LocalError(n.info, errTypeExpected)
-    result = errorType(c)
+    if prev != nil and prev.kind == tyForward:
+      prev.kind = tyProxy
+      result = prev
+    else:
+      result = errorType(c)
   
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind

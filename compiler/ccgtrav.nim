@@ -44,6 +44,8 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, n: PNode) =
     lineF(p, cpsStmts, "} $n")
   of nkSym:
     let field = n.sym
+    if field.loc.t == nil:
+      internalError(n.info, "genTraverseProc()")
     genTraverseProc(c, ropef("$1.$2", accessor, field.loc.r), field.loc.t)
   else: internalError(n.info, "genTraverseProc()")
 
@@ -73,11 +75,8 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
     let typ = GetUniqueType(typ)
-    if typ.n != nil:
-      genTraverseProc(c, accessor, typ.n)
-    else:
-      for i in countup(0, sonsLen(typ) - 1):
-        genTraverseProc(c, ropef("$1.Field$2", accessor, i.toRope), typ.sons[i])
+    for i in countup(0, sonsLen(typ) - 1):
+      genTraverseProc(c, ropef("$1.Field$2", accessor, i.toRope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:

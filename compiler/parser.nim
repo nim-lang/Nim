@@ -275,6 +275,7 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
 
 proc dotExpr(p: var TParser, a: PNode): PNode =
   getTok(p)
+  var info = p.lex.getlineInfo
   optInd(p, a)
   case p.tok.tokType
   of tkType:
@@ -286,7 +287,7 @@ proc dotExpr(p: var TParser, a: PNode): PNode =
     getTok(p)
     addSon(result, a)
   else:
-    result = newNodeI(nkDotExpr, a.info)
+    result = newNodeI(nkDotExpr, info)
     addSon(result, a)
     addSon(result, parseSymbol(p))
 
@@ -758,9 +759,10 @@ proc parseExpr(p: var TParser): PNode =
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
-  of tkTry: result = parseTry(p)
-  of tkCase: result = parseCase(p)
   else: result = lowestExpr(p)
+  # XXX needs proper support:
+  #of tkCase: result = parseCase(p)
+  #of tkTry: result = parseTry(p)
 
 proc primary(p: var TParser, skipSuffix = false): PNode = 
   # prefix operator?
