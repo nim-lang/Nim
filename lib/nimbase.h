@@ -213,7 +213,7 @@ __clang__
 #  define  __USE_ISOC99  1
 
 #elif (defined(WIN32) || defined(_WIN32) || defined(__WIN32__)) \
-   && !defined(__BORLANDC__) && !defined(__POCC__)
+   && !defined(__BORLANDC__) && !defined(__POCC__) && !defined(_M_X64)
 
 /*  Win32 doesn't seem to have these functions.
 **  Therefore implement inline versions of these functions here.
