@@ -101,9 +101,10 @@ type
 
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
     sslNeedAccept: bool
+    proto: TProtocol
 
   TInfo* = enum
-    SockIdle, SockConnecting, SockConnected, SockListening, SockClosed
+    SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, SockUDPBound
   
   TMode* = enum
     MReadable, MWriteable, MReadWrite
@@ -136,6 +137,7 @@ proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
                   userArg: PObject = nil, buffered = true): PAsyncSocket =
   result = newAsyncSocket(userArg)
   result.socket = socket(domain, typ, protocol, buffered)
+  result.proto = protocol
   if result.socket == InvalidSocket: OSError()
   result.socket.setBlocking(false)
 
@@ -201,6 +203,8 @@ proc close*(sock: PAsyncSocket) =
 proc bindAddr*(sock: PAsyncSocket, port = TPort(0), address = "") =
   ## Equivalent to ``sockets.bindAddr``.
   sock.socket.bindAddr(port, address)
+  if sock.proto == IPPROTO_UDP:
+    sock.info = SockUDPBound
 
 proc listen*(sock: PAsyncSocket) =
   ## Equivalent to ``sockets.listen``.
@@ -360,7 +364,7 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
     template deleg: expr = d.delegates[dc]
     let aSock = deleg.getSocket(deleg.deleVal)
     if (deleg.mode != MWriteable and aSock.info == SockConnected) or
-          aSock.info == SockListening:
+          aSock.info == SockListening or aSock.info == SockUDPBound:
       readSocks.add(aSock.sock)
     if aSock.info == SockConnecting or
         (aSock.info == SockConnected and deleg.mode != MReadable):
@@ -381,7 +385,8 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
       if i > len(d.delegates)-1: break # One delegate might've been removed.
       let deleg = d.delegates[i]
       let sock = deleg.getSocket(deleg.deleVal)
-      if sock.info == SockConnected:
+      if sock.info == SockConnected or 
+         sock.info == SockUDPBound:
         if deleg.mode != MWriteable and sock.sock notin readSocks:
           if not (sock.info == SockConnecting):
             assert(not (sock.info == SockListening))
