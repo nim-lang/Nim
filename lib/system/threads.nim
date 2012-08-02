@@ -203,7 +203,6 @@ when not defined(useNimRtl):
   when not useStackMaskHack:
     var mainThread: TGcThread
     ThreadVarSetValue(globalsSlot, addr(mainThread))
-    initStackBottom()
     initGC()
     
   when emulatedThreadVars:

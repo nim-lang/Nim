@@ -861,7 +861,8 @@ proc genMainProc(m: BModule) =
         CommonMainBody & "}$n"
     WinCDllMain = 
         "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
-        "                    LPVOID lpvReserved) {$n" & "\tNimMain();$n" &
+        "                    LPVOID lpvReserved) {$n" &
+          "\tif(fwdreason == DLL_PROCESS_ATTACH) NimMain();$n" &
         "\treturn 1;$n" & "}$n"
     PosixNimDllMain = WinNimDllMain
     PosixCDllMain = 
