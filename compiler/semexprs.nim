@@ -866,10 +866,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if f != nil: break 
       if ty.sons[0] == nil: break 
       ty = skipTypes(ty.sons[0], {tyGenericInst})
-    if f != nil: 
-      var fmoduleId = getModule(f).id
-      if sfExported in f.flags or fmoduleId == c.module.id or
-          fmoduleId == c.friendModule.id: 
+    if f != nil:
+      if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
         n.sons[0] = makeDeref(n.sons[0])
         n.sons[1] = newSymNode(f) # we now have the correct field
