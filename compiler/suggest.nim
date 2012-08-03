@@ -42,11 +42,16 @@ proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
 proc SymToStr(s: PSym, isLocal: bool, section: string): string = 
   result = SymToStr(s, isLocal, section, s.info)
 
-proc filterSym(s: PSym): bool {.inline.} = 
-  result = s.name.s[0] in lexer.SymChars
+proc filterSym(s: PSym): bool {.inline.} =
+  result = s.name.s[0] in lexer.SymChars and s.kind != skModule
 
-proc suggestField(s: PSym, outputs: var int) = 
-  if filterSym(s):
+proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
+  let fmoduleId = getModule(f).id
+  result = sfExported in f.flags or fmoduleId == c.module.id or
+      fmoduleId == c.friendModule.id
+
+proc suggestField(c: PContext, s: PSym, outputs: var int) = 
+  if filterSym(s) and fieldVisible(c, s):
     OutWriteln(SymToStr(s, isLocal=true, sectionSuggest))
     inc outputs
 
@@ -57,22 +62,22 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
         OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
         inc outputs
 
-proc suggestSymList(list: PNode, outputs: var int) = 
+proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
   for i in countup(0, sonsLen(list) - 1): 
     if list.sons[i].kind == nkSym:
-      suggestField(list.sons[i].sym, outputs)
+      suggestField(c, list.sons[i].sym, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
-proc suggestObject(n: PNode, outputs: var int) = 
+proc suggestObject(c: PContext, n: PNode, outputs: var int) = 
   case n.kind
   of nkRecList: 
-    for i in countup(0, sonsLen(n)-1): suggestObject(n.sons[i], outputs)
+    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], outputs)
   of nkRecCase: 
     var L = sonsLen(n)
     if L > 0:
-      suggestObject(n.sons[0], outputs)
-      for i in countup(1, L-1): suggestObject(lastSon(n.sons[i]), outputs)
-  of nkSym: suggestField(n.sym, outputs)
+      suggestObject(c, n.sons[0], outputs)
+      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), outputs)
+  of nkSym: suggestField(c, n.sym, outputs)
   else: nil
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
@@ -140,7 +145,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
     # look up if the identifier belongs to the enum:
     var t = typ
     while t != nil: 
-      suggestSymList(t.n, outputs)
+      suggestSymList(c, t.n, outputs)
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
@@ -148,12 +153,12 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
     if typ.kind == tyObject: 
       var t = typ
       while true: 
-        suggestObject(t.n, outputs)
+        suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break 
         t = skipTypes(t.sons[0], {tyGenericInst})
       suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil: 
-      suggestSymList(typ.n, outputs)
+      suggestSymList(c, typ.n, outputs)
       suggestOperations(c, n, typ, outputs)
     else:
       suggestOperations(c, n, typ, outputs)
