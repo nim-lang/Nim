@@ -661,7 +661,7 @@ proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doRaise)
 
 proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
-  if gCmd == cmdIdeTools and gErrorCounter > 10: return
+  #if gCmd == cmdIdeTools and gErrorCounter > 10: return
   liMessage(info, msg, arg, doNothing)
 
 proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =

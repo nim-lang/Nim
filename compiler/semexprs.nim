@@ -995,6 +995,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     analyseIfAddressTakenInCall(c, result)
   else:
     LocalError(n.Info, errUndeclaredFieldX, id.s)
+    result = emptyNode
 
 proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   case n.kind

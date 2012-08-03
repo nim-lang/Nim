@@ -402,7 +402,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "float", "float32", "float64", "float128",
       "uint", "uint8", "uint16", "uint32", "uint64",
       "bignum", "const ",
-      "!", "varargs[$1]", "iter[$1]", "proxy[$1]", "TypeClass" ]
+      "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass" ]
   var t = typ
   result = ""
   if t == nil: return 
@@ -485,7 +485,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       addSep(prag)
       add(prag, "thread")
     if len(prag) != 0: add(result, "{." & prag & ".}")
-  of tyVarargs, tyIter, tyProxy:
+  of tyVarargs, tyIter:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else: 
     result = typeToStr[t.kind]
@@ -929,16 +929,20 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     result = typeAllowedAux(marker, t.sons[0], skVar)
   of tyPtr:
     result = typeAllowedAux(marker, t.sons[0], skVar)
-  of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter, tyProxy: 
-    for i in countup(0, sonsLen(t) - 1): 
+  of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter:
+    for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind)
-      if not result: break 
+      if not result: break
   of tyObject:
     if kind == skConst: return false
     for i in countup(0, sonsLen(t) - 1): 
       result = typeAllowedAux(marker, t.sons[i], kind)
       if not result: break
     if result and t.n != nil: result = typeAllowedNode(marker, t.n, kind)
+  of tyProxy:
+    # for now same as error node; we say it's a valid type as it should
+    # prevent cascading errors:
+    result = true
     
 proc typeAllowed(t: PType, kind: TSymKind): bool = 
   var marker = InitIntSet()
@@ -1076,10 +1080,10 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
     if result < 0: return 
     if a < maxAlign: a = maxAlign
     result = align(result, a)
-  of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter,
-     tyProxy: 
+  of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
-  else: 
+  of tyProxy: result = 1
+  else:
     #internalError("computeSizeAux()")
     result = - 1
   typ.size = result

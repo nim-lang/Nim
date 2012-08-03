@@ -159,10 +159,10 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     if isRange(n[1]): result = semRangeAux(c, n[1], prev)
     else:
       LocalError(n.sons[0].info, errRangeExpected)
-      result = errorType(c)
+      result = newOrPrevType(tyError, prev, c)
   else:
     LocalError(n.info, errXExpectsOneTypeParam, "range")
-    result = errorType(c)
+    result = newOrPrevType(tyError, prev, c)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType = 
   var indx, base: PType
@@ -182,7 +182,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base)
   else: 
     LocalError(n.info, errArrayExpectsTwoTypeParams)
-    result = errorType(c)
+    result = newOrPrevType(tyError, prev, c)
   
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType = 
   result = newOrPrevType(tyOrdinal, prev, c)
@@ -194,7 +194,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base)
   else:
     LocalError(n.info, errXExpectsOneTypeParam, "ordinal")
-    result = errorType(c)
+    result = newOrPrevType(tyError, prev, c)
   
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym: 
@@ -518,7 +518,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
       addInheritedFields(c, check, pos, concreteBase)
     else:
-      localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
+      if concreteBase.kind != tyError:
+        localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
+      base = nil
   if n.kind != nkObjectTy: InternalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, base)
@@ -730,15 +732,15 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var isConcrete = true
   if s.typ == nil:
     LocalError(n.info, errCannotInstantiateX, s.name.s)
-    return errorType(c)
+    return newOrPrevType(tyError, prev, c)
   elif s.typ.kind != tyGenericBody:
     isConcrete = false
   elif s.typ.containerID == 0: 
     InternalError(n.info, "semtypes.semGeneric")
-    return errorType(c)
+    return newOrPrevType(tyError, prev, c)
   elif sonsLen(n) != sonsLen(s.typ): 
     LocalError(n.info, errWrongNumberOfArguments)
-    return errorType(c)
+    return newOrPrevType(tyError, prev, c)
   addSonSkipIntLit(result, s.typ)
   # iterate over arguments:
   for i in countup(1, sonsLen(n)-1):
@@ -750,7 +752,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if isConcrete:
     if s.ast == nil: 
       LocalError(n.info, errCannotInstantiateX, s.name.s)
-      result = errorType(c)
+      result = newOrPrevType(tyError, prev, c)
     else:
       result = instGenericContainer(c, n, result)
 
@@ -781,7 +783,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
       LocalError(n.info, errTypeExpected)
-      result = errorType(c)
+      result = newOrPrevType(tyError, prev, c)
   of nkCallKinds:
     let op = n.sons[0].ident
     if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
@@ -790,10 +792,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         t2 = semTypeNode(c, n.sons[2], nil)
       if   t1 == nil: 
         LocalError(n.sons[1].info, errTypeExpected)
-        result = errorType(c)
+        result = newOrPrevType(tyError, prev, c)
       elif t2 == nil: 
         LocalError(n.sons[2].info, errTypeExpected)
-        result = errorType(c)
+        result = newOrPrevType(tyError, prev, c)
       else:
         result = newTypeS(tyTypeClass, c)
         result.addSonSkipIntLit(t1)
@@ -826,7 +828,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
       LocalError(n.info, errTypeExpected)
-      result = errorType(c)
+      result = newOrPrevType(tyError, prev, c)
     elif prev == nil:
       result = s.typ
     else: 
@@ -844,7 +846,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       markUsed(n, n.sym)
     else:
       LocalError(n.info, errTypeExpected)
-      result = errorType(c)
+      result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
@@ -872,11 +874,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
     LocalError(n.info, errTypeExpected)
-    if prev != nil and prev.kind == tyForward:
-      prev.kind = tyProxy
-      result = prev
-    else:
-      result = errorType(c)
+    result = newOrPrevType(tyError, prev, c)
   
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind
