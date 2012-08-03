@@ -449,6 +449,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
             appf(result, "$N$1$2", [spaces(indent + 4), debugTree(n.sons[i], 
                 indent + 4, maxRecDepth - 1)])
           appf(result, "$N$1]", [istr])
+    appf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     appf(result, "$N$1}", [spaces(indent)])
 
 proc debug(n: PSym) = 
