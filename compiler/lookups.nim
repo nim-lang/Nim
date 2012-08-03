@@ -39,7 +39,14 @@ proc considerAcc*(n: PNode): PIdent =
  
 proc errorSym*(n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
-  result = newSym(skUnknown, considerAcc(n), getCurrOwner())
+  var m = n
+  # ensure that 'considerAcc' can't fail:
+  if m.kind == nkDotExpr: m = m.sons[1]
+  let ident = if m.kind in {nkIdent, nkSym, nkAccQuoted}: 
+      considerAcc(m)
+    else:
+      getIdent("err:" & renderTree(m))
+  result = newSym(skUnknown, ident, getCurrOwner())
   result.info = n.info
 
 type 

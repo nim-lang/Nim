@@ -71,7 +71,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
-      LocalError(n.Info, errAmbiguousCallXYZ, "")
+      GlobalError(n.Info, errAmbiguousCallXYZ, "")
     else:
       var args = "("
       for i in countup(1, sonsLen(n) - 1):

@@ -228,7 +228,7 @@ proc newTypeS(kind: TTypeKind, c: PContext): PType =
 
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
-  result = newTypeS(tyEmpty, c)
+  result = newTypeS(tyError, c)
 
 proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) = 
   dest.kind = kind

@@ -311,6 +311,7 @@ type
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
+  tyError* = tyProxy # as an errornous node should match everything
 
 type
   TTypeKinds* = set[TTypeKind]

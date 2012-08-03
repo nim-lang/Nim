@@ -160,8 +160,9 @@ proc concreteType(c: TCandidate, t: PType): PType =
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
   of tyGenericInvokation:
-    assert false
-  else: 
+    InternalError("cannot resolve type: " & typeToString(t))
+    result = t
+  else:
     result = t                # Note: empty is valid here
   
 proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation = 
@@ -538,7 +539,7 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       if result == isGeneric: put(c.bindings, f, a)
     else:
       result = isNone
-  of tyExpr, tyStmt:
+  of tyExpr, tyStmt, tyProxy:
     result = isGeneric
   else: internalError("typeRel: " & $f.kind)
   
@@ -648,6 +649,10 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     if skipTypes(f, abstractVar).kind in {tyTuple}: 
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isNone: 
+    # we test for this here to not slow down ``typeRel``:
+    if a.kind == tyProxy:
+      inc(m.genericMatches)
+      return copyTree(arg)    
     result = userConvMatch(c, m, f, a, arg) 
     # check for a base type match, which supports openarray[T] without []
     # constructor in a call:
