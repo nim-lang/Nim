@@ -274,8 +274,8 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
   eat(p, endTok)
 
 proc dotExpr(p: var TParser, a: PNode): PNode =
-  getTok(p)
   var info = p.lex.getlineInfo
+  getTok(p)
   optInd(p, a)
   case p.tok.tokType
   of tkType:

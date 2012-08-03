@@ -218,6 +218,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       var obj = safeSemExpr(c, n.sons[0])
       suggestFieldAccess(c, obj, outputs)
     else:
+      #debug n
       suggestEverything(c, n, outputs)
   
   if optContext in gGlobalOptions:
