@@ -9,15 +9,14 @@
 
 ## This file implements features required for IDE support.
 
-import 
-  lexer, idents, ast, astalgo, semdata, msgs, types, sigmatch, options, 
-  renderer
+# imported from sigmatch.nim
 
 const
   sep = '\t'
   sectionSuggest = "sug"
   sectionDef = "def"
   sectionContext = "con"
+  sectionUsage = "use"
 
 proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
@@ -183,6 +182,16 @@ proc findClosestCall(n: PNode): PNode =
       result = findClosestCall(n.sons[i])
       if result != nil: return
 
+proc isTracked(current: TLineInfo, tokenLen: int): bool =
+  # the column of an identifier is at its *end*, so we subtract to get the
+  # start of it.
+  for i in countup(0, high(checkPoints)):
+    if current.fileIndex == checkPoints[i].fileIndex:
+      if current.line == checkPoints[i].line:
+        let col = checkPoints[i].col
+        if col >= current.col-tokenLen and col <= current.col:
+          return true
+
 proc findClosestSym(n: PNode): PNode = 
   if n.kind == nkSym and msgs.inCheckpoint(n.info) == cpExact: 
     result = n
@@ -205,7 +214,40 @@ proc fuzzySemCheck(c: PContext, n: PNode): PNode =
       for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
 
 var
-  usageSym: PSym
+  usageSym*: PSym
+  lastLineInfo: TLineInfo
+
+proc findUsages(node: PNode, s: PSym) =
+  if usageSym == nil and isTracked(node.info, s.name.s.len):
+    usageSym = s
+    OutWriteln(SymToStr(s, isLocal=false, sectionUsage))
+  elif s == usageSym:
+    if lastLineInfo != node.info:
+      OutWriteln(SymToStr(s, isLocal=false, sectionUsage, node.info))
+    lastLineInfo = node.info
+
+proc findDefinition(node: PNode, s: PSym) =
+  if isTracked(node.info, s.name.s.len):
+    OutWriteln(SymToStr(s, isLocal=false, sectionDef))
+    quit(0)
+
+proc suggestSym*(n: PNode, s: PSym) {.inline.} =
+  ## misnamed: should be 'symDeclared'
+  if optUsages in gGlobalOptions:
+    findUsages(n, s)
+  if optDef in gGlobalOptions:
+    findDefinition(n, s)
+
+proc markUsed(n: PNode, s: PSym) =
+  incl(s.flags, sfUsed)
+  if {sfDeprecated, sfError} * s.flags != {}:
+    if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
+    if sfError in s.flags: LocalError(n.info, errWrongSymbolX, s.name.s)
+  suggestSym(n, s)
+
+proc useSym*(sym: PSym): PNode =
+  result = newSymNode(sym)
+  markUsed(result, sym)
 
 proc suggestExpr*(c: PContext, node: PNode) = 
   var cp = msgs.inCheckpoint(node.info)
@@ -243,25 +285,6 @@ proc suggestExpr*(c: PContext, node: PNode) =
         addSon(a, x)
       suggestCall(c, a, n, outputs)
   
-  if optDef in gGlobalOptions:
-    let n = findClosestSym(fuzzySemCheck(c, node))
-    if n != nil:
-      OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef))
-      inc outputs
-      
-  if optUsages in gGlobalOptions:
-    if usageSym == nil:
-      let n = findClosestSym(fuzzySemCheck(c, node))
-      if n != nil: 
-        usageSym = n.sym
-        OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef))
-        inc outputs
-    else:
-      let n = node
-      if n.kind == nkSym and n.sym == usageSym:
-        OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef, n.info))
-        inc outputs
-    
   dec(c.InCompilesContext)
   if outputs > 0 and optUsages notin gGlobalOptions: quit(0)
 

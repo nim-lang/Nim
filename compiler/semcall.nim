@@ -72,7 +72,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
       GlobalError(n.Info, errAmbiguousCallXYZ, "")
-    else:
+    elif gErrorCounter == 0:
+      # don't cascade errors
       var args = "("
       for i in countup(1, sonsLen(n) - 1):
         if i > 1: add(args, ", ")
@@ -91,8 +92,14 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
     internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
   if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
     # a generic proc!
-    finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-
+    if not x.proxyMatch:
+      finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+    else:
+      result = x.call
+      result.sons[0] = newSymNode(finalCallee)
+      result.typ = finalCallee.typ.sons[0]
+      if ContainsGenericType(result.typ): result.typ = errorType(c)
+      return
   result = x.call
   result.sons[0] = newSymNode(finalCallee)
   result.typ = finalCallee.typ.sons[0]

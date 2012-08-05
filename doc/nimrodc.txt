@@ -514,3 +514,40 @@ efficient:
   of "license": c.license = UnixToNativePath(k.value)
   else: quit(errorStr(p, "unknown variable: " & k.key))
 
+
+The ECMAScript target
+=====================
+
+Nimrod can also generate `ECMAScript`:idx: (also known as `JavaScript`:idx:)
+code. However, the ECMAScript code generator is experimental!
+
+Nimrod targets ECMAScript 1.5 which is supported by any widely used browser.
+Since ECMAScript does not have a portable means to include another module,
+Nimrod just generates a long ``.js`` file.
+
+Features or modules that the ECMAScript platform does not support are not
+available. This includes:
+
+* manual memory management (``alloc``, etc.)
+* casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
+* file management
+* most modules of the Standard library
+* proper 64 bit integer arithmetic
+* unsigned integer arithmetic
+
+However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
+available! To access the DOM, use the `dom`:idx: module that is only
+available for the ECMAScript platform.
+
+To compile a Nimrod module into a ``.js`` file use the ``js`` command; the
+default is a  ``.js`` file that is supposed to be referenced in an ``.html``
+file. However, you can also run the code with `nodejs`:idx:\:  
+
+  nimrod js -d:nodejs -r examples/hallo.nim
+
+
+Known bugs
+----------
+
+* exception handling does not work
+
