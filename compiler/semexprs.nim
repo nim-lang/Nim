@@ -38,7 +38,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
-    raiseRecoverableError("")
+    #raiseRecoverableError("")
+    result = errorNode(c, n)
   if result.typ != nil: 
     if result.typ.kind == tyVar: result = newDeref(result)
   else:
@@ -50,7 +51,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
-    raiseRecoverableError("")
+    result = errorNode(c, n)
   if result.typ == nil:
     LocalError(n.info, errExprXHasNoType, 
                renderTree(result, {renderNoComments}))
@@ -614,8 +615,8 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = nil
-  var prc = n.sons[0]
   checkMinSonsLen(n, 1)
+  var prc = n.sons[0]
   if n.sons[0].kind == nkDotExpr: 
     checkSonsLen(n.sons[0], 2)
     n.sons[0] = semFieldAccess(c, n.sons[0])
@@ -638,19 +639,25 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if m.state != csMatch:
       if c.inCompilesContext > 0:
         # speed up error generation:
-        LocalError(n.Info, errTypeMismatch, "")
+        GlobalError(n.Info, errTypeMismatch, "")
         return emptyNode
       else:
+        var hasErrorType = false
         var msg = msgKindToString(errTypeMismatch)
         for i in countup(1, sonsLen(n) - 1): 
           if i > 1: add(msg, ", ")
-          add(msg, typeToString(n.sons[i].typ))
-        add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
-            typeToString(n.sons[0].typ))
-        LocalError(n.Info, errGenerated, msg)
-        return emptyNode
+          let nt = n.sons[i].typ
+          add(msg, typeToString(nt))
+          if nt.kind == tyError: 
+            hasErrorType = true
+            break
+        if not hasErrorType:
+          add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
+              typeToString(n.sons[0].typ))
+          LocalError(n.Info, errGenerated, msg)
+        return errorNode(c, n)
       result = nil
-    else: 
+    else:
       result = m.call
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
@@ -663,10 +670,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.sons[0] = prc
       nOrig.sons[0] = prc
       result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-    if result == nil: 
-      LocalError(n.info, errExprXCannotBeCalled, 
-                 renderTree(n, {renderNoComments}))
-      return emptyNode
+    if result == nil:
+      if c.inCompilesContext > 0 or gErrorCounter == 0:
+        LocalError(n.info, errExprXCannotBeCalled,
+                   renderTree(n, {renderNoComments}))
+      return errorNode(c, n)
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
   if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
@@ -680,9 +688,9 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result == nil:
     result = overloadedCallOpr(c, n)
-    if result == nil: 
-      LocalError(n.Info, errGenerated, getNotFoundError(c, n))
-      return emptyNode
+    if result == nil:
+      NotFoundError(c, n)
+      return errorNode(c, n)
   let callee = result.sons[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, nOrig, callee)
@@ -718,7 +726,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
     addSon(result, newSymNode(e))
   else:
     LocalError(n.info, errSystemNeeds, "echo")
-    addSon(result, emptyNode)
+    addSon(result, errorNode(c, n))
   var arg = buildStringify(c, n)
   # problem is: implicit '$' is not checked for semantics yet. So we give up
   # and check 'arg' for semantics again:
@@ -732,7 +740,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
   if result.typ != nil and result.typ.kind != tyStmt:
     if gCmd == cmdInteractive:
       result = buildEchoStmt(c, result)
-    elif not ImplicitelyDiscardable(result):
+    elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError:
       localError(n.info, errDiscardValue)
   
 proc isTypeExpr(n: PNode): bool = 
@@ -909,8 +917,9 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         addSon(result, newIdentNode(i, n.info))
         addSon(result, copyTree(n[0]))
       else: 
-        LocalError(n.Info, errUndeclaredFieldX, i.s)
-        result = emptyNode
+        if not ContainsOrIncl(c.UnknownIdents, i.id):
+          LocalError(n.Info, errUndeclaredFieldX, i.s)
+        result = errorNode(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
@@ -992,8 +1001,9 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
   else:
-    LocalError(n.Info, errUndeclaredFieldX, id.s)
-    result = emptyNode
+    if not ContainsOrIncl(c.UnknownIdents, id.id):
+      LocalError(n.Info, errUndeclaredFieldX, id.s)
+    result = errorNode(c, n)
 
 proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   case n.kind
@@ -1116,16 +1126,16 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
     var expandedSym = qualifiedLookup(c, n[0], {checkUndeclared})
     if expandedSym == nil:
       LocalError(n.info, errUndeclaredIdentifier, n[0].renderTree)
-      return errorSym(n[0])
+      return errorSym(c, n[0])
 
     if expandedSym.kind notin {skMacro, skTemplate}:
       LocalError(n.info, errXisNoMacroOrTemplate, expandedSym.name.s)
-      return errorSym(n[0])
+      return errorSym(c, n[0])
 
     result = expandedSym
   else:
     LocalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
-    result = errorSym(n)
+    result = errorSym(c, n)
 
 proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
                     flags: TExprFlags): PNode =
@@ -1395,11 +1405,11 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
       result = semTemplateExpr(c, result, s, semCheck)
     else: 
       LocalError(n.info, errXisNoMacroOrTemplate, s.name.s)
-      result = emptyNode
+      result = errorNode(c, n)
   else:
     LocalError(n.info, errInvalidExpressionX, 
                renderTree(a, {renderNoComments}))
-    result = emptyNode
+    result = errorNode(c, n)
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n

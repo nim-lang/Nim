@@ -6,18 +6,10 @@ version 0.9.0
 - implicit deref for parameter matching
 
 - ``borrow`` needs to take type classes into account
-- ``=`` should be overloadable; requires specialization for ``=``
 - optimize genericAssign in the code generator
 - fix remaining closure bugs:
   - fix evals.nim with closures
   - implement "closure tuple consists of a single 'ref'" optimization
-
-- document 'do' notation
-- rethink the syntax: distinction between expr and stmt is unfortunate; 
-  indentation handling is quite complex too; problem with exception handling
-  is that often the scope of ``try`` is wrong and apart from that ``try`` is
-  a full blown statement; a ``try`` expression might be a good idea to make
-  error handling more light-weight
 
 
 Bugs
@@ -36,9 +28,15 @@ version 0.9.XX
 ==============
 
 - JS gen:
-  - document it
   - fix exception handling
 
+- document 'do' notation
+- rethink the syntax: distinction between expr and stmt is unfortunate; 
+  indentation handling is quite complex too; problem with exception handling
+  is that often the scope of ``try`` is wrong and apart from that ``try`` is
+  a full blown statement; a ``try`` expression might be a good idea to make
+  error handling more light-weight
+- ``=`` should be overloadable; requires specialization for ``=``
 - ``hoist`` pragma for loop hoisting
 - document destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue

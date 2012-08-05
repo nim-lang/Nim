@@ -371,7 +371,7 @@ type
     skEnumField,          # an identifier in an enum
     skForVar,             # a for loop variable
     skLabel,              # a label (for block statement)
-    skStub                # symbol is a stub and not yet loaded from the ROD
+    skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
   TSymKinds* = set[TSymKind]
@@ -380,6 +380,7 @@ const
   routineKinds* = {skProc, skMethod, skIterator, skConverter,
     skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
+  skError* = skUnknown
 
 type
   TMagic* = enum # symbols that require compiler magic:

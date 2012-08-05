@@ -79,7 +79,8 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
       x.info = n.info
       incl(s.flags, sfUsed)
       n.sons[0] = x
-    else: 
+      suggestSym(x, s)
+    else:
       localError(n.info, errInvalidControlFlowX, s.name.s)
   elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0): 
     localError(n.info, errInvalidControlFlowX, 
@@ -94,6 +95,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
     var labl = newSymS(skLabel, n.sons[0], c)
     addDecl(c, labl)
     n.sons[0] = newSymNode(labl)
+    suggestSym(n.sons[0], labl)
   n.sons[1] = semStmt(c, n.sons[1])
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
@@ -132,7 +134,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   case skipTypes(n.sons[0].Typ, abstractVarRange).Kind
   of tyInt..tyInt64, tyChar, tyEnum: 
     chckCovered = true
-  of tyFloat..tyFloat128, tyString: 
+  of tyFloat..tyFloat128, tyString, tyError: 
     nil
   else: 
     LocalError(n.info, errSelectorMustBeOfCertainTypes)
@@ -229,8 +231,9 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
     result = semIdentWithPragma(c, kind, n, {sfExported})
     incl(result.flags, sfGlobal)
-  else: 
+  else:
     result = semIdentWithPragma(c, kind, n, {})
+  suggestSym(n, result)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode = 
   var b: PNode

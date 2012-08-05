@@ -74,6 +74,8 @@ type
     filename*: string          # the module's filename
     userPragmas*: TStrTable
     evalContext*: PEvalContext
+    UnknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
+                               # naming it multiple times
 
 var
   gGenericsCache: PGenericsCache # save for modularity
@@ -194,6 +196,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
     # we have to give up and use a per-module cache for generic instantiations:
     result.generics = newGenericsCache()
     assert gGenericsCache == nil
+  result.UnknownIdents = initIntSet()
 
 proc addConverter(c: PContext, conv: PSym) = 
   var L = len(c.converters)
@@ -230,6 +233,10 @@ proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
 
+proc errorNode*(c: PContext, n: PNode): PNode =
+  result = newNodeI(nkEmpty, n.info)
+  result.typ = errorType(c)
+
 proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) = 
   dest.kind = kind
   dest.owner = getCurrOwner()
@@ -243,21 +250,11 @@ proc makeRangeType*(c: PContext, first, last: biggestInt,
   result = newTypeS(tyRange, c)
   result.n = n
   rawAddSon(result, getSysType(tyInt)) # basetype of range
-  
-proc markUsed*(n: PNode, s: PSym) = 
-  incl(s.flags, sfUsed)
-  if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
-    if sfError in s.flags: LocalError(n.info, errWrongSymbolX, s.name.s)
 
-proc markIndirect*(c: PContext, s: PSym) =
+proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skConverter, skMethod, skIterator}:
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
-
-proc useSym*(sym: PSym): PNode =
-  result = newSymNode(sym)
-  markUsed(result, sym)
 
 proc illFormedAst*(n: PNode) = 
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))

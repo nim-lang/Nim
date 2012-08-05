@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  suggest, semthreads, intsets, transf, evals, idgen, aliases
+  semthreads, intsets, transf, evals, idgen, aliases
 
 proc semPass*(): TPass
 # implementation
@@ -37,9 +37,10 @@ proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
-  LocalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
-      typeToString(actual) & ") " &
-      `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
+  if formal.kind != tyError and actual.kind != tyError: 
+    LocalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+        typeToString(actual) & ") " &
+        `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
   result = IndexTypesMatch(c, formal, arg.typ, arg)

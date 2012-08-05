@@ -222,8 +222,8 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           amb = nextOverloadIter(ov, c, n)
         if amb != nil: result = amb
         else:
-          LocalError(n.info, errTypeExpected)
-          return errorSym(n)
+          if result.kind != skError: LocalError(n.info, errTypeExpected)
+          return errorSym(c, n)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
         reset(n[])
@@ -231,7 +231,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         n.sym = result
     else:
       LocalError(n.info, errIdentifierExpected)
-      result = errorSym(n)
+      result = errorSym(c, n)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
   if n.sonsLen == 0: return newConstraint(c, tyTuple)
@@ -827,7 +827,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkIdent, nkDotExpr, nkAccQuoted: 
     var s = semTypeIdent(c, n)
     if s.typ == nil: 
-      LocalError(n.info, errTypeExpected)
+      if s.kind != skError: LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
     elif prev == nil:
       result = s.typ
@@ -845,7 +845,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
       markUsed(n, n.sym)
     else:
-      LocalError(n.info, errTypeExpected)
+      if n.sym.kind != skError: LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
