@@ -914,9 +914,9 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         # BUGFIX: do not check for (f.kind in {skProc, skMethod, skIterator}) here
         # This special node kind is to merge with the call handler in `semExpr`.
         result = newNodeI(nkDotCall, n.info)
-        addSon(result, newIdentNode(i, n.info))
+        addSon(result, newIdentNode(i, n[1].info))
         addSon(result, copyTree(n[0]))
-      else: 
+      else:
         if not ContainsOrIncl(c.UnknownIdents, i.id):
           LocalError(n.Info, errUndeclaredFieldX, i.s)
         result = errorNode(c, n)
@@ -1461,7 +1461,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: result.typ = getSysType(tyChar)
   of nkDotExpr: 
     result = semFieldAccess(c, n, flags)
-    if result.kind == nkDotCall: 
+    if result.kind == nkDotCall:
       result.kind = nkCall
       result = semExpr(c, result, flags)
   of nkBind:
