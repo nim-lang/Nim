@@ -84,3 +84,10 @@ proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
                               fn.ast.sons[genericParamsPos]): 
           if paramsFitBorrow(fn.typ.n, result.typ.n): return 
       result = NextIdentIter(it, c.tab.stack[scope])
+
+proc SearchForBorrowProc2(c: PContext, fn: PSym, tos: int): PSym = 
+  # Searchs for the fn in the symbol table. If the parameter lists are suitable
+  # for borrowing the sym in the symbol table is returned, else nil.
+  # New approach: generate fn(x, y, z) where x, y, z have the proper types
+  # and use the overloading resolution mechanism:
+  nil
