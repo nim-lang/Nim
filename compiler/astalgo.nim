@@ -433,9 +433,9 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
         appf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
         appf(result, ",$N$1\"sym\": $2_$3", 
-             [istr, symToYaml(n.sym, indent, maxRecDepth), 
-             toRope(n.sym.id)])
-        #[istr, toRope(n.sym.name.s), toRope(n.sym.id)])
+            [istr, toRope(n.sym.name.s), toRope(n.sym.id)])
+        #     [istr, symToYaml(n.sym, indent, maxRecDepth), 
+        #     toRope(n.sym.id)])
       of nkIdent: 
         if n.ident != nil: 
           appf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])

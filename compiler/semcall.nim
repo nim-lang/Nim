@@ -87,7 +87,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
-  markUsed(n, finalCallee)
+  markUsed(n.sons[0], finalCallee)
   if finalCallee.ast == nil:
     internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
   if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
@@ -96,12 +96,12 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
       result = x.call
-      result.sons[0] = newSymNode(finalCallee)
+      result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
       result.typ = finalCallee.typ.sons[0]
       if ContainsGenericType(result.typ): result.typ = errorType(c)
       return
   result = x.call
-  result.sons[0] = newSymNode(finalCallee)
+  result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
   result.typ = finalCallee.typ.sons[0]
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
