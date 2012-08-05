@@ -32,7 +32,7 @@ proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
   if s.typ != nil: 
     result.add(typeToString(s.typ))
   result.add(sep)
-  result.add(toFilename(li))
+  result.add(toFullPath(li))
   result.add(sep)
   result.add($ToLinenumber(li))
   result.add(sep)
