@@ -224,8 +224,9 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       incl(sym.loc.flags, lfExportLib)
     # since we'll be loading the dynlib symbols dynamically, we must use
     # a calling convention that doesn't introduce custom name mangling
-    # cdecl is the default - the use can override this explicitly
-    if sym.typ.callConv == ccDefault:
+    # cdecl is the default - the user can override this explicitly
+    if sym.kind in RoutineKinds and sym.typ != nil and 
+        sym.typ.callConv == ccDefault:
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
