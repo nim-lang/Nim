@@ -13,14 +13,6 @@
 import 
   ast, astalgo, msgs, semdata, types, trees
 
-proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym
-  # Searchs for the fn in the symbol table. If the parameter lists are exactly
-  # the same the sym in the symbol table is returned, else nil.
-proc SearchForBorrowProc*(c: PContext, fn: PSym, tos: int): PSym
-  # Searchs for the fn in the symbol table. If the parameter lists are suitable
-  # for borrowing the sym in the symbol table is returned, else nil.
-# implementation
-
 proc equalGenericParams(procA, procB: PNode): bool = 
   var a, b: PSym
   result = procA == procB
@@ -41,7 +33,9 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not ExprStructuralEquivalent(a.ast, b.ast): return 
   result = true
 
-proc SearchForProc(c: PContext, fn: PSym, tos: int): PSym = 
+proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym = 
+  # Searchs for the fn in the symbol table. If the parameter lists are exactly
+  # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
   result = initIdentIter(it, c.tab.stack[tos], fn.Name)
   while result != nil: 
@@ -58,36 +52,30 @@ proc SearchForProc(c: PContext, fn: PSym, tos: int): PSym =
           nil
     result = NextIdentIter(it, c.tab.stack[tos])
 
-proc paramsFitBorrow(child, parent: PNode): bool = 
-  var length = sonsLen(child)
-  result = false
-  if length == sonsLen(parent): 
-    for i in countup(1, length - 1): 
-      var m = child.sons[i].sym
-      var n = parent.sons[i].sym
-      assert((m.kind == skParam) and (n.kind == skParam))
-      if not compareTypes(m.typ, n.typ, dcEqOrDistinctOf): return 
-    if not compareTypes(child.sons[0].typ, parent.sons[0].typ,
-                        dcEqOrDistinctOf): return
-    result = true
+when false:
+  proc paramsFitBorrow(child, parent: PNode): bool = 
+    var length = sonsLen(child)
+    result = false
+    if length == sonsLen(parent): 
+      for i in countup(1, length - 1): 
+        var m = child.sons[i].sym
+        var n = parent.sons[i].sym
+        assert((m.kind == skParam) and (n.kind == skParam))
+        if not compareTypes(m.typ, n.typ, dcEqOrDistinctOf): return 
+      if not compareTypes(child.sons[0].typ, parent.sons[0].typ,
+                          dcEqOrDistinctOf): return
+      result = true
 
-proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym = 
-  # Searchs for the fn in the symbol table. If the parameter lists are suitable
-  # for borrowing the sym in the symbol table is returned, else nil.
-  var it: TIdentIter
-  for scope in countdown(tos, 0): 
-    result = initIdentIter(it, c.tab.stack[scope], fn.Name)
-    while result != nil: 
-      # watchout! result must not be the same as fn!
-      if (result.Kind == fn.kind) and (result.id != fn.id): 
-        if equalGenericParams(result.ast.sons[genericParamsPos], 
-                              fn.ast.sons[genericParamsPos]): 
-          if paramsFitBorrow(fn.typ.n, result.typ.n): return 
-      result = NextIdentIter(it, c.tab.stack[scope])
-
-proc SearchForBorrowProc2(c: PContext, fn: PSym, tos: int): PSym = 
-  # Searchs for the fn in the symbol table. If the parameter lists are suitable
-  # for borrowing the sym in the symbol table is returned, else nil.
-  # New approach: generate fn(x, y, z) where x, y, z have the proper types
-  # and use the overloading resolution mechanism:
-  nil
+  proc SearchForBorrowProc*(c: PContext, fn: PSym, tos: int): PSym = 
+    # Searchs for the fn in the symbol table. If the parameter lists are suitable
+    # for borrowing the sym in the symbol table is returned, else nil.
+    var it: TIdentIter
+    for scope in countdown(tos, 0): 
+      result = initIdentIter(it, c.tab.stack[scope], fn.Name)
+      while result != nil: 
+        # watchout! result must not be the same as fn!
+        if (result.Kind == fn.kind) and (result.id != fn.id): 
+          if equalGenericParams(result.ast.sons[genericParamsPos], 
+                                fn.ast.sons[genericParamsPos]): 
+            if paramsFitBorrow(fn.typ.n, result.typ.n): return 
+        result = NextIdentIter(it, c.tab.stack[scope])

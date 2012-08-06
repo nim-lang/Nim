@@ -1108,3 +1108,17 @@ proc containsGenericTypeIter(t: PType, closure: PObject): bool =
 
 proc containsGenericType*(t: PType): bool = 
   result = iterOverType(t, containsGenericTypeIter, nil)
+
+proc baseOfDistinct*(t: PType): PType =
+  if t.kind == tyDistinct:
+    result = t.sons[0]
+  else:
+    result = copyType(t, t.owner, false)
+    var parent: PType = nil
+    var it = result
+    while it.kind in {tyPtr, tyRef}:
+      parent = it
+      it = it.sons[0]
+    if it.kind == tyDistinct:
+      internalAssert parent != nil
+      parent.sons[0] = it.sons[0]

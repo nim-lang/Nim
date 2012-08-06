@@ -150,3 +150,17 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
+proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
+  # Searchs for the fn in the symbol table. If the parameter lists are suitable
+  # for borrowing the sym in the symbol table is returned, else nil.
+  # New approach: generate fn(x, y, z) where x, y, z have the proper types
+  # and use the overloading resolution mechanism:
+  var call = newNode(nkCall)
+  call.add(newIdentNode(fn.name, fn.info))
+  for i in 1.. <fn.typ.n.len:
+    let param = fn.typ.n.sons[i]
+    let t = skipTypes(param.typ, abstractVar)
+    call.add(newNodeIT(nkEmpty, fn.info, t.baseOfDistinct))
+  var resolved = semOverloadedCall(c, call, call, {fn.kind})
+  if resolved != nil:
+    result = resolved.sons[0].sym

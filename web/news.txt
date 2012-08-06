@@ -145,6 +145,7 @@ Language Additions
 - A semicolon can now be used to have multiple simple statements on a single
   line: ``inc i; inc j``.
 - ``bind`` supports overloaded symbols and operators.
+- A ``distinct`` type can now borrow from generic procs.
 
 
 2012-02-09 Version 0.8.14 released
