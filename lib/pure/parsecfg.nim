@@ -30,7 +30,7 @@ import
 include "system/inclrtl"
 
 type 
-  TCfgEventKind* = enum ## enumation of all events that may occur when parsing
+  TCfgEventKind* = enum ## enumeration of all events that may occur when parsing
     cfgEof,             ## end of file reached
     cfgSectionStart,    ## a ``[section]`` has been parsed
     cfgKeyValuePair,    ## a ``key=value`` pair has been detected
@@ -60,11 +60,8 @@ type
     kind: TTokKind           # the type of the token
     literal: string          # the parsed (string) literal
   
-  TParserState = enum 
-    startState # , commaState # not yet used
   TCfgParser* = object of TBaseLexer ## the parser object.
     tok: TToken
-    state: TParserState
     filename: string
 
 # implementation
@@ -82,7 +79,6 @@ proc open*(c: var TCfgParser, input: PStream, filename: string,
   ## number information in the generated error messages.
   lexbase.open(c, input)
   c.filename = filename
-  c.state = startState
   c.tok.kind = tkInvalid
   c.tok.literal = ""
   inc(c.linenumber, lineOffset)
