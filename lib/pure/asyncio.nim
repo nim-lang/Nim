@@ -417,59 +417,47 @@ proc len*(disp: PDispatcher): int =
   return disp.delegates.len
 
 when isMainModule:
-  type
-    PIntType = ref TIntType
-    TIntType = object of TObject
-      val: int
 
-    PMyArg = ref TMyArg
-    TMyArg = object of TObject
-      dispatcher: PDispatcher
-      val: int
-
-  proc testConnect(s: PAsyncSocket, arg: PObject) =
-    echo("Connected! " & $PIntType(arg).val)
+  proc testConnect(s: PAsyncSocket, no: int) =
+    echo("Connected! " & $no)
   
-  proc testRead(s: PAsyncSocket, arg: PObject) =
-    echo("Reading! " & $PIntType(arg).val)
+  proc testRead(s: PAsyncSocket, no: int) =
+    echo("Reading! " & $no)
     var data = s.getSocket.recv()
     if data == "":
-      echo("Closing connection. " & $PIntType(arg).val)
+      echo("Closing connection. " & $no)
       s.close()
     echo(data)
-    echo("Finished reading! " & $PIntType(arg).val)
+    echo("Finished reading! " & $no)
 
-  proc testAccept(s: PAsyncSocket, arg: PObject) =
-    echo("Accepting client! " & $PMyArg(arg).val)
+  proc testAccept(s: PAsyncSocket, disp: PDispatcher, no: int) =
+    echo("Accepting client! " & $no)
     var client: PAsyncSocket
     new(client)
     var address = ""
     s.acceptAddr(client, address)
     echo("Accepted ", address)
-    client.handleRead = testRead
-    var userArg: PIntType
-    new(userArg)
-    userArg.val = 78
-    client.userArg = userArg
-    PMyArg(arg).dispatcher.register(client)
+    client.handleRead = 
+      proc (s: PAsyncSocket) =
+        testRead(s, 2)
+    disp.register(client)
 
   var d = newDispatcher()
   
-  var userArg: PIntType
-  new(userArg)
-  userArg.val = 0
-  var s = AsyncSocket(userArg = userArg)
+  var s = AsyncSocket()
   s.connect("amber.tenthbit.net", TPort(6667))
-  s.handleConnect = testConnect
-  s.handleRead = testRead
+  s.handleConnect = 
+    proc (s: PAsyncSocket) =
+      testConnect(s, 1)
+  s.handleRead = 
+    proc (s: PAsyncSocket) =
+      testRead(s, 1)
   d.register(s)
   
-  var userArg1: PMyArg
-  new(userArg1)
-  userArg1.val = 1
-  userArg1.dispatcher = d
-  var server = AsyncSocket(userArg = userArg1)
-  server.handleAccept = testAccept
+  var server = AsyncSocket()
+  server.handleAccept =
+    proc (s: PAsyncSocket) = 
+      testAccept(s, d, 78)
   server.bindAddr(TPort(5555))
   server.listen()
   d.register(server)
