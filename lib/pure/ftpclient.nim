@@ -227,7 +227,18 @@ proc listDirs*(ftp: var TFTPClient, dir: string = "",
     ftp.deleteJob()
   else: return @[]
 
-proc fileExists*(ftp: var TFTPClient, file: string): bool =
+proc fileExists*(ftp: var TFTPClient, file: string): bool {.deprecated.} =
+  ## **Deprecated:** Please use ``existsFile``.
+  ##
+  ## Determines whether ``file`` exists.
+  ##
+  ## Warning: This function may block. Especially on directories with many
+  ## files, because a full list of file names must be retrieved.
+  var files = ftp.listDirs()
+  for f in items(files):
+    if f.normalizePathSep == file.normalizePathSep: return true
+
+proc existsFile*(ftp: var TFTPClient, file: string): bool =
   ## Determines whether ``file`` exists.
   ##
   ## Warning: This function may block. Especially on directories with many
