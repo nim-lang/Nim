@@ -30,6 +30,11 @@ import sockets, os
 ## on with the events. The type that you set userArg to must be inheriting from
 ## TObject!
 ##
+## **Note:** If you want to provide async ability to your module please do not 
+## use the ``TDelegate`` object, instead use ``PAsyncSocket``. It is possible 
+## that in the future this type's fields will not be exported therefore breaking
+## your code.
+##
 ## Asynchronous sockets
 ## ====================
 ##
@@ -68,7 +73,8 @@ import sockets, os
 
 
 type
-  TDelegate* = object
+
+  TDelegate = object
     deleVal*: PObject
 
     handleRead*: proc (h: PObject) {.nimcall.}
@@ -92,12 +98,10 @@ type
     socket: TSocket
     info: TInfo
 
-    userArg: PObject
+    handleRead*: proc (s: PAsyncSocket) {.closure.}
+    handleConnect*: proc (s:  PAsyncSocket) {.closure.}
 
-    handleRead*: proc (s: PAsyncSocket, arg: PObject) {.nimcall.}
-    handleConnect*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
-
-    handleAccept*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
+    handleAccept*: proc (s:  PAsyncSocket) {.closure.}
 
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
     sslNeedAccept: bool
@@ -121,21 +125,20 @@ proc newDelegate*(): PDelegate =
   result.task = (proc (h: PObject) = nil)
   result.mode = MReadable
 
-proc newAsyncSocket(userArg: PObject = nil): PAsyncSocket =
+proc newAsyncSocket(): PAsyncSocket =
   new(result)
   result.info = SockIdle
-  result.userArg = userArg
 
-  result.handleRead = (proc (s: PAsyncSocket, arg: PObject) = nil)
-  result.handleConnect = (proc (s: PAsyncSocket, arg: PObject) = nil)
-  result.handleAccept = (proc (s: PAsyncSocket, arg: PObject) = nil)
+  result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleConnect = (proc (s: PAsyncSocket) = nil)
+  result.handleAccept = (proc (s: PAsyncSocket) = nil)
 
   result.lineBuffer = "".TaintedString
 
 proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
-                  userArg: PObject = nil, buffered = true): PAsyncSocket =
-  result = newAsyncSocket(userArg)
+                  buffered = true): PAsyncSocket =
+  result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
   if result.socket == InvalidSocket: OSError()
@@ -148,15 +151,14 @@ proc asyncSockHandleConnect(h: PObject) =
       return  
       
   PAsyncSocket(h).info = SockConnected
-  PAsyncSocket(h).handleConnect(PAsyncSocket(h),
-     PAsyncSocket(h).userArg)
+  PAsyncSocket(h).handleConnect(PAsyncSocket(h))
 
 proc asyncSockHandleRead(h: PObject) =
   when defined(ssl):
     if PAsyncSocket(h).socket.isSSL and not
          PAsyncSocket(h).socket.gotHandshake:
       return
-  PAsyncSocket(h).handleRead(PAsyncSocket(h), PAsyncSocket(h).userArg)
+  PAsyncSocket(h).handleRead(PAsyncSocket(h))
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) =
@@ -183,8 +185,7 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   result.handleRead = asyncSockHandleRead
   
   result.handleAccept = (proc (h: PObject) =
-                           PAsyncSocket(h).handleAccept(PAsyncSocket(h),
-                              PAsyncSocket(h).userArg))
+                           PAsyncSocket(h).handleAccept(PAsyncSocket(h)))
 
   when defined(ssl):
     result.task = asyncSockDoHandshake
@@ -336,7 +337,6 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
     result = true
   of RecvFail:
     result = false
-
 
 proc poll*(d: PDispatcher, timeout: int = 500): bool =
   ## This function checks for events on all the sockets in the `PDispatcher`.
