@@ -1218,7 +1218,7 @@ proc recvFrom*(socket: TSocket, data: var string, length: int,
   data = newString(length)
   var sockAddress: Tsockaddr_in
   var addrLen = sizeof(sockAddress).TSockLen
-  result = recvFrom(socket.fd, cstring(data), length, flags,
+  result = recvFrom(socket.fd, cstring(data), length.cint, flags.cint,
                     cast[ptr TSockAddr](addr(sockAddress)), addr(addrLen))
   
   if result != -1:
@@ -1326,7 +1326,7 @@ proc sendTo*(socket: TSocket, address: string, port: TPort, data: pointer,
   var success = false
   var it = aiList
   while it != nil:
-    result = sendTo(socket.fd, data, size.cint, flags, it.ai_addr,
+    result = sendTo(socket.fd, data, size.cint, flags.cint, it.ai_addr,
                     it.ai_addrlen.TSockLen)
     if result != -1'i32:
       success = true

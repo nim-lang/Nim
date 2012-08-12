@@ -451,15 +451,15 @@ proc listen*(s: TWinSocket, backlog: cint): cint {.
 proc recv*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "recv", dynlib: ws2dll.}
 proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
-               fromm: ptr TSockAddr, fromlen: ptr cint): cint {.
+               fromm: ptr TSockAddr, fromlen: ptr Tsocklen): cint {.
   stdcall, importc: "recvfrom", dynlib: ws2dll.}
 proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
              timeout: ptr TTimeval): cint {.
   stdcall, importc: "select", dynlib: ws2dll.}
 proc send*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "send", dynlib: ws2dll.}
-proc sendto*(s: TWinSocket, buf: cstring, len, flags: cint,
-             to: ptr TSockAddr, tolen: cint): cint {.
+proc sendto*(s: TWinSocket, buf: pointer, len, flags: cint,
+             to: ptr TSockAddr, tolen: Tsocklen): cint {.
   stdcall, importc: "sendto", dynlib: ws2dll.}
 
 proc shutdown*(s: TWinSocket, how: cint): cint {.
