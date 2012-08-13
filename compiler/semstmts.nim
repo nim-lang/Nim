@@ -876,7 +876,9 @@ proc semMethod(c: PContext, n: PNode): PNode =
   
   # XXX this not really correct way to do it: Perhaps it should be done after
   # generic instantiation. Well it's good enough for now: 
-  if not hasObjParam:
+  if hasObjParam:
+    methodDef(s, false)
+  else:
     LocalError(n.info, errXNeedsParamObjectType, "method")
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
