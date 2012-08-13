@@ -421,7 +421,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast, 
     mNewString, mNewStringOfCap,
     mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, 
+    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
