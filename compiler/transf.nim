@@ -697,7 +697,6 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     if prc.kind != skMacro:
       # XXX no closures yet for macros:
       result = liftLambdas(prc, result)
-    if prc.kind == skMethod: methodDef(prc, false)
     incl(result.flags, nfTransf)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =

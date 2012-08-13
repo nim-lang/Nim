@@ -278,6 +278,13 @@ proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
     sfGlobal notin s.flags
 
+proc semCaptureSym*(s, owner: PSym) =
+  if interestingVar(s) and owner.id != s.owner.id:
+    if owner.typ != nil:
+      owner.typ.callConv = ccClosure
+    # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
+    # here
+
 proc gatherVars(o: POuterContext, i: PInnerContext, n: PNode) = 
   # gather used vars for closure generation
   if n == nil: return
@@ -363,6 +370,7 @@ proc closureCreationPoint(n: PNode): PNode =
   result.add(n)
 
 proc searchForInnerProcs(o: POuterContext, n: PNode) =
+  if n == nil: return
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
     nil
@@ -529,7 +537,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
   if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
     # ignore forward declaration:
     result = body
-  elif not containsNode(body, procDefs):
+  elif not containsNode(body, procDefs) and false:
     # fast path: no inner procs, so no closure needed:
     result = body
   else:

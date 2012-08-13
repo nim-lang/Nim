@@ -107,6 +107,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       incl(c.p.owner.flags, sfSideEffect)
     elif s.kind == skParam and s.typ.kind == tyExpr:
       return s.typ.n
+    else:
+      semCaptureSym(s, c.p.owner)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:
@@ -1524,7 +1526,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     internalError(n.info, "semExpr() to implement") # XXX: to implement
   of nkPar: 
     case checkPar(n)
-    of paNone: result = nil
+    of paNone: result = errorNode(c, n)
     of paTuplePositions: result = semTuplePositionsConstr(c, n)
     of paTupleFields: result = semTupleFieldsConstr(c, n)
     of paSingle: result = semExpr(c, n.sons[0], flags)
