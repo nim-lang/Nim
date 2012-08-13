@@ -15,7 +15,7 @@ import
   os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
-  platform, nimconf, importer, passaux, depends, transf, evals, types, idgen,
+  platform, nimconf, importer, passaux, depends, evals, types, idgen,
   tables, docgen2
 
 const
@@ -90,7 +90,6 @@ proc CompileProject(projectFile = gProjectFull) =
 proc semanticPasses =
   registerPass(verbosePass())
   registerPass(sem.semPass())
-  registerPass(transf.transfPass())
 
 proc CommandGenDepend =
   semanticPasses()

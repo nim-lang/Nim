@@ -455,7 +455,7 @@ proc getFloat*(x: TAny): float =
 
 proc getFloat32*(x: TAny): float32 = 
   ## retrieve the float32 value out of `x`. `x` needs to represent an float32.
-  assert skipRange(x.rawtype).kind == tyFloat64
+  assert skipRange(x.rawtype).kind == tyFloat32
   result = cast[ptr float32](x.value)[]
   
 proc getFloat64*(x: TAny): float64 = 

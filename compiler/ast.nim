@@ -340,7 +340,8 @@ type
                       # because for instantiations of objects, structural
                       # type equality has to be used
     tfAll,            # type class requires all constraints to be met (default)
-    tfAny             # type class requires any constraint to be met
+    tfAny,            # type class requires any constraint to be met
+    tfCapturesEnv     # whether proc really captures some environment
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -867,6 +868,7 @@ proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
   result = newNode(kind)
   result.info = info
   result.typ = typ
+  # XXX use shallowCopy here for ownership transfer:
   result.sons = sons
 
 proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode = 

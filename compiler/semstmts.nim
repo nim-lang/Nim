@@ -198,15 +198,17 @@ proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: nil
   
-proc SemYield(c: PContext, n: PNode): PNode = 
+proc SemYield(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner == nil or c.p.owner.kind != skIterator: 
+  if c.p.owner == nil or c.p.owner.kind != skIterator:
     LocalError(n.info, errYieldNotAllowedHere)
+  elif c.p.inTryStmt > 0 and c.p.owner.typ.callConv != ccInline:
+    LocalError(n.info, errYieldNotAllowedInTryStmt)
   elif n.sons[0].kind != nkEmpty:
     n.sons[0] = SemExprWithType(c, n.sons[0]) # check for type compatibility:
     var restype = c.p.owner.typ.sons[0]
-    if restype != nil: 
+    if restype != nil:
       n.sons[0] = fitNode(c, restype, n.sons[0])
       if n.sons[0].typ == nil: InternalError(n.info, "semYield")
       SemYieldVarResult(c, n, restype)
@@ -486,6 +488,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
 
 proc semTry(c: PContext, n: PNode): PNode = 
   result = n
+  inc c.p.inTryStmt
   checkMinSonsLen(n, 2)
   n.sons[0] = semStmtScope(c, n.sons[0])
   var check = initIntSet()
@@ -511,6 +514,7 @@ proc semTry(c: PContext, n: PNode): PNode =
       illFormedAst(n) 
     # last child of an nkExcept/nkFinally branch is a statement:
     a.sons[length - 1] = semStmtScope(c, a.sons[length - 1])
+  dec c.p.inTryStmt
 
 proc addGenericParamListToScope(c: PContext, n: PNode) = 
   if n.kind != nkGenericParams: 
@@ -714,19 +718,32 @@ proc semLambda(c: PContext, n: PNode): PNode =
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info, skProc)
-    n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
+    let semBody = semStmtScope(c, n.sons[bodyPos])
+    n.sons[bodyPos] = transformBody(c.module, semBody, s)
     addResultNode(c, n)
     popProcCon(c)
-  else: 
+  else:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   sideEffectsCheck(c, s)
-  if s.typ.callConv == ccClosure and s.owner.kind == skModule:
-    localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   result.typ = s.typ
- 
+
 proc instantiateDestructor*(c: PContext, typ: PType): bool
+
+proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
+  let t = s.typ.sons[1].skipTypes({tyVar})
+  t.destructor = s
+  # automatically insert calls to base classes' destructors
+  if n.sons[bodyPos].kind != nkEmpty:
+    for i in countup(0, t.sonsLen - 1):
+      # when inheriting directly from object
+      # there will be a single nil son
+      if t.sons[i] == nil: continue
+      if instantiateDestructor(c, t.sons[i]):
+        n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
+            useSym(t.sons[i].destructor),
+            n.sons[paramsPos][1][0]]))
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
@@ -754,7 +771,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[genericParamsPos] = gp
         # check for semantics again:
         # semParamList(c, n.sons[ParamsPos], nil, s)
-  else: 
+  else:
     s.typ = newTypeS(tyProc, c)
     rawAddSon(s.typ, nil)
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
@@ -791,19 +808,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if sfDestructor in s.flags:
-    let t = s.typ.sons[1].skipTypes({tyVar})
-    t.destructor = s
-    # automatically insert calls to base classes' destructors
-    if n.sons[bodyPos].kind != nkEmpty:
-      for i in countup(0, t.sonsLen - 1):
-        # when inheriting directly from object
-        # there will be a single nil son
-        if t.sons[i] == nil: continue
-        if instantiateDestructor(c, t.sons[i]):
-          n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
-              useSym(t.sons[i].destructor),
-              n.sons[paramsPos][1][0]]))
+  if sfDestructor in s.flags: doDestructorStuff(c, s, n)
   if n.sons[bodyPos].kind != nkEmpty: 
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags: 
@@ -815,7 +820,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addResult(c, s.typ.sons[0], n.info, kind)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
-        n.sons[bodyPos] = semStmtScope(c, n.sons[bodyPos])
+        let semBody = semStmtScope(c, n.sons[bodyPos])
+        # unfortunately we cannot skip this step when in 'system.compiles'
+        # context as it may even be evaluated in 'system.compiles':
+        n.sons[bodyPos] = transformBody(c.module, semBody, s)
       if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
@@ -827,14 +835,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfImportc in s.flags: 
       # so we just ignore the body after semantic checking for importc:
       n.sons[bodyPos] = ast.emptyNode
-  else: 
+  else:
     if proto != nil: LocalError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone: 
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
-  if s.typ.callConv == ccClosure and s.owner.kind == skModule:
-    localError(s.info, errXCannotBeClosure, s.name.s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   
@@ -845,7 +851,10 @@ proc semIterator(c: PContext, n: PNode): PNode =
   if t.sons[0] == nil:
     LocalError(n.info, errXNeedsReturnType, "iterator")
   # iterators are either 'inline' or 'closure':
-  if s.typ.callConv != ccInline: s.typ.callConv = ccClosure
+  if s.typ.callConv != ccInline: 
+    s.typ.callConv = ccClosure
+    # and they always at least use the 'env' for the state field:
+    incl(s.typ.flags, tfCapturesEnv)
   if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
