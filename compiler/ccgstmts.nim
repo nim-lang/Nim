@@ -93,10 +93,9 @@ template preserveBreakIdx(body: stmt): stmt =
   p.breakIdx = oldBreakIdx
 
 proc genState(p: BProc, n: PNode) =
-  internalAssert n.len == 2 and n.sons[0].kind == nkIntLit
+  internalAssert n.len == 1 and n.sons[0].kind == nkIntLit
   let idx = n.sons[0].intVal
   lineCg(p, cpsStmts, "STATE$1: ;$n", [idx.toRope])
-  genStmts(p, n.sons[1])
 
 proc genGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later

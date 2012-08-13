@@ -1366,7 +1366,8 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   inc(gNestedEvals)
 
 proc tryEval(c: PEvalContext, n: PNode): PNode =
-  var n = transform(c.module, n)
+  #internalAssert nfTransf in n.flags
+  var n = transformExpr(c.module, n)
   gWhileCounter = evalMaxIterations
   gNestedEvals = evalMaxRecDepth
   result = evalAux(c, n, {})

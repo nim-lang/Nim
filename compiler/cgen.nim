@@ -627,7 +627,7 @@ proc deinitFrame(p: BProc): PRope =
   result = ropecg(p.module, "\t#popFrame();$n")
 
 proc closureSetup(p: BProc, prc: PSym) =
-  if prc.typ.callConv != ccClosure: return
+  if tfCapturesEnv notin prc.typ.flags: return
   # prc.ast[paramsPos].last contains the type we're after:
   var ls = lastSon(prc.ast[paramsPos])
   if ls.kind != nkSym:

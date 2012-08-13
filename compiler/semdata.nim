@@ -31,6 +31,8 @@ type
     resultSym*: PSym          # the result symbol (if we are in a proc)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
+    InTryStmt*: int           # whether we are in a try statement; works also
+                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
   
   TInstantiatedSymbol* {.final.} = object
@@ -84,36 +86,6 @@ proc newGenericsCache*(): PGenericsCache =
   new(result)
   initIdTable(result.InstTypes)
   result.generics = @[]
-
-proc tempContext*(c: PContext): PContext =
-  ## generates a temporary context so that side-effects can be rolled-back;
-  ## necessary for ``system.compiles``.
-  new(result)
-  result.module = c.module
-  result.p = c.p
-  # don't use the old cache:
-  result.generics = newGenericsCache()
-  result.friendModule = c.friendModule
-  result.InstCounter = c.InstCounter
-  result.threadEntries = @[]
-  # hrm, 'tab' is expensive to copy ... so we don't. We open a new scope
-  # instead to be able to undo scope changes. Not entirely correct for
-  # explicit 'global' vars though:
-  #shallowCopy(result.tab, c.tab)
-  assign(result.AmbiguousSymbols, c.AmbiguousSymbols)
-  result.InGenericContext = c.InGenericContext
-  result.InUnrolledContext = c.InUnrolledContext
-  result.InCompilesContext = c.InCompilesContext
-  result.converters = c.converters
-  result.semConstExpr = c.semConstExpr
-  result.semExpr = c.semExpr
-  result.semConstBoolExpr = c.semConstBoolExpr
-  assign(result.includedFiles, c.includedFiles) 
-  result.filename = c.filename
-  #shallowCopy(result.userPragmas, c.userPragmas) 
-  # XXX mark it as read-only:
-  result.evalContext = c.evalContext
-  
 
 proc newContext*(module: PSym, nimfile: string): PContext
 

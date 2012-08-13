@@ -79,8 +79,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
       addResult(c, result.typ.sons[0], n.info, result.kind)
       addResultNode(c, n)
     var b = semStmtScope(c, n.sons[bodyPos])
-    # XXX Bad hack for tests/titer2 and tests/tactiontable
-    n.sons[bodyPos] = transform(c.module, b)
+    n.sons[bodyPos] = transformBody(c.module, b, result)
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)

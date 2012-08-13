@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  semthreads, intsets, transf, evals, idgen, aliases
+  semthreads, intsets, transf, evals, idgen, aliases, cgmeth
 
 proc semPass*(): TPass
 # implementation
@@ -182,6 +182,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
   result = myOpen(module, filename)
+  for m in items(rd.methods): methodDef(m, true)
 
 proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
   result = semStmt(c, n)
@@ -193,6 +194,7 @@ proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       # a generic has been added to `a`:
       if result.kind != nkEmpty: addSon(a, result)
       result = a
+  result = transformStmt(c.module, result)
 
 proc RecoverContext(c: PContext) = 
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

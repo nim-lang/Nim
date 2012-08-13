@@ -65,10 +65,6 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result.typ = s.typ
   result.info = n.info
 
-proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in {tyVar, tyOpenArray} or
-      s.kind == skResult
-
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
   of skProc, skMethod, skIterator, skConverter: 
@@ -111,13 +107,11 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       incl(c.p.owner.flags, sfSideEffect)
     elif s.kind == skParam and s.typ.kind == tyExpr:
       return s.typ.n
-    elif s.owner != c.p.owner and 
-        c.p.owner.typ != nil and not IsGenericRoutine(s.owner):
-      c.p.owner.typ.callConv = ccClosure
-      if illegalCapture(s) or c.p.next.owner != s.owner:
-        # Currently captures are restricted to a single level of nesting:
-        LocalError(n.info, errIllegalCaptureX, s.name.s)
     result = newSymNode(s, n.info)
+    # We cannot check for access to outer vars for example because it's still
+    # not sure the symbol really ends up being used:
+    # var len = 0 # but won't be called
+    # genericThatUsesLen(x) # marked as taking a closure?
   of skGenericParam:
     if s.ast != nil: result = semExpr(c, s.ast)
     else:
@@ -1179,7 +1173,7 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   
   let oldInGenericContext = c.InGenericContext
   let oldInUnrolledContext = c.InUnrolledContext
-  
+  let oldProcCon = c.p
   c.generics = newGenericsCache()
   try:
     discard semExpr(c, n.sons[1])
@@ -1190,6 +1184,7 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   c.generics = oldGenerics
   c.InGenericContext = oldInGenericContext
   c.InUnrolledContext = oldInUnrolledContext
+  c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
   while c.tab.tos > oldTos: rawCloseScope(c.tab)
