@@ -74,7 +74,7 @@ type
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets
     SOCK_DGRAM = 2,    ## datagram service or Datagram Sockets
     SOCK_RAW = 3,      ## raw protocols atop the network layer.
-    SOCK_SEQPACKET = 5 ## reliable sequenced packet service, or
+    SOCK_SEQPACKET = 5 ## reliable sequenced packet service
 
   TProtocol* = enum     ## third argument to `socket` proc
     IPPROTO_TCP = 6,    ## Transmission control protocol. 
@@ -1203,7 +1203,45 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
     setLen(s.string, s.string.len + bufSize)
     inc(pos, bytesRead)
   result = True
+
+proc recvFrom*(socket: TSocket, data: var string, length: int,
+               address: var string, flags = 0'i32): int =
+  ## Receives data from ``socket``. This function should normally be used with
+  ## connection-less sockets (UDP sockets).
+  ##
+  ## **Warning:** This function does not yet have a buffered implementation,
+  ## so when ``socket`` is buffered the non-buffered implementation will be
+  ## used. Therefore if ``socket`` contains something in its buffer this
+  ## function will make no effort to return it.
   
+  # TODO: Buffered sockets
+  data = newString(length)
+  var sockAddress: Tsockaddr_in
+  var addrLen = sizeof(sockAddress).TSockLen
+  result = recvFrom(socket.fd, cstring(data), length.cint, flags.cint,
+                    cast[ptr TSockAddr](addr(sockAddress)), addr(addrLen))
+  
+  if result != -1:
+    address = $inet_ntoa(sockAddress.sin_addr)
+
+proc recvFromAsync*(socket: TSocket, data: var String, length: int,
+                    address: var string, flags = 0'i32): bool =
+  ## Similar to ``recvFrom`` but raises an EOS error when an error occurs.
+  ## Returns False if no messages could be received from ``socket``.
+  result = true
+  var callRes = recvFrom(socket, data, length, address)
+  if callRes < 0:
+    when defined(windows):
+      # TODO: Test on Windows
+      var err = WSAGetLastError()
+      if err == WSAEWOULDBLOCK:
+        return False
+      else: OSError()
+    else:
+      if errno == EAGAIN or errno == EWOULDBLOCK:
+        return False
+      else: OSError()
+
 proc skip*(socket: TSocket) =
   ## skips all the data that is pending for the socket
   const bufSize = 1000
@@ -1270,6 +1308,37 @@ proc trySend*(socket: TSocket, data: string): bool =
   ## and instead returns ``false`` on failure.
   result = send(socket, cstring(data), data.len) == data.len
 
+proc sendTo*(socket: TSocket, address: string, port: TPort, data: pointer,
+             size: int, af: TDomain = AF_INET, flags = 0'i32): int =
+  ## low-level sendTo proc. This proc sends ``data`` to the specified ``address``,
+  ## which may be an IP address or a hostname, if a hostname is specified 
+  ## this function will try each IP of that hostname.
+  ##
+  ## **Note:** This proc is not available for SSL sockets.
+  var hints: TAddrInfo
+  var aiList: ptr TAddrInfo = nil
+  hints.ai_family = toInt(af)
+  hints.ai_socktype = toInt(SOCK_STREAM)
+  hints.ai_protocol = toInt(IPPROTO_TCP)
+  gaiNim(address, port, hints, aiList)
+  
+  # try all possibilities:
+  var success = false
+  var it = aiList
+  while it != nil:
+    result = sendTo(socket.fd, data, size.cint, flags.cint, it.ai_addr,
+                    it.ai_addrlen.TSockLen)
+    if result != -1'i32:
+      success = true
+      break
+    it = it.ai_next
+
+  freeaddrinfo(aiList)
+
+proc sendTo*(socket: TSocket, address: string, port: TPort, data: string): int =
+  ## Friendlier version of the low-level ``sendTo``.
+  result = socket.sendTo(address, port, cstring(data), data.len)
+
 when defined(Windows):
   const 
     SOCKET_ERROR = -1
@@ -1303,8 +1372,8 @@ proc connect*(socket: TSocket, timeout: int, name: string, port = TPort(0),
   ## specifies the time in miliseconds of how long to wait for a connection
   ## to be made.
   ##
-  ## **Warning:** If ``socket`` is non-blocking and timeout is not ``-1`` then
-  ## this function may set blocking mode on ``socket`` to true.
+  ## **Warning:** If ``socket`` is non-blocking then
+  ## this function will set blocking mode on ``socket`` to true.
   socket.setBlocking(true)
   
   socket.connectAsync(name, port, af)
@@ -1313,6 +1382,7 @@ proc connect*(socket: TSocket, timeout: int, name: string, port = TPort(0),
     raise newException(ETimeout, "Call to connect() timed out.")
 
 proc isSSL*(socket: TSocket): bool = return socket.isSSL
+  ## Determines whether ``socket`` is a SSL socket.
 
 when defined(Windows):
   var wsa: TWSADATA

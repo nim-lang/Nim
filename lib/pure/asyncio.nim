@@ -30,6 +30,11 @@ import sockets, os
 ## on with the events. The type that you set userArg to must be inheriting from
 ## TObject!
 ##
+## **Note:** If you want to provide async ability to your module please do not 
+## use the ``TDelegate`` object, instead use ``PAsyncSocket``. It is possible 
+## that in the future this type's fields will not be exported therefore breaking
+## your code.
+##
 ## Asynchronous sockets
 ## ====================
 ##
@@ -68,7 +73,8 @@ import sockets, os
 
 
 type
-  TDelegate* = object
+
+  TDelegate = object
     deleVal*: PObject
 
     handleRead*: proc (h: PObject) {.nimcall.}
@@ -92,12 +98,10 @@ type
     socket: TSocket
     info: TInfo
 
-    userArg: PObject
+    handleRead*: proc (s: PAsyncSocket) {.closure.}
+    handleConnect*: proc (s:  PAsyncSocket) {.closure.}
 
-    handleRead*: proc (s: PAsyncSocket, arg: PObject) {.nimcall.}
-    handleConnect*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
-
-    handleAccept*: proc (s:  PAsyncSocket, arg: PObject) {.nimcall.}
+    handleAccept*: proc (s:  PAsyncSocket) {.closure.}
 
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
     sslNeedAccept: bool
@@ -121,21 +125,20 @@ proc newDelegate*(): PDelegate =
   result.task = (proc (h: PObject) = nil)
   result.mode = MReadable
 
-proc newAsyncSocket(userArg: PObject = nil): PAsyncSocket =
+proc newAsyncSocket(): PAsyncSocket =
   new(result)
   result.info = SockIdle
-  result.userArg = userArg
 
-  result.handleRead = (proc (s: PAsyncSocket, arg: PObject) = nil)
-  result.handleConnect = (proc (s: PAsyncSocket, arg: PObject) = nil)
-  result.handleAccept = (proc (s: PAsyncSocket, arg: PObject) = nil)
+  result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleConnect = (proc (s: PAsyncSocket) = nil)
+  result.handleAccept = (proc (s: PAsyncSocket) = nil)
 
   result.lineBuffer = "".TaintedString
 
 proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
-                  userArg: PObject = nil, buffered = true): PAsyncSocket =
-  result = newAsyncSocket(userArg)
+                  buffered = true): PAsyncSocket =
+  result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
   if result.socket == InvalidSocket: OSError()
@@ -148,15 +151,14 @@ proc asyncSockHandleConnect(h: PObject) =
       return  
       
   PAsyncSocket(h).info = SockConnected
-  PAsyncSocket(h).handleConnect(PAsyncSocket(h),
-     PAsyncSocket(h).userArg)
+  PAsyncSocket(h).handleConnect(PAsyncSocket(h))
 
 proc asyncSockHandleRead(h: PObject) =
   when defined(ssl):
     if PAsyncSocket(h).socket.isSSL and not
          PAsyncSocket(h).socket.gotHandshake:
       return
-  PAsyncSocket(h).handleRead(PAsyncSocket(h), PAsyncSocket(h).userArg)
+  PAsyncSocket(h).handleRead(PAsyncSocket(h))
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) =
@@ -183,8 +185,7 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   result.handleRead = asyncSockHandleRead
   
   result.handleAccept = (proc (h: PObject) =
-                           PAsyncSocket(h).handleAccept(PAsyncSocket(h),
-                              PAsyncSocket(h).userArg))
+                           PAsyncSocket(h).handleAccept(PAsyncSocket(h)))
 
   when defined(ssl):
     result.task = asyncSockDoHandshake
@@ -337,7 +338,6 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   of RecvFail:
     result = false
 
-
 proc poll*(d: PDispatcher, timeout: int = 500): bool =
   ## This function checks for events on all the sockets in the `PDispatcher`.
   ## It then proceeds to call the correct event handler.
@@ -417,59 +417,47 @@ proc len*(disp: PDispatcher): int =
   return disp.delegates.len
 
 when isMainModule:
-  type
-    PIntType = ref TIntType
-    TIntType = object of TObject
-      val: int
 
-    PMyArg = ref TMyArg
-    TMyArg = object of TObject
-      dispatcher: PDispatcher
-      val: int
-
-  proc testConnect(s: PAsyncSocket, arg: PObject) =
-    echo("Connected! " & $PIntType(arg).val)
+  proc testConnect(s: PAsyncSocket, no: int) =
+    echo("Connected! " & $no)
   
-  proc testRead(s: PAsyncSocket, arg: PObject) =
-    echo("Reading! " & $PIntType(arg).val)
+  proc testRead(s: PAsyncSocket, no: int) =
+    echo("Reading! " & $no)
     var data = s.getSocket.recv()
     if data == "":
-      echo("Closing connection. " & $PIntType(arg).val)
+      echo("Closing connection. " & $no)
       s.close()
     echo(data)
-    echo("Finished reading! " & $PIntType(arg).val)
+    echo("Finished reading! " & $no)
 
-  proc testAccept(s: PAsyncSocket, arg: PObject) =
-    echo("Accepting client! " & $PMyArg(arg).val)
+  proc testAccept(s: PAsyncSocket, disp: PDispatcher, no: int) =
+    echo("Accepting client! " & $no)
     var client: PAsyncSocket
     new(client)
     var address = ""
     s.acceptAddr(client, address)
     echo("Accepted ", address)
-    client.handleRead = testRead
-    var userArg: PIntType
-    new(userArg)
-    userArg.val = 78
-    client.userArg = userArg
-    PMyArg(arg).dispatcher.register(client)
+    client.handleRead = 
+      proc (s: PAsyncSocket) =
+        testRead(s, 2)
+    disp.register(client)
 
   var d = newDispatcher()
   
-  var userArg: PIntType
-  new(userArg)
-  userArg.val = 0
-  var s = AsyncSocket(userArg = userArg)
+  var s = AsyncSocket()
   s.connect("amber.tenthbit.net", TPort(6667))
-  s.handleConnect = testConnect
-  s.handleRead = testRead
+  s.handleConnect = 
+    proc (s: PAsyncSocket) =
+      testConnect(s, 1)
+  s.handleRead = 
+    proc (s: PAsyncSocket) =
+      testRead(s, 1)
   d.register(s)
   
-  var userArg1: PMyArg
-  new(userArg1)
-  userArg1.val = 1
-  userArg1.dispatcher = d
-  var server = AsyncSocket(userArg = userArg1)
-  server.handleAccept = testAccept
+  var server = AsyncSocket()
+  server.handleAccept =
+    proc (s: PAsyncSocket) = 
+      testAccept(s, d, 78)
   server.bindAddr(TPort(5555))
   server.listen()
   d.register(server)
