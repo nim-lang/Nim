@@ -106,6 +106,17 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
     LocalError(n.info, errXExpectsOneTypeParam, kindStr)
     addSonSkipIntLit(result, errorType(c))
 
+proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
+  result = newOrPrevType(tyVarargs, prev, c)
+  if sonsLen(n) == 2 or sonsLen(n) == 3:
+    var base = semTypeNode(c, n.sons[1], nil)
+    addSonSkipIntLit(result, base)
+    if sonsLen(n) == 3:
+      result.n = newIdentNode(considerAcc(n.sons[2]), n.sons[2].info)
+  else:
+    LocalError(n.info, errXExpectsOneTypeParam, "varargs")
+    addSonSkipIntLit(result, errorType(c))
+  
 proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, prev: PType): PType = 
   if sonsLen(n) == 1:
     result = newOrPrevType(kind, prev, c)
@@ -823,6 +834,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mVarargs: result = semVarargs(c, n, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkIdent, nkDotExpr, nkAccQuoted: 
     var s = semTypeIdent(c, n)
@@ -916,7 +928,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
   of mVoidType: setMagicType(m, tyEmpty, 0)
   of mArray: setMagicType(m, tyArray, 0)
-  of mOpenArray: setMagicType(m, tyOpenArray, 0) 
+  of mOpenArray: setMagicType(m, tyOpenArray, 0)
+  of mVarargs: setMagicType(m, tyVarargs, 0)
   of mRange: setMagicType(m, tyRange, 0)
   of mSet: setMagicType(m, tySet, 0) 
   of mSeq: setMagicType(m, tySequence, 0)
