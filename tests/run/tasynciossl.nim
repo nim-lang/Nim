@@ -18,13 +18,13 @@ const
   swarmSize = 50
   messagesToSend = 100
 
-proc swarmConnect(s: PAsyncSocket, arg: PObject) {.nimcall.} =
+proc swarmConnect(s: PAsyncSocket) =
   #echo("Connected")
   for i in 1..messagesToSend:
     s.send("Message " & $i & "\c\L")
   s.close()
 
-proc serverRead(s: PAsyncSocket, arg: PObject) {.nimcall.} =
+proc serverRead(s: PAsyncSocket) =
   var line = ""
   assert s.recvLine(line)
   if line != "":
@@ -36,7 +36,7 @@ proc serverRead(s: PAsyncSocket, arg: PObject) {.nimcall.} =
   else:
     s.close()
 
-proc serverAccept(s: PAsyncSocket, arg: Pobject) {.nimcall.} =
+proc serverAccept(s: PAsyncSocket) =
   var client: PAsyncSocket
   new(client)
   s.accept(client)
@@ -83,6 +83,8 @@ while true:
     break
   if not disp.poll(): break
   if disp.len == serverCount:
+    # Only the servers are left in the dispatcher. All clients finished,
+    # we need to therefore break.
     break
 
 assert msgCount == (swarmSize * messagesToSend) * serverCount
