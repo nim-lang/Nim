@@ -236,7 +236,8 @@ proc dummyClosureParam(o: POuterContext, i: PInnerContext) =
   if i.closureParam == nil: addClosureParam(i, e)
 
 proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in {tyVar, tyOpenArray} or
+  result = skipTypes(s.typ, abstractInst).kind in 
+                   {tyVar, tyOpenArray, tyVarargs} or
       s.kind == skResult
 
 proc captureVar(o: POuterContext, i: PInnerContext, local: PSym, 
@@ -246,7 +247,8 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
   var it = PEnv(IdTableGet(o.localsToEnv, local))
   if it == nil: return
   
-  if illegalCapture(local) or o.fn.id != local.owner.id:
+  if illegalCapture(local) or o.fn.id != local.owner.id or 
+      i.fn.typ.callConv notin {ccClosure, ccDefault}:
     # Currently captures are restricted to a single level of nesting:
     LocalError(info, errIllegalCaptureX, local.name.s)
   i.fn.typ.callConv = ccClosure
@@ -280,7 +282,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
 
 proc semCaptureSym*(s, owner: PSym) =
   if interestingVar(s) and owner.id != s.owner.id:
-    if owner.typ != nil:
+    if owner.typ != nil and not isGenericRoutine(owner):
       owner.typ.callConv = ccClosure
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here
