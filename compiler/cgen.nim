@@ -393,7 +393,7 @@ proc allocParam(p: BProc, s: PSym) =
 proc localDebugInfo(p: BProc, s: PSym) = 
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return 
   # XXX work around a bug: No type information for open arrays possible:
-  if skipTypes(s.typ, abstractVar).kind == tyOpenArray: return
+  if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = con("&", s.loc.r)
   if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
   lineF(p, cpsInit,

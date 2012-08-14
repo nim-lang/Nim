@@ -264,7 +264,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       lineCg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
            [rdLoc(dest), rdLoc(src)])
-  of tyOpenArray:
+  of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
     if needsComplexAssignment(dest.t):
@@ -1071,10 +1071,10 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   of tySet:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprSet($1, $2)", [
                 addrLoc(a), genTypeInfo(p.module, t)]))
-  of tyOpenArray:
+  of tyOpenArray, tyVarargs:
     var b: TLoc
     case a.t.kind
-    of tyOpenArray:
+    of tyOpenArray, tyVarargs:
       putIntoDest(p, b, e.typ, ropef("$1, $1Len0", [rdLoc(a)]))
     of tyString, tySequence:
       putIntoDest(p, b, e.typ, 
@@ -1111,7 +1111,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   if a.kind == nkHiddenAddr: a = a.sons[0]
   var typ = skipTypes(a.Typ, abstractVar)
   case typ.kind
-  of tyOpenArray:
+  of tyOpenArray, tyVarargs:
     if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
     else: unaryExpr(p, e, d, "$1Len0")
   of tyCstring:
@@ -1297,7 +1297,8 @@ proc genOrd(p: BProc, e: PNode, d: var TLoc) =
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
   const
-    ValueTypes = {tyTuple, tyObject, tyArray, tyOpenArray, tyArrayConstr}
+    ValueTypes = {tyTuple, tyObject, tyArray, tyOpenArray, tyVarargs,
+                  tyArrayConstr}
   # we use whatever C gives us. Except if we have a value-type, we need to go
   # through its address:
   var a: TLoc
@@ -1739,7 +1740,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
     case ty.kind
     of tyArray, tyArrayConstr: genArrayElem(p, e, d)
-    of tyOpenArray: genOpenArrayElem(p, e, d)
+    of tyOpenArray, tyVarargs: genOpenArrayElem(p, e, d)
     of tySequence, tyString: genSeqElem(p, e, d)
     of tyCString: genCStringElem(p, e, d)
     of tyTuple: genTupleElem(p, e, d)

@@ -224,7 +224,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     restoreOldStyleType(n.sons[1])
     var typ = skipTypes(n.sons[1].typ, abstractVarRange)
     case typ.Kind
-    of tySequence, tyString, tyOpenArray: 
+    of tySequence, tyString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
     of tyArrayConstr, tyArray: 
       n.typ = n.sons[1].typ.sons[0] # indextype
@@ -383,7 +383,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
     of nkHiddenStdConv, nkHiddenSubConv:
       if it.sons[1].kind == nkBracket:
         it.sons[1] = semArrayConstr(c, it.sons[1])
-      if skipTypes(it.typ, abstractVar).kind == tyOpenArray: 
+      if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: 
         #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
         #  debug(n)
         
@@ -454,6 +454,7 @@ proc isAssignable(c: PContext, n: PNode): TAssignableResult =
       result = isAssignable(c, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     # Object and tuple conversions are still addressable, so we skip them
+    # XXX why is 'tyOpenArray' allowed here?
     if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
       result = isAssignable(c, n.sons[1])
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
@@ -943,7 +944,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   n.sons[0] = semExprWithType(c, n.sons[0])
   var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
-  of tyArray, tyOpenArray, tyArrayConstr, tySequence, tyString, tyCString: 
+  of tyArray, tyOpenArray, tyVarargs, tyArrayConstr, tySequence, tyString, 
+     tyCString: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 

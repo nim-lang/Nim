@@ -78,7 +78,7 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
   var a: TLoc
   initLocExpr(p, n, a)
   case skipTypes(a.t, abstractVar).kind
-  of tyOpenArray:
+  of tyOpenArray, tyVarargs:
     result = ropef("$1, $1Len0", [rdLoc(a)])
   of tyString, tySequence:
     if skipTypes(n.typ, abstractInst).kind == tyVar:
@@ -99,7 +99,7 @@ proc genArg(p: BProc, n: PNode, param: PSym): PRope =
   var a: TLoc
   if n.kind == nkStringToCString:
     result = genArgStringToCString(p, n)
-  elif skipTypes(param.typ, abstractVar).kind == tyOpenArray:
+  elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
   elif ccgIntroducedPtr(param):

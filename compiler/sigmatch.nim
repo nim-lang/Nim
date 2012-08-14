@@ -409,6 +409,10 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       elif typeRel(c, base(f), a.sons[0]) >= isGeneric: 
         result = isConvertible
     else: nil
+  of tyVarargs:
+    if a.Kind == tyVarargs:
+      result = typeRel(c, base(f), base(a))
+      if result < isGeneric: result = isNone
   of tySequence: 
     case a.Kind
     of tyNil: 

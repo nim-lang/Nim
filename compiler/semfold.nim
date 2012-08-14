@@ -467,7 +467,7 @@ proc foldConv*(n, a: PNode): PNode =
     else: 
       result = a
       result.typ = n.typ
-  of tyOpenArray, tyProc: 
+  of tyOpenArray, tyVarargs, tyProc: 
     nil
   else: 
     result = a
@@ -588,7 +588,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh: 
         if  skipTypes(n.sons[1].typ, abstractVar).kind notin
-            {tyOpenArray, tySequence, tyString}: 
+            {tyOpenArray, tyVarargs, tySequence, tyString}: 
           result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
         else:
           var a = getArrayConstr(m, n.sons[1])
