@@ -91,7 +91,7 @@ proc initProc(p: var TProc, globals: PGlobals, module: BModule, procDef: PNode,
   
 const 
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, 
-    tySet, tyVar, tyRef, tyPtr, tyBigNum}
+    tySet, tyVar, tyRef, tyPtr, tyBigNum, tyVarargs}
 
 proc mapType(typ: PType): TEcmasTypeKind = 
   var t = skipTypes(typ, abstractInst)
@@ -104,7 +104,7 @@ proc mapType(typ: PType): TEcmasTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyInt
-  of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter, tyVarargs,
+  of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter,
      tyProxy: 
     result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
@@ -112,7 +112,8 @@ proc mapType(typ: PType): TEcmasTypeKind =
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence: result = etyInt # little hack to get right semantics
-  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyBigNum: 
+  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyBigNum, 
+     tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation, tyNone, 
@@ -861,7 +862,8 @@ proc genArrayAccess(p: var TProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
   case ty.kind
-  of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString: 
+  of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
+     tyVarargs:
     genArrayAddr(p, n, r)
   of tyTuple: 
     genFieldAddr(p, n, r)
@@ -903,7 +905,8 @@ proc genAddr(p: var TProc, n: PNode, r: var TCompRes) =
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
     case ty.kind
-    of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString: 
+    of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
+       tyVarargs:
       genArrayAddr(p, n, r)
     of tyTuple: 
       genFieldAddr(p, n, r)

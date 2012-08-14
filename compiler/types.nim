@@ -330,7 +330,8 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
   var t = skipTypes(typ, abstractInst)
   if tfAcyclic in t.flags: return 
   case t.kind
-  of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray:
+  of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray,
+     tyVarargs:
     if not ContainsOrIncl(marker, t.id): 
       for i in countup(0, sonsLen(t) - 1): 
         result = canFormAcycleAux(marker, t.sons[i], startId)
@@ -499,7 +500,7 @@ proc base(t: PType): PType =
 
 proc firstOrd(t: PType): biggestInt = 
   case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray, tyString: result = 0
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs: result = 0
   of tySet, tyVar: result = firstOrd(t.sons[0])
   of tyArray, tyArrayConstr: result = firstOrd(t.sons[0])
   of tyRange: 

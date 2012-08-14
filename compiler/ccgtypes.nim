@@ -171,7 +171,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(typ)
-  of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
+  of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyConst, tyMutable, tyIter, tyTypeDesc: 
@@ -190,7 +190,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyPtr, tyVar, tyRef: 
     var base = skipTypes(typ.sons[0], abstractInst)
     case base.kind
-    of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
+    of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -300,7 +300,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     var arr = param.typ
     if arr.kind == tyVar: arr = arr.sons[0]
     var j = 0
-    while arr.Kind == tyOpenArray:
+    while arr.Kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
       if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
@@ -507,7 +507,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
   case t.Kind
   of tyRef, tyPtr, tyVar: 
     et = getUniqueType(t.sons[0])
-    if et.kind in {tyArrayConstr, tyArray, tyOpenArray}: 
+    if et.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}: 
       # this is correct! sets have no proper base type, so we treat
       # ``var set[char]`` in `getParamTypeDesc`
       et = getUniqueType(elemType(et))
@@ -528,7 +528,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
       # else we have a strong dependency  :-(
       result = con(getTypeDescAux(m, et, check), "*")
       IdTablePut(m.typeCache, t, result)
-  of tyOpenArray: 
+  of tyOpenArray, tyVarargs: 
     et = getUniqueType(t.sons[0])
     result = con(getTypeDescAux(m, et, check), "*")
     IdTablePut(m.typeCache, t, result)

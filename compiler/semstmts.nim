@@ -1028,7 +1028,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
     return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
   
   case t.kind
-  of tySequence, tyArray, tyArrayConstr, tyOpenArray:
+  of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
     if instantiateDestructor(c, t.sons[0]):
       if rangeDestructorProc == nil:
         rangeDestructorProc = SymtabGet(c.tab, getIdent"nimDestroyRange")

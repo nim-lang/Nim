@@ -692,7 +692,8 @@ proc evalHigh(c: PEvalContext, n: PNode): PNode =
   result = evalAux(c, n.sons[1], {})
   if isSpecial(result): return 
   case skipTypes(n.sons[1].typ, abstractVar).kind
-  of tyOpenArray, tySequence: result = newIntNodeT(sonsLen(result)-1, n)
+  of tyOpenArray, tySequence, tyVarargs: 
+    result = newIntNodeT(sonsLen(result)-1, n)
   of tyString: result = newIntNodeT(len(result.strVal) - 1, n)
   else: InternalError(n.info, "evalHigh")
 

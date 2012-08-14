@@ -355,7 +355,7 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result[2] = copyTree(dest.n.sons[1]).PTransNode
     else:
       result = transformSons(c, n)
-  of tyOpenArray: 
+  of tyOpenArray, tyVarargs:
     result = transform(c, n.sons[1])
   of tyCString: 
     if source.kind == tyString: 
@@ -407,7 +407,7 @@ type
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto = 
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
-  if skipTypes(formal, abstractInst).kind == tyOpenArray: 
+  if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
     return paDirectMapping    # XXX really correct?
                               # what if ``arg`` has side-effects?
   case arg.kind
