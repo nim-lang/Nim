@@ -107,8 +107,6 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       incl(c.p.owner.flags, sfSideEffect)
     elif s.kind == skParam and s.typ.kind == tyExpr:
       return s.typ.n
-    else:
-      semCaptureSym(s, c.p.owner)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:
@@ -1415,6 +1413,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   case n.kind
   of nkIdent, nkAccQuoted:
     var s = lookUp(c, n)
+    semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
