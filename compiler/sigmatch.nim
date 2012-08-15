@@ -603,6 +603,18 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       inc(m.convMatches)
       return
 
+proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
+                    arg: PNode): PNode = 
+  var call = newNodeI(nkCall, arg.info)
+  call.add(f.n.copyTree)
+  call.add(arg.copyTree)
+  result = c.semOverloadedCall(c, call, call, RoutineKinds)
+  if result != nil:
+    # resulting type must be consistent with the other arguments:
+    var r = typeRel(m, f, result.typ)
+    if r < isGeneric: return nil
+    if result.kind == nkCall: result.kind = nkHiddenCallConv
+    inc(m.convMatches)
 
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
                         arg, argOrig: PNode): PNode =

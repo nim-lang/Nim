@@ -118,7 +118,8 @@ proc poolWorker[TIn, TOut](self: PActor[TIn, TOut]) {.thread.} =
     when TOut is void:
       m.action(m.data)
     else:
-      self.repy(m.action(m.data))
+      send(m.receiver[], m.action(m.data))
+      #self.reply()
 
 proc createActorPool*[TIn, TOut](a: var TActorPool[TIn, TOut], poolSize = 4) =
   ## creates an actor pool.
