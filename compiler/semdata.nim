@@ -72,6 +72,8 @@ type
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}      # for the pragmas
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
+    semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
+                              filter: TSymKinds): PNode {.nimcall.}
     includedFiles*: TIntSet    # used to detect recursive include files
     filename*: string          # the module's filename
     userPragmas*: TStrTable

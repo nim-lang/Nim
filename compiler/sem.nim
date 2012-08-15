@@ -166,6 +166,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   c.semConstExpr = semConstExpr
   c.semExpr = semExprNoFlags
   c.semConstBoolExpr = semConstBoolExpr
+  c.semOverloadedCall = semOverloadedCall
   pushProcCon(c, module)
   pushOwner(c.module)
   openScope(c.tab)            # scope for imported symbols
