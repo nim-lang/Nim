@@ -1015,7 +1015,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
 proc invalidFormatString() {.noinline.} =
   raise newException(EInvalidValue, "invalid format string")  
 
-proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
+proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}

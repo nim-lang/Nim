@@ -63,6 +63,8 @@ Library Additions
   only support fixed length arrays).
 - Added ``system.compiles`` which can be used to check whether a type supports
   some operation.
+- Added ``strutils.format``, ``subexes.format`` which use the 
+  new ``varargs`` type.
 
 
 Changes affecting backwards compatibility
