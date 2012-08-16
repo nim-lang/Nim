@@ -297,7 +297,7 @@ proc subex*(s: string): TSubex =
   ## no syntax checking but this may change in later versions.
   result = TSubex(s)
 
-proc addf*(s: var string, formatstr: TSubex, a: openarray[string]) {.
+proc addf*(s: var string, formatstr: TSubex, a: varargs[string, `$`]) {.
            noSideEffect, rtl, extern: "nfrmtAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
   var p: TFormatParser
@@ -325,6 +325,15 @@ proc `%` *(formatstr: TSubex, a: string): string {.noSideEffect,
   ## This is the same as ``formatstr % [a]``.
   result = newStringOfCap(formatstr.string.len + a.len)
   addf(result, formatstr, [a])
+
+proc format*(formatstr: TSubex, a: varargs[string, `$`]): string {.noSideEffect,
+  rtl, extern: "nfrmtFormatVarargs".} =
+  ## The `substitution`:idx: operator performs string substitutions in
+  ## `formatstr` and returns a modified `formatstr`. This is often called
+  ## `string interpolation`:idx:.
+  ##
+  result = newStringOfCap(formatstr.string.len + a.len shl 4)
+  addf(result, formatstr, a)
 
 {.pop.}
 
