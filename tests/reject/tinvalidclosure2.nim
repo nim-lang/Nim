@@ -1,6 +1,6 @@
 discard """
   line: 10
-  errormsg: "illegal capture: 'A'"
+  errormsg: "illegal capture 'A'"
 """
 
 proc outer() = 

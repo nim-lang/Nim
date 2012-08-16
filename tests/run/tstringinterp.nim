@@ -5,7 +5,7 @@ discard """
 
 import macros, parseutils, strutils
 
-proc concat(strings: openarray[string]): string =
+proc concat(strings: varargs[string]): string =
   result = newString(0)
   for s in items(strings): result.add(s)
 
