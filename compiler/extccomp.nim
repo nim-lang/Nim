@@ -479,7 +479,7 @@ proc getLinkOptions: string =
   for linkedLib in items(cLinkedLibs):
     result.add(cc[ccompiler].linkLibCmd % linkedLib.quoteIfContainsWhite)
   for libDir in items(cLibs):
-    result.add cc[ccompiler].linkDirCmd, libDir.quoteIfContainsWhite
+    result.add([cc[ccompiler].linkDirCmd, libDir.quoteIfContainsWhite])
 
 proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
@@ -502,7 +502,7 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     includeCmd = cc[c].includeCmd & quoteIfContainsWhite(libpath)
 
     for includeDir in items(cIncludes):
-      includeCmd.add cc[c].includeCmd, includeDir.quoteIfContainsWhite
+      includeCmd.add([cc[c].includeCmd, includeDir.quoteIfContainsWhite])
 
     compilePattern = JoinPath(ccompilerpath, exe)
   else: 

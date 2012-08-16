@@ -122,7 +122,7 @@ proc len*(n: PNimrodNode): int {.magic: "NLen".}
 proc add*(father, child: PNimrodNode) {.magic: "NAdd".}
   ## adds the `child` to the `father` node
 
-proc add*(father: PNimrodNode, children: openArray[PNimrodNode]) {.
+proc add*(father: PNimrodNode, children: varargs[PNimrodNode]) {.
   magic: "NAddMultiple".}
   ## adds each child of `children` to the `father` node
 
@@ -251,7 +251,7 @@ proc expectLen*(n: PNimrodNode, len: int) {.compileTime.} =
   if n.len != len: error("macro expects a node with " & $len & " children")
 
 proc newCall*(theProc: TNimrodIdent,
-              args: openArray[PNimrodNode]): PNimrodNode {.compileTime.} =
+              args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
   result = newNimNode(nnkCall)
@@ -259,7 +259,7 @@ proc newCall*(theProc: TNimrodIdent,
   result.add(args)
   
 proc newCall*(theProc: string,
-              args: openArray[PNimrodNode]): PNimrodNode {.compileTime.} =
+              args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
   result = newNimNode(nnkCall)

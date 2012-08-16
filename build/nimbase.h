@@ -213,7 +213,7 @@ __clang__
 #  define  __USE_ISOC99  1
 
 #elif (defined(WIN32) || defined(_WIN32) || defined(__WIN32__)) \
-   && !defined(__BORLANDC__) && !defined(__POCC__)
+   && !defined(__BORLANDC__) && !defined(__POCC__) && !defined(_M_X64)
 
 /*  Win32 doesn't seem to have these functions.
 **  Therefore implement inline versions of these functions here.
@@ -337,6 +337,24 @@ typedef long long int NI64;
 typedef unsigned int NU32;
 #endif
 
+#ifdef NIM_INTBITS
+#  if NIM_INTBITS == 64
+typedef NI64 NI;
+typedef NU64 NU;
+#  elif NIM_INTBITS == 32
+typedef NI32 NI;
+typedef NU32 NU;
+#  elif NIM_INTBITS == 16
+typedef NI16 NI;
+typedef NU16 NU;
+#  elif NIM_INTBITS == 8
+typedef NI8 NI;
+typedef NU8 NU;
+#  else
+#    error "invalid bit width for int"
+#  endif
+#endif
+
 extern NI nim_program_result;
 
 typedef float NF32;
@@ -352,14 +370,14 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NI32, float64ToInt32)(double val) {
-  val = val + 68719476736.0*1.5;
-  /* 2^36 * 1.5,  (52-_shiftamt=36) uses limited precisicion to floor */
-  return ((NI32*)&val)[NIM_IMAN] >> 16; /* 16.16 fixed point representation */
+static N_INLINE(NI, float64ToInt32)(double x) {
+  /* nowadays no hack necessary anymore */
+  return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
 }
 
-static N_INLINE(NI32, float32ToInt32)(float val) {
-  return float64ToInt32((double)val);
+static N_INLINE(NI32, float32ToInt32)(float x) {
+  /* nowadays no hack necessary anymore */
+  return x >= 0 ? (NI32)(x+0.5) : (NI32)(x-0.5);
 }
 
 #define float64ToInt64(x) ((NI64) (x))

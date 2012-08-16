@@ -138,12 +138,12 @@ proc disp(target: TOutputTarget, xml, tex: string): string =
   else: result = tex
   
 proc dispF(target: TOutputTarget, xml, tex: string, 
-           args: openArray[string]): string = 
+           args: varargs[string]): string = 
   if target != outLatex: result = xml % args 
   else: result = tex % args
   
 proc dispA(target: TOutputTarget, dest: var string, 
-           xml, tex: string, args: openarray[string]) =
+           xml, tex: string, args: varargs[string]) =
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
@@ -241,12 +241,12 @@ proc mergeIndexes*(dir: string): string =
   var i = 0
   while i < L:
     result.addf("<dt><span>$1</span></dt><ul class=\"simple\"><dd>\n", 
-                a[i].keyword)
+                [a[i].keyword])
     var j = i
     while j < L and a[i].keyword == a[j].keyword:
       result.addf(
         "<li><a class=\"reference external\" href=\"$1\">$1</a></li>\n", 
-        a[j].link)
+        [a[j].link])
       inc j
     result.add("</ul></dd>\n")
     i = j
@@ -352,7 +352,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   else:
     lang = getSourceLanguage(langstr)
   
-  dispA(d.target, result, "<pre>", "\\begin{rstpre}\n")
+  dispA(d.target, result, "<pre>", "\\begin{rstpre}\n", [])
   if lang == langNone:
     d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, langstr)
     result.add(m.text)

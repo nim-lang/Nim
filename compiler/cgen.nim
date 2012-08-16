@@ -25,12 +25,12 @@ proc cgenPass*(): TPass
 var
   generatedHeader: BModule
 
-proc ropeff(cformat, llvmformat: string, args: openarray[PRope]): PRope = 
+proc ropeff(cformat, llvmformat: string, args: varargs[PRope]): PRope = 
   if gCmd == cmdCompileToLLVM: result = ropef(llvmformat, args)
   else: result = ropef(cformat, args)
   
 proc appff(dest: var PRope, cformat, llvmformat: string, 
-           args: openarray[PRope]) = 
+           args: varargs[PRope]) = 
   if gCmd == cmdCompileToLLVM: appf(dest, llvmformat, args)
   else: appf(dest, cformat, args)
   
@@ -90,7 +90,7 @@ proc useHeader(m: BModule, sym: PSym) =
 
 proc cgsym(m: BModule, name: string): PRope
 
-proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope = 
+proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope = 
   var i = 0
   var length = len(frmt)
   result = nil
@@ -145,15 +145,15 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
       app(result, substr(frmt, start, i - 1))
 
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
-           args: openarray[PRope]) = 
+           args: varargs[PRope]) = 
   app(c, ropecg(m, frmt, args))
 
 proc appcg(m: BModule, s: TCFileSection, frmt: TFormatStr, 
-           args: openarray[PRope]) = 
+           args: varargs[PRope]) = 
   app(m.s[s], ropecg(m, frmt, args))
 
 proc appcg(p: BProc, s: TCProcSection, frmt: TFormatStr, 
-           args: openarray[PRope]) = 
+           args: varargs[PRope]) = 
   app(p.s(s), ropecg(p.module, frmt, args))
 
 var indent = "\t".toRope
@@ -168,19 +168,19 @@ proc line(p: BProc, s: TCProcSection, r: string) =
   app(p.s(s), indentLine(p, r.toRope))
 
 proc lineF(p: BProc, s: TCProcSection, frmt: TFormatStr,
-              args: openarray[PRope]) =
+              args: varargs[PRope]) =
   app(p.s(s), indentLine(p, ropef(frmt, args)))
 
 proc lineCg(p: BProc, s: TCProcSection, frmt: TFormatStr,
-               args: openarray[PRope]) =
+               args: varargs[PRope]) =
   app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
 proc appLineCg(p: BProc, r: var PRope, frmt: TFormatStr,
-               args: openarray[PRope]) =
+               args: varargs[PRope]) =
   app(r, indentLine(p, ropecg(p.module, frmt, args)))
 
 proc lineFF(p: BProc, s: TCProcSection, cformat, llvmformat: string,
-               args: openarray[PRope]) =
+               args: varargs[PRope]) =
   if gCmd == cmdCompileToLLVM: lineF(p, s, llvmformat, args)
   else: lineF(p, s, cformat, args)
 

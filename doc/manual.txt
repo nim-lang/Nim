@@ -891,12 +891,18 @@ Arrays are always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
 
-An open array is  also a means to implement passing a variable number of
-arguments to a procedure. The compiler converts the list of arguments
-to an array automatically:
+The current implementation does not support nested open arrays.
+
+
+Varargs
+~~~~~~~
+
+A `varargs`:idx: parameter is an openarray parameter that additionally
+allows to pass a variable number of arguments to a procedure. The compiler 
+converts the list of arguments to an array implicitely:
 
 .. code-block:: nimrod
-  proc myWriteln(f: TFile, a: openarray[string]) =
+  proc myWriteln(f: TFile, a: varargs[string]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -905,9 +911,23 @@ to an array automatically:
   # is transformed by the compiler to:
   myWriteln(stdout, ["abc", "def", "xyz"])
 
-This transformation is only done if the openarray parameter is the
-last parameter in the procedure header. The current implementation does not
-support nested open arrays.
+This transformation is only done if the varargs parameter is the
+last parameter in the procedure header. It is also possible to perform
+type conversions in this context:
+
+.. code-block:: nimrod
+  proc myWriteln(f: TFile, a: varargs[string, `$`]) =
+    for s in items(a):
+      write(f, s)
+    write(f, "\n")
+
+  myWriteln(stdout, 123, "abc", 4.0)
+  # is transformed by the compiler to:
+  myWriteln(stdout, [$123, $"def", $4.0])
+
+In this example ``$`` is applied to any argument that is passed to the 
+parameter ``a``. (Note that ``$`` applied to strings is a nop.)
+
 
 
 Tuples and object types
@@ -2336,8 +2356,7 @@ Var parameters
 The type of a parameter may be prefixed with the ``var`` keyword:
 
 .. code-block:: nimrod
-  proc divmod(a, b: int,
-              res, remainder: var int) =
+  proc divmod(a, b: int; res, remainder: var int) =
     res = a div b
     remainder = a mod b
 
@@ -2355,8 +2374,7 @@ an l-value. Var parameters are implemented as hidden pointers. The
 above example is equivalent to:
 
 .. code-block:: nimrod
-  proc divmod(a, b: int,
-              res, remainder: ptr int) =
+  proc divmod(a, b: int; res, remainder: ptr int) =
     res[] = a div b
     remainder[] = a mod b
 

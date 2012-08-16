@@ -89,17 +89,17 @@ proc substituteLog*(frmt: string): string =
 
 
 method log*(L: ref TLogger, level: TLevel,
-            frmt: string, args: openArray[string]) =
+            frmt: string, args: varargs[string, `$`]) =
   ## override this method in custom loggers. Default implementation does
   ## nothing.
   nil
   
 method log*(L: ref TConsoleLogger, level: TLevel,
-            frmt: string, args: openArray[string]) = 
+            frmt: string, args: varargs[string, `$`]) = 
     Writeln(stdout, LevelNames[level], " ", substituteLog(L.fmtStr), frmt % args)
 
 method log*(L: ref TFileLogger, level: TLevel, 
-            frmt: string, args: openArray[string]) = 
+            frmt: string, args: varargs[string, `$`]) = 
     Writeln(L.f, LevelNames[level], " ", substituteLog(L.fmtStr), frmt % args)
 
 proc defaultFilename*(): string = 
@@ -150,7 +150,7 @@ proc newRollingFileLogger*(filename = defaultFilename(),
 
 
 method log*(L: ref TRollingFileLogger, level: TLevel, 
-            frmt: string, args: openArray[string]) = 
+            frmt: string, args: varargs[string, `$`]) = 
   # TODO 
   # if more than maxlines, then set cursor to zero
   
@@ -162,12 +162,12 @@ var
   level* = lvlAll  ## global log filter
   handlers*: seq[ref TLogger] = @[] ## handlers with their own log levels
 
-proc logLoop(level: TLevel, frmt: string, args: openarray[string]) =
+proc logLoop(level: TLevel, frmt: string, args: varargs[string, `$`]) =
   for logger in items(handlers): 
     if level >= logger.levelThreshold:
       log(logger, level, frmt, args)
 
-template log*(level: TLevel, frmt: string, args: openarray[string]) =
+template log*(level: TLevel, frmt: string, args: varargs[string, `$`]) =
   ## logs a message of the given level
   bind logLoop
   bind `%`
@@ -176,23 +176,23 @@ template log*(level: TLevel, frmt: string, args: openarray[string]) =
   if level >= logging.Level:
     logLoop(level, frmt, args)
 
-template debug*(frmt: string, args: openarray[string]) =
+template debug*(frmt: string, args: varargs[string, `$`]) =
   ## logs a debug message
   log(lvlDebug, frmt, args)
 
-template info*(frmt: string, args: openarray[string]) = 
+template info*(frmt: string, args: varargs[string, `$`]) = 
   ## logs an info message
   log(lvlInfo, frmt, args)
 
-template warn*(frmt: string, args: openarray[string]) = 
+template warn*(frmt: string, args: varargs[string, `$`]) = 
   ## logs a warning message
   log(lvlWarn, frmt, args)
 
-template error*(frmt: string, args: openarray[string]) = 
+template error*(frmt: string, args: varargs[string, `$`]) = 
   ## logs an error message
   log(lvlError, frmt, args)
   
-template fatal*(frmt: string, args: openarray[string]) =  
+template fatal*(frmt: string, args: varargs[string, `$`]) =  
   ## logs a fatal error message
   log(lvlFatal, frmt, args)
 

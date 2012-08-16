@@ -153,7 +153,7 @@ proc getTypeName(typ: PType): PRope =
   else:
     if typ.loc.r == nil:
       typ.loc.r = if gCmd != cmdCompileToLLVM: con(typ.typeName, typ.id.toRope)
-                  else: con("%".toRope, typ.typeName, typ.id.toRope)
+                  else: con(["%".toRope, typ.typeName, typ.id.toRope])
     result = typ.loc.r
   if result == nil: InternalError("getTypeName: " & $typ.kind)
   

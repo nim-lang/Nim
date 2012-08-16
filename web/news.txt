@@ -103,6 +103,7 @@ Changes affecting backwards compatibility
   for procs it remains ``nimcall`` (which is compatible to ``closure``).
   Activate the warning ``ImplicitClosure`` to make the compiler list the 
   occurances of proc types which are affected.
+- The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 
 
 Compiler Additions

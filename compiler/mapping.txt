@@ -1,5 +1,4 @@
 [C_Files]
---file:r"compiler/nimcache/nim__dat.c"
 --file:r"compiler/nimcache/system.c"
 --file:r"compiler/nimcache/nimrod.c"
 --file:r"compiler/nimcache/times.c"
@@ -66,7 +65,6 @@
 --file:r"compiler/nimcache/pragmas.c"
 --file:r"compiler/nimcache/semtypinst.c"
 --file:r"compiler/nimcache/sigmatch.c"
---file:r"compiler/nimcache/suggest.c"
 --file:r"compiler/nimcache/aliases.c"
 --file:r"compiler/nimcache/docgen.c"
 --file:r"compiler/nimcache/rstast.c"
