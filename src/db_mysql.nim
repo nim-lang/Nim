@@ -34,7 +34,7 @@ proc dbError*(msg: string) {.noreturn.} =
   raise e
 
 when false:
-  proc dbQueryOpt*(db: TDbConn, query: string, args: openarray[string]) =
+  proc dbQueryOpt*(db: TDbConn, query: string, args: varargs[string]) =
     var stmt = mysql_stmt_init(db)
     if stmt == nil: dbError(db)
     if mysql_stmt_prepare(stmt, query, len(query)) != 0: 
@@ -50,7 +50,7 @@ proc dbQuote(s: string): string =
     else: add(result, c)
   add(result, '\'')
 
-proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
+proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
   for c in items(string(formatstr)):
@@ -60,12 +60,12 @@ proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
     else: 
       add(result, c)
   
-proc TryExec*(db: TDbConn, query: TSqlQuery, args: openarray[string]): bool =
+proc TryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysql.RealQuery(db, q, q.len) == 0'i32
 
-proc Exec*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
+proc Exec*(db: TDbConn, query: TSqlQuery, args: varargs[string]) =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   if mysql.RealQuery(db, q, q.len) != 0'i32: dbError(db)
@@ -80,7 +80,7 @@ proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   mysql.FreeResult(sqlres)
   
 iterator FastRows*(db: TDbConn, query: TSqlQuery,
-                   args: openarray[string]): TRow =
+                   args: varargs[string]): TRow =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For MySQL this is the case!.
@@ -100,7 +100,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
     properFreeResult(sqlres, row)
 
 proc getRow*(db: TDbConn, query: TSqlQuery,
-             args: openarray[string]): TRow =
+             args: varargs[string]): TRow =
   ## retrieves a single row.
   Exec(db, query, args)
   var sqlres = mysql.UseResult(db)
@@ -115,7 +115,7 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
     properFreeResult(sqlres, row)
 
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
-                 args: openarray[string]): seq[TRow] =
+                 args: varargs[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
   result = @[]
   Exec(db, query, args)
@@ -134,12 +134,12 @@ proc GetAllRows*(db: TDbConn, query: TSqlQuery,
     mysql.FreeResult(sqlres)
 
 iterator Rows*(db: TDbConn, query: TSqlQuery, 
-               args: openarray[string]): TRow =
+               args: varargs[string]): TRow =
   ## same as `FastRows`, but slower and safe.
   for r in items(GetAllRows(db, query, args)): yield r
 
 proc GetValue*(db: TDbConn, query: TSqlQuery, 
-               args: openarray[string]): string = 
+               args: varargs[string]): string = 
   ## executes the query and returns the result dataset's the first column 
   ## of the first row. Returns "" if the dataset contains no rows. This uses
   ## `FastRows`, so it inherits its fragile behaviour.
@@ -149,7 +149,7 @@ proc GetValue*(db: TDbConn, query: TSqlQuery,
     break
 
 proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
-                  args: openarray[string]): int64 =
+                  args: varargs[string]): int64 =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
@@ -158,14 +158,14 @@ proc TryInsertID*(db: TDbConn, query: TSqlQuery,
   else:
     result = mysql.InsertId(db)
   
-proc InsertID*(db: TDbConn, query: TSqlQuery, args: openArray[string]): int64 = 
+proc InsertID*(db: TDbConn, query: TSqlQuery, args: varargs[string]): int64 = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row.
   result = TryInsertID(db, query, args)
   if result < 0: dbError(db)
 
 proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
-                       args: openArray[string]): int64 = 
+                       args: varargs[string]): int64 = 
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   Exec(db, query, args)
