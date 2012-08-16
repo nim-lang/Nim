@@ -388,9 +388,9 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         elif f.sons[0].kind in GenericTypes: 
           result = minRel(result, typeRel(c, f.sons[0], a.sons[0]))
     else: nil
-  of tyOpenArray: 
+  of tyOpenArray, tyVarargs:
     case a.Kind
-    of tyOpenArray: 
+    of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
     of tyArrayConstr: 
@@ -409,10 +409,6 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       elif typeRel(c, base(f), a.sons[0]) >= isGeneric: 
         result = isConvertible
     else: nil
-  of tyVarargs:
-    if a.Kind == tyVarargs:
-      result = typeRel(c, base(f), base(a))
-      if result < isGeneric: result = isNone
   of tySequence: 
     case a.Kind
     of tyNil: 
@@ -611,10 +607,13 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   result = c.semOverloadedCall(c, call, call, RoutineKinds)
   if result != nil:
     # resulting type must be consistent with the other arguments:
-    var r = typeRel(m, f, result.typ)
+    var r = typeRel(m, f.sons[0], result.typ)
     if r < isGeneric: return nil
     if result.kind == nkCall: result.kind = nkHiddenCallConv
     inc(m.convMatches)
+    if r == isGeneric:
+      result.typ = getInstantiatedType(c, arg, m, base(f))
+    m.baseTypeMatch = true
 
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
                         arg, argOrig: PNode): PNode =
@@ -686,17 +685,21 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
       m.proxyMatch = true
       return copyTree(arg)
     result = userConvMatch(c, m, f, a, arg) 
-    # check for a base type match, which supports openarray[T] without []
+    # check for a base type match, which supports varargs[T] without []
     # constructor in a call:
-    if result == nil and f.kind == tyOpenArray:
-      r = typeRel(m, base(f), a)
-      if r >= isGeneric: 
-        inc(m.convMatches)
-        result = copyTree(arg)
-        if r == isGeneric: result.typ = getInstantiatedType(c, arg, m, base(f))
-        m.baseTypeMatch = true
+    if result == nil and f.kind == tyVarargs:
+      if f.n != nil:
+        result = localConvMatch(c, m, f, a, arg)
       else:
-        result = userConvMatch(c, m, base(f), a, arg)
+        r = typeRel(m, base(f), a)
+        if r >= isGeneric:
+          inc(m.convMatches)
+          result = copyTree(arg)
+          if r == isGeneric:
+            result.typ = getInstantiatedType(c, arg, m, base(f))
+          m.baseTypeMatch = true
+        else:
+          result = userConvMatch(c, m, base(f), a, arg)
 
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
                      arg, argOrig: PNode): PNode = 
@@ -777,7 +780,7 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
   var container: PNode = nil # constructed container
   var formal: PSym = nil
   while a < n.len:
-    if n.sons[a].kind == nkExprEqExpr: 
+    if n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
       if n.sons[a].sons[0].kind != nkIdent: 
@@ -870,19 +873,19 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   var f = 1
-  while f < sonsLen(m.callee.n): 
+  while f < sonsLen(m.callee.n):
     var formal = m.callee.n.sons[f].sym
     if not ContainsOrIncl(marker, formal.position): 
-      if formal.ast == nil: 
-        if formal.typ.kind == tyOpenArray:
+      if formal.ast == nil:
+        if formal.typ.kind == tyVarargs:
           var container = newNodeI(nkBracket, n.info)
-          addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ, 
+          addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ,
                                       container, m, c))
         else:
           # no default value
           m.state = csNoMatch
           break
-      else: 
+      else:
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)

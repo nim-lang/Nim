@@ -161,17 +161,6 @@ proc assign*(dest: var TIntSet, src: TIntSet) =
 
     it = it.next
 
-template dollarImpl(): stmt =
-  result = "{"
-  for key in items(s):
-    if result.len > 1: result.add(", ")
-    result.add($key)
-  result.add("}")
-
-proc `$`*(s: TIntSet): string =
-  ## The `$` operator for int sets.
-  dollarImpl()
-
 iterator items*(s: TIntSet): int {.inline.} =
   ## iterates over any included element of `s`.
   var r = s.head
@@ -189,6 +178,17 @@ iterator items*(s: TIntSet): int {.inline.} =
         w = w shr 1
       inc(i)
     r = r.next
+
+template dollarImpl(): stmt =
+  result = "{"
+  for key in items(s):
+    if result.len > 1: result.add(", ")
+    result.add($key)
+  result.add("}")
+
+proc `$`*(s: TIntSet): string =
+  ## The `$` operator for int sets.
+  dollarImpl()
 
 when isMainModule:
   var x = initIntSet()

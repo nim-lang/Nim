@@ -141,13 +141,14 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## semantic rule, `x` may also be a type identifier.
 
 type
-  range*{.magic: "Range".} [T] ## Generic type to construct range types.
+  range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
                                   ## fixed-length arrays.
   openarray*{.magic: "OpenArray".}[T]  ## Generic type to construct open arrays.
                                        ## Open arrays are implemented as a
                                        ## pointer to the array data and a
                                        ## length field.
+  varargs*{.magic: "Varargs".}[T] ## Generic type to construct a varargs type.
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
@@ -347,7 +348,8 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
 
-proc len*[T: openArray](x: T): int {.magic: "LengthOpenArray", noSideEffect.}
+proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
+  magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
@@ -1238,8 +1240,8 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
   ## The minimum value of two integers.
 
-proc min*[T](x: openarray[T]): T = 
-  ## The minimum value of an openarray.
+proc min*[T](x: varargs[T]): T = 
+  ## The minimum value of `x`.
   result = x[0]
   for i in 1..high(x): result = min(result, x[i])
 
@@ -1250,8 +1252,8 @@ proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
   ## The maximum value of two integers.
 
-proc max*[T](x: openarray[T]): T = 
-  ## The maximum value of an openarray.
+proc max*[T](x: varargs[T]): T = 
+  ## The maximum value of `x`.
   result = x[0]
   for i in 1..high(x): result = max(result, x[i])
 
@@ -1642,7 +1644,7 @@ else:
 
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
-proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo", noSideEffect.}
+proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
   ## special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
@@ -1812,7 +1814,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc write*(f: TFile, b: Bool)
   proc write*(f: TFile, c: char)
   proc write*(f: TFile, c: cstring)
-  proc write*(f: TFile, a: openArray[string])
+  proc write*(f: TFile, a: varargs[string, `$`])
     ## Writes a value to the file `f`. May throw an IO exception.
 
   proc readLine*(f: TFile): TaintedString
@@ -1831,7 +1833,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## writes a value `x` to `f` and then writes "\n".
     ## May throw an IO exception.
 
-  proc writeln*[Ty](f: TFile, x: openArray[Ty]) {.inline.}
+  proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline.}
     ## writes a value `x` to `f` and then writes "\n".
     ## May throw an IO exception.
 

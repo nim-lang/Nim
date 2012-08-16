@@ -151,7 +151,7 @@ proc newStringTable*(mode: TStringTableMode): PStringTable {.
   result.counter = 0
   newSeq(result.data, startSize)
 
-proc newStringTable*(keyValuePairs: openarray[string],
+proc newStringTable*(keyValuePairs: varargs[string],
                      mode: TStringTableMode): PStringTable {.
   rtl, extern: "nst$1WithPairs".} =
   ## creates a new string table with given key value pairs.
@@ -164,7 +164,7 @@ proc newStringTable*(keyValuePairs: openarray[string],
     result[keyValuePairs[i]] = keyValuePairs[i + 1]
     inc(i, 2)
 
-proc newStringTable*(keyValuePairs: openarray[tuple[key, val: string]],
+proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
                      mode: TStringTableMode = modeCaseSensitive): PStringTable {.
   rtl, extern: "nst$1WithTableConstr".} =
   ## creates a new string table with given key value pairs.

@@ -86,7 +86,7 @@ proc write(f: TFile, r: float) = fprintf(f, "%g", r)
 proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
 
 proc write(f: TFile, c: Char) = putc(c, f)
-proc write(f: TFile, a: openArray[string]) =
+proc write(f: TFile, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
 proc readAllBuffer(file: TFile): string = 
@@ -150,7 +150,7 @@ proc writeln[Ty](f: TFile, x: Ty) =
   write(f, x)
   write(f, "\n")
 
-proc writeln[Ty](f: TFile, x: openArray[Ty]) =
+proc writeln[Ty](f: TFile, x: varargs[Ty, `$`]) =
   for i in items(x): write(f, i)
   write(f, "\n")
 

@@ -165,13 +165,13 @@ iterator find*(db: var TDbConn, namespace: string,
       yield bson(cursor[])[]
     destroy(cursor[])
 
-proc setupFieldnames(fields: openArray[string]): TBSon =
+proc setupFieldnames(fields: varargs[string]): TBSon =
   init(result)
   for x in fields: add(result, x, 1'i32)
   finish(result)
 
 iterator find*(db: var TDbConn, namespace: string, 
-               query: var TBSon, fields: openArray[string]): var TBSon =
+               query: var TBSon, fields: varargs[string]): var TBSon =
   ## yields the `fields` of any document that suffices `query`. If `fields` 
   ## is ``[]`` the whole document is yielded.
   var f = setupFieldnames(fields)
@@ -188,7 +188,7 @@ proc setupQuery(query: string): TBSon =
   finish(result)
 
 iterator find*(db: var TDbConn, namespace: string, 
-               query: string, fields: openArray[string]): var TBSon =
+               query: string, fields: varargs[string]): var TBSon =
   ## yields the `fields` of any document that suffices `query`. If `fields` 
   ## is ``[]`` the whole document is yielded.
   var f = setupFieldnames(fields)

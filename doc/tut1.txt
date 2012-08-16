@@ -1131,12 +1131,17 @@ an openarray parameter, the index type does not matter.
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
-An openarray is also a means to implement passing a variable number of
+
+Varargs
+-------
+
+A ``varargs`` parameter is like an openarray parameter. However, it is
+also a means to implement passing a variable number of
 arguments to a procedure. The compiler converts the list of arguments
 to an array automatically:
 
 .. code-block:: nimrod
-  proc myWriteln(f: TFile, a: openarray[string]) =
+  proc myWriteln(f: TFile, a: varargs[string]) =
     for s in items(a):
       write(f, s)
     write(f, "\n")
@@ -1145,8 +1150,22 @@ to an array automatically:
   # is transformed by the compiler to:
   myWriteln(stdout, ["abc", "def", "xyz"])
 
-This transformation is only done if the openarray parameter is the
-last parameter in the procedure header.
+This transformation is only done if the varargs parameter is the
+last parameter in the procedure header. It is also possible to perform
+type conversions in this context:
+
+.. code-block:: nimrod
+  proc myWriteln(f: TFile, a: varargs[string, `$`]) =
+    for s in items(a):
+      write(f, s)
+    write(f, "\n")
+
+  myWriteln(stdout, 123, "abc", 4.0)
+  # is transformed by the compiler to:
+  myWriteln(stdout, [$123, $"def", $4.0])
+
+In this example ``$`` is applied to any argument that is passed to the 
+parameter ``a``. Note that ``$`` applied to strings is a nop.
 
 
 Tuples

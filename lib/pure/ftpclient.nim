@@ -108,7 +108,7 @@ proc assertReply(received: TaintedString, expected: string) =
                        "Expected reply '$1' got: $2" % [
                        expected, received.string])
 
-proc assertReply(received: TaintedString, expected: openarray[string]) =
+proc assertReply(received: TaintedString, expected: varargs[string]) =
   for i in items(expected):
     if received.string.startsWith(i): return
   raise newException(EInvalidReply,

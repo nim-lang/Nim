@@ -48,7 +48,7 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
     expr(p, ri, a)
 
 proc startBlock(p: BProc, start: TFormatStr = "{$n",
-                args: openarray[PRope]): int {.discardable.} =
+                args: varargs[PRope]): int {.discardable.} =
   lineCg(p, cpsStmts, start, args)
   inc(p.labels)
   result = len(p.blocks)

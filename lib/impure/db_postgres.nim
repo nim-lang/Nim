@@ -49,7 +49,7 @@ proc dbQuote(s: string): string =
     else: add(result, c)
   add(result, '\'')
 
-proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
+proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
   for c in items(string(formatstr)):
@@ -60,14 +60,14 @@ proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
       add(result, c)
   
 proc TryExec*(db: TDbConn, query: TSqlQuery, 
-              args: openarray[string]): bool =
+              args: varargs[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   var res = PQExec(db, q)
   result = PQresultStatus(res) == PGRES_COMMAND_OK
   PQclear(res)
 
-proc Exec*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
+proc Exec*(db: TDbConn, query: TSqlQuery, args: varargs[string]) =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   var res = PQExec(db, q)
@@ -79,7 +79,7 @@ proc newRow(L: int): TRow =
   for i in 0..L-1: result[i] = ""
   
 proc setupQuery(db: TDbConn, query: TSqlQuery, 
-                args: openarray[string]): PPGresult = 
+                args: varargs[string]): PPGresult = 
   var q = dbFormat(query, args)
   result = PQExec(db, q)
   if PQresultStatus(result) != PGRES_TUPLES_OK: dbError(db)
@@ -91,7 +91,7 @@ proc setRow(res: PPGresult, r: var TRow, line, cols: int32) =
     add(r[col], x)
   
 iterator FastRows*(db: TDbConn, query: TSqlQuery,
-                   args: openarray[string]): TRow =
+                   args: varargs[string]): TRow =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
@@ -104,7 +104,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
   PQclear(res)
 
 proc getRow*(db: TDbConn, query: TSqlQuery,
-             args: openarray[string]): TRow =
+             args: varargs[string]): TRow =
   ## retrieves a single row.
   var res = setupQuery(db, query, args)
   var L = PQnfields(res)
@@ -113,26 +113,26 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
   PQclear(res)
 
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
-                 args: openarray[string]): seq[TRow] =
+                 args: varargs[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
   result = @[]
   for r in FastRows(db, query, args):
     result.add(r)
 
 iterator Rows*(db: TDbConn, query: TSqlQuery, 
-               args: openarray[string]): TRow =
+               args: varargs[string]): TRow =
   ## same as `FastRows`, but slower and safe.
   for r in items(GetAllRows(db, query, args)): yield r
 
 proc GetValue*(db: TDbConn, query: TSqlQuery, 
-               args: openarray[string]): string = 
+               args: varargs[string]): string = 
   ## executes the query and returns the result dataset's the first column 
   ## of the first row. Returns "" if the dataset contains no rows.
   var x = PQgetvalue(setupQuery(db, query, args), 0, 0)
   result = if isNil(x): "" else: $x
   
 proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
-                  args: openarray[string]): int64 =
+                  args: varargs[string]): int64 =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
@@ -144,7 +144,7 @@ proc TryInsertID*(db: TDbConn, query: TSqlQuery,
     result = -1
 
 proc InsertID*(db: TDbConn, query: TSqlQuery, 
-               args: openArray[string]): int64 = 
+               args: varargs[string]): int64 = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
@@ -153,7 +153,7 @@ proc InsertID*(db: TDbConn, query: TSqlQuery,
   if result < 0: dbError(db)
   
 proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
-                       args: openArray[string]): int64 = 
+                       args: varargs[string]): int64 = 
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var q = dbFormat(query, args)

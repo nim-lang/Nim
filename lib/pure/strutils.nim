@@ -1113,6 +1113,13 @@ proc `%` *(formatstr, a: string): string {.noSideEffect,
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, [a])
 
+proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
+  rtl, extern: "nsuFormatVarargs".} =
+  ## This is the same as ``formatstr % a`` except that it supports
+  ## auto stringification.
+  result = newStringOfCap(formatstr.len + a.len)
+  addf(result, formatstr, a)
+
 {.pop.}
 
 when isMainModule:

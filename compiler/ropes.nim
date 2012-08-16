@@ -75,7 +75,7 @@ type
 proc con*(a, b: PRope): PRope
 proc con*(a: PRope, b: string): PRope
 proc con*(a: string, b: PRope): PRope
-proc con*(a: openarray[PRope]): PRope
+proc con*(a: varargs[PRope]): PRope
 proc app*(a: var PRope, b: PRope)
 proc app*(a: var PRope, b: string)
 proc prepend*(a: var PRope, b: PRope)
@@ -84,8 +84,8 @@ proc toRope*(i: BiggestInt): PRope
 proc ropeLen*(a: PRope): int
 proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropeToStr*(p: PRope): string
-proc ropef*(frmt: TFormatStr, args: openarray[PRope]): PRope
-proc appf*(c: var PRope, frmt: TFormatStr, args: openarray[PRope])
+proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
+proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
 proc RopeEqualsFile*(r: PRope, f: string): bool
   # returns true if the rope r is the same as the contents of file f
 proc RopeInvariant*(r: PRope): bool
@@ -183,7 +183,7 @@ proc con(a, b: PRope): PRope =
 proc con(a: PRope, b: string): PRope = result = con(a, toRope(b))
 proc con(a: string, b: PRope): PRope = result = con(toRope(a), b)
 
-proc con(a: openarray[PRope]): PRope = 
+proc con(a: varargs[PRope]): PRope = 
   for i in countup(0, high(a)): result = con(result, a[i])
 
 proc toRope(i: BiggestInt): PRope = result = toRope($i)
@@ -212,7 +212,7 @@ proc WriteRope*(head: PRope, filename: string, useWarning = false) =
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
                filename)
 
-proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope = 
+proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope = 
   var i = 0
   var length = len(frmt)
   result = nil
@@ -254,7 +254,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
       app(result, substr(frmt, start, i - 1))
   assert(RopeInvariant(result))
 
-proc appf(c: var PRope, frmt: TFormatStr, args: openarray[PRope]) = 
+proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) = 
   app(c, ropef(frmt, args))
 
 const 

@@ -195,10 +195,6 @@ if [ $# -eq 1 ] ; then
     cp doc/tut2.txt $docdir/tut2.txt
     chmod 644 $docdir/tut2.txt
   fi
-  if [ -f doc/manual.html ]; then
-    cp doc/manual.html $docdir/manual.html
-    chmod 644 $docdir/manual.html
-  fi
   if [ -f doc/nimrodc.html ]; then
     cp doc/nimrodc.html $docdir/nimrodc.html
     chmod 644 $docdir/nimrodc.html
@@ -313,6 +309,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/core/macros.nim
   cp lib/core/typeinfo.nim $libdir/core/typeinfo.nim
   chmod 644 $libdir/core/typeinfo.nim
+  cp lib/core/unsigned.nim $libdir/core/unsigned.nim
+  chmod 644 $libdir/core/unsigned.nim
   cp lib/pure/actors.nim $libdir/pure/actors.nim
   chmod 644 $libdir/pure/actors.nim
   cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim
@@ -497,6 +495,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/openssl.nim
   cp lib/wrappers/pcre.nim $libdir/wrappers/pcre.nim
   chmod 644 $libdir/wrappers/pcre.nim
+  cp lib/wrappers/pdcurses.nim $libdir/wrappers/pdcurses.nim
+  chmod 644 $libdir/wrappers/pdcurses.nim
   cp lib/wrappers/postgres.nim $libdir/wrappers/postgres.nim
   chmod 644 $libdir/wrappers/postgres.nim
   cp lib/wrappers/python.nim $libdir/wrappers/python.nim
