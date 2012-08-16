@@ -249,6 +249,8 @@ proc getGlobalTempName(): PRope =
 proc ccgIntroducedPtr(s: PSym): bool = 
   var pt = skipTypes(s.typ, abstractInst)
   assert skResult != s.kind
+  if tfByRef in pt.flags: return true
+  elif tfByCopy in pt.flags: return false
   case pt.Kind
   of tyObject:
     if (optByRef in s.options) or (getSize(pt) > platform.floatSize * 2): 
