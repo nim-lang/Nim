@@ -328,7 +328,7 @@ type
     nfSem       # node has been checked for semantics
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum 
+  TTypeFlag* = enum   # keep below 15 for efficiency reasons (now: 13)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -341,7 +341,9 @@ type
                       # type equality has to be used
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
-    tfCapturesEnv     # whether proc really captures some environment
+    tfCapturesEnv,    # whether proc really captures some environment
+    tfByCopy,         # pass object/tuple by copy (C backend)
+    tfByRef           # pass object/tuple by reference (C backend)
 
   TTypeFlags* = set[TTypeFlag]
 

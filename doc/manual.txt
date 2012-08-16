@@ -2836,7 +2836,7 @@ Ordinary vs immediate templates
 
 There are two different kinds of templates: `immediate`:idx: templates and
 ordinary templates. Ordinary templates take part in overloading resolution. As
-such their arguments needs to be type checked before the template is invoked.
+such their arguments need to be type checked before the template is invoked.
 So ordinary templates cannot receive undeclared identifiers:
 
 .. code-block:: nimrod
@@ -3657,6 +3657,25 @@ identifier *exactly as spelled*:
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
 the same feature under the same name.
+
+
+Bycopy pragma
+-------------
+
+The `bycopy`:idx: pragma can be applied to an object or tuple type and
+instructs the compiler to pass the type by value to procs:
+
+.. code-block:: nimrod
+  type
+    TVector {.bycopy, pure.} = object
+      x, y, z: float
+
+
+Byref pragma
+------------
+
+The `byref`:idx: pragma can be applied to an object or tuple type and instructs
+the compiler to pass the type by reference (hidden pointer) to procs.
 
 
 Varargs pragma

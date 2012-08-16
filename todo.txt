@@ -7,7 +7,6 @@ version 0.9.0
 
 - implicit deref for parameter matching
 - ``final`` should be the default for objects
-- ``bycopy`` pragma for imported C types
 - optimize genericAssign in the code generator
 - the lookup rules for generics really are too permissive
 - fix remaining closure bugs:

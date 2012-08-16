@@ -124,6 +124,8 @@ Compiler Additions
   of the compiler and can thus generate documentation for symbols hiding in
   macros.
 - The compiler now supports the ``dynlib`` pragma for variables.
+- The compiler now supports ``bycopy`` and ``byref`` pragmas that affect how
+  objects/tuples are passed.
 
 
 Language Additions

@@ -46,7 +46,7 @@ const
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
-    wImportcpp, wImportobjc, wError, wIncompleteStruct}
+    wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -483,8 +483,8 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             processImportCompilerProc(sym, getOptionalStr(c, it, sym.name.s))
           of wExtern: setExternName(sym, expectStrLit(c, it))
           of wImmediate:
-            if sym.kind notin {skTemplate, skMacro}: invalidPragma(it)
-            incl(sym.flags, sfImmediate)
+            if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
+            else: invalidPragma(it)
           of wImportCpp:
             processImportCpp(sym, getOptionalStr(c, it, sym.name.s))
           of wImportObjC:
@@ -571,22 +571,22 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wVarargs: 
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
-            incl(sym.typ.flags, tfVarargs)
+            else: incl(sym.typ.flags, tfVarargs)
           of wBorrow: 
             noVal(it)
             incl(sym.flags, sfBorrow)
           of wFinal: 
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
-            incl(sym.typ.flags, tfFinal)
+            else: incl(sym.typ.flags, tfFinal)
           of wAcyclic: 
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
-            incl(sym.typ.flags, tfAcyclic)
+            else: incl(sym.typ.flags, tfAcyclic)
           of wShallow:
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
-            incl(sym.typ.flags, tfShallow)
+            else: incl(sym.typ.flags, tfShallow)
           of wThread:
             noVal(it)
             incl(sym.flags, sfThread)
@@ -627,29 +627,37 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wNoInit:
             noVal(it)
             if sym != nil: incl(sym.flags, sfNoInit)
-          of wByCopy:
-            noVal(it)
-            if sym != nil: incl(sym.flags, sfByCopy)
           of wHoist:
             noVal(it)
             if sym != nil: incl(sym.flags, sfHoist)
           of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
              wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
-             wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef,
+             wLinedir, wStacktrace, wLinetrace, wOptimization,
              wCallConv, 
              wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks: 
             processOption(c, it) # calling conventions (boring...):
           of firstCallConv..lastCallConv: 
             assert(sym != nil)
             if sym.typ == nil: invalidPragma(it)
-            sym.typ.callConv = wordToCallConv(k)
+            else: sym.typ.callConv = wordToCallConv(k)
           of wEmit: PragmaEmit(c, it)
           of wUnroll: PragmaUnroll(c, it)
           of wLinearScanEnd: PragmaLinearScanEnd(c, it)
           of wIncompleteStruct:
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
-            incl(sym.typ.flags, tfIncompleteStruct)
+            else: incl(sym.typ.flags, tfIncompleteStruct)
+          of wByRef:
+            noVal(it)
+            if sym == nil or sym.typ == nil:
+              processOption(c, it)
+            else:
+              incl(sym.typ.flags, tfByRef)
+          of wByCopy:
+            noVal(it)
+            if sym.kind != skType: incl(sym.flags, sfByCopy)
+            elif sym.typ == nil: invalidPragma(it)
+            else: incl(sym.typ.flags, tfByCopy)
           of wLine: PragmaLine(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
