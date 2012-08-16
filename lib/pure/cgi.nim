@@ -183,7 +183,7 @@ proc readData*(allowedMethods: set[TRequestMethod] =
   for name, value in decodeData(allowedMethods):
     result[name.string] = value.string
 
-proc validateData*(data: PStringTable, validKeys: openarray[string]) =
+proc validateData*(data: PStringTable, validKeys: varargs[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
   for key, val in pairs(data):
@@ -318,7 +318,7 @@ proc getServerSoftware*(): string =
   ## returns contents of the ``SERVER_SOFTWARE`` environment variable
   return getenv("SERVER_SOFTWARE").string
 
-proc setTestData*(keysvalues: openarray[string]) =
+proc setTestData*(keysvalues: varargs[string]) =
   ## fills the appropriate environment variables to test your CGI application.
   ## This can only simulate the 'GET' request method. `keysvalues` should
   ## provide embedded (name, value)-pairs. Example:

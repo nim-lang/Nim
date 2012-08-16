@@ -15,7 +15,7 @@
 ## **Note**: This interface will change as soon as the compiler supports
 ## closures and proper coroutines.
 
-proc concat*[T](seqs: openarray[seq[T]]): seq[T] =
+proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside of one sequence.
   var L = 0
   for seqitm in items(seqs): inc(L, len(seqitm))

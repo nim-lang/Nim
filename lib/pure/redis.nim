@@ -113,7 +113,7 @@ proc parseMultiBulk(r: TRedis): TRedisList =
   for i in 1..numElems:
     result.add(r.parseBulk())
 
-proc sendCommand(r: TRedis, cmd: string, args: openarray[string]) =
+proc sendCommand(r: TRedis, cmd: string, args: varargs[string]) =
   var request = "*" & $(1 + args.len()) & "\c\L"
   request.add("$" & $cmd.len() & "\c\L")
   request.add(cmd & "\c\L")
@@ -123,7 +123,7 @@ proc sendCommand(r: TRedis, cmd: string, args: openarray[string]) =
   r.socket.send(request)
 
 proc sendCommand(r: TRedis, cmd: string, arg1: string,
-                 args: openarray[string]) =
+                 args: varargs[string]) =
   var request = "*" & $(2 + args.len()) & "\c\L"
   request.add("$" & $cmd.len() & "\c\L")
   request.add(cmd & "\c\L")
@@ -136,7 +136,7 @@ proc sendCommand(r: TRedis, cmd: string, arg1: string,
 
 # Keys
 
-proc del*(r: TRedis, keys: openArray[string]): TRedisInteger =
+proc del*(r: TRedis, keys: varargs[string]): TRedisInteger =
   ## Delete a key or multiple keys
   r.sendCommand("DEL", keys)
   return r.parseInteger()
@@ -323,7 +323,7 @@ proc hLen*(r: TRedis, key: string): TRedisInteger =
   r.sendCommand("HLEN", key)
   return r.parseInteger()
 
-proc hMGet*(r: TRedis, key: string, fields: openarray[string]): TRedisList =
+proc hMGet*(r: TRedis, key: string, fields: varargs[string]): TRedisList =
   ## Get the values of all the given hash fields
   r.sendCommand("HMGET", key, fields)
   return r.parseMultiBulk()
@@ -355,7 +355,7 @@ proc hVals*(r: TRedis, key: string): TRedisList =
   
 # Lists
 
-proc bLPop*(r: TRedis, keys: openarray[string], timeout: int): TRedisList =
+proc bLPop*(r: TRedis, keys: varargs[string], timeout: int): TRedisList =
   ## Remove and get the *first* element in a list, or block until 
   ## one is available
   var args: seq[string] = @[]
@@ -364,7 +364,7 @@ proc bLPop*(r: TRedis, keys: openarray[string], timeout: int): TRedisList =
   r.sendCommand("BLPOP", args)
   return r.parseMultiBulk()
 
-proc bRPop*(r: TRedis, keys: openarray[string], timeout: int): TRedisList =
+proc bRPop*(r: TRedis, keys: varargs[string], timeout: int): TRedisList =
   ## Remove and get the *last* element in a list, or block until one 
   ## is available.
   var args: seq[string] = @[]
@@ -470,24 +470,24 @@ proc scard*(r: TRedis, key: string): TRedisInteger =
   r.sendCommand("SCARD", key)
   return r.parseInteger()
 
-proc sdiff*(r: TRedis, keys: openarray[string]): TRedisList =
+proc sdiff*(r: TRedis, keys: varargs[string]): TRedisList =
   ## Subtract multiple sets
   r.sendCommand("SDIFF", keys)
   return r.parseMultiBulk()
 
 proc sdiffstore*(r: TRedis, destination: string,
-                keys: openarray[string]): TRedisInteger =
+                keys: varargs[string]): TRedisInteger =
   ## Subtract multiple sets and store the resulting set in a key
   r.sendCommand("SDIFFSTORE", destination, keys)
   return r.parseInteger()
 
-proc sinter*(r: TRedis, keys: openarray[string]): TRedisList =
+proc sinter*(r: TRedis, keys: varargs[string]): TRedisList =
   ## Intersect multiple sets
   r.sendCommand("SINTER", keys)
   return r.parseMultiBulk()
 
 proc sinterstore*(r: TRedis, destination: string,
-                 keys: openarray[string]): TRedisInteger =
+                 keys: varargs[string]): TRedisInteger =
   ## Intersect multiple sets and store the resulting set in a key
   r.sendCommand("SINTERSTORE", destination, keys)
   return r.parseInteger()
@@ -523,13 +523,13 @@ proc srem*(r: TRedis, key: string, member: string): TRedisInteger =
   r.sendCommand("SREM", key, member)
   return r.parseInteger()
 
-proc sunion*(r: TRedis, keys: openarray[string]): TRedisList =
+proc sunion*(r: TRedis, keys: varargs[string]): TRedisList =
   ## Add multiple sets
   r.sendCommand("SUNION", keys)
   return r.parseMultiBulk()
 
 proc sunionstore*(r: TRedis, destination: string,
-                 key: openarray[string]): TRedisInteger =
+                 key: varargs[string]): TRedisInteger =
   ## Add multiple sets and store the resulting set in a key 
   r.sendCommand("SUNIONSTORE", destination, key)
   return r.parseInteger()
@@ -730,7 +730,7 @@ proc unwatch*(r: TRedis) =
   r.sendCommand("UNWATCH")
   raiseNoOK(r.parseStatus())
 
-proc watch*(r: TRedis, key: openarray[string]) =
+proc watch*(r: TRedis, key: varargs[string]) =
   ## Watch the given keys to determine execution of the MULTI/EXEC block 
   r.sendCommand("WATCH", key)
   raiseNoOK(r.parseStatus())
