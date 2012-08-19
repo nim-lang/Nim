@@ -655,6 +655,20 @@ proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect,
     if s[i] in chars: return i
   return -1
 
+proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
+  ## Searches for `sub` in `s` in reverse, starting at `start` and going
+  ## backwards to 0. Searching is case-sensitive. If `sub` is not in `s`, -1 is
+  ## returned.
+  let realStart = if start == -1: s.len else: start
+  for i in countdown(realStart-sub.len, 0):
+    for j in 0..sub.len-1:
+      result = i
+      if sub[j] != s[i+j]:
+        result = -1
+        break
+    if result != -1: return
+  return -1
+
 proc quoteIfContainsWhite*(s: string): string =
   ## returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`
