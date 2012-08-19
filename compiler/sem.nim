@@ -14,7 +14,8 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting
+  semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
+  evaltempl
 
 proc semPass*(): TPass
 # implementation
@@ -56,7 +57,17 @@ proc isTopLevel(c: PContext): bool {.inline.} =
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner())
   result.info = n.info
-  
+
+proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
+  # like newSymS, but considers gensym'ed symbols
+  if n.kind == nkSym: 
+    result = n.sym
+    InternalAssert sfGenSym in result.flags
+    InternalAssert result.kind == kind
+  else:
+    result = newSym(kind, considerAcc(n), getCurrOwner())
+    result.info = n.info
+
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
   # identifier with visability

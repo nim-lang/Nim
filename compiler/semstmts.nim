@@ -91,10 +91,11 @@ proc semBlock(c: PContext, n: PNode): PNode =
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
   openScope(c.tab)            # BUGFIX: label is in the scope of block!
-  if n.sons[0].kind != nkEmpty: 
-    var labl = newSymS(skLabel, n.sons[0], c)
-    addDecl(c, labl)
-    n.sons[0] = newSymNode(labl)
+  if n.sons[0].kind != nkEmpty:
+    var labl = newSymG(skLabel, n.sons[0], c)
+    if sfGenSym notin labl.flags:
+      addDecl(c, labl)
+      n.sons[0] = newSymNode(labl, n.sons[0].info)
     suggestSym(n.sons[0], labl)
   n.sons[1] = semStmt(c, n.sons[1])
   closeScope(c.tab)
@@ -284,7 +285,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       Message(a.info, warnEachIdentIsTuple)
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
-      addInterfaceDecl(c, v)
+      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       when oKeepVariableNames:
         if c.InUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
@@ -332,7 +333,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       continue
     v.typ = typ
     v.ast = def               # no need to copy
-    addInterfaceDecl(c, v)
+    if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
     addSon(b, newSymNode(v))
     addSon(b, ast.emptyNode)            # no type description
@@ -422,25 +423,25 @@ proc semForVars(c: PContext, n: PNode): PNode =
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3: 
     if length == 3:
-      var v = newSymS(skForVar, n.sons[0], c)
+      var v = newSymG(skForVar, n.sons[0], c)
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       # BUGFIX: don't use `iter` here as that would strip away
       # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
       # for an example:
       v.typ = n.sons[length-2].typ
       n.sons[0] = newSymNode(v)
-      addDecl(c, v)
+      if sfGenSym notin v.flags: addDecl(c, v)
     else:
       LocalError(n.info, errWrongNumberOfVariables)
   elif length-2 != sonsLen(iter):
     LocalError(n.info, errWrongNumberOfVariables)
   else:
     for i in countup(0, length - 3): 
-      var v = newSymS(skForVar, n.sons[i], c)
+      var v = newSymG(skForVar, n.sons[i], c)
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      addDecl(c, v)
+      if sfGenSym notin v.flags: addDecl(c, v)
   Inc(c.p.nestedLoopCounter)
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
@@ -539,7 +540,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if a.sons[0].kind == nkPragmaExpr:
       pragma(c, s, a.sons[0].sons[1], typePragmas)
     # add it here, so that recursive types are possible:
-    addInterfaceDecl(c, s)
+    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)
 
 proc typeSectionRightSidePass(c: PContext, n: PNode) =
@@ -780,7 +781,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.typ.callConv = lastOptionEntry(c).defaultCC 
     # add it here, so that recursive procs are possible:
     # -2 because we have a scope open for parameters
-    if kind in OverloadableSyms: 
+    if sfGenSym in s.flags: nil
+    elif kind in OverloadableSyms: 
       addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
     else: 
       addInterfaceDeclAt(c, s, c.tab.tos - 2)

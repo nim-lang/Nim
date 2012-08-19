@@ -111,7 +111,7 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest) =
 proc parseDirective(L: var TLexer, tok: var TToken) = 
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
-  of wIf: 
+  of wIf:
     setlen(condStack, len(condStack) + 1)
     var res = EvalppIf(L, tok)
     condStack[high(condStack)] = res
@@ -123,25 +123,27 @@ proc parseDirective(L: var TLexer, tok: var TToken) =
     ppGetTok(L, tok)
     msgs.MsgWriteln(tokToStr(tok))
     ppGetTok(L, tok)
-  of wPutEnv: 
-    ppGetTok(L, tok)
-    var key = tokToStr(tok)
-    ppGetTok(L, tok)
-    os.putEnv(key, tokToStr(tok))
-    ppGetTok(L, tok)
-  of wPrependEnv: 
-    ppGetTok(L, tok)
-    var key = tokToStr(tok)
-    ppGetTok(L, tok)
-    os.putEnv(key, tokToStr(tok) & os.getenv(key))
-    ppGetTok(L, tok)
-  of wAppendenv: 
-    ppGetTok(L, tok)
-    var key = tokToStr(tok)
-    ppGetTok(L, tok)
-    os.putEnv(key, os.getenv(key) & tokToStr(tok))
-    ppGetTok(L, tok)
-  else: lexMessage(L, errInvalidDirectiveX, tokToStr(tok))
+  else:
+    case tok.ident.s.normalize
+    of "putenv": 
+      ppGetTok(L, tok)
+      var key = tokToStr(tok)
+      ppGetTok(L, tok)
+      os.putEnv(key, tokToStr(tok))
+      ppGetTok(L, tok)
+    of "prependenv": 
+      ppGetTok(L, tok)
+      var key = tokToStr(tok)
+      ppGetTok(L, tok)
+      os.putEnv(key, tokToStr(tok) & os.getenv(key))
+      ppGetTok(L, tok)
+    of "appendenv":
+      ppGetTok(L, tok)
+      var key = tokToStr(tok)
+      ppGetTok(L, tok)
+      os.putEnv(key, os.getenv(key) & tokToStr(tok))
+      ppGetTok(L, tok)
+    else: lexMessage(L, errInvalidDirectiveX, tokToStr(tok))
   
 proc confTok(L: var TLexer, tok: var TToken) = 
   ppGetTok(L, tok)

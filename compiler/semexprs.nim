@@ -24,7 +24,7 @@ proc restoreOldStyleType(n: PNode) =
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
-  result = evalTemplate(n, s)
+  result = evalTemplate(n, s, getCurrOwner())
   if semCheck: result = semAfterMacroCall(c, result, s)
   popInfoContext()
 
@@ -1372,7 +1372,9 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
   openScope(c.tab)            # BUGFIX: label is in the scope of block!
-  if n.sons[0].kind != nkEmpty: addDecl(c, newSymS(skLabel, n.sons[0], c))
+  if n.sons[0].kind notin {nkEmpty, nkSym}:
+    # nkSym for gensym'ed labels:
+    addDecl(c, newSymS(skLabel, n.sons[0], c))
   n.sons[1] = semStmtListExpr(c, n.sons[1])
   n.typ = n.sons[1].typ
   closeScope(c.tab)

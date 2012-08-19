@@ -908,7 +908,7 @@ converts the list of arguments to an array implicitely:
     write(f, "\n")
 
   myWriteln(stdout, "abc", "def", "xyz")
-  # is transformed by the compiler to:
+  # is transformed to:
   myWriteln(stdout, ["abc", "def", "xyz"])
 
 This transformation is only done if the varargs parameter is the
@@ -922,7 +922,7 @@ type conversions in this context:
     write(f, "\n")
 
   myWriteln(stdout, 123, "abc", 4.0)
-  # is transformed by the compiler to:
+  # is transformed to:
   myWriteln(stdout, [$123, $"def", $4.0])
 
 In this example ``$`` is applied to any argument that is passed to the 

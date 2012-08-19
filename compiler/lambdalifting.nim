@@ -471,7 +471,8 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
   # add assignment statements:
   for local in scope.capturedVars:
     let fieldAccess = indirectAccess(env, local, env.info)
-    if sfByCopy in local.flags or local.kind == skParam:
+    if local.kind == skParam:
+      # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
       result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
     IdNodeTablePut(o.localsToAccess, local, fieldAccess)
@@ -515,9 +516,9 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       scope.sons[0] = generateClosureCreation(o, env)
     
     # change 'local' to 'closure.local', unless it's a 'byCopy' variable:
-    if sfByCopy notin local.flags:
-      result = IdNodeTableGet(o.localsToAccess, local)
-      assert result != nil, "cannot find: " & local.name.s
+    # if sfByCopy notin local.flags:
+    result = IdNodeTableGet(o.localsToAccess, local)
+    assert result != nil, "cannot find: " & local.name.s
     # else it is captured by copy and this means that 'outer' should continue
     # to access the local as a local.
   of nkLambdaKinds:

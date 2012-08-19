@@ -845,6 +845,9 @@ proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
+
+when not defined(nimhygiene):
+  {.pragma: inject.}
   
 template `=~`*(s: string, pattern: TPeg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that 
@@ -865,7 +868,7 @@ template `=~`*(s: string, pattern: TPeg): bool =
   ##     echo("syntax error")
   ##  
   when not definedInScope(matches):
-    var matches: array[0..pegs.maxSubpatterns-1, string]
+    var matches {.inject.}: array[0..pegs.maxSubpatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

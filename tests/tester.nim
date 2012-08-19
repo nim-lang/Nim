@@ -62,12 +62,15 @@ proc extractSpec(filename: string): string =
     #echo "warning: file does not contain spec: " & filename
     result = ""
 
+when not defined(nimhygiene):
+  {.pragma: inject.}
+
 template parseSpecAux(fillResult: stmt) =
   var ss = newStringStream(extractSpec(filename))
-  var p: TCfgParser
+  var p {.inject.}: TCfgParser
   open(p, ss, filename, 1)
   while true:
-    var e = next(p)
+    var e {.inject.} = next(p)
     case e.kind
     of cfgEof: break
     of cfgSectionStart, cfgOption, cfgError:
