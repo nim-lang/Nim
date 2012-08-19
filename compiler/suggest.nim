@@ -54,9 +54,13 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     OutWriteln(SymToStr(s, isLocal=true, sectionSuggest))
     inc outputs
 
-template wholeSymTab(cond, section: expr) {.immediate.} = 
-  for i in countdown(c.tab.tos-1, 0): 
-    for it in items(c.tab.stack[i]): 
+when not defined(nimhygiene):
+  {.pragma: inject.}
+
+template wholeSymTab(cond, section: expr) {.immediate.} =
+  for i in countdown(c.tab.tos-1, 0):
+    for item in items(c.tab.stack[i]):
+      let it {.inject.} = item
       if cond:
         OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
         inc outputs

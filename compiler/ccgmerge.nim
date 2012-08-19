@@ -224,13 +224,16 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "hasframe":  m.FrameDeclared = decodeVInt(L.buf, L.bufpos) != 0
     else: InternalError("ccgmerge: unkown key: " & k)
+
+when not defined(nimhygiene):
+  {.pragma: inject.}
   
 template withCFile(cfilename: string, body: stmt) = 
   var s = LLStreamOpen(cfilename, fmRead)
   if s == nil: return
-  var L: TBaseLexer
+  var L {.inject.}: TBaseLexer
   openBaseLexer(L, s)
-  var k = newStringOfCap("NIM_merge_FORWARD_TYPES".len)
+  var k {.inject.} = newStringOfCap("NIM_merge_FORWARD_TYPES".len)
   while true:
     skipUntilCmd(L)
     if ^L.bufpos == '\0': break

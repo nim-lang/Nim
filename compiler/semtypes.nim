@@ -78,7 +78,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       incl(e.flags, sfExported) # BUGFIX
       StrTableAdd(c.module.tab, e) # BUGFIX
     addSon(result.n, newSymNode(e))
-    addDeclAt(c, e, c.tab.tos - 1)
+    if sfGenSym notin e.flags: addDeclAt(c, e, c.tab.tos - 1)
     inc(counter)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType = 
@@ -264,7 +264,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     if a.sons[length - 1].kind != nkEmpty: 
       LocalError(a.sons[length - 1].info, errInitHereNotAllowed)
     for j in countup(0, length - 3): 
-      var field = newSymS(skField, a.sons[j], c)
+      var field = newSymG(skField, a.sons[j], c)
       field.typ = typ
       field.position = counter
       inc(counter)
@@ -279,7 +279,9 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   # identifier with visibility
   if n.kind == nkPostfix: 
     if sonsLen(n) == 2 and n.sons[0].kind == nkIdent: 
-      result = newSymS(kind, n.sons[1], c)
+      # for gensym'ed identifiers the identifier may already have been
+      # transformed to a symbol and we need to use that here:
+      result = newSymG(kind, n.sons[1], c)
       var v = n.sons[0].ident
       if sfExported in allowed and v.id == ord(wStar): 
         incl(result.flags, sfExported)
@@ -288,7 +290,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
     else:
       illFormedAst(n)
   else:
-    result = newSymS(kind, n, c)
+    result = newSymG(kind, n, c)
   
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
                         allowed: TSymFlags): PSym = 
@@ -469,6 +471,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       typ = semTypeNode(c, n.sons[length-2], nil)
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
+      suggestSym(n.sons[i], f)
       f.typ = typ
       f.position = pos
       if (rectype != nil) and ({sfImportc, sfExportc} * rectype.flags != {}) and
@@ -548,9 +551,9 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
     let nn = getSysSym"PNimrodNode"
     var a = copySym(param)
     a.typ = nn.typ
-    addDecl(c, a)
+    if sfGenSym notin a.flags: addDecl(c, a)
   else:
-    addDecl(c, param)
+    if sfGenSym notin param.flags: addDecl(c, param)
 
 proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
   tuple[typ: PType, id: PIdent] =
@@ -672,7 +675,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
-      var arg = newSymS(skParam, a.sons[j], c)
+      var arg = newSymG(skParam, a.sons[j], c)
       var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s,
                                     arg.info).skipIntLit
       arg.typ = finalType
@@ -711,7 +714,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
   openScope(c.tab)
-  if n.sons[0].kind != nkEmpty: 
+  if n.sons[0].kind notin {nkEmpty, nkSym}:
     addDecl(c, newSymS(skLabel, n.sons[0], c))
   result = semStmtListType(c, n.sons[1], prev)
   n.sons[1].typ = result
@@ -947,7 +950,7 @@ proc semGenericConstraints(c: PContext, n: PNode, result: PType) =
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
   result = copyNode(n)
   if n.kind != nkGenericParams: 
-    InternalError(n.info, "semGenericParamList")
+    illFormedAst(n)
     return
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
@@ -965,27 +968,27 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     for j in countup(0, L-3): 
       var s: PSym
       if typ == nil:
-        s = newSymS(skType, a.sons[j], c)
+        s = newSymG(skType, a.sons[j], c)
         s.typ = newTypeS(tyGenericParam, c)
       else:
         case typ.kind
         of tyTypeDesc: 
-          s = newSymS(skType, a.sons[j], c)
+          s = newSymG(skType, a.sons[j], c)
           s.typ = newTypeS(tyGenericParam, c)
         of tyExpr:
           #echo "GENERIC EXPR ", a.info.toFileLineCol
           # not a type param, but an expression
           # proc foo[x: expr](bar: int) what is this?
-          s = newSymS(skGenericParam, a.sons[j], c)
+          s = newSymG(skGenericParam, a.sons[j], c)
           s.typ = typ
         else:
           # This handles cases like proc foo[t: tuple] 
           # XXX: we want to turn that into a type class
-          s = newSymS(skType, a.sons[j], c)
+          s = newSymG(skType, a.sons[j], c)
           s.typ = typ
       if def.kind != nkEmpty: s.ast = def
       s.typ.sym = s
       if father != nil: addSonSkipIntLit(father, s.typ)
       s.position = i
       addSon(result, newSymNode(s))
-      addDecl(c, s)
+      if sfGenSym notin s.flags: addDecl(c, s)

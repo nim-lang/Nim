@@ -17,10 +17,19 @@
 
 # included from sem.nim
 
-type 
-  TSemGenericFlag = enum 
+type
+  TSemGenericFlag = enum
     withinBind, withinTypeDesc
   TSemGenericFlags = set[TSemGenericFlag]
+
+proc getIdentNode(n: PNode): PNode =
+  case n.kind
+  of nkPostfix: result = getIdentNode(n.sons[1])
+  of nkPragmaExpr: result = getIdentNode(n.sons[0])
+  of nkIdent, nkAccQuoted, nkSym: result = n
+  else:
+    illFormedAst(n)
+    result = n
 
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
                     toBind: var TIntSet): PNode
@@ -54,15 +63,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
       result = n
   else: result = newSymNode(s, n.info)
   
-proc getIdentNode(n: PNode): PNode = 
-  case n.kind
-  of nkPostfix: result = getIdentNode(n.sons[1])
-  of nkPragmaExpr: result = getIdentNode(n.sons[0])
-  of nkIdent, nkAccQuoted: result = n
-  else: 
-    illFormedAst(n)
-    result = n
-
 proc semGenericStmt(c: PContext, n: PNode, 
                     flags: TSemGenericFlags, toBind: var TIntSet): PNode = 
   result = n

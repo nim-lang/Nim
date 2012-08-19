@@ -166,7 +166,9 @@ proc SameValue*(a, b: PNode): bool =
   of nkStrLit..nkTripleStrLit: 
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal == b.strVal
   else:
-    InternalError(a.info, "SameValue")
+    # don't raise an internal error for 'nimrod check':
+    #InternalError(a.info, "SameValue")
+    nil
 
 proc leValue*(a, b: PNode): bool = 
   # a <= b?
@@ -178,7 +180,10 @@ proc leValue*(a, b: PNode): bool =
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
   of nkStrLit..nkTripleStrLit: 
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
-  else: InternalError(a.info, "leValue")
+  else: 
+    # don't raise an internal error for 'nimrod check':
+    #InternalError(a.info, "leValue")
+    nil
 
 proc lookupInRecord(n: PNode, field: PIdent): PSym = 
   result = nil

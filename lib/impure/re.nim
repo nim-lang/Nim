@@ -218,6 +218,9 @@ proc findAll*(s: string, pattern: TRegEx, start = 0): seq[string] =
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
 
+when not defined(nimhygiene):
+  {.pragma: inject.}
+
 template `=~` *(s: string, pattern: TRegEx): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
@@ -237,7 +240,7 @@ template `=~` *(s: string, pattern: TRegEx): expr =
   ##     echo("syntax error")
   ##
   when not definedInScope(matches):
-    var matches: array[0..re.maxSubPatterns-1, string]
+    var matches {.inject.}: array[0..re.maxSubPatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

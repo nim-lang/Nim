@@ -380,6 +380,13 @@ proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType =
   var marker = InitIntSet()
   result = mutateTypeAux(marker, t, iter, closure)
 
+proc ValueToString(a: PNode): string = 
+  case a.kind
+  of nkCharLit..nkUInt64Lit: result = $(a.intVal)
+  of nkFloatLit..nkFloat128Lit: result = $(a.floatVal)
+  of nkStrLit..nkTripleStrLit: result = a.strVal
+  else: result = "<invalid value>"
+
 proc rangeToStr(n: PNode): string = 
   assert(n.kind == nkRange)
   result = ValueToString(n.sons[0]) & ".." & ValueToString(n.sons[1])
