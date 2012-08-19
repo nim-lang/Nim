@@ -411,7 +411,7 @@ proc JoinPath*(head, tail: string): string {.
     else:
       result = head & DirSep & tail
 
-proc JoinPath*(parts: openarray[string]): string {.noSideEffect,
+proc JoinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
   ## The same as `JoinPath(head, tail)`, but works with any number
   ## of directory parts.
