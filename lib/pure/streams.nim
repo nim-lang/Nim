@@ -194,7 +194,7 @@ proc ssAtEnd(s: PStream): bool =
     
 proc ssSetPosition(s: PStream, pos: int) = 
   var s = PStringStream(s)
-  s.pos = min(pos, s.data.len-1)
+  s.pos = clamp(pos, 0, s.data.high)
 
 proc ssGetPosition(s: PStream): int =
   var s = PStringStream(s)
