@@ -1470,7 +1470,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTypeOfExpr:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     typ = makeTypedesc(c, typ)
-    var sym = newSym(skType, getIdent"TypeOfExpr", typ.owner).linkTo(typ)
+    var sym = newSym(skType, getIdent"TypeOfExpr", 
+                     typ.owner, n.info).linkTo(typ)
     sym.flags.incl(sfAnon)
     result = newSymNode(sym, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 

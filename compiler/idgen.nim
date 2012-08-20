@@ -11,7 +11,7 @@
 
 import idents, strutils, os, options
 
-var gFrontEndId, gBackendId*, genSymBaseId*: int
+var gFrontEndId, gBackendId*: int
 
 const
   debugIds* = false
@@ -33,9 +33,6 @@ proc getID*(): int {.inline.} =
 proc backendId*(): int {.inline.} = 
   result = gBackendId
   inc(gBackendId)
-
-proc genSym*(basename: string): PIdent =
-  result = getIdent(basename & $genSymBaseId)
 
 proc setId*(id: int) {.inline.} = 
   gFrontEndId = max(gFrontEndId, id + 1)
@@ -66,4 +63,3 @@ proc loadMaxIds*(project: string) =
         gFrontEndId = max(gFrontEndId, frontEndId)
         gBackEndId = max(gBackEndId, backEndId)
     f.close()
-

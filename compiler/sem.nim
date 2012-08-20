@@ -55,8 +55,7 @@ proc isTopLevel(c: PContext): bool {.inline.} =
   result = c.tab.tos <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
-  result = newSym(kind, considerAcc(n), getCurrOwner())
-  result.info = n.info
+  result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
@@ -65,8 +64,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     InternalAssert sfGenSym in result.flags
     InternalAssert result.kind == kind
   else:
-    result = newSym(kind, considerAcc(n), getCurrOwner())
-    result.info = n.info
+    result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym

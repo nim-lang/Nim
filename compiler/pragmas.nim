@@ -27,7 +27,7 @@ const
     wGenSym, wInject}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
-  templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject}
+  templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject}
@@ -454,8 +454,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   elif it.sons[0].kind != nkIdent: invalidPragma(n)
   elif it.sons[1].kind != nkIdent: invalidPragma(n)
   
-  var userPragma = NewSym(skTemplate, it.sons[1].ident, nil)
-  userPragma.info = it.info
+  var userPragma = NewSym(skTemplate, it.sons[1].ident, nil, it.info)
   var body = newNodeI(nkPragma, n.info)
   for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
   userPragma.ast = body
@@ -487,6 +486,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wExtern: setExternName(sym, expectStrLit(c, it))
           of wImmediate:
             if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
+            else: invalidPragma(it)
+          of wDirty:
+            if sym.kind == skTemplate: incl(sym.flags, sfDirty)
             else: invalidPragma(it)
           of wImportCpp:
             processImportCpp(sym, getOptionalStr(c, it, sym.name.s))

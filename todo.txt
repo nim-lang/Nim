@@ -1,7 +1,8 @@
 version 0.9.0
 =============
 
-- make templates hygienic by default: 'gensym', 'inject' pragmas
+- make templates hygienic by default: 'gensym', 'inject' pragmas;
+  document 'gensym', 'inject' and 'dirty'
 - make 'bind' default for templates and introduce 'mixin'
 - use ``\`` for comment continuations
 - ``final`` should be the default for objects

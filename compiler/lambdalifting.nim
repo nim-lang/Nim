@@ -162,7 +162,7 @@ proc newEnv(outerProc: PSym, up: PEnv, n: PNode): PEnv =
   result.attachedNode = n
 
 proc addField(tup: PType, s: PSym) =
-  var field = newSym(skField, s.name, s.owner)
+  var field = newSym(skField, s.name, s.owner, s.info)
   let t = skipIntLit(s.typ)
   field.typ = t
   field.position = sonsLen(tup)
@@ -179,7 +179,7 @@ proc addDep(e, d: PEnv, owner: PSym): PSym =
   for x, field in items(e.deps):
     if x == d: return field
   var pos = sonsLen(e.tup)
-  result = newSym(skField, getIdent(upName & $pos), owner)
+  result = newSym(skField, getIdent(upName & $pos), owner, owner.info)
   result.typ = newType(tyRef, owner)
   result.position = pos
   assert d.tup != nil
@@ -220,8 +220,7 @@ proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
   #s.typ.callConv == ccClosure
 
 proc addClosureParam(i: PInnerContext, e: PEnv) =
-  var cp = newSym(skParam, getIdent(paramname), i.fn)
-  cp.info = i.fn.info
+  var cp = newSym(skParam, getIdent(paramname), i.fn, i.fn.info)
   incl(cp.flags, sfFromGeneric)
   cp.typ = newType(tyRef, i.fn)
   rawAddSon(cp.typ, e.tup)
@@ -449,9 +448,8 @@ proc addVar*(father, v: PNode) =
 
 proc getClosureVar(o: POuterContext, e: PEnv): PSym =
   if e.closure == nil:
-    result = newSym(skVar, getIdent(envName), o.fn)
+    result = newSym(skVar, getIdent(envName), o.fn, e.attachedNode.info)
     incl(result.flags, sfShadowed)
-    result.info = e.attachedNode.info
     result.typ = newType(tyRef, o.fn)
     result.typ.rawAddSon(e.tup)
     e.closure = result
@@ -590,8 +588,7 @@ type
     tup: PType
 
 proc newIterResult(iter: PSym): PSym =
-  result = newSym(skResult, getIdent":result", iter)
-  result.info = iter.info
+  result = newSym(skResult, getIdent":result", iter, iter.info)
   result.typ = iter.typ.sons[0]
   incl(result.flags, sfUsed)
 
@@ -650,15 +647,14 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
   c.tup = newType(tyTuple, iter)
   c.tup.n = newNodeI(nkRecList, iter.info)
 
-  var cp = newSym(skParam, getIdent(paramname), iter)
-  cp.info = iter.info
+  var cp = newSym(skParam, getIdent(paramname), iter, iter.info)
   incl(cp.flags, sfFromGeneric)
   cp.typ = newType(tyRef, iter)
   rawAddSon(cp.typ, c.tup)
   c.closureParam = cp
   addHiddenParam(iter, cp)
 
-  c.state = newSym(skField, getIdent(":state"), iter)
+  c.state = newSym(skField, getIdent(":state"), iter, iter.info)
   c.state.typ = getStateType(iter)
   addField(c.tup, c.state)
 

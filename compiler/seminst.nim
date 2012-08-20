@@ -21,8 +21,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyTypeClass, tyExpr}: continue
-    var s = newSym(skType, q.name, getCurrOwner())
-    s.info = q.info
+    var s = newSym(skType, q.name, getCurrOwner(), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(IdTableGet(pt, q.typ))
     if t == nil:

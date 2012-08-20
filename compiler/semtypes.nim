@@ -622,7 +622,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
             result = genericParams.sons[i].typ
             break addImplicitGeneric
 
-        var s = newSym(skType, paramTypId, getCurrOwner())
+        var s = newSym(skType, paramTypId, getCurrOwner(), info)
         if isAnon: s.flags.incl(sfAnon)
         s.linkTo(typeClass)
         s.position = genericParams.len
