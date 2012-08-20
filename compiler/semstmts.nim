@@ -380,7 +380,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var trueSymbol = StrTableGet(magicsys.systemModule.Tab, getIdent"true")
   if trueSymbol == nil: 
     LocalError(n.info, errSystemNeeds, "true")
-    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner())
+    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
     trueSymbol.typ = getSysType(tyBool)
 
   result.add(newSymNode(trueSymbol, n.info))
@@ -620,10 +620,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
        aa.sons[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
       assert s.typ.sons[0].sym == nil
-      var anonObj = newSym(skType, getIdent(s.name.s & ":ObjectType"), 
-                                 getCurrOwner())
-      anonObj.info = s.info
-      s.typ.sons[0].sym = anonObj
+      s.typ.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"), 
+                                 getCurrOwner(), s.info)
 
 proc SemTypeSection(c: PContext, n: PNode): PNode =
   typeSectionLeftSidePass(c, n)
@@ -650,8 +648,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   
 proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) = 
   if t != nil: 
-    var s = newSym(skResult, getIdent"result", getCurrOwner())
-    s.info = info
+    var s = newSym(skResult, getIdent"result", getCurrOwner(), info)
     s.typ = t
     incl(s.flags, sfUsed)
     addParamOrResult(c, s, owner)
@@ -697,8 +694,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
-  var s = newSym(skProc, getIdent":anonymous", getCurrOwner())
-  s.info = n.info
+  var s = newSym(skProc, getIdent":anonymous", getCurrOwner(), n.info)
   s.ast = n
   n.sons[namePos] = newSymNode(s)
   pushOwner(s)
@@ -830,7 +826,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator:
-        addDecl(c, newSym(skUnknown, getIdent"result", nil))
+        addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
       var toBind = initIntSet()
       n.sons[bodyPos] = semGenericStmtScope(c, n.sons[bodyPos], {}, toBind)
       fixupInstantiatedSymbols(c, s)

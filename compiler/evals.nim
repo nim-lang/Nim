@@ -254,7 +254,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     for i in countup(0, sonsLen(t) - 1): 
       var p = newNodeIT(nkExprColonExpr, info, t.sons[i])
       var field = if t.n != nil: t.n.sons[i].sym else: newSym(
-        skField, getIdent(":tmp" & $i), t.owner)
+        skField, getIdent(":tmp" & $i), t.owner, info)
       addSon(p, newSymNode(field, info))
       addSon(p, getNullValue(t.sons[i], info))
       addSon(result, p)
@@ -1358,7 +1358,7 @@ proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
   if evalTemplateCounter > 100: 
     GlobalError(n.info, errTemplateInstantiationTooNested)
 
-  inc genSymBaseId
+  #inc genSymBaseId
   var s = newStackFrame()
   s.call = n
   setlen(s.params, 2)

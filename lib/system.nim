@@ -2290,6 +2290,9 @@ template doAssert*(cond: bool, msg = "") =
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
 
+when not defined(nimhygiene):
+  {.pragma: inject.}
+
 template onFailedAssert*(msg: expr, code: stmt): stmt =
   ## Sets an assertion failure handler that will intercept any assert statements
   ## following `onFailedAssert` in the current lexical scope.
@@ -2310,7 +2313,7 @@ template onFailedAssert*(msg: expr, code: stmt): stmt =
   ##     assert(...)
   ##
   template raiseAssert(msgIMPL: string): stmt =
-    let `msg` = msgIMPL
+    let msg {.inject.} = msgIMPL
     code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =

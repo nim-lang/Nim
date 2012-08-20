@@ -60,7 +60,8 @@ type
     wFieldChecks, 
     wWatchPoint, wSubsChar, 
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
-    wWrite, wGensym, wInject, wInheritable, wThreadVar, wEmit, wNoStackFrame,
+    wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
+    wNoStackFrame,
     wImplicitStatic, wGlobal, wHoist
 
     wAuto, wBool, wCatch, wChar, wClass,
@@ -138,7 +139,7 @@ const
     "passc", "passl", "borrow", "discardable", "fieldchecks",
     "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
-    "write", "gensym", "inject", "inheritable", "threadvar", "emit",
+    "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "nostackframe", "implicitstatic", "global", "hoist",
     
     "auto", "bool", "catch", "char", "class",

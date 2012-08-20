@@ -96,8 +96,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
   
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PSym = 
-  result = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c))
-  result.info = info
+  result = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
   result.typ = skipTypes(typ, {tyGenericInst})
   incl(result.flags, sfFromGeneric)
 
@@ -205,9 +204,8 @@ proc hasContinue(n: PNode): bool =
       if hasContinue(n.sons[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, getCurrOwner(c))
+  result = newSym(skLabel, nil, getCurrOwner(c), n.info)
   result.name = getIdent(genPrefix & $result.id)
-  result.info = n.info
 
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
   var labl: PSym
