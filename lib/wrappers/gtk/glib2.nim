@@ -4529,3 +4529,6 @@ proc g_idle_add_full*(priority: guint, function,
 
 proc g_source_remove*(tag: guint): gboolean {.
   cdecl, dynlib: gliblib, importc: "g_source_remove".}
+
+proc g_signal_emit_by_name*(instance: gpointer, detailed_signal: cstring) {.
+  cdecl, varargs, dynlib: gobjectlib, importc.}

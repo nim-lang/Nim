@@ -4444,6 +4444,10 @@ proc get_value*(adjustment: PAdjustment): gdouble{.cdecl,
     dynlib: lib, importc: "gtk_adjustment_get_value".}
 proc set_value*(adjustment: PAdjustment, value: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_adjustment_set_value".}
+proc get_upper*(adjustment: PAdjustment): gdouble{.cdecl, 
+    dynlib: lib, importc: "gtk_adjustment_get_upper".}
+proc get_page_size*(adjustment: PAdjustment): gdouble{.cdecl, 
+    dynlib: lib, importc: "gtk_adjustment_get_page_size".}
 proc TYPE_ALIGNMENT*(): GType
 proc ALIGNMENT*(obj: pointer): PAlignment
 proc ALIGNMENT_CLASS*(klass: pointer): PAlignmentClass
@@ -9507,6 +9511,14 @@ proc get_line_log_attrs*(buffer: PTextBuffer,
     dynlib: lib, importc: "_gtk_text_buffer_get_line_log_attrs".}
 proc notify_will_remove_tag*(buffer: PTextBuffer, tag: PTextTag){.
     cdecl, dynlib: lib, importc: "_gtk_text_buffer_notify_will_remove_tag".}
+proc get_has_selection*(buffer: PTextBuffer): bool {.cdecl,
+    dynlib: lib, importc: "gtk_text_buffer_get_has_selection".}
+proc select_range*(buffer: PTextBuffer, ins,
+    bound: PTextIter) {.cdecl, dynlib: lib, importc: "gtk_text_buffer_select_range".}
+proc backspace*(buffer: PTextBuffer, iter: PTextIter,
+    interactive, defaultEditable: bool): bool {.cdecl,
+    dynlib: lib, importc: "gtk_text_buffer_backspace".}
+
 proc TYPE_TEXT_LAYOUT*(): GType
 proc TEXT_LAYOUT*(obj: pointer): PTextLayout
 proc TEXT_LAYOUT_CLASS*(klass: pointer): PTextLayoutClass
@@ -16874,12 +16886,6 @@ proc get_realized*(w: PWidget): gboolean {.cdecl, dynlib: lib,
 proc set_skip_taskbar_hint*(window: PWindow, setting: gboolean){.cdecl,
   dynlib: lib, importc: "gtk_window_set_skip_taskbar_hint".}
 
-proc nimrod_init*() = 
-  var 
-    cmdLine{.importc: "cmdLine".}: array[0..255, cstring]
-    cmdCount{.importc: "cmdCount".}: cint
-  init(addr(cmdLine), addr(cmdCount))
-
 type
   TTooltip* {.pure, final.} = object
   PTooltip* = ptr TTooltip
@@ -16904,3 +16910,12 @@ proc set_markup*(tp: PTooltip, mk: cstring){.cdecl, dynlib: lib,
 
 proc set_visible_window*(evBox: PEventBox, v: gboolean){.cdecl, dynlib: lib,
   importc: "gtk_event_box_set_visible_window".}
+
+proc get_vadjustment*(scrolled_window: PTextView): PAdjustment{.
+    cdecl, dynlib: lib, importc: "gtk_text_view_get_vadjustment".}
+
+proc nimrod_init*() =
+  var
+    cmdLine{.importc: "cmdLine".}: array[0..255, cstring]
+    cmdCount{.importc: "cmdCount".}: cint
+  init(addr(cmdLine), addr(cmdCount))
