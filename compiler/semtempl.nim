@@ -50,7 +50,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
     a = nextOverloadIter(o, c, n)
     inc(i)
     if i > 1: break
-  if i <= 1: 
+  if i <= 1:
+    # XXX this makes more sense but breaks bootstrapping for now:
+    # and s.kind notin routineKinds:
     result = newSymNode(s, n.info)
     markUsed(n, s)
   else:
