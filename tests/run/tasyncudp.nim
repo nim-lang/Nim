@@ -16,7 +16,8 @@ var
 proc serverRead(s: PAsyncSocket) =
   var data = ""
   var address = ""
-  if s.recvFromAsync(data, 9, address):
+  var port: TPort
+  if s.recvFromAsync(data, 9, address, port):
     assert address == "127.0.0.1"
     msgCount.inc()
   
