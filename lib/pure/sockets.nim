@@ -1205,7 +1205,7 @@ proc recvAsync*(socket: TSocket, s: var TaintedString): bool =
   result = True
 
 proc recvFrom*(socket: TSocket, data: var string, length: int,
-               address: var string, port: var int16, flags = 0'i32): int =
+               address: var string, port: var TPort, flags = 0'i32): int =
   ## Receives data from ``socket``. This function should normally be used with
   ## connection-less sockets (UDP sockets).
   ##
@@ -1223,10 +1223,10 @@ proc recvFrom*(socket: TSocket, data: var string, length: int,
   
   if result != -1:
     address = $inet_ntoa(sockAddress.sin_addr)
-    port = ntohs(sockAddress.sin_port)
+    port = ntohs(sockAddress.sin_port).TPort
 
 proc recvFromAsync*(socket: TSocket, data: var String, length: int,
-                    address: var string, port: var int16, flags = 0'i32): bool =
+                    address: var string, port: var TPort, flags = 0'i32): bool =
   ## Similar to ``recvFrom`` but raises an EOS error when an error occurs.
   ## Returns False if no messages could be received from ``socket``.
   result = true
