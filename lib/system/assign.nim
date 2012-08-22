@@ -71,8 +71,13 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
     dstseq.reserved = seq.len
-  of tyObject, tyTuple:
-    # we don't need to copy m_type field for tyObject, as they are equal anyway
+  of tyObject:
+    # we need to copy m_type field for tyObject, as it could be empty for
+    # sequence reallocations:
+    var pint = cast[ptr PNimType](dest)
+    pint[] = cast[ptr PNimType](src)[]
+    genericAssignAux(dest, src, mt.node, shallow)
+  of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
