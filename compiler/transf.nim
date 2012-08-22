@@ -556,11 +556,14 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.ptransnode)
     if len(result) == 2: result = result[1]
-  elif n.sons[0].kind == nkSym and n.sons[0].sym.kind == skMethod: 
-    # use the dispatcher for the call:
-    result = methodCall(transformSons(c, n).pnode).ptransNode
   else:
-    result = transformSons(c, n)
+    let s = transformSons(c, n).pnode
+    # bugfix: check after 'transformSons' if it's still a method call:
+    # use the dispatcher for the call:
+    if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
+      result = methodCall(s).ptransNode
+    else:
+      result = s.ptransNode
 
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
