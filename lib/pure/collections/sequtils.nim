@@ -15,6 +15,9 @@
 ## **Note**: This interface will change as soon as the compiler supports
 ## closures and proper coroutines.
 
+when not defined(nimhygiene):
+  {.pragma: dirty.}
+
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside of one sequence.
   var L = 0
@@ -50,7 +53,7 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ## Returns all items in a sequence that fulfilled the predicate.
   accumulateResult(filter(seq1, pred))
 
-template filterIt*(seq1, pred: expr): expr {.immediate.} =
+template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
   ## Finds a specific item in a sequence as long as the 
   ## predicate returns true. The predicate needs to be an expression
   ## containing ``it``: ``filterIt("abcxyz", it == 'x')``.

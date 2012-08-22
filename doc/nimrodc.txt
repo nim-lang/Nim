@@ -487,7 +487,7 @@ objects as `shallow`:idx:\:
 .. code-block:: Nimrod
   var s = "abc"
   shallow(s) # mark 's' as shallow string
-  var x = s  # now might does not copy the string!
+  var x = s  # now might not copy the string!
   
 Usage of ``shallow`` is always safe once you know the string won't be modified
 anymore, similar to Ruby's `freeze`:idx:.

@@ -2967,8 +2967,8 @@ In templates identifiers can be constructed with the backticks notation:
 
   template typedef(name: expr, typ: typeDesc) {.immediate.} = 
     type
-      `T name`* = typ
-      `P name`* = ref `T name`
+      `T name`* {.inject.} = typ
+      `P name`* {.inject.} = ref `T name`
       
   typedef(myint, int)
   var x: PMyInt
@@ -2982,7 +2982,7 @@ Lookup rules for template parameters
 
 A parameter ``p`` in a template is even substituted in the expression ``x.p``.
 Thus template arguments can be used as field names and a global symbol can be
-covered by the same argument name even when fully qualified:
+shadowed by the same argument name even when fully qualified:
 
 .. code-block:: nimrod
   # module 'm'
@@ -3016,6 +3016,61 @@ But the global symbol can properly be captured by a ``bind`` statement:
 
   tstLev(levA)
   # produces: 'levA levB'
+
+
+Hygiene in templates
+~~~~~~~~~~~~~~~~~~~~
+
+Per default templates are `hygienic`:idx:\: Local identifiers declared in a
+template cannot be accessed in the instantiation context:
+
+.. code-block:: nimrod
+  
+  template newException*(exceptn: typeDesc, message: string): expr =
+    var
+      e: ref exceptn  # e is implicitely gensym'ed here
+    new(e)
+    e.msg = message
+    e
+    
+  # so this works:
+  let e = "message"
+  raise newException(EIO, e)
+
+
+Whether a symbol that is declared in a template is exposed to the instantiation
+scope is controlled by the `inject`:idx: and `gensym`:idx: pragmas: gensym'ed
+symbols are not exposed but inject'ed are.
+
+The default for symbols of entity ``type``, ``var``, ``let`` and ``const``
+is ``gensym`` and for ``proc``, ``iterator``, ``converter``, ``template``,
+``macro`` is ``inject``. However, if the name of the entity is passed as a 
+template parameter, it is an inject'ed symbol:
+
+.. code-block:: nimrod
+  template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
+    block:
+      var f: TFile  # since 'f' is a template param, it's injected implicitely
+      ...
+      
+  withFile(txt, "ttempl3.txt", fmWrite):
+    txt.writeln("line 1")
+    txt.writeln("line 2")
+
+
+The ``inject`` and ``gensym`` pragmas are second class annotations; they have
+no semantics outside of a template definition and cannot be abstracted over:
+
+.. code-block:: nimrod
+  {.pragma myInject: inject.}
+  
+  template t() =
+    var x {.myInject.}: int # does NOT work
+
+
+To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
+a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
+
 
 
 Macros

@@ -1259,8 +1259,8 @@ proc max*[T](x: varargs[T]): T =
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b] 
-  if x > a: return a
-  if x < b: return b
+  if x < a: return a
+  if x > b: return b
   return x
 
 iterator items*[T](a: openarray[T]): T {.inline.} =
@@ -1657,9 +1657,9 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
   ## side effects, so that it can be used for debugging routines marked as
   ## ``noSideEffect``.
 
-template newException*(exceptn: typeDesc, message: string): expr = 
+template newException*(exceptn: typeDesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
-  ## to `message`. Returns the new exception object. 
+  ## to `message`. Returns the new exception object.
   # block: # open a new scope
   var
     e: ref exceptn

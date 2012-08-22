@@ -866,7 +866,7 @@ template `=~`*(s: string, pattern: TPeg): expr =
   ##     echo("syntax error")
   ##  
   when not definedInScope(matches):
-    var matches: array[0..maxSubpatterns-1, string]
+    var matches {.inject.}: array[0..maxSubpatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
