@@ -16,6 +16,8 @@ import
   os, hashes, math
 
 {.pragma: myShallow.}
+when not defined(nimhygiene):
+  {.pragma: dirty.}
 
 type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
@@ -48,7 +50,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
-template rawGetImpl() =
+template rawGetImpl() {.dirty.} =
   var h: THash = hash(key) and high(s.data) # start with real hash value
   while s.data[h].slot != seEmpty:
     if s.data[h].key == key and s.data[h].slot == seFilled:
@@ -56,7 +58,7 @@ template rawGetImpl() =
     h = nextTry(h, high(s.data))
   result = -1
 
-template rawInsertImpl() =
+template rawInsertImpl() {.dirty.} =
   var h: THash = hash(key) and high(data)
   while data[h].slot == seFilled:
     h = nextTry(h, high(data))
@@ -81,14 +83,14 @@ proc Enlarge[A](s: var TSet[A]) =
     if s.data[i].slot == seFilled: RawInsert(s, n, s.data[i].key)
   swap(s.data, n)
 
-template inclImpl() =
+template inclImpl() {.dirty.} =
   var index = RawGet(s, key)
   if index < 0:
     if mustRehash(len(s.data), s.counter): Enlarge(s)
     RawInsert(s, s.data, key)
     inc(s.counter)
 
-template containsOrInclImpl() =
+template containsOrInclImpl() {.dirty.} =
   var index = RawGet(s, key)
   if index >= 0:
     result = true
@@ -125,7 +127,7 @@ proc toSet*[A](keys: openarray[A]): TSet[A] =
   result = initSet[A](nextPowerOfTwo(keys.len+10))
   for key in items(keys): result.incl(key)
 
-template dollarImpl(): stmt =
+template dollarImpl(): stmt {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
@@ -155,7 +157,7 @@ proc card*[A](s: TOrderedSet[A]): int {.inline.} =
   ## alias for `len`.
   result = s.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) =
+template forAllOrderedPairs(yieldStmt: stmt) {.dirty.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next

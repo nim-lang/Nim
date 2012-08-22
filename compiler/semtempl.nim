@@ -52,7 +52,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
     if i > 1: break
   if i <= 1:
     # XXX this makes more sense but breaks bootstrapping for now:
-    # and s.kind notin routineKinds:
+    # (s.kind notin routineKinds or s.magic != mNone):
+    # for some reason 'nextTry' is copied and considered as a candidate in
+    # tables.nim
     result = newSymNode(s, n.info)
     markUsed(n, s)
   else:
@@ -68,12 +70,19 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
 proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
   for i in 0 .. < n.len:
     var a = n.sons[i]
-    # If 'a' is an overloaded symbol, we use the first symbol as a 'witness'
-    # and use the fact that subsequent lookups will yield the same symbol!
-    # This is currently the case due to the hash table's implementation...
+    # If 'a' is an overloaded symbol, we used to use the first symbol
+    # as a 'witness' and use the fact that subsequent lookups will yield
+    # the same symbol!
+    # This is however not true anymore for hygienic templates as semantic
+    # processing for them changes the symbol table...
     let s = QualifiedLookUp(c, a)
     if s != nil:
-      toBind.incl(s.id)
+      # we need to mark all symbols:
+      let sc = symChoice(c, n, s)
+      if sc.kind == nkSym:
+        toBind.incl(sc.sym.id)
+      else:
+        for x in items(sc): toBind.incl(x.sym.id)
     else:
       illFormedAst(a)
   result = newNodeI(nkEmpty, n.info)

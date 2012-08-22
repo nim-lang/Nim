@@ -31,19 +31,19 @@ var
   
   checkpoints: seq[string] = @[]
 
-template TestSetupIMPL*: stmt = nil
-template TestTeardownIMPL*: stmt = nil
+template TestSetupIMPL*: stmt {.dirty.} = nil
+template TestTeardownIMPL*: stmt {.dirty.} = nil
 
 proc shouldRun(testName: string): bool =
   result = true
 
-template suite*(name: expr, body: stmt): stmt =
+template suite*(name: expr, body: stmt): stmt {.dirty.} =
   block:
-    template setup*(setupBody: stmt): stmt =
-      template TestSetupIMPL: stmt = setupBody
+    template setup*(setupBody: stmt): stmt {.dirty.} =
+      template TestSetupIMPL: stmt {.dirty.} = setupBody
 
-    template teardown*(teardownBody: stmt): stmt =
-      template TestTeardownIMPL: stmt = teardownBody
+    template teardown*(teardownBody: stmt): stmt {.dirty.} =
+      template TestTeardownIMPL: stmt {.dirty.} = teardownBody
 
     body
 
@@ -59,12 +59,12 @@ proc testDone(name: string, s: TTestStatus) =
     else:
       echo "[", $s, "] ", name, "\n"
   
-template test*(name: expr, body: stmt): stmt =
+template test*(name: expr, body: stmt): stmt {.dirty.} =
   bind shouldRun, checkpoints, testDone
 
   if shouldRun(name):
     checkpoints = @[]
-    var TestStatusIMPL = OK
+    var TestStatusIMPL {.inject.} = OK
     
     try:
       TestSetupIMPL()
@@ -146,13 +146,14 @@ macro check*(conditions: stmt): stmt =
     var ast = conditions.treeRepr
     error conditions.lineinfo & ": Malformed check statement:\n" & ast
 
-template require*(conditions: stmt): stmt =
+template require*(conditions: stmt): stmt {.dirty.} =
   block:
-    const AbortOnError = true    
+    const AbortOnError {.inject.} = true
     check conditions
 
 macro expect*(exp: stmt): stmt =
-  template expectBody(errorTypes, lineInfoLit: expr, body: stmt): PNimrodNode =
+  template expectBody(errorTypes, lineInfoLit: expr,
+                      body: stmt): PNimrodNode {.dirty.} =
     try:
       body
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")

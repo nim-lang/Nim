@@ -26,6 +26,9 @@ type
     data: TKeyValuePairSeq[A, B]
     counter: int
 
+when not defined(nimhygiene):
+  {.pragma: dirty.}
+
 proc len*[A, B](t: TTable[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
@@ -66,7 +69,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
-template rawGetImpl() =
+template rawGetImpl() {.dirty.} =
   var h: THash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].slot != seEmpty:
     if t.data[h].key == key and t.data[h].slot == seFilled:
@@ -74,7 +77,7 @@ template rawGetImpl() =
     h = nextTry(h, high(t.data))
   result = -1
 
-template rawInsertImpl() =
+template rawInsertImpl() {.dirty.} =
   var h: THash = hash(key) and high(data)
   while data[h].slot == seFilled:
     h = nextTry(h, high(data))
@@ -115,12 +118,12 @@ proc Enlarge[A, B](t: var TTable[A, B]) =
     if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-template AddImpl() =
+template AddImpl() {.dirty.} =
   if mustRehash(len(t.data), t.counter): Enlarge(t)
   RawInsert(t, t.data, key, val)
   inc(t.counter)
 
-template PutImpl() =
+template PutImpl() {.dirty.} =
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].val = val
@@ -129,7 +132,7 @@ template PutImpl() =
 
 when false:
   # not yet used:
-  template HasKeyOrPutImpl() =
+  template HasKeyOrPutImpl() {.dirty.} =
     var index = RawGet(t, key)
     if index >= 0:
       t.data[index].val = val
@@ -168,7 +171,7 @@ proc toTable*[A, B](pairs: openarray[tuple[key: A,
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
   for key, val in items(pairs): result[key] = val
 
-template dollarImpl(): stmt =
+template dollarImpl(): stmt {.dirty.} =
   if t.len == 0:
     result = "{:}"
   else:
@@ -199,7 +202,7 @@ proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) =
+template forAllOrderedPairs(yieldStmt: stmt) {.dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next

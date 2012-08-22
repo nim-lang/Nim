@@ -11,6 +11,9 @@
 ## to do so, the 'next' and 'prev' pointers are not hidden from you and can
 ## be manipulated directly for efficiency.
 
+when not defined(nimhygiene):
+  {.pragma: dirty.}
+
 type
   TDoublyLinkedNode* {.pure, 
       final.}[T] = object ## a node a doubly linked list consists of
@@ -62,13 +65,13 @@ proc newSinglyLinkedNode*[T](value: T): PSinglyLinkedNode[T] =
   new(result)
   result.value = value
 
-template itemsListImpl() =
+template itemsListImpl() {.dirty.} =
   var it = L.head
   while it != nil:
     yield it.value
     it = it.next
 
-template itemsRingImpl() =
+template itemsRingImpl() {.dirty.} =
   var it = L.head
   if it != nil:
     while true:
@@ -76,14 +79,14 @@ template itemsRingImpl() =
       it = it.next
       if it == L.head: break
 
-template nodesListImpl() =
+template nodesListImpl() {.dirty.} =
   var it = L.head
   while it != nil:
     var nxt = it.next
     yield it
     it = nxt
 
-template nodesRingImpl() =
+template nodesRingImpl() {.dirty.} =
   var it = L.head
   if it != nil:
     while true:
@@ -92,7 +95,7 @@ template nodesRingImpl() =
       it = nxt
       if it == L.head: break
 
-template findImpl() =
+template findImpl() {.dirty.} =
   for x in nodes(L):
     if x.value == value: return x
 
@@ -132,7 +135,7 @@ iterator nodes*[T](L: TDoublyLinkedRing[T]): PDoublyLinkedNode[T] =
   ## list during traversal is supported.
   nodesRingImpl()
 
-template dollarImpl() =
+template dollarImpl() {.dirty.} =
   result = "["
   for x in nodes(L):
     if result.len > 1: result.add(", ")
