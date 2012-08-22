@@ -36,6 +36,7 @@ proc methodCall*(n: PNode): PNode =
   result = n
   # replace ordinary method by dispatcher method: 
   var disp = lastSon(result.sons[0].sym.ast).sym
+  assert sfDispatcher in disp.flags
   result.sons[0].sym = disp
   # change the arguments to up/downcasts to fit the dispatcher's parameters:
   for i in countup(1, sonsLen(result)-1):
@@ -99,6 +100,8 @@ proc methodDef*(s: PSym, fromCache: bool) =
     if s.typ.sons[0] != nil: 
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
     attachDispatcher(s, newSymNode(disp))
+    # attach to itself to prevent bugs:
+    attachDispatcher(disp, newSymNode(disp))
 
 proc relevantCol(methods: TSymSeq, col: int): bool = 
   # returns true iff the position is relevant
