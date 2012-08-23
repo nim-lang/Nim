@@ -136,6 +136,16 @@ aligned to the preceding one, it does not start a new comment:
   i = i + 1 # This a new comment that is NOT
   echo(i)   # continued here, because this comment refers to the echo statement
 
+
+The alignment requirement does not hold if the preceding comment piece ends in
+a backslash (followed by optional whitespace): 
+
+.. code-block:: nimrod
+  type
+    TMyObject {.final, pure, acyclic.} = object  # comment continues: \
+      # we have lots of space here to comment 'TMyObject'.
+      # This line belongs to the comment as it's properly aligned.
+
 Comments are tokens; they are only allowed at certain places in the input file
 as they belong to the syntax tree! This feature enables perfect source-to-source
 transformations (such as pretty-printing) and superior documentation generators.

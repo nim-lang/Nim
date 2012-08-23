@@ -51,7 +51,7 @@ Library Additions
 - Added ``system.clamp`` to limit a value within an interval ``[a, b]``.
 - Added ``strutils.continuesWith``.
 - Added ``system.getStackTrace``.
-- Added ``system.||`` for parallel for loop support.
+- Added ``system.||`` for parallel ``for`` loop support.
 - The GC supports (soft) realtime systems via ``GC_setMaxPause`` 
   and ``GC_step`` procs.
 - The sockets module now supports ssl through the OpenSSL library, ``recvLine``
@@ -106,6 +106,8 @@ Changes affecting backwards compatibility
   Activate the warning ``ImplicitClosure`` to make the compiler list the 
   occurances of proc types which are affected.
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
+- Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
+  behaviour.
 
 
 Compiler Additions
@@ -151,6 +153,10 @@ Language Additions
   line: ``inc i; inc j``.
 - ``bind`` supports overloaded symbols and operators.
 - A ``distinct`` type can now borrow from generic procs.
+- Added the pragmas ``gensym``, ``inject`` and ``dirty`` for hygiene
+  in templates.
+- Comments can be continued with a backslash continuation character so that
+  comment pieces don't have to align on the same column.
 
 
 2012-02-09 Version 0.8.14 released

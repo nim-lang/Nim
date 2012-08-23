@@ -172,7 +172,7 @@ proc tokToStr*(tok: TToken): string =
   of tkParLe..tkColon, tkEof, tkInd, tkSad, tkDed, tkAccent: 
     result = tokTypeToStr[tok.tokType]
   else: 
-    if (tok.ident != nil): 
+    if tok.ident != nil:
       result = tok.ident.s
     else: 
       InternalError("tokToStr")
@@ -654,19 +654,29 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   # column after only whitespace
   tok.tokType = tkComment
   var col = getColNumber(L, pos)
-  while true: 
-    while not (buf[pos] in {CR, LF, lexbase.EndOfFile}): 
+  while true:
+    var lastBackslash = -1
+    while buf[pos] notin {CR, LF, lexbase.EndOfFile}:
+      if buf[pos] == '\\': lastBackslash = pos+1
       add(tok.literal, buf[pos])
       inc(pos)
+    if lastBackslash > 0:
+      # a backslash is a continuation character if only followed by spaces
+      # plus a newline:
+      while buf[lastBackslash] == ' ': inc(lastBackslash)
+      if buf[lastBackslash] notin {CR, LF, lexbase.EndOfFile}:
+        # false positive:
+        lastBackslash = -1
+
     pos = handleCRLF(L, pos)
     buf = L.buf
     var indent = 0
     while buf[pos] == ' ': 
       inc(pos)
       inc(indent)
-    if (buf[pos] == '#') and (col == indent): 
-      tok.literal = tok.literal & "\n"
-    else: 
+    if buf[pos] == '#' and (col == indent or lastBackslash > 0):
+      tok.literal.add "\n"
+    else:
       if buf[pos] > ' ': 
         L.indentAhead = indent
         inc(L.dedent)

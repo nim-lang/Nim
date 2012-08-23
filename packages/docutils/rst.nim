@@ -648,8 +648,8 @@ proc parseBackslash(p: var TRstParser, father: PRstNode) =
     # XXX: Unicode?
     inc(p.idx)
     if p.tok[p.idx].kind != tkWhite: add(father, newLeaf(p))
-    inc(p.idx)
-  else: 
+    if p.tok[p.idx].kind != tkEof: inc(p.idx)
+  else:
     add(father, newLeaf(p))
     inc(p.idx)
 
