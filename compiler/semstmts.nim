@@ -1118,6 +1118,22 @@ proc insertDestructors(c: PContext, varSection: PNode):
 
       return
 
+proc semBindStmtForMacro(c: PContext, n: PNode): PNode =
+  if c.p.owner.kind != skMacro:
+    LocalError(n.info, errXNotAllowedHere, "bind")
+  result = newNodeI(nkBindStmt, n.info)
+  for i in 0 .. < n.len:
+    var a = n.sons[i]
+    let s = QualifiedLookUp(c, a)
+    if s != nil:
+      # we need to mark all symbols:
+      let sc = symChoice(c, a, s)
+      if sc.kind == nkSym: result.add(sc)
+      else:
+        for x in items(sc): result.add(x)
+    else:
+      illFormedAst(a)
+
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
@@ -1206,6 +1222,8 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
     result = semStaticStmt(c, n)
+  of nkBindStmt:
+    result = semBindStmtForMacro(c, n)
   else: 
     # in interactive mode, we embed the expression in an 'echo':
     if gCmd == cmdInteractive:

@@ -91,7 +91,7 @@ type
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-                      nnkCallStrLit}
+                   nnkCallStrLit}
 
 # Nodes should be reference counted to make the `copy` operation very fast!
 # However, this is difficult to achieve: modify(n[0][1]) should propagate to
@@ -186,6 +186,10 @@ proc newIdentNode*(i: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkIdent)
   result.ident = !i
 
+proc bindSym*(ident: string): PNimrodNode {.magic: "NGetBoundSym".}
+  ## creates a node that binds `ident` to a symbol node. The bound symbol
+  ## needs to be predeclared in a ``bind`` statement!
+
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nimrod code and wraps that 
   ## in a string literal node
@@ -249,6 +253,14 @@ proc expectLen*(n: PNimrodNode, len: int) {.compileTime.} =
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments. 
   if n.len != len: error("macro expects a node with " & $len & " children")
+
+proc newCall*(theProc: PNimrodNode,
+              args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
+  ## produces a new call node. `theProc` is the proc that is called with
+  ## the arguments ``args[0..]``.
+  result = newNimNode(nnkCall)
+  result.add(theProc)
+  result.add(args)
 
 proc newCall*(theProc: TNimrodIdent,
               args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
