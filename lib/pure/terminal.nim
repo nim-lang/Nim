@@ -319,23 +319,22 @@ proc isatty*(f: TFile): bool =
   
   result = isatty(fileHandle(f)) != 0'i32
 
-# XXX: 
-# These should be private, but there is no yet 
-# facility for binding local symbols within macros
-proc styledEchoProcessArg*(s: string)               = write stdout, s
-proc styledEchoProcessArg*(style: TStyle)           = setStyle({style})
-proc styledEchoProcessArg*(style: set[TStyle])      = setStyle style
-proc styledEchoProcessArg*(color: TForegroundColor) = setForeGroundColor color
-proc styledEchoProcessArg*(color: TBackgroundColor) = setBackGroundColor color
+proc styledEchoProcessArg(s: string)               = write stdout, s
+proc styledEchoProcessArg(style: TStyle)           = setStyle({style})
+proc styledEchoProcessArg(style: set[TStyle])      = setStyle style
+proc styledEchoProcessArg(color: TForegroundColor) = setForeGroundColor color
+proc styledEchoProcessArg(color: TBackgroundColor) = setBackGroundColor color
 
 macro styledEcho*(m: stmt): stmt =
+  bind styledEchoProcessArg, write, resetAttributes, stdout
+  
   result = newNimNode(nnkStmtList)
 
   for i in countup(1, m.len - 1):
-    result.add(newCall(!"styledEchoProcessArg", m[i]))
+    result.add(newCall(bindSym"styledEchoProcessArg", m[i]))
 
-  result.add(newCall(!"write", newIdentNode("stdout"), newStrLitNode("\n")))
-  result.add(newCall(!"resetAttributes"))
+  result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
+  result.add(newCall(bindSym"resetAttributes"))
 
 when isMainModule:
   system.addQuitProc(resetAttributes)
@@ -347,3 +346,5 @@ when isMainModule:
   setForeGroundColor(fgBlue)
   writeln(stdout, "ordinary text")
 
+  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore}) 
+  
