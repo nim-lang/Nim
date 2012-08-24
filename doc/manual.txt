@@ -3151,6 +3151,59 @@ The macro call expands to:
   writeln(stdout, x)
 
 
+Bind in macros
+~~~~~~~~~~~~~~
+
+The above ``debug`` macro relies on the fact that ``write``, ``writeln`` and
+``stdout`` are declared in the system module and thus visible in the 
+instantiating context. There is a way to use bound identifiers
+(aka `symbols`:idx) instead of using unbound identifiers. The ``bind`` 
+statement plus the ``bindSym`` builtin can be used for that:
+
+.. code-block:: nimrod
+  # to work with Nimrod syntax trees, we need an API that is defined in the
+  # ``macros`` module:
+  import macros
+
+  macro debug(n: expr): stmt =
+    # we need to declare the used symbols here:
+    bind write, writeln, stdout
+    result = newNimNode(nnkStmtList, n)
+    # iterate over any argument that is passed to this macro:
+    for i in 1..n.len-1:
+      # we can access the bound symbol via 'bindSym':
+      add(result, newCall(bindSym"write", bindSym"stdout", toStrLit(n[i])))
+      add(result, newCall(bindSym"write", bindSym"stdout", newStrLitNode(": ")))
+      add(result, newCall(bindSym"writeln", bindSym"stdout", n[i]))
+
+  var
+    a: array [0..10, int]
+    x = "some string"
+  a[0] = 42
+  a[1] = 45
+
+  debug(a[0], a[1], x)
+
+The macro call expands to:
+
+.. code-block:: nimrod
+  write(stdout, "a[0]")
+  write(stdout, ": ")
+  writeln(stdout, a[0])
+
+  write(stdout, "a[1]")
+  write(stdout, ": ")
+  writeln(stdout, a[1])
+
+  write(stdout, "x")
+  write(stdout, ": ")
+  writeln(stdout, x)
+
+However, the symbols ``write``, ``writeln`` and ``stdout`` are already bound
+and are not looked up again. As the example shows, ``bind`` does work with
+overloaded symbols implicitely.
+
+
 Statement Macros
 ~~~~~~~~~~~~~~~~
 
