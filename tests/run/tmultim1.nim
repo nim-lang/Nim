@@ -5,7 +5,7 @@ discard """
 # Test multi methods
 
 type
-  Expression = ref object
+  Expression = ref object {.inheritable.}
   Literal = ref object of Expression
     x: int
   PlusExpr = ref object of Expression

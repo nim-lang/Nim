@@ -1,5 +1,5 @@
 type
-    TObj* = object
+    TObj* = object {.inheritable.}
 
 var myObj* : ref TObj
 
