@@ -1052,7 +1052,7 @@ type
     charset: set[char]       ## if kind == tkCharSet
     index: int               ## if kind == tkBackref
   
-  TPegLexer = object          ## the lexer object.
+  TPegLexer {.inheritable.} = object          ## the lexer object.
     bufpos: int               ## the current position within the buffer
     buf: cstring              ## the buffer itself
     LineNumber: int           ## the current line number

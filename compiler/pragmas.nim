@@ -48,7 +48,7 @@ const
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
     wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef,
-    wGenSym, wInject}
+    wInheritable, wGenSym, wInject}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -584,7 +584,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
             else: incl(sym.typ.flags, tfFinal)
-          of wAcyclic: 
+          of wInheritable:
+            noVal(it)
+            if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(it)
+            else: incl(sym.typ.flags, tfInheritable)
+          of wAcyclic:
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
             else: incl(sym.typ.flags, tfAcyclic)
