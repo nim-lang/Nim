@@ -108,6 +108,9 @@ Changes affecting backwards compatibility
 - The Nimrod type system now distinguishes ``openarray`` from ``varargs``.
 - Templates are now ``hygienic``. Use the ``dirty`` pragma to get the old
   behaviour.
+- Objects that have no ancestor are now implicitely ``final``. Use 
+  the ``inheritable`` pragma to introduce new object roots apart 
+  from ``TObject``.
 
 
 Compiler Additions

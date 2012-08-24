@@ -113,7 +113,7 @@ type
   PChunk = ptr TBaseChunk
   PBigChunk = ptr TBigChunk
   PSmallChunk = ptr TSmallChunk
-  TBaseChunk {.pure.} = object
+  TBaseChunk {.pure, inheritable.} = object
     prevSize: int        # size of previous chunk; for coalescing
     size: int            # if < PageSize it is a small chunk
     used: bool           # later will be optimized into prevSize...

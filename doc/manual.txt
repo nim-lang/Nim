@@ -970,9 +970,10 @@ in future versions of the compiler.
   person = ("Peter", 30)
 
 The implementation aligns the fields for best access performance. The alignment
-is compatible with the way the C compiler does it. For consistency 
-with ``object`` declarations, tuples in a ``type`` section can also be defined
-with indentation instead of ``[]``:
+is compatible with the way the C compiler does it. 
+
+For consistency  with ``object`` declarations, tuples in a ``type`` section
+can also be defined with indentation instead of ``[]``:
 
 .. code-block:: nimrod
 
@@ -988,7 +989,7 @@ the ``of`` operator can be used to determine the object's type.
 .. code-block:: nimrod
 
   type
-    TPerson = object
+    TPerson {.inheritable.} = object
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
@@ -1002,7 +1003,9 @@ the ``of`` operator can be used to determine the object's type.
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*.
+never *equivalent*. Objects that have no ancestor are implicitely ``final``
+and thus have no hidden type field. One can use the ``inheritable`` pragma to
+introduce new object roots apart from ``system.TObject``.
 
 
 Object variants

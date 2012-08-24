@@ -305,7 +305,7 @@ type
     tyBigNum, 
     tyConst, tyMutable, tyVarargs, 
     tyIter, # unused
-    tyProxy # currently unused
+    tyProxy # used as errornous type (for idetools)
     tyTypeClass,
 
 const
@@ -328,10 +328,11 @@ type
     nfSem       # node has been checked for semantics
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 15 for efficiency reasons (now: 13)
+  TTypeFlag* = enum   # keep below 15 for efficiency reasons (now: 14)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
+    tfInheritable,    # is the object inheritable?
     tfAcyclic,        # type is acyclic (for GC optimization)
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment

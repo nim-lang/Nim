@@ -341,7 +341,7 @@ type
     float*: float64
     imag*: float64
 
-  TPyObject*{.pure.} = object 
+  TPyObject*{.pure, inheritable.} = object 
     ob_refcnt*: int
     ob_type*: PPyTypeObject
 

@@ -545,6 +545,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     var s = newSymS(skType, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[0], typePragmas)
+  if base == nil and tfInheritable notin result.flags:
+    incl(result.flags, tfFinal)
   
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:

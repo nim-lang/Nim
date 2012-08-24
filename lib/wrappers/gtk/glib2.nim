@@ -107,7 +107,7 @@ type
     g_class*: PGTypeClass
 
   PGTypeInterface* = ptr TGTypeInterface
-  TGTypeInterface*{.pure.} = object 
+  TGTypeInterface*{.pure, inheritable.} = object 
     g_type*: GType
     g_instance_type*: GType
 
@@ -993,7 +993,7 @@ proc plugin_complete_interface_info*(plugin: PGTypePlugin,
     dynlib: gliblib, importc: "g_type_plugin_complete_interface_info".}
 type 
   PGObject* = ptr TGObject
-  TGObject*{.pure.} = object 
+  TGObject*{.pure, inheritable.} = object 
     g_type_instance*: TGTypeInstance
     ref_count*: guint
     qdata*: PGData
@@ -1006,7 +1006,7 @@ type
   TGWeakNotify* = proc (data: gpointer, where_the_object_was: PGObject){.cdecl.}
   PGObjectConstructParam* = ptr TGObjectConstructParam
   PGObjectClass* = ptr TGObjectClass
-  TGObjectClass*{.pure.} = object 
+  TGObjectClass*{.pure, inheritable.} = object 
     g_type_class*: TGTypeClass
     construct_properties*: PGSList
     constructor*: proc (theType: GType, n_construct_properties: guint, 

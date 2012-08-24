@@ -171,9 +171,12 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} = 
   result = value >= s.a and value <= s.b
 
+when not defined(niminheritable):
+  {.pragma: inheritable.}
+
 when not defined(EcmaScript) and not defined(NimrodVM):
   type
-    TGenericSeq {.compilerproc, pure.} = object
+    TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
@@ -197,7 +200,7 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  TObject* {.exportc: "TNimObject".} =
+  TObject* {.exportc: "TNimObject", inheritable.} =
     object ## the root of Nimrod's object hierarchy. Objects should
            ## inherit from TObject or one of its descendants. However,
            ## objects that have no ancestor are allowed.

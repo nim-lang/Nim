@@ -57,6 +57,7 @@ proc InitDefines*() =
   DefineSymbol("nimrod") # 'nimrod' is always defined
   # for bootstrapping purposes and old code:
   DefineSymbol("nimhygiene")
+  DefineSymbol("niminheritable")
   
   # add platform specific symbols:
   case targetCPU
