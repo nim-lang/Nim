@@ -186,7 +186,7 @@ proc newIdentNode*(i: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkIdent)
   result.ident = !i
 
-proc bindSym*(ident: string): PNimrodNode {.magic: "NGetBoundSym".}
+proc bindSym*(ident: string): PNimrodNode {.magic: "NBindSym".}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## needs to be predeclared in a ``bind`` statement!
 

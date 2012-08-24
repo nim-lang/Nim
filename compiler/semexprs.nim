@@ -342,6 +342,19 @@ proc changeType(n: PNode, newType: PType) =
   else: nil
   n.typ = newType
 
+proc arrayConstrType(c: PContext, n: PNode): PType = 
+  var typ = newTypeS(tyArrayConstr, c)
+  rawAddSon(typ, nil)     # index type
+  if sonsLen(n) == 0: 
+    rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
+  else:
+    var x = n.sons[0]
+    var lastIndex: biggestInt = sonsLen(n) - 1
+    var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
+    addSonSkipIntLit(typ, t)
+  typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
+  result = typ
+
 proc semArrayConstr(c: PContext, n: PNode): PNode = 
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArrayConstr, c)
@@ -382,7 +395,8 @@ proc fixAbstractType(c: PContext, n: PNode) =
     case it.kind
     of nkHiddenStdConv, nkHiddenSubConv:
       if it.sons[1].kind == nkBracket:
-        it.sons[1] = semArrayConstr(c, it.sons[1])
+        it.sons[1].typ = arrayConstrType(c, it.sons[1])
+        #it.sons[1] = semArrayConstr(c, it.sons[1])
       if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: 
         #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
         #  debug(n)

@@ -326,8 +326,7 @@ proc styledEchoProcessArg(color: TForegroundColor) = setForeGroundColor color
 proc styledEchoProcessArg(color: TBackgroundColor) = setBackGroundColor color
 
 macro styledEcho*(m: stmt): stmt =
-  bind styledEchoProcessArg, write, resetAttributes, stdout
-  
+  ## to be documented.
   result = newNimNode(nnkStmtList)
 
   for i in countup(1, m.len - 1):

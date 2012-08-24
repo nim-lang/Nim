@@ -40,7 +40,6 @@ type
     lastException*: PNode
     mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
-    boundSyms: TStrTable      # for 'bind' support within macros
   
   PEvalContext* = ref TEvalContext
 
@@ -66,7 +65,6 @@ proc newEvalContext*(module: PSym, filename: string,
   result.module = module
   result.mode = mode
   initIdNodeTable(result.globals)
-  initStrTable(result.boundSyms)
 
 proc pushStackFrame*(c: PEvalContext, t: PStackFrame) {.inline.} = 
   t.next = c.tos
@@ -933,26 +931,6 @@ proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
       "ExpandToAst: expanded symbol is no macro or template")
     result = emptyNode
 
-proc getBoundSym(c: PEvalContext, n: PNode): PNode =
-  # we return either an nkSym or an nkSymChoice; XXX we really need
-  # to distinguish between open and closed nkSymChoice somehow.
-  var ident = getIdent(n.strVal)
-
-  # semantic checking requires a type; ``fitNode`` deals with it
-  # appropriately
-  result = newNodeIT(nkSymChoice, n.info, newType(tyNone, c.module))
-
-  var ii: TIdentIter
-  var a = InitIdentIter(ii, c.boundSyms, ident)
-  while a != nil:
-    incl(a.flags, sfUsed)
-    addSon(result, newSymNode(a, n.info))
-    a = NextIdentIter(ii, c.boundSyms)
-  case result.len
-  of 0: stackTrace(c, n, errUndeclaredIdentifier, n.strVal)
-  of 1: result = result.sons[0]
-  else: nil
-
 proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode = 
   var m = getMagic(n)
   case m
@@ -1173,13 +1151,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
     result = copyTree(result)
-  of mNGetBoundSym:
-    result = evalAux(c, n.sons[1], {})
-    if isSpecial(result): return 
-    if not (result.kind in {nkStrLit..nkTripleStrLit}): 
-      stackTrace(c, n, errFieldXNotFound, "getBoundSym")
-      return
-    result = getBoundSym(c, result)
+  of mNBindSym:
+    # trivial implementation:
+    result = n.sons[1]
   of mStrToIdent: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1268,12 +1242,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
         cc = result
     if isEmpty(a) or isEmpty(b) or isEmpty(cc): result = emptyNode
     else: result = evalOp(m, n, a, b, cc)
-  
-proc evalBindStmt(c: PEvalContext, n: PNode) =
-  for i in 0 .. < n.len:
-    let a = n.sons[i]
-    if a.kind == nkSym: StrTableAdd(c.boundSyms, a.sym)
-  
+    
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = emptyNode
   dec(gNestedEvals)
@@ -1344,10 +1313,8 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     result.typ = n.typ
   of nkPragmaBlock:
     result = evalAux(c, n.sons[1], flags)
-  of nkBindStmt:
-    evalBindStmt(c, n)
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
-     nkLambdaKinds, nkContinueStmt, nkIdent, nkParForStmt: 
+     nkLambdaKinds, nkContinueStmt, nkIdent, nkParForStmt, nkBindStmt:
     result = raiseCannotEval(c, n.info)
   of nkRefTy:
     result = evalAux(c, n.sons[0], flags)
