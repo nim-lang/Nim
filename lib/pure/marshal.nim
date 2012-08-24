@@ -306,7 +306,7 @@ when isMainModule:
   testit(test7)
 
   type 
-    TA = object
+    TA {.inheritable.} = object
     TB = object of TA
       f: int
 

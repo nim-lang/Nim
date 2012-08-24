@@ -5,7 +5,7 @@ discard """
 # Test multi methods
 
 type
-  TThing = object
+  TThing = object {.inheritable.}
   TUnit = object of TThing
     x: int
   TParticle = object of TThing

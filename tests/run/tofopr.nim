@@ -5,7 +5,7 @@ discard """
 # Test is operator
 
 type
-  TMyType = object
+  TMyType = object {.inheritable.}
     len: int
     data: string
     
