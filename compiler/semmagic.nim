@@ -45,6 +45,24 @@ proc semOrd(c: PContext, n: PNode): PNode =
   result.typ = makeRangeType(c, firstOrd(n.sons[1].typ),
                                 lastOrd(n.sons[1].typ), n.info)
 
+proc semBindSym(c: PContext, n: PNode): PNode =
+  result = copyNode(n)
+  result.add(n.sons[0])
+  
+  let sl = c.semConstExpr(c, n.sons[1])
+  if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
+    LocalError(n.info, errStringLiteralExpected)
+    return errorNode(c, n)
+  
+  let id = newIdentNode(getIdent(sl.strVal), n.info)
+  let s = QualifiedLookUp(c, id)
+  if s != nil:
+    # we need to mark all symbols:
+    let sc = symChoice(c, id, s)
+    result.add(sc)
+  else:
+    LocalError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
+
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
@@ -57,5 +75,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
+  of mNBindSym: result = semBindSym(c, n)
   else: result = n
 
