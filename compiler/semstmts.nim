@@ -517,13 +517,12 @@ proc semTry(c: PContext, n: PNode): PNode =
     a.sons[length - 1] = semStmtScope(c, a.sons[length - 1])
   dec c.p.inTryStmt
 
-proc addGenericParamListToScope(c: PContext, n: PNode) = 
-  if n.kind != nkGenericParams: 
-    InternalError(n.info, "addGenericParamListToScope")
-  for i in countup(0, sonsLen(n)-1): 
+proc addGenericParamListToScope(c: PContext, n: PNode) =
+  if n.kind != nkGenericParams: illFormedAst(n)
+  for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if a.kind == nkSym: addDecl(c, a.sym)
-    else: internalError(a.info, "addGenericParamListToScope")
+    else: illFormedAst(a)
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) = 
   # process the symbols on the left side for the whole type section, before
@@ -635,7 +634,7 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
 proc addParams(c: PContext, n: PNode, kind: TSymKind) = 
   for i in countup(1, sonsLen(n)-1): 
     if n.sons[i].kind == nkSym: addParamOrResult(c, n.sons[i].sym, kind)
-    else: InternalError(n.info, "addParams")
+    else: illFormedAst(n)
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) = 
   # search for the correct alias:

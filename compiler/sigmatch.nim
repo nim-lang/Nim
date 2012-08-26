@@ -138,8 +138,8 @@ proc NotFoundError*(c: PContext, n: PNode) =
   var candidates = ""
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, n.sons[0])
-  while sym != nil: 
-    if sym.kind in {skProc, skMethod, skIterator, skConverter}: 
+  while sym != nil:
+    if sym.kind in RoutineKinds:
       add(candidates, getProcHeader(sym))
       add(candidates, "\n")
       #debug(sym.typ)

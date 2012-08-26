@@ -133,7 +133,10 @@ proc applyConcreteTypesToSig(genericProc: PSym, concTypes: seq[PType]): PType =
       if i > 0: result.n.sons[i] = sig.n.sons[i]
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
-                      info: TLineInfo): PSym = 
+                      info: TLineInfo): PSym =
+  # no need to instantiate generic templates/macros:
+  if fn.kind in {skTemplate, skMacro}: return fn
+  
   # generates an instantiated proc
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)

@@ -183,8 +183,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
       elif Contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
-      elif s.owner == c.owner:
-        InternalAssert sfGenSym in s.flags
+      elif s.owner == c.owner and sfGenSym in s.flags:
+        # template tmp[T](x: var seq[T]) =
+        # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
   of nkBind:
@@ -364,21 +365,32 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], templatePragmas)
-  # check that no generic parameters exist:
+
+  var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty: 
-    LocalError(n.info, errNoGenericParamsAllowedForX, "template")
-  if n.sons[paramsPos].kind == nkEmpty: 
-    # use ``stmt`` as implicit result type
-    s.typ = newTypeS(tyProc, c)
-    s.typ.n = newNodeI(nkFormalParams, n.info)
-    rawAddSon(s.typ, newTypeS(tyStmt, c))
-    addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
+    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
+    gp = n.sons[genericParamsPos]
   else: 
-    semParamList(c, n.sons[ParamsPos], nil, s)
-    if n.sons[paramsPos].sons[0].kind == nkEmpty: 
+    gp = newNodeI(nkGenericParams, n.info)
+  # process parameters:
+  if n.sons[paramsPos].kind != nkEmpty:
+    semParamList(c, n.sons[ParamsPos], gp, s)
+    if sonsLen(gp) > 0:
+      if n.sons[genericParamsPos].kind == nkEmpty:
+        # we have a list of implicit type parameters:
+        n.sons[genericParamsPos] = gp
+    # no explicit return type? -> use tyStmt
+    if n.sons[paramsPos].sons[0].kind == nkEmpty:
       # use ``stmt`` as implicit result type
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
+  else:
+    s.typ = newTypeS(tyProc, c)
+    # XXX why do we need tyStmt as a return type again?
+    s.typ.n = newNodeI(nkFormalParams, n.info)
+    rawAddSon(s.typ, newTypeS(tyStmt, c))
+    addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
+      
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.c = c
