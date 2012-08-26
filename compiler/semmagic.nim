@@ -49,16 +49,22 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   result.add(n.sons[0])
   
-  let sl = c.semConstExpr(c, n.sons[1])
+  let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}: 
-    LocalError(n.info, errStringLiteralExpected)
+    LocalError(n.sons[1].info, errStringLiteralExpected)
+    return errorNode(c, n)
+  
+  let isMixin = semConstExpr(c, n.sons[2])
+  if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
+      isMixin.intVal > high(TSymChoiceRule).int:
+    LocalError(n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
   
   let id = newIdentNode(getIdent(sl.strVal), n.info)
   let s = QualifiedLookUp(c, id)
   if s != nil:
     # we need to mark all symbols:
-    let sc = symChoice(c, id, s)
+    var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
     result.add(sc)
   else:
     LocalError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)

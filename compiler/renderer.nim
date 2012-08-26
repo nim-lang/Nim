@@ -379,7 +379,8 @@ proc lsub(n: PNode): int =
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(n) + 2
   of nkTableConstr:
     result = if n.len > 0: lcomma(n) + 2 else: len("{:}")
-  of nkSymChoice: result = lsons(n) + len("()") + sonsLen(n) - 1
+  of nkClosedSymChoice, nkOpenSymChoice: 
+    result = lsons(n) + len("()") + sonsLen(n) - 1
   of nkTupleTy: result = lcomma(n) + len("tuple[]")
   of nkDotExpr: result = lsons(n) + 1
   of nkBind: result = lsons(n) + len("bind_")
@@ -833,7 +834,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gcomma(g, n, 1)
     put(g, tkParRi, ")")
-  of nkSymChoice: 
+  of nkClosedSymChoice, nkOpenSymChoice:
     put(g, tkParLe, "(")
     for i in countup(0, sonsLen(n) - 1): 
       if i > 0: put(g, tkOpr, "|")

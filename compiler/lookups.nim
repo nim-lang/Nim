@@ -230,7 +230,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         LocalError(n.sons[1].info, errIdentifierExpected, 
                    renderTree(n.sons[1]))
         result = errorSym(c, n.sons[1])
-  of nkSymChoice: 
+  of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
     result = n.sons[0].sym
     o.stackPtr = 1
@@ -269,7 +269,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = n.sons[o.stackPtr].sym
       Incl(o.inSymChoice, result.id)
       inc(o.stackPtr)
-    else:
+    elif n.kind == nkOpenSymChoice:
       # try 'local' symbols too for Koenig's lookup:
       o.mode = oimSymChoiceLocalLookup
       o.stackPtr = c.tab.tos-1

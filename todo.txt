@@ -1,6 +1,10 @@
 version 0.9.0
 =============
 
+- make 'bind' default for templates and introduce 'mixin'
+- introduce 'callsite' magic and make macros and templates the same
+- implement generic templates/macros
+
 - implement "closure tuple consists of a single 'ref'" optimization
 - implement for loop transformation for first class iterators
 
@@ -29,8 +33,6 @@ Bugs
 version 0.9.XX
 ==============
 
-- make 'bind' default for templates and introduce 'mixin'
-- distinguish between open and closed nkSymChoice
 - JS gen:
   - fix exception handling
 
@@ -44,7 +46,6 @@ version 0.9.XX
 - ``hoist`` pragma for loop hoisting
 - document destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue
-- introduce 'callsite' magic and make macros and templates the same
 - better support for macros that rewrite procs
 - macros need access to types and symbols
 - document nimdoc properly finally
@@ -56,7 +57,6 @@ version 0.9.XX
 - proc specialization in the code gen for write barrier specialization
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking; tuple unpacking in non-var-context
-- 'nimrod def': does not always work?
 - test branch coverage
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?

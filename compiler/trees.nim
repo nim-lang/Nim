@@ -143,7 +143,8 @@ proc SwapOperands*(op: PNode) =
 proc IsRange*(n: PNode): bool {.inline.} = 
   if n.kind == nkInfix:
     if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
-        n[0].kind == nkSymChoice and n[0][1].sym.name.id == ord(wDotDot):
+        n[0].kind in {nkClosedSymChoice, nkOpenSymChoice} and 
+        n[0][1].sym.name.id == ord(wDotDot):
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord = 

@@ -40,8 +40,12 @@ proc symBinding(n: PNode): TSymBinding =
       of wInject: return spInject
       else: nil
 
-proc symChoice(c: PContext, n: PNode, s: PSym): PNode = 
-  var 
+type
+  TSymChoiceRule = enum
+    scClosed, scOpen, scForceOpen
+
+proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
+  var
     a: PSym
     o: TOverloadIter
   var i = 0
@@ -50,17 +54,17 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
     a = nextOverloadIter(o, c, n)
     inc(i)
     if i > 1: break
-  if i <= 1:
+  if i <= 1 and r != scForceOpen:
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
-    # for some reason 'nextTry' is copied and considered as a candidate in
-    # tables.nim
+    # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, n.info)
     markUsed(n, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
-    result = newNodeIT(nkSymChoice, n.info, newTypeS(tyNone, c))
+    let kind = if r == scClosed: nkClosedSymChoice else: nkOpenSymChoice
+    result = newNodeIT(kind, n.info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
       incl(a.flags, sfUsed)
@@ -78,7 +82,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
     let s = QualifiedLookUp(c, a)
     if s != nil:
       # we need to mark all symbols:
-      let sc = symChoice(c, n, s)
+      let sc = symChoice(c, n, s, scClosed)
       if sc.kind == nkSym:
         toBind.incl(sc.sym.id)
       else:
@@ -178,7 +182,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
       elif Contains(c.toBind, s.id):
-        result = symChoice(c.c, n, s)
+        result = symChoice(c.c, n, s, scClosed)
       elif s.owner == c.owner:
         InternalAssert sfGenSym in s.flags
         incl(s.flags, sfUsed)
@@ -294,7 +298,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = QualifiedLookUp(c.c, n, {})
       if s != nil and Contains(c.toBind, s.id):
-        return symChoice(c.c, n, s)
+        return symChoice(c.c, n, s, scClosed)
     result = n
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBody(c, n.sons[i])
@@ -308,7 +312,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         result = newSymNode(s, n.info)
       elif Contains(c.toBind, s.id):
-        result = symChoice(c.c, n, s)
+        result = symChoice(c.c, n, s, scClosed)
   of nkBind:
     result = semTemplBodyDirty(c, n.sons[0])
   of nkBindStmt:
@@ -321,7 +325,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = QualifiedLookUp(c.c, n, {})
       if s != nil and Contains(c.toBind, s.id):
-        return symChoice(c.c, n, s)
+        return symChoice(c.c, n, s, scClosed)
     result = n
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])

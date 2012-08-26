@@ -10,7 +10,7 @@
 ## This module implements semantic checking for calls. 
 # included from sem.nim
 
-proc sameMethodDispatcher(a, b: PSym): bool = 
+proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod: 
     var aa = lastSon(a.ast)
@@ -132,11 +132,11 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
       return explicitGenericInstError(n)
     result = explicitGenericSym(c, n, s)
-  elif a.kind == nkSymChoice:
+  elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.ParamTypesMatch.
     # It's good enough for now.
-    result = newNodeI(nkSymChoice, n.info)
+    result = newNodeI(a.kind, n.info)
     for i in countup(0, len(a)-1): 
       var candidate = a.sons[i].sym
       if candidate.kind in {skProc, skMethod, skConverter, skIterator}: 
@@ -144,8 +144,9 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           result.add(explicitGenericSym(c, n, candidate))
-    # get rid of nkSymChoice if not ambiguous:
-    if result.len == 1: result = result[0]
+    # get rid of nkClosedSymChoice if not ambiguous:
+    if result.len == 1 and a.kind == nkClosedSymChoice:
+      result = result[0]
     # candidateCount != 1: return explicitGenericInstError(n)
   else:
     result = explicitGenericInstError(n)

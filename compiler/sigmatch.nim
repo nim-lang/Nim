@@ -703,7 +703,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
 
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
                      arg, argOrig: PNode): PNode = 
-  if arg == nil or arg.kind != nkSymChoice: 
+  if arg == nil or arg.kind != nkClosedSymChoice:
     result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is

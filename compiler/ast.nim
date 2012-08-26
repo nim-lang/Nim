@@ -104,7 +104,8 @@ type
 
     nkTableConstr,        # a table constructor {expr: expr}
     nkBind,               # ``bind expr`` node
-    nkSymChoice,          # symbol choice node
+    nkClosedSymChoice,    # symbol choice node; a list of nkSyms (closed)
+    nkOpenSymChoice,      # symbol choice node; a list of nkSyms (open)
     nkHiddenStdConv,      # an implicit standard type conversion
     nkHiddenSubConv,      # an implicit type conversion from a subtype
                           # to a supertype
@@ -473,6 +474,11 @@ const
     mInRange, mInSet, mRepr,
     mRand, 
     mCopyStr, mCopyStrLast}
+  # magics that require special semantic checking and
+  # thus cannot be overloaded (also documented in the spec!):
+  SpecialSemMagics* = {
+    mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf, 
+    mEcho, mShallowCopy, mExpandToAst}
 
 type 
   PNode* = ref TNode
