@@ -2363,6 +2363,19 @@ notation. (Thus an operator can have more than two parameters):
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
 
+Nonoverloadable builtins
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following builtin procs cannot be overloaded for reasons of implementation
+simplicity (they require specialized semantic checking)::
+
+  defined, definedInScope, compiles, low, high, sizeOf, 
+  is, of, echo, shallowCopy, getAst
+
+Thus they act more like keywords than like ordinary identifiers; unlike a 
+keyword however, a redefinition may `shadow`:id: the definition in 
+the ``system`` module.
+
 
 Var parameters
 ~~~~~~~~~~~~~~

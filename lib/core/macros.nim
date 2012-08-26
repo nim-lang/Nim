@@ -27,7 +27,10 @@ type
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted, 
-    nnkTableConstr, nnkBind, nnkSymChoice, nnkHiddenStdConv, 
+    nnkTableConstr, nnkBind,
+    nnkClosedSymChoice,
+    nnkOpenSymChoice,
+    nnkHiddenStdConv,
     nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, nnkStaticExpr,
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
@@ -186,12 +189,29 @@ proc newIdentNode*(i: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkIdent)
   result.ident = !i
 
-proc bindSym*(ident: string): PNimrodNode {.magic: "NBindSym".}
+type
+  TBindSymRule* = enum   ## specifies how ``bindSym`` behaves
+    brClosed,            ## only the symbols in current scope are bound
+    brOpen,              ## open wrt overloaded symbols, but may be a single
+                         ## symbol if not ambiguous (the rules match that of
+                         ## binding in generics)
+    brForceOpen          ## same as brOpen, but it will always be open even
+                         ## if not ambiguous (this cannot be achieved with
+                         ## any other means in the language currently)
+
+proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
+              magic: "NBindSym".}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
-  ## needs to be predeclared in a ``bind`` statement!
+  ## may be an overloaded symbol.
+  ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
+  ## returned or ``nkSym`` if the symbol is not ambiguous.
+  ## If ``rule == brOpen`` either an ``nkOpenSymChoice`` tree is
+  ## returned or ``nkSym`` if the symbol is not ambiguous.
+  ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
+  ## returned even if the symbol is not ambiguous.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## converts the AST `n` to the concrete Nimrod code and wraps that 
+  ## converts the AST `n` to the concrete Nimrod code and wraps that
   ## in a string literal node
   return newStrLitNode(repr(n))
 

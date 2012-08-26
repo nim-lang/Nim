@@ -85,7 +85,7 @@ proc suggestObject(c: PContext, n: PNode, outputs: var int) =
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
   var op = n.sons[0]
-  if op.kind == nkSymChoice: op = op.sons[0]
+  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
   var opr: PIdent
   case op.kind
   of nkSym: opr = op.sym.name

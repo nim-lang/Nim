@@ -117,7 +117,7 @@ proc isCompatibleToCString(a: PType): bool =
       result = true
   
 proc getProcHeader(sym: PSym): string = 
-  result = sym.name.s & '('
+  result = sym.owner.name.s & '.' & sym.name.s & '('
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1): 
     var p = n.sons[i]

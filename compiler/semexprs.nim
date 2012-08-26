@@ -58,7 +58,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
-  result = symChoice(c, n, s)
+  result = symChoice(c, n, s, scClosed)
   
 proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.ast)
@@ -72,7 +72,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
         smoduleId != c.module.id and smoduleId != c.friendModule.id: 
       LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
-    result = symChoice(c, n, s)
+    result = symChoice(c, n, s, scClosed)
     if result.kind == nkSym:
       markIndirect(c, result.sym)
       if isGenericRoutine(result.sym):
@@ -182,6 +182,9 @@ proc isCastable(dst, src: PType): bool =
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst).kind in IntegralTypes)
   
+proc isSymChoice(n: PNode): bool {.inline.} =
+  result = n.kind in {nkClosedSymChoice, nkOpenSymChoice}
+
 proc semConv(c: PContext, n: PNode, s: PSym): PNode = 
   if sonsLen(n) != 2: 
     LocalError(n.info, errConvNeedsOneArg)
@@ -191,7 +194,7 @@ proc semConv(c: PContext, n: PNode, s: PSym): PNode =
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   var op = result.sons[1]
-  if op.kind != nkSymChoice: 
+  if not isSymChoice(op):
     checkConvertible(result.info, result.typ, op.typ)
   else: 
     for i in countup(0, sonsLen(op) - 1):
@@ -830,7 +833,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2)
   # early exit for this; see tests/compile/tbindoverload.nim:
-  if n.sons[1].kind == nkSymChoice: return
+  if isSymChoice(n.sons[1]): return
 
   var s = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
@@ -910,7 +913,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # in Nimrod. We first allow types in the semantic checking.
   result = builtinFieldAccess(c, n, flags)
   if result == nil:
-    if n.sons[1].kind == nkSymChoice: 
+    if isSymChoice(n.sons[1]):
       result = newNodeI(nkDotCall, n.info)
       addSon(result, n.sons[1])
       addSon(result, copyTree(n[0]))
@@ -1222,6 +1225,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   # this is a hotspot in the compiler!
+  # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
   result = n
   case s.magic # magics that need special treatment
   of mDefined: result = semDefined(c, setMs(n, s), false)
@@ -1518,8 +1522,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
-    elif n.sons[0].kind == nkSymChoice or n[0].kind == nkBracketExpr and 
-        n[0][0].kind == nkSymChoice:
+    elif isSymChoice(n.sons[0]) or n[0].kind == nkBracketExpr and 
+        isSymChoice(n[0][0]):
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
@@ -1576,7 +1580,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 2)
   of nkTableConstr:
     result = semTableConstr(c, n)
-  of nkSymChoice:
+  of nkClosedSymChoice, nkOpenSymChoice:
     LocalError(n.info, errExprXAmbiguous, renderTree(n, {renderNoComments}))
     # error correction: Pick first element:
     result = n.sons[0]
