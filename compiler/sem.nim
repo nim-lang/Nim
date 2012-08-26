@@ -86,8 +86,6 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 
-include semtempl
-
 proc evalTypedExpr(c: PContext, e: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result == nil:
@@ -154,7 +152,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     LocalError(n.info, errConstExprExpected)
     result = nn
 
-include semtypes, semexprs, semgnrc, semstmts
+include semtypes, semtempl, semexprs, semgnrc, semstmts
 
 proc addCodeForGenerics(c: PContext, n: PNode) = 
   for i in countup(c.generics.lastGenericIdx, Len(c.generics.generics) - 1):
