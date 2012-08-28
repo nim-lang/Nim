@@ -111,6 +111,8 @@ Changes affecting backwards compatibility
 - Objects that have no ancestor are now implicitely ``final``. Use 
   the ``inheritable`` pragma to introduce new object roots apart 
   from ``TObject``.
+- Macros now receive parameters like templates do; use the ``callsite`` builtin
+  to gain access to the invokating AST.
 
 
 Compiler Additions

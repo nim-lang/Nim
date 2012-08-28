@@ -774,7 +774,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkRStrLit, '\"' & replace(n[1].strVal, "\"", "\"\"") & '\"')
     else: 
       gsub(g, n.sons[1])
-  of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: gsub(g, n.sons[0])
+  of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: gsub(g, n.sons[1])
   of nkCast: 
     put(g, tkCast, "cast")
     put(g, tkBracketLe, "[")

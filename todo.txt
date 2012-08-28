@@ -1,7 +1,9 @@
 version 0.9.0
 =============
 
-- introduce 'callsite' magic and make macros and templates the same
+- make 'm: stmt' use overloading resolution
+
+- implement the high level optimizer
 - make 'bind' default for templates and introduce 'mixin'
 
 - implement "closure tuple consists of a single 'ref'" optimization
@@ -32,6 +34,17 @@ Bugs
 version 0.9.XX
 ==============
 
+- make:
+  p(a, b): 
+    echo a
+    echo b
+  
+  the same as:
+  
+  p(a, b, proc() =
+    echo a
+    echo b)
+
 - JS gen:
   - fix exception handling
 
@@ -52,7 +65,6 @@ version 0.9.XX
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
 - implement a warning message for shadowed 'result' variable
-- implement the high level optimizer
 - we need to support iteration of 2 different data structures in parallel
 - implement proper coroutines
 - proc specialization in the code gen for write barrier specialization
@@ -71,17 +83,6 @@ version 0.9.XX
   * For parameter ``tyExpr`` any argument matches.
   * Argument ``tyProxy`` matches any parameter.
   
-- nice idea:
-
-  p(a, b): 
-    echo a
-    echo b
-  
-  is the same as:
-  
-  p(a, b, proc() =
-    echo a
-    echo b)
 
 Library
 -------
@@ -114,10 +115,7 @@ Low priority
   escape analysis for string/seq seems to be easy to do too;
   even further write barrier specialization
 - GC: marker procs Boehm GC
-- implement marker procs for assignment and message passing
-- warning for implicit openArray -> varargs conversion
-- implement explicit varargs; **but** ``len(varargs)`` problem remains! 
-  --> solve by implicit conversion from varargs to openarray
+- implement marker procs for message passing
 - optimize method dispatchers
 - activate more thread tests
 - implement ``--script:sh|bat`` command line option; think about script 

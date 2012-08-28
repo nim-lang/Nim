@@ -81,7 +81,7 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 
-proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
+proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
@@ -127,14 +127,14 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
 
-proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
+proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
   if sym == c.p.owner:
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
   if c.evalContext == nil:
     c.evalContext = newEvalContext(c.module, "", emStatic)
-  result = evalMacroCall(c.evalContext, n, sym)
+  result = evalMacroCall(c.evalContext, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
 proc forceBool(c: PContext, n: PNode): PNode = 

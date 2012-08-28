@@ -67,7 +67,7 @@ Objects have access to their type at runtime. There is an
     person: TPerson
   assert(student of TStudent) # is true
 
-Object fields that should be visible from outside the defining module, have to
+Object fields that should be visible from outside the defining module have to
 be marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*. New object types can only be defined within a type
 section.
@@ -631,19 +631,19 @@ Expression Macros
 -----------------
 
 The following example implements a powerful ``debug`` command that accepts a
-variable number of arguments (this cannot be done with templates):
+variable number of arguments:
 
 .. code-block:: nimrod
   # to work with Nimrod syntax trees, we need an API that is defined in the
   # ``macros`` module:
   import macros
 
-  macro debug(n: expr): stmt =
-    # `n` is a Nimrod AST that contains the whole macro expression
+  macro debug(n: varargs[expr]): stmt =
+    # `n` is a Nimrod AST that contains a list of expressions;
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
-    for i in 1..n.len-1:
+    for i in 0..n.len-1:
       # add a call to the statement list that writes the expression;
       # `toStrLit` converts an AST to its string representation:
       result.add(newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
@@ -702,5 +702,3 @@ regular expressions:
     return tkOperator
   else:
     return tkUnknown
-
-

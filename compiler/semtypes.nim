@@ -237,9 +237,11 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           return errorSym(c, n)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
+        var oldInfo = n.info
         reset(n[])
         n.kind = nkSym
         n.sym = result
+        n.info = oldInfo
     else:
       LocalError(n.info, errIdentifierExpected)
       result = errorSym(c, n)
@@ -549,7 +551,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     incl(result.flags, tfFinal)
   
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
-  if kind == skMacro and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
+  if kind == skMacro:
+    # within a macro, every param has the type PNimrodNode!
+    # and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
     let nn = getSysSym"PNimrodNode"
     var a = copySym(param)
     a.typ = nn.typ
@@ -779,7 +783,7 @@ proc semTypeFromMacro(c: PContext, n: PNode): PType =
   markUsed(n, sym)
   case sym.kind
   of skMacro:
-    result = semTypeNode(c, semMacroExpr(c, n, sym), nil)
+    result = semTypeNode(c, semMacroExpr(c, n, n, sym), nil)
   of skTemplate:
     result = semTypeNode(c, semTemplateExpr(c, n, sym), nil)
   else:

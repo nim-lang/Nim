@@ -96,27 +96,25 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-# Nodes should be reference counted to make the `copy` operation very fast!
-# However, this is difficult to achieve: modify(n[0][1]) should propagate to
-# its father. How to do this without back references? Hm, BS, it works without 
-# them.
-
-proc `[]`* (n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
+proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
   ## get `n`'s `i`'th child.
 
-proc `[]=`* (n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild".}
+proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild".}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!` *(s: string): TNimrodIdent {.magic: "StrToIdent".}
+proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent".}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr".}
   ## converts a Nimrod identifier to a string
 
-proc `==`* (a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
+proc `$`*(s: PNimrodSymbol): string {.magic: "IdentToStr".}
+  ## converts a Nimrod symbol to a string
+
+proc `==`*(a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
   ## compares two Nimrod identifiers
 
-proc `==`* (a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
+proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nimrod nodes
 
 proc len*(n: PNimrodNode): int {.magic: "NLen".}
@@ -210,6 +208,9 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
 
+proc callsite*(): PNimrodNode {.magic: "NCallSite".}
+  ## returns the AST if the invokation expression that invoked this macro. 
+
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nimrod code and wraps that
   ## in a string literal node
@@ -246,15 +247,6 @@ template emit*(s: expr): stmt =
   block:
     const evaluated = s
     eval: result = evaluated.parseStmt
-  when false:
-    template once(x: expr): expr =
-      block:
-        const y = x
-        y
-
-    macro `payload`(x: stmt): stmt = result = once(s).parseStmt
-    `payload`()
-
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
@@ -312,27 +304,23 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr` and `lispRepr`.
-
   proc traverse(res: var string, level: int, n: PNimrodNode) =
     for i in 0..level-1: res.add "  "
+    res.add(($n.kind).substr(3))
     
-    if n == nil:
-      res.add "nil"
+    case n.kind
+    of nnkEmpty: nil # same as nil node in this representation
+    of nnkNilLit: res.add(" nil")
+    of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
+    of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
+    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
+    of nnkIdent: res.add(" !\"" & $n.ident & '"')
+    of nnkSym: res.add(" \"" & $n.symbol & '"')
+    of nnkNone: assert false
     else:
-      res.add(($n.kind).substr(3))
-      
-      case n.kind
-      of nnkEmpty: nil # same as nil node in this representation
-      of nnkNilLit: res.add(" nil")
-      of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
-      of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
-      of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
-      of nnkIdent: res.add(" !\"" & $n.ident & '"')
-      of nnkSym, nnkNone: assert false
-      else:
-        for j in 0..n.len-1:
-          res.add "\n"
-          traverse(res, level + 1, n[j])
+      for j in 0..n.len-1:
+        res.add "\n"
+        traverse(res, level + 1, n[j])
 
   result = ""
   traverse(result, 0, n)
@@ -342,8 +330,6 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   ##
   ## See also `repr` and `treeRepr`.
   
-  if n == nil: return "nil"
-
   result = ($n.kind).substr(3)
   add(result, "(")
   
@@ -363,7 +349,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
 
   add(result, ")")
 
-macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
+macro dumpTree*(s: stmt): stmt = echo s.treeRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
@@ -371,7 +357,7 @@ macro dumpTree*(s: stmt): stmt = echo s[1].treeRepr
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
-macro dumpLisp*(s: stmt): stmt = echo s[1].lispRepr
+macro dumpLisp*(s: stmt): stmt = echo s.lispRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
