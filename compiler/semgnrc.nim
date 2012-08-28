@@ -51,7 +51,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skTemplate:
     result = semTemplateExpr(c, n, s, false)
   of skMacro: 
-    result = semMacroExpr(c, n, s, false)
+    result = semMacroExpr(c, n, n, s, false)
   of skGenericParam: 
     result = newSymNode(s, n.info)
   of skParam: 
@@ -97,7 +97,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       incl(s.flags, sfUsed)
       case s.kind
       of skMacro: 
-        result = semMacroExpr(c, n, s, false)
+        result = semMacroExpr(c, n, n, s, false)
       of skTemplate: 
         result = semTemplateExpr(c, n, s, false)
         # BUGFIX: we must not return here, we need to do first phase of

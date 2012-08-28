@@ -3102,7 +3102,7 @@ a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 Macros
 ------
 
-A `macro`:idx: is a special kind of low level template. They can be used
+A `macro`:idx: is a special kind of low level template. Macros can be used
 to implement `domain specific languages`:idx:. Like templates, macros come in
 the 2 flavors *immediate* and *ordinary*.
 
@@ -3129,12 +3129,12 @@ variable number of arguments:
   # ``macros`` module:
   import macros
 
-  macro debug(n: expr): stmt =
+  macro debug(n: varargs[expr]): stmt =
     # `n` is a Nimrod AST that contains the whole macro invocation
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
-    for i in 1..n.len-1:
+    for i in 0..n.len-1:
       # add a call to the statement list that writes the expression;
       # `toStrLit` converts an AST to its string representation:
       add(result, newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
@@ -3167,6 +3167,11 @@ The macro call expands to:
   writeln(stdout, x)
 
 
+Arguments that are passed to a ``varargs`` parameter are wrapped in an array
+constructor expression. This is why ``debug`` iterates over all of ``n``'s
+children.
+
+
 BindSym
 ~~~~~~~
 
@@ -3179,9 +3184,9 @@ builtin can be used for that:
 .. code-block:: nimrod
   import macros
 
-  macro debug(n: expr): stmt =
+  macro debug(n: varargs[expr]): stmt =
     result = newNimNode(nnkStmtList, n)
-    for i in 1..n.len-1:
+    for i in 0..n.len-1:
       # we can bind symbols in scope via 'bindSym':
       add(result, newCall(bindSym"write", bindSym"stdout", toStrLit(n[i])))
       add(result, newCall(bindSym"write", bindSym"stdout", newStrLitNode(": ")))

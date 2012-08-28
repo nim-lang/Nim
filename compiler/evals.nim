@@ -38,6 +38,7 @@ type
     module*: PSym
     tos*: PStackFrame         # top of stack
     lastException*: PNode
+    callsite: PNode           # for 'callsite' magic
     mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
   
@@ -74,7 +75,7 @@ proc popStackFrame*(c: PEvalContext) {.inline.} =
   if c.tos != nil: c.tos = c.tos.next
   else: InternalError("popStackFrame")
 
-proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode
+proc evalMacroCall*(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
 proc raiseCannotEval(c: PEvalContext, info: TLineInfo): PNode = 
@@ -106,8 +107,11 @@ proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg = "") =
 proc isSpecial(n: PNode): bool {.inline.} =
   result = n.kind == nkExceptBranch
 
-proc myreset(n: PNode) {.inline.} =
-  when defined(system.reset): reset(n[])
+proc myreset(n: PNode) =
+  when defined(system.reset): 
+    var oldInfo = n.info
+    reset(n[])
+    n.info = oldInfo
 
 proc evalIf(c: PEvalContext, n: PNode): PNode = 
   var i = 0
@@ -245,6 +249,11 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyObject: 
     result = newNodeIT(nkPar, info, t)
     getNullValueAux(t.n, result)
+    # initialize inherited fields:
+    var base = t.sons[0]
+    while base != nil:
+      getNullValueAux(skipTypes(base, skipPtrs).n, result)
+      base = base.sons[0]
   of tyArray, tyArrayConstr: 
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1): 
@@ -925,7 +934,7 @@ proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
     # we want to replace it with nkIdent node featuring
     # the original unmangled macro name.
     macroCall.sons[0] = newIdentNode(expandedSym.name, expandedSym.info)
-    result = evalMacroCall(c, macroCall, expandedSym)
+    result = evalMacroCall(c, macroCall, original, expandedSym)
   else:
     InternalError(macroCall.info,
       "ExpandToAst: expanded symbol is no macro or template")
@@ -1166,10 +1175,13 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mIdentToStr: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
-    if result.kind != nkIdent: InternalError(n.info, "no ident node")
     var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
-    result.strVal = a.ident.s
+    if a.kind == nkSym:
+      result.strVal = a.sym.name.s
+    else:
+      if a.kind != nkIdent: InternalError(n.info, "no ident node")
+      result.strVal = a.ident.s
   of mEqIdent: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1226,6 +1238,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
     result.strVal = newString(0)
+  of mNCallSite:
+    if c.callsite != nil: result = c.callsite
+    else: stackTrace(c, n, errFieldXNotFound, "callsite")
   else:
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1355,24 +1370,31 @@ proc evalConstExpr*(module: PSym, e: PNode): PNode =
 proc evalStaticExpr*(module: PSym, e: PNode): PNode = 
   result = evalConstExprAux(module, e, emStatic)
 
-proc evalMacroCall*(c: PEvalContext, n: PNode, sym: PSym): PNode =
+proc setupMacroParam(x: PNode): PNode =
+  result = x
+  if result.kind == nkHiddenStdConv: result = result.sons[1]
+
+proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100: 
+  if evalTemplateCounter > 100:
     GlobalError(n.info, errTemplateInstantiationTooNested)
 
-  #inc genSymBaseId
+  c.callsite = nOrig
   var s = newStackFrame()
   s.call = n
-  setlen(s.params, 2)
+  setlen(s.params, n.len)
+  # return value:
   s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
-  s.params[1] = n
+  # setup parameters:
+  for i in 1 .. < n.len: s.params[i] = setupMacroParam(n.sons[i])
   pushStackFrame(c, s)
   discard eval(c, sym.getBody)
   result = s.params[0]
   popStackFrame(c)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   dec(evalTemplateCounter)
+  c.callsite = nil
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
   var c = newEvalContext(module, filename, emRepl)

@@ -441,7 +441,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, 
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
-    mNBindSym,
+    mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError, 
     mInstantiationInfo, mGetTypeInfo
 

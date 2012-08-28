@@ -98,7 +98,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       else: result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
-  of skMacro: result = semMacroExpr(c, n, s)
+  of skMacro: result = semMacroExpr(c, n, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
   of skVar, skLet, skResult, skParam, skForVar:
     markUsed(n, s)
@@ -705,7 +705,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return errorNode(c, n)
   let callee = result.sons[0].sym
   case callee.kind
-  of skMacro: result = semMacroExpr(c, nOrig, callee)
+  of skMacro: result = semMacroExpr(c, result, nOrig, callee)
   of skTemplate: result = semTemplateExpr(c, nOrig, callee)
   else:
     fixAbstractType(c, result)
@@ -1398,7 +1398,8 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
 
-proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode = 
+proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
+  # XXX why no overloading here?
   checkMinSonsLen(n, 2)
   var a: PNode
   if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
@@ -1407,7 +1408,7 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
   if s != nil: 
     case s.kind
     of skMacro: 
-      result = semMacroExpr(c, n, s, semCheck)
+      result = semMacroExpr(c, n, n, s, semCheck)
     of skTemplate: 
       # transform
       # nkMacroStmt(nkCall(a...), stmt, b...)
@@ -1499,16 +1500,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if s != nil: 
       case s.kind
       of skMacro:
-        if false and sfImmediate notin s.flags: # XXX not yet enabled
+        if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
-          result = semMacroExpr(c, n, s)
+          result = semMacroExpr(c, n, n, s)
       of skTemplate:
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
           result = semTemplateExpr(c, n, s)
-      of skType: 
+      of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n, s)

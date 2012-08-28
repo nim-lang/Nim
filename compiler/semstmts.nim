@@ -892,13 +892,10 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
 
 proc semMacroDef(c: PContext, n: PNode): PNode = 
   checkSonsLen(n, bodyPos + 1)
-  if n.sons[genericParamsPos].kind != nkEmpty: 
-    LocalError(n.info, errNoGenericParamsAllowedForX, "macro")
   result = semProcAux(c, n, skMacro, macroPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "macro")
-  if sonsLen(t) != 2: LocalError(n.info, errXRequiresOneArgument, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   

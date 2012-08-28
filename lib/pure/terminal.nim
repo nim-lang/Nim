@@ -325,8 +325,9 @@ proc styledEchoProcessArg(style: set[TStyle])      = setStyle style
 proc styledEchoProcessArg(color: TForegroundColor) = setForeGroundColor color
 proc styledEchoProcessArg(color: TBackgroundColor) = setBackGroundColor color
 
-macro styledEcho*(m: stmt): stmt =
+macro styledEcho*(m: varargs[expr]): stmt =
   ## to be documented.
+  let m = callsite()
   result = newNimNode(nnkStmtList)
 
   for i in countup(1, m.len - 1):
