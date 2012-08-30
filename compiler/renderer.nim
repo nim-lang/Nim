@@ -588,13 +588,13 @@ proc gwhile(g: var TSrcGen, n: PNode) =
 
 proc gpattern(g: var TSrcGen, n: PNode) = 
   var c: TContext
-  put(g, tkAs, "as")
-  putWithSpace(g, tkColon, ":")
+  put(g, tkCurlyLe, "{")
   initContext(c)
-  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen): 
+  if longMode(n) or (lsub(n.sons[0]) + g.lineLen > maxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0], c)
+  put(g, tkCurlyRi, "}")
 
 proc gpragmaBlock(g: var TSrcGen, n: PNode) = 
   var c: TContext
@@ -666,6 +666,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
     put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
   else:
     gsub(g, n.sons[namePos])
+  gsub(g, n.sons[patternPos])
   gsub(g, n.sons[genericParamsPos])
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
@@ -1045,7 +1046,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCaseStmt, nkRecCase: gcase(g, n)
   of nkMacroStmt: gmacro(g, n)
   of nkTryStmt: gtry(g, n)
-  of nkPatternStmt: gpattern(g, n)
+  of nkPattern: gpattern(g, n)
   of nkForStmt, nkParForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
   of nkStaticStmt: gstaticStmt(g, n)

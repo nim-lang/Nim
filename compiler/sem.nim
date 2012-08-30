@@ -104,7 +104,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0: return n
+  if c.patterns.len == 0 or optPatterns notin gOptions: return n
   result = n
   # we apply the last pattern first, so that pattern overriding is possible;
   # however the resulting AST would better not trigger the old rule then
@@ -113,7 +113,11 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
     let x = applyRule(c, c.patterns[i], result)
     if not isNil(x):
       assert x.kind == nkCall
+      inc(evalTemplateCounter)
+      if evalTemplateCounter > 100:
+        GlobalError(n.info, errTemplateInstantiationTooNested)
       result = semExpr(c, x)
+      dec(evalTemplateCounter)
 
 include seminst, semcall
 

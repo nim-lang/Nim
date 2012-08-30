@@ -700,10 +700,12 @@ proc parseDoBlock(p: var TParser): PNode =
   eat(p, tkColon)
   result = newNodeI(nkDo, info)
   addSon(result, ast.emptyNode)       # no name part
+  addSon(result, ast.emptyNode)       # no pattern part
   addSon(result, ast.emptyNode)       # no generic parameters
   addSon(result, params)
   addSon(result, pragmas)
   skipComment(p, result)
+  addSon(result, ast.emptyNode)       # no exception list
   addSon(result, parseStmt(p))
 
 proc parseDoBlocks(p: var TParser, call: PNode) =
@@ -720,14 +722,16 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
   let hasSignature = p.tok.tokType in {tkParLe, tkColon}
   params = parseParamList(p)
   pragmas = optPragmas(p)
-  if (p.tok.tokType == tkEquals) and isExpr: 
+  if p.tok.tokType == tkEquals and isExpr: 
     result = newNodeI(nkLambda, info)
     addSon(result, ast.emptyNode)       # no name part
+    addSon(result, ast.emptyNode)       # no pattern
     addSon(result, ast.emptyNode)       # no generic parameters
     addSon(result, params)
     addSon(result, pragmas)
     getTok(p)
     skipComment(p, result)
+    addSon(result, ast.emptyNode)       # no exception list
     addSon(result, parseStmt(p))
   else: 
     result = newNodeI(nkProcTy, info)
@@ -961,23 +965,14 @@ proc parseYieldOrDiscard(p: var TParser, kind: TNodeKind): PNode =
   optInd(p, result)
   addSon(result, parseExpr(p))
 
-proc parseBreakOrContinue(p: var TParser, kind: TNodeKind): PNode = 
+proc parseBreakOrContinue(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
   case p.tok.tokType
   of tkEof, tkSad, tkDed: addSon(result, ast.emptyNode)
   else: addSon(result, parseSymbol(p))
-  
-proc parseAs(p: var TParser): PNode =
-  result = newNodeP(nkPatternStmt, p)
-  getTok(p)                 # skip `as`
-  if p.tok.tokType == tkColon:
-    eat(p, tkColon)
-    addSon(result, parseStmt(p))
-  else:
-    addSon(result, parseExpr(p))
-  
+
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   while true:
@@ -1175,17 +1170,24 @@ proc parseGenericParamList(p: var TParser): PNode =
   optPar(p)
   eat(p, tkBracketRi)
 
+proc parsePattern(p: var TParser): PNode =
+  eat(p, tkCurlyLe)
+  result = parseStmt(p)
+  eat(p, tkCurlyRi)
+
 proc parseRoutine(p: var TParser, kind: TNodeKind): PNode = 
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
   addSon(result, identVis(p))
+  if p.tok.tokType == tkCurlyLe: addSon(result, parsePattern(p))
+  else: addSon(result, ast.emptyNode)
   if p.tok.tokType == tkBracketLe: addSon(result, parseGenericParamList(p))
   else: addSon(result, ast.emptyNode)
   addSon(result, parseParamList(p))
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
   else: addSon(result, ast.emptyNode)
-  # empty pattern:
+  # empty exception tracking:
   addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals: 
     getTok(p)
@@ -1522,7 +1524,6 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   of tkBind: result = parseBind(p)
-  of tkAs: result = parseAs(p)
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode = 

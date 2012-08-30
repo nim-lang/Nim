@@ -55,6 +55,7 @@ Advanced options:
   --taintMode:on|off        turn taint mode on|off
   --symbolFiles:on|off      turn symbol files on|off (experimental)
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
+  --patterns:on|off         turn pattern matching on|off
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files

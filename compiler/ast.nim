@@ -176,7 +176,7 @@ type
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
-    nkPatternStmt,        # a pattern statement ('as' statement)
+    nkPattern,            # a pattern statement ('as' statement)
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
@@ -687,13 +687,14 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}
   namePos* = 0
-  genericParamsPos* = 1
-  paramsPos* = 2
-  pragmasPos* = 3
-  patternPos* = 4    # empty except for term rewriting macros
-  bodyPos* = 5       # position of body; use rodread.getBody() instead!
-  resultPos* = 6
-  dispatcherPos* = 7 # caution: if method has no 'result' it can be position 5!
+  patternPos* = 1    # empty except for term rewriting macros
+  genericParamsPos* = 2
+  paramsPos* = 3
+  pragmasPos* = 4
+  exceptionPos* = 5  # will be used for exception tracking
+  bodyPos* = 6       # position of body; use rodread.getBody() instead!
+  resultPos* = 7
+  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 5!
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit}

@@ -92,7 +92,15 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of nkCharLit..nkInt64Lit: result = p.intVal == n.intVal
     of nkFloatLit..nkFloat64Lit: result = p.floatVal == n.floatVal
     of nkStrLit..nkTripleStrLit: result = p.strVal == n.strVal
-    of nkEmpty, nkNilLit, nkType: result = true
+    of nkEmpty, nkNilLit, nkType: 
+      result = true
+      # of nkStmtList:
+      # both are statement lists; we need to ignore comment statements and
+      # 'nil' statements and check whether p <: n which is however trivially
+      # checked as 'applyRule' is checked after every created statement
+      # already; We need to ensure that the matching span is passed to the
+      # macro and NOT simply 'n'!
+      # XXX
     else:
       if sonsLen(p) == sonsLen(n):
         for i in countup(0, sonsLen(p) - 1):
@@ -121,8 +129,6 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
       let param = params.sons[i].sym
       let x = IdNodeTableGetLazy(ctx.mapping, param)
       # couldn't bind parameter:
-      if isNil(x): 
-        echo "couldn't bind ", param.name.s
-        return nil
+      if isNil(x): return nil
       result.add(x)
-
+    markUsed(n, s)
