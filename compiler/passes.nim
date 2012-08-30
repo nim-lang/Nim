@@ -15,13 +15,8 @@ import
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion, 
   nimsets, syntaxes, times, rodread, semthreads, idgen
 
-type
-  TPassComm* = object {.pure.} ## communication object between passes
-    optimizers*: TSymSeq       ## filled by semantic pass; used in HLO
-  PPassComm* = ref TPassComm
-  
+type  
   TPassContext* = object of TObject # the pass's context
-    comm*: PPassComm
     fromCache*: bool  # true if created by "openCached"
     
   PPassContext* = ref TPassContext
@@ -85,26 +80,18 @@ proc registerPass(p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 
-proc newPassComm(): PPassComm =
-  new(result)
-  result.optimizers = @[]
-
 proc openPasses(a: var TPassContextArray, module: PSym, filename: string) = 
-  var comm = newPassComm()
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].open): 
       a[i] = gPasses[i].open(module, filename)
-      if a[i] != nil: a[i].comm = comm
     else: a[i] = nil
   
 proc openPassesCached(a: var TPassContextArray, module: PSym, filename: string, 
                       rd: PRodReader) = 
-  var comm = newPassComm()
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].openCached): 
       a[i] = gPasses[i].openCached(module, filename, rd)
       if a[i] != nil: 
-        a[i].comm = comm
         a[i].fromCache = true
     else:
       a[i] = nil

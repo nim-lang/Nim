@@ -67,6 +67,7 @@ type
     InUnrolledContext*: int    # > 0 if we are unrolling a loop
     InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
     converters*: TSymSeq       # sequence of converters
+    patterns*: TSymSeq         # sequence of pattern matchers
     optionStack*: TLinkedList
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
@@ -93,7 +94,6 @@ proc newContext*(module: PSym, nimfile: string): PContext
 
 proc lastOptionEntry*(c: PContext): POptionEntry
 proc newOptionEntry*(): POptionEntry
-proc addConverter*(c: PContext, conv: PSym)
 proc newLib*(kind: TLibKind): PLib
 proc addToLib*(lib: PLib, sym: PSym)
 proc makePtrType*(c: PContext, baseType: PType): PType
@@ -158,6 +158,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   result.friendModule = module
   result.threadEntries = @[]
   result.converters = @[]
+  result.patterns = @[]
   result.filename = nimfile
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
@@ -172,12 +173,18 @@ proc newContext(module: PSym, nimfile: string): PContext =
     assert gGenericsCache == nil
   result.UnknownIdents = initIntSet()
 
-proc addConverter(c: PContext, conv: PSym) = 
-  var L = len(c.converters)
+proc inclSym(sq: var TSymSeq, s: PSym) =
+  var L = len(sq)
   for i in countup(0, L - 1): 
-    if c.converters[i].id == conv.id: return 
-  setlen(c.converters, L + 1)
-  c.converters[L] = conv
+    if sq[i].id == s.id: return 
+  setlen(sq, L + 1)
+  sq[L] = s
+
+proc addConverter*(c: PContext, conv: PSym) =
+  inclSym(c.converters, conv)
+
+proc addPattern*(c: PContext, p: PSym) =
+  inclSym(c.patterns, p)
 
 proc newLib(kind: TLibKind): PLib = 
   new(result)

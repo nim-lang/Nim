@@ -1591,3 +1591,4 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     LocalError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
   incl(result.flags, nfSem)
+  result = applyPatterns(c, result)

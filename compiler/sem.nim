@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl
+  evaltempl, patterns
 
 proc semPass*(): TPass
 # implementation
@@ -101,6 +101,19 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     LocalError(n.info, errConstExprExpected)
     return n
   result = evalTypedExpr(c, e)
+
+proc applyPatterns(c: PContext, n: PNode): PNode =
+  # fast exit:
+  if c.patterns.len == 0: return n
+  result = n
+  # we apply the last pattern first, so that pattern overriding is possible;
+  # however the resulting AST would better not trigger the old rule then
+  # anymore ;-)
+  for i in countdown(<c.patterns.len, 0):
+    let x = applyRule(c, c.patterns[i], result)
+    if not isNil(x):
+      assert x.kind == nkCall
+      result = semExpr(c, x)
 
 include seminst, semcall
 

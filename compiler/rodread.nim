@@ -11,7 +11,7 @@
 #
 # Reading and writing binary files are really hard to debug. Therefore we use
 # a "creative" text/binary hybrid format. ROD-files are more efficient
-# to process because symbols are can be loaded on demand.
+# to process because symbols can be loaded on demand.
 # 
 # A ROD file consists of:
 #
@@ -65,10 +65,12 @@
 #    semantic checking:
 #    CONVERTERS:id id\n   # symbol ID
 #
+#    This is a misnomer now; it's really a "load unconditionally" section as
+#    it is also used for pattern templates.
+#
 #  - a list of all (private or exported) methods because they are needed for
 #    correct dispatcher generation:
 #    METHODS: id id\n   # symbol ID
-#
 #  - an AST section that contains the module's AST:
 #    INIT(
 #    idx\n  # position of the node in the DATA section

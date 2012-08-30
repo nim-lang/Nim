@@ -183,7 +183,7 @@ proc getPrecedence(tok: TToken): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf: result = 5
+  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf, tkAs: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor: result = 3
@@ -969,9 +969,18 @@ proc parseBreakOrContinue(p: var TParser, kind: TNodeKind): PNode =
   of tkEof, tkSad, tkDed: addSon(result, ast.emptyNode)
   else: addSon(result, parseSymbol(p))
   
-proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode = 
+proc parseAs(p: var TParser): PNode =
+  result = newNodeP(nkPatternStmt, p)
+  getTok(p)                 # skip `as`
+  if p.tok.tokType == tkColon:
+    eat(p, tkColon)
+    addSon(result, parseStmt(p))
+  else:
+    addSon(result, parseExpr(p))
+  
+proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
-  while true: 
+  while true:
     getTok(p)                 # skip `if`, `when`, `elif`
     var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
@@ -981,8 +990,8 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     addSon(branch, parseStmt(p))
     skipComment(p, branch)
     addSon(result, branch)
-    if p.tok.tokType != tkElif: break 
-  if p.tok.tokType == tkElse: 
+    if p.tok.tokType != tkElif: break
+  if p.tok.tokType == tkElse:
     var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
     eat(p, tkColon)
@@ -1176,6 +1185,8 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   addSon(result, parseParamList(p))
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
   else: addSon(result, ast.emptyNode)
+  # empty pattern:
+  addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals: 
     getTok(p)
     skipComment(p, result)
@@ -1511,6 +1522,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   of tkBind: result = parseBind(p)
+  of tkAs: result = parseAs(p)
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode = 

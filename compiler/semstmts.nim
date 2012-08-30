@@ -1202,6 +1202,16 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
     result = semStaticStmt(c, n)
+  of nkPatternStmt:
+    let pat = semPatternStmt(c, n)
+    let s = getCurrOwner()
+    if s.kind in routineKinds and s.ast.sons[patternPos].kind == nkEmpty:
+      s.ast.sons[patternPos] = pat
+      c.patterns.add(s)
+    else:
+      LocalError(n.info, errXNotAllowedHere, "'as'")
+    # replace by an empty statement:
+    result = newNodeI(nkNilLit, n.info)
   else: 
     # in interactive mode, we embed the expression in an 'echo':
     if gCmd == cmdInteractive:
@@ -1214,10 +1224,11 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     InternalError(n.info, "SemStmt: result = nil")
     # error correction:
     result = emptyNode
-  else: 
+  else:
     incl(result.flags, nfSem)
+  result = applyPatterns(c, result)
 
-proc semStmtScope(c: PContext, n: PNode): PNode = 
+proc semStmtScope(c: PContext, n: PNode): PNode =
   openScope(c.tab)
   result = semStmt(c, n)
   closeScope(c.tab)

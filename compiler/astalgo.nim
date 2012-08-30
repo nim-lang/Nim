@@ -834,8 +834,8 @@ proc writeIdNodeTable(t: TIdNodeTable) =
 proc IdNodeTableRawGet(t: TIdNodeTable, key: PIdObj): int = 
   var h: THash
   h = key.id and high(t.data) # start with real hash value
-  while t.data[h].key != nil: 
-    if (t.data[h].key.id == key.id): 
+  while t.data[h].key != nil:
+    if t.data[h].key.id == key.id:
       return h
     h = nextTry(h, high(t.data))
   result = - 1
@@ -845,6 +845,10 @@ proc IdNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
   index = IdNodeTableRawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = nil
+
+proc IdNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
+  if not isNil(t.data):
+    result = IdNodeTableGet(t, key)
   
 proc IdNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) = 
   var h: THash
@@ -871,6 +875,10 @@ proc IdNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
       swap(t.data, n)
     IdNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
+
+proc IdNodeTablePutLazy*(t: var TIdNodeTable, key: PIdObj, val: PNode) =
+  if isNil(t.data): initIdNodeTable(t)
+  IdNodeTablePut(t, key, val)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
   for i in 0 .. high(t.data):

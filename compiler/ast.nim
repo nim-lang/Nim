@@ -176,6 +176,7 @@ type
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
+    nkPatternStmt,        # a pattern statement ('as' statement)
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
@@ -246,8 +247,8 @@ type
                       # for interfacing with C++, JS
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
-    sfDiscardable     # returned value may be discarded implicitely
-    sfDestructor      # proc is destructor
+    sfDiscardable,    # returned value may be discarded implicitely
+    sfDestructor,     # proc is destructor
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 
   TSymFlags* = set[TSymFlag]
@@ -689,9 +690,10 @@ const
   genericParamsPos* = 1
   paramsPos* = 2
   pragmasPos* = 3
-  bodyPos* = 4       # position of body; use rodread.getBody() instead!
-  resultPos* = 5
-  dispatcherPos* = 6 # caution: if method has no 'result' it can be position 5!
+  patternPos* = 4    # empty except for term rewriting macros
+  bodyPos* = 5       # position of body; use rodread.getBody() instead!
+  resultPos* = 6
+  dispatcherPos* = 7 # caution: if method has no 'result' it can be position 5!
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit}
@@ -1174,6 +1176,9 @@ proc isGenericRoutine*(s: PSym): bool =
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
                       skConverter}
+
+proc hasPattern*(s: PSym): bool {.inline.} =
+  result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]

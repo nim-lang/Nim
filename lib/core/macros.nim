@@ -46,7 +46,7 @@ type
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
-    nnkIncludeStmt, nnkBindStmt,
+    nnkIncludeStmt, nnkBindStmt, nnkPatternStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
     nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 

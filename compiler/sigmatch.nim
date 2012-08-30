@@ -647,7 +647,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isIntConv:
-    # too lazy to introduce another ``*matches`` field, so we conflate
+    # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
     inc(m.intConvMatches)
     result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
