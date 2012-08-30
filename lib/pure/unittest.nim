@@ -154,6 +154,7 @@ template require*(conditions: stmt): stmt {.dirty.} =
     check conditions
 
 macro expect*(exp: stmt): stmt =
+  let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
                       body: stmt): PNimrodNode {.dirty.} =
     try:

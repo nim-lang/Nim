@@ -112,7 +112,7 @@ Changes affecting backwards compatibility
   the ``inheritable`` pragma to introduce new object roots apart 
   from ``TObject``.
 - Macros now receive parameters like templates do; use the ``callsite`` builtin
-  to gain access to the invokating AST.
+  to gain access to the invocation AST.
 
 
 Compiler Additions

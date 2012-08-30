@@ -26,7 +26,8 @@ import
 #  `opened` here could be an overloaded proc which any type can define.
 #  A common practice can be returing an Optional[Resource] obj for which
 #  `opened` is defined to `optional.hasValue`
-macro using(e: expr): stmt =
+macro using(e: expr): stmt {.immediate.} =
+  let e = callsite()
   if e.len != 2:
     error "Using statement: unexpected number of arguments. Got " &
       $e.len & ", expected: 1 or more variable assignments and a block"
