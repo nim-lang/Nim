@@ -184,6 +184,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
   of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
+  of "patterns": result = contains(gOptions, optPatterns)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string): string = 
@@ -315,6 +316,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "taintmode": ProcessOnOffSwitchG({optTaintMode}, arg, pass, info)
   of "implicitstatic":
     ProcessOnOffSwitch({optImplicitStatic}, arg, pass, info)
+  of "patterns":
+    ProcessOnOffSwitch({optPatterns}, arg, pass, info)
   of "opt":
     expectArg(switch, arg, pass, info)
     case arg.normalize

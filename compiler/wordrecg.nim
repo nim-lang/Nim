@@ -51,7 +51,7 @@ type
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks, 
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks,
-    wAssertions, wWarnings, 
+    wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wSpeed, wSize, wNone, 
     wDeadCodeElim, wSafecode, 
     wPragma,
@@ -131,7 +131,7 @@ const
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks",
 
-    "assertions", "warnings", "hints", 
+    "assertions", "patterns", "warnings", "hints", 
     "optimization", "speed", "size", "none", 
     "deadcodeelim", "safecode", 
     "pragma",

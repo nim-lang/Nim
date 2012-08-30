@@ -770,6 +770,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     s.typ = newTypeS(tyProc, c)
     rawAddSon(s.typ, nil)
+  if n.sons[patternPos].kind != nkEmpty:
+    n.sons[patternPos] = semPattern(c, n.sons[patternPos])
+    c.patterns.add(s)
+  
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
                                                # open for parameters
   if proto == nil: 
@@ -1202,17 +1206,7 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
     result = semStaticStmt(c, n)
-  of nkPatternStmt:
-    let pat = semPatternStmt(c, n)
-    let s = getCurrOwner()
-    if s.kind in routineKinds and s.ast.sons[patternPos].kind == nkEmpty:
-      s.ast.sons[patternPos] = pat
-      c.patterns.add(s)
-    else:
-      LocalError(n.info, errXNotAllowedHere, "'as'")
-    # replace by an empty statement:
-    result = newNodeI(nkNilLit, n.info)
-  else: 
+  else:
     # in interactive mode, we embed the expression in an 'echo':
     if gCmd == cmdInteractive:
       result = buildEchoStmt(c, semExpr(c, n))

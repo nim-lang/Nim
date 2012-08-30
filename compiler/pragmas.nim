@@ -41,7 +41,7 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
     wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd}
+    wLinearScanEnd, wPatterns}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
@@ -302,6 +302,7 @@ proc processOption(c: PContext, n: PNode) =
           excl(gOptions, optOptimizeSize)
         else: LocalError(n.info, errNoneSpeedOrSizeExpected)
     of wImplicitStatic: OnOff(c, n, {optImplicitStatic})
+    of wPatterns: OnOff(c, n, {optPatterns})
     else: LocalError(n.info, errOptionExpected)
   
 proc processPush(c: PContext, n: PNode, start: int) = 
@@ -643,7 +644,8 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
              wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
              wLinedir, wStacktrace, wLinetrace, wOptimization,
              wCallConv, 
-             wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks: 
+             wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks,
+             wPatterns:
             processOption(c, it) # calling conventions (boring...):
           of firstCallConv..lastCallConv: 
             assert(sym != nil)

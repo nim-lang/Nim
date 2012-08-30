@@ -172,10 +172,11 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   else:
     n.sons[namePos] = semTemplBody(c, n.sons[namePos])
   openScope(c)
-  for i in genericParamsPos..bodyPos:
+  for i in patternPos..bodyPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
   closeScope(c)
 
+proc semPattern(c: PContext, n: PNode): PNode
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
   result = n
   case n.kind
@@ -396,7 +397,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s.typ.n = newNodeI(nkFormalParams, n.info)
     rawAddSon(s.typ, newTypeS(tyStmt, c))
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
-      
+  if n.sons[patternPos].kind != nkEmpty:
+    n.sons[patternPos] = semPattern(c, n.sons[patternPos])
+    c.patterns.add(s)
+
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.c = c
@@ -422,7 +426,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
 
-proc semPatternStmt(c: PContext, n: PNode): PNode =
+proc semPattern(c: PContext, n: PNode): PNode =
   # not much to do here: We don't replace operators ``$``, ``*``, ``+``,
   # ``|``, ``~`` as meta operators and strip the leading ``\`` of all
   # operators.
@@ -432,5 +436,7 @@ proc semPatternStmt(c: PContext, n: PNode): PNode =
   ctx.c = c
   ctx.owner = getCurrOwner()
   ctx.bodyKind = bkPattern
-  result = semTemplBody(ctx, n.sons[0])
+  result = semTemplBody(ctx, n)
+  if result.kind in {nkStmtList, nkStmtListExpr} and result.len == 1:
+    result = result.sons[0]
   closeScope(c.tab)

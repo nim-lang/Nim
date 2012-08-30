@@ -26,8 +26,9 @@ type                          # please make sure we have under 32 options
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on
-    optImplicitStatic         # optimization: implicit at compile time
+    optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
+    optPatterns               # en/disable pattern matching
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 
@@ -82,7 +83,8 @@ const
 var 
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck, 
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
-                         optHints, optStackTrace, optLineTrace}
+                         optHints, optStackTrace, optLineTrace,
+                         optPatterns}
   gGlobalOptions*: TGlobalOptions = {optRefcGC, optThreadAnalysis}
   gExitcode*: int8
   searchPaths*: TLinkedList

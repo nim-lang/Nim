@@ -3,7 +3,7 @@ version 0.9.0
 
 - make 'm: stmt' use overloading resolution
 
-- implement the high level optimizer
+- improve pattern matching: introduce meta operators, statement list support
 - make 'bind' default for templates and introduce 'mixin'
 
 - implement "closure tuple consists of a single 'ref'" optimization
