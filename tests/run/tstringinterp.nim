@@ -18,6 +18,7 @@ template ProcessInterpolations(e: expr) =
     of ikVar, ikExpr: addExpr(newCall("$", parseExpr(f.value)))
 
 macro formatStyleInterpolation(e: expr): expr =
+  let e = callsite()
   var 
     formatString = ""
     arrayNode = newNimNode(nnkBracket)
@@ -41,6 +42,7 @@ macro formatStyleInterpolation(e: expr): expr =
   result[2] = arrayNode
 
 macro concatStyleInterpolation(e: expr): expr =
+  let e = callsite()
   var args: seq[PNimrodNode]
   newSeq(args, 0)
 

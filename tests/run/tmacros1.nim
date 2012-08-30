@@ -1,11 +1,12 @@
 discard """
-  output: "Got: 'nnkIntLit' hi"
+  output: "Got: 'nnkMacroStmt' hi"
 """
 
 import
   macros, strutils
 
 macro outterMacro*(n: stmt): stmt =
+  let n = callsite()
   var j : string = "hi"
   proc innerProc(i: int): string =
     echo "Using arg ! " & n.repr

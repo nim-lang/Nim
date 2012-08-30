@@ -258,7 +258,7 @@ proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
   else:
     result = newCall("newXmlTree", toStrLit(a))
 
-macro `<>`*(x: expr): expr = 
+macro `<>`*(x: expr): expr {.immediate.} = 
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nimrod

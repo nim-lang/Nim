@@ -13,6 +13,7 @@ proc testBlock(): string {.compileTime.} =
   result = "ta-da"
 
 macro mac(n: expr): expr =
+  let n = callsite()
   expectKind(n, nnkCall)
   expectLen(n, 2)
   expectKind(n[1], nnkStrLit)

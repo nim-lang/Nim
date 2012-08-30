@@ -6,7 +6,8 @@ discard """
 
 import macros
 
-macro quoteWords(n: expr): expr = 
+macro quoteWords(n: expr): expr {.immediate.} = 
+  let n = callsite()
   result = newNimNode(nnkBracket, n)
   for i in 1..n.len-1:
     expectKind(n[i], nnkIdent)
