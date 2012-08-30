@@ -45,8 +45,8 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   var copy = s # do not copy symbols when importing!
   # check if we have already a symbol of the same name:
   var check = StrTableGet(c.tab.stack[importTablePos], s.name)
-  if (check != nil) and (check.id != copy.id): 
-    if not (s.kind in OverloadableSyms): 
+  if check != nil and check.id != copy.id: 
+    if s.kind notin OverloadableSyms: 
       # s and check need to be qualified:
       Incl(c.AmbiguousSymbols, copy.id)
       Incl(c.AmbiguousSymbols, check.id)
@@ -70,8 +70,10 @@ proc rawImportSymbol(c: PContext, s: PSym) =
           check = NextIdentIter(it, c.tab.stack[importTablePos])
         if e != nil: 
           rawImportSymbol(c, e)
-  elif s.kind == skConverter: 
-    addConverter(c, s)        # rodgen assures that converters are no stubs
+  else:
+    # rodgen assures that converters and patterns are no stubs
+    if s.kind == skConverter: addConverter(c, s)
+    if hasPattern(s): addPattern(c, s)
   
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) = 
   let ident = lookups.considerAcc(n)

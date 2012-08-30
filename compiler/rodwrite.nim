@@ -357,10 +357,10 @@ proc symStack(w: PRodWriter): int =
           add(w.compilerProcs, ' ')
           encodeVInt(s.id, w.compilerProcs)
           add(w.compilerProcs, rodNL)
-        if s.kind == skConverter: 
+        if s.kind == skConverter or hasPattern(s):
           if w.converters.len != 0: add(w.converters, ' ')
           encodeVInt(s.id, w.converters)
-        elif s.kind == skMethod and sfDispatcher notin s.flags:
+        if s.kind == skMethod and sfDispatcher notin s.flags:
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
       elif IiTableGet(w.imports.tab, s.id) == invalidKey: 

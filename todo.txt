@@ -14,9 +14,6 @@ version 0.9.0
 - the lookup rules for generics really are too permissive; global scope only
   doesn't fly with closures though; for a start add a warning when processing
   generic code
-- fix remaining closure bugs:
-  - test evals.nim with closures
-  - what about macros with closures?
 
 
 Bugs
@@ -47,6 +44,9 @@ version 0.9.XX
 
 - JS gen:
   - fix exception handling
+- fix remaining closure bugs:
+  - test evals.nim with closures
+  - what about macros with closures?
 
 - document 'do' notation
 - allow implicit forward declarations of procs via a pragma (so that the

@@ -98,10 +98,16 @@ proc replaceIdentBySym(n: var PNode, s: PNode) =
   of nkIdent, nkAccQuoted, nkSym: n = s
   else: illFormedAst(n)
 
+# This code here is the first pass over a template's body. The same code also
+# implements the first pass over a pattern's body:
+
 type
+  TBodyKind = enum
+    bkTemplate, bkPattern
   TemplCtx {.pure, final.} = object
     c: PContext
     toBind: TIntSet
+    bodyKind: TBodyKind
     owner: PSym
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
@@ -166,10 +172,8 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   else:
     n.sons[namePos] = semTemplBody(c, n.sons[namePos])
   openScope(c)
-  n.sons[genericParamsPos] = semTemplBody(c, n.sons[genericParamsPos])
-  n.sons[paramsPos] = semTemplBody(c, n.sons[paramsPos])
-  n.sons[pragmasPos] = semTemplBody(c, n.sons[pragmasPos])
-  n.sons[bodyPos] = semTemplBodyScope(c, n.sons[bodyPos])
+  for i in genericParamsPos..bodyPos:
+    n.sons[i] = semTemplBody(c, n.sons[i])
   closeScope(c)
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
@@ -183,6 +187,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
       elif Contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
+      elif c.bodyKind == bkPattern:
+        result = symChoice(c.c, n, s, scOpen)
       elif s.owner == c.owner and sfGenSym in s.flags:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
@@ -395,6 +401,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   ctx.toBind = initIntSet()
   ctx.c = c
   ctx.owner = s
+  ctx.bodyKind = bkTemplate
   if sfDirty in s.flags:
     n.sons[bodyPos] = semTemplBodyDirty(ctx, n.sons[bodyPos])
   else:
@@ -415,3 +422,15 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
 
+proc semPatternStmt(c: PContext, n: PNode): PNode =
+  # not much to do here: We don't replace operators ``$``, ``*``, ``+``,
+  # ``|``, ``~`` as meta operators and strip the leading ``\`` of all
+  # operators.
+  openScope(c.tab)
+  var ctx: TemplCtx
+  ctx.toBind = initIntSet()
+  ctx.c = c
+  ctx.owner = getCurrOwner()
+  ctx.bodyKind = bkPattern
+  result = semTemplBody(ctx, n.sons[0])
+  closeScope(c.tab)
