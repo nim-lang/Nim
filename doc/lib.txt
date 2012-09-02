@@ -160,6 +160,9 @@ Generic Operating System Services
   This module provides support for memory mapped files (Posix's ``mmap``) 
   on the different operating systems.
 
+* `fsmonitor <fsmonitor.html>`_
+  This module implements the ability to monitor a directory/file for changes
+  using Posix's inotify API.
 
 Math libraries
 --------------
