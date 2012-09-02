@@ -367,7 +367,7 @@ proc lsub(n: PNode): int =
     else: result = len(atom(n))
   of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit: 
     result = len(atom(n))
-  of nkCall, nkBracketExpr, nkCurlyExpr, nkConv:
+  of nkCall, nkBracketExpr, nkCurlyExpr, nkConv, nkPattern:
     result = lsub(n.sons[0]) + lcomma(n, 1) + 2
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: result = lsub(n[1])
   of nkCast: result = lsub(n.sons[0]) + lsub(n.sons[1]) + len("cast[]()")
@@ -377,6 +377,7 @@ proc lsub(n: PNode): int =
   of nkCommand: result = lsub(n.sons[0]) + lcomma(n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(n) + 3
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(n) + 2
+  of nkArgList: result = lcomma(n)
   of nkTableConstr:
     result = if n.len > 0: lcomma(n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice: 
@@ -666,7 +667,9 @@ proc gproc(g: var TSrcGen, n: PNode) =
     put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
   else:
     gsub(g, n.sons[namePos])
-  gsub(g, n.sons[patternPos])
+  
+  if n.sons[patternPos].kind != nkEmpty:
+    gpattern(g, n.sons[patternPos])
   gsub(g, n.sons[genericParamsPos])
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
@@ -774,7 +777,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkRStrLit: put(g, tkRStrLit, atom(n))
   of nkCharLit: put(g, tkCharLit, atom(n))
   of nkNilLit: put(g, tkNil, atom(n))    # complex expressions
-  of nkCall, nkConv, nkDotCall: 
+  of nkCall, nkConv, nkDotCall, nkPattern:
     if sonsLen(n) >= 1: gsub(g, n.sons[0])
     put(g, tkParLe, "(")
     gcomma(g, n, 1)
@@ -859,6 +862,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkCurlyLe, "{")
     gcomma(g, n, c)
     put(g, tkCurlyRi, "}")
+  of nkArgList:
+    gcomma(g, n, c)
   of nkTableConstr:
     put(g, tkCurlyLe, "{")
     if n.len > 0: gcomma(g, n, c)
@@ -922,8 +927,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[2])
   of nkPrefix: 
     gsub(g, n.sons[0])
-    put(g, tkSpaces, space)
-    gsub(g, n.sons[1])
+    if n.len > 1:
+      put(g, tkSpaces, space)
+      gsub(g, n.sons[1])
   of nkPostfix: 
     gsub(g, n.sons[1])
     gsub(g, n.sons[0])
@@ -1046,7 +1052,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCaseStmt, nkRecCase: gcase(g, n)
   of nkMacroStmt: gmacro(g, n)
   of nkTryStmt: gtry(g, n)
-  of nkPattern: gpattern(g, n)
   of nkForStmt, nkParForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
   of nkStaticStmt: gstaticStmt(g, n)

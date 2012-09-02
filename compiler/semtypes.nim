@@ -826,9 +826,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkCurlyExpr:
     result = semTypeNode(c, n.sons[0], nil)
     if result != nil:
-      result = copyType(result, getCurrOwner(), false)
-      for i in countup(1, n.len - 1):
-        result.rawAddSon(semTypeNode(c, n.sons[i], nil))
+      result = copyType(result, getCurrOwner(), true)
+      result.constraint = semNodeKindConstraints(n)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
@@ -844,6 +843,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
     of mVarargs: result = semVarargs(c, n, prev)
+    of mExpr, mTypeDesc:
+      result = semTypeNode(c, n.sons[0], nil)
+      if result != nil:
+        result = copyType(result, getCurrOwner(), false)
+        for i in countup(1, n.len - 1):
+          result.rawAddSon(semTypeNode(c, n.sons[i], nil))
     else: result = semGeneric(c, n, s, prev)
   of nkIdent, nkDotExpr, nkAccQuoted: 
     var s = semTypeIdent(c, n)

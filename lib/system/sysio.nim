@@ -146,10 +146,6 @@ proc EndOfFile(f: TFile): bool =
   ungetc(c, f)
   return c < 0'i32
 
-proc writeln[Ty](f: TFile, x: Ty) =
-  write(f, x)
-  write(f, "\n")
-
 proc writeln[Ty](f: TFile, x: varargs[Ty, `$`]) =
   for i in items(x): write(f, i)
   write(f, "\n")

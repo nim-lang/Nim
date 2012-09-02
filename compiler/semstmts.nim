@@ -933,6 +933,8 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   result = evalStaticExpr(c.module, a)
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
+  elif result.kind == nkEmpty:
+    result = newNodeI(nkNilLit, n.info)
 
 # special marker values that indicates that we are
 # 1) AnalyzingDestructor: currenlty analyzing the type for destructor 

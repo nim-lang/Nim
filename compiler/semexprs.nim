@@ -65,18 +65,17 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result.typ = s.typ
   result.info = n.info
 
+proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+  # XXX this not correct; it's valid to pass to templates and macros.
+  # We really need another post nkCallConv check for this. Or maybe do it
+  # in transform().
+  var smoduleId = getModule(s).id
+  if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
+      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
+    LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
+  
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
-  of skProc, skMethod, skIterator, skConverter: 
-    var smoduleId = getModule(s).id
-    if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
-        smoduleId != c.module.id and smoduleId != c.friendModule.id: 
-      LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
-    result = symChoice(c, n, s, scClosed)
-    if result.kind == nkSym:
-      markIndirect(c, result.sym)
-      if isGenericRoutine(result.sym):
-        LocalError(n.info, errInstantiateXExplicitely, s.name.s)
   of skConst:
     markUsed(n, s)
     case skipTypes(s.typ, abstractInst).kind
@@ -105,7 +104,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
-    elif s.kind == skParam and s.typ.kind == tyExpr:
+    elif s.kind == skParam and s.typ.kind == tyExpr and s.typ.n != nil:
+      # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
@@ -1438,6 +1438,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = lookUp(c, n)
     semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
+    if s.kind in {skProc, skMethod, skIterator, skConverter}:
+      performProcvarCheck(c, n, s)
+      result = symChoice(c, n, s, scClosed)
+      if result.kind == nkSym:
+        markIndirect(c, result.sym)
+        if isGenericRoutine(result.sym):
+          LocalError(n.info, errInstantiateXExplicitely, s.name.s)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!

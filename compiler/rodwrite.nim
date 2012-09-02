@@ -233,6 +233,9 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.containerID != 0: 
     add(result, '@')
     encodeVInt(t.containerID, result)
+  if t.constraint != nil:
+    add(result, '`')
+    encodeNode(w, UnknownLineInfo(), t.constraint, result)
   encodeLoc(w, t.loc, result)
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i] == nil: 
