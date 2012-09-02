@@ -711,7 +711,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
   ## A variant of ``connect`` for non-blocking sockets.
   ##
   ## This procedure will immediatelly return, it will not block until a connection
-  ## is made. It is up to the caller to make sure the connections has been established
+  ## is made. It is up to the caller to make sure the connection has been established
   ## by checking (using ``select``) whether the socket is writeable.
   ##
   ## **Note**: For SSL sockets, the ``handshake`` procedure must be called
@@ -819,6 +819,12 @@ proc pruneSocketSet(s: var seq[TSocket], fd: var TFdSet) =
     else:
       inc(i)
   setLen(s, L)
+
+proc hasDataBuffered*(s: TSocket): bool =
+  ## Determines whether a socket has data buffered.
+  result = false
+  if s.isBuffered:
+    result = s.bufLen > 0 and s.currPos != s.bufLen
 
 proc checkBuffer(readfds: var seq[TSocket]): int =
   ## Checks the buffer of each socket in ``readfds`` to see whether there is data.
@@ -1384,6 +1390,9 @@ proc connect*(socket: TSocket, timeout: int, name: string, port = TPort(0),
 
 proc isSSL*(socket: TSocket): bool = return socket.isSSL
   ## Determines whether ``socket`` is a SSL socket.
+
+proc getFD*(socket: TSocket): cint = return socket.fd
+  ## Returns the socket's file descriptor
 
 when defined(Windows):
   var wsa: TWSADATA
