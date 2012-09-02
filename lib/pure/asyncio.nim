@@ -76,8 +76,8 @@ else:
   from posix import TTimeVal, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
 
 type
-  TDelegate = object
-    fd: cint
+  TDelegate* = object
+    fd*: cint
     deleVal*: PObject
 
     handleRead*: proc (h: PObject) {.nimcall.}
@@ -398,21 +398,17 @@ proc select(readfds, writefds, exceptfds: var seq[PDelegate],
   pruneSocketSet(exceptfds, (ex))
 
 proc poll*(d: PDispatcher, timeout: int = 500): bool =
-  ## This function checks for events on all the sockets in the `PDispatcher`.
+  ## This function checks for events on all the delegates in the `PDispatcher`.
   ## It then proceeds to call the correct event handler.
-  ## 
-  ## **Note:** There is no event which signifes when you have been disconnected,
-  ## it is your job to check whether what you get from ``recv`` is ``""``.
-  ## If you have been disconnected, `d`'s ``getSocket`` function should report
-  ## this appropriately.
   ##
-  ## This function returns ``True`` if there are sockets that are still 
-  ## connected (or connecting), otherwise ``False``. Sockets that have been
+  ## This function returns ``True`` if there are file descriptors that are still 
+  ## open, otherwise ``False``. File descriptors that have been
   ## closed are immediately removed from the dispatcher automatically.
   ##
   ## **Note:** Each delegate has a task associated with it. This gets called
-  ## after each select() call, if you make timeout ``-1`` the tasks will
-  ## only be executed after one or more sockets becomes readable or writeable.
+  ## after each select() call, if you set timeout to ``-1`` the tasks will
+  ## only be executed after one or more file descriptors becomes readable or
+  ## writeable.
   result = true
   var readDg, writeDg, errorDg: seq[PDelegate] = @[]
   var len = d.delegates.len
@@ -433,10 +429,17 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
       dec len
   d.delegates.setLen(len)
   
+  var hasDataBufferedCount = 0
+  for d in d.delegates:
+    if d.hasDataBuffered(d.deleVal):
+      hasDataBufferedCount.inc()
+      d.handleRead(d.deleVal)
+  if hasDataBufferedCount > 0: return True
+  
   if readDg.len() == 0 and writeDg.len() == 0:
     ## TODO: Perhaps this shouldn't return if errorDg has something?
     return False
-  # TODO: Buffering hasDataBuffered!!
+  
   if select(readDg, writeDg, errorDg, timeout) != 0:
     for i in 0..len(d.delegates)-1:
       if i > len(d.delegates)-1: break # One delegate might've been removed.
@@ -452,63 +455,6 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
   # Execute tasks
   for i in items(d.delegates):
     i.task(i.deleVal)
-  
-  discard """result = true
-  var readSocks, writeSocks: seq[TSocket] = @[]
-  
-  var L = d.delegates.len
-  var dc = 0
-  while dc < L:
-    template deleg: expr = d.delegates[dc]
-    let aSock = deleg.getSocket(deleg.deleVal)
-    if (deleg.mode != MWriteable and aSock.info == SockConnected) or
-          aSock.info == SockListening or aSock.info == SockUDPBound:
-      readSocks.add(aSock.sock)
-    if aSock.info == SockConnecting or
-        (aSock.info == SockConnected and deleg.mode != MReadable):
-      writeSocks.add(aSock.sock)
-    if aSock.info == SockClosed:
-      # Socket has been closed remove it from the dispatcher.
-      d.delegates[dc] = d.delegates[L-1]
-      
-      dec L
-    else: inc dc
-  d.delegates.setLen(L)
-  
-  if readSocks.len() == 0 and writeSocks.len() == 0:
-    return False
-
-  if select(readSocks, writeSocks, timeout) != 0:
-    for i in 0..len(d.delegates)-1:
-      if i > len(d.delegates)-1: break # One delegate might've been removed.
-      let deleg = d.delegates[i]
-      let sock = deleg.getSocket(deleg.deleVal)
-      if sock.info == SockConnected or 
-         sock.info == SockUDPBound:
-        if deleg.mode != MWriteable and sock.sock notin readSocks:
-          if not (sock.info == SockConnecting):
-            assert(not (sock.info == SockListening))
-            deleg.handleRead(deleg.deleVal)
-          else:
-            assert(false)
-        if deleg.mode != MReadable and sock.sock notin writeSocks:
-          deleg.handleWrite(deleg.deleVal)
-      
-      if sock.info == SockListening:
-        if sock.sock notin readSocks:
-          # This is a server socket, that had listen() called on it.
-          # This socket should have a client waiting now.
-          deleg.handleAccept(deleg.deleVal)
-      
-      if sock.info == SockConnecting:
-        # Checking whether the socket has connected this way should work on
-        # Windows and Posix. I've checked. 
-        if sock.sock notin writeSocks:
-          deleg.handleConnect(deleg.deleVal)
-  
-  # Execute tasks
-  for i in items(d.delegates):
-    i.task(i.deleVal)"""
 
 proc len*(disp: PDispatcher): int =
   ## Retrieves the amount of delegates in ``disp``.
