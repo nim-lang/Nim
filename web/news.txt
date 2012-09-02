@@ -65,7 +65,7 @@ Library Additions
   some operation.
 - Added ``strutils.format``, ``subexes.format`` which use the 
   new ``varargs`` type.
-
+- Added module ``fsmonitor``.
 
 Changes affecting backwards compatibility
 -----------------------------------------
