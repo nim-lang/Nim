@@ -46,14 +46,17 @@ type
     nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
-    nnkIncludeStmt, nnkBindStmt, nnkPattern,
+    nnkIncludeStmt, nnkBindStmt, 
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
     nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
     nnkRefTy, nnkPtrTy, nnkVarTy, 
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy, 
-    nnkProcTy, nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
+    nnkProcTy, nnkEnumTy, 
+    nnkEnumFieldDef, 
+    nnkArglist, nnkPattern
+    nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty, 

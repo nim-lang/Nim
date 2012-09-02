@@ -1314,10 +1314,11 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
-iterator items*(E: typedesc{enum}): E =
-  ## iterates over the values of the enum ``E``.
-  for v in low(E)..high(E):
-    yield v
+when not defined(booting):
+  iterator items*(E: typedesc[enum]): E =
+    ## iterates over the values of the enum ``E``.
+    for v in low(E)..high(E):
+      yield v
 
 iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
@@ -1832,12 +1833,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## ``CRLF``. The newline character(s) are not part of the returned string.
     ## Returns ``false`` if the end of the file has been reached, ``true``
     ## otherwise. If ``false`` is returned `line` contains no new data.
-  proc writeln*[Ty](f: TFile, x: Ty) {.inline.}
-    ## writes a value `x` to `f` and then writes "\n".
-    ## May throw an IO exception.
 
   proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline.}
-    ## writes a value `x` to `f` and then writes "\n".
+    ## writes the values `x` to `f` and then writes "\n".
     ## May throw an IO exception.
 
   proc getFileSize*(f: TFile): int64

@@ -176,7 +176,6 @@ type
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
-    nkPattern,            # a pattern statement ('as' statement)
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
@@ -201,6 +200,8 @@ type
     nkProcTy,             # proc type
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
+    nkArgList,            # argument list
+    nkPattern,            # a special pattern; used for matching
     nkReturnToken,        # token used for interpretation
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
@@ -584,7 +585,7 @@ type
                               # for a conditional:
                               # 1 iff the symbol is defined, else 0
                               # (or not in symbol table)
-                              # for modules, a unique index correspinding
+                              # for modules, a unique index corresponding
                               # to the order of compilation 
     offset*: int              # offset of record field
     loc*: TLoc
@@ -616,6 +617,7 @@ type
     align*: int               # the type's alignment requirements
     containerID*: int         # used for type checking of generics
     loc*: TLoc
+    constraint*: PNode        # additional constraints like 'lit|result'
 
   TPair*{.final.} = object 
     key*, val*: PObject
@@ -865,13 +867,22 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typ = sym.typ
   result.info = info
 
-proc newNodeI(kind: TNodeKind, info: TLineInfo): PNode = 
-  result = newNode(kind)
+proc newNodeI(kind: TNodeKind, info: TLineInfo): PNode =
+  new(result)
+  result.kind = kind
   result.info = info
+
+proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
+  new(result)
+  result.kind = kind
+  result.info = info
+  if children > 0:
+    newSeq(result.sons, children)
 
 proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
              typ: PType = nil): PNode =
-  result = newNode(kind)
+  new(result)
+  result.kind = kind
   result.info = info
   result.typ = typ
   # XXX use shallowCopy here for ownership transfer:
@@ -1184,3 +1195,5 @@ proc hasPattern*(s: PSym): bool {.inline.} =
 iterator items*(n: PNode): PNode =
   for i in 0.. <n.len: yield n.sons[i]
 
+proc isAtom*(n: PNode): bool {.inline.} =
+  result = n.kind >= nkNone and n.kind <= nkNilLit

@@ -330,6 +330,9 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
   if r.s[r.pos] == '@': 
     inc(r.pos)
     result.containerID = decodeVInt(r.s, r.pos)
+  if r.s[r.pos] == '`':
+    inc(r.pos)
+    result.constraint = decodeNode(r, UnknownLineInfo())
   decodeLoc(r, result.loc, info)
   while r.s[r.pos] == '^': 
     inc(r.pos)

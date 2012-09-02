@@ -507,7 +507,8 @@ proc base(t: PType): PType =
 
 proc firstOrd(t: PType): biggestInt = 
   case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs: result = 0
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+    result = 0
   of tySet, tyVar: result = firstOrd(t.sons[0])
   of tyArray, tyArrayConstr: result = firstOrd(t.sons[0])
   of tyRange: 
@@ -564,6 +565,7 @@ proc lastOrd(t: PType): biggestInt =
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
   of tyGenericInst, tyDistinct, tyConst, tyMutable: 
     result = lastOrd(lastSon(t))
+  of tyProxy: result = 0
   else: 
     InternalError("invalid kind for last(" & $t.kind & ')')
     result = 0
@@ -591,7 +593,7 @@ type
                             # (few elements expected)
 
 proc initSameTypeClosure: TSameTypeClosure =
-  # we do the initialization lazy for performance (avoids memory allocations)
+  # we do the initialization lazily for performance (avoids memory allocations)
   nil
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
@@ -613,7 +615,7 @@ proc SameTypeOrNil*(a, b: PType): bool =
     result = true
   else: 
     if a == nil or b == nil: result = false
-    else: 
+    else:
       var c = initSameTypeClosure()
       result = SameTypeAux(a, b, c)
   

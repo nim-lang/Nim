@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns
+  evaltempl, patterns, parampatterns
 
 proc semPass*(): TPass
 # implementation
@@ -83,6 +83,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode
+proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 
@@ -102,6 +103,26 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return n
   result = evalTypedExpr(c, e)
 
+proc evalPattern(c: PContext, n: PNode, info: TLineInfo): PNode =
+  InternalAssert n.kind == nkCall and n.sons[0].kind == nkSym
+  # we need to ensure that the resulting AST is semchecked. However, it's
+  # aweful to semcheck before macro invocation, so we don't and treat
+  # templates and macros as immediate in this context.
+  var rule: string
+  if optHints in gOptions and hintPattern in gNotes:
+    rule = renderTree(n, {renderNoComments})
+  let s = n.sons[0].sym
+  case s.kind
+  of skMacro:
+    result = semMacroExpr(c, n, n, s)
+  of skTemplate:
+    result = semTemplateExpr(c, n, s)
+  else:
+    result = semDirectOp(c, n, {})
+  if optHints in gOptions and hintPattern in gNotes:
+    Message(info, hintPattern, rule & " --> '" & 
+      renderTree(result, {renderNoComments}) & "'")
+
 proc applyPatterns(c: PContext, n: PNode): PNode =
   # fast exit:
   if c.patterns.len == 0 or optPatterns notin gOptions: return n
@@ -110,14 +131,25 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
   # however the resulting AST would better not trigger the old rule then
   # anymore ;-)
   for i in countdown(<c.patterns.len, 0):
-    let x = applyRule(c, c.patterns[i], result)
-    if not isNil(x):
-      assert x.kind == nkCall
-      inc(evalTemplateCounter)
-      if evalTemplateCounter > 100:
-        GlobalError(n.info, errTemplateInstantiationTooNested)
-      result = semExpr(c, x)
-      dec(evalTemplateCounter)
+    let pattern = c.patterns[i]
+    if not isNil(pattern):
+      let x = applyRule(c, pattern, result)
+      if not isNil(x):
+        assert x.kind in {nkStmtList, nkCall}
+        inc(evalTemplateCounter)
+        if evalTemplateCounter > 100:
+          GlobalError(n.info, errTemplateInstantiationTooNested)
+        # deactivate this pattern:
+        c.patterns[i] = nil
+        if x.kind == nkStmtList:
+          assert x.len == 3
+          x.sons[1] = evalPattern(c, x.sons[1], n.info)
+          result = flattenStmts(x)
+        else:
+          result = evalPattern(c, x, n.info)
+        dec(evalTemplateCounter)
+        # activate this pattern again:
+        c.patterns[i] = pattern
 
 include seminst, semcall
 

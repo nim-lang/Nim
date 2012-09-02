@@ -109,7 +109,7 @@ type
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, 
-    hintConditionAlwaysTrue,
+    hintConditionAlwaysTrue, hintPattern,
     hintUser
 
 const 
@@ -152,7 +152,7 @@ const
     errExceptionAlreadyHandled: "exception already handled", 
     errYieldNotAllowedHere: "'yield' only allowed in an iterator",
     errYieldNotAllowedInTryStmt: "'yield' cannot be used within 'try' in a non-inlined iterator",
-    errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expresions", 
+    errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expressions", 
     errCannotReturnExpr: "current routine cannot return an expression", 
     errAttemptToRedefine: "redefinition of \'$1\'", 
     errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\' or \'raise\'", 
@@ -366,6 +366,7 @@ const
     hintConf: "used config file \'$1\' [Conf]", 
     hintPath: "added path: '$1' [Path]",
     hintConditionAlwaysTrue: "condition is always true: '$1' [CondTrue]",
+    hintPattern: "$1 [Pattern]",
     hintUser: "$1 [User]"]
 
 const
@@ -378,10 +379,10 @@ const
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "User"]
 
-  HintsToStr*: array[0..14, string] = ["Success", "SuccessX", "LineTooLong", 
+  HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf", 
-    "Path", "CondTrue",
+    "Path", "CondTrue", "Pattern",
     "User"]
 
 const 

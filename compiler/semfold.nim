@@ -196,8 +196,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
         result = makeRange(a.typ, 0, b.intVal)
-  of mModI, mModI64, mModU:
-    # so ... if you ever wondered about modulo's signedness; this defines it:
+  of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
     if b.kind in {nkIntLit..nkUInt64Lit}:
@@ -205,6 +204,15 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
         result = makeRange(a.typ, b.intVal+1, 0)
+  of mModI, mModI64:
+    # so ... if you ever wondered about modulo's signedness; this defines it:
+    let a = n.sons[1]
+    let b = n.sons[2]
+    if b.kind in {nkIntLit..nkUInt64Lit}:
+      if b.intVal >= 0:
+        result = makeRange(a.typ, -(b.intVal-1), b.intVal-1)
+      else:
+        result = makeRange(a.typ, b.intVal+1, -(b.intVal+1))
   of mDivI, mDivI64, mDivU:
     binaryOp(`|div|`)
   of mMinI, mMinI64:

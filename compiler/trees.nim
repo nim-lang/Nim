@@ -151,3 +151,19 @@ proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
+proc unnestStmts(n, result: PNode) =
+  if n.kind == nkStmtList:
+    for x in items(n): unnestStmts(x, result)
+  elif n.kind notin {nkCommentStmt, nkNilLit}:
+    result.add(n)
+
+proc flattenStmts*(n: PNode): PNode =
+  ## flattens a nested statement list; used for pattern matching
+  result = newNodeI(nkStmtList, n.info)
+  unnestStmts(n, result)
+  if result.len == 1:
+    result = result.sons[0]
+
+proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
+  result = newNodeI(k, n.info, b-a+1)
+  for i in 0 .. b-a: result.sons[i] = n.sons[i+a]
