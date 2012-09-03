@@ -5,18 +5,18 @@ type
     x: T
     y: U
 
-proc foo(T: typedesc{float}, a: expr): string =
+proc foo(T: typedesc[float], a: expr): string =
   result = "float " & $(a.len > 5)
 
-proc foo(T: typedesc{TFoo}, a: int): string =
+proc foo(T: typedesc[TFoo], a: int): string =
   result = "TFoo "  & $(a)
 
-proc foo(T: typedesc{int or bool}): string =
+proc foo(T: typedesc[int or bool]): string =
   var a: T
   a = 10
   result = "int or bool " & ($a)
 
-template foo(T: typedesc{seq}): expr = "seq"
+template foo(T: typedesc[seq]): expr = "seq"
 
 test "types can be used as proc params":
   check foo(TFoo[int, float], 1000) == "TFoo 1000"
@@ -31,5 +31,5 @@ test "types can be used as proc params":
   check foo(seq[TFoo[bool, string]]) == "seq"
 
 when false:
-  proc foo(T: typedesc{seq}, s: T) = nil
+  proc foo(T: typedesc[seq], s: T) = nil
 

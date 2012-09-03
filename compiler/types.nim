@@ -432,12 +432,12 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyTypeDesc:
     if t.sons.len == 0: result = "typedesc"
-    else: result = "typedesc{" & constraintsToStr(t) & "}"
+    else: result = "typedesc[" & constraintsToStr(t) & "]"
   of tyTypeClass:
     result = constraintsToStr(t)
   of tyExpr:
     if t.sons.len == 0: result = "expr"
-    else: result = "expr{" & constraintsToStr(t) & "}"
+    else: result = "expr[" & constraintsToStr(t) & "]"
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &

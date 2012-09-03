@@ -23,9 +23,6 @@ type
   PPatternContext = var TPatternContext
 
 proc matches(c: PPatternContext, p, n: PNode): bool
-proc checkConstraints(c: PPatternContext, p, n: PNode): bool =
-  # XXX create a new mapping here? --> need use cases
-  result = matches(c, p, n)
 
 proc canonKind(n: PNode): TNodeKind =
   ## nodekind canonilization for pattern matching
@@ -85,34 +82,28 @@ proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
   if pp != nil:
     # check if we got the same pattern (already unified):
     result = sameTrees(pp, n) #matches(c, pp, n)
-  elif checkTypes(c, param, n) and 
-      (param.ast == nil or checkConstraints(c, param.ast, n)):
+  elif n.kind == nkArgList or checkTypes(c, param, n):
     IdNodeTablePutLazy(c.mapping, param, n)
     result = true
 
 proc matchStar(c: PPatternContext, p, n: PNode): bool =
   # match ``op*param``
-  # this is quite hard: 
-  # match against: f(a, ..., f(b, c, f(...)))
-  # we have different semantics if there is a choice as left operand:
 
   proc matchStarAux(c: PPatternContext, op, n, arglist: PNode) =
     if n.kind in nkCallKinds and matches(c, op, n.sons[0]):
-      for i in 1..sonsLen(n)-1: matchStarAux(c, op, n.sons[i], arglist)
+      for i in 1..sonsLen(n)-1:
+        matchStarAux(c, op, n[i], arglist)    
+    elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
+      let n = n.sons[1]
+      for i in 0.. <n.len: matchStarAux(c, op, n[i], arglist)
     else:
       add(arglist, n)
-
+    
   if n.kind notin nkCallKinds: return false
-  if p.sons[0].kind != nkPattern:
-    if matches(c, p.sons[0], n.sons[0]):
-      var arglist = newNodeI(nkArgList, n.info)
-      arglist.typ = p.sons[1].sym.typ
-      matchStarAux(c, p.sons[0], n, arglist)
-      result = bindOrCheck(c, p.sons[1].sym, arglist)
-  else:
-    # well it matches somehow ...
-    if matches(c, p.sons[0], n.sons[0]):
-      result = bindOrCheck(c, p.sons[1].sym, n)
+  if matches(c, p.sons[1], n.sons[0]):
+    var arglist = newNodeI(nkArgList, n.info)
+    matchStarAux(c, p.sons[1], n, arglist)
+    result = bindOrCheck(c, p.sons[2].sym, arglist)
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
   # hidden conversions (?)
