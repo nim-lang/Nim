@@ -53,15 +53,15 @@ proc sameTrees(a, b: PNode): bool =
         result = true
 
 proc inSymChoice(sc, x: PNode): bool =
-  if sc.kind == nkClosedSymChoice:
-    for i in 0.. <sc.len:
-      if sc.sons[i].sym == x.sym: return true
-  elif sc.kind == nkOpenSymChoice:
+  if sc.kind == nkOpenSymChoice:
     # same name suffices for open sym choices!
     result = sc.sons[0].sym.name.id == x.sym.name.id
+  elif sc.kind == nkClosedSymChoice:
+    for i in 0.. <sc.len:
+      if sc.sons[i].sym == x.sym: return true
 
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
-  # check param constraints first here as this quite optimized:
+  # check param constraints first here as this is quite optimized:
   if p.typ.constraint != nil:
     result = matchNodeKinds(p.typ.constraint, n)
     if not result: return
@@ -147,11 +147,20 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
         if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
           for i in countup(0, plen - 2):
             if not matches(c, p.sons[i], n.sons[i]): return
-          var arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
-          # f(1, 2, 3)
-          # p(X)
-          for i in countup(0, sonsLen(n) - plen):
-            arglist.sons[i] = n.sons[i + plen - 1]
+          
+          var arglist: PNode
+          if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
+              lastSon(n).sons[1].kind == nkBracket:
+            # unpack varargs:
+            let n = lastSon(n).sons[1]
+            arglist = newNodeI(nkArgList, n.info, n.len)
+            for i in 0.. <n.len: arglist.sons[i] = n.sons[i]
+          else:
+            arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
+            # f(1, 2, 3)
+            # p(X)
+            for i in countup(0, sonsLen(n) - plen):
+              arglist.sons[i] = n.sons[i + plen - 1]
           # check or bind 'X':
           return bindOrCheck(c, v.sym, arglist)
       if plen == sonsLen(n):

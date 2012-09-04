@@ -135,7 +135,7 @@ proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
     # only calls can produce side effects:
     let op = n.sons[0]
     if op.kind == nkSym and isRoutine(op.sym):
-      let s = n.sym
+      let s = op.sym
       if sfSideEffect in s.flags:
         return seSideEffect
       # assume no side effect:
