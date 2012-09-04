@@ -15,5 +15,5 @@ template optConc{ `&&` * a }(a: expr): expr = &&a
 let space = " "
 echo "my" && (space & "awe" && "some " ) && "concat"
 
-# check that it's been properly optimized:
+# check that it's been optimized properly:
 doAssert calls == 1

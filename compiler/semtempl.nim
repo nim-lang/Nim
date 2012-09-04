@@ -432,7 +432,9 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       elif templToExpand(s):
         result = semPatternBody(c, semTemplateExpr(c.c, n, s, false))
       else:
-        result = symChoice(c.c, n, s, scOpen)
+        # we use 'scForceOpen' here so that e.g. "writeln" (which is a
+        # non ambiguous generic) will match its instantiations:
+        result = symChoice(c.c, n, s, scForceOpen)
     else:
       result = n
   
@@ -504,7 +506,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       if s != nil:
         if Contains(c.toBind, s.id):
           return symChoice(c.c, n, s, scClosed)
-        return symChoice(c.c, n, s, scOpen)
+        return symChoice(c.c, n, s, scForceOpen)
     of nkPar:
       if n.len == 1: return semPatternBody(c, n.sons[0])
     else: nil
