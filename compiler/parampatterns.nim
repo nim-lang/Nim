@@ -101,7 +101,7 @@ proc compileConstraints(p: PNode, result: var TPatternCode) =
       InternalAssert int(high(TNodeKind)) < 255
       for i in low(TNodeKind)..high(TNodeKind):
         if cmpIgnoreStyle($i, spec) == 0:
-          result.add(ppSymKind)
+          result.add(ppNodeKind)
           result.add(chr(i.ord))
           return
       patternError(p)
@@ -199,7 +199,8 @@ proc matchNodeKinds*(p, n: PNode): bool =
       let kind = TNodeKind(code[pc+1])
       push n.kind == kind
       inc pc
-    of ppSideEffect: push checkForSideEffects(n) != seNoSideEffect
-    of ppNoSideEffect: push checkForSideEffects(n) == seNoSideEffect
+    of ppSideEffect: push checkForSideEffects(n) == seSideEffect
+    of ppNoSideEffect: push checkForSideEffects(n) != seSideEffect
     inc pc
   result = stack[sp-1]
+  

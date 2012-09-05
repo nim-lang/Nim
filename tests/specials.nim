@@ -124,7 +124,6 @@ proc runGcTests(r: var TResults, options: string) =
   test "gcleak"
   test "gcleak2"
   test "gctest"
-  # disabled for now as it somehow runs very slowly ('delete' bug?) but works:
   test "gcleak3"
   test "weakrefs"
 
@@ -187,6 +186,9 @@ proc runSpecialTests(r: var TResults, options: string) =
   runGCTests(r, options)
   runThreadTests(r, options & " --threads:on")
   runIOTests(r, options)
+
+  for t in os.walkFiles("tests/patterns/t*.nim"):
+    runSingleTest(r, t, options)
 
 proc rejectSpecialTests(r: var TResults, options: string) =
   rejectThreadTests(r, options)

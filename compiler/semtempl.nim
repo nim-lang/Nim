@@ -423,6 +423,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     s.kind == skTemplate and (s.typ.len == 1 or sfImmediate in s.flags)
   
   proc handleSym(c: var TemplCtx, n: PNode, s: PSym): PNode =
+    result = n
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
@@ -432,11 +433,9 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       elif templToExpand(s):
         result = semPatternBody(c, semTemplateExpr(c.c, n, s, false))
       else:
-        # we use 'scForceOpen' here so that e.g. "writeln" (which is a
-        # non ambiguous generic) will match its instantiations:
-        result = symChoice(c.c, n, s, scForceOpen)
-    else:
-      result = n
+        nil
+        # we keep the ident unbound for matching instantiated symbols and
+        # more flexibility
   
   proc expectParam(c: var TemplCtx, n: PNode): PNode =
     let s = QualifiedLookUp(c.c, n, {})
@@ -506,7 +505,8 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       if s != nil:
         if Contains(c.toBind, s.id):
           return symChoice(c.c, n, s, scClosed)
-        return symChoice(c.c, n, s, scForceOpen)
+        else:
+          return newIdentNode(s.name, n.info)
     of nkPar:
       if n.len == 1: return semPatternBody(c, n.sons[0])
     else: nil
