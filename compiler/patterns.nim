@@ -53,13 +53,13 @@ proc sameTrees(a, b: PNode): bool =
         result = true
 
 proc inSymChoice(sc, x: PNode): bool =
-  if sc.kind == nkOpenSymChoice:
-    # same name suffices for open sym choices!
-    result = sc.sons[0].sym.name.id == x.sym.name.id
-  elif sc.kind == nkClosedSymChoice:
+  if sc.kind == nkClosedSymChoice:
     for i in 0.. <sc.len:
       if sc.sons[i].sym == x.sym: return true
-
+  elif sc.kind == nkOpenSymChoice:
+    # same name suffices for open sym choices!
+    result = sc.sons[0].sym.name.id == x.sym.name.id
+  
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
   if p.typ.constraint != nil:
@@ -86,7 +86,7 @@ proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
     IdNodeTablePutLazy(c.mapping, param, n)
     result = true
 
-proc matchStar(c: PPatternContext, p, n: PNode): bool =
+proc matchNested(c: PPatternContext, p, n: PNode): bool =
   # match ``op*param``
 
   proc matchStarAux(c: PPatternContext, op, n, arglist: PNode) =
@@ -109,6 +109,8 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
   # hidden conversions (?)
   if isPatternParam(c, p):
     result = bindOrCheck(c, p.sym, n)
+  elif n.kind == nkSym and p.kind == nkIdent:
+    result = p.ident.id == n.sym.name.id
   elif n.kind == nkSym and inSymChoice(p, n):
     result = true
   elif n.kind == nkSym and n.sym.kind == skConst:
@@ -120,7 +122,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     let opr = p.sons[0].ident.s
     case opr
     of "|": result = matchChoice(c, p, n)
-    of "*": result = matchStar(c, p, n)
+    of "*": result = matchNested(c, p, n)
     of "~": result = not matches(c, p.sons[1], n)
     else: InternalError(p.info, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) = 
@@ -142,13 +144,12 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       var plen = sonsLen(p)
       # special rule for p(X) ~ f(...); this also works for stuff like
       # partial case statements, etc! - Not really ... :-/
-      if plen <= sonsLen(n):
-        let v = lastSon(p)
-        if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
+      let v = lastSon(p)
+      if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
+        var arglist: PNode
+        if plen <= sonsLen(n):
           for i in countup(0, plen - 2):
             if not matches(c, p.sons[i], n.sons[i]): return
-          
-          var arglist: PNode
           if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
               lastSon(n).sons[1].kind == nkBracket:
             # unpack varargs:
@@ -161,7 +162,11 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
             # p(X)
             for i in countup(0, sonsLen(n) - plen):
               arglist.sons[i] = n.sons[i + plen - 1]
-          # check or bind 'X':
+          return bindOrCheck(c, v.sym, arglist)
+        elif plen-1 == sonsLen(n):
+          for i in countup(0, plen - 2):
+            if not matches(c, p.sons[i], n.sons[i]): return
+          arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
       if plen == sonsLen(n):
         for i in countup(0, sonsLen(p) - 1):
