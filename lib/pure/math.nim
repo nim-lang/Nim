@@ -188,11 +188,10 @@ when not defined(ECMAScript):
   proc rand(): cint {.importc: "rand", nodecl.}
   proc drand48(): float {.importc: "drand48", nodecl.}
     
-  var uniqueCounter: int = 0
   proc randomize() =
-    srand(gettime(nil) + cint(uniqueCounter))
-    srand48(gettime(nil) + cint(uniqueCounter))
-    atomicInc(uniqueCounter)
+    let x = gettime(nil)
+    srand(x)
+    srand48(x)
   proc random(max: int): int =
     result = int(rand()) mod max
   proc random(max: float): float =
