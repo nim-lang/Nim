@@ -5,11 +5,10 @@ import sets
 suite "random int":
   test "there might be some randomness":
     var set = initSet[int](128)
-    for i in 1..10:
-      for j in 1..10:
-        randomize()
-        incl(set, random(high(int)))
-    check len(set) == 100
+    randomize()
+    for i in 1..1000:
+      incl(set, random(high(int)))
+    check len(set) == 1000
   test "single number bounds work":
     randomize()
     var rand: int
