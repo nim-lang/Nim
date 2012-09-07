@@ -1,39 +1,39 @@
 #import "AppDelegate.h"
 
-#import "backend.h"
+#import "NRViewController.h"
+
+
+@interface AppDelegate ()
+@property (nonatomic, retain) NRViewController *viewController;
+@end
+
 
 @implementation AppDelegate
 
+@synthesize viewController = _viewController;
 @synthesize window = _window;
-
-- (void)dealloc
-{
-	[_window release];
-	[super dealloc];
-}
 
 - (BOOL)application:(UIApplication *)application
 	didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-	self.window = [[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen]
-		bounds]] autorelease];
-	// Override point for customization after application launch.
-	self.window.backgroundColor = [UIColor whiteColor];
+	self.window = [[[UIWindow alloc]
+		initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
+
+	self.viewController = [[NRViewController new] autorelease];
+	if ([self.window respondsToSelector:@selector(setRootViewController:)])
+		self.window.rootViewController = self.viewController;
+	else
+		[self.window addSubview:self.viewController.view];
 	[self.window makeKeyAndVisible];
 
-	// Call nimrod code and store the result.
-	const int a = 3;
-	const int b = 12;
-	const int c = myAdd(a, b);
-
-	// Add a label to show the results of the computation made by nimrod.
-	UILabel *label = [[UILabel alloc] initWithFrame:self.window.bounds];
-	label.textAlignment = UITextAlignmentCenter;
-	label.text = [NSString stringWithFormat:@"myAdd(%d, %d) = %d", a, b, c];
-	[self.window addSubview:label];
-	[label release];
-
 	return YES;
+}
+
+- (void)dealloc
+{
+	[_window release];
+	[_viewController release];
+	[super dealloc];
 }
 
 @end
