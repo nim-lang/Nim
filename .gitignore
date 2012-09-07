@@ -21,3 +21,16 @@ compiler/nimrod*
 build/[0-9]_[0-9]
 bin/nimrod
 
+# iOS specific wildcards.
+*.mode1v3
+*.pbxuser
+*.perspective
+*.perspectivev3
+*.swp
+.DS_Store
+project.xcworkspace/
+xcuserdata/
+
+# iOS specific absolute paths
+examples/cross_calculator/ios/resources/ui/*.m
+examples/cross_calculator/ios/tags
