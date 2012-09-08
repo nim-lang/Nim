@@ -110,8 +110,9 @@ type
     proto: TProtocol
     deleg: PDelegate
 
-  TInfo = enum
-    SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, SockUDPBound
+  TInfo* = enum
+    SockIdle, SockConnecting, SockConnected, SockListening, SockClosed, 
+    SockUDPBound
 
 proc newDelegate*(): PDelegate =
   ## Creates a new delegate.

@@ -554,12 +554,15 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     # within a macro, every param has the type PNimrodNode!
     # and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
+    # We used to copySym(param) here, but this is not possible for term
+    # rewriting macros; so we simply overwrite param.typ here and hope for
+    # the best ...
     let nn = getSysSym"PNimrodNode"
-    var a = copySym(param)
-    a.typ = nn.typ
-    if sfGenSym notin a.flags: addDecl(c, a)
-  else:
-    if sfGenSym notin param.flags: addDecl(c, param)
+    #var a = copySym(param)
+    #a.typ = nn.typ
+    param.typ = nn.typ
+    #if sfGenSym notin a.flags: addDecl(c, a)
+  if sfGenSym notin param.flags: addDecl(c, param)
 
 proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
   tuple[typ: PType, id: PIdent] =

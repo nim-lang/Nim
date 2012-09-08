@@ -78,6 +78,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
       addResult(c, result.typ.sons[0], n.info, result.kind)
       addResultNode(c, n)
     var b = semStmtScope(c, n.sons[bodyPos])
+    b = hloBody(c, b)
     n.sons[bodyPos] = transformBody(c.module, b, result)
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)

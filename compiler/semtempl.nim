@@ -392,8 +392,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
-    c.patterns.add(s)
-
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.c = c
@@ -417,6 +415,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addInterfaceOverloadableSymAt(c, s, curScope)
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
+  if n.sons[patternPos].kind != nkEmpty:
+    c.patterns.add(s)
 
 proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   template templToExpand(s: expr): expr =
@@ -455,12 +455,22 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     result = semBindStmt(c.c, n, c.toBind)
   of nkEmpty, nkSym..nkNilLit: nil
   of nkCurlyExpr:
-    # we support '(pattern){x}' to bind a subpattern to a parameter 'x':
-    if n.len != 2 or n.sons[1].kind != nkIdent:
+    # we support '(pattern){x}' to bind a subpattern to a parameter 'x'; 
+    # '(pattern){|x}' does the same but the matches will be gathered in 'x'
+    if n.len != 2:
       localError(n.info, errInvalidExpression)
-    else:
+    elif n.sons[1].kind == nkIdent:
       n.sons[0] = semPatternBody(c, n.sons[0])
       n.sons[1] = expectParam(c, n.sons[1])
+    elif n.sons[1].kind == nkPrefix and n.sons[1].sons[0].kind == nkIdent:
+      let opr = n.sons[1].sons[0]
+      if opr.ident.s == "|":
+        n.sons[0] = semPatternBody(c, n.sons[0])
+        n.sons[1].sons[1] = expectParam(c, n.sons[1].sons[1])
+      else:
+        localError(n.info, errInvalidExpression)
+    else:
+      localError(n.info, errInvalidExpression)
   of nkCallKinds:
     let s = QualifiedLookUp(c.c, n.sons[0], {})
     if s != nil:
@@ -473,7 +483,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       # we interpret `*` and `|` only as pattern operators if they occur in
       # infix notation, so that '`*`(a, b)' can be used for verbatim matching:
       let opr = n.sons[0]
-      if opr.ident.s == "*":
+      if opr.ident.s == "*" or opr.ident.s == "*|":
         result = newNodeI(nkPattern, n.info, n.len)
         result.sons[0] = opr
         result.sons[1] = semPatternBody(c, n.sons[1])

@@ -18,7 +18,7 @@ import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg
 type
   TAliasRequest* = enum # first byte of the bytecode determines alias checking
     aqNone = 1,         # no alias analysis requested
-    aqShouldAlias,      # with what?
+    aqShouldAlias,      # with some other param
     aqNoAlias           # request noalias
   TOpcode = enum
     ppEof = 1, # end of compiled pattern
@@ -32,6 +32,8 @@ type
     ppCall,
     ppSymKind,
     ppNodeKind,
+    ppLValue,
+    ppLocal,
     ppSideEffect,
     ppNoSideEffect
   TPatternCode = string
@@ -87,6 +89,8 @@ proc compileConstraints(p: PNode, result: var TPatternCode) =
     of "call":  result.add(ppCall)
     of "alias": result[0] = chr(aqShouldAlias.ord)
     of "noalias": result[0] = chr(aqNoAlias.ord)
+    of "lvalue": result.add(ppLValue)
+    of "local": result.add(ppLocal)
     of "sideeffect": result.add(ppSideEffect)
     of "nosideeffect": result.add(ppNoSideEffect)
     else:
@@ -144,8 +148,8 @@ proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
       # indirect call without side effects:
       result = seNoSideEffect
     else:
-      # indirect call: we don't know
-      result = seUnknown
+      # indirect call: assume side effect:
+      return seSideEffect
     # we need to check n[0] too: (FwithSideEffectButReturnsProcWithout)(args)
     for i in 0 .. <n.len:
       let ret = checkForSideEffects(n.sons[i])
@@ -161,6 +165,53 @@ proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
         result = seUnknown
+
+type 
+  TAssignableResult* = enum 
+    arNone,                   # no l-value and no discriminant
+    arLValue,                 # is an l-value
+    arLocalLValue,            # is an l-value, but local var; must not escape
+                              # its stack frame!
+    arDiscriminant            # is a discriminant
+
+proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
+  ## 'owner' can be nil!
+  result = arNone
+  case n.kind
+  of nkSym:
+    # don't list 'skLet' here:
+    if n.sym.kind in {skVar, skResult, skTemp}:
+      if owner != nil and owner.id == n.sym.owner.id and 
+          sfGlobal notin n.sym.flags:
+        result = arLocalLValue
+      else:
+        result = arLValue
+  of nkDotExpr: 
+    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
+      result = arLValue
+    else: 
+      result = isAssignable(owner, n.sons[0])
+    if result != arNone and sfDiscriminant in n.sons[1].sym.flags: 
+      result = arDiscriminant
+  of nkBracketExpr: 
+    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
+      result = arLValue
+    else:
+      result = isAssignable(owner, n.sons[0])
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
+    # Object and tuple conversions are still addressable, so we skip them
+    # XXX why is 'tyOpenArray' allowed here?
+    if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
+      result = isAssignable(owner, n.sons[1])
+    elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
+      # types that are equal modulo distinction preserve l-value:
+      result = isAssignable(owner, n.sons[1])
+  of nkHiddenDeref, nkDerefExpr: 
+    result = arLValue
+  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
+    result = isAssignable(owner, n.sons[0])
+  else:
+    nil
 
 proc matchNodeKinds*(p, n: PNode): bool =
   # matches the parameter constraint 'p' against the concrete AST 'n'. 
@@ -199,6 +250,8 @@ proc matchNodeKinds*(p, n: PNode): bool =
       let kind = TNodeKind(code[pc+1])
       push n.kind == kind
       inc pc
+    of ppLValue: push isAssignable(nil, n) in {arLValue, arLocalLValue}
+    of ppLocal: push isAssignable(nil, n) == arLocalLValue
     of ppSideEffect: push checkForSideEffects(n) == seSideEffect
     of ppNoSideEffect: push checkForSideEffects(n) != seSideEffect
     inc pc

@@ -714,7 +714,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info, skProc)
-    let semBody = semStmtScope(c, n.sons[bodyPos])
+    let semBody = hloBody(c, semStmtScope(c, n.sons[bodyPos]))
     n.sons[bodyPos] = transformBody(c.module, semBody, s)
     addResultNode(c, n)
     popProcCon(c)
@@ -772,7 +772,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     rawAddSon(s.typ, nil)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
-    c.patterns.add(s)
   
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
                                                # open for parameters
@@ -821,7 +820,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addResult(c, s.typ.sons[0], n.info, kind)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
-        let semBody = semStmtScope(c, n.sons[bodyPos])
+        let semBody = hloBody(c, semStmtScope(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
@@ -844,6 +843,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   sideEffectsCheck(c, s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
+  if n.sons[patternPos].kind != nkEmpty:
+    c.patterns.add(s)
   
 proc semIterator(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skIterator, iteratorPragmas)
@@ -1222,7 +1223,6 @@ proc SemStmt(c: PContext, n: PNode): PNode =
     result = emptyNode
   else:
     incl(result.flags, nfSem)
-  result = applyPatterns(c, result)
 
 proc semStmtScope(c: PContext, n: PNode): PNode =
   openScope(c.tab)
