@@ -102,7 +102,7 @@ type
     warnDeprecated, warnConfigDeprecated,
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
-    warnXisPassedToProcVar, warnAnalysisLoophole,
+    warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
     warnEachIdentIsTuple, warnUser,
     hintSuccess, hintSuccessX, 
@@ -345,7 +345,7 @@ const
     warnUnknownSubstitutionX: "unknown substitution \'$1\' [UnknownSubstitutionX]", 
     warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
-    warnXisPassedToProcVar: "\'$1\' is passed to a procvar; deprecated [XisPassedToProcVar]", 
+    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]", 
     warnAnalysisLoophole: "thread analysis incomplete due to unknown call '$1' [AnalysisLoophole]",
     warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
@@ -375,7 +375,7 @@ const
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
-    "CommentXIgnored", "XisPassedToProcVar",
+    "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
     "ImplicitClosure", "EachIdentIsTuple", "User"]
 

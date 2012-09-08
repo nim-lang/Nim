@@ -62,8 +62,9 @@ proc semIf(c: PContext, n: PNode): PNode =
 proc semDiscard(c: PContext, n: PNode): PNode = 
   result = n
   checkSonsLen(n, 1)
-  n.sons[0] = semExprWithType(c, n.sons[0])
-  if n.sons[0].typ == nil: localError(n.info, errInvalidDiscard)
+  if n.sons[0].kind != nkEmpty:
+    n.sons[0] = semExprWithType(c, n.sons[0])
+    if n.sons[0].typ == nil: localError(n.info, errInvalidDiscard)
   
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   result = n
@@ -935,7 +936,8 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
   elif result.kind == nkEmpty:
-    result = newNodeI(nkNilLit, n.info)
+    result = newNodeI(nkDiscardStmt, n.info, 1)
+    result.sons[0] = emptyNode
 
 # special marker values that indicates that we are
 # 1) AnalyzingDestructor: currenlty analyzing the type for destructor 
@@ -1132,7 +1134,10 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   of nkAsgn: result = semAsgn(c, n)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkMacroStmt, nkCallStrLit: 
     result = semCommand(c, n)
-  of nkEmpty, nkCommentStmt, nkNilLit: nil
+  of nkEmpty, nkCommentStmt: nil
+  of nkNilLit:
+    # XXX too much work and fixing would break bootstrapping:
+    #Message(n.info, warnNilStatement)
   of nkBlockStmt: result = semBlock(c, n)
   of nkStmtList: 
     var length = sonsLen(n)

@@ -185,16 +185,6 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
       else:
         result[i] = PTransNode(it)
 
-proc trivialBody(s: PSym): PNode =
-  # a routine's body is trivially inlinable if marked as 'inline' and its
-  # body consists of only 1 statement. It is important that we perform this
-  # optimization here as 'distinct strings' may cause string copying otherwise:
-  # proc xml(s: string): TXmlString = return xmlstring(s)
-  # We have to generate a ``nkLineTracking`` node though to not lose
-  # debug information:
-  # XXX to implement
-  nil
-
 proc hasContinue(n: PNode): bool = 
   case n.kind
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: nil
@@ -627,11 +617,14 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformAddrDeref(c, n, nkAddr, nkHiddenAddr)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     result = transformConv(c, n)
-  of nkDiscardStmt: 
-    result = transformSons(c, n)
-    if isConstExpr(PNode(result).sons[0]): 
-      # ensure that e.g. discard "some comment" gets optimized away completely:
-      result = PTransNode(newNode(nkCommentStmt))
+  of nkDiscardStmt:
+    result = PTransNode(n)
+    if n.sons[0].kind != nkEmpty:
+      result = transformSons(c, n)
+      if isConstExpr(PNode(result).sons[0]):
+        # ensure that e.g. discard "some comment" gets optimized away
+        # completely:
+        result = PTransNode(newNode(nkCommentStmt))
   of nkCommentStmt, nkTemplateDef: 
     return n.ptransNode
   of nkConstSection:
