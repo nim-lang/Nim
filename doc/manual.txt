@@ -796,6 +796,19 @@ As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
+An enum can be marked with the ``pure`` pragma so that it's fields are not
+added to the current scope, so they always need to be accessed 
+via ``TMyEnum.value``:
+
+.. code-block:: nimrod
+
+  type
+    TMyEnum {.pure.} = enum
+      valueA, valueB, valueC, valueD
+  
+  echo valueA # error: Unknown identifier
+  echo TMyEnum.valueA # works
+
 
 String type
 ~~~~~~~~~~~
