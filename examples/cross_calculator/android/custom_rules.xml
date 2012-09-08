@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="custom_rules" default="debug">
+	<target name="nim">
+		<exec executable="scripts/nimbuild.sh" failonerror="true">
+		</exec>
+	</target>
+	<target name="jni">
+		<exec executable="scripts/jnibuild.sh" failonerror="true">
+		</exec>
+	</target>
+	<target name="ndk">
+		<exec executable="ndk-build" failonerror="true">
+		</exec>
+	</target>
+	<target name="-post-compile" depends="nim, jni, ndk">
+	</target>
+</project>
