@@ -92,7 +92,7 @@ template fail* =
   TestStatusIMPL = FAILED
   checkpoints = @[]
 
-macro check*(conditions: stmt): stmt =
+macro check*(conditions: stmt): stmt {.immediate.} =
   let conditions = callsite()
   
   proc standardRewrite(e: PNimrodNode): PNimrodNode =
@@ -153,7 +153,7 @@ template require*(conditions: stmt): stmt {.dirty.} =
     const AbortOnError {.inject.} = true
     check conditions
 
-macro expect*(exp: stmt): stmt =
+macro expect*(exp: stmt): stmt {.immediate.} =
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
                       body: stmt): PNimrodNode {.dirty.} =
