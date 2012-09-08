@@ -45,6 +45,8 @@ version 0.9.XX
 
 - JS gen:
   - fix exception handling
+- object branch transitions can't work with the current 'reset'; add a 'reset'
+  with an additional parameter
 - fix remaining closure bugs:
   - test evals.nim with closures
   - what about macros with closures?

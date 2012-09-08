@@ -38,6 +38,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       localError(n.sons[0].info, errInheritanceOnlyWithEnums)
     counter = lastOrd(base) + 1
   rawAddSon(result, base)
+  let isPure = result.sym != nil and sfPure in result.sym.flags
   for i in countup(1, sonsLen(n) - 1): 
     case n.sons[i].kind
     of nkEnumFieldDef: 
@@ -73,12 +74,12 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     else: illFormedAst(n)
     e.typ = result
     e.position = int(counter)
-    if result.sym != nil and sfExported in result.sym.flags: 
-      incl(e.flags, sfUsed)   # BUGFIX
-      incl(e.flags, sfExported) # BUGFIX
-      StrTableAdd(c.module.tab, e) # BUGFIX
+    if result.sym != nil and sfExported in result.sym.flags:
+      incl(e.flags, sfUsed)
+      incl(e.flags, sfExported)
+      if not isPure: StrTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
-    if sfGenSym notin e.flags: addDeclAt(c, e, c.tab.tos - 1)
+    if sfGenSym notin e.flags and not isPure: addDeclAt(c, e, c.tab.tos - 1)
     inc(counter)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType = 
