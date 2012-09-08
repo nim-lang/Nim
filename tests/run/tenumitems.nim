@@ -5,7 +5,7 @@ discard """
 type TAlphabet = enum
   A, B, C
 
-iterator items(E: typedesc{enum}): E =
+iterator items(E: typedesc[enum]): E =
   for v in low(E)..high(E):
     yield v
 

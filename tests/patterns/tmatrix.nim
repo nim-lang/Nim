@@ -12,9 +12,11 @@ proc `*`(a, b: TMat): TMat = nil
 proc `+`(a, b: TMat): TMat = nil
 proc `-`(a, b: TMat): TMat = nil
 proc `$`(a: TMat): string = result = $a.dummy
+proc mat32(): TMat =
+  result.dummy = 21
 
 macro optOps{ (`+`|`-`|`*`) *| a }(a: TMat): expr =
-  result = callsite()
+  result = newCall(bindSym"mat32")
 
 #macro optPlus{ `+` * a }(a: varargs[TMat]): expr =
 #  result = newIntLitNode(21)
