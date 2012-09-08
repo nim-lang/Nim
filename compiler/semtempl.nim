@@ -422,12 +422,21 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   template templToExpand(s: expr): expr =
     s.kind == skTemplate and (s.typ.len == 1 or sfImmediate in s.flags)
   
+  proc newParam(c: var TemplCtx, n: PNode, s: PSym): PNode =
+    # the param added in the current scope is actually wrong here for
+    # macros because they have a shadowed param of type 'PNimNode' (see
+    # semtypes.addParamOrResult). Within the pattern we have to ensure
+    # to use the param with the proper type though:
+    incl(s.flags, sfUsed)
+    let x = c.owner.typ.n.sons[s.position+1].sym
+    assert x.name == s.name
+    result = newSymNode(x, n.info)
+  
   proc handleSym(c: var TemplCtx, n: PNode, s: PSym): PNode =
     result = n
     if s != nil:
       if s.owner == c.owner and s.kind == skParam:
-        incl(s.flags, sfUsed)
-        result = newSymNode(s, n.info)
+        result = newParam(c, n, s)
       elif Contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
       elif templToExpand(s):
@@ -440,8 +449,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
   proc expectParam(c: var TemplCtx, n: PNode): PNode =
     let s = QualifiedLookUp(c.c, n, {})
     if s != nil and s.owner == c.owner and s.kind == skParam:
-      incl(s.flags, sfUsed)
-      result = newSymNode(s, n.info)
+      result = newParam(c, n, s)
     else:
       localError(n.info, errInvalidExpression)
       result = n
