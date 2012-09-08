@@ -13,8 +13,8 @@ proc `+`(a, b: TMat): TMat = nil
 proc `-`(a, b: TMat): TMat = nil
 proc `$`(a: TMat): string = result = $a.dummy
 
-macro optOps{ (`+`|`-`|`*`) *| a }(a: varargs[TMat]): expr =
-  result = newIntLitNode(21)
+macro optOps{ (`+`|`-`|`*`) *| a }(a: TMat): expr =
+  result = callsite()
 
 #macro optPlus{ `+` * a }(a: varargs[TMat]): expr =
 #  result = newIntLitNode(21)

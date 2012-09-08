@@ -17,10 +17,19 @@ import
 type
   TPatternContext = object
     owner: PSym
-    mapping: TIdNodeTable  # maps formal parameters to nodes
+    mapping: seq[PNode]  # maps formal parameters to nodes
+    formals: int
     c: PContext
-    subMatch: bool         # subnode matches are special
+    subMatch: bool       # subnode matches are special
   PPatternContext = var TPatternContext
+
+proc getLazy(c: PPatternContext, sym: PSym): PNode =
+  if not isNil(c.mapping):
+    result = c.mapping[sym.position]
+
+proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
+  if isNil(c.mapping): newSeq(c.mapping, c.formals)
+  c.mapping[sym.position] = n
 
 proc matches(c: PPatternContext, p, n: PNode): bool
 
@@ -78,22 +87,22 @@ proc matchChoice(c: PPatternContext, p, n: PNode): bool =
     if matches(c, p.sons[i], n): return true
 
 proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
-  var pp = IdNodeTableGetLazy(c.mapping, param)
+  var pp = GetLazy(c, param)
   if pp != nil:
     # check if we got the same pattern (already unified):
     result = sameTrees(pp, n) #matches(c, pp, n)
   elif n.kind == nkArgList or checkTypes(c, param, n):
-    IdNodeTablePutLazy(c.mapping, param, n)
+    PutLazy(c, param, n)
     result = true
 
 proc gather(c: PPatternContext, param: PSym, n: PNode) =
-  var pp = IdNodeTableGetLazy(c.mapping, param)
+  var pp = GetLazy(c, param)
   if pp != nil and pp.kind == nkArgList:
     pp.add(n)
   else:
     pp = newNodeI(nkArgList, n.info, 1)
     pp.sons[0] = n
-    IdNodeTablePutLazy(c.mapping, param, pp)
+    PutLazy(c, param, pp)
 
 proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
   # match ``op * param`` or ``op *| param``
@@ -112,6 +121,9 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       add(arglist, n)
     else:
       result = false
+      debug p.sons[2].sym.typ
+      debug n.typ
+      echo "type check failed!"
     
   if n.kind notin nkCallKinds: return false
   if matches(c, p.sons[1], n.sons[0]):
@@ -198,7 +210,7 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
     for j in 0 .. <p.len:
       if not matches(c, p.sons[j], n.sons[i+j]):
         # we need to undo any bindings:
-        if not isNil(c.mapping.data): reset(c.mapping)
+        if not isNil(c.mapping): c.mapping = nil
         return false
     result = true
   
@@ -233,7 +245,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   var ctx: TPatternContext
   ctx.owner = s
   ctx.c = c
-  # we perform 'initIdNodeTable' lazily for performance
+  ctx.formals = sonsLen(s.typ)-1
   var m = matchStmtList(ctx, s.ast.sons[patternPos], n)
   if isNil(m): return nil
   # each parameter should have been bound; we simply setup a call and
@@ -247,7 +259,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     args = newNodeI(nkArgList, n.info)
   for i in 1 .. < params.len:
     let param = params.sons[i].sym
-    let x = IdNodeTableGetLazy(ctx.mapping, param)
+    let x = GetLazy(ctx, param)
     # couldn't bind parameter:
     if isNil(x): return nil
     result.add(x)

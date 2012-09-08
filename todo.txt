@@ -2,7 +2,6 @@ version 0.9.0
 =============
 
 - make 'm: stmt' use overloading resolution
-- finish, test and document tmatrix
 - document pattern matching
 
 - make 'bind' default for templates and introduce 'mixin'
