@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/RelativeLayout1"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:text="Crossplatform Nimrod calculator"
+        android:textSize="20dip" >
+
+    </TextView>
+
+    <TextView
+        android:id="@+id/value_a"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/title"
+        android:text="Value A: " >
+    </TextView>
+
+    <EditText
+        android:id="@+id/edit_text_a"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/title"
+        android:ems="10"
+        android:inputType="number" />
+
+    <TextView
+        android:id="@+id/value_b"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edit_text_a"
+        android:text="Value B: " >
+    </TextView>
+
+    <EditText
+        android:id="@+id/edit_text_b"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/edit_text_a"
+        android:ems="10"
+        android:inputType="number" />
+
+    <Button
+        android:id="@+id/add_button"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/edit_text_b"
+        android:scrollbarAlwaysDrawVerticalTrack="false"
+        android:selectAllOnFocus="false"
+        android:text="Add!"
+        android:visibility="visible" />
+
+    <TextView
+        android:id="@+id/result_text"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/add_button" />
+
+</RelativeLayout>
