@@ -122,3 +122,7 @@ proc hash*[T: tuple](x: T): THash =
     result = result !& hash(f)
   result = !$result
 
+proc hash*(x: float): THash {.inline.} =
+  var y = x + 1.0
+  result = cast[ptr THash](addr(y))[]
+
