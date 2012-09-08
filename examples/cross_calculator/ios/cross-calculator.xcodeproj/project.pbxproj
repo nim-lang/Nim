@@ -15,7 +15,6 @@
 		D531427215BC94B1005EFF20 /* backend.m in Sources */ = {isa = PBXBuildFile; fileRef = D531426F15BC94B1005EFF20 /* backend.m */; };
 		D531427415BC94B1005EFF20 /* system.m in Sources */ = {isa = PBXBuildFile; fileRef = D531427115BC94B1005EFF20 /* system.m */; };
 		D5B6F94815FA8D4C0084A85B /* NRViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = D5B6F94615FA8D4C0084A85B /* NRViewController.m */; };
-		D5B6F94915FA8D4C0084A85B /* NRViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D5B6F94715FA8D4C0084A85B /* NRViewController.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,7 +35,7 @@
 		D592E19115C71415005258EA /* nimbase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = nimbase.h; path = build/nimcache/nimbase.h; sourceTree = "<group>"; };
 		D5B6F94515FA8D4C0084A85B /* NRViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NRViewController.h; path = src/NRViewController.h; sourceTree = "<group>"; };
 		D5B6F94615FA8D4C0084A85B /* NRViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = NRViewController.m; path = src/NRViewController.m; sourceTree = "<group>"; };
-		D5B6F94715FA8D4C0084A85B /* NRViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = NRViewController.xib; path = src/NRViewController.xib; sourceTree = "<group>"; };
+		D5B6F96315FB448D0084A85B /* NRViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = NRViewController.xib; path = resources/ui/NRViewController.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				D531424615BC8756005EFF20 /* plist */,
+				D5B6F96115FB447C0084A85B /* ui */,
 			);
 			name = resources;
 			sourceTree = "<group>";
@@ -108,7 +108,6 @@
 				D531424B15BC87B6005EFF20 /* main.m */,
 				D5B6F94515FA8D4C0084A85B /* NRViewController.h */,
 				D5B6F94615FA8D4C0084A85B /* NRViewController.m */,
-				D5B6F94715FA8D4C0084A85B /* NRViewController.xib */,
 			);
 			name = src;
 			sourceTree = "<group>";
@@ -139,6 +138,14 @@
 				D531427115BC94B1005EFF20 /* system.m */,
 			);
 			name = nimrod;
+			sourceTree = "<group>";
+		};
+		D5B6F96115FB447C0084A85B /* ui */ = {
+			isa = PBXGroup;
+			children = (
+				D5B6F96315FB448D0084A85B /* NRViewController.xib */,
+			);
+			name = ui;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -193,7 +200,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D5B6F94915FA8D4C0084A85B /* NRViewController.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
