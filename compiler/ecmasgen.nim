@@ -1458,9 +1458,10 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkAsgn: genAsgn(p, n, r)
   of nkFastAsgn: genFastAsgn(p, n, r)
   of nkDiscardStmt: 
-    genLineDir(p, n, r)
-    gen(p, n.sons[0], r)
-    app(r.res, ';' & tnl)
+    if n.sons[0].kind != nkEmpty:
+      genLineDir(p, n, r)
+      gen(p, n.sons[0], r)
+      app(r.res, ';' & tnl)
   of nkAsmStmt: genAsmStmt(p, n, r)
   of nkTryStmt: genTryStmt(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n, r)

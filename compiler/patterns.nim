@@ -121,9 +121,6 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       add(arglist, n)
     else:
       result = false
-      debug p.sons[2].sym.typ
-      debug n.typ
-      echo "type check failed!"
     
   if n.kind notin nkCallKinds: return false
   if matches(c, p.sons[1], n.sons[0]):

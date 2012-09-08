@@ -853,9 +853,10 @@ proc genStmts(p: BProc, t: PNode) =
     # transf is overly aggressive with 'nkFastAsgn', so we work around here.
     # See tests/run/tcnstseq3 for an example that would fail otherwise.
     genAsgn(p, t, fastAsgn=p.prc != nil)
-  of nkDiscardStmt: 
-    genLineDir(p, t)
-    initLocExpr(p, t.sons[0], a)
+  of nkDiscardStmt:
+    if t.sons[0].kind != nkEmpty:
+      genLineDir(p, t)
+      initLocExpr(p, t.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, t)
   of nkTryStmt: 
     if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)

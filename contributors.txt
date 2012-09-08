@@ -1,5 +1,6 @@
 Comex
 Eric Doughty-Papassideris
+Simon Hafner
 Keita Haga
 Philippe Lhoste
 Zahary Karadjov
