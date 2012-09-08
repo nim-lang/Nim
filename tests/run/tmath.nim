@@ -25,14 +25,12 @@ suite "random int":
       check rand >= 100
 
 suite "random float":
-  # Enable this once #197 has been resolved
-  # test "there might be some randomness":
-  #   var set = initSet[float](128)
-  #   for i in 1..10:
-  #     for j in 1..10:
-  #       randomize()
-  #       incl(set, random(1.0))
-  #   check len(set) == 100
+  test "there might be some randomness":
+    var set = initSet[float](128)
+    randomize()
+    for i in 1..100:
+      incl(set, random(1.0))
+    check len(set) == 100
   test "single number bounds work":
     randomize()
     var rand: float
