@@ -123,17 +123,22 @@ proc variance*(x: openarray[float]): float {.noSideEffect.} =
     result = result + diff*diff
   result = result / toFloat(len(x))
 
-when not defined(ECMAScript):
-  proc random*(max: int): int
-    ## returns a random number in the range 0..max-1. The sequence of
-    ## random number is always the same, unless `randomize` is called
-    ## which initializes the random number generator with a "random"
-    ## number, i.e. a tickcount.
-  proc randomize*()
-    ## initializes the random number generator with a "random"
-    ## number, i.e. a tickcount. Note: Does nothing for the ECMAScript target,
-    ## as ECMAScript does not support this.
+proc random*(max: int): int
+  ## returns a random number in the range 0..max-1. The sequence of
+  ## random number is always the same, unless `randomize` is called
+  ## which initializes the random number generator with a "random"
+  ## number, i.e. a tickcount.
+proc random*(max: float): float
+  ## returns a random number in the range 0..<max. The sequence of
+  ## random number is always the same, unless `randomize` is called
+  ## which initializes the random number generator with a "random"
+  ## number, i.e. a tickcount.
+proc randomize*()
+  ## initializes the random number generator with a "random"
+  ## number, i.e. a tickcount. Note: Does nothing for the ECMAScript target,
+  ## as ECMAScript does not support this.
   
+when not defined(ECMAScript):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
   
@@ -179,10 +184,18 @@ when not defined(ECMAScript):
   # C procs:
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", nodecl.}
+  proc srand48(seed: cint) {.importc: "srand48", nodecl.}
   proc rand(): cint {.importc: "rand", nodecl.}
+  proc drand48(): float {.importc: "drand48", nodecl.}
     
-  proc randomize() = srand(gettime(nil))
-  proc random(max: int): int = return int(rand()) mod max
+  proc randomize() =
+    let x = gettime(nil)
+    srand(x)
+    srand48(x)
+  proc random(max: int): int =
+    result = int(rand()) mod max
+  proc random(max: float): float =
+    result = drand48() * max
 
   proc trunc*(x: float): float {.importc: "trunc", nodecl.}
   proc floor*(x: float): float {.importc: "floor", nodecl.}
@@ -194,8 +207,11 @@ else:
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float): float {.importc: "Math.ceil", nodecl.}
-  proc random*(max: int): int = return int(floor(mathrandom() * float(max)))
-  proc randomize*() = nil
+  proc random(max: int): int =
+    result = int(floor(mathrandom() * float(max)))
+  proc random(max: float): float =
+    result = float(mathrandom() * float(max))
+  proc randomize() = nil
   
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float): float {.importc: "Math.log", nodecl.}
@@ -235,6 +251,9 @@ else:
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
+proc random*[T](x: TSlice[T]): T =
+  result = random(x.b - x.a) + x.a
+  
 type
   TRunningStat* {.pure,final.} = object  ## an accumulator for statistical data
     n*: int                              ## number of pushed data
