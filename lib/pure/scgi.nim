@@ -184,7 +184,7 @@ proc register*(d: PDispatcher, s: PAsyncScgiState) =
   ## Registers ``s`` with dispatcher ``d``.
   var dele = newDelegate()
   dele.deleVal = s
-  dele.getSocket = getSocket
+  #dele.getSocket = getSocket
   dele.handleAccept = handleAccept
   d.register(dele)
 

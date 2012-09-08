@@ -86,24 +86,38 @@ proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
     IdNodeTablePutLazy(c.mapping, param, n)
     result = true
 
-proc matchNested(c: PPatternContext, p, n: PNode): bool =
-  # match ``op*param``
+proc gather(c: PPatternContext, param: PSym, n: PNode) =
+  var pp = IdNodeTableGetLazy(c.mapping, param)
+  if pp != nil and pp.kind == nkArgList:
+    pp.add(n)
+  else:
+    pp = newNodeI(nkArgList, n.info, 1)
+    pp.sons[0] = n
+    IdNodeTablePutLazy(c.mapping, param, pp)
 
-  proc matchStarAux(c: PPatternContext, op, n, arglist: PNode) =
-    if n.kind in nkCallKinds and matches(c, op, n.sons[0]):
+proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
+  # match ``op * param`` or ``op *| param``
+  proc matchStarAux(c: PPatternContext, op, n, arglist: PNode,
+                    rpn: bool): bool =
+    result = true
+    if n.kind in nkCallKinds and matches(c, op.sons[1], n.sons[0]):
       for i in 1..sonsLen(n)-1:
-        matchStarAux(c, op, n[i], arglist)    
+        if not matchStarAux(c, op, n[i], arglist, rpn): return false
+      if rpn: arglist.add(n.sons[0])
     elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
       let n = n.sons[1]
-      for i in 0.. <n.len: matchStarAux(c, op, n[i], arglist)
-    else:
+      for i in 0.. <n.len: 
+        if not matchStarAux(c, op, n[i], arglist, rpn): return false
+    elif checkTypes(c, p.sons[2].sym, n):
       add(arglist, n)
+    else:
+      result = false
     
   if n.kind notin nkCallKinds: return false
   if matches(c, p.sons[1], n.sons[0]):
     var arglist = newNodeI(nkArgList, n.info)
-    matchStarAux(c, p.sons[1], n, arglist)
-    result = bindOrCheck(c, p.sons[2].sym, arglist)
+    if matchStarAux(c, p, n, arglist, rpn):
+      result = bindOrCheck(c, p.sons[2].sym, arglist)
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
   # hidden conversions (?)
@@ -122,15 +136,21 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     let opr = p.sons[0].ident.s
     case opr
     of "|": result = matchChoice(c, p, n)
-    of "*": result = matchNested(c, p, n)
+    of "*": result = matchNested(c, p, n, rpn=false)
+    of "*|": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
     else: InternalError(p.info, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) = 
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
-    assert isPatternParam(c, p.sons[1])
-    if matches(c, p.sons[0], n):
-      result = bindOrCheck(c, p.sons[1].sym, n)
+    if p.sons[1].kind == nkPrefix:
+      if matches(c, p.sons[0], n):
+        gather(c, p.sons[1].sons[1].sym, n)
+        result = true
+    else:
+      assert isPatternParam(c, p.sons[1])
+      if matches(c, p.sons[0], n):
+        result = bindOrCheck(c, p.sons[1].sym, n)
   elif sameKinds(p, n):
     case p.kind
     of nkSym: result = p.sym == n.sym
@@ -196,7 +216,17 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
   elif matches(c, p, n):
     result = n
 
-# writeln(X, a); writeln(X, b); --> writeln(X, a, b)
+proc aliasAnalysisRequested(params: PNode): bool =
+  if params.len >= 2:
+    for i in 1 .. < params.len:
+      let param = params.sons[i].sym
+      if whichAlias(param) != aqNone: return true
+
+proc addToArgList(result, n: PNode) =
+  if n.typ != nil and n.typ.kind != tyStmt:
+    if n.kind != nkArgList: result.add(n)
+    else:
+      for i in 0 .. <n.len: result.add(n.sons[i])
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
@@ -211,36 +241,40 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
   result.add(newSymNode(s, n.info))
   let params = s.typ.n
+  let requiresAA = aliasAnalysisRequested(params)
+  var args: PNode
+  if requiresAA:
+    args = newNodeI(nkArgList, n.info)
   for i in 1 .. < params.len:
     let param = params.sons[i].sym
     let x = IdNodeTableGetLazy(ctx.mapping, param)
     # couldn't bind parameter:
     if isNil(x): return nil
     result.add(x)
+    if requiresAA: addToArgList(args, n)
   # perform alias analysis here:
-  if params.len >= 2:
+  if requiresAA:
     for i in 1 .. < params.len:
+      var rs = result.sons[i]
       let param = params.sons[i].sym
       case whichAlias(param)
       of aqNone: nil
       of aqShouldAlias:
         # it suffices that it aliases for sure with *some* other param:
         var ok = false
-        for j in 1 .. < result.len:
-          if j != i and result.sons[j].typ != nil:
-            if aliases.isPartOf(result[i], result[j]) == arYes:
-              ok = true
-              break
+        for arg in items(args):
+          if arg != rs and aliases.isPartOf(rs, arg) == arYes:
+            ok = true
+            break
         # constraint not fullfilled:
         if not ok: return nil
       of aqNoAlias:
         # it MUST not alias with any other param:
         var ok = true
-        for j in 1 .. < result.len:
-          if j != i and result.sons[j].typ != nil:
-            if aliases.isPartOf(result[i], result[j]) != arNo:
-              ok = false
-              break
+        for arg in items(args):
+          if arg != rs and aliases.isPartOf(rs, arg) != arNo:
+            ok = false
+            break
         # constraint not fullfilled:
         if not ok: return nil
 

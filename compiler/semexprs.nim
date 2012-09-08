@@ -438,51 +438,9 @@ proc skipObjConv(n: PNode): PNode =
       result = n
   of nkObjUpConv, nkObjDownConv: result = n.sons[0]
   else: result = n
-  
-type 
-  TAssignableResult = enum 
-    arNone,                   # no l-value and no discriminant
-    arLValue,                 # is an l-value
-    arLocalLValue,            # is an l-value, but local var; must not escape
-                              # its stack frame!
-    arDiscriminant            # is a discriminant
 
 proc isAssignable(c: PContext, n: PNode): TAssignableResult = 
-  result = arNone
-  case n.kind
-  of nkSym:
-    # don't list 'skLet' here:
-    if n.sym.kind in {skVar, skResult, skTemp}:
-      if c.p.owner.id == n.sym.owner.id and sfGlobal notin n.sym.flags:
-        result = arLocalLValue
-      else:
-        result = arLValue
-  of nkDotExpr: 
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
-      result = arLValue
-    else: 
-      result = isAssignable(c, n.sons[0])
-    if result != arNone and sfDiscriminant in n.sons[1].sym.flags: 
-      result = arDiscriminant
-  of nkBracketExpr: 
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
-      result = arLValue
-    else:
-      result = isAssignable(c, n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
-    # Object and tuple conversions are still addressable, so we skip them
-    # XXX why is 'tyOpenArray' allowed here?
-    if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
-      result = isAssignable(c, n.sons[1])
-    elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
-      # types that are equal modulo distinction preserve l-value:
-      result = isAssignable(c, n.sons[1])
-  of nkHiddenDeref, nkDerefExpr: 
-    result = arLValue
-  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
-    result = isAssignable(c, n.sons[0])
-  else: 
-    nil
+  result = parampatterns.isAssignable(c.p.owner, n)
 
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode = 
   if n.kind == nkHiddenDeref: 
@@ -1598,4 +1556,3 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     LocalError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
   incl(result.flags, nfSem)
-  result = applyPatterns(c, result)
