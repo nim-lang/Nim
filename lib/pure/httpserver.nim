@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,7 +23,7 @@
 ##  run(handleRequest, TPort(80))
 ##
 
-import parseutils, strutils, os, osproc, strtabs, streams, sockets
+import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
 
 const
   wwwNL* = "\r\L"
@@ -206,7 +206,7 @@ proc acceptRequest(client: TSocket) =
       executeCgi(client, path, query, meth)
 
 type
-  TServer* = object       ## contains the current server state
+  TServer* = object of TObject  ## contains the current server state
     socket: TSocket
     port: TPort
     client*: TSocket      ## the socket to write the file data to
@@ -215,7 +215,11 @@ type
     headers*: PStringTable ## headers with which the client made the request
     body*: string          ## only set with POST requests
     ip*: string            ## ip address of the requesting client
-    
+  
+  PAsyncHTTPServer* = ref TAsyncHTTPServer
+  TAsyncHTTPServer = object of TServer
+    asyncSocket: PAsyncSocket
+  
 proc open*(s: var TServer, port = TPort(80)) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
@@ -363,6 +367,141 @@ proc run*(handleRequest: proc (client: TSocket,
     close(s.client)
   close(s)
 
+# -- AsyncIO begin
+
+proc nextAsync(s: PAsyncHTTPServer) =
+  ## proceed to the first/next request.
+  var client: TSocket
+  new(client)
+  var ip: string
+  acceptAddr(getSocket(s.asyncSocket), client, ip)
+  s.client = client
+  s.ip = ip
+  s.headers = newStringTable(modeCaseInsensitive)
+  #headers(s.client, "")
+  var data = ""
+  while not s.client.recvLine(data): nil
+  if data == "":
+    # Socket disconnected 
+    s.client.close()
+    return
+  var header = ""
+  while true:
+    if s.client.recvLine(header):
+      if header == "\c\L": break
+      if header != "":
+        var i = 0
+        var key = ""
+        var value = ""
+        i = header.parseUntil(key, ':')
+        inc(i) # skip :
+        i += header.skipWhiteSpace(i)
+        i += header.parseUntil(value, {'\c', '\L'}, i)
+        s.headers[key] = value
+      else:
+        s.client.close()
+        return
+  
+  var i = skipWhitespace(data)
+  if skipIgnoreCase(data, "GET") > 0: 
+    s.reqMethod = "GET"
+    inc(i, 3)
+  elif skipIgnoreCase(data, "POST") > 0:
+    s.reqMethod = "POST"
+    inc(i, 4)
+  else:
+    unimplemented(s.client)
+    s.client.close()
+    return
+  
+  if s.reqMethod == "POST":
+    # Check for Expect header
+    if s.headers.hasKey("Expect"):
+      if s.headers["Expect"].toLower == "100-continue":
+        s.client.sendStatus("100 Continue")
+      else:
+        s.client.sendStatus("417 Expectation Failed")
+  
+    # Read the body
+    # - Check for Content-length header
+    if s.headers.hasKey("Content-Length"):
+      var contentLength = 0
+      if parseInt(s.headers["Content-Length"], contentLength) == 0:
+        badRequest(s.client)
+        s.client.close()
+        return
+      else:
+        var totalRead = 0
+        var totalBody = ""
+        while totalRead < contentLength:
+          var chunkSize = 8000
+          if (contentLength - totalRead) < 8000:
+            chunkSize = (contentLength - totalRead)
+          var bodyData = newString(chunkSize)
+          var octetsRead = s.client.recv(cstring(bodyData), chunkSize)
+          if octetsRead <= 0:
+            s.client.close()
+            return
+          totalRead += octetsRead
+          totalBody.add(bodyData)
+        if totalBody.len != contentLength:
+          s.client.close()
+          return
+
+        s.body = totalBody
+    else:
+      badRequest(s.client)
+      s.client.close()
+      return
+  
+  var L = skipWhitespace(data, i)
+  inc(i, L)
+  # XXX we ignore "HTTP/1.1" etc. for now here
+  var query = 0
+  var last = i
+  while last < data.len and data[last] notin whitespace: 
+    if data[last] == '?' and query == 0: query = last
+    inc(last)
+  if query > 0:
+    s.query = data.substr(query+1, last-1)
+    s.path = data.substr(i, query-1)
+  else:
+    s.query = ""
+    s.path = data.substr(i, last-1)
+
+proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSocket, 
+                        path, query: string): bool {.closure.},
+                     port = TPort(80), address = ""): PAsyncHTTPServer =
+  ## Creates an Asynchronous HTTP server at ``port``.
+  var capturedRet: PAsyncHTTPServer
+  new(capturedRet)
+  capturedRet.asyncSocket = AsyncSocket()
+  capturedRet.asyncSocket.handleAccept =
+    proc (s: PAsyncSocket) =
+      nextAsync(capturedRet)
+      let quit = handleRequest(capturedRet, capturedRet.client, capturedRet.path,
+                               capturedRet.query)
+      if quit: capturedRet.asyncSocket.close()
+  
+  capturedRet.asyncSocket.bindAddr(port, address)
+  capturedRet.asyncSocket.listen()
+  if port == TPort(0):
+    capturedRet.port = getSockName(capturedRet.asyncSocket)
+  else:
+    capturedRet.port = port
+  
+  capturedRet.client = InvalidSocket
+  capturedRet.reqMethod = ""
+  capturedRet.body = ""
+  capturedRet.path = ""
+  capturedRet.query = ""
+  capturedRet.headers = {:}.newStringTable()
+  result = capturedRet
+
+proc register*(d: PDispatcher, s: PAsyncHTTPServer) =
+  ## Registers a PAsyncHTTPServer with a PDispatcher.
+  d.register(s.asyncSocket)
+  
 when isMainModule:
   var counter = 0
 
