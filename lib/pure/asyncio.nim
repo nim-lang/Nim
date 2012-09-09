@@ -55,7 +55,7 @@ import sockets, os
 ##   
 ##    var disp: PDispatcher = newDispatcher()
 ##    ...
-##    proc handleAccept(s: PAsyncSocket, arg: Pobject) {.nimcall.} =
+##    proc handleAccept(s: PAsyncSocket) =
 ##      echo("Accepted client.")
 ##      var client: PAsyncSocket
 ##      new(client)
@@ -69,6 +69,20 @@ import sockets, os
 ## received messages and can be read from and the latter gets called whenever
 ## the socket has established a connection to a server socket; from that point
 ## it can be safely written to.
+##
+## Getting a blocking client from a PAsyncSocket
+## =============================================
+## 
+## If you need a asynchronous server socket but you wish to process the clients
+## synchronously then you can use the ``getSocket`` converter to get a TSocket
+## object from the PAsyncSocket object, this can then be combined with ``accept``
+## like so:
+##
+## .. code-block:: nimrod
+##    
+##    proc handleAccept(s: PAsyncSocket) =
+##      var client: TSocket
+##      getSocket(s).accept(client)
 
 when defined(windows):
   from winlean import TTimeVal, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
@@ -137,6 +151,8 @@ proc newAsyncSocket(): PAsyncSocket =
 proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
                   buffered = true): PAsyncSocket =
+  ## Initialises an AsyncSocket object. If a socket cannot be initialised
+  ## EOS is raised.
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
@@ -209,26 +225,30 @@ proc connect*(sock: PAsyncSocket, name: string, port = TPort(0),
   ## Begins connecting ``sock`` to ``name``:``port``.
   sock.socket.connectAsync(name, port, af)
   sock.info = SockConnecting
-  sock.deleg.open = true
+  if sock.deleg != nil:
+    sock.deleg.open = true
 
 proc close*(sock: PAsyncSocket) =
   ## Closes ``sock``. Terminates any current connections.
   sock.socket.close()
   sock.info = SockClosed
-  sock.deleg.open = false
+  if sock.deleg != nil:
+    sock.deleg.open = false
 
 proc bindAddr*(sock: PAsyncSocket, port = TPort(0), address = "") =
   ## Equivalent to ``sockets.bindAddr``.
   sock.socket.bindAddr(port, address)
   if sock.proto == IPPROTO_UDP:
     sock.info = SockUDPBound
-    sock.deleg.open = true
+    if sock.deleg != nil:
+      sock.deleg.open = true
 
 proc listen*(sock: PAsyncSocket) =
   ## Equivalent to ``sockets.listen``.
   sock.socket.listen()
   sock.info = SockListening
-  sock.deleg.open = true
+  if sock.deleg != nil:
+    sock.deleg.open = true
 
 proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
                  address: var string) =
