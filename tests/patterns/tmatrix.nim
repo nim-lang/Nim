@@ -12,11 +12,12 @@ proc `*`(a, b: TMat): TMat = nil
 proc `+`(a, b: TMat): TMat = nil
 proc `-`(a, b: TMat): TMat = nil
 proc `$`(a: TMat): string = result = $a.dummy
-proc mat32(): TMat =
+proc mat21(): TMat =
   result.dummy = 21
 
-macro optOps{ (`+`|`-`|`*`) *| a }(a: TMat): expr =
-  result = newCall(bindSym"mat32")
+macro optOps{ (`+`|`-`|`*`) ** a }(a: TMat): expr =
+  echo treeRepr(a)
+  result = newCall(bindSym"mat21")
 
 #macro optPlus{ `+` * a }(a: varargs[TMat]): expr =
 #  result = newIntLitNode(21)

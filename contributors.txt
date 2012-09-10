@@ -2,6 +2,7 @@ Comex
 Eric Doughty-Papassideris
 Simon Hafner
 Keita Haga
+Grzegorz Adam Hankiewicz
 Philippe Lhoste
 Zahary Karadjov
 Mario Ray Mahardhika

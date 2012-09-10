@@ -491,7 +491,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       # we interpret `*` and `|` only as pattern operators if they occur in
       # infix notation, so that '`*`(a, b)' can be used for verbatim matching:
       let opr = n.sons[0]
-      if opr.ident.s == "*" or opr.ident.s == "*|":
+      if opr.ident.s == "*" or opr.ident.s == "**":
         result = newNodeI(nkPattern, n.info, n.len)
         result.sons[0] = opr
         result.sons[1] = semPatternBody(c, n.sons[1])

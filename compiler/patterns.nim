@@ -146,7 +146,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     case opr
     of "|": result = matchChoice(c, p, n)
     of "*": result = matchNested(c, p, n, rpn=false)
-    of "*|": result = matchNested(c, p, n, rpn=true)
+    of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
     else: InternalError(p.info, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) = 
