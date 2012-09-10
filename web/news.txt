@@ -162,6 +162,8 @@ Language Additions
   in templates.
 - Comments can be continued with a backslash continuation character so that
   comment pieces don't have to align on the same column.
+- Enums can be annotated with ``pure`` so that their field names do not pollute
+  the current scope.
 
 
 2012-02-09 Version 0.8.14 released
