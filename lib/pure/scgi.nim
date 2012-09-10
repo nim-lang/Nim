@@ -67,9 +67,8 @@ type
   
   TAsyncScgiState* = object of TScgiState
     handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
-                         input: string, headers: PStringTable,
-                         userArg: PObject) {.nimcall.}
-    userArg: PObject
+                         input: string, headers: PStringTable) {.closure.}
+    asyncServer: PAsyncSocket
   PAsyncScgiState* = ref TAsyncScgiState
     
 proc recvBuffer(s: var TScgiState, L: int) =
@@ -142,25 +141,25 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
       s.client.close()
   s.close()
 
+# -- AsyncIO start
+
 proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
-                                input: string, headers: PStringTable,
-                                userArg: PObject) {.nimcall.},
-           port = TPort(4000), address = "127.0.0.1",
-           userArg: PObject = nil): PAsyncScgiState =
+                                input: string, headers: PStringTable) {.closure.},
+           port = TPort(4000), address = "127.0.0.1"): PAsyncScgiState =
   ## Alternative of ``open`` for asyncio compatible SCGI.
   new(result)
-  open(result[], port, address)
-  result.handleRequest = handleRequest
-  result.userArg = userArg
+  result.bufLen = 4000
+  result.input = newString(result.buflen) # will be reused
 
-proc getSocket(h: PObject): tuple[info: TInfo, sock: TSocket] =
-  var s = PAsyncScgiState(h)
-  return (SockListening, s.server)
+  result.asyncServer = AsyncSocket()
+  bindAddr(result.asyncServer, port, address)
+  listen(result.asyncServer)
+  result.handleRequest = handleRequest
 
 proc handleAccept(h: PObject) =
   var s = PAsyncScgiState(h)
   
-  accept(s.server, s.client)
+  accept(getSocket(s.asyncServer), s.client)
   var L = 0
   while true:
     var d = s.client.recvChar()
@@ -178,15 +177,11 @@ proc handleAccept(h: PObject) =
   L = parseInt(s.headers["CONTENT_LENGTH"])
   recvBuffer(s[], L)
 
-  s.handleRequest(s[], s.client, s.input, s.headers, s.userArg)
+  s.handleRequest(s[], s.client, s.input, s.headers)
 
-proc register*(d: PDispatcher, s: PAsyncScgiState) =
+proc register*(d: PDispatcher, s: PAsyncScgiState): PDelegate {.discardable.} =
   ## Registers ``s`` with dispatcher ``d``.
-  var dele = newDelegate()
-  dele.deleVal = s
-  #dele.getSocket = getSocket
-  dele.handleAccept = handleAccept
-  d.register(dele)
+  result = d.register(s.asyncServer)
 
 when false:
   var counter = 0
