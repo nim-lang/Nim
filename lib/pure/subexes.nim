@@ -39,12 +39,12 @@ type
     f: cstring
     num, i, lineLen: int
 
-template call(x: stmt) =
+template call(x: stmt) {.immediate.} =
   p.i = i
   x
   i = p.i
 
-template callNoLineLenTracking(x: stmt) =
+template callNoLineLenTracking(x: stmt) {.immediate.} =
   let oldLineLen = p.lineLen
   p.i = i
   x

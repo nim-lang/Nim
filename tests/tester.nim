@@ -18,7 +18,7 @@ const
   resultsFile = "testresults.html"
   jsonFile = "testresults.json"
   Usage = "usage: tester [--print] " &
-                    "reject|compile|examples|run|" &
+                    "reject|compile|run|" &
                     "merge|special|rodfiles| [nimrod options]\n" &
           "   or: tester test|comp|rej singleTest"
 
@@ -65,7 +65,7 @@ proc extractSpec(filename: string): string =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template parseSpecAux(fillResult: stmt) =
+template parseSpecAux(fillResult: stmt) {.immediate.} =
   var ss = newStringStream(extractSpec(filename))
   var p {.inject.}: TCfgParser
   open(p, ss, filename, 1)
@@ -125,7 +125,7 @@ proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var x = newStringOfCap(120)
   while outp.readLine(x.TaintedString) or running(p):
     if x =~ pegOfInterest:
-      # `s` should contain the last error/warning message
+      # `err` should contain the last error/warning message
       err = x
     elif x =~ pegSuccess:
       suc = x
@@ -360,12 +360,10 @@ proc main() =
   of "compile":
     compile(r, "tests/compile/t*.nim", p.cmdLineRest.string)
     compile(r, "tests/ecmas.nim", p.cmdLineRest.string)
-    compileSpecialTests(r, p.cmdLineRest.string)
-    writeResults(compileJson, r)
-  of "examples":
     compileExample(r, "lib/pure/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/gtk/*.nim", p.cmdLineRest.string)
+    compileSpecialTests(r, p.cmdLineRest.string)
     writeResults(compileJson, r)
   of "run":
     run(r, "tests/run", p.cmdLineRest.string)

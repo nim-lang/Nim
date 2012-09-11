@@ -40,6 +40,9 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, toBind)
   closeScope(c.tab)
 
+template macroToExpand(s: expr): expr =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode = 
   incl(s.flags, sfUsed)
   case s.kind
@@ -49,9 +52,15 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skProc, skMethod, skIterator, skConverter: 
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
-    result = semTemplateExpr(c, n, s, false)
+    if macroToExpand(s):
+      result = semTemplateExpr(c, n, s, false)
+    else:
+      result = symChoice(c, n, s, scOpen)
   of skMacro: 
-    result = semMacroExpr(c, n, n, s, false)
+    if macroToExpand(s):
+      result = semMacroExpr(c, n, n, s, false)
+    else:
+      result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
     result = newSymNode(s, n.info)
   of skParam: 
@@ -96,10 +105,18 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s != nil: 
       incl(s.flags, sfUsed)
       case s.kind
-      of skMacro: 
-        result = semMacroExpr(c, n, n, s, false)
+      of skMacro:
+        if macroToExpand(s):
+          result = semMacroExpr(c, n, n, s, false)
+        else:
+          n.sons[0] = symChoice(c, n.sons[0], s, scOpen)
+          result = n
       of skTemplate: 
-        result = semTemplateExpr(c, n, s, false)
+        if macroToExpand(s):
+          result = semTemplateExpr(c, n, s, false)
+        else:
+          n.sons[0] = symChoice(c, n.sons[0], s, scOpen)
+          result = n
         # BUGFIX: we must not return here, we need to do first phase of
         # symbol lookup ...
       of skUnknown, skParam: 
@@ -121,7 +138,13 @@ proc semGenericStmt(c: PContext, n: PNode,
     for i in countup(first, sonsLen(result) - 1): 
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
   of nkMacroStmt: 
-    result = semMacroStmt(c, n, false)
+    checkMinSonsLen(n, 2)
+    var a: PNode
+    if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
+    else: a = n.sons[0]
+    var s = qualifiedLookup(c, a, {})
+    if s != nil and macroToExpand(s):
+      result = semMacroStmt(c, n, {}, false)
     for i in countup(0, sonsLen(result)-1): 
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
   of nkIfStmt: 
