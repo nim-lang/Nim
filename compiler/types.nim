@@ -701,7 +701,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   else:
     result = false
 
-template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) =
+template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id

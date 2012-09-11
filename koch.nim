@@ -257,7 +257,6 @@ proc tests(args: string) =
   exec("nimrod cc --taintMode:on tests/tester")
   exec(getCurrentDir() / "tests/tester".exe & " reject")
   exec(getCurrentDir() / "tests/tester".exe & " compile")
-  exec(getCurrentDir() / "tests/tester".exe & " examples")
   exec(getCurrentDir() / "tests/tester".exe & " run")
   exec(getCurrentDir() / "tests/tester".exe & " merge")
 

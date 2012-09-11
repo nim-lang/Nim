@@ -1356,30 +1356,40 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
 
-proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
-  # XXX why no overloading here?
+proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags, 
+                  semCheck = true): PNode =
   checkMinSonsLen(n, 2)
   var a: PNode
   if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
   else: a = n.sons[0]
   var s = qualifiedLookup(c, a, {checkUndeclared})
   if s != nil: 
+    # transform
+    # nkMacroStmt(nkCall(a...), stmt, b...)
+    # to
+    # nkCall(a..., stmt, b...)
+    result = newNodeI(nkCall, n.info)
+    addSon(result, a)
+    if isCallExpr(n.sons[0]):
+      for i in countup(1, sonsLen(n.sons[0]) - 1):
+        addSon(result, n.sons[0].sons[i])
+    # for sigmatch this need to have a type; we use 'void':
+    for i in countup(1, sonsLen(n) - 1):
+      n.sons[i].typ = newTypeS(tyEmpty, c)
+      addSon(result, n.sons[i])
+
     case s.kind
-    of skMacro: 
-      result = semMacroExpr(c, n, n, s, semCheck)
+    of skMacro:
+      if sfImmediate notin s.flags:
+        result = semDirectOp(c, result, flags)
+      else:
+        result = semMacroExpr(c, result, n, s, semCheck)
     of skTemplate: 
-      # transform
-      # nkMacroStmt(nkCall(a...), stmt, b...)
-      # to
-      # nkCall(a..., stmt, b...)
-      result = newNodeI(nkCall, n.info)
-      addSon(result, a)
-      if isCallExpr(n.sons[0]): 
-        for i in countup(1, sonsLen(n.sons[0]) - 1): 
-          addSon(result, n.sons[0].sons[i])
-      for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
-      result = semTemplateExpr(c, result, s, semCheck)
-    else: 
+      if sfImmediate notin s.flags:
+        result = semDirectOp(c, result, flags)
+      else:
+        result = semTemplateExpr(c, result, s, semCheck)
+    else:
       LocalError(n.info, errXisNoMacroOrTemplate, s.name.s)
       result = errorNode(c, n)
   else:
@@ -1494,7 +1504,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     else:
       result = semIndirectOp(c, n, flags)
   of nkMacroStmt: 
-    result = semMacroStmt(c, n)
+    result = semMacroStmt(c, n, flags)
   of nkWhenExpr:
     result = semWhen(c, n, false)
     result = semExpr(c, result)

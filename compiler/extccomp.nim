@@ -50,7 +50,7 @@ type
 # When adding new compilers, the cmake sources could be a good reference:
 # http://cmake.org/gitweb?p=cmake.git;a=tree;f=Modules/Platform;
 
-template compiler(name: expr, settings: stmt):stmt =
+template compiler(name: expr, settings: stmt): stmt {.immediate.} =
   proc name: TInfoCC {.compileTime.} = settings
 
 compiler gcc:

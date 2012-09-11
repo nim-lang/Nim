@@ -17,7 +17,7 @@ pipeline with user defined optimizations:
 
 The compiler now rewrites ``x * 2`` as ``x + x``. The code inside the
 curlies is the pattern to match against. The operators ``*``,  ``**``,
- ``|``, ``~`` have a special meaning in patterns if they are written in infix 
+``|``, ``~`` have a special meaning in patterns if they are written in infix 
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 

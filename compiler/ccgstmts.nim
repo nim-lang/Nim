@@ -87,7 +87,7 @@ proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
   genStmts(p, stmts)
   endBlock(p)
 
-template preserveBreakIdx(body: stmt): stmt =
+template preserveBreakIdx(body: stmt): stmt {.immediate.} =
   var oldBreakIdx = p.breakIdx
   body
   p.breakIdx = oldBreakIdx

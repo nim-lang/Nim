@@ -388,7 +388,8 @@ proc getSockName*(socket: TSocket): TPort =
 
 proc selectWrite*(writefds: var seq[TSocket], timeout = 500): int
 
-template acceptAddrPlain(noClientRet, successRet: expr, sslImplementation: stmt): stmt =
+template acceptAddrPlain(noClientRet, successRet: expr, 
+                         sslImplementation: stmt): stmt {.immediate.} =
   assert(client != nil)
   var sockAddress: Tsockaddr_in
   var addrLen = sizeof(sockAddress).TSockLen
