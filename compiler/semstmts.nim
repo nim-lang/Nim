@@ -1048,6 +1048,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
       let fullDef = newNode(nkProcDef, i, @[
         newIdentNode(destructorName, i),
         emptyNode,
+        emptyNode,
         newNode(nkFormalParams, i, @[
           emptyNode,
           newNode(nkIdentDefs, i, @[
@@ -1056,6 +1057,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
             emptyNode]),
           ]),
         newNode(nkPragma, i, @[destructorPragma]),
+        emptyNode,
         generated
         ])
       discard semProc(c, fullDef)

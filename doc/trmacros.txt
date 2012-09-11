@@ -243,7 +243,7 @@ all the arguments, but also the matched operators in reverse polish notation:
       dummy: int
 
   proc `*`(a, b: TMatrix): TMatrix = nil
-  proc `+`(a, b: TMat): TMatrix = nil
+  proc `+`(a, b: TMatrix): TMatrix = nil
   proc `-`(a, b: TMatrix): TMatrix = nil
   proc `$`(a: TMatrix): string = result = $a.dummy
   proc mat21(): TMatrix =
@@ -257,7 +257,7 @@ all the arguments, but also the matched operators in reverse polish notation:
 
   echo x + y * z - x 
 
-This transforms passes expression ``x + y * z - x`` to the ``optM`` macro as
+This passes the expression ``x + y * z - x`` to the ``optM`` macro as
 an ``nnkArgList`` node containing::
 
   Arglist
