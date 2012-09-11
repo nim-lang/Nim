@@ -140,6 +140,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       result[i] = PTransNode(it)
     elif it.kind == nkIdentDefs: 
       if it.sons[0].kind != nkSym: InternalError(it.info, "transformVarSection")
+      InternalAssert(it.len == 3)
       var newVar = copySym(it.sons[0].sym)
       incl(newVar.flags, sfFromGeneric)
       # fixes a strange bug for rodgen:
@@ -498,9 +499,13 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     add(result, elseBranch)
   
 proc transformArrayAccess(c: PTransf, n: PNode): PTransNode = 
-  result = newTransNode(n)
-  result[0] = transform(c, skipConv(n.sons[0]))
-  result[1] = transform(c, skipConv(n.sons[1]))
+  # XXX this is really bad; transf should use a proper AST visitor
+  if n.sons[0].kind == nkSym and n.sons[0].sym.kind == skType:
+    result = n.ptransnode
+  else:
+    result = newTransNode(n)
+    for i in 0 .. < n.len:
+      result[i] = transform(c, skipConv(n.sons[i]))
   
 proc getMergeOp(n: PNode): PSym = 
   case n.kind

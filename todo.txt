@@ -2,8 +2,6 @@ version 0.9.0
 =============
 
 - make 'm: stmt' use overloading resolution
-- fix the 'nil' bug in the AST
-
 - make 'bind' default for templates and introduce 'mixin'
 
 - implicit deref for parameter matching

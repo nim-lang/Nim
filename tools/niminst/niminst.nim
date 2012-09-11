@@ -219,7 +219,7 @@ proc yesno(p: var TCfgParser, v: string): bool =
 proc parseIniFile(c: var TConfigData) =
   var
     p: TCfgParser
-    section: string # current section
+    section = ""
   var input = newFileStream(c.infile, fmRead)
   if input != nil:
     open(p, input, c.infile)
