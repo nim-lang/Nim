@@ -63,7 +63,7 @@ proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
     error(w, "Unable to write to file")
 
 proc inputKeyPressed(widget: PWidget, event: PEventKey, 
-                     userdata: pgpointer): bool =
+                     userdata: pgpointer): bool {.cdecl.} =
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is pressed
     shiftPressed = True
@@ -72,7 +72,7 @@ proc setError(msg: string) =
   outputTextBuffer.setText(msg, msg.len.gint)
   
 proc inputKeyReleased(widget: PWidget, event: PEventKey, 
-                      userdata: pgpointer): bool =
+                      userdata: pgpointer): bool {.cdecl.} =
   #echo(keyval_name(event.keyval))
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
