@@ -74,7 +74,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
-    if result.kind in {skProc, skMethod, skConverter}: 
+    if result.kind in {skProc, skMethod, skConverter, skMacro}: 
       addResult(c, result.typ.sons[0], n.info, result.kind)
       addResultNode(c, n)
     var b = semStmtScope(c, n.sons[bodyPos])
@@ -184,8 +184,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, result)
-    sideEffectsCheck(c, result)
+    if fn.kind != skTemplate:
+      instantiateBody(c, n, result)
+      sideEffectsCheck(c, result)
   else:
     result = oldPrc
   popInfoContext()

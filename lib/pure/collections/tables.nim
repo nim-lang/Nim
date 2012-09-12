@@ -202,7 +202,7 @@ proc len*[A, B](t: TOrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty.} =
+template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next

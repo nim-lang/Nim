@@ -1,6 +1,10 @@
+discard """
+  output: "123100"
+"""
+
 template hygienic(val: expr) =
-  var `*x` = val
-  stdout.write `*x`
+  var x = val
+  stdout.write x
 
 var x = 100
 

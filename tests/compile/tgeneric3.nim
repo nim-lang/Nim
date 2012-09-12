@@ -66,12 +66,12 @@ proc setItem[T,D] (AKey: T, AValue: D, ANode: PNode[T,D]): ref TItem[T,D] {.inli
 proc cmp[T:Int8|Int16|Int32|Int64|Int] (a,b: T): T {.inline.} =
   return a-b
 
-template binSearchImpl *(docmp: expr) =
+template binSearchImpl *(docmp: expr) {.immediate.} =
   var bFound = false
   result = 0
   var H = haystack.len -1
   while result <= H :
-    var I = (result + H) shr 1
+    var I {.inject.} = (result + H) shr 1
     var SW = docmp 
     if SW < 0: result = I + 1 
     else:
