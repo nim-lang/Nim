@@ -335,3 +335,43 @@ proc raiseFloatOverflow(x: float64) {.noinline, noreturn.} =
 
 proc infCheck(x: float64) {.compilerProc, inline.} =
   if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)
+
+when not defined(NimrodVM) and not defined(ECMAScript):
+  type
+    FPStatus* = enum NotANumber, Infinite, Zero, Subnormal, Normal
+    EFloat* = object
+      reason: FPStatus
+  proc fpclassify(x: float): FPStatus {.importc: "fpclassify", header: "<math.h>".}
+
+  proc floatCheck*(x: float, checks: set[FPStatus]): FPStatus =
+    # This returns `Normal` whenever none of the passed `checks` was found.
+    var status = fpclassify(x)
+    result = Normal
+    if checks * {status} != {}:
+      result = status
+  proc floatCheck*(x: float): FPStatus =
+    # Check a float for status, see `FPStatus` for all of them.
+    result = fpclassify(x)
+
+  proc floatGuard*(x: float, checks: set[FPStatus]= {NotANumber, Infinite, Subnormal}) {.compilerproc, inline.} = 
+    # Check a float for status and raise an error with `EFloat`
+    # attached whenever one of the status in `checks` occurs.
+    var status = floatCheck(x)
+    if status in checks:
+      var err: ref EFloat
+      new(err)
+      err.reason = status
+      raise err
+  # Some shortcuts
+  proc isNaN*(x:float): bool =
+    # Is the float NaN?
+    result = floatCheck(x, {NotANumber}) != Normal
+  proc isInf*(x:float): bool =
+    # Is the float infinite? (overflow)
+    result = floatCheck(x, {Infinite}) != Normal
+  proc isSub*(x:float): bool =
+    # Is the float subnormal? (underflow)
+    result = floatCheck(x, {Subnormal}) != Normal
+  proc isZero*(x:float): bool =
+    # Is the float zero?
+    result = floatCheck(x, {Zero}) != Normal

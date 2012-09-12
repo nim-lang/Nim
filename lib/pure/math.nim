@@ -17,9 +17,6 @@
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
-when defined(Posix): 
-  {.passl: "-lm".}
-
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
   E* = 2.71828182845904523536028747 ## Euler's number
