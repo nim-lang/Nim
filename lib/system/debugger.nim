@@ -99,10 +99,13 @@ proc findBreakpoint(name: TStaticStr): int =
     if name == dbgBP[i].name: return i
   return -1
 
+proc write(f: TFile, s: TStaticStr) =
+  write(f, cstring(s.data))
+
 proc ListBreakPoints() =
   write(stdout, "*** endb| Breakpoints:\n")
   for i in 0 .. dbgBPlen-1:
-    write(stdout, dbgBP[i].name.data)
+    write(stdout, dbgBP[i].name)
     write(stdout, ": ")
     write(stdout, abs(dbgBP[i].low))
     write(stdout, "..")
@@ -508,7 +511,7 @@ proc checkForBreakpoint() =
   let i = dbgBreakpointReached(framePtr.line)
   if i >= 0:
     write(stdout, "*** endb| reached ")
-    write(stdout, dbgBP[i].name.data)
+    write(stdout, dbgBP[i].name)
     write(stdout, " in ")
     write(stdout, framePtr.filename)
     write(stdout, "(")
