@@ -157,7 +157,7 @@ proc card*[A](s: TOrderedSet[A]): int {.inline.} =
   ## alias for `len`.
   result = s.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty.} =
+template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next

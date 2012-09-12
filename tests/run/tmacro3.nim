@@ -8,7 +8,7 @@ type
     TA = tuple[a: int]
     PA = ref TA
 
-macro test*(a: stmt): stmt =
+macro test*(a: stmt): stmt {.immediate.} =
   var val: PA
   new(val)
   val.a = 4
@@ -16,7 +16,7 @@ macro test*(a: stmt): stmt =
 test:
   "hi"
 
-macro test2*(a: stmt): stmt =
+macro test2*(a: stmt): stmt {.immediate.} =
   proc testproc(recurse: int) =
     echo "Thats weird"
     var o : PNimrodNode = nil

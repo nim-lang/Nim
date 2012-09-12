@@ -1,6 +1,6 @@
 discard """
   output: '''true'''
-  cmd: "nimrod cc --gc:none --hints:on $# $#"
+  cmd: "nimrod cc --hints:on $# $#"
 """
 
 import hashes, sets

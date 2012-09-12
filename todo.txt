@@ -76,6 +76,7 @@ version 0.9.XX
   per default?
 - 'const' objects including case objects
 - 'export' feature
+- from buggymodule import * except optBroken, optBroken2
 - think about ``{:}.toTable[int, string]()``
 - mocking support with ``tyProxy`` that does:
   o.p(x) --> p(o, x) -->  myMacro(p, o, x)
