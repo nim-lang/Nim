@@ -21,7 +21,7 @@ test "templates can be redefined multiple times":
   template customAssert(cond: bool, msg: string): stmt =
     if not cond: fail(msg)
 
-  template assertion_failed(body: stmt) =
+  template assertion_failed(body: stmt) {.immediate.} =
     template fail(msg: string): stmt = body
 
   assertion_failed: check msg == "first fail path"

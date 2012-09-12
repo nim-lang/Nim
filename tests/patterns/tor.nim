@@ -1,5 +1,6 @@
 discard """
-  output: "110"
+  output: '''110
+true'''
 """
 
 template arithOps: expr = (`+` | `-` | `*`)
