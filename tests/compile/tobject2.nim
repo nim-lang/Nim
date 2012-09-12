@@ -1,7 +1,7 @@
 # Tests the object implementation
 
 type
-  TPoint2d = object
+  TPoint2d {.inheritable.} = object
     x, y: int
 
   TPoint3d = object of TPoint2d

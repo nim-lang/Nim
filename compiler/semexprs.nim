@@ -707,7 +707,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
     result = isCallExpr(n) and n.sons[0].kind == nkSym and 
              sfDiscardable in n.sons[0].sym.flags
   result = semExpr(c, n)
-  if result.typ != nil and result.typ.kind != tyStmt:
+  if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if gCmd == cmdInteractive:
       result = buildEchoStmt(c, result)
     elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError:

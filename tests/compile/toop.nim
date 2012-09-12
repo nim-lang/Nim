@@ -3,7 +3,7 @@ discard """
 """
 
 type
-  TA = object
+  TA = object of TObject
     x, y: int
   
   TB = object of TA

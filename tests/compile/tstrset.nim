@@ -3,7 +3,7 @@
 type
   TRadixNodeKind = enum rnLinear, rnFull, rnLeaf
   PRadixNode = ref TRadixNode
-  TRadixNode = object
+  TRadixNode = object {.inheritable.}
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
     len: int8
@@ -47,7 +47,7 @@ proc search(r: PRadixNode, s: string): PRadixNode =
         inc(j)
         inc(i)
 
-proc in_Operator*(r: PRadixNode, s: string): bool =
+proc contains*(r: PRadixNode, s: string): bool =
   return search(r, s) != nil
 
 proc testOrincl*(r: var PRadixNode, s: string): bool =

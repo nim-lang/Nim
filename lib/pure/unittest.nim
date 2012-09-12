@@ -31,19 +31,19 @@ var
   
   checkpoints: seq[string] = @[]
 
-template TestSetupIMPL*: stmt {.dirty.} = nil
-template TestTeardownIMPL*: stmt {.dirty.} = nil
+template TestSetupIMPL*: stmt {.immediate, dirty.} = nil
+template TestTeardownIMPL*: stmt {.immediate, dirty.} = nil
 
 proc shouldRun(testName: string): bool =
   result = true
 
-template suite*(name: expr, body: stmt): stmt {.dirty.} =
+template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   block:
-    template setup*(setupBody: stmt): stmt {.dirty.} =
-      template TestSetupIMPL: stmt {.dirty.} = setupBody
+    template setup*(setupBody: stmt): stmt {.immediate, dirty.} =
+      template TestSetupIMPL: stmt {.immediate, dirty.} = setupBody
 
-    template teardown*(teardownBody: stmt): stmt {.dirty.} =
-      template TestTeardownIMPL: stmt {.dirty.} = teardownBody
+    template teardown*(teardownBody: stmt): stmt {.immediate, dirty.} =
+      template TestTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
 
     body
 
@@ -59,7 +59,7 @@ proc testDone(name: string, s: TTestStatus) =
     else:
       echo "[", $s, "] ", name, "\n"
   
-template test*(name: expr, body: stmt): stmt {.dirty.} =
+template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   bind shouldRun, checkpoints, testDone
 
   if shouldRun(name):
@@ -148,7 +148,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     var ast = conditions.treeRepr
     error conditions.lineinfo & ": Malformed check statement:\n" & ast
 
-template require*(conditions: stmt): stmt {.dirty.} =
+template require*(conditions: stmt): stmt {.immediate, dirty.} =
   block:
     const AbortOnError {.inject.} = true
     check conditions

@@ -1,5 +1,5 @@
 type
-  TBase = object
+  TBase = object of TObject
     x, y: int
 
   TSubclassKind = enum ka, kb, kc, kd, ke, kf

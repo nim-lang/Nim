@@ -9,7 +9,7 @@ const bitsPerUnit = 8*sizeof(int)
 type
   TRadixNodeKind = enum rnLinear, rnFull, rnLeafBits, rnLeafLinear
   PRadixNode = ptr TRadixNode
-  TRadixNode {.pure.} = object
+  TRadixNode {.pure, inheritable.} = object
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
     len: int8
@@ -78,7 +78,7 @@ proc exclLeaf(r: PRadixNode, a: int) =
         return
   else: assert(false)
 
-proc in_Operator*(r: PRadixNode, a: TAddress): bool =
+proc contains*(r: PRadixNode, a: TAddress): bool =
   if r == nil: return false
   var x = searchInner(r, a shr 24 and 0xff)
   if x == nil: return false

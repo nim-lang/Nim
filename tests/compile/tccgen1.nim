@@ -7,7 +7,7 @@ type
     Features: seq[Feature] # Read-Only
 
   PNode* = ref Node
-  Node = object
+  Node = object {.inheritable.}
     attributes*: seq[PAttr]
     childNodes*: seq[PNode]
     FLocalName: string # Read-only

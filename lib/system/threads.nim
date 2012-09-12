@@ -245,9 +245,7 @@ when not defined(useNimRtl):
 # We jump through some hops here to ensure that Nimrod thread procs can have
 # the Nimrod calling convention. This is needed because thread procs are 
 # ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
-# use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway. However, 
-# the current approach will likely result in less problems later when we have
-# GC'ed closures in Nimrod.
+# use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
   TThread* {.pure, final.}[TArg] =
@@ -265,7 +263,7 @@ type
 when not defined(boehmgc) and not hasSharedHeap:
   proc deallocOsPages()
 
-template ThreadProcWrapperBody(closure: expr) =
+template ThreadProcWrapperBody(closure: expr) {.immediate.} =
   when defined(globalsSlot): ThreadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:

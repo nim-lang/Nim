@@ -15,7 +15,8 @@ proc fac[T](x: T): T =
   if x <= 1: return 1
   else: return x.`*`(fac(x-1))
 
-macro macrotest(n: expr): stmt =
+macro macrotest(n: expr): stmt {.immediate.} =
+  let n = callsite()
   expectKind(n, nnkCall)
   expectMinLen(n, 2)
   result = newNimNode(nnkStmtList, n)
@@ -23,7 +24,8 @@ macro macrotest(n: expr): stmt =
     result.add(newCall("write", n[1], n[i]))
   result.add(newCall("writeln", n[1], newStrLitNode("")))
 
-macro debug(n: expr): stmt =
+macro debug(n: expr): stmt {.immediate.} =
+  let n = callsite()
   result = newNimNode(nnkStmtList, n)
   for i in 1..n.len-1:
     result.add(newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
