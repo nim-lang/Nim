@@ -21,8 +21,9 @@ proc dumpit(n: PNimrodNode): string {.compileTime.} =
       add(result, dumpit(n[j]))
   add(result, ")")
   
-macro dumpAST(n: stmt): stmt = 
+macro dumpAST(n: stmt): stmt {.immediate.} = 
   # dump AST as a side-effect and return the inner node
+  let n = callsite()
   echo dumpit(n)
   result = n[1]
   

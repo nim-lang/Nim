@@ -22,7 +22,7 @@ template `?<|` (a, b: expr) =
   compileTimeAssert isPartOf(a, b) == arMaybe
 
 type
-  TA = object
+  TA {.inheritable.} = object
   TC = object of TA
     arr: array[0..3, int]
     le, ri: ref TC

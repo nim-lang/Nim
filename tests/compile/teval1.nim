@@ -5,7 +5,7 @@ proc testProc: string {.compileTime.} =
   result = result & ""
 
 when true:
-  macro test(n: stmt): stmt =
+  macro test(n: stmt): stmt {.immediate.} =
     result = newNimNode(nnkStmtList)
     echo "#", testProc(), "#"
   test:

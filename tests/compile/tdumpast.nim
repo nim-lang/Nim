@@ -8,8 +8,9 @@ template plus(a, b: expr): expr =
 macro call(e: expr): expr =
   result = newCall("foo", newStrLitNode("bar"))
   
-macro dumpAST(n: stmt): stmt =
+macro dumpAST(n: stmt): stmt {.immediate.} =
   # dump AST as a side-effect and return the inner node
+  let n = callsite()
   echo n.lispRepr
   echo n.treeRepr
 

@@ -2,7 +2,7 @@ import  macros
 
 from uri import `/`
 
-macro test*(a: stmt): stmt =
+macro test*(a: stmt): stmt {.immediate.} =
   var nodes: tuple[a, b: int]  
   nodes.a = 4
   nodes[1] = 45

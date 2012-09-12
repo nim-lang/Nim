@@ -5,7 +5,7 @@
 ## Copyright (c) 2011 FWA. All rights reserved.
 
 type
-  TGen[T] = object
+  TGen[T] = object {.inheritable.}
   TSpef = object of TGen[string]
   
 

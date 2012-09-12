@@ -11,7 +11,7 @@ var x = if 4 != 5:
   else:
     "no"
 
-macro mymacro(n: expr): expr = result = n[0]
+macro mymacro(n: expr): stmt {.immediate.} = nil
 
 mymacro:
   echo "test"
