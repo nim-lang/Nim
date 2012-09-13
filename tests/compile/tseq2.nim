@@ -1,5 +1,3 @@
-var s = @[]
-  
 proc `*` *(a, b: seq[int]): seq[int] = 
   # allocate a new sequence:
   newSeq(result, len(a))
