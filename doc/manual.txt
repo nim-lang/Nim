@@ -3431,7 +3431,7 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in ``echo`` pretends to be free of 
+As a special semantic rule, the built-in ``debugEcho`` pretends to be free of 
 side effects, so that it can be used for debugging routines marked as
 ``noSideEffect``.
 

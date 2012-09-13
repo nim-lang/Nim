@@ -686,6 +686,9 @@ proc semEcho(c: PContext, n: PNode): PNode =
   for i in countup(1, sonsLen(n) - 1): 
     var arg = semExprWithType(c, n.sons[i])
     n.sons[i] = semExpr(c, buildStringify(c, arg))
+  
+  let t = n.sons[0].typ
+  if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   result = n
   
 proc buildEchoStmt(c: PContext, n: PNode): PNode = 
