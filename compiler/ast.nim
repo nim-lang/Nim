@@ -1197,3 +1197,7 @@ iterator items*(n: PNode): PNode =
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
+
+proc isEmptyType*(t: PType): bool {.inline.} =
+  ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
+  result = t == nil or t.kind in {tyEmpty, tyStmt}

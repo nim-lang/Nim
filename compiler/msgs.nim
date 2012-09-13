@@ -226,7 +226,7 @@ const
     errOrdXMustNotBeNegative: "ord($1) must not be negative", 
     errLenXinvalid: "len($1) must be less than 32768",
     errWrongNumberOfVariables: "wrong number of variables", 
-    errExprCannotBeRaised: "only objects can be raised", 
+    errExprCannotBeRaised: "only a 'ref object' can be raised", 
     errBreakOnlyInLoop: "'break' only allowed in loop construct", 
     errTypeXhasUnknownSize: "type \'$1\' has unknown size", 
     errConstNeedsConstExpr: "a constant can only be initialized with a constant expression", 

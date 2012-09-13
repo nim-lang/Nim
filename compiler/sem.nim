@@ -22,12 +22,17 @@ proc semPass*(): TPass
 
 type 
   TExprFlag = enum 
-    efLValue, efWantIterator, efInTypeof
+    efLValue, efWantIterator, efInTypeof, efWantStmt
   TExprFlags = set[TExprFlag]
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExprNoType(c: PContext, n: PNode): PNode
+proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
+proc changeType(n: PNode, newType: PType)
+
 proc semLambda(c: PContext, n: PNode): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
 proc semStmt(c: PContext, n: PNode): PNode
@@ -83,6 +88,8 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode
+proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags,
+                  semCheck = true): PNode
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
@@ -156,7 +163,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     LocalError(n.info, errConstExprExpected)
     result = nn
 
-include semtypes, semtempl, semexprs, semgnrc, semstmts
+include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) = 
   for i in countup(c.generics.lastGenericIdx, Len(c.generics.generics) - 1):
