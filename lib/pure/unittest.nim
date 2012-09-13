@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Zahary Karadjov (zah@github)
+## :Author: Zahary Karadjov
 ##
 ## This module implements the standard unit testing facilities such as
 ## suites, fixtures and test cases as well as facilities for combinatorial 
@@ -95,14 +95,6 @@ template fail* =
 macro check*(conditions: stmt): stmt {.immediate.} =
   let conditions = callsite()
   
-  proc standardRewrite(e: PNimrodNode): PNimrodNode =
-    template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
-      if not Exp:
-        checkpoint(lineInfoLit & ": Check failed: " & expLit)
-        fail()
- 
-    result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
-  
   case conditions.kind
   of nnkCall, nnkCommand, nnkMacroStmt:
     case conditions[1].kind
@@ -133,8 +125,38 @@ macro check*(conditions: stmt): stmt {.immediate.} =
       result = rewriteBinaryOp(conditions[1])
   
     of nnkCall, nnkCommand:
-      # TODO: We can print out the call arguments in case of failure
-      result = standardRewrite(conditions[1])
+      proc rewriteCall(op: PNimrodNode): PNimrodNode =
+        template rewrite(call, lineInfoLit: expr, expLit: string,
+                         argAssgs, argPrintOuts: stmt): stmt =
+          block:
+            argAssgs
+            if not call:
+              checkpoint(lineInfoLit & ": Check failed: " & expLit)
+              argPrintOuts
+              fail()
+
+        template asgn(a, value: expr): stmt =
+          let a = value
+        
+        template print(name, value: expr): stmt =
+          checkpoint(name & " was " & $value)
+
+        var 
+          argsAsgns = newNimNode(nnkStmtList)
+          argsPrintOuts = newNimNode(nnkStmtList)
+          opStr = op.toStrLit
+        
+        for i in 1 .. <op.len:
+          if op[i].kind notin nnkLiterals:
+            # TODO: print only types that are printable
+            var arg = newIdentNode(":param" & ($i))
+            argsAsgns.add getAst(asgn(arg, op[i]))
+            argsPrintOuts.add getAst(print(op[i].toStrLit, arg))
+            op[i] = arg
+
+        result = getAst(rewrite(op, op.lineinfo, opStr, argsAsgns, argsPrintOuts))
+
+      result = rewriteCall(conditions[1])
 
     of nnkStmtList:
       result = newNimNode(nnkStmtList)
@@ -142,7 +164,13 @@ macro check*(conditions: stmt): stmt {.immediate.} =
         result.add(newCall(!"check", conditions[1][i]))
 
     else:
-      result = standardRewrite(conditions[1])
+      template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
+        if not Exp:
+          checkpoint(lineInfoLit & ": Check failed: " & expLit)
+          fail()
+
+      let e = conditions[1]
+      result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
 
   else:
     var ast = conditions.treeRepr

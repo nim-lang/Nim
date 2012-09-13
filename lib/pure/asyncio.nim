@@ -119,6 +119,8 @@ type
 
     handleAccept*: proc (s:  PAsyncSocket) {.closure.}
 
+    handleTask*: proc (s: PAsyncSocket) {.closure.}
+
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
     sslNeedAccept: bool
     proto: TProtocol
@@ -145,6 +147,7 @@ proc newAsyncSocket(): PAsyncSocket =
   result.handleRead = (proc (s: PAsyncSocket) = nil)
   result.handleConnect = (proc (s: PAsyncSocket) = nil)
   result.handleAccept = (proc (s: PAsyncSocket) = nil)
+  result.handleTask = (proc (s: PAsyncSocket) = nil)
 
   result.lineBuffer = "".TaintedString
 
@@ -196,6 +199,13 @@ when defined(ssl):
         # handshake will set socket's ``sslNoHandshake`` field.
         discard PAsyncSocket(h).socket.handshake()
         
+
+proc asyncSockTask(h: PObject) =
+  when defined(ssl):
+    h.asyncSockDoHandshake()
+
+  PAsyncSocket(h).handleTask(PAsyncSocket(h))
+
 proc toDelegate(sock: PAsyncSocket): PDelegate =
   result = newDelegate()
   result.deleVal = sock
@@ -204,6 +214,7 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   result.mode = fmReadWrite
   result.handleRead = asyncSockHandleRead
   result.handleWrite = asyncSockHandleWrite
+  result.task = asyncSockTask
   # TODO: Errors?
   #result.handleError = (proc (h: PObject) = assert(false))
 
@@ -215,10 +226,7 @@ proc toDelegate(sock: PAsyncSocket): PDelegate =
   if sock.info notin {SockIdle, SockClosed}:
     sock.deleg.open = true
   else:
-    sock.deleg.open = false 
-
-  when defined(ssl):
-    result.task = asyncSockDoHandshake
+    sock.deleg.open = false
 
 proc connect*(sock: PAsyncSocket, name: string, port = TPort(0),
                    af: TDomain = AF_INET) =
@@ -257,6 +265,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
   ##
   ## **Note**: ``client`` needs to be initialised.
   assert(client != nil)
+  client = newAsyncSocket()
   var c: TSocket
   new(c)
   when defined(ssl):
