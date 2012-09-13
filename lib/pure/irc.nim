@@ -44,10 +44,8 @@ type
 
   PAsyncIRC* = ref TAsyncIRC
   TAsyncIRC* = object of TIRC
-    userArg: PObject
-    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent, 
-                       userArg: PObject) {.nimcall.}
-    lineBuffer: TaintedString
+    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent) {.closure.}
+    asyncSock: PAsyncSocket
 
   TIRCMType* = enum
     MUnknown,
@@ -320,12 +318,16 @@ proc connect*(irc: PAsyncIRC) =
   assert(irc.address != "")
   assert(irc.port != TPort(0))
   
-  irc.sock = socket()
-  irc.sock.setBlocking(false)
-  irc.sock.connectAsync(irc.address, irc.port)
-  irc.status = SockConnecting
+  irc.asyncSock = AsyncSocket()
+  irc.asyncSock.connect(irc.address, irc.port)
 
-proc handleConnect(h: PObject) =
+proc handleConnect(s: PAsyncSocket, irc: PAsyncIRC) =  
+  # Greet the server :)
+  if irc.serverPass != "": irc[].send("PASS " & irc.serverPass, true)
+  irc[].send("NICK " & irc.nick, true)
+  irc[].send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
+
+discard """proc handleConnect(h: PObject) =
   var irc = PAsyncIRC(h)
   
   # Greet the server :)
@@ -334,8 +336,22 @@ proc handleConnect(h: PObject) =
   irc[].send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
 
   irc.status = SockConnected
+"""
 
-proc handleRead(h: PObject) =
+proc handleRead(s: PAsyncSocket, irc: PAsyncIRC) =
+  var line = "".TaintedString
+  var ret = s.recvLine(line)
+  if ret:
+    if line == "":
+      var ev: TIRCEvent
+      irc[].close()
+      ev.typ = EvDisconnected
+      irc.handleEvent(irc[], ev)
+    else:
+      var ev = irc[].processLine(line.string)
+      irc.handleEvent(irc[], ev)
+
+discard """proc handleRead(h: PObject) =
   var irc = PAsyncIRC(h)
   var line = "".TaintedString
   var ret = irc.sock.recvLineAsync(line)
@@ -352,13 +368,18 @@ proc handleRead(h: PObject) =
     irc[].close()
     ev.typ = EvDisconnected
     irc.handleEvent(irc[], ev, irc.userArg)
-  of RecvFail: nil
+  of RecvFail: nil"""
   
-proc handleTask(h: PObject) =
+proc handleTask(s: PAsyncSocket, irc: PAsyncIRC) =
+  var ev: TIRCEvent
+  if irc[].processOther(ev):
+    irc.handleEvent(irc[], ev)
+  
+discard """proc handleTask(h: PObject) =
   var irc = PAsyncIRC(h)
   var ev: TIRCEvent
   if PAsyncIRC(h)[].processOther(ev):
-    irc.handleEvent(irc[], ev, irc.userArg)
+    irc.handleEvent(irc[], ev, irc.userArg)"""
 
 proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               nick = "NimrodBot",
@@ -366,9 +387,8 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               realname = "NimrodBot", serverPass = "",
               joinChans: seq[string] = @[],
               msgLimit: bool = true,
-              ircEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent,
-                  userArg: PObject) {.nimcall.},
-              userArg: PObject = nil): PAsyncIRC =
+              ircEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent) {.closure.}
+              ): PAsyncIRC =
   ## Use this function if you want to use asyncio's dispatcher.
   ## 
   ## **Note:** Do **NOT** use this if you're writing a simple IRC bot which only
@@ -389,28 +409,25 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
   result.msgLimit = msgLimit
   result.messageBuffer = @[]
   result.handleEvent = ircEvent
-  result.userArg = userArg
-  result.lineBuffer = ""
 
 proc register*(d: PDispatcher, irc: PAsyncIRC) =
   ## Registers ``irc`` with dispatcher ``d``.
-  var dele = newDelegate()
-  dele.deleVal = irc
-  dele.getSocket = (proc (h: PObject): tuple[info: TInfo, sock: TSocket] =
-                      if PAsyncIRC(h).status == SockConnecting or
-                            PAsyncIRC(h).status == SockConnected:
-                        return (PAsyncIRC(h).status, PAsyncIRC(h).sock)
-                      else: return (SockIdle, PAsyncIRC(h).sock))
-  dele.handleConnect = handleConnect
-  dele.handleRead = handleRead
-  dele.task = handleTask
-  d.register(dele)
+  irc.asyncSock.handleConnect =
+    proc (s: PAsyncSocket) =
+      handleConnect(s, irc)
+  irc.asyncSock.handleRead =
+    proc (s: PAsyncSocket) =
+      handleRead(s, irc)
+  irc.asyncSock.handleTask =
+    proc (s: PAsyncSocket) =
+      handleTask(s, irc)
+  d.register(irc.asyncSock)
   
 when isMainModule:
   #var m = parseMessage("ERROR :Closing Link: dom96.co.cc (Ping timeout: 252 seconds)")
   #echo(repr(m))
 
-  #discard """
+
   
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
@@ -431,5 +448,5 @@ when isMainModule:
 
         #echo( repr(event) )
       #echo("Lag: ", formatFloat(client.getLag()))
-  #"""
+  
     

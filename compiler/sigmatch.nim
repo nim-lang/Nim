@@ -370,23 +370,22 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyVar: 
     if a.kind == f.kind: result = typeRel(c, base(f), base(a))
     else: result = typeRel(c, base(f), a)
-  of tyArray, tyArrayConstr: 
+  of tyArray, tyArrayConstr:
     # tyArrayConstr cannot happen really, but
     # we wanna be safe here
     case a.kind
-    of tyArray: 
-      result = minRel(typeRel(c, f.sons[0], a.sons[0]), 
-                      typeRel(c, f.sons[1], a.sons[1]))
-      if result < isGeneric: result = isNone
-    of tyArrayConstr: 
+    of tyArray, tyArrayConstr:
+      var fRange = f.sons[0]
+      if fRange.kind == tyGenericParam:
+        var prev = PType(idTableGet(c.bindings, fRange))
+        if prev == nil:
+          put(c.bindings, fRange, a.sons[0])
+          fRange = a
+        else:
+          fRange = prev
       result = typeRel(c, f.sons[1], a.sons[1])
-      if result < isGeneric: 
-        result = isNone
-      else: 
-        if (result != isGeneric) and (lengthOrd(f) != lengthOrd(a)): 
-          result = isNone
-        elif f.sons[0].kind in GenericTypes: 
-          result = minRel(result, typeRel(c, f.sons[0], a.sons[0]))
+      if result < isGeneric: result = isNone
+      elif lengthOrd(fRange) != lengthOrd(a): result = isNone
     else: nil
   of tyOpenArray, tyVarargs:
     case a.Kind
