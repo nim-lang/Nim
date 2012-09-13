@@ -19,4 +19,5 @@
 # * checks for invalid usages of PNimNode
 # * later: will do an escape analysis for closures at least
 
-
+proc sem2(c: PContext, n: PNode): PNode =
+  nil

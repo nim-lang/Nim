@@ -1648,7 +1648,7 @@ else:
 
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
-proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
+proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo".}
   ## special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
@@ -1656,10 +1656,11 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
   ## available for the ECMAScript target too.
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience.
-  ##
-  ## As a special semantic rule, ``echo`` pretends to be free of
-  ## side effects, so that it can be used for debugging routines marked as
-  ## ``noSideEffect``.
+
+proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
+  ## Same as ``echo``, but as a special semantic rule, ``debugEcho`` pretends
+  ## to be free of side effects, so that it can be used for debugging routines
+  ## marked as ``noSideEffect``.
 
 template newException*(exceptn: typeDesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
