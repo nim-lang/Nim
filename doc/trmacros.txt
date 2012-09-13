@@ -44,19 +44,6 @@ Fortunately Nimrod supports side effect analysis:
     echo "side effect!"
     result = 55
   
-  echo f() * 2 # and still optimized ;-)
-
-The reason is that the compiler does not consider 'echo' to have side effects
-for debugging convenience (this is comparable to Haskell's ``UnsafeIO`` monad).
-So lets try it with a "real" side effect: 
-
-.. code-block:: nimrod
-  template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
-  
-  proc f(): int =
-    writeln stdout, "side effect!"
-    result = 55
-  
   echo f() * 2 # not optimized ;-)
 
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
