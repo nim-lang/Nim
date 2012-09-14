@@ -265,6 +265,10 @@ proc genWhileStmt(p: BProc, t: PNode) =
       let label = assignLabel(p.blocks[p.breakIdx])
       lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
     genStmts(p, t.sons[1])
+
+    if optProfiler in p.options:
+      # invoke at loop body exit:
+      lineCg(p, cpsStmts, "#nimProfile();$n")
     endBlock(p)
 
   dec(p.withinLoop)

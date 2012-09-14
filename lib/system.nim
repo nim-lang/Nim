@@ -829,7 +829,8 @@ when taintMode:
 else:
   type TaintedString* = string
 
-
+when defined(profiler):
+  proc nimProfile() {.compilerProc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
 else:

@@ -20,6 +20,10 @@ import
 when hasTinyCBackend:
   import tccgen
 
+when defined(profiler):
+  {.hint: "Profiling support is turned on!".}
+  import nimprof
+
 var 
   arguments: string = ""      # the arguments to be passed to the program that
                               # should be run

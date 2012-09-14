@@ -680,27 +680,14 @@ proc genProcAux(m: BModule, prc: PSym) =
       app(generatedProc, initFrame(p, procname, filename))
     else: 
       app(generatedProc, p.s(cpsLocals))
-    if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
-      if gProcProfile >= 64 * 1024: 
-        InternalError(prc.info, "too many procedures for profiling")
-      discard cgsym(m, "profileData")
-      appf(p.s(cpsLocals), "\tticks NIM_profilingStart;$n")
-      if prc.loc.a < 0: 
-        appf(m.s[cfsDebugInit], "\tprofileData[$1].procname = $2;$n", [
-            toRope(gProcProfile), 
-            makeCString(prc.name.s)])
-        prc.loc.a = gProcProfile
-        inc(gProcProfile)
-      prepend(p.s(cpsInit), ropef("\tNIM_profilingStart = getticks();$n"))
+    if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM):
+      # invoke at proc entry for recursion:
+      appcg(p, cpsInit, "\t#nimProfile();$n", [])
     app(generatedProc, p.s(cpsInit))
     app(generatedProc, p.s(cpsStmts))
     if p.beforeRetNeeded: appf(generatedProc, "\tBeforeRet: ;$n")
     app(generatedProc, deinitGCFrame(p))
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
-    if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM): 
-      appf(generatedProc, 
-        "\tprofileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n", 
-        [toRope(prc.loc.a)])
     app(generatedProc, returnStmt)
     appf(generatedProc, "}$N")
   app(m.s[cfsProcs], generatedProc)
