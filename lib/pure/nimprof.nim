@@ -87,6 +87,9 @@ proc getTotal(x: ref TProfileEntry): int =
 proc cmpEntries(a, b: ref TProfileEntry): int =
   result = b.getTotal - a.getTotal
 
+proc `//`(a, b: int): string =
+  result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDefault, 2))
+
 proc writeProfile() {.noconv.} =
   stopProfiling()
   const filename = "profile_results"
@@ -110,8 +113,8 @@ proc writeProfile() {.noconv.} =
       if profileData[i] != nil and profileData[i].total > 1:
         inc sum, profileData[i].total
         writeln(f, "Entry: ", i, "/", entries, " Calls: ",
-          profileData[i].total, "/", totalCalls, " [sum: ", sum, "; ",
-          formatFloat(sum / totalCalls * 100.0, ffDefault, 2), "%]")
+          profileData[i].total // totalCalls, " [sum: ", sum, "; ",
+          sum // totalCalls, "]")
         for ii in 0..high(TStackTrace):
           let procname = profileData[i].st[ii]
           if isNil(procname): break

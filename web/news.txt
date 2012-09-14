@@ -133,6 +133,7 @@ Compiler Additions
 - The compiler now supports the ``dynlib`` pragma for variables.
 - The compiler now supports ``bycopy`` and ``byref`` pragmas that affect how
   objects/tuples are passed.
+- The embedded profiler became a stack trace profiler and has been documented.
 
 
 Language Additions

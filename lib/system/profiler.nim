@@ -77,9 +77,6 @@ proc setProfilingInterval*(intervalInUs: int): TNanos =
 
 var t0: TTicks
 
-var usefulCall* = 0
-var uselessCall* = 0
-
 proc nimProfile() =
   ## This is invoked by the compiler in every loop and on every proc entry!
   dec gTicker
@@ -87,7 +84,6 @@ proc nimProfile() =
     gTicker = -1
     let t1 = getticks()
     if getticks() - t0 > interval:
-      inc usefulCall
       if not isNil(profilerHook):
         # disable recursive calls: XXX should use try..finally,
         # but that's too expensive!
@@ -96,8 +92,6 @@ proc nimProfile() =
         callProfilerHook(oldHook)
         profilerHook = oldHook
       t0 = getticks()
-    else:
-      inc uselessCall
     gTicker = SamplingInterval
 
 proc stopProfiling*() =
