@@ -15,3 +15,6 @@ The standard distribution ships with the following tools:
 
 - | `endb <endb.html>`_
   | Nimrod's slow platform independent embedded debugger.
+
+- | `estp <estp.html>`_
+  | Nimrod's slow platform independent embedded stack trace profiler.
