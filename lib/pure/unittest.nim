@@ -93,88 +93,58 @@ template fail* =
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
-  let conditions = callsite()
+  let checked = callsite()[1]
   
-  case conditions.kind
-  of nnkCall, nnkCommand, nnkMacroStmt:
-    case conditions[1].kind
-    of nnkInfix:
-      proc rewriteBinaryOp(op: PNimrodNode): PNimrodNode =
-        template rewrite(op, left, right, lineInfoLit: expr, opLit,
-          leftLit, rightLit: string, printLhs, printRhs: bool): stmt =
-          block:
-            var 
-              lhs = left
-              rhs = right
+  var
+    argsAsgns = newNimNode(nnkStmtList)
+    argsPrintOuts = newNimNode(nnkStmtList)
+    counter = 0
 
-            if not `op`(lhs, rhs):
-              checkpoint(lineInfoLit & ": Check failed: " & opLit)
-              when printLhs: checkpoint("  " & leftLit & " was " & $lhs)
-              when printRhs: checkpoint("  " & rightLit & " was " & $rhs)
-              fail()
-
-        result = getAst(rewrite(
-          op[0], op[1], op[2],
-          op.lineinfo,
-          op.toStrLit,
-          op[1].toStrLit,
-          op[2].toStrLit,
-          op[1].kind notin nnkLiterals,
-          op[2].kind notin nnkLiterals))
-        
-      result = rewriteBinaryOp(conditions[1])
+  template asgn(a, value: expr): stmt =
+    let a = value
   
-    of nnkCall, nnkCommand:
-      proc rewriteCall(op: PNimrodNode): PNimrodNode =
-        template rewrite(call, lineInfoLit: expr, expLit: string,
-                         argAssgs, argPrintOuts: stmt): stmt =
-          block:
-            argAssgs
-            if not call:
-              checkpoint(lineInfoLit & ": Check failed: " & expLit)
-              argPrintOuts
-              fail()
+  template print(name, value: expr): stmt =
+    when compiles(string($value)):
+      checkpoint(name & " was " & $value)
 
-        template asgn(a, value: expr): stmt =
-          let a = value
-        
-        template print(name, value: expr): stmt =
-          checkpoint(name & " was " & $value)
+  proc inspectArgs(exp: PNimrodNode) =
+    for i in 1 .. <exp.len:
+      if exp[i].kind notin nnkLiterals:
+        inc counter
+        var arg = newIdentNode(":p" & ($counter))
+        var argStr = exp[i].toStrLit
+        if exp[i].kind in nnkCallKinds: inspectArgs(exp[i])
+        argsAsgns.add getAst(asgn(arg, exp[i]))
+        argsPrintOuts.add getAst(print(argStr, arg))
+        exp[i] = arg
 
-        var 
-          argsAsgns = newNimNode(nnkStmtList)
-          argsPrintOuts = newNimNode(nnkStmtList)
-          opStr = op.toStrLit
-        
-        for i in 1 .. <op.len:
-          if op[i].kind notin nnkLiterals:
-            # TODO: print only types that are printable
-            var arg = newIdentNode(":param" & ($i))
-            argsAsgns.add getAst(asgn(arg, op[i]))
-            argsPrintOuts.add getAst(print(op[i].toStrLit, arg))
-            op[i] = arg
-
-        result = getAst(rewrite(op, op.lineinfo, opStr, argsAsgns, argsPrintOuts))
-
-      result = rewriteCall(conditions[1])
-
-    of nnkStmtList:
-      result = newNimNode(nnkStmtList)
-      for i in countup(0, conditions[1].len - 1):
-        result.add(newCall(!"check", conditions[1][i]))
-
-    else:
-      template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
-        if not Exp:
-          checkpoint(lineInfoLit & ": Check failed: " & expLit)
+  case checked.kind
+  of nnkCallKinds:
+    template rewrite(call, lineInfoLit: expr, callLit: string,
+                     argAssgs, argPrintOuts: stmt): stmt =
+      block:
+        argAssgs
+        if not call:
+          checkpoint(lineInfoLit & ": Check failed: " & callLit)
+          argPrintOuts
           fail()
+      
+    var checkedStr = checked.toStrLit
+    inspectArgs(checked)
+    result = getAst(rewrite(checked, checked.lineinfo, checkedStr, argsAsgns, argsPrintOuts))
 
-      let e = conditions[1]
-      result = getAst(rewrite(e, e.lineinfo, e.toStrLit))
+  of nnkStmtList:
+    result = newNimNode(nnkStmtList)
+    for i in countup(0, checked.len - 1):
+      result.add(newCall(!"check", checked[i]))
 
   else:
-    var ast = conditions.treeRepr
-    error conditions.lineinfo & ": Malformed check statement:\n" & ast
+    template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
+      if not Exp:
+        checkpoint(lineInfoLit & ": Check failed: " & expLit)
+        fail()
+
+    result = getAst(rewrite(checked, checked.lineinfo, checked.toStrLit))
 
 template require*(conditions: stmt): stmt {.immediate, dirty.} =
   block:
