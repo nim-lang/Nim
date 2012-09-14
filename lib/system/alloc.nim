@@ -11,6 +11,7 @@
 # TODO: 
 # - eliminate "used" field
 # - make searching for block O(1)
+{.push profiler:off.}
 
 # ------------ platform specific chunk allocation code -----------------------
 
@@ -794,3 +795,4 @@ template InstantiateForRegion(allocator: expr) =
     else:
       result = realloc(p, newsize)
 
+{.pop.}

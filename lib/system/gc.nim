@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-
 #            Garbage Collector
 #
 # The basic algorithm is *Deferrent Reference Counting* with cycle detection.
@@ -17,6 +16,7 @@
 # Special care has been taken to avoid recursion as far as possible to avoid
 # stack overflows when traversing deep datastructures. It is well-suited
 # for soft real time applications (like games).
+{.push profiler:off.}
 
 const
   CycleIncrease = 2 # is a multiplicative increase
@@ -26,7 +26,7 @@ const
                       # this seems to be a good value
   withRealTime = defined(useRealtimeGC)
 
-when withRealTime:
+when withRealTime and not defined(getTicks):
   include "system/timers"
 
 const
@@ -426,6 +426,8 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
+{.pop.}
+
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
@@ -513,6 +515,8 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(old, newsize, gch)
+
+{.push profiler:off.}
 
 # ---------------- cycle collector -------------------------------------------
 
@@ -917,3 +921,5 @@ when not defined(useNimRtl):
              "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000)
     when traceGC: writeLeakage()
     GC_enable()
+
+{.pop.}

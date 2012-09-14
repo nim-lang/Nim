@@ -294,6 +294,7 @@ proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
     result = crcFromRopeAux(r.right, result)
 
 proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 = 
+  # XXX profiling shows this is actually expensive
   var stack: TRopeSeq = @[r]
   result = startVal
   while len(stack) > 0: 
