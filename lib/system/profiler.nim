@@ -18,9 +18,6 @@
 
 {.push profiler: off.}
 
-when not defined(getTicks):
-  include "system/timers"
-
 const
   MaxTraceLen = 20 # tracking the last 20 calls is enough
 
@@ -36,7 +33,7 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
     i = 0
     total = 0
   while it != nil and i <= high(st)-(firstCalls-1):
-    # the (-1) is for a nil entry that marks where the '...' should occur
+    # the (-1) is for the "..." entry
     st[i] = it.procname
     inc(i)
     inc(total)
@@ -55,14 +52,14 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
     inc(i)
     b = b.prev
 
+const
+  SamplingInterval = 50_000
+    # set this to change the default sampling interval
 var
   profilerHook*: TProfilerHook
     ## set this variable to provide a procedure that implements a profiler in
     ## user space. See the `nimprof` module for a reference implementation.
-  SamplingInterval = 50_000
-    # set this to change the default sampling interval
-  gTicker = SamplingInterval
-  interval: TNanos = 5_000_000 # 5ms
+  gTicker {.threadvar.}: int
 
 proc callProfilerHook(hook: TProfilerHook) {.noinline.} =
   # 'noinline' so that 'nimProfile' does not perform the stack allocation
@@ -71,31 +68,18 @@ proc callProfilerHook(hook: TProfilerHook) {.noinline.} =
   captureStackTrace(framePtr, st)
   hook(st)
 
-proc setProfilingInterval*(intervalInUs: int): TNanos =
-  ## set this to change the sampling interval. Default value is 5ms.
-  interval = intervalInUs * 1000
-
-var t0: TTicks
-
 proc nimProfile() =
   ## This is invoked by the compiler in every loop and on every proc entry!
-  dec gTicker
   if gTicker == 0:
     gTicker = -1
-    let t1 = getticks()
-    if getticks() - t0 > interval:
-      if not isNil(profilerHook):
-        # disable recursive calls: XXX should use try..finally,
-        # but that's too expensive!
-        let oldHook = profilerHook
-        profilerHook = nil
-        callProfilerHook(oldHook)
-        profilerHook = oldHook
-      t0 = getticks()
+    if not isNil(profilerHook):
+      # disable recursive calls: XXX should use try..finally,
+      # but that's too expensive!
+      let oldHook = profilerHook
+      profilerHook = nil
+      callProfilerHook(oldHook)
+      profilerHook = oldHook
     gTicker = SamplingInterval
-
-proc stopProfiling*() =
-  ## call this to stop profiling; should be called by the client profiler.
-  profilerHook = nil
+  dec gTicker
 
 {.pop.}

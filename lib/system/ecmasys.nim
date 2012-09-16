@@ -33,7 +33,7 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
 
-{.push stacktrace: off.}
+{.push stacktrace: off, profiler:off.}
 proc nimBoolToStr(x: bool): string {.compilerproc.} =
   if x: result = "true"
   else: result = "false"

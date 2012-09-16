@@ -12,19 +12,27 @@
 ## report at program exit.
 
 when not defined(profiler):
-  {.error: "Profiling support is turned off!".}
+  {.warning: "Profiling support is turned off!".}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
-import hashes, algorithm, strutils
+import hashes, algorithm, strutils, tables, sets
+include "system/timers"
+
+const
+  withThreads = compileOption("threads")
+  tickCountCorrection = 50_000
+
+when not defined(system.TStackTrace):
+  type TStackTrace = array [0..20, cstring]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
 type
   TProfileEntry = object
     total: int
-    st: system.TStackTrace
-  TProfileData = array [0..64*1024-1, ref TProfileEntry]
+    st: TStackTrace
+  TProfileData = array [0..64*1024-1, ptr TProfileEntry]
 
 proc `==`(a, b: TStackTrace): bool =
   for i in 0 .. high(a):
@@ -32,14 +40,32 @@ proc `==`(a, b: TStackTrace): bool =
   result = true
 
 # XXX extract this data structure; it is generally useful ;-)
+# However a chain length of over 3000 is suspicious...
 var
   profileData: TProfileData
   emptySlots = profileData.len * 3 div 2
   maxChainLen = 0
   totalCalls = 0
 
-proc hook(st: system.TStackTrace) {.nimcall.} =
+var
+  interval: TNanos = 1_000_000 - tickCountCorrection # 5ms
+
+proc setSamplingFrequency*(intervalInUs: int) =
+  ## set this to change the sampling frequency. Default value is 5ms.
+  ## Set it to 0 to disable time based profiling; it uses an imprecise
+  ## instruction count measure instead then.
+  if intervalInUs <= 0: interval = 0
+  else: interval = intervalInUs * 1000 - tickCountCorrection
+  
+when withThreads:
+  var
+    profilingLock: TLock
+
+  InitLock profilingLock
+
+proc hookAux(st: TStackTrace) =
   # this is quite performance sensitive!
+  when withThreads: Acquire profilingLock
   inc totalCalls
   var last = high(st)
   while last > 0 and isNil(st[last]): dec last
@@ -65,64 +91,93 @@ proc hook(st: system.TStackTrace) {.nimcall.} =
     var chain = 0
     while true:
       if profileData[h] == nil:
-        GC_disable()
-        new profileData[h]
-        GC_enable()
+        profileData[h] = cast[ptr TProfileEntry](
+                             allocShared0(sizeof(TProfileEntry)))
         profileData[h].total = 1
         profileData[h].st = st
         dec emptySlots
-        maxChainLen = max(maxChainLen, chain)
-        return
+        break
       if profileData[h].st == st:
         # wow, same entry found:
         inc profileData[h].total
-        maxChainLen = max(maxChainLen, chain)
-        return
+        break
       h = ((5 * h) + 1) and high(profileData)
       inc chain
+    maxChainLen = max(maxChainLen, chain)
+  when withThreads: Release profilingLock
 
-proc getTotal(x: ref TProfileEntry): int =
+var
+  t0 {.threadvar.}: TTicks
+
+proc hook(st: TStackTrace) {.nimcall.} =
+  if interval == 0:
+    hookAux(st)
+  elif getticks() - t0 > interval:
+    hookAux(st)
+    t0 = getticks()  
+
+proc getTotal(x: ptr TProfileEntry): int =
   result = if isNil(x): 0 else: x.total
 
-proc cmpEntries(a, b: ref TProfileEntry): int =
+proc cmpEntries(a, b: ptr TProfileEntry): int =
   result = b.getTotal - a.getTotal
 
 proc `//`(a, b: int): string =
   result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDefault, 2))
 
 proc writeProfile() {.noconv.} =
-  stopProfiling()
-  const filename = "profile_results"
+  when defined(system.TStackTrace): 
+    system.profilerHook = nil
+  const filename = "profile_results.txt"
+  echo "writing " & filename & "..."
   var f: TFile
-  var j = 1
-  while open(f, filename & $j & ".txt"):
-    close(f)
-    inc(j)
-  let filen = filename & $j & ".txt"
-  echo "writing ", filen, "..."
-  if open(f, filen, fmWrite):
+  if open(f, filename, fmWrite):
     sort(profileData, cmpEntries)
     writeln(f, "total executions of each stack trace:")
     var entries = 0
     for i in 0..high(profileData):
       if profileData[i] != nil: inc entries
     
+    var perProc = initCountTable[string]()
+    for i in 0..entries-1:
+      var dups = initSet[string]()
+      for ii in 0..high(TStackTrace):
+        let procname = profileData[i].st[ii]
+        if isNil(procname): break
+        let p = $procname
+        if not containsOrIncl(dups, p):
+          perProc.inc(p, profileData[i].total)
+    
     var sum = 0
     # only write the first 100 entries:
-    for i in 0..min(100, high(profileData)):
-      if profileData[i] != nil and profileData[i].total > 1:
+    for i in 0..min(100, entries-1):
+      if profileData[i].total > 1:
         inc sum, profileData[i].total
-        writeln(f, "Entry: ", i, "/", entries, " Calls: ",
+        writeln(f, "Entry: ", i+1, "/", entries, " Calls: ",
           profileData[i].total // totalCalls, " [sum: ", sum, "; ",
           sum // totalCalls, "]")
         for ii in 0..high(TStackTrace):
           let procname = profileData[i].st[ii]
           if isNil(procname): break
-          writeln(f, "  ", procname)
+          writeln(f, "  ", procname, " ", perProc[$procname] // totalCalls)
     close(f)
-  echo "... done"
+    echo "... done"
+  else:
+    echo "... failed"
 
-system.profilerHook = hook
-addQuitProc(writeProfile)
+var
+  disabled: int
+
+proc disableProfiling*() =
+  atomicDec disabled
+  system.profilerHook = nil
+
+proc enableProfiling*() =
+  if atomicInc(disabled) >= 0:
+    system.profilerHook = hook
+
+when defined(system.TStackTrace):
+  system.profilerHook = hook
+  addQuitProc(writeProfile)
 
 {.pop.}

@@ -224,7 +224,7 @@ proc ReadBytes(f: TFile, a: var openarray[int8], start, len: int): int =
 proc ReadChars(f: TFile, a: var openarray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
-{.push stackTrace:off.}
+{.push stackTrace:off, profiler:off.}
 proc writeBytes(f: TFile, a: openarray[int8], start, len: int): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)

@@ -78,11 +78,11 @@ var
 when not defined(useNimRtl):
   InstantiateForRegion(gch.region)
 
-proc acquire(gch: var TGcHeap) {.inline.} = 
+template acquire(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
     AcquireSys(HeapLock)
 
-proc release(gch: var TGcHeap) {.inline.} = 
+template release(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
 
