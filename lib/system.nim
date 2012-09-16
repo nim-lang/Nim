@@ -1629,7 +1629,7 @@ type
     len: int  # length of slots (when not debugging always zero)
 
 when not defined(ECMAScript):
-  {.push stack_trace:off.}
+  {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) {.noStackFrame.} =
     var i = 0
     while y[i] != '\0':
@@ -1674,7 +1674,7 @@ template newException*(exceptn: typeDesc, message: string): expr =
   e
 
 when not defined(EcmaScript) and not defined(NimrodVM):
-  {.push stack_trace: off.}
+  {.push stack_trace: off, profiler:off.}
 
   proc initGC()
   when not defined(boehmgc) and not defined(useMalloc):
@@ -1958,7 +1958,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## gets the stack trace associated with `e`, which is the stack that
       ## lead to the ``raise`` statement. This is only works for debug builds.
       
-  {.push stack_trace: off.}
+  {.push stack_trace: off, profiler:off.}
   when hostOS == "standalone":
     include "system/embedded"
   else:
@@ -1997,7 +1997,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       result = n.sons[n.len]
 
   include "system/mmdisp"
-  {.push stack_trace: off.}
+  {.push stack_trace: off, profiler:off.}
   when hostOS != "standalone": include "system/sysstr"
   {.pop.}
 
@@ -2032,7 +2032,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
 
-  {.push stack_trace: off.}
+  {.push stack_trace: off, profiler:off.}
   when defined(endb):
     include "system/debugger"
 
