@@ -53,7 +53,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   StrTableAdd(c.tab.stack[importTablePos], copy)
   if s.kind == skType: 
     var etyp = s.typ
-    if etyp.kind in {tyBool, tyEnum}: 
+    if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags: 
       for j in countup(0, sonsLen(etyp.n) - 1): 
         var e = etyp.n.sons[j].sym
         if (e.Kind != skEnumField): 
