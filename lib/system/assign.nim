@@ -144,6 +144,8 @@ proc objectInit(dest: Pointer, typ: PNimType) =
   
 # ---------------------- assign zero -----------------------------------------
 
+# dummy declaration; XXX we need 'mixin' here
+proc destroy(x: int) = nil
 proc nimDestroyRange*[T](r: T) =
   # internal proc used for destroying sequences and arrays
   for i in countup(0, r.len - 1): destroy(r[i])

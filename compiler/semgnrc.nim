@@ -80,15 +80,13 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkIdent, nkAccQuoted:
     var s = SymtabGet(c.Tab, n.ident)
     if s == nil:
-      # no error if symbol cannot be bound, unless in ``bind`` context:
-      if withinBind in flags:
-        localError(n.info, errUndeclaredIdentifier, n.ident.s)
+      localError(n.info, errUndeclaredIdentifier, n.ident.s)
     else:
       if withinBind in flags or s.id in toBind:
         result = symChoice(c, n, s, scClosed)
       else: result = semGenericStmtSymbol(c, n, s)
   of nkDotExpr:
-    var s = QualifiedLookUp(c, n, {})
+    var s = QualifiedLookUp(c, n, {checkUndeclared})
     if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
   of nkEmpty, nkSym..nkNilLit: 
@@ -100,10 +98,12 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    var s = qualifiedLookup(c, n.sons[0], {})
+    var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     var first = 0
+    var isDefinedMagic = false
     if s != nil: 
       incl(s.flags, sfUsed)
+      isDefinedMagic = s.magic in {mDefined, mDefinedInScope, mCompiles}
       case s.kind
       of skMacro:
         if macroToExpand(s):
@@ -135,14 +135,15 @@ proc semGenericStmt(c: PContext, n: PNode,
       else:
         result.sons[0] = newSymNode(s, n.sons[0].info)
         first = 1
-    for i in countup(first, sonsLen(result) - 1): 
-      result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
+    if not isDefinedMagic:
+      for i in countup(first, sonsLen(result) - 1): 
+        result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
   of nkMacroStmt: 
     checkMinSonsLen(n, 2)
     var a: PNode
     if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
     else: a = n.sons[0]
-    var s = qualifiedLookup(c, a, {})
+    var s = qualifiedLookup(c, a, {checkUndeclared})
     if s != nil and macroToExpand(s):
       result = semMacroStmt(c, n, {}, false)
     for i in countup(0, sonsLen(result)-1): 
@@ -287,6 +288,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, toBind)
     closeScope(c.tab)
+  of nkPragma, nkPragmaExpr: nil
   else: 
     for i in countup(0, sonsLen(n) - 1): 
       result.sons[i] = semGenericStmt(c, n.sons[i], flags, toBind)

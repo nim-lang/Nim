@@ -48,7 +48,7 @@ var
   totalCalls = 0
 
 var
-  interval: TNanos = 1_000_000 - tickCountCorrection # 5ms
+  interval: TNanos = 5_000_000 - tickCountCorrection # 5ms
 
 proc setSamplingFrequency*(intervalInUs: int) =
   ## set this to change the sampling frequency. Default value is 5ms.
