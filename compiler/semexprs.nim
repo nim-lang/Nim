@@ -292,8 +292,8 @@ proc semIs(c: PContext, n: PNode): PNode =
     LocalError(n.info, errXExpectsTwoArguments, "is")
   result = n
 
-proc semOpAux(c: PContext, n: PNode) =
-  for i in countup(1, sonsLen(n) - 1):
+proc semOpAux(c: PContext, n: PNode, tailToExclude = 1) =
+  for i in countup(1, sonsLen(n) - tailToExclude):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
@@ -654,7 +654,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
-  semOpAux(c, n)
+  semOpAux(c, n, 1 + ord(efMacroStmt in flags))
+  let flags = flags - {efMacroStmt}
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result == nil:
     result = overloadedCallOpr(c, n)
@@ -1417,6 +1418,22 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
 
+proc buildCall(n: PNode): PNode =
+  if n.kind == nkDotExpr and n.len == 2:
+    # x.y --> y(x)
+    result = newNodeI(nkCall, n.info, 2)
+    result.sons[0] = n.sons[1]
+    result.sons[1] = n.sons[0]
+  elif n.kind in nkCallKinds and n.sons[0].kind == nkDotExpr:
+    # x.y(a) -> y(x, a)
+    let a = n.sons[0]
+    result = newNodeI(nkDotCall, n.info, n.len+1)
+    result.sons[0] = a.sons[1]
+    result.sons[1] = a.sons[0]
+    for i in 1 .. <n.len: result.sons[i+1] = n.sons[i]
+  else:
+    result = n
+
 proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags, 
                   semCheck = true): PNode =
   checkMinSonsLen(n, 2)
@@ -1442,17 +1459,22 @@ proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags,
     case s.kind
     of skMacro:
       if sfImmediate notin s.flags:
-        result = semDirectOp(c, result, flags)
+        result = semDirectOp(c, result, flags+{efMacroStmt})
       else:
         result = semMacroExpr(c, result, n, s, semCheck)
     of skTemplate: 
       if sfImmediate notin s.flags:
-        result = semDirectOp(c, result, flags)
+        result = semDirectOp(c, result, flags+{efMacroStmt})
       else:
         result = semTemplateExpr(c, result, s, semCheck)
     else:
       LocalError(n.info, errXisNoMacroOrTemplate, s.name.s)
       result = errorNode(c, n)
+  elif a.kind == nkDotExpr:
+    # 'x.m(y): stmt' ==  nkMacroStmt(nkCall(nkDotExpr(x, m), y), stmt)
+    # -->                nkMacroStmt(nkCall(m, x, y), stmt)
+    n.sons[0] = buildCall(n.sons[0])
+    result = semMacroStmt(c, n, flags, semCheck)
   else:
     LocalError(n.info, errInvalidExpressionX, 
                renderTree(a, {renderNoComments}))
