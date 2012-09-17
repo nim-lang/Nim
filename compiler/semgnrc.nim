@@ -19,7 +19,7 @@
 
 type
   TSemGenericFlag = enum
-    withinBind, withinTypeDesc
+    withinBind, withinTypeDesc, withinMixin
   TSemGenericFlags = set[TSemGenericFlag]
 
 proc getIdentNode(n: PNode): PNode =
@@ -80,13 +80,15 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkIdent, nkAccQuoted:
     var s = SymtabGet(c.Tab, n.ident)
     if s == nil:
-      localError(n.info, errUndeclaredIdentifier, n.ident.s)
+      if withinMixin notin flags:
+        localError(n.info, errUndeclaredIdentifier, n.ident.s)
     else:
       if withinBind in flags or s.id in toBind:
         result = symChoice(c, n, s, scClosed)
       else: result = semGenericStmtSymbol(c, n, s)
   of nkDotExpr:
-    var s = QualifiedLookUp(c, n, {checkUndeclared})
+    let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+    var s = QualifiedLookUp(c, n, luf)
     if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
   of nkEmpty, nkSym..nkNilLit: 
@@ -98,7 +100,8 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
+    let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+    var s = qualifiedLookup(c, n.sons[0], luf)
     var first = 0
     var isDefinedMagic = false
     if s != nil: 
@@ -143,7 +146,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     var a: PNode
     if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
     else: a = n.sons[0]
-    var s = qualifiedLookup(c, a, {checkUndeclared})
+    let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+    var s = qualifiedLookup(c, a, luf)
     if s != nil and macroToExpand(s):
       result = semMacroStmt(c, n, {}, false)
     for i in countup(0, sonsLen(result)-1): 
@@ -151,6 +155,9 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkIfStmt: 
     for i in countup(0, sonsLen(n)-1): 
       n.sons[i] = semGenericStmtScope(c, n.sons[i], flags, toBind)
+  of nkWhenStmt:
+    for i in countup(0, sonsLen(n)-1):
+      n.sons[i] = semGenericStmt(c, n.sons[i], flags+{withinMixin}, toBind)
   of nkWhileStmt: 
     openScope(c.tab)
     for i in countup(0, sonsLen(n)-1): 

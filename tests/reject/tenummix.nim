@@ -1,6 +1,6 @@
 discard """
   file: "system.nim"
-  line: 646
+  line: 643
   errormsg: "type mismatch"
 """
 

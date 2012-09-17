@@ -41,7 +41,7 @@ proc binarySearch*[T](a: openarray[T], key: T): int =
     var mid = (result + b) div 2
     if a[mid] < key: result = mid + 1
     else: b = mid
-  if result >= len(x) or a[result] != key: result = -1
+  if result >= len(a) or a[result] != key: result = -1
 
 proc smartBinarySearch*[T](a: openArray[T], key: T): int =
   ## ``a.len`` must be a power of 2 for this to work.
