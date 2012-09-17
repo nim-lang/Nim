@@ -1427,7 +1427,7 @@ proc buildCall(n: PNode): PNode =
   elif n.kind in nkCallKinds and n.sons[0].kind == nkDotExpr:
     # x.y(a) -> y(x, a)
     let a = n.sons[0]
-    result = newNodeI(nkDotCall, n.info, n.len+1)
+    result = newNodeI(nkCall, n.info, n.len+1)
     result.sons[0] = a.sons[1]
     result.sons[1] = a.sons[0]
     for i in 1 .. <n.len: result.sons[i+1] = n.sons[i]

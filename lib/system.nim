@@ -1673,6 +1673,10 @@ template newException*(exceptn: typeDesc, message: string): expr =
   e.msg = message
   e
 
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
+  ## get type information for `x`. Ordinary code should not use this, but
+  ## the `typeinfo` module instead.
+
 when not defined(EcmaScript) and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
@@ -2201,10 +2205,6 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
     for i in 0 .. <L: s[i+a] = b[i]
   else:
     spliceImpl(s, a, L, b)
-
-proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
-  ## get type information for `x`. Ordinary code should not use this, but
-  ## the `typeinfo` module instead.
   
 proc slurp*(filename: string): string {.magic: "Slurp".}
 proc staticRead*(filename: string): string {.magic: "Slurp".}
