@@ -168,9 +168,6 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
   ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
   result.b = b
 
-proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} = 
-  result = value >= s.a and value <= s.b
-
 when not defined(niminheritable):
   {.pragma: inheritable.}
 
@@ -671,6 +668,9 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## ``set[char]``! The solution is to bind ``T`` to ``range['a'..'z']``. This
   ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
+
+proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} =
+  result = s.a <= value and value <= s.b
 
 template `in` * (x, y: expr): expr {.immediate.} = contains(y, x)
 template `not_in` * (x, y: expr): expr {.immediate.} = not contains(y, x)

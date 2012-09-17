@@ -11,10 +11,7 @@
 # code generator. The idea is to inject the instruction stream
 # with 'nimProfile()' calls. These calls are injected at every loop end
 # (except perhaps loops that have no side-effects). At every Nth call a
-# stack trace is taken. A stack tace is a list of cstrings. We have a count
-# table of those.
-# 
-# The nice thing about this profiler is that it's completely time independent!
+# stack trace is taken. A stack tace is a list of cstrings.
 
 {.push profiler: off.}
 
