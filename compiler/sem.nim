@@ -22,7 +22,8 @@ proc semPass*(): TPass
 
 type 
   TExprFlag = enum 
-    efLValue, efWantIterator, efInTypeof, efWantStmt
+    efLValue, efWantIterator, efInTypeof, efWantStmt, 
+    efMacroStmt # expr to semcheck is a macro statement
   TExprFlags = set[TExprFlag]
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
