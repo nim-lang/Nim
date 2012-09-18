@@ -215,8 +215,10 @@ proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       if result.kind != nkEmpty: addSon(a, result)
       result = a
   result = hloStmt(c, result)
+  if gCmd == cmdInteractive and not isEmptyType(result.typ):
+    result = buildEchoStmt(c, result)
   result = transformStmt(c.module, result)
-
+    
 proc RecoverContext(c: PContext) = 
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
   # faster than wrapping every stack operation in a 'try finally' block and 

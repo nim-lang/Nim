@@ -202,3 +202,7 @@ proc compileSpecialTests(r: var TResults, options: string) =
   compileDLLTests(r, options)
   compileDebuggerTests(r, options)
 
+  var given = callCompiler("nimrod i", "nimrod i", options)
+  r.addResult("nimrod i", given.msg, if given.err: reFailure else: reSuccess)
+  if not given.err: inc(r.passed)
+

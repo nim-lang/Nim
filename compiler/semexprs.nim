@@ -712,13 +712,12 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
              sfDiscardable in n.sons[0].sym.flags
   result = semExpr(c, n, {efWantStmt})
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
-    if gCmd == cmdInteractive:
-      result = buildEchoStmt(c, result)
-    elif result.kind == nkNilLit:
+    if result.kind == nkNilLit:
       # XXX too much work and fixing would break bootstrapping:
       #Message(n.info, warnNilStatement)
       result.typ = nil
-    elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError:
+    elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError and
+        gCmd != cmdInteractive:
       localError(n.info, errDiscardValue)
   
 proc isTypeExpr(n: PNode): bool = 
