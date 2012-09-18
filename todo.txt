@@ -3,7 +3,7 @@ version 0.9.0
 
 - make 'bind' default for templates and introduce 'mixin'
 
-- implicit deref for parameter matching
+- implicit deref for parameter matching; overloading based on 'var T'
 - optimize genericAssign in the code generator
 
 
@@ -13,8 +13,6 @@ Bugs
 - sneaking with qualifiedLookup() is really broken!
 - bug: aporia.nim(968, 5) Error: ambiguous identifier: 'DELETE' -- 
   use a qualifier
-- bug: pragma statements in combination with symbol files are evaluated twice
-  but this can lead to compilation errors
 - bug: the parser is not strict enough with newlines: 'echo "a" echo "b"' 
   compiles
 - bug: blocks can "export" an identifier but the CCG generates {} for them ...
