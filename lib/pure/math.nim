@@ -128,11 +128,14 @@ proc random*(max: int): int
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-proc random*(max: float): float
-  ## returns a random number in the range 0..<max. The sequence of
-  ## random number is always the same, unless `randomize` is called
-  ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount.
+
+when not defined(windows):
+  proc random*(max: float): float
+    ## returns a random number in the range 0..<max. The sequence of
+    ## random number is always the same, unless `randomize` is called
+    ## which initializes the random number generator with a "random"
+    ## number, i.e. a tickcount. This is currently not supported for windows.
+
 proc randomize*()
   ## initializes the random number generator with a "random"
   ## number, i.e. a tickcount. Note: Does nothing for the ECMAScript target,
@@ -184,18 +187,20 @@ when not defined(ECMAScript):
   # C procs:
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", nodecl.}
-  proc srand48(seed: cint) {.importc: "srand48", nodecl.}
   proc rand(): cint {.importc: "rand", nodecl.}
-  proc drand48(): float {.importc: "drand48", nodecl.}
+  
+  when not defined(windows):
+    proc srand48(seed: cint) {.importc: "srand48", nodecl.}
+    proc drand48(): float {.importc: "drand48", nodecl.}
+    proc random(max: float): float =
+      result = drand48() * max
     
   proc randomize() =
     let x = gettime(nil)
     srand(x)
-    srand48(x)
+    when defined(srand48): srand48(x)
   proc random(max: int): int =
     result = int(rand()) mod max
-  proc random(max: float): float =
-    result = drand48() * max
 
   proc trunc*(x: float): float {.importc: "trunc", nodecl.}
   proc floor*(x: float): float {.importc: "floor", nodecl.}
