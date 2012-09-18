@@ -169,12 +169,14 @@ var
   disabled: int
 
 proc disableProfiling*() =
-  atomicDec disabled
-  system.profilerHook = nil
+  when defined(system.TStackTrace):
+    atomicDec disabled
+    system.profilerHook = nil
 
 proc enableProfiling*() =
-  if atomicInc(disabled) >= 0:
-    system.profilerHook = hook
+  when defined(system.TStackTrace):
+    if atomicInc(disabled) >= 0:
+      system.profilerHook = hook
 
 when defined(system.TStackTrace):
   system.profilerHook = hook

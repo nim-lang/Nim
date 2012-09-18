@@ -66,6 +66,8 @@ proc c_ungetc(c: int, f: C_TextFileStar) {.importc: "ungetc", nodecl.}
 proc c_putc(c: Char, stream: C_TextFileStar) {.importc: "putc", nodecl.}
 proc c_fprintf(f: C_TextFileStar, frmt: CString) {.
   importc: "fprintf", nodecl, varargs.}
+proc c_printf(frmt: CString) {.
+  importc: "printf", nodecl, varargs.}
 
 proc c_fopen(filename, mode: cstring): C_TextFileStar {.
   importc: "fopen", nodecl.}
