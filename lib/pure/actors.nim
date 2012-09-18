@@ -51,7 +51,7 @@ proc inbox*[TIn, TOut](self: PActor[TIn, TOut]): ptr TChannel[TIn] =
   ## gets a pointer to the associated inbox of the actor `self`.
   result = addr(self.i)
 
-proc running*[TIn, TOut](a: PActor[TIn, TOut]) =
+proc running*[TIn, TOut](a: PActor[TIn, TOut]): bool =
   ## returns true if the actor `a` is running.
   result = running(a.t)
 

@@ -138,9 +138,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       else:
         result.sons[0] = newSymNode(s, n.sons[0].info)
         first = 1
-    if not isDefinedMagic:
-      for i in countup(first, sonsLen(result) - 1): 
-        result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
+    # Consider 'when defined(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
+    # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which 
+    # is not exported and yet the generic 'threadProcWrapper' works correctly.
+    let flags = if isDefinedMagic: flags+{withinMixin} else: flags
+    for i in countup(first, sonsLen(result) - 1):
+      result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
   of nkMacroStmt: 
     checkMinSonsLen(n, 2)
     var a: PNode
