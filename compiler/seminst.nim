@@ -69,6 +69,18 @@ proc removeDefaultParamValues(n: PNode) =
         # not possible... XXX We don't solve this issue here.
         a.sons[L-1] = ast.emptyNode
 
+proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
+  # we need to create a fresh set of gensym'ed symbols:
+  if n.kind == nkSym and sfGenSym in n.sym.flags:
+    var x = PSym(IdTableGet(symMap, n.sym))
+    if x == nil:
+      x = copySym(n.sym, false)
+      x.owner = owner
+      IdTablePut(symMap, n.sym, x)
+    n.sym = x
+  else:
+    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
+
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     # add it here, so that recursive generic procs are possible:
@@ -77,7 +89,11 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     if result.kind in {skProc, skMethod, skConverter, skMacro}: 
       addResult(c, result.typ.sons[0], n.info, result.kind)
       addResultNode(c, n)
-    var b = semStmtScope(c, n.sons[bodyPos])
+    var b = n.sons[bodyPos]
+    var symMap: TIdTable
+    InitIdTable symMap
+    freshGenSyms(b, result, symMap)
+    b = semStmtScope(c, b)
     b = hloBody(c, b)
     n.sons[bodyPos] = transformBody(c.module, b, result)
     #echo "code instantiated ", result.name.s

@@ -1211,6 +1211,7 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   
   let oldInGenericContext = c.InGenericContext
   let oldInUnrolledContext = c.InUnrolledContext
+  let oldInGenericInst = c.InGenericInst
   let oldProcCon = c.p
   c.generics = newGenericsCache()
   try:
@@ -1222,6 +1223,7 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   c.generics = oldGenerics
   c.InGenericContext = oldInGenericContext
   c.InUnrolledContext = oldInUnrolledContext
+  c.InGenericInst = oldInGenericInst
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
