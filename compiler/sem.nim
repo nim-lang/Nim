@@ -234,10 +234,12 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
     result = SemStmtAndGenerateGenerics(c, n)
   else:
     let oldContextLen = msgs.getInfoContextLen()
+    let oldInGenericInst = c.InGenericInst
     try:
       result = SemStmtAndGenerateGenerics(c, n)
     except ERecoverableError:
       RecoverContext(c)
+      c.InGenericInst = oldInGenericInst
       result = ast.emptyNode
       msgs.setInfoContextLen(oldContextLen)
       if gCmd == cmdIdeTools: findSuggest(c, n)
@@ -261,7 +263,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   popOwner()
   popProcCon(c)
 
-proc semPass(): TPass = 
+proc semPass(): TPass =
   initPass(result)
   result.open = myOpen
   result.openCached = myOpenCached

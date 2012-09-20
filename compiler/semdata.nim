@@ -63,12 +63,15 @@ type
     tab*: TSymTab              # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    InGenericContext*: int     # > 0 if we are in a generic
+    InGenericContext*: int     # > 0 if we are in a generic type
     InUnrolledContext*: int    # > 0 if we are unrolling a loop
     InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic
+    InGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: TSymSeq       # sequence of converters
     patterns*: TSymSeq         # sequence of pattern matchers
     optionStack*: TLinkedList
+    symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
+                               # to some new symbol in a generic instantiation
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}      # for the pragmas

@@ -91,7 +91,14 @@ proc semGenericStmt(c: PContext, n: PNode,
     var s = QualifiedLookUp(c, n, luf)
     if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
-  of nkEmpty, nkSym..nkNilLit: 
+  of nkEmpty, nkSym..nkNilLit:
+    # see tests/compile/tgensymgeneric.nim:
+    # We need to open the gensym'ed symbol again so that the instantiation
+    # creates a fresh copy; but this is wrong the very first reason for gensym
+    # is that scope rules cannot be used! So simply removing 'sfGenSym' does
+    # not work. Copying the symbol does not work either because we're already
+    # the owner of the symbol! What we need to do is to copy the symbol
+    # in the generic instantiation process...
     nil
   of nkBind: 
     result = semGenericStmt(c, n.sons[0], flags+{withinBind}, toBind)
