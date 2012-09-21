@@ -721,6 +721,10 @@ proc genTypeInfoAux(m: BModule, typ: PType, name: PRope) =
   genTypeInfoAuxBase(m, typ, name, base)
 
 proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): PRope = 
+  # bugfix: we need to search the type that contains the discriminator:
+  var objtype = objtype
+  while lookupInRecord(objtype.n, d.name) == nil:
+    objtype = objtype.sons[0]
   if objType.sym == nil: 
     InternalError(d.info, "anonymous obj with discriminator")
   result = ropef("NimDT_$1_$2", [
