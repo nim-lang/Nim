@@ -904,11 +904,6 @@ proc registerModuleToMain(m: PSym) =
     appff(mainDatInit, "\t$1();$n", "call void ()* $1$n", [datInit])
   
 proc genInitCode(m: BModule) = 
-  if optProfiler in m.initProc.options: 
-    # This does not really belong here, but there is no good place for this
-    # code. I don't want to put this to the proc generation as the
-    # ``IncludeStr`` call is quite slow.
-    discard lists.IncludeStr(m.headerFiles, "<cycle.h>")
   var initname = getInitName(m.module)
   var prc = ropeff("N_NOINLINE(void, $1)(void) {$n", 
                    "define void $1() noinline {$n", [initname])

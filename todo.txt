@@ -99,7 +99,6 @@ Low priority
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
 - implement the "easy" constructors idea
-- code generated for type information is wasteful
 - resizing of strings/sequences could take into account the memory that
   is allocated
 - timeout for locks

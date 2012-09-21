@@ -136,6 +136,7 @@ proc runThreadTests(r: var TResults, options: string) =
     runSingleTest(r, "tests/threads" / filename, options & " --tlsEmulation:on")
   
   test "tactors"
+  test "tactors2"
   test "threadex"
   # deactivated because output capturing still causes problems sometimes:
   #test "trecursive_actor"
