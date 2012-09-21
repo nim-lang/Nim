@@ -904,8 +904,9 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
     discard cgsym(m, "TNimNode")
     appf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n", 
          [result, toRope(typeToString(t))])
-    return con("&", result)
-  if ContainsOrIncl(m.typeInfoMarker, t.id): return con("&", result)
+    return con("(&".toRope, result, ")".toRope)
+  if ContainsOrIncl(m.typeInfoMarker, t.id):
+    return con("(&".toRope, result, ")".toRope)
   case t.kind
   of tyEmpty: result = toRope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
@@ -932,7 +933,7 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
     # results are not deterministic!
     genTupleInfo(m, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
-  result = con("&", result)
+  result = con("(&".toRope, result, ")".toRope)
 
 proc genTypeSection(m: BModule, n: PNode) = 
   nil
