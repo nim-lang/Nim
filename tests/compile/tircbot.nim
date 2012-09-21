@@ -32,12 +32,12 @@ proc open*(host = "localhost", port: TPort): TDb =
   result.r = redis.open(host, port)
   result.lastPing = epochTime()
 
-proc customHSet(database: TDb, name, field, value: string) =
+discard """proc customHSet(database: TDb, name, field, value: string) =
   if database.r.hSet(name, field, value).int == 0:
     if failOnExisting:
       assert(false)
     else:
-      echo("[Warning:REDIS] ", field, " already exists in ", name)
+      echo("[Warning:REDIS] ", field, " already exists in ", name)"""
 
 proc updateProperty*(database: TDb, commitHash, platform, property,
                     value: string) =
@@ -228,7 +228,7 @@ proc getSeen(d: TDb, nick: string, s: var TSeen): bool =
       of "newnick":
         s.newNick = value
 
-template createSeen(typ: TSeenType, n, c: string): stmt =
+template createSeen(typ: TSeenType, n, c: string): stmt {.immediate, dirty.} =
   var seenNick: TSeen
   seenNick.kind = typ
   seenNick.nick = n
@@ -275,12 +275,11 @@ proc handleWebMessage(state: PState, line: string) =
       state.ircClient[].privmsg(joinChans[0], message)
   elif json.existsKey("redisinfo"):
     assert json["redisinfo"].existsKey("port")
-    let redisPort = json["redisinfo"]["port"].num
+    #let redisPort = json["redisinfo"]["port"].num
     state.dbConnected = true
 
 proc hubConnect(state: PState)
-proc handleConnect(s: PAsyncSocket, userArg: PObject) =
-  let state = PState(userArg)
+proc handleConnect(s: PAsyncSocket, state: PState) =
   try:
     # Send greeting
     var obj = newJObject()
@@ -311,8 +310,7 @@ proc handleConnect(s: PAsyncSocket, userArg: PObject) =
     sleep(5000)
     state.hubConnect()
 
-proc handleRead(s: PAsyncSocket, userArg: PObject) =
-  let state = PState(userArg)
+proc handleRead(s: PAsyncSocket, state: PState) =
   var line = ""
   if state.sock.recvLine(line):
     if line != "":
@@ -329,14 +327,16 @@ proc handleRead(s: PAsyncSocket, userArg: PObject) =
 proc hubConnect(state: PState) =
   state.sock = AsyncSocket()
   state.sock.connect("127.0.0.1", state.hubPort)
-  state.sock.userArg = state
-  state.sock.handleConnect = handleConnect
-  state.sock.handleRead = handleRead
+  state.sock.handleConnect =
+    proc (s: PAsyncSocket) =
+      handleConnect(s, state)
+  state.sock.handleRead =
+    proc (s: PAsyncSocket) =
+      handleRead(s, state)
 
   state.dispatcher.register(state.sock)
 
-proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, userArg: PObject) =
-  let state = PState(userArg)
+proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, state: PState) =
   case event.typ
   of EvDisconnected:
     while not state.ircClient[].isConnected:
@@ -373,7 +373,7 @@ proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, userArg: PObject) =
           echo(nick)
           var seenInfo: TSeen
           if state.database.getSeen(nick, seenInfo):
-            var mSend = ""
+            #var mSend = ""
             case seenInfo.kind
             of PSeenMsg:
               pm("$1 was last seen on $2 in $3 saying: $4" %
@@ -431,10 +431,12 @@ proc open(port: TPort = TPort(5123)): PState =
   
   result.hubPort = port
   result.hubConnect()
-
+  let hirc =
+    proc (a: var TAsyncIRC, ev: TIRCEvent) =
+      handleIrc(a, ev, result)
   # Connect to the irc server.
   result.ircClient = AsyncIrc(ircServer, nick = botNickname, user = botNickname,
-                 joinChans = joinChans, ircEvent = handleIrc, userArg = result)
+                 joinChans = joinChans, ircEvent = hirc)
   result.ircClient.connect()
   result.dispatcher.register(result.ircClient)
 

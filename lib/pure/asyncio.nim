@@ -115,6 +115,7 @@ type
     info: TInfo
 
     handleRead*: proc (s: PAsyncSocket) {.closure.}
+    handleWrite: proc (s: PAsyncSocket) {.closure.}
     handleConnect*: proc (s:  PAsyncSocket) {.closure.}
 
     handleAccept*: proc (s:  PAsyncSocket) {.closure.}
@@ -145,6 +146,7 @@ proc newAsyncSocket(): PAsyncSocket =
   result.info = SockIdle
 
   result.handleRead = (proc (s: PAsyncSocket) = nil)
+  result.handleWrite = nil
   result.handleConnect = (proc (s: PAsyncSocket) = nil)
   result.handleAccept = (proc (s: PAsyncSocket) = nil)
   result.handleTask = (proc (s: PAsyncSocket) = nil)
@@ -161,6 +163,37 @@ proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   result.proto = protocol
   if result.socket == InvalidSocket: OSError()
   result.socket.setBlocking(false)
+
+proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
+  ## Wraps an already initialized ``TSocket`` into a PAsyncSocket.
+  ## This is useful if you want to use an already connected TSocket as an
+  ## asynchronous PAsyncSocket in asyncio's event loop.
+  ##
+  ## ``state`` may be overriden, i.e. if ``sock`` is not connected it should be
+  ## adjusted properly. By default it will be assumed that the socket is
+  ## connected. Please note this is only applicable to TCP client sockets, if
+  ## ``sock`` is a different type of socket ``state`` needs to be adjusted!!!
+  ##
+  ## ================  ================================================================
+  ## Value             Meaning
+  ## ================  ================================================================
+  ##  SockIdle          Socket has only just been initialised, not connected or closed.
+  ##  SockConnected     Socket is connected to a server.
+  ##  SockConnecting    Socket is in the process of connecting to a server.
+  ##  SockListening     Socket is a server socket and is listening for connections.
+  ##  SockClosed        Socket has been closed.
+  ##  SockUDPBound      Socket is a UDP socket which is listening for data.
+  ## ================  ================================================================
+  ##
+  ## **Warning**: If ``state`` is set incorrectly the resulting ``PAsyncSocket``
+  ## object may not work properly.
+  ##
+  ## **Note**: This will set ``sock`` to be non-blocking.
+  result = newAsyncSocket()
+  result.socket = sock
+  result.proto = if state == SockUDPBound: IPPROTO_UDP else: IPPROTO_TCP
+  result.socket.setBlocking(false)
+  result.info = state
 
 proc asyncSockHandleRead(h: PObject) =
   when defined(ssl):
@@ -184,6 +217,11 @@ proc asyncSockHandleWrite(h: PObject) =
     PAsyncSocket(h).handleConnect(PAsyncSocket(h))
     # Stop receiving write events
     PAsyncSocket(h).deleg.mode = fmRead
+  else:
+    if PAsyncSocket(h).handleWrite != nil:
+      PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+    else:
+      PAsyncSocket(h).deleg.mode = fmRead
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) =
@@ -359,6 +397,21 @@ proc isListening*(s: PAsyncSocket): bool =
 proc isConnecting*(s: PAsyncSocket): bool =
   ## Determines whether ``s`` is connecting.  
   return s.info == SockConnecting
+
+proc setHandleWrite*(s: PAsyncSocket,
+    handleWrite: proc (s: PAsyncSocket) {.closure.}) =
+  ## Setter for the ``handleWrite`` event.
+  ##
+  ## To remove this event you should use the ``delHandleWrite`` function.
+  ## It is advised to use that function instead of just setting the event to
+  ## ``proc (s: PAsyncSocket) = nil`` as that would mean that that function
+  ## would be called constantly.
+  s.deleg.mode = fmReadWrite
+  s.handleWrite = handleWrite
+
+proc delHandleWrite*(s: PAsyncSocket) =
+  ## Removes the ``handleWrite`` event handler on ``s``.
+  s.handleWrite = nil
 
 proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   ## Behaves similar to ``sockets.recvLine``, however it handles non-blocking
