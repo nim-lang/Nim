@@ -52,8 +52,6 @@ version 0.9.XX
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
 - ``=`` should be overloadable; requires specialization for ``=``
-- ``hoist`` pragma for loop hoisting: can be easily done with 
-  AST overloading + global
 - document destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - better support for macros that rewrite procs
@@ -174,4 +172,6 @@ Version 2 and beyond
 
 - implement ``partial`` pragma for partial evaluation: easily done with AST
   overloading
+- ``hoist`` pragma for loop hoisting: can be easily done with 
+  AST overloading + global
 

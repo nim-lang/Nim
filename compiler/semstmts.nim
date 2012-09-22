@@ -737,7 +737,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[pragmasPos].kind != nkEmpty: 
       LocalError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
     if sfForward notin proto.flags: 
-      LocalError(n.info, errAttemptToRedefine, proto.name.s)
+      WrongRedefinition(n.info, proto.name.s)
     excl(proto.flags, sfForward)
     closeScope(c.tab)         # close scope with wrong parameter symbols
     openScope(c.tab)          # open scope for old (correct) parameter symbols

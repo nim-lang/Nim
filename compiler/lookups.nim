@@ -86,19 +86,23 @@ proc CloseScope*(tab: var TSymTab) =
     s = NextIter(it, tab.stack[tab.tos-1])
   astalgo.rawCloseScope(tab)
 
+proc WrongRedefinition*(info: TLineInfo, s: string) =
+  if gCmd != cmdInteractive:
+    localError(info, errAttemptToRedefine, s)
+
 proc AddSym*(t: var TStrTable, n: PSym) = 
-  if StrTableIncl(t, n): LocalError(n.info, errAttemptToRedefine, n.name.s)
+  if StrTableIncl(t, n): WrongRedefinition(n.info, n.name.s)
   
 proc addDecl*(c: PContext, sym: PSym) = 
   if SymTabAddUnique(c.tab, sym) == Failure: 
-    LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
+    WrongRedefinition(sym.info, sym.Name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard SymTabAddUnique(c.tab, sym)
 
 proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
   if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
-    LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
+    WrongRedefinition(sym.info, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
   if sfExported in sym.flags:
@@ -116,7 +120,7 @@ proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) =
     return
   var check = StrTableGet(c.tab.stack[at], fn.name)
   if check != nil and check.Kind notin OverloadableSyms: 
-    LocalError(fn.info, errAttemptToRedefine, fn.Name.s)
+    WrongRedefinition(fn.info, fn.Name.s)
   else:
     SymTabAddAt(c.tab, fn, at)
   
