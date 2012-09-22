@@ -767,7 +767,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addResult(c, s.typ.sons[0], n.info, kind)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
-        let semBody = hloBody(c, semStmtScope(c, n.sons[bodyPos]))
+        let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)

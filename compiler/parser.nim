@@ -1461,8 +1461,8 @@ proc parseVariable(p: var TParser): PNode =
   else: result = parseIdentColonEquals(p, {withPragma})
   indAndComment(p, result)    # special extension!
   
-proc parseBind(p: var TParser): PNode =
-  result = newNodeP(nkBindStmt, p)
+proc parseBind(p: var TParser, k: TNodeKind): PNode =
+  result = newNodeP(k, p)
   getTok(p)
   optInd(p, result)
   while true:
@@ -1523,7 +1523,8 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkLet: result = parseSection(p, nkLetSection, parseVariable)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
-  of tkBind: result = parseBind(p)
+  of tkBind: result = parseBind(p, nkBindStmt)
+  of tkMixin: result = parseBind(p, nkMixinStmt)
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode = 

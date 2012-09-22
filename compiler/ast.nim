@@ -176,6 +176,7 @@ type
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
+    nkMixinStmt,          # a mixin statement
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates

@@ -706,11 +706,10 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # and check 'arg' for semantics again:
   addSon(result, semExpr(c, arg))
 
-proc semExprNoType(c: PContext, n: PNode): PNode =
+proc discardCheck(result: PNode) =
   proc ImplicitelyDiscardable(n: PNode): bool {.inline.} =
     result = isCallExpr(n) and n.sons[0].kind == nkSym and 
              sfDiscardable in n.sons[0].sym.flags
-  result = semExpr(c, n, {efWantStmt})
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       # XXX too much work and fixing would break bootstrapping:
@@ -718,7 +717,11 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
       result.typ = nil
     elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError and
         gCmd != cmdInteractive:
-      localError(n.info, errDiscardValue)
+      localError(result.info, errDiscardValue)
+
+proc semExprNoType(c: PContext, n: PNode): PNode =
+  result = semExpr(c, n, {efWantStmt})
+  discardCheck(result)
   
 proc isTypeExpr(n: PNode): bool = 
   case n.kind
@@ -1061,10 +1064,27 @@ proc SemReturn(c: PContext, n: PNode): PNode =
       addSon(a, n.sons[0])
       n.sons[0] = semAsgn(c, a)
       # optimize away ``result = result``:
-      if n[0][1].kind == nkSym and n[0][1].sym.kind == skResult: 
+      if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym: 
         n.sons[0] = ast.emptyNode
     else:
       LocalError(n.info, errNoReturnTypeDeclared)
+
+proc semProcBody(c: PContext, n: PNode): PNode =
+  openScope(c.tab)
+  result = semExpr(c, n)
+  if c.p.resultSym != nil and not isEmptyType(result.typ):
+    # transform ``expr`` to ``result = expr``, but not if the expr is already
+    # ``result``:
+    if result.kind == nkSym and result.sym == c.p.resultSym: 
+      nil
+    else:
+      var a = newNodeI(nkAsgn, n.info, 2)
+      a.sons[0] = newSymNode(c.p.resultSym)
+      a.sons[1] = result
+      result = semAsgn(c, a)
+  else:
+    discardCheck(result)
+  closeScope(c.tab)
 
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst})
