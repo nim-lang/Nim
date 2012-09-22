@@ -533,7 +533,7 @@ proc accept*(server: TSocket, client: var TSocket) =
 proc acceptAddr*(server: TSocket): tuple[client: TSocket, address: string] {.deprecated.} =
   ## Slightly different version of ``acceptAddr``.
   ##
-  ## **Warning**: This function is now deprecated, you shouldn't use it!
+  ## **Deprecated since version 0.9.0:** Please use the function above.
   var client: TSocket
   new(client)
   var address = ""
@@ -541,7 +541,7 @@ proc acceptAddr*(server: TSocket): tuple[client: TSocket, address: string] {.dep
   return (client, address)
 
 proc accept*(server: TSocket): TSocket {.deprecated.} =
-  ## **Warning**: This function is now deprecated, you shouldn't use it!
+  ## **Deprecated since version 0.9.0:** Please use the function above.
   new(result)
   var address = ""
   acceptAddr(server, result, address)

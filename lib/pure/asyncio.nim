@@ -215,8 +215,12 @@ proc asyncSockHandleWrite(h: PObject) =
   
   if PAsyncSocket(h).info == SockConnecting:
     PAsyncSocket(h).handleConnect(PAsyncSocket(h))
-    # Stop receiving write events
-    PAsyncSocket(h).deleg.mode = fmRead
+    PAsyncSocket(h).info = SockConnected
+    # Stop receiving write events if there is no handleWrite event.
+    if PAsyncSocket(h).handleWrite == nil:
+      PAsyncSocket(h).deleg.mode = fmRead
+    else:
+      PAsyncSocket(h).deleg.mode = fmReadWrite
   else:
     if PAsyncSocket(h).handleWrite != nil:
       PAsyncSocket(h).handleWrite(PAsyncSocket(h))
@@ -345,7 +349,7 @@ proc acceptAddr*(server: PAsyncSocket): tuple[sock: PAsyncSocket,
                                               address: string] {.deprecated.} =
   ## Equivalent to ``sockets.acceptAddr``.
   ## 
-  ## **Warning**: This is deprecated in favour of the above.
+  ## **Deprecated since version 0.9.0:** Please use the function above.
   var client = newAsyncSocket()
   var address: string = ""
   acceptAddr(server, client, address)
@@ -354,7 +358,7 @@ proc acceptAddr*(server: PAsyncSocket): tuple[sock: PAsyncSocket,
 proc accept*(server: PAsyncSocket): PAsyncSocket {.deprecated.} =
   ## Equivalent to ``sockets.accept``.
   ##
-  ## **Warning**: This is deprecated.
+  ## **Deprecated since version 0.9.0:** Please use the function above.
   new(result)
   var address = ""
   server.acceptAddr(result, address)
@@ -510,6 +514,7 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
       # File/socket has been closed. Remove it from dispatcher.
       d.delegates[dc] = d.delegates[len-1]
       dec len
+      
   d.delegates.setLen(len)
   
   var hasDataBufferedCount = 0
@@ -527,6 +532,7 @@ proc poll*(d: PDispatcher, timeout: int = 500): bool =
     for i in 0..len(d.delegates)-1:
       if i > len(d.delegates)-1: break # One delegate might've been removed.
       let deleg = d.delegates[i]
+      if not deleg.open: continue # This delegate might've been closed.
       if (deleg.mode != fmWrite or deleg.mode != fmAppend) and
           deleg notin readDg:
         deleg.handleRead(deleg.deleVal)
