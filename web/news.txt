@@ -165,6 +165,8 @@ Language Additions
   comment pieces don't have to align on the same column.
 - Enums can be annotated with ``pure`` so that their field names do not pollute
   the current scope.
+- A proc body can consist of an expression that has a type. This is rewritten
+  to ``result = expression`` then.
 
 
 2012-02-09 Version 0.8.14 released

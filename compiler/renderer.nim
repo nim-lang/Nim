@@ -386,6 +386,7 @@ proc lsub(n: PNode): int =
   of nkDotExpr: result = lsons(n) + 1
   of nkBind: result = lsons(n) + len("bind_")
   of nkBindStmt: result = lcomma(n) + len("bind_")
+  of nkMixinStmt: result = lcomma(n) + len("mixin_")
   of nkCheckedFieldExpr: result = lsub(n.sons[0])
   of nkLambda: result = lsons(n) + len("proc__=_")
   of nkDo: result = lsons(n) + len("do__:_")
@@ -1151,6 +1152,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gstmts(g, lastSon(n), c)
   of nkBindStmt: 
     putWithSpace(g, tkBind, "bind")
+    gcomma(g, n, c)
+  of nkMixinStmt:
+    putWithSpace(g, tkMixin, "mixin")
     gcomma(g, n, c)
   of nkElifBranch: 
     optNL(g)

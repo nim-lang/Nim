@@ -93,7 +93,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     var symMap: TIdTable
     InitIdTable symMap
     freshGenSyms(b, result, symMap)
-    b = semStmtScope(c, b)
+    b = semProcBody(c, b)
     b = hloBody(c, b)
     n.sons[bodyPos] = transformBody(c.module, b, result)
     #echo "code instantiated ", result.name.s
