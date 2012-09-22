@@ -661,7 +661,7 @@ proc semLambda(c: PContext, n: PNode): PNode =
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info, skProc)
-    let semBody = hloBody(c, semStmtScope(c, n.sons[bodyPos]))
+    let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
     n.sons[bodyPos] = transformBody(c.module, semBody, s)
     addResultNode(c, n)
     popProcCon(c)
@@ -765,13 +765,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       pushProcCon(c, s)
       if s.typ.sons[0] != nil and kind != skIterator: 
         addResult(c, s.typ.sons[0], n.info, kind)
+        addResultNode(c, n)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
         let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
+      #if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator:

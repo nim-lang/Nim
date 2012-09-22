@@ -538,9 +538,6 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
   if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
     # ignore forward declaration:
     result = body
-  elif not containsNode(body, procDefs) and false:
-    # fast path: no inner procs, so no closure needed:
-    result = body
   else:
     var o = newOuterContext(fn)
     let ex = closureCreationPoint(body)
@@ -552,6 +549,10 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
         InternalError(params.info, "liftLambdas: strange params")
       let param = params.sons[i].sym
       IdTablePut(o.localsToEnv, param, o.currentEnv)
+    # put the 'result' into the environment so it can be captured:
+    let ast = fn.ast
+    if resultPos < sonsLen(ast) and ast.sons[resultPos].kind == nkSym:
+      IdTablePut(o.localsToEnv, ast.sons[resultPos].sym, o.currentEnv)
     searchForInnerProcs(o, body)
     discard transformOuterProc(o, body)
     result = ex

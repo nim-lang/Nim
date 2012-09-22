@@ -426,21 +426,23 @@ proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, state: PState) =
       nil # TODO: ?
 
 proc open(port: TPort = TPort(5123)): PState =
-  new(result)
-  result.dispatcher = newDispatcher()
+  var res: PState
+  new(res)
+  res.dispatcher = newDispatcher()
   
-  result.hubPort = port
-  result.hubConnect()
+  res.hubPort = port
+  res.hubConnect()
   let hirc =
     proc (a: var TAsyncIRC, ev: TIRCEvent) =
-      handleIrc(a, ev, result)
+      handleIrc(a, ev, res)
   # Connect to the irc server.
-  result.ircClient = AsyncIrc(ircServer, nick = botNickname, user = botNickname,
+  res.ircClient = AsyncIrc(ircServer, nick = botNickname, user = botNickname,
                  joinChans = joinChans, ircEvent = hirc)
-  result.ircClient.connect()
-  result.dispatcher.register(result.ircClient)
+  res.ircClient.connect()
+  res.dispatcher.register(res.ircClient)
 
-  result.dbConnected = false
+  res.dbConnected = false
+  result = res
 
 var state = tircbot.open() # Connect to the website and the IRC server.
 
