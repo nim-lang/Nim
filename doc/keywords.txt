@@ -5,9 +5,9 @@ discard distinct div do
 elif else end enum except export
 finally for from
 generic
-if import in include is isnot iterator
+if import in include interface is isnot iterator
 lambda let
-macro method mod
+macro method mixin mod
 nil not notin
 object of or out
 proc ptr

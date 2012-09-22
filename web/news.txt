@@ -74,7 +74,7 @@ Changes affecting backwards compatibility
   The ``system``, ``os``, ``osproc`` and ``memfiles`` modules use the wide
   string versions of the WinAPI. Use the ``-d:useWinAnsi`` switch to revert
   back to the old behaviour which uses the Ansi string versions.
-- ``static`` and ``do`` are now keywords.
+- ``static``, ``do``, ``interface`` and ``mixin`` are now keywords.
 - Templates now participate in overloading resolution which can break code that
   uses templates in subtle ways. Use the new ``immediate`` pragma for templates
   to get a template of old behaviour.
