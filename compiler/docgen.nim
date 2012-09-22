@@ -184,8 +184,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
-  initTokRender(r, n, {renderNoPragmas, renderNoBody, renderNoComments, 
-                       renderDocComments})
+  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
   while true: 
     getNextTok(r, kind, literal)
     case kind

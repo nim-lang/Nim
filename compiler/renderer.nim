@@ -1115,7 +1115,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkContinue, "continue")
     gsub(g, n.sons[0])
   of nkPragma: 
-    if not (renderNoPragmas in g.flags): 
+    if renderNoPragmas notin g.flags:
+      put(g, tkSpaces, Space)
       put(g, tkCurlyDotLe, "{.")
       gcomma(g, n, emptyContext)
       put(g, tkCurlyDotRi, ".}")
