@@ -1227,8 +1227,9 @@ proc recvFrom*(socket: TSocket, data: var string, length: int,
   var addrLen = sizeof(sockAddress).TSockLen
   result = recvFrom(socket.fd, cstring(data), length.cint, flags.cint,
                     cast[ptr TSockAddr](addr(sockAddress)), addr(addrLen))
-  
+
   if result != -1:
+    data.setLen(result)
     address = $inet_ntoa(sockAddress.sin_addr)
     port = ntohs(sockAddress.sin_port).TPort
 
