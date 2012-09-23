@@ -290,6 +290,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if t.n.sons[i].kind != nkSym: InternalError(t.n.info, "genProcParams")
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
+    if params != nil: app(params, ", ")
     fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
     app(params, getParamTypeDesc(m, param.typ, check))
     if ccgIntroducedPtr(param): 
@@ -309,7 +310,6 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
       appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, j.toRope])
       inc(j)
       arr = arr.sons[0]
-    if i < sonsLen(t.n) - 1: app(params, ", ")
   if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]): 
     var arr = t.sons[0]
     if params != nil: app(params, ", ")
