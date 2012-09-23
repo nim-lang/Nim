@@ -499,9 +499,13 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
   result = capturedRet
 
 proc register*(d: PDispatcher, s: PAsyncHTTPServer) =
-  ## Registers a PAsyncHTTPServer with a PDispatcher.
+  ## Registers a ``PAsyncHTTPServer`` with a ``PDispatcher``.
   d.register(s.asyncSocket)
-  
+
+proc close*(h: PAsyncHTTPServer) =
+  ## Closes the ``PAsyncHTTPServer``.
+  h.asyncSocket.close()
+
 when isMainModule:
   var counter = 0
 
