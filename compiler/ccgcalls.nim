@@ -121,7 +121,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
   initLocExpr(p, ri.sons[0], op)
-  var pl = con(op.r, "(")
+  var params: PRope
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
@@ -129,13 +129,13 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   for i in countup(1, length - 1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if ri.sons[i].typ.isCompileTimeOnly: continue
+    if params != nil: app(params, ", ")
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
+      app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(p, ri.sons[i]))
-    if i < length - 1: app(pl, ", ")
-  fixupCall(p, le, ri, d, pl)
+      app(params, genArgNoParam(p, ri.sons[i]))
+  fixupCall(p, le, ri, d, con(op.r, "(".toRope, params))
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
