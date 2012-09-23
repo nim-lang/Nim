@@ -183,6 +183,10 @@ proc register*(d: PDispatcher, s: PAsyncScgiState): PDelegate {.discardable.} =
   ## Registers ``s`` with dispatcher ``d``.
   result = d.register(s.asyncServer)
 
+proc close*(s: PAsyncScgiState) =
+  ## Closes the ``PAsyncScgiState``.
+  s.asyncServer.close()
+
 when false:
   var counter = 0
   proc handleRequest(client: TSocket, input: string, 
