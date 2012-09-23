@@ -19,16 +19,18 @@ proc foo(T: typedesc[int or bool]): string =
 template foo(T: typedesc[seq]): expr = "seq"
 
 test "types can be used as proc params":
-  check foo(TFoo[int, float], 1000) == "TFoo 1000"
+  # XXX: `check` needs to know that TFoo[int, float] is a type and 
+  # cannot be assigned for a local variable for later inspection
+  check ((foo(TFoo[int, float], 1000) == "TFoo 1000"))
   
   var f = 10.0
-  check foo(float, "long string") == "float true"
-  check foo(type(f), [1, 2, 3]) == "float false"
+  check ((foo(float, "long string") == "float true"))
+  check ((foo(type(f), [1, 2, 3]) == "float false"))
   
-  check foo(int) == "int or bool 10"
+  check ((foo(int) == "int or bool 10"))
 
-  check foo(seq[int]) == "seq"
-  check foo(seq[TFoo[bool, string]]) == "seq"
+  check ((foo(seq[int]) == "seq"))
+  check ((foo(seq[TFoo[bool, string]]) == "seq"))
 
 when false:
   proc foo(T: typedesc[seq], s: T) = nil

@@ -257,31 +257,31 @@ proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
           var y = a.n.sons[i].sym
           if x.name.id != y.name.id: return isNone
 
-proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
-  for i in countup(0, f.sonsLen - 1):
-    let son = f.sons[i]
-    var match = son.kind == skipTypes(a, {tyRange, tyGenericInst}).kind
-
+proc matchTypeClass(c: var TCandidate, typeClass, t: PType): TTypeRelation =
+  for i in countup(0, typeClass.sonsLen - 1):
+    let req = typeClass.sons[i]
+    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
+      
     if not match:
-      case son.kind
+      case req.kind
       of tyGenericBody:
-        if a.kind == tyGenericInst and a.sons[0] == son:
+        if t.kind == tyGenericInst and t.sons[0] == req:
           match = true
-          put(c.bindings, f, a)
+          put(c.bindings, typeClass, t)
       of tyTypeClass:
-        match = matchTypeClass(c, son, a) == isGeneric
+        match = matchTypeClass(c, req, t) == isGeneric
       else: nil
+    elif t.kind in {tyTypeDesc, tyObject}:
+      match = sameType(t, req)
 
-    if tfAny in f.flags:
-      if match:
-        return isGeneric
+    if tfAny in typeClass.flags:
+      if match: return isGeneric
     else:
-      if not match:
-        return isNone
+      if not match: return isNone
 
   # if the loop finished without returning, either all constraints matched
   # or none of them matched.
-  result = if tfAny in f.flags: isNone else: isGeneric
+  result = if tfAny in typeClass.flags: isNone else: isGeneric
   
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =

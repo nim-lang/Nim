@@ -431,7 +431,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     add(result, ']')
   of tyTypeDesc:
-    if t.sons.len == 0: result = "typedesc"
+    if t.sons == nil or t.sons.len == 0: result = "typedesc"
     else: result = "typedesc[" & constraintsToStr(t) & "]"
   of tyTypeClass:
     result = constraintsToStr(t)
