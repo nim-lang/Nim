@@ -1075,8 +1075,11 @@ proc semProcBody(c: PContext, n: PNode): PNode =
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
     # ``result``:
-    if result.kind == nkSym and result.sym == c.p.resultSym: 
+    if result.kind == nkSym and result.sym == c.p.resultSym:
       nil
+    elif result.kind == nkNilLit:
+      # ambiguous :-(
+      result.typ = nil
     else:
       var a = newNodeI(nkAsgn, n.info, 2)
       a.sons[0] = newSymNode(c.p.resultSym)
