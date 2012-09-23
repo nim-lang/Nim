@@ -232,6 +232,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o"
@@ -244,6 +246,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/patterns.c -o build/1_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/patterns.c -o build/1_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parampatterns.c -o build/1_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/parampatterns.c -o build/1_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rstast.c -o build/1_1/rstast.o"
@@ -334,12 +340,15 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/aliases.o \
+build/1_1/patterns.o \
+build/1_1/parampatterns.o \
 build/1_1/docgen.o \
 build/1_1/rstast.o \
 build/1_1/rst.o \
@@ -416,12 +425,15 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/aliases.o \
+build/1_1/patterns.o \
+build/1_1/parampatterns.o \
 build/1_1/docgen.o \
 build/1_1/rstast.o \
 build/1_1/rst.o \
@@ -560,6 +572,8 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
@@ -572,6 +586,10 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/patterns.c -o build/1_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/patterns.c -o build/1_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parampatterns.c -o build/1_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/parampatterns.c -o build/1_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rstast.c -o build/1_2/rstast.o"
@@ -662,12 +680,15 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/aliases.o \
+build/1_2/patterns.o \
+build/1_2/parampatterns.o \
 build/1_2/docgen.o \
 build/1_2/rstast.o \
 build/1_2/rst.o \
@@ -744,12 +765,15 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/aliases.o \
+build/1_2/patterns.o \
+build/1_2/parampatterns.o \
 build/1_2/docgen.o \
 build/1_2/rstast.o \
 build/1_2/rst.o \
@@ -888,6 +912,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o"
@@ -900,6 +926,10 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/aliases.c -o build/1_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/patterns.c -o build/1_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/patterns.c -o build/1_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parampatterns.c -o build/1_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/parampatterns.c -o build/1_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rstast.c -o build/1_2/rstast.o"
@@ -990,12 +1020,15 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/aliases.o \
+build/1_2/patterns.o \
+build/1_2/parampatterns.o \
 build/1_2/docgen.o \
 build/1_2/rstast.o \
 build/1_2/rst.o \
@@ -1072,12 +1105,15 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
 build/1_2/semtypinst.o \
 build/1_2/sigmatch.o \
 build/1_2/aliases.o \
+build/1_2/patterns.o \
+build/1_2/parampatterns.o \
 build/1_2/docgen.o \
 build/1_2/rstast.o \
 build/1_2/rst.o \
@@ -1216,6 +1252,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o"
@@ -1228,6 +1266,10 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/aliases.c -o build/1_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/patterns.c -o build/1_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/patterns.c -o build/1_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parampatterns.c -o build/1_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/parampatterns.c -o build/1_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rstast.c -o build/1_1/rstast.o"
@@ -1318,12 +1360,15 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/aliases.o \
+build/1_1/patterns.o \
+build/1_1/parampatterns.o \
 build/1_1/docgen.o \
 build/1_1/rstast.o \
 build/1_1/rst.o \
@@ -1400,12 +1445,15 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
 build/1_1/semtypinst.o \
 build/1_1/sigmatch.o \
 build/1_1/aliases.o \
+build/1_1/patterns.o \
+build/1_1/parampatterns.o \
 build/1_1/docgen.o \
 build/1_1/rstast.o \
 build/1_1/rst.o \
@@ -1552,6 +1600,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o"
@@ -1564,6 +1614,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sigmatch.c -o build/2_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/patterns.c -o build/2_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/patterns.c -o build/2_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parampatterns.c -o build/2_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/parampatterns.c -o build/2_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rstast.c -o build/2_1/rstast.o"
@@ -1654,12 +1708,15 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/aliases.o \
+build/2_1/patterns.o \
+build/2_1/parampatterns.o \
 build/2_1/docgen.o \
 build/2_1/rstast.o \
 build/2_1/rst.o \
@@ -1736,12 +1793,15 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/aliases.o \
+build/2_1/patterns.o \
+build/2_1/parampatterns.o \
 build/2_1/docgen.o \
 build/2_1/rstast.o \
 build/2_1/rst.o \
@@ -1880,6 +1940,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
@@ -1892,6 +1954,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/patterns.c -o build/2_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/patterns.c -o build/2_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parampatterns.c -o build/2_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/parampatterns.c -o build/2_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rstast.c -o build/2_2/rstast.o"
@@ -1982,12 +2048,15 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/aliases.o \
+build/2_2/patterns.o \
+build/2_2/parampatterns.o \
 build/2_2/docgen.o \
 build/2_2/rstast.o \
 build/2_2/rst.o \
@@ -2064,12 +2133,15 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/aliases.o \
+build/2_2/patterns.o \
+build/2_2/parampatterns.o \
 build/2_2/docgen.o \
 build/2_2/rstast.o \
 build/2_2/rst.o \
@@ -2208,6 +2280,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o"
@@ -2220,6 +2294,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/aliases.c -o build/2_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/patterns.c -o build/2_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/patterns.c -o build/2_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parampatterns.c -o build/2_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/parampatterns.c -o build/2_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rstast.c -o build/2_2/rstast.o"
@@ -2310,12 +2388,15 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/aliases.o \
+build/2_2/patterns.o \
+build/2_2/parampatterns.o \
 build/2_2/docgen.o \
 build/2_2/rstast.o \
 build/2_2/rst.o \
@@ -2392,12 +2473,15 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
 build/2_2/semtypinst.o \
 build/2_2/sigmatch.o \
 build/2_2/aliases.o \
+build/2_2/patterns.o \
+build/2_2/parampatterns.o \
 build/2_2/docgen.o \
 build/2_2/rstast.o \
 build/2_2/rst.o \
@@ -2536,6 +2620,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o"
@@ -2548,6 +2634,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sigmatch.c -o build/2_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/aliases.c -o build/2_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/patterns.c -o build/2_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/patterns.c -o build/2_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parampatterns.c -o build/2_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/parampatterns.c -o build/2_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rstast.c -o build/2_1/rstast.o"
@@ -2638,12 +2728,15 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/aliases.o \
+build/2_1/patterns.o \
+build/2_1/parampatterns.o \
 build/2_1/docgen.o \
 build/2_1/rstast.o \
 build/2_1/rst.o \
@@ -2720,12 +2813,15 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
 build/2_1/semtypinst.o \
 build/2_1/sigmatch.o \
 build/2_1/aliases.o \
+build/2_1/patterns.o \
+build/2_1/parampatterns.o \
 build/2_1/docgen.o \
 build/2_1/rstast.o \
 build/2_1/rst.o \
@@ -2872,6 +2968,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o"
@@ -2884,6 +2982,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/sigmatch.c -o build/3_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/patterns.c -o build/3_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/patterns.c -o build/3_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parampatterns.c -o build/3_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parampatterns.c -o build/3_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rstast.c -o build/3_1/rstast.o"
@@ -2974,12 +3076,15 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/aliases.o \
+build/3_1/patterns.o \
+build/3_1/parampatterns.o \
 build/3_1/docgen.o \
 build/3_1/rstast.o \
 build/3_1/rst.o \
@@ -3056,12 +3161,15 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/aliases.o \
+build/3_1/patterns.o \
+build/3_1/parampatterns.o \
 build/3_1/docgen.o \
 build/3_1/rstast.o \
 build/3_1/rst.o \
@@ -3200,6 +3308,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
@@ -3212,6 +3322,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/patterns.c -o build/3_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/patterns.c -o build/3_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parampatterns.c -o build/3_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parampatterns.c -o build/3_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rstast.c -o build/3_2/rstast.o"
@@ -3302,12 +3416,15 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/aliases.o \
+build/3_2/patterns.o \
+build/3_2/parampatterns.o \
 build/3_2/docgen.o \
 build/3_2/rstast.o \
 build/3_2/rst.o \
@@ -3384,12 +3501,15 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/aliases.o \
+build/3_2/patterns.o \
+build/3_2/parampatterns.o \
 build/3_2/docgen.o \
 build/3_2/rstast.o \
 build/3_2/rst.o \
@@ -3528,6 +3648,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o"
@@ -3540,6 +3662,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/aliases.c -o build/3_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/patterns.c -o build/3_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/patterns.c -o build/3_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parampatterns.c -o build/3_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parampatterns.c -o build/3_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rstast.c -o build/3_2/rstast.o"
@@ -3630,12 +3756,15 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/aliases.o \
+build/3_2/patterns.o \
+build/3_2/parampatterns.o \
 build/3_2/docgen.o \
 build/3_2/rstast.o \
 build/3_2/rst.o \
@@ -3712,12 +3841,15 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
 build/3_2/semtypinst.o \
 build/3_2/sigmatch.o \
 build/3_2/aliases.o \
+build/3_2/patterns.o \
+build/3_2/parampatterns.o \
 build/3_2/docgen.o \
 build/3_2/rstast.o \
 build/3_2/rst.o \
@@ -3856,6 +3988,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o"
@@ -3868,6 +4002,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/sigmatch.c -o build/3_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/aliases.c -o build/3_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/patterns.c -o build/3_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/patterns.c -o build/3_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parampatterns.c -o build/3_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parampatterns.c -o build/3_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rstast.c -o build/3_1/rstast.o"
@@ -3958,12 +4096,15 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/aliases.o \
+build/3_1/patterns.o \
+build/3_1/parampatterns.o \
 build/3_1/docgen.o \
 build/3_1/rstast.o \
 build/3_1/rst.o \
@@ -4040,12 +4181,15 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
 build/3_1/semtypinst.o \
 build/3_1/sigmatch.o \
 build/3_1/aliases.o \
+build/3_1/patterns.o \
+build/3_1/parampatterns.o \
 build/3_1/docgen.o \
 build/3_1/rstast.o \
 build/3_1/rst.o \
@@ -4192,6 +4336,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -4204,6 +4350,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -4294,12 +4444,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -4376,12 +4529,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -4520,6 +4676,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -4532,6 +4690,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -4622,12 +4784,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -4704,12 +4869,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -4848,6 +5016,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -4860,6 +5030,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -4950,12 +5124,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -5032,12 +5209,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -5176,6 +5356,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -5188,6 +5370,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -5278,12 +5464,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -5360,12 +5549,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -5512,6 +5704,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -5524,6 +5718,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -5614,12 +5812,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -5696,12 +5897,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -5840,6 +6044,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -5852,6 +6058,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -5942,12 +6152,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -6024,12 +6237,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -6168,6 +6384,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -6180,6 +6398,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -6270,12 +6492,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -6352,12 +6577,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -6496,6 +6724,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -6508,6 +6738,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -6598,12 +6832,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -6680,12 +6917,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -6832,6 +7072,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -6844,6 +7086,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -6934,12 +7180,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -7016,12 +7265,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -7160,6 +7412,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -7172,6 +7426,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -7262,12 +7520,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -7344,12 +7605,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -7488,6 +7752,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o"
@@ -7500,6 +7766,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/aliases.c -o build/4_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/patterns.c -o build/4_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/parampatterns.c -o build/4_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rstast.c -o build/4_2/rstast.o"
@@ -7590,12 +7860,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -7672,12 +7945,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/4_2/sigmatch.o \
 build/4_2/aliases.o \
+build/4_2/patterns.o \
+build/4_2/parampatterns.o \
 build/4_2/docgen.o \
 build/4_2/rstast.o \
 build/4_2/rst.o \
@@ -7816,6 +8092,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o"
@@ -7828,6 +8106,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/aliases.c -o build/4_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/patterns.c -o build/4_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/parampatterns.c -o build/4_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rstast.c -o build/4_1/rstast.o"
@@ -7918,12 +8200,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -8000,12 +8285,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/4_1/sigmatch.o \
 build/4_1/aliases.o \
+build/4_1/patterns.o \
+build/4_1/parampatterns.o \
 build/4_1/docgen.o \
 build/4_1/rstast.o \
 build/4_1/rst.o \
@@ -8152,6 +8440,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/7_1/cgmeth.c -o build/7_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/procfind.c -o build/7_1/procfind.o"
@@ -8164,6 +8454,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/7_1/sigmatch.c -o build/7_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/aliases.c -o build/7_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/aliases.c -o build/7_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/patterns.c -o build/7_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/patterns.c -o build/7_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/parampatterns.c -o build/7_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/parampatterns.c -o build/7_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/docgen.c -o build/7_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/docgen.c -o build/7_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/rstast.c -o build/7_1/rstast.o"
@@ -8254,12 +8548,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
 build/7_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/7_1/sigmatch.o \
 build/7_1/aliases.o \
+build/7_1/patterns.o \
+build/7_1/parampatterns.o \
 build/7_1/docgen.o \
 build/7_1/rstast.o \
 build/7_1/rst.o \
@@ -8336,12 +8633,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
 build/7_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/7_1/sigmatch.o \
 build/7_1/aliases.o \
+build/7_1/patterns.o \
+build/7_1/parampatterns.o \
 build/7_1/docgen.o \
 build/7_1/rstast.o \
 build/7_1/rst.o \
@@ -8480,6 +8780,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/cgmeth.c -o build/7_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/procfind.c -o build/7_2/procfind.o"
@@ -8492,6 +8794,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/sigmatch.c -o build/7_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/aliases.c -o build/7_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/aliases.c -o build/7_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/patterns.c -o build/7_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/patterns.c -o build/7_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/parampatterns.c -o build/7_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/parampatterns.c -o build/7_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/docgen.c -o build/7_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/docgen.c -o build/7_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/rstast.c -o build/7_2/rstast.o"
@@ -8582,12 +8888,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
 build/7_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/7_2/sigmatch.o \
 build/7_2/aliases.o \
+build/7_2/patterns.o \
+build/7_2/parampatterns.o \
 build/7_2/docgen.o \
 build/7_2/rstast.o \
 build/7_2/rst.o \
@@ -8664,12 +8973,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
 build/7_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/7_2/sigmatch.o \
 build/7_2/aliases.o \
+build/7_2/patterns.o \
+build/7_2/parampatterns.o \
 build/7_2/docgen.o \
 build/7_2/rstast.o \
 build/7_2/rst.o \
@@ -8808,6 +9120,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/cgmeth.c -o build/7_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/procfind.c -o build/7_2/procfind.o"
@@ -8820,6 +9134,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/sigmatch.c -o build/7_2/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/aliases.c -o build/7_2/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/aliases.c -o build/7_2/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/patterns.c -o build/7_2/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/patterns.c -o build/7_2/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/parampatterns.c -o build/7_2/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/parampatterns.c -o build/7_2/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/docgen.c -o build/7_2/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/docgen.c -o build/7_2/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/rstast.c -o build/7_2/rstast.o"
@@ -8910,12 +9228,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
 build/7_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/7_2/sigmatch.o \
 build/7_2/aliases.o \
+build/7_2/patterns.o \
+build/7_2/parampatterns.o \
 build/7_2/docgen.o \
 build/7_2/rstast.o \
 build/7_2/rst.o \
@@ -8992,12 +9313,15 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
 build/7_2/pragmas.o \
 build/4_2/semtypinst.o \
 build/7_2/sigmatch.o \
 build/7_2/aliases.o \
+build/7_2/patterns.o \
+build/7_2/parampatterns.o \
 build/7_2/docgen.o \
 build/7_2/rstast.o \
 build/7_2/rst.o \
@@ -9136,6 +9460,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_1/cgmeth.c -o build/7_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/procfind.c -o build/7_1/procfind.o"
@@ -9148,6 +9474,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_1/sigmatch.c -o build/7_1/sigmatch.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/aliases.c -o build/7_1/aliases.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/aliases.c -o build/7_1/aliases.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/patterns.c -o build/7_1/patterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/patterns.c -o build/7_1/patterns.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/parampatterns.c -o build/7_1/parampatterns.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/parampatterns.c -o build/7_1/parampatterns.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/docgen.c -o build/7_1/docgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/docgen.c -o build/7_1/docgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/rstast.c -o build/7_1/rstast.o"
@@ -9238,12 +9568,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
 build/7_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/7_1/sigmatch.o \
 build/7_1/aliases.o \
+build/7_1/patterns.o \
+build/7_1/parampatterns.o \
 build/7_1/docgen.o \
 build/7_1/rstast.o \
 build/7_1/rst.o \
@@ -9320,12 +9653,15 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
 build/7_1/pragmas.o \
 build/4_1/semtypinst.o \
 build/7_1/sigmatch.o \
 build/7_1/aliases.o \
+build/7_1/patterns.o \
+build/7_1/parampatterns.o \
 build/7_1/docgen.o \
 build/7_1/rstast.o \
 build/7_1/rst.o \

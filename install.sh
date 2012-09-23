@@ -115,6 +115,10 @@ if [ $# -eq 1 ] ; then
     cp doc/endb.txt $docdir/endb.txt
     chmod 644 $docdir/endb.txt
   fi
+  if [ -f doc/estp.txt ]; then
+    cp doc/estp.txt $docdir/estp.txt
+    chmod 644 $docdir/estp.txt
+  fi
   if [ -f doc/filelist.txt ]; then
     cp doc/filelist.txt $docdir/filelist.txt
     chmod 644 $docdir/filelist.txt
@@ -187,6 +191,10 @@ if [ $# -eq 1 ] ; then
     cp doc/tools.txt $docdir/tools.txt
     chmod 644 $docdir/tools.txt
   fi
+  if [ -f doc/trmacros.txt ]; then
+    cp doc/trmacros.txt $docdir/trmacros.txt
+    chmod 644 $docdir/trmacros.txt
+  fi
   if [ -f doc/tut1.txt ]; then
     cp doc/tut1.txt $docdir/tut1.txt
     chmod 644 $docdir/tut1.txt
@@ -195,9 +203,413 @@ if [ $# -eq 1 ] ; then
     cp doc/tut2.txt $docdir/tut2.txt
     chmod 644 $docdir/tut2.txt
   fi
+  if [ -f doc/actors.html ]; then
+    cp doc/actors.html $docdir/actors.html
+    chmod 644 $docdir/actors.html
+  fi
+  if [ -f doc/algorithm.html ]; then
+    cp doc/algorithm.html $docdir/algorithm.html
+    chmod 644 $docdir/algorithm.html
+  fi
+  if [ -f doc/apis.html ]; then
+    cp doc/apis.html $docdir/apis.html
+    chmod 644 $docdir/apis.html
+  fi
+  if [ -f doc/asyncio.html ]; then
+    cp doc/asyncio.html $docdir/asyncio.html
+    chmod 644 $docdir/asyncio.html
+  fi
+  if [ -f doc/base64.html ]; then
+    cp doc/base64.html $docdir/base64.html
+    chmod 644 $docdir/base64.html
+  fi
+  if [ -f doc/browsers.html ]; then
+    cp doc/browsers.html $docdir/browsers.html
+    chmod 644 $docdir/browsers.html
+  fi
+  if [ -f doc/c2nim.html ]; then
+    cp doc/c2nim.html $docdir/c2nim.html
+    chmod 644 $docdir/c2nim.html
+  fi
+  if [ -f doc/cgi.html ]; then
+    cp doc/cgi.html $docdir/cgi.html
+    chmod 644 $docdir/cgi.html
+  fi
+  if [ -f doc/channels.html ]; then
+    cp doc/channels.html $docdir/channels.html
+    chmod 644 $docdir/channels.html
+  fi
+  if [ -f doc/colors.html ]; then
+    cp doc/colors.html $docdir/colors.html
+    chmod 644 $docdir/colors.html
+  fi
+  if [ -f doc/complex.html ]; then
+    cp doc/complex.html $docdir/complex.html
+    chmod 644 $docdir/complex.html
+  fi
+  if [ -f doc/cookies.html ]; then
+    cp doc/cookies.html $docdir/cookies.html
+    chmod 644 $docdir/cookies.html
+  fi
+  if [ -f doc/critbits.html ]; then
+    cp doc/critbits.html $docdir/critbits.html
+    chmod 644 $docdir/critbits.html
+  fi
+  if [ -f doc/db_mongo.html ]; then
+    cp doc/db_mongo.html $docdir/db_mongo.html
+    chmod 644 $docdir/db_mongo.html
+  fi
+  if [ -f doc/db_mysql.html ]; then
+    cp doc/db_mysql.html $docdir/db_mysql.html
+    chmod 644 $docdir/db_mysql.html
+  fi
+  if [ -f doc/db_postgres.html ]; then
+    cp doc/db_postgres.html $docdir/db_postgres.html
+    chmod 644 $docdir/db_postgres.html
+  fi
+  if [ -f doc/db_sqlite.html ]; then
+    cp doc/db_sqlite.html $docdir/db_sqlite.html
+    chmod 644 $docdir/db_sqlite.html
+  fi
+  if [ -f doc/dom.html ]; then
+    cp doc/dom.html $docdir/dom.html
+    chmod 644 $docdir/dom.html
+  fi
+  if [ -f doc/dynlib.html ]; then
+    cp doc/dynlib.html $docdir/dynlib.html
+    chmod 644 $docdir/dynlib.html
+  fi
+  if [ -f doc/encodings.html ]; then
+    cp doc/encodings.html $docdir/encodings.html
+    chmod 644 $docdir/encodings.html
+  fi
+  if [ -f doc/endb.html ]; then
+    cp doc/endb.html $docdir/endb.html
+    chmod 644 $docdir/endb.html
+  fi
+  if [ -f doc/endians.html ]; then
+    cp doc/endians.html $docdir/endians.html
+    chmod 644 $docdir/endians.html
+  fi
+  if [ -f doc/estp.html ]; then
+    cp doc/estp.html $docdir/estp.html
+    chmod 644 $docdir/estp.html
+  fi
+  if [ -f doc/events.html ]; then
+    cp doc/events.html $docdir/events.html
+    chmod 644 $docdir/events.html
+  fi
+  if [ -f doc/filters.html ]; then
+    cp doc/filters.html $docdir/filters.html
+    chmod 644 $docdir/filters.html
+  fi
+  if [ -f doc/fsmonitor.html ]; then
+    cp doc/fsmonitor.html $docdir/fsmonitor.html
+    chmod 644 $docdir/fsmonitor.html
+  fi
+  if [ -f doc/ftpclient.html ]; then
+    cp doc/ftpclient.html $docdir/ftpclient.html
+    chmod 644 $docdir/ftpclient.html
+  fi
+  if [ -f doc/gc.html ]; then
+    cp doc/gc.html $docdir/gc.html
+    chmod 644 $docdir/gc.html
+  fi
+  if [ -f doc/graphics.html ]; then
+    cp doc/graphics.html $docdir/graphics.html
+    chmod 644 $docdir/graphics.html
+  fi
+  if [ -f doc/hashes.html ]; then
+    cp doc/hashes.html $docdir/hashes.html
+    chmod 644 $docdir/hashes.html
+  fi
+  if [ -f doc/htmlgen.html ]; then
+    cp doc/htmlgen.html $docdir/htmlgen.html
+    chmod 644 $docdir/htmlgen.html
+  fi
+  if [ -f doc/htmlparser.html ]; then
+    cp doc/htmlparser.html $docdir/htmlparser.html
+    chmod 644 $docdir/htmlparser.html
+  fi
+  if [ -f doc/httpclient.html ]; then
+    cp doc/httpclient.html $docdir/httpclient.html
+    chmod 644 $docdir/httpclient.html
+  fi
+  if [ -f doc/httpserver.html ]; then
+    cp doc/httpserver.html $docdir/httpserver.html
+    chmod 644 $docdir/httpserver.html
+  fi
+  if [ -f doc/intern.html ]; then
+    cp doc/intern.html $docdir/intern.html
+    chmod 644 $docdir/intern.html
+  fi
+  if [ -f doc/intsets.html ]; then
+    cp doc/intsets.html $docdir/intsets.html
+    chmod 644 $docdir/intsets.html
+  fi
+  if [ -f doc/irc.html ]; then
+    cp doc/irc.html $docdir/irc.html
+    chmod 644 $docdir/irc.html
+  fi
+  if [ -f doc/json.html ]; then
+    cp doc/json.html $docdir/json.html
+    chmod 644 $docdir/json.html
+  fi
+  if [ -f doc/lexbase.html ]; then
+    cp doc/lexbase.html $docdir/lexbase.html
+    chmod 644 $docdir/lexbase.html
+  fi
+  if [ -f doc/lib.html ]; then
+    cp doc/lib.html $docdir/lib.html
+    chmod 644 $docdir/lib.html
+  fi
+  if [ -f doc/lists.html ]; then
+    cp doc/lists.html $docdir/lists.html
+    chmod 644 $docdir/lists.html
+  fi
+  if [ -f doc/locks.html ]; then
+    cp doc/locks.html $docdir/locks.html
+    chmod 644 $docdir/locks.html
+  fi
+  if [ -f doc/macros.html ]; then
+    cp doc/macros.html $docdir/macros.html
+    chmod 644 $docdir/macros.html
+  fi
+  if [ -f doc/manual.html ]; then
+    cp doc/manual.html $docdir/manual.html
+    chmod 644 $docdir/manual.html
+  fi
+  if [ -f doc/marshal.html ]; then
+    cp doc/marshal.html $docdir/marshal.html
+    chmod 644 $docdir/marshal.html
+  fi
+  if [ -f doc/matchers.html ]; then
+    cp doc/matchers.html $docdir/matchers.html
+    chmod 644 $docdir/matchers.html
+  fi
+  if [ -f doc/math.html ]; then
+    cp doc/math.html $docdir/math.html
+    chmod 644 $docdir/math.html
+  fi
+  if [ -f doc/memfiles.html ]; then
+    cp doc/memfiles.html $docdir/memfiles.html
+    chmod 644 $docdir/memfiles.html
+  fi
+  if [ -f doc/mimetypes.html ]; then
+    cp doc/mimetypes.html $docdir/mimetypes.html
+    chmod 644 $docdir/mimetypes.html
+  fi
+  if [ -f doc/nimgrep.html ]; then
+    cp doc/nimgrep.html $docdir/nimgrep.html
+    chmod 644 $docdir/nimgrep.html
+  fi
+  if [ -f doc/niminst.html ]; then
+    cp doc/niminst.html $docdir/niminst.html
+    chmod 644 $docdir/niminst.html
+  fi
+  if [ -f doc/nimprof.html ]; then
+    cp doc/nimprof.html $docdir/nimprof.html
+    chmod 644 $docdir/nimprof.html
+  fi
   if [ -f doc/nimrodc.html ]; then
     cp doc/nimrodc.html $docdir/nimrodc.html
     chmod 644 $docdir/nimrodc.html
+  fi
+  if [ -f doc/oids.html ]; then
+    cp doc/oids.html $docdir/oids.html
+    chmod 644 $docdir/oids.html
+  fi
+  if [ -f doc/os.html ]; then
+    cp doc/os.html $docdir/os.html
+    chmod 644 $docdir/os.html
+  fi
+  if [ -f doc/osproc.html ]; then
+    cp doc/osproc.html $docdir/osproc.html
+    chmod 644 $docdir/osproc.html
+  fi
+  if [ -f doc/overview.html ]; then
+    cp doc/overview.html $docdir/overview.html
+    chmod 644 $docdir/overview.html
+  fi
+  if [ -f doc/parsecfg.html ]; then
+    cp doc/parsecfg.html $docdir/parsecfg.html
+    chmod 644 $docdir/parsecfg.html
+  fi
+  if [ -f doc/parsecsv.html ]; then
+    cp doc/parsecsv.html $docdir/parsecsv.html
+    chmod 644 $docdir/parsecsv.html
+  fi
+  if [ -f doc/parseopt.html ]; then
+    cp doc/parseopt.html $docdir/parseopt.html
+    chmod 644 $docdir/parseopt.html
+  fi
+  if [ -f doc/parsesql.html ]; then
+    cp doc/parsesql.html $docdir/parsesql.html
+    chmod 644 $docdir/parsesql.html
+  fi
+  if [ -f doc/parseutils.html ]; then
+    cp doc/parseutils.html $docdir/parseutils.html
+    chmod 644 $docdir/parseutils.html
+  fi
+  if [ -f doc/parsexml.html ]; then
+    cp doc/parsexml.html $docdir/parsexml.html
+    chmod 644 $docdir/parsexml.html
+  fi
+  if [ -f doc/pegs.html ]; then
+    cp doc/pegs.html $docdir/pegs.html
+    chmod 644 $docdir/pegs.html
+  fi
+  if [ -f doc/queues.html ]; then
+    cp doc/queues.html $docdir/queues.html
+    chmod 644 $docdir/queues.html
+  fi
+  if [ -f doc/rdstdin.html ]; then
+    cp doc/rdstdin.html $docdir/rdstdin.html
+    chmod 644 $docdir/rdstdin.html
+  fi
+  if [ -f doc/re.html ]; then
+    cp doc/re.html $docdir/re.html
+    chmod 644 $docdir/re.html
+  fi
+  if [ -f doc/redis.html ]; then
+    cp doc/redis.html $docdir/redis.html
+    chmod 644 $docdir/redis.html
+  fi
+  if [ -f doc/ropes.html ]; then
+    cp doc/ropes.html $docdir/ropes.html
+    chmod 644 $docdir/ropes.html
+  fi
+  if [ -f doc/scgi.html ]; then
+    cp doc/scgi.html $docdir/scgi.html
+    chmod 644 $docdir/scgi.html
+  fi
+  if [ -f doc/sequtils.html ]; then
+    cp doc/sequtils.html $docdir/sequtils.html
+    chmod 644 $docdir/sequtils.html
+  fi
+  if [ -f doc/sets.html ]; then
+    cp doc/sets.html $docdir/sets.html
+    chmod 644 $docdir/sets.html
+  fi
+  if [ -f doc/smtp.html ]; then
+    cp doc/smtp.html $docdir/smtp.html
+    chmod 644 $docdir/smtp.html
+  fi
+  if [ -f doc/sockets.html ]; then
+    cp doc/sockets.html $docdir/sockets.html
+    chmod 644 $docdir/sockets.html
+  fi
+  if [ -f doc/sphinx.html ]; then
+    cp doc/sphinx.html $docdir/sphinx.html
+    chmod 644 $docdir/sphinx.html
+  fi
+  if [ -f doc/ssl.html ]; then
+    cp doc/ssl.html $docdir/ssl.html
+    chmod 644 $docdir/ssl.html
+  fi
+  if [ -f doc/streams.html ]; then
+    cp doc/streams.html $docdir/streams.html
+    chmod 644 $docdir/streams.html
+  fi
+  if [ -f doc/strtabs.html ]; then
+    cp doc/strtabs.html $docdir/strtabs.html
+    chmod 644 $docdir/strtabs.html
+  fi
+  if [ -f doc/strutils.html ]; then
+    cp doc/strutils.html $docdir/strutils.html
+    chmod 644 $docdir/strutils.html
+  fi
+  if [ -f doc/subexes.html ]; then
+    cp doc/subexes.html $docdir/subexes.html
+    chmod 644 $docdir/subexes.html
+  fi
+  if [ -f doc/system.html ]; then
+    cp doc/system.html $docdir/system.html
+    chmod 644 $docdir/system.html
+  fi
+  if [ -f doc/tables.html ]; then
+    cp doc/tables.html $docdir/tables.html
+    chmod 644 $docdir/tables.html
+  fi
+  if [ -f doc/terminal.html ]; then
+    cp doc/terminal.html $docdir/terminal.html
+    chmod 644 $docdir/terminal.html
+  fi
+  if [ -f doc/theindex.html ]; then
+    cp doc/theindex.html $docdir/theindex.html
+    chmod 644 $docdir/theindex.html
+  fi
+  if [ -f doc/threads.html ]; then
+    cp doc/threads.html $docdir/threads.html
+    chmod 644 $docdir/threads.html
+  fi
+  if [ -f doc/times.html ]; then
+    cp doc/times.html $docdir/times.html
+    chmod 644 $docdir/times.html
+  fi
+  if [ -f doc/tools.html ]; then
+    cp doc/tools.html $docdir/tools.html
+    chmod 644 $docdir/tools.html
+  fi
+  if [ -f doc/trmacros.html ]; then
+    cp doc/trmacros.html $docdir/trmacros.html
+    chmod 644 $docdir/trmacros.html
+  fi
+  if [ -f doc/tut1.html ]; then
+    cp doc/tut1.html $docdir/tut1.html
+    chmod 644 $docdir/tut1.html
+  fi
+  if [ -f doc/tut2.html ]; then
+    cp doc/tut2.html $docdir/tut2.html
+    chmod 644 $docdir/tut2.html
+  fi
+  if [ -f doc/typeinfo.html ]; then
+    cp doc/typeinfo.html $docdir/typeinfo.html
+    chmod 644 $docdir/typeinfo.html
+  fi
+  if [ -f doc/unicode.html ]; then
+    cp doc/unicode.html $docdir/unicode.html
+    chmod 644 $docdir/unicode.html
+  fi
+  if [ -f doc/unidecode.html ]; then
+    cp doc/unidecode.html $docdir/unidecode.html
+    chmod 644 $docdir/unidecode.html
+  fi
+  if [ -f doc/unsigned.html ]; then
+    cp doc/unsigned.html $docdir/unsigned.html
+    chmod 644 $docdir/unsigned.html
+  fi
+  if [ -f doc/uri.html ]; then
+    cp doc/uri.html $docdir/uri.html
+    chmod 644 $docdir/uri.html
+  fi
+  if [ -f doc/web.html ]; then
+    cp doc/web.html $docdir/web.html
+    chmod 644 $docdir/web.html
+  fi
+  if [ -f doc/xmldom.html ]; then
+    cp doc/xmldom.html $docdir/xmldom.html
+    chmod 644 $docdir/xmldom.html
+  fi
+  if [ -f doc/xmldomparser.html ]; then
+    cp doc/xmldomparser.html $docdir/xmldomparser.html
+    chmod 644 $docdir/xmldomparser.html
+  fi
+  if [ -f doc/xmlparser.html ]; then
+    cp doc/xmlparser.html $docdir/xmlparser.html
+    chmod 644 $docdir/xmlparser.html
+  fi
+  if [ -f doc/xmltree.html ]; then
+    cp doc/xmltree.html $docdir/xmltree.html
+    chmod 644 $docdir/xmltree.html
+  fi
+  if [ -f doc/zipfiles.html ]; then
+    cp doc/zipfiles.html $docdir/zipfiles.html
+    chmod 644 $docdir/zipfiles.html
+  fi
+  if [ -f doc/zmq.html ]; then
+    cp doc/zmq.html $docdir/zmq.html
+    chmod 644 $docdir/zmq.html
   fi
   if [ -f doc/mytest.cfg ]; then
     cp doc/mytest.cfg $docdir/mytest.cfg
@@ -237,8 +649,6 @@ if [ $# -eq 1 ] ; then
   fi
   cp lib/nimbase.h $libdir/nimbase.h
   chmod 644 $libdir/nimbase.h
-  cp lib/cycle.h $libdir/cycle.h
-  chmod 644 $libdir/cycle.h
   cp lib/nimrtl.nim $libdir/nimrtl.nim
   chmod 644 $libdir/nimrtl.nim
   cp lib/prelude.nim $libdir/prelude.nim
@@ -337,6 +747,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/endians.nim
   cp lib/pure/events.nim $libdir/pure/events.nim
   chmod 644 $libdir/pure/events.nim
+  cp lib/pure/fsmonitor.nim $libdir/pure/fsmonitor.nim
+  chmod 644 $libdir/pure/fsmonitor.nim
   cp lib/pure/ftpclient.nim $libdir/pure/ftpclient.nim
   chmod 644 $libdir/pure/ftpclient.nim
   cp lib/pure/gentabs.nim $libdir/pure/gentabs.nim
@@ -369,6 +781,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/memfiles.nim
   cp lib/pure/mimetypes.nim $libdir/pure/mimetypes.nim
   chmod 644 $libdir/pure/mimetypes.nim
+  cp lib/pure/nimprof.nim $libdir/pure/nimprof.nim
+  chmod 644 $libdir/pure/nimprof.nim
   cp lib/pure/oids.nim $libdir/pure/oids.nim
   chmod 644 $libdir/pure/oids.nim
   cp lib/pure/os.nim $libdir/pure/os.nim
@@ -647,6 +1061,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/windows/windows.nim
   cp lib/windows/winlean.nim $libdir/windows/winlean.nim
   chmod 644 $libdir/windows/winlean.nim
+  cp lib/posix/inotify.nim $libdir/posix/inotify.nim
+  chmod 644 $libdir/posix/inotify.nim
   cp lib/posix/posix.nim $libdir/posix/posix.nim
   chmod 644 $libdir/posix/posix.nim
   cp lib/ecmas/dom.nim $libdir/ecmas/dom.nim
