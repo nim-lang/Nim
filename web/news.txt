@@ -2,10 +2,22 @@
 News
 ====
 
-2012-XX-XX Version 0.8.XX released
-==================================
+2012-09-23 Version 0.9.0 released
+=================================
 
-Version 0.8.XX has been released! Get it `here <download.html>`_. 
+Version 0.9.0 has been released! Get it `here <download.html>`_. 
+
+Summary
+-------
+
+* Unsigned integers have been added.
+* The integer type promotion rules changed.
+* The template and macro system evolved.
+* Closures have been implemented.
+* Term rewriting macros have been implemented.
+* First steps to unify expressions and statements have been taken.
+* Symbol lookup rules in generics have become stricter to catch more errors.
+
 
 Bugfixes
 --------
@@ -113,6 +125,7 @@ Changes affecting backwards compatibility
   from ``TObject``.
 - Macros now receive parameters like templates do; use the ``callsite`` builtin
   to gain access to the invocation AST.
+- Symbol lookup rules in generics have become stricter to catch more errors.
 
 
 Compiler Additions
@@ -167,6 +180,8 @@ Language Additions
   the current scope.
 - A proc body can consist of an expression that has a type. This is rewritten
   to ``result = expression`` then.
+- Term rewriting macros (see `trmacros <http://nimrod-code.org/trmacros.html>`_)
+  have been implemented but are still in alpha.
 
 
 2012-02-09 Version 0.8.14 released

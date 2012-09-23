@@ -3,8 +3,8 @@
 
 Here you can download the latest version of the Nimrod Compiler.
 Please choose your platform:
-* source-based installation: `<download/nimrod_0.8.14.zip>`_
-* installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_0.8.14.exe>`_
+* source-based installation: `<download/nimrod_0.9.0.zip>`_
+* installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_0.9.0.exe>`_
   (includes GCC and everything else you need)
 
 The source-based installation has been tested on these systems:
