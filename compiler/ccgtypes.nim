@@ -140,6 +140,14 @@ proc mangleName(s: PSym): PRope =
 proc isCompileTimeOnly(t: PType): bool =
   result = t.kind in {tyTypedesc, tyExpr}
 
+proc containsCompileTimeOnly(t: PType): bool =
+  if isCompileTimeOnly(t): return true
+  if t.sons != nil:
+    for i in 0 .. <t.sonsLen:
+      if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
+        return true
+  return false
+
 var anonTypeName = toRope"TY"
 
 proc typeName(typ: PType): PRope =
@@ -174,7 +182,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyConst, tyMutable, tyIter, tyTypeDesc: 
+     tyConst, tyMutable, tyIter, tyTypeDesc:
     result = mapType(lastSon(typ))
   of tyEnum: 
     if firstOrd(typ) < 0: 
