@@ -344,6 +344,12 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
+    tfInstantiated    # XXX: used to mark generic params after instantiation.
+                      # if the concrete type happens to be an implicit generic
+                      # this can lead to invalid proc signatures in the second
+                      # pass of semProcTypeNode performed after instantiation.
+                      # this won't be needed if we don't perform this redundant
+                      # second pass (stay tuned).
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
     tfCapturesEnv,    # whether proc really captures some environment

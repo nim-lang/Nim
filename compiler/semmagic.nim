@@ -34,10 +34,14 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
   internalAssert n.sons[1].kind == nkSym
-  if n.sons[1].sym.kind == skType:
+  let typArg = n.sons[1].sym
+  if typArg.kind == skType or
+    (typArg.kind == skParam and typArg.typ.sonsLen > 0):
+    # This is either a type known to sem or a typedesc
+    # param to a regular proc (again, known at instantiation)
     result = evalTypeTrait(n, GetCurrOwner())
   else:
-    # pass unmodified to evals
+    # a typedesc variable, pass unmodified to evals
     result = n
 
 proc semOrd(c: PContext, n: PNode): PNode =

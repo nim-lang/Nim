@@ -33,6 +33,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
       #t = instGenericContainer(c, a, t)
       t = generateTypeInstance(c, pt, a, t)
       #t = ReplaceTypeVarsT(cl, t)
+    t.flags.incl tfInstantiated
     s.typ = t
     addDecl(c, s)
     entry.concreteTypes[i] = t
@@ -41,7 +42,8 @@ proc sameInstantiation(a, b: TInstantiatedSymbol): bool =
   if a.genericSym.id == b.genericSym.id and 
       a.concreteTypes.len == b.concreteTypes.len:
     for i in 0 .. < a.concreteTypes.len:
-      if not sameType(a.concreteTypes[i], b.concreteTypes[i]): return
+      if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
+                          flags = {TypeDescExactMatch}): return
     result = true
 
 proc GenericCacheGet(c: PContext, entry: var TInstantiatedSymbol): PSym = 
@@ -122,33 +124,6 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
 
-proc applyConcreteTypesToSig(genericProc: PSym, concTypes: seq[PType]): PType =
-  # XXX: This is intended to replace the use of semParamList in generateInstance.
-  # The results of semParamList's analysis are already encoded in the original
-  # proc type and any concrete types may be aplied directly over it.
-  # Besides being more efficient, it will remove the awkward case of
-  # genericParams == nil in semParamList.
-  # Currenly, it fails in some cases such as:
-  # proc inc2*[T](x: var ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
-  let sig = genericProc.typ
-  result = copyType(sig, getCurrOwner(), false)
-  result.n = sig.n.shallowCopy
-  
-  for i in countup(0, sig.len - 1):
-    let tOrig = sig.sons[i]
-    if tOrig == nil: continue        
-    let oGenParams = genericProc.ast.sons[genericParamsPos]
-    if skipTypes(tOrig, skipPtrs).kind in {tyGenericParam}:
-      var tConcrete = concTypes[tOrig.sym.position]
-      if i > 0:
-        let param = sig.n.sons[i].sym.copySym
-        param.typ = tConcrete
-        result.n.sons[i] = newSymNode(param)
-      result.sons[i] = tConcrete
-    else:
-      result.sons[i] = tOrig
-      if i > 0: result.n.sons[i] = sig.n.sons[i]
-
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
@@ -182,12 +157,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   n.sons[genericParamsPos] = ast.emptyNode
   # semantic checking for the parameters:
   if n.sons[paramsPos].kind != nkEmpty:
-    if false and nimdbg:
-      result.typ = applyConcreteTypesToSig(fn, entry.concreteTypes)
-      addParams(c, result.typ.n, fn.kind)
-    else:
-      removeDefaultParamValues(n.sons[ParamsPos])
-      semParamList(c, n.sons[ParamsPos], nil, result)
+    removeDefaultParamValues(n.sons[ParamsPos])
+    semParamList(c, n.sons[ParamsPos], nil, result)
   else:
     result.typ = newTypeS(tyProc, c)
     rawAddSon(result.typ, nil)
