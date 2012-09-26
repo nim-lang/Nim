@@ -552,7 +552,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     incl(result.flags, tfFinal)
   
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
-  if kind == skMacro:
+  if kind == skMacro and param.typ.kind != tyTypeDesc:
     # within a macro, every param has the type PNimrodNode!
     # and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
     let nn = getSysSym"PNimrodNode"
@@ -579,7 +579,8 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
         result.typ = newTypeS(tyExpr, c)
         result.typ.sons = paramType.sons
   of tyTypeDesc:
-    if procKind notin {skTemplate, skMacro}:
+    if procKind notin {skTemplate, skMacro} and 
+       tfInstantiated notin paramType.flags:
       result.typ = newTypeS(tyTypeDesc, c)
       result.typ.sons = paramType.sons
   of tyDistinct:
@@ -777,19 +778,12 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     else:
       result = instGenericContainer(c, n, result)
 
-proc semTypeFromMacro(c: PContext, n: PNode): PType =
-  # Expands a macro or template until a type is returned
-  # results in an error type if the macro expands to something different
-  var sym = expectMacroOrTemplateCall(c, n)
-  markUsed(n, sym)
-  case sym.kind
-  of skMacro:
-    result = semTypeNode(c, semMacroExpr(c, n, n, sym), nil)
-  of skTemplate:
-    result = semTypeNode(c, semTemplateExpr(c, n, sym), nil)
+proc semTypeExpr(c: PContext, n: PNode): PType =
+  var n = semExprWithType(c, n)
+  if n.kind == nkSym and n.sym.kind == skType:
+    result = n.sym.typ
   else:
-    LocalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
-    result = errorType(c)
+    LocalError(n.info, errTypeExpected, n.renderTree)
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
@@ -823,7 +817,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result.addSonSkipIntLit(t2)
         result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
     else:
-      result = semTypeFromMacro(c, n)
+      result = semTypeExpr(c, n)
   of nkCurlyExpr:
     result = semTypeNode(c, n.sons[0], nil)
     if result != nil:

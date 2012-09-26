@@ -19,7 +19,8 @@ proc restoreOldStyleType(n: PNode) =
   #
   # This is strictly for backward compatibility until 
   # the transition to types as first-class values is complete.
-  n.typ = n.typ.skipTypes({tyTypeDesc})
+  if n.typ.kind == tyTypeDesc and n.typ.sonsLen == 1:
+    n.typ = n.typ.sons[0]
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
@@ -376,6 +377,8 @@ proc semArrayConstr(c: PContext, n: PNode): PNode =
     
     addSon(result, semExprWithType(c, x))
     var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
+    # turn any concrete typedesc into the absract typedesc type
+    if typ.kind == tyTypeDesc: typ.sons = nil
     for i in countup(1, sonsLen(n) - 1): 
       x = n.sons[i]
       if x.kind == nkExprColonExpr and sonsLen(x) == 2: 
