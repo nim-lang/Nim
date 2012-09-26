@@ -923,8 +923,9 @@ proc declaration(p: var TParser): PNode =
       addSon(pragmas, newIdentNodeP("cdecl", p))
     elif pfStdcall in p.options.flags:
       addSon(pragmas, newIdentNodeP("stdcall", p))
-    addSon(result, exportSym(p, name, origName), ast.emptyNode) # no generics
-    addSon(result, params, pragmas)
+    # no pattern, no exceptions:
+    addSon(result, exportSym(p, name, origName), ast.emptyNode, ast.emptyNode)
+    addSon(result, params, pragmas, ast.emptyNode) # no exceptions
     case p.tok.xkind 
     of pxSemicolon: 
       getTok(p)

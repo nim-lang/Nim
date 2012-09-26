@@ -1346,10 +1346,13 @@ proc parseRoutine(p: var TParser): PNode =
   skipCom(p, result)
   expectIdent(p)
   addSon(result, identVis(p))
-  addSon(result, ast.emptyNode)         # generic parameters
+  # patterns, generic parameters:
+  addSon(result, ast.emptyNode)
+  addSon(result, ast.emptyNode)   
   addSon(result, parseParamList(p))
   opt(p, pxSemicolon)
   addSon(result, parseRoutineSpecifiers(p, noBody))
+  addSon(result, ast.emptyNode)
   if (p.section == seInterface) or noBody: 
     addSon(result, ast.emptyNode)
   else: 
