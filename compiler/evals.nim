@@ -865,11 +865,11 @@ proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   # by the type traits procs' signatures, but until the
   # code is more mature it doesn't hurt to be extra safe
   internalAssert n.sons.len >= 2 and n.sons[1].kind == nkSym
-  
+
   let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
   case n.sons[0].sym.name.s.normalize
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferExported))
+    result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
     result.info = n.info
   else:
@@ -965,7 +965,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mParseExprToAst: result = evalParseExpr(c, n)
   of mParseStmtToAst: result = evalParseStmt(c, n)
   of mExpandToAst: result = evalExpandToAst(c, n)
-  of mTypeTrait: result = evalTypeTrait(n, c.module)
+  of mTypeTrait:
+    n.sons[1] = evalAux(c, n.sons[1], {})
+    result = evalTypeTrait(n, c.module)
   of mSlurp: result = evalSlurp(evalAux(c, n.sons[1], {}), c.module)
   of mStaticExec:
     let cmd = evalAux(c, n.sons[1], {})

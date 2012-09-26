@@ -163,6 +163,7 @@ proc genConstStmt(p: BProc, t: PNode) =
     if it.kind == nkCommentStmt: continue 
     if it.kind != nkConstDef: InternalError(t.info, "genConstStmt")
     var c = it.sons[0].sym 
+    if c.typ.containsCompileTimeOnly: continue
     if sfFakeConst in c.flags:
       genSingleVar(p, it)
     elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and

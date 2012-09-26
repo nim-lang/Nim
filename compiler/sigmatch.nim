@@ -271,7 +271,7 @@ proc matchTypeClass(c: var TCandidate, typeClass, t: PType): TTypeRelation =
       of tyTypeClass:
         match = matchTypeClass(c, req, t) == isGeneric
       else: nil
-    elif t.kind in {tyTypeDesc, tyObject}:
+    elif t.kind in {tyObject}:
       match = sameType(t, req)
 
     if tfAny in typeClass.flags:
@@ -659,7 +659,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isGeneric:
     inc(m.genericMatches)
     if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
-      result = argOrig
+      if f.kind == tyTypeDesc: result = arg
+      else: result = argOrig
     else:
       result = copyTree(arg)
       result.typ = getInstantiatedType(c, arg, m, f) 

@@ -585,10 +585,17 @@ type
                            ## or a == (distinct b)
     dcEqOrDistinctOf       ## a equals b or a is distinct of b
 
+  TTypeCmpFlag* = enum
+    IgnoreTupleFields,
+    TypeDescExactMatch,
+    AllowCommonBase
+
+  TTypeCmpFlags* = set[TTypeCmpFlag]
+
   TSameTypeClosure = object {.pure.}
     cmp: TDistinctCompare
-    ignoreTupleFields: bool
     recCheck: int
+    flags: TTypeCmpFlags
     s: seq[tuple[a,b: int]] # seq for a set as it's hopefully faster
                             # (few elements expected)
 
@@ -610,13 +617,14 @@ proc SameTypeOrNilAux(a, b: PType, c: var TSameTypeClosure): bool =
     if a == nil or b == nil: result = false
     else: result = SameTypeAux(a, b, c)
 
-proc SameTypeOrNil*(a, b: PType): bool =
+proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
   if a == b:
     result = true
   else: 
     if a == nil or b == nil: result = false
     else:
       var c = initSameTypeClosure()
+      c.flags = flags
       result = SameTypeAux(a, b, c)
   
 proc equalParam(a, b: PSym): TParamsEquality = 
@@ -655,7 +663,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
       # it stays incompatible
-    if not SameTypeOrNil(a.sons[0].typ, b.sons[0].typ): 
+    if not SameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {TypeDescExactMatch}):
       if (a.sons[0].typ == nil) or (b.sons[0].typ == nil): 
         result = paramsNotEqual # one proc has a result, the other not is OK
       else: 
@@ -683,13 +691,13 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
     for i in countup(0, sonsLen(a) - 1): 
       var x = a.sons[i]
       var y = b.sons[i]
-      if c.ignoreTupleFields:
+      if IgnoreTupleFields in c.flags:
         x = skipTypes(x, {tyRange})
         y = skipTypes(y, {tyRange})
       
       result = SameTypeAux(x, y, c)
       if not result: return 
-    if a.n != nil and b.n != nil and not c.ignoreTupleFields: 
+    if a.n != nil and b.n != nil and IgnoreTupleFields notin c.flags:
       for i in countup(0, sonsLen(a.n) - 1): 
         # check field names: 
         if a.n.sons[i].kind == nkSym and b.n.sons[i].kind == nkSym:
@@ -760,7 +768,14 @@ proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
   if not SameObjectTree(a.n, b.n, c): return
   result = true
 
-proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool = 
+proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
+  if sonsLen(a) != sonsLen(b): return false
+  result = true
+  for i in countup(0, sonsLen(a) - 1):
+    result = SameTypeOrNilAux(a.sons[i], b.sons[i], c)
+    if not result: return 
+
+proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template CycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
     # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
@@ -808,38 +823,43 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     CycleCheck()
     result = sameTuple(a, b, c)
   of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
+  of tyTypeDesc:
+    if TypeDescExactMatch in c.flags:
+      CycleCheck()
+      result = sameChildrenAux(x, y, c)
+    else:
+      result = true
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
-     tyOrdinal, tyTypeDesc, tyTypeClass:
-    if sonsLen(a) == sonsLen(b):
-      CycleCheck()
-      result = true
-      for i in countup(0, sonsLen(a) - 1):
-        result = SameTypeOrNilAux(a.sons[i], b.sons[i], c)
-        if not result: return 
-      if result and (a.kind == tyProc): 
-        result = a.callConv == b.callConv
+     tyOrdinal, tyTypeClass:
+    CycleCheck()
+    result = sameChildrenAux(a, b, c)
+    if result and (a.kind == tyProc):
+      result = a.callConv == b.callConv
   of tyRange:
-    CycleCheck()    
+    CycleCheck()
     result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         SameValue(a.n.sons[0], b.n.sons[0]) and
         SameValue(a.n.sons[1], b.n.sons[1])
   of tyNone: result = false
 
-proc SameType*(x, y: PType): bool =
+proc sameType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   result = sameTypeAux(x, y, c)
-  
+
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
-  c.ignoreTupleFields = true
+  c.flags.incl IgnoreTupleFields
   result = sameTypeAux(x, y, c)
   
-proc compareTypes*(x, y: PType, cmp: TDistinctCompare): bool =
+proc compareTypes*(x, y: PType,
+                   cmp: TDistinctCompare = dcEq,
+                   flags: TTypeCmpFlags = {}): bool =
   ## compares two type for equality (modulo type distinction)
   var c = initSameTypeClosure()
   c.cmp = cmp
+  c.flags = flags
   result = sameTypeAux(x, y, c)
   
 proc inheritanceDiff*(a, b: PType): int = 
