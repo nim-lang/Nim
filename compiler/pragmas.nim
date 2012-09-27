@@ -201,16 +201,18 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   result.path = path
   Append(c.libs, result)
 
-proc expectDynlibNode(c: PContext, n: PNode): PNode = 
-  if n.kind != nkExprColonExpr: 
+proc expectDynlibNode(c: PContext, n: PNode): PNode =
+  if n.kind != nkExprColonExpr:
     LocalError(n.info, errStringLiteralExpected)
     # error correction:
     result = newEmptyStrNode(n)
   else:
+    # For the OpenGL wrapper we support:
+    # {.dynlib: myGetProcAddr(...).}
     result = c.semExpr(c, n.sons[1])
     if result.kind == nkSym and result.sym.kind == skConst:
       result = result.sym.ast # look it up
-    if result.typ == nil or result.typ.kind != tyString: 
+    if result.typ == nil or result.typ.kind notin {tyPointer, tyString, tyProc}:
       LocalError(n.info, errStringLiteralExpected)
       result = newEmptyStrNode(n)
     

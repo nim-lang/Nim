@@ -494,6 +494,11 @@ proc libCandidates(s: string, dest: var TStringSeq) =
   else: 
     add(dest, s)
 
+proc isGetProcAddr(lib: PLib): bool =
+  let n = lib.path
+  result = n.kind in nkCallKinds and n.typ != nil and 
+    n.typ.kind in {tyPointer, tyProc}
+
 proc loadDynamicLib(m: BModule, lib: PLib) = 
   assert(lib != nil)
   if not lib.generated: 
@@ -536,17 +541,35 @@ proc mangleDynLibProc(sym: PSym): PRope =
   
 proc SymInDynamicLib(m: BModule, sym: PSym) = 
   var lib = sym.annex
+  let isCall = isGetProcAddr(lib)
   var extname = sym.loc.r
-  loadDynamicLib(m, lib)
+  if not isCall: loadDynamicLib(m, lib)
   if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
   var tmp = mangleDynLibProc(sym)
   sym.loc.r = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
-  appcg(m, m.s[cfsDynLibInit], 
-      "$1 = ($2) #nimGetProcAddr($3, $4);$n", 
-      [tmp, getTypeDesc(m, sym.typ), 
-      lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
+  if isCall:
+    let n = lib.path
+    var a: TLoc
+    initLocExpr(m.initProc, n[0], a)
+    var params = con(rdLoc(a), "(")
+    for i in 1 .. n.len-2:
+      initLocExpr(m.initProc, n[i], a)
+      params.app(rdLoc(a))
+      params.app(", ")
+    #app(m.s[cfsVars], p.s(cpsLocals))
+    #app(m.s[cfsDynLibInit], p.s(cpsInit))
+    #app(m.s[cfsDynLibInit], p.s(cpsStmts))
+    appcg(m, m.initProc.s(cpsStmts),
+        "$1 = ($2) ($3$4));$n",
+        [tmp, getTypeDesc(m, sym.typ),
+        params, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
+  else:
+    appcg(m, m.s[cfsDynLibInit], 
+        "$1 = ($2) #nimGetProcAddr($3, $4);$n", 
+        [tmp, getTypeDesc(m, sym.typ), 
+        lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
   appff(m.s[cfsVars], "$2 $1;$n", 
       "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])

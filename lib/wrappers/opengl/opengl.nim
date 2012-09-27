@@ -8,8 +8,27 @@
 #
 
 ## This module is a wrapper around `opengl`:idx:. If you define the symbol
-## ``useGlew`` this wrapper does not use Nimrod's ``dynlib`` mechanism (which
-## ends up calling ``dlsym`` or ``GetProcAddress``), but `glew`:idx: instead.
+## ``useGlew`` this wrapper does not use Nimrod's ``dynlib`` mechanism, 
+## but `glew`:idx: instead. However, this shouldn't be necessary anymore; even
+## extension loading for the different operating systems is handled here.
+
+when defined(linux):
+  import X, XLib, XUtil
+elif defined(windows):
+  import winlean, os
+
+when defined(windows): 
+  const 
+    ogldll* = "OpenGL32.dll"
+    gludll* = "GLU32.dll"
+elif defined(macosx): 
+  const 
+    ogldll* = "libGL.dylib"
+    gludll* = "libGLU.dylib"
+else: 
+  const 
+    ogldll* = "libGL.so.1"
+    gludll* = "libGLU.so.1"
 
 when defined(useGlew):
   {.pragma: ogl, header: "<GL/glew.h>".}
@@ -17,11 +36,51 @@ when defined(useGlew):
   {.pragma: wgl, header: "<GL/wglew.h>".}
   {.pragma: glu, dynlib: gludll.}
 else:
-  {.pragma: ogl, dynlib: ogldll.}
-  {.pragma: oglx, dynlib: ogldll.}
-  {.pragma: wgl, dynlib: ogldll.}
-  {.pragma: glu, dynlib: gludll.}
+  # quite complex ... thanks to extension support for various platforms:
+  import dynlib
+  
+  let oglHandle = LoadLib(ogldll)
+  if isNil(oglHandle): quit("could not load: " & ogldll)
+  
+  when defined(windows):
+    var wglGetProcAddress = cast[proc (s: cstring): pointer {.stdcall.}](
+      symAddr(oglHandle, "wglGetProcAddress"))
+  elif defined(linux):
+    var glXGetProcAddress = cast[proc (s: cstring): pointer {.cdecl.}](
+      symAddr(oglHandle, "glXGetProcAddress"))
+    var glXGetProcAddressARB = cast[proc (s: cstring): pointer {.cdecl.}](
+      symAddr(oglHandle, "glXGetProcAddressARB"))
 
+  proc glGetProc(h: TLibHandle; procName: cstring): pointer =
+    when defined(windows):
+      result = symAddr(h, procname)
+      if result != nil: return
+      if not isNil(wglGetProcAddress): result = wglGetProcAddress(ProcName)
+    elif defined(linux):
+      if not isNil(glXGetProcAddress): result = glXGetProcAddress(ProcName)
+      if result != nil: return 
+      if not isNil(glXGetProcAddressARB): 
+        result = glXGetProcAddressARB(ProcName)
+        if result != nil: return
+      result = symAddr(h, procname)
+    else:
+      result = symAddr(h, procName)
+    if result == nil: raiseInvalidLibrary(procName)
+
+  var gluHandle: TLibHandle
+  
+  proc gluGetProc(procname: cstring): pointer =
+    if gluHandle == nil:
+      gluHandle = LoadLib(gludll)
+      if gluHandle == nil: quit("could not load: " & gludll)
+    result = glGetProc(gluHandle, procname)
+  
+  # undocumented 'dynlib' feature: the empty string literal is replaced by
+  # the imported proc name:
+  {.pragma: ogl, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: oglx, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: wgl, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: glu, dynlib: gluGetProc("").}
 
 #==============================================================================
 #                                                                              
@@ -397,27 +456,6 @@ else:
 #==============================================================================
 
 {.deadCodeElim: on.}
-
-when defined(LINUX): 
-  import 
-    X, XLib, XUtil
-
-when defined(windows): 
-  import 
-    winlean, os
-
-when defined(windows): 
-  const 
-    ogldll* = "OpenGL32.dll"
-    gludll* = "GLU32.dll"
-elif defined(macosx): 
-  const 
-    ogldll* = "libGL.dylib"
-    gludll* = "libGLU.dylib"
-else: 
-  const 
-    ogldll* = "libGL.so.1"
-    gludll* = "libGLU.so.1"
 
 type 
   PPointer* = ptr Pointer
@@ -9397,9 +9435,11 @@ when defined(LINUX):
   proc glXGetSelectedEvent*(dpy: PDisplay, draw: GLXDrawable, 
                             event_mask: PGLuint){.stdcall, importc, oglx.}
     # GLX_VERSION_1_4
-  proc glXGetProcAddress*(name: cstring): pointer{.stdcall, importc, oglx.}
+  when not defined(glXGetProcAddress):
+    proc glXGetProcAddress*(name: cstring): pointer{.stdcall, importc, oglx.}
     # GLX_ARB_get_proc_address
-  proc glXGetProcAddressARB*(name: cstring): pointer{.stdcall, importc, oglx.}
+  when not defined(glXGetProcAddressARB):
+    proc glXGetProcAddressARB*(name: cstring): pointer{.stdcall, importc, oglx.}
     # GLX_ARB_create_context
   proc glXCreateContextAttribsARB*(dpy: PDisplay, config: GLXFBConfig, 
                                    share_context: GLXContext, direct: GLboolean, 

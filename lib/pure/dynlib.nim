@@ -21,19 +21,22 @@ proc LoadLib*(path: string): TLibHandle
 proc UnloadLib*(lib: TLibHandle)
   ## unloads the library `lib`
 
-proc symAddr*(lib: TLibHandle, name: string): pointer
+proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
+  ## raises an `EInvalidLibrary` exception.
+  var e: ref EInvalidLibrary
+  new(e)
+  e.msg = "could not find symbol: " & $name
+  raise e
+
+proc symAddr*(lib: TLibHandle, name: cstring): pointer
   ## retrieves the address of a procedure/variable from `lib`. Returns nil
   ## if the symbol could not be found.
 
-proc checkedSymAddr*(lib: TLibHandle, name: string): pointer =
+proc checkedSymAddr*(lib: TLibHandle, name: cstring): pointer =
   ## retrieves the address of a procedure/variable from `lib`. Raises
   ## `EInvalidLibrary` if the symbol could not be found.
   result = symAddr(lib, name)
-  if result == nil: 
-    var e: ref EInvalidLibrary
-    new(e)
-    e.msg = "could not find symbol: " & name
-    raise e
+  if result == nil: raiseInvalidLibrary(name)
 
 when defined(posix):
   #
@@ -55,7 +58,7 @@ when defined(posix):
 
   proc LoadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
   proc UnloadLib(lib: TLibHandle) = dlclose(lib)
-  proc symAddr(lib: TLibHandle, name: string): pointer = 
+  proc symAddr(lib: TLibHandle, name: cstring): pointer = 
     return dlsym(lib, name)
 
 elif defined(windows) or defined(dos):
@@ -77,7 +80,7 @@ elif defined(windows) or defined(dos):
     result = cast[TLibHandle](winLoadLibrary(path))
   proc UnloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
 
-  proc symAddr(lib: TLibHandle, name: string): pointer =
+  proc symAddr(lib: TLibHandle, name: cstring): pointer =
     result = GetProcAddress(cast[THINSTANCE](lib), name)
 
 else:
