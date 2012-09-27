@@ -34,20 +34,10 @@
         </ul>
       </div>
       <div id="column1">
-#  if len(c.ticker) > 0:
-        <div class="sidebaritem">
-          <div class="sbihead">
-            <h1>latest news</h1>
-          </div>
-          <div class="sbicontent">
-            $c.ticker
-          </div>
-        </div>
-#  end if
 #  if len(c.links) > 0:
         <div class="sidebaritem">
           <div class="sbihead">
-            <h1>additional links</h1>
+            <h1>projects</h1>
           </div>
           <div class="sbilinks">
             <!-- **** INSERT ADDITIONAL LINKS HERE **** -->
@@ -59,15 +49,27 @@
           </div>
         </div>
 #  end if
+#  if len(c.ticker) > 0:
+        <div class="sidebaritem">
+          <div class="sbihead">
+            <h1>latest news</h1>
+          </div>
+          <div class="sbicontent">
+            $c.ticker
+          </div>
+        </div>
+#  end if
       </div>
       <div id="column2">
       $content
       </div>
     </div>
     <div id="footer">
-      copyright &copy; 2012 $c.authors | Last update: ${getDateStr()}
-      | <a class="reference" href="http://validator.w3.org/check?uri=referer">XHTML 1.1</a>
-      | <a class="reference" href="http://jigsaw.w3.org/css-validator/check/referer">CSS</a>
+       &copy; 2012 $c.authors | Last update: ${getDateStr()}
+  <!--    |             <iframe style="border: 0; margin: 0; padding: 0;"
+                    src="https://www.gittip.com/Araq/widget.html" 
+                    width="48pt" height="15pt"></iframe> -->
+
       | <a class="reference" href="http://www.dcarter.co.uk">design by dcarter</a>
     </div>
   </div>

@@ -14,39 +14,3 @@
 | `2010-03-14`:newsdate:
 | Nimrod version 0.8.8 has been released! 
 
-| `2009-12-21`:newsdate:
-| Nimrod version 0.8.6 has been released! 
-
-| `2009-10-21`:newsdate:
-| Nimrod version 0.8.2 has been released!
-
-| `2009-09-12`:newsdate:
-| Nimrod version 0.8.0 has been released!
-
-| `2009-06-08`:newsdate:
-| Nimrod version 0.7.10 has been released!
-
-| `2009-05-08`:newsdate:
-| Nimrod version 0.7.8 has been released!
-
-| `2009-04-22`:newsdate:
-| Nimrod version 0.7.6 has been released!
-
-| `2009-01-22`:newsdate:
-| Forum added!
-
-| `2009-01-07`:newsdate:
-| Nimrod version 0.7.4 has been released!
-
-| `2008-12-12`:newsdate:
-| Nimrod version 0.7.2 has been released!
-
-| `2008-11-16`:newsdate:
-| Nimrod version 0.7.0 has been released!
-
-| `2008-08-22`:newsdate:
-| Nimrod version 0.6.0 has been released!
-
-| `2008-06-22`:newsdate:
-| This page is finally online!
-
