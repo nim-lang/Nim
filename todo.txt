@@ -43,7 +43,6 @@ version 0.9.XX
   - test evals.nim with closures
   - what about macros with closures?
 
-- document 'do' notation
 - allow implicit forward declarations of procs via a pragma (so that the
   wrappers can deactivate it)
 - rethink the syntax: distinction between expr and stmt is unfortunate; 
@@ -52,7 +51,7 @@ version 0.9.XX
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
 - ``=`` should be overloadable; requires specialization for ``=``
-- document destructors; don't work yet when used as expression
+- fix destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - better support for macros that rewrite procs
 - macros need access to types and symbols
