@@ -2,7 +2,7 @@
 Nimrod Manual
 =============
 
-:Author: Andreas Rumpf
+:Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimrodversion|
 
 .. contents::
@@ -780,7 +780,7 @@ and ``pred`` are not available for them either.
 
 
 The compiler supports the built-in stringify operator ``$`` for enumerations.
-The stringify's result can be controlled by explicitely giving the string 
+The stringify's result can be controlled by explicitly giving the string 
 values to use:
 
 .. code-block:: nimrod
@@ -845,9 +845,9 @@ interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
 index operation unsafe.
 
-A Nimrod ``string`` is implicitely convertible 
+A Nimrod ``string`` is implicitly convertible 
 to ``cstring`` for convenience. If a Nimrod string is passed to a C-style
-variadic proc, it is implicitely converted to ``cstring`` too:
+variadic proc, it is implicitly converted to ``cstring`` too:
 
 .. code-block:: nimrod
   proc printf(formatstr: cstring) {.importc: "printf", varargs, 
@@ -922,7 +922,7 @@ Varargs
 
 A `varargs`:idx: parameter is an openarray parameter that additionally
 allows to pass a variable number of arguments to a procedure. The compiler 
-converts the list of arguments to an array implicitely:
+converts the list of arguments to an array implicitly:
 
 .. code-block:: nimrod
   proc myWriteln(f: TFile, a: varargs[string]) =
@@ -1016,7 +1016,7 @@ the ``of`` operator can be used to determine the object's type.
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. Objects that have no ancestor are implicitely ``final``
+never *equivalent*. Objects that have no ancestor are implicitly ``final``
 and thus have no hidden type field. One can use the ``inheritable`` pragma to
 introduce new object roots apart from ``system.TObject``.
 
@@ -1253,7 +1253,7 @@ Nimrod supports these `calling conventions`:idx:\:
     any pragma annotations. It indicates that the procedure has a hidden
     implicit parameter (an *environment*). Proc vars that have the calling
     convention ``closure`` take up two machine words: One for the proc pointer
-    and another one for the pointer to implicitely passed environment.
+    and another one for the pointer to implicitly passed environment.
 
 `stdcall`:idx:
     This the stdcall convention as specified by Microsoft. The generated C
@@ -1304,7 +1304,7 @@ The rules' purpose is to prevent the case that extending a non-``procvar``
 procedure with default parameters breaks client code.
 
 The default calling convention is ``nimcall``, unless it is an inner proc (
-a proc inside of a proc). For an inner proc an analysis is performed wether it
+a proc inside of a proc). For an inner proc an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
 ``closure``, otherwise it has the calling convention ``nimcall``.
 
@@ -1408,7 +1408,7 @@ currency. This can be solved with templates_.
 Void type
 ~~~~~~~~~
 
-The `void`:idx: type denotes the absense of any type. Parameters of 
+The `void`:idx: type denotes the absence of any type. Parameters of 
 type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 
@@ -1693,7 +1693,7 @@ throws the expression's resulting value away.
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
 
-The return value can be ignored implicitely if the called proc/iterator has
+The return value can be ignored implicitly if the called proc/iterator has
 been declared with the `discardable`:idx: pragma: 
 
 .. code-block:: nimrod
@@ -2375,6 +2375,72 @@ notation. (Thus an operator can have more than two parameters):
 
   assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
 
+Closures
+~~~~~~~~
+
+Procedures can appear at the top level in a module as well as inside other
+scopes, in which case they are called nested procs. A nested proc can access
+local variables from its enclosing scope and if it does so it becomes a
+closure. Any captured variables are stored in a hidden additional argument
+to the closure (its environment) and they are accessed by reference by both
+the closure and its enclosing scope (i.e. any modifications made to them are
+visible in both places). The closure environment may be allocated on the heap
+or on the stack if the compiler determines that this would be safe.
+
+Anonymous Procs
+~~~~~~~~~~~~~~~
+
+Procs can also be treated as expressions, in which case it's allowed to omit
+the proc's name.
+
+.. code-block:: nimrod
+  var cities = @["Frankfurt", "Tokyo", "New York"]
+
+  cities.sort(proc (x,y: string): int =
+      cmp(x.len, y.len))
+
+
+Procs as expressions can appear both as nested procs and inside top level 
+executable code.
+
+Do notation
+~~~~~~~~~~~
+
+As a special more convenient notation, proc expressions involved in procedure
+calls can use the ``do`` keyword:
+
+Syntax::
+  primarySuffix ::= 'do' ['(' namedExprList ')'] ['->' typeDesc] ':'
+
+As a start, let's repeat the example from the previous section:
+
+.. code-block:: nimrod
+  cities.sort do (x,y: string) -> int:
+    cmp(x.len, y.len)
+
+``do`` is written after the parentheses enclosing the regular proc params. 
+The proc expression represented by the do block is appended to them.
+Again, let's see the equivalent of the previous example:
+
+.. code-block:: nimrod
+  sort(cities) do (x,y: string) -> int:
+    cmp(x.len, y.len)
+
+Finally, more than one ``do`` blocks can appear in a single call:
+
+.. code-block:: nimrod
+  proc performWithUndo(task: proc(), undo: proc()) = ...
+
+  performWithUndo do:
+    # multiple-line block of code
+    # to perform the task
+  do:
+    # code to undo it
+
+For compatibility with ``stmt`` templates and macros, the ``do`` keyword can be
+omitted if the supplied proc doesn't have any parameters and return value. 
+The compatibility works in the other direction too as the ``do`` syntax can be
+used with macros and templates expecting ``stmt`` blocks.
 
 Nonoverloadable builtins
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2549,7 +2615,7 @@ dispatching:
 
 Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over 
 collide 1 because the resolution works from left to right. 
-In the example ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
+In the example ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
 
 **Performance note**: Nimrod does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -2620,17 +2686,17 @@ as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component.
 
 
-Implict items/pairs invokations
+Implict items/pairs invocations
 +++++++++++++++++++++++++++++++
 
 If the for loop expression ``e`` does not denote an iterator and the for loop
 has exactly 1 variable, the for loop expression is rewritten to ``items(e)``;
-ie. an ``items`` iterator is implicitely invoked:
+ie. an ``items`` iterator is implicitly invoked:
 
 .. code-block:: nimrod
   for x in [1,2,3]: echo x
   
-If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitely
+If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitly
 invoked.
 
 Symbol lookup of the identifiers ``items``/``pairs`` is performed after 
@@ -2731,7 +2797,6 @@ Example:
 `type parameters`:idx:. Depending on context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator or type.
 
-
 Is operator
 ~~~~~~~~~~~
 
@@ -2770,21 +2835,12 @@ other interpretations:
   var y: type("a b c".split)
 
 
-Type constraints
-~~~~~~~~~~~~~~~~
+Type Classes
+~~~~~~~~~~~~
 
-`Type constraints`:idx: can be used to restrict the instantiation of a generic
-type parameter. Only the specified types are valid for instantiation:
-
-.. code-block:: nimrod
-  proc onlyIntOrString[T: int|string](x, y: T) = nil
-  
-  onlyIntOrString(450, 616) # valid
-  onlyIntOrString(5.0, 0.0) # type mismatch
-  onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
-  
-Apart from ordinary types, type constraints can also be of the
-following *type classes*:
+A `type class`:idx: is a special pseudo-type that can be used to match against
+types in the context of overload resolution or the ``is`` operator. 
+Nimrod supports the following built-in type classes:
 
 ==================   ===================================================
 type class           matches
@@ -2801,25 +2857,95 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
+``auto``             any type 
 ==================   ===================================================
 
-The following example is taken directly from the system module:
+Furthermore, every generic type automatically creates a type class of the same
+name that will match any instantiation of the generic type.
+
+Type classes can be combined using the standard boolean operators to form
+more complex type classes:
 
 .. code-block:: nimrod
-  proc `==`*[T: tuple](x, y: T): bool = 
+  # create a type class that will match all tuple and object types
+  type TRecordType = tuple or object
+
+  proc printFields(rec: TRecordType) =
+    for key, value in fieldPairs(rec):
+      echo key, " = ", value
+
+Procedures utilizing type classes in such manner are considered to be
+`implicitly generic`:idx:. They will be instantiated once for each unique 
+combination of param types used within the program.
+
+Nimrod also allows for type classes and regular types to be specified
+as `type constraints`:idx: of the generic type parameter:
+
+.. code-block:: nimrod
+  proc onlyIntOrString[T: int|string](x, y: T) = nil
+  
+  onlyIntOrString(450, 616) # valid
+  onlyIntOrString(5.0, 0.0) # type mismatch
+  onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+
+By default, during overload resolution each named type class will bind to
+exactly one concrete type. Here is an example taken directly from the system
+module to illustrate this:
+
+.. code-block:: nimrod
+  proc `==`*(x, y: tuple): bool = 
+    ## requires `x` and `y` to be of the same tuple type
     ## generic ``==`` operator for tuples that is lifted from the components
     ## of `x` and `y`.
     for a, b in fields(x, y):
       if a != b: return false
     return true
 
+Alternatively, the ``distinct`` type modifier can be applied to the type class 
+to allow each param matching the type class to bind to a different type. 
+
+If a proc param doesn't have a type specified, Nimrod will use the
+``distinct auto`` type class (also known as ``any``):
+
+.. code-block:: nimrod
+  # allow any combination of param types
+  proc concat(a, b): string = $a & $b
+
+Procs written with the implicitly generic style will often need to refer to the
+type parameters of the matched generic type. They can be easily accessed using
+the dot syntax:
+
+.. code-block:: nimrod
+  type TMatrix[T, Rows, Columns] = object
+    ...
+
+  proc `[]`(m: TMatrix, row, col: int): TMatrix.T = 
+    m.data[col * high(TMatrix.Columns) + row]
+
+If anonymous type classes are used, the ``type`` operator can be used to 
+discover the instantiated type of each param.
+
+User defined type classes
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To be written.
+
+Return Type Inference
+~~~~~~~~~~~~~~~~~~~~~
+
+If a type class is used as the return type of a proc and it won't be bound to
+a concrete type by some of the proc params, Nimrod will infer the return type
+from the proc body. This is usually used with the ``auto`` type class:
+
+.. code-block:: nimrod
+  proc makePair(a, b): auto = (first: a, second: b)
 
 Symbol lookup in generics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Symbols in generics are looked up in two different contexts: Both the context
 at definition and the context at instantiation are considered for any symbol 
-occuring in a generic:
+occurring in a generic:
 
 .. code-block:: nimrod
   type
@@ -2886,7 +3012,7 @@ So ordinary templates cannot receive undeclared identifiers:
   declareInt(x) # error: unknown identifier: 'x'
 
 An ``immediate`` template does not participate in overload resolution and so
-its arguments are not checked for semantics before invokation. So they can
+its arguments are not checked for semantics before invocation. So they can
 receive undeclared identifiers:
 
 .. code-block:: nimrod
@@ -2948,7 +3074,7 @@ parameter.
 
 **Note:** The symbol binding rules for templates might change!
 
-Symbol binding within templates happens after template instantation: 
+Symbol binding within templates happens after template instantiation: 
 
 .. code-block:: nimrod
   # Module A
@@ -3089,7 +3215,7 @@ template parameter, it is an inject'ed symbol:
 .. code-block:: nimrod
   template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
     block:
-      var f: TFile  # since 'f' is a template param, it's injected implicitely
+      var f: TFile  # since 'f' is a template param, it's injected implicitly
       ...
       
   withFile(txt, "ttempl3.txt", fmWrite):
@@ -3230,7 +3356,7 @@ The macro call expands to:
 
 However, the symbols ``write``, ``writeln`` and ``stdout`` are already bound
 and are not looked up again. As the example shows, ``bindSym`` does work with
-overloaded symbols implicitely.
+overloaded symbols implicitly.
 
 
 Statement Macros
@@ -3295,6 +3421,78 @@ This is a simple syntactic transformation into:
 
   m:
     proc p() = nil
+
+
+Special Types
+-------------
+
+typedesc
+~~~~~~~~
+
+`typedesc` is a special type allowing you to treat types as compile-time values
+(i.e. if types are compile-time values and all values have a type, then 
+ typedesc must be their type).
+
+When used as a regular proc param, typedesc acts as a type class. The proc
+will be instantiated for each unique type parameter and you can refer to the
+instantiation type using the param name:
+
+.. code-block:: nimrod
+
+  proc new(T: typedesc): ref T =
+    echo "allocating ", T.name
+    new(result)
+
+  var n = TNode.new
+  var tree = new(TBinaryTree[int])
+
+When used with macros and .compileTime. procs on the other hand, the compiler
+don't need to instantiate the code multiple times, because types then can be
+manipulated using the unified internal symbol representation. In such context
+typedesc acts as any other type. You can create variables, store typedesc
+values inside containers and so on. For example, here is how we can create 
+a type-safe wrapper for the unsafe `printf` function form C:
+
+.. code-block:: nimrod
+  macro safePrintF(formatString: string{lit}, args: vararg[expr]): expr =
+    var i = 0
+    for c in formatChars(formatString):
+      const FormatChars = {
+        'c': char,
+        'd', 'i', 'x', 'X': int,
+        'f', 'e', 'E', 'g', 'G': float,
+        's': string,
+        'p': pointer,
+      }
+      
+      var expectedType = find(FormatChars, c, EOutOfRange)
+      var actualType = args[i].getType
+      inc i
+
+      if expectedType == EOutOfRange:
+        error c & " is not a valid format character"
+      elif expectedType != actualType:
+        error "type mismatch for argument ", i, ". expected type: ",
+              expectedType.name, ", actual type: ", actualType.name
+    
+    # keep the original callsite, but use cprintf instead
+    result = callsite()
+    result[0] = newIdentNode(!"cprintf")
+
+
+Overload resolution can be further influenced by constraining the set of
+types that will match the typedesc param:
+
+.. code-block:: nimrod
+
+  template maxval(T: typedesc[int]): int = high(int)
+  template maxval(T: typedesc[float]): float = Inf
+
+  var i = int.maxval
+  var f = float.maxval
+  var s = string.maxval # error, maxval is not implemented for string
+
+The constraint can be a concrete type or a type class.
 
 
 Modules
@@ -3442,6 +3640,18 @@ proc with no side effects:
   func `+` (x, y: int): int
 
 
+destructor pragma
+-----------------
+`RAII`:idx:
+`automatic variables`:idx:
+`destructors`:idx:
+The `destructor` pragma is used to mark a proc to act as a type destructor.
+The proc must have a single parameter, having a concrete type. 
+Destructors will be automatically invoked when a local stack variable goes 
+out of scope. If a record type features a field with destructable type and 
+the user have not provided explicit implementation, Nimrod will automatically
+generate a destructor for the record type.
+
 procvar pragma
 --------------
 The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
@@ -3586,7 +3796,7 @@ If the ``line`` pragma is used with a parameter, the parameter needs be a
 linearScanEnd pragma
 --------------------
 The `linearScanEnd`:idx: pragma can be used to tell the compiler how to 
-compile a Nimrod `case`:idx: statement. Syntactially it has to be used as a
+compile a Nimrod `case`:idx: statement. Syntactically it has to be used as a
 statement:
 
 .. code-block:: nimrod
@@ -3722,7 +3932,7 @@ DeadCodeElim pragma
 -------------------
 The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
 compiler to activate (or deactivate) dead code elimination for the module the
-pragma appers in.
+pragma appears in.
 
 The ``--deadCodeElim:on`` command line switch has the same effect as marking
 every module with ``{.deadCodeElim:on}``. However, for some modules such as
