@@ -142,22 +142,7 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
   s.close()
 
 # -- AsyncIO start
-
-proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
-                                input: string, headers: PStringTable) {.closure.},
-           port = TPort(4000), address = "127.0.0.1"): PAsyncScgiState =
-  ## Alternative of ``open`` for asyncio compatible SCGI.
-  new(result)
-  result.bufLen = 4000
-  result.input = newString(result.buflen) # will be reused
-
-  result.asyncServer = AsyncSocket()
-  bindAddr(result.asyncServer, port, address)
-  listen(result.asyncServer)
-  result.handleRequest = handleRequest
-
-proc handleAccept(h: PObject) =
-  var s = PAsyncScgiState(h)
+proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
   
   accept(getSocket(s.asyncServer), s.client)
   var L = 0
@@ -178,6 +163,22 @@ proc handleAccept(h: PObject) =
   recvBuffer(s[], L)
 
   s.handleRequest(s[], s.client, s.input, s.headers)
+
+proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
+                                input: string, headers: PStringTable) {.closure.},
+           port = TPort(4000), address = "127.0.0.1"): PAsyncScgiState =
+  ## Alternative of ``open`` for asyncio compatible SCGI.
+  var cres: PAsyncScgiState
+  new(cres)
+  cres.bufLen = 4000
+  cres.input = newString(cres.buflen) # will be reused
+
+  cres.asyncServer = AsyncSocket()
+  cres.asyncServer.handleAccept = proc (s: PAsyncSocket) = handleAccept(s, cres)
+  bindAddr(cres.asyncServer, port, address)
+  listen(cres.asyncServer)
+  cres.handleRequest = handleRequest
+  result = cres
 
 proc register*(d: PDispatcher, s: PAsyncScgiState): PDelegate {.discardable.} =
   ## Registers ``s`` with dispatcher ``d``.
