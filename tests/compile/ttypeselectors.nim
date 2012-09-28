@@ -9,8 +9,7 @@ template selectType(x: int): typeDesc =
 template simpleTypeTempl: typeDesc =
   string
 
-macro typeFromMacro(s: expr): typeDesc =
-  result = newIdentNode"string"
+macro typeFromMacro: typedesc = string
   
 proc t1*(x: int): simpleTypeTempl() =
   result = "test"
