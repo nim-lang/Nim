@@ -114,6 +114,16 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 include hlo, seminst, semcall
 
+proc symFromType(t: PType, info: TLineInfo): PSym =
+  if t.sym != nil: return t.sym
+  result = newSym(skType, getIdent"AnonType", t.owner, info)
+  result.flags.incl sfAnon
+  result.typ = t
+
+proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+  result = newSymNode(symFromType(t, info), info)
+  result.typ = makeTypeDesc(c, t)
+
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
@@ -133,7 +143,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
       result = semStmt(c, result)
     of tyTypeDesc:
       if n.kind == nkStmtList: result.kind = nkStmtListType
-      result.typ = semTypeNode(c, result, nil)
+      var typ = semTypeNode(c, result, nil)
+      result = symNodeFromType(c, typ, n.info)
     else:
       result = semExpr(c, result)
       result = fitNode(c, s.typ.sons[0], result)
