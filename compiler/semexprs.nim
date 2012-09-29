@@ -1364,19 +1364,28 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         m = fitNode(c, typ, n.sons[i])
       addSon(result, m)
 
-proc semTableConstr(c: PContext, n: PNode): PNode = 
-  # we simply transform ``{key: value, key2: value}`` to 
-  # ``[(key, value), (key2, value2)]``
+proc semTableConstr(c: PContext, n: PNode): PNode =
+  # we simply transform ``{key: value, key2, key3: value}`` to 
+  # ``[(key, value), (key2, value2), (key3, value2)]``
   result = newNodeI(nkBracket, n.info)
+  var lastKey = 0
   for i in 0..n.len-1:
     var x = n.sons[i]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
+      for j in countup(lastKey, i-1):
+        var pair = newNodeI(nkPar, x.info)
+        pair.add(n.sons[j])
+        pair.add(x[1])
+        result.add(pair)
+
       var pair = newNodeI(nkPar, x.info)
       pair.add(x[0])
       pair.add(x[1])
       result.add(pair)
-    else:
-      illFormedAst(x)
+
+      lastKey = i+1
+
+  if lastKey != n.len: illFormedAst(n)
   result = semExpr(c, result)
 
 type 

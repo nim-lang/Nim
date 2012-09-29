@@ -2244,10 +2244,10 @@ Table constructor
 A `table constructor`:idx: is syntactic sugar for an array constructor:
 
 .. code-block:: nimrod
-  {"key1": "value1", "key2": "value2"}
+  {"key1": "value1", "key2", "key3": "value2"}
   
   # is the same as:
-  [("key1", "value1"), ("key2", "value2")]
+  [("key1", "value1"), ("key2", "value2"), ("key3", "value")]
 
 
 The empty table can be written ``{:}`` (in contrast to the empty set 
