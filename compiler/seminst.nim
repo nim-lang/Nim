@@ -25,8 +25,13 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(IdTableGet(pt, q.typ))
     if t == nil:
-      LocalError(a.info, errCannotInstantiateX, s.name.s)
-      t = errorType(c)
+      if tfRetType in q.typ.flags:
+        # keep the generic type and allow the return type to be bound 
+        # later by semAsgn in return type inference scenario
+        t = q.typ
+      else:
+        LocalError(a.info, errCannotInstantiateX, s.name.s)
+        t = errorType(c)
     elif t.kind == tyGenericParam: 
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
     elif t.kind == tyGenericInvokation:
@@ -163,7 +168,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     rawAddSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
-  ParamsTypeCheck(c, result.typ)
   var oldPrc = GenericCacheGet(c, entry)
   if oldPrc == nil:
     c.generics.generics.add(entry)
@@ -174,6 +178,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if fn.kind != skTemplate:
       instantiateBody(c, n, result)
       sideEffectsCheck(c, result)
+    ParamsTypeCheck(c, result.typ)
   else:
     result = oldPrc
   popInfoContext()
