@@ -2,6 +2,37 @@
 News
 ====
 
+2012-XX-XX Version 0.9.XX released
+==================================
+
+Version 0.8.XX has been released! Get it `here <download.html>`_. 
+
+Bugfixes
+--------
+
+
+
+Library Additions
+-----------------
+
+
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+
+
+Compiler Additions
+------------------
+
+
+
+Language Additions
+------------------
+
+- table constructors now mimic more closely the syntax of case... of...
+
+
 2012-09-23 Version 0.9.0 released
 =================================
 
