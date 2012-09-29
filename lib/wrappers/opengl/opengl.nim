@@ -9094,7 +9094,8 @@ proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN*(rc: PGLuint,
     tc: PGLfloat, c: PGLfloat, n: PGLfloat, v: PGLfloat){.stdcall, importc, ogl.}
   # window support functions
 when defined(windows): 
-  proc wglGetProcAddress*(ProcName: cstring): Pointer{.stdcall, importc, wgl.}
+  when not defined(wglGetProcAddress):
+    proc wglGetProcAddress*(ProcName: cstring): Pointer{.stdcall, importc, wgl.}
   proc wglCopyContext*(p1: HGLRC, p2: HGLRC, p3: int): BOOL{.stdcall, importc, wgl.}
   proc wglCreateContext*(DC: HDC): HGLRC{.stdcall, importc, wgl.}
   proc wglCreateLayerContext*(p1: HDC, p2: int): HGLRC{.stdcall, importc, wgl.}
@@ -9597,7 +9598,7 @@ when defined(windows):
         dwVisibleMask: DWORD
         dwDamageMask: DWORD
 
-    proc GetObjectType(h: int32): DWORD{.stdcall, dynlib: "gdi32",
+    proc GetObjectType(h: HDC): DWORD{.stdcall, dynlib: "gdi32",
                                            importc: "GetObjectType".}
     proc ChoosePixelFormat(para1: HDC, para2: ptr TPIXELFORMATDESCRIPTOR): int32{.
         stdcall, dynlib: "gdi32", importc: "ChoosePixelFormat".}
@@ -9626,7 +9627,7 @@ when defined(windows):
       PFD_UNDERLAY_PLANE = int32(- 1)
     var 
       PFDescriptor: TPixelFormatDescriptor
-      PixelFormat: int
+      PixelFormat: int32
       AType: int32
     PFDescriptor.nSize = SizeOf(PFDescriptor).int16
     PFDescriptor.nVersion = 1'i16

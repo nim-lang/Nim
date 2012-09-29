@@ -558,16 +558,13 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
       initLocExpr(m.initProc, n[i], a)
       params.app(rdLoc(a))
       params.app(", ")
-    #app(m.s[cfsVars], p.s(cpsLocals))
-    #app(m.s[cfsDynLibInit], p.s(cpsInit))
-    #app(m.s[cfsDynLibInit], p.s(cpsStmts))
     appcg(m, m.initProc.s(cpsStmts),
-        "$1 = ($2) ($3$4));$n",
+        "\t$1 = ($2) ($3$4));$n",
         [tmp, getTypeDesc(m, sym.typ),
         params, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
   else:
     appcg(m, m.s[cfsDynLibInit], 
-        "$1 = ($2) #nimGetProcAddr($3, $4);$n", 
+        "\t$1 = ($2) #nimGetProcAddr($3, $4);$n", 
         [tmp, getTypeDesc(m, sym.typ), 
         lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
   appff(m.s[cfsVars], "$2 $1;$n", 
