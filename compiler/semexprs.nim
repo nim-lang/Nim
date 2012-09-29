@@ -1573,11 +1573,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
-    typ = makeTypedesc(c, typ)
-    var sym = newSym(skType, getIdent"TypeOfExpr", 
-                     typ.owner, n.info).linkTo(typ)
-    sym.flags.incl(sfAnon)
-    result = newSymNode(sym, n.info)
+    result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
