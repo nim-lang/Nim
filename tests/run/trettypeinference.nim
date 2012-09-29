@@ -6,11 +6,15 @@ discard """
 import typetraits
 
 proc plus(a, b): auto = a + b
+proc makePair(a, b): auto = (first: a, second: b)
 
 proc `+`(a, b: string): seq[string] = @[a, b]
 
 var i = plus(10, 20)
 var s = plus("A", "B")
+
+var p = makePair("key", 100)
+static: assert p[0].type is string
 
 echo i.type.name
 echo s.type.name

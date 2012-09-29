@@ -306,6 +306,9 @@ proc semGenericStmt(c: PContext, n: PNode,
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, toBind)
     closeScope(c.tab)
   of nkPragma, nkPragmaExpr: nil
+  of nkExprColonExpr:
+    checkMinSonsLen(n, 2)
+    result.sons[1] = semGenericStmt(c, n.sons[1], flags, toBind)
   else: 
     for i in countup(0, sonsLen(n) - 1): 
       result.sons[i] = semGenericStmt(c, n.sons[i], flags, toBind)
