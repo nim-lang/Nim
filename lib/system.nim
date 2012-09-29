@@ -51,10 +51,11 @@ type
   `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
-  typeDesc* {.magic: TypeDesc.} ## meta type to denote
-                                ## a type description (for templates)
-  void* {.magic: "VoidType".}  ## meta type to denote the absense of any type
-  
+  typeDesc* {.magic: TypeDesc.} ## meta type to denote a type description
+  void* {.magic: "VoidType".}   ## meta type to denote the absense of any type
+  auto* = expr
+  any* = distinct auto
+
   TSignedInt* = int|int8|int16|int32|int64
     ## type class matching all signed integer types
 
@@ -111,6 +112,11 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
+proc new(T: typedesc): ref T =
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it as result value
+  new(result)
+  
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
 
@@ -538,7 +544,7 @@ proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
   ## checking is turned on).
 
 type
-  IntMax32 = distinct int|int8|int16|int32
+  IntMax32 = int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: Int64): Int64 {.magic: "AddU", noSideEffect.}
@@ -1315,11 +1321,10 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
-when not defined(booting):
-  iterator items*(E: typedesc[enum]): E =
-    ## iterates over the values of the enum ``E``.
-    for v in low(E)..high(E):
-      yield v
+iterator items*(E: typedesc[enum]): E =
+  ## iterates over the values of the enum ``E``.
+  for v in low(E)..high(E):
+    yield v
 
 iterator pairs*[T](a: openarray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.

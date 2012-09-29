@@ -1048,8 +1048,20 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     localError(a.info, errXCannotBeAssignedTo, 
                renderTree(a, {renderNoComments}))
   else:
-    n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[1] = fitNode(c, le, n.sons[1])
+    var 
+      rhs = semExprWithType(c, n.sons[1])
+      lhs = n.sons[0]
+    if lhs.kind == nkSym and lhs.sym.kind == skResult and
+       lhs.sym.typ.kind == tyGenericParam:
+      if matchTypeClass(lhs.typ, rhs.typ):
+        InternalAssert c.p.resultSym != nil
+        lhs.typ = rhs.typ
+        c.p.resultSym.typ = rhs.typ
+        c.p.owner.typ.sons[0] = rhs.typ
+      else:
+        typeMismatch(n, lhs.typ, rhs.typ)
+
+    n.sons[1] = fitNode(c, le, rhs)
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n

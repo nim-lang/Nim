@@ -282,7 +282,12 @@ proc matchTypeClass(c: var TCandidate, typeClass, t: PType): TTypeRelation =
   # if the loop finished without returning, either all constraints matched
   # or none of them matched.
   result = if tfAny in typeClass.flags: isNone else: isGeneric
-  
+
+proc matchTypeClass*(typeClass, typ: PType): bool =
+  var c: TCandidate
+  InitCandidate(c, typeClass)
+  result = matchTypeClass(c, typeClass, typ) == isGeneric
+
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)

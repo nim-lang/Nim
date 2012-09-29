@@ -350,6 +350,8 @@ type
                       # pass of semProcTypeNode performed after instantiation.
                       # this won't be needed if we don't perform this redundant
                       # second pass (stay tuned).
+    tfRetType         # marks return types in proc (used to detect type classes 
+                      # used as return types for return type inference)
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
     tfCapturesEnv,    # whether proc really captures some environment

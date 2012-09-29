@@ -626,9 +626,9 @@ proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
       var c = initSameTypeClosure()
       c.flags = flags
       result = SameTypeAux(a, b, c)
-  
+
 proc equalParam(a, b: PSym): TParamsEquality = 
-  if SameTypeOrNil(a.typ, b.typ): 
+  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): 
     if a.ast == b.ast: 
       result = paramsEqual
     elif a.ast != nil and b.ast != nil: 
