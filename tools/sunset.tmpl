@@ -34,21 +34,6 @@
         </ul>
       </div>
       <div id="column1">
-#  if len(c.links) > 0:
-        <div class="sidebaritem">
-          <div class="sbihead">
-            <h1>projects</h1>
-          </div>
-          <div class="sbilinks">
-            <!-- **** INSERT ADDITIONAL LINKS HERE **** -->
-            <ul>
-#          for i in 0..c.links.len-1:
-             <li><a class="reference" href="${c.links[i].val}">${c.links[i].key}</a></li>
-#          end for
-            </ul>
-          </div>
-        </div>
-#  end if
 #  if len(c.ticker) > 0:
         <div class="sidebaritem">
           <div class="sbihead">
@@ -56,6 +41,20 @@
           </div>
           <div class="sbicontent">
             $c.ticker
+          </div>
+        </div>
+#  end if
+#  if len(c.links) > 0:
+        <div class="sidebaritem">
+          <div class="sbihead">
+            <h1>Links</h1>
+          </div>
+          <div class="sbilinks">
+            <ul>
+#          for i in 0..c.links.len-1:
+             <li><a class="reference" href="${c.links[i].val}">${c.links[i].key}</a></li>
+#          end for
+            </ul>
           </div>
         </div>
 #  end if
