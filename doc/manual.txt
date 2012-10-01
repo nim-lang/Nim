@@ -2237,6 +2237,28 @@ An if expression always results in a value, so the ``else`` part is
 required. ``Elif`` parts are also allowed (but unlikely to be good
 style).
 
+When expression
+~~~~~~~~~~~~~~~
+
+Just like an `if expression`, but corresponding to the when statement.
+
+Case expression
+~~~~~~~~~~~~~~~
+
+The `case expression` is again very similar to the case statement:
+
+.. code-block:: nimrod
+  var favoriteFood = case animal
+    of "dog": "bones"
+    of "cat": "mice"
+    elif animal.endsWith"whale": "plankton"
+    else:
+      echo "I'm not sure what to serve, but everybody loves ice cream"
+      "ice cream"
+
+As seen in the above example, the case expression can also introduce side
+effects. When multiple statements are given for a branch, Nimrod will use
+the last expression as the result value, much like in an `expr` template.
 
 Table constructor
 ~~~~~~~~~~~~~~~~~
@@ -3464,15 +3486,14 @@ a type-safe wrapper for the unsafe `printf` function form C:
   macro safePrintF(formatString: string{lit}, args: vararg[expr]): expr =
     var i = 0
     for c in formatChars(formatString):
-      const FormatChars = {
-        'c': char,
-        'd', 'i', 'x', 'X': int,
-        'f', 'e', 'E', 'g', 'G': float,
-        's': string,
-        'p': pointer,
-      }
+      var expectedType = case c
+        of 'c': char
+        of 'd', 'i', 'x', 'X': int
+        of 'f', 'e', 'E', 'g', 'G': float
+        of 's': string
+        of 'p': pointer
+        else: EOutOfRange
       
-      var expectedType = find(FormatChars, c, EOutOfRange)
       var actualType = args[i].getType
       inc i
 

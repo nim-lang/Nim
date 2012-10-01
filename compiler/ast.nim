@@ -781,6 +781,11 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
+# son access operators with support for negative indices
+template `{}`*(n: PNode, i: int): expr = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+  n.sons[i -| n] = s
+  
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 

@@ -2116,7 +2116,7 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
 
-template `-|`(b, s: expr): expr =
+template `-|`*(b, s: expr): expr =
   (if b >= 0: b else: s.len + b)
 
 proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =

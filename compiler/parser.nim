@@ -743,7 +743,7 @@ proc isExprStart(p: TParser): bool =
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkProc, tkBind, 
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
-     tkTuple, tkType, tkWhen:
+     tkTuple, tkType, tkWhen, tkCase:
     result = true
   else: result = false
   
@@ -763,9 +763,9 @@ proc parseExpr(p: var TParser): PNode =
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
+  of tkCase: result = parseCase(p)
   else: result = lowestExpr(p)
   # XXX needs proper support:
-  #of tkCase: result = parseCase(p)
   #of tkTry: result = parseTry(p)
 
 proc primary(p: var TParser, skipSuffix = false): PNode = 
@@ -1044,9 +1044,9 @@ proc parseCase(p: var TParser): PNode =
     if b.kind == nkElse: break
   
   if wasIndented:
-    eat(p, tkDed)
+    if p.tok.tokType != tkEof: eat(p, tkDed)
     popInd(p.lex)
-
+    
 proc parseTry(p: var TParser): PNode = 
   result = newNodeP(nkTryStmt, p)
   getTok(p)
