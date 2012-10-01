@@ -1528,6 +1528,57 @@ proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags,
                renderTree(a, {renderNoComments}))
     result = errorNode(c, n)
 
+proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
+  # The case expression is simply rewritten to a StmtListExpr:
+  #   var res {.noInit, genSym.}: type(values)
+  #
+  #   case E
+  #   of X: res = value1
+  #   of Y: res = value2
+  # 
+  #   res
+  var
+    info = caseStmt.info
+    resVar = newSym(skVar, getIdent":res", getCurrOwner(), info)
+    resNode = newSymNode(resVar, info)
+    resType: PType
+
+  resVar.flags = { sfGenSym, sfNoInit }
+
+  for i in countup(1, caseStmt.len - 1):
+    var cs = caseStmt[i]
+    case cs.kind
+    of nkOfBranch, nkElifBranch, nkElse:
+      # the value is always the last son regardless of the branch kind
+      cs.checkMinSonsLen 1
+      var value = cs{-1}
+      if value.kind == nkStmtList: value.kind = nkStmtListExpr
+
+      value = semExprWithType(c, value)
+      if resType == nil:
+        resType = value.typ
+      elif not sameType(resType, value.typ):
+        # XXX: semeType is a bit too harsh.
+        # work on finding a common base type.
+        # this will be useful for arrays/seq too:
+        # [ref DerivedA, ref DerivedB, ref Base]
+        typeMismatch(cs, resType, value.typ)
+
+      cs{-1} = newNode(nkAsgn, cs.info, @[resNode, value])
+    else:
+      IllFormedAst(caseStmt)
+
+  result = newNode(nkStmtListExpr, info, @[
+    newNode(nkVarSection, info, @[
+      newNode(nkIdentDefs, info, @[
+        resNode,
+        symNodeFromType(c, resType, info),
+        emptyNode])]),
+    caseStmt,
+    resNode])
+
+  result = semStmtListExpr(c, result)
+    
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1707,7 +1758,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTryStmt: result = semTry(c, n)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
   of nkForStmt, nkParForStmt: result = semFor(c, n)
-  of nkCaseStmt: result = semCase(c, n)
+  of nkCaseStmt:
+    if efWantStmt in flags: result = semCase(c, n)
+    else: result = semCaseExpr(c, n)
   of nkReturnStmt: result = semReturn(c, n)
   of nkAsmStmt: result = semAsm(c, n)
   of nkYieldStmt: result = semYield(c, n)
