@@ -41,6 +41,7 @@ type
     callsite: PNode           # for 'callsite' magic
     mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
+    getType*: proc(n: PNode): PNode
   
   PEvalContext* = ref TEvalContext
 
@@ -1091,7 +1092,10 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
     if result.kind != nkIdent: stackTrace(c, n, errFieldXNotFound, "ident")
-  of mNGetType: result = evalAux(c, n.sons[1], {})
+  of mNGetType:
+    var ast = evalAux(c, n.sons[1], {})
+    InternalAssert c.getType != nil
+    result = c.getType(ast)
   of mNStrVal: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1152,7 +1156,8 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     var a = result
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
-    a.typ = result.typ        # XXX: exception handling?
+    InternalAssert result.kind == nkSym and result.sym.kind == skType
+    a.typ = result.sym.typ
     result = emptyNode
   of mNSetStrVal:
     result = evalAux(c, n.sons[1], {efLValue})

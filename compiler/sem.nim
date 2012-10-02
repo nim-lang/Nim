@@ -43,6 +43,7 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind)
 proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
@@ -156,8 +157,18 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   markUsed(n, sym)
   if sym == c.p.owner:
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
+
   if c.evalContext == nil:
     c.evalContext = newEvalContext(c.module, "", emStatic)
+    c.evalContext.getType = proc (n: PNode): PNode =
+      var e = tryExpr(c, n)
+      if e == nil:
+        result = symNodeFromType(c, errorType(c), n.info)
+      elif e.typ == nil:
+        result = newSymNode(getSysSym"void")
+      else:
+        result = symNodeFromType(c, e.typ, n.info)
+
   result = evalMacroCall(c.evalContext, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
