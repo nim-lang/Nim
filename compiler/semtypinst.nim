@@ -59,6 +59,7 @@ type
 
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType
 proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
+proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
@@ -66,7 +67,7 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   for i in 0 .. safeLen(n)-1: 
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f` 
     if i == 0: result.add(n[i])
-    else: result.add(prepareNode(cl, n[i]))
+    else: result.add(ReplaceTypeVarsN(cl, n[i]))
 
 proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   if n == nil: return

@@ -2,8 +2,8 @@ type
   TFoo[T] = object
     val: T
 
-  T1 = distinct expr
-  T2 = distinct expr
+  T1 = expr
+  T2 = expr
 
 proc takesExpr(x, y) =
   echo x, y

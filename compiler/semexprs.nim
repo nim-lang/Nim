@@ -281,18 +281,29 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
-proc semIs(c: PContext, n: PNode): PNode = 
-  if sonsLen(n) == 3:
-    n.typ = getSysType(tyBool)
-    let a = semTypeNode(c, n[1], nil)
-    n.sons[1] = newNodeIT(nkType, n[1].info, a)
-    if n[2].kind notin {nkStrLit..nkTripleStrLit}:
-      let b = semTypeNode(c, n[2], nil)
-      n.sons[2] = newNodeIT(nkType, n[2].info, b)
-  else:
+proc semIs(c: PContext, n: PNode): PNode =
+  if sonsLen(n) != 3:
     LocalError(n.info, errXExpectsTwoArguments, "is")
-  result = n
 
+  result = n
+  n.typ = getSysType(tyBool)
+  
+  n.sons[1] = semExprWithType(c, n[1])
+  if n[1].typ.kind != tyTypeDesc:
+    LocalError(n[0].info, errTypeExpected)
+
+  if n[2].kind notin {nkStrLit..nkTripleStrLit}:
+    let t2 = semTypeNode(c, n[2], nil)
+    n.sons[2] = newNodeIT(nkType, n[2].info, t2)
+
+  if n[1].typ.sonsLen == 0:
+    # this is a typedesc variable, leave for evals
+    return
+  else:
+    let t1 = n[1].typ.sons[0]
+    # BUGFIX: don't evaluate this too early: ``T is void``
+    if not containsGenericType(t1): result = evalIsOp(n)
+  
 proc semOpAux(c: PContext, n: PNode, tailToExclude = 1) =
   for i in countup(1, sonsLen(n) - tailToExclude):
     var a = n.sons[i]

@@ -149,7 +149,7 @@ else: # UNIX-like operating system
     FileSystemCaseSensitive* = true
     ExeExt* = ""
     ScriptExt* = ""
-    DynlibFormat* = "lib$1.so"
+    DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
 
 when defined(macosx) or defined(bsd):
   var

@@ -261,16 +261,16 @@ proc semGenericStmt(c: PContext, n: PNode,
       else: 
         a.sons[2] = semGenericStmt(c, a.sons[2], flags+{withinTypeDesc}, toBind)
   of nkEnumTy: 
-    checkMinSonsLen(n, 1)
-    if n.sons[0].kind != nkEmpty: 
-      n.sons[0] = semGenericStmt(c, n.sons[0], flags+{withinTypeDesc}, toBind)
-    for i in countup(1, sonsLen(n) - 1): 
-      var a: PNode
-      case n.sons[i].kind
-      of nkEnumFieldDef: a = n.sons[i].sons[0]
-      of nkIdent: a = n.sons[i]
-      else: illFormedAst(n)
-      addDeclAt(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c), c.tab.tos-1)
+    if n.sonsLen > 0:
+      if n.sons[0].kind != nkEmpty: 
+        n.sons[0] = semGenericStmt(c, n.sons[0], flags+{withinTypeDesc}, toBind)
+      for i in countup(1, sonsLen(n) - 1): 
+        var a: PNode
+        case n.sons[i].kind
+        of nkEnumFieldDef: a = n.sons[i].sons[0]
+        of nkIdent: a = n.sons[i]
+        else: illFormedAst(n)
+        addDeclAt(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c), c.tab.tos-1)
   of nkObjectTy, nkTupleTy: 
     nil
   of nkFormalParams: 
