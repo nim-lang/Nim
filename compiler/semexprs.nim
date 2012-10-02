@@ -1237,12 +1237,7 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
   else:
     result = semDirectOp(c, n, flags)
 
-proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # we replace this node by a 'true' or 'false' node:
-  if sonsLen(n) != 2: return semDirectOp(c, n, flags)
-  result = newIntNode(nkIntLit, 0)
-  result.info = n.info
-  result.typ = getSysType(tyBool)
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
@@ -1264,8 +1259,8 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let oldProcCon = c.p
   c.generics = newGenericsCache()
   try:
-    discard semExpr(c, n.sons[1])
-    result.intVal = ord(msgs.gErrorCounter == oldErrorCount)
+    result = semExpr(c, n, flags)
+    if msgs.gErrorCounter != oldErrorCount: result = nil
   except ERecoverableError:
     nil
   # undo symbol table changes (as far as it's possible):
@@ -1281,6 +1276,14 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
+
+proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # we replace this node by a 'true' or 'false' node:
+  if sonsLen(n) != 2: return semDirectOp(c, n, flags)
+  
+  result = newIntNode(nkIntLit, ord(tryExpr(c, n, flags) != nil))
+  result.info = n.info
+  result.typ = getSysType(tyBool)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) == 3:
