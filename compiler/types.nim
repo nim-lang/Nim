@@ -904,7 +904,38 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.sonslen or a.sons[i] == nil: return false
     a = a.sons[i]
   result = a.kind == last
-  
+
+proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
+  for i in countup(0, typeClass.sonsLen - 1):
+    let req = typeClass.sons[i]
+    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
+      
+    if not match:
+      case req.kind
+      of tyGenericBody:
+        if t.kind == tyGenericInst and t.sons[0] == req:
+          match = true
+          IdTablePut(bindings, typeClass, t)
+      of tyTypeClass:
+        match = matchTypeClass(bindings, req, t)
+      else: nil
+    elif t.kind in {tyObject}:
+      match = sameType(t, req)
+
+    if tfAny in typeClass.flags:
+      if match: return true
+    else:
+      if not match: return false
+
+  # if the loop finished without returning, either all constraints matched
+  # or none of them matched.
+  result = if tfAny in typeClass.flags: false else: true
+
+proc matchTypeClass*(typeClass, typ: PType): bool =
+  var bindings: TIdTable
+  initIdTable(bindings)
+  result = matchTypeClass(bindings, typeClass, typ)
+
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   assert(kind in {skVar, skLet, skConst, skParam, skResult})
   # if we have already checked the type, return true, because we stop the

@@ -1,11 +1,11 @@
 discard """
   file: "tcaseexpr1.nim"
 
-  line: 23
-  errormsg: "not all cases are covered"
-
   line: 29
   errormsg: "type mismatch: got (string) but expected 'int'"
+
+  line: 23
+  errormsg: "not all cases are covered"
 """
 
 type
