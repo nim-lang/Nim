@@ -281,18 +281,29 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
-proc semIs(c: PContext, n: PNode): PNode = 
-  if sonsLen(n) == 3:
-    n.typ = getSysType(tyBool)
-    let a = semTypeNode(c, n[1], nil)
-    n.sons[1] = newNodeIT(nkType, n[1].info, a)
-    if n[2].kind notin {nkStrLit..nkTripleStrLit}:
-      let b = semTypeNode(c, n[2], nil)
-      n.sons[2] = newNodeIT(nkType, n[2].info, b)
-  else:
+proc semIs(c: PContext, n: PNode): PNode =
+  if sonsLen(n) != 3:
     LocalError(n.info, errXExpectsTwoArguments, "is")
-  result = n
 
+  result = n
+  n.typ = getSysType(tyBool)
+  
+  n.sons[1] = semExprWithType(c, n[1])
+  if n[1].typ.kind != tyTypeDesc:
+    LocalError(n[0].info, errTypeExpected)
+
+  if n[2].kind notin {nkStrLit..nkTripleStrLit}:
+    let t2 = semTypeNode(c, n[2], nil)
+    n.sons[2] = newNodeIT(nkType, n[2].info, t2)
+
+  if n[1].typ.sonsLen == 0:
+    # this is a typedesc variable, leave for evals
+    return
+  else:
+    let t1 = n[1].typ.sons[0]
+    # BUGFIX: don't evaluate this too early: ``T is void``
+    if not containsGenericType(t1): result = evalIsOp(n)
+  
 proc semOpAux(c: PContext, n: PNode, tailToExclude = 1) =
   for i in countup(1, sonsLen(n) - tailToExclude):
     var a = n.sons[i]
@@ -1048,8 +1059,20 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     localError(a.info, errXCannotBeAssignedTo, 
                renderTree(a, {renderNoComments}))
   else:
-    n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[1] = fitNode(c, le, n.sons[1])
+    var 
+      rhs = semExprWithType(c, n.sons[1])
+      lhs = n.sons[0]
+    if lhs.kind == nkSym and lhs.sym.kind == skResult and
+       lhs.sym.typ.kind == tyGenericParam:
+      if matchTypeClass(lhs.typ, rhs.typ):
+        InternalAssert c.p.resultSym != nil
+        lhs.typ = rhs.typ
+        c.p.resultSym.typ = rhs.typ
+        c.p.owner.typ.sons[0] = rhs.typ
+      else:
+        typeMismatch(n, lhs.typ, rhs.typ)
+
+    n.sons[1] = fitNode(c, le, rhs)
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
@@ -1214,12 +1237,7 @@ proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
   else:
     result = semDirectOp(c, n, flags)
 
-proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # we replace this node by a 'true' or 'false' node:
-  if sonsLen(n) != 2: return semDirectOp(c, n, flags)
-  result = newIntNode(nkIntLit, 0)
-  result.info = n.info
-  result.typ = getSysType(tyBool)
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
@@ -1241,8 +1259,8 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let oldProcCon = c.p
   c.generics = newGenericsCache()
   try:
-    discard semExpr(c, n.sons[1])
-    result.intVal = ord(msgs.gErrorCounter == oldErrorCount)
+    result = semExpr(c, n, flags)
+    if msgs.gErrorCounter != oldErrorCount: result = nil
   except ERecoverableError:
     nil
   # undo symbol table changes (as far as it's possible):
@@ -1258,6 +1276,14 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
+
+proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # we replace this node by a 'true' or 'false' node:
+  if sonsLen(n) != 2: return semDirectOp(c, n, flags)
+  
+  result = newIntNode(nkIntLit, ord(tryExpr(c, n, flags) != nil))
+  result.info = n.info
+  result.typ = getSysType(tyBool)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) == 3:
@@ -1352,19 +1378,28 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         m = fitNode(c, typ, n.sons[i])
       addSon(result, m)
 
-proc semTableConstr(c: PContext, n: PNode): PNode = 
-  # we simply transform ``{key: value, key2: value}`` to 
-  # ``[(key, value), (key2, value2)]``
+proc semTableConstr(c: PContext, n: PNode): PNode =
+  # we simply transform ``{key: value, key2, key3: value}`` to 
+  # ``[(key, value), (key2, value2), (key3, value2)]``
   result = newNodeI(nkBracket, n.info)
+  var lastKey = 0
   for i in 0..n.len-1:
     var x = n.sons[i]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
+      for j in countup(lastKey, i-1):
+        var pair = newNodeI(nkPar, x.info)
+        pair.add(n.sons[j])
+        pair.add(x[1])
+        result.add(pair)
+
       var pair = newNodeI(nkPar, x.info)
       pair.add(x[0])
       pair.add(x[1])
       result.add(pair)
-    else:
-      illFormedAst(x)
+
+      lastKey = i+1
+
+  if lastKey != n.len: illFormedAst(n)
   result = semExpr(c, result)
 
 type 
@@ -1507,6 +1542,57 @@ proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags,
                renderTree(a, {renderNoComments}))
     result = errorNode(c, n)
 
+proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
+  # The case expression is simply rewritten to a StmtListExpr:
+  #   var res {.noInit, genSym.}: type(values)
+  #
+  #   case E
+  #   of X: res = value1
+  #   of Y: res = value2
+  # 
+  #   res
+  var
+    info = caseStmt.info
+    resVar = newSym(skVar, getIdent":res", getCurrOwner(), info)
+    resNode = newSymNode(resVar, info)
+    resType: PType
+
+  resVar.flags = { sfGenSym, sfNoInit }
+
+  for i in countup(1, caseStmt.len - 1):
+    var cs = caseStmt[i]
+    case cs.kind
+    of nkOfBranch, nkElifBranch, nkElse:
+      # the value is always the last son regardless of the branch kind
+      cs.checkMinSonsLen 1
+      var value = cs{-1}
+      if value.kind == nkStmtList: value.kind = nkStmtListExpr
+
+      value = semExprWithType(c, value)
+      if resType == nil:
+        resType = value.typ
+      elif not sameType(resType, value.typ):
+        # XXX: semeType is a bit too harsh.
+        # work on finding a common base type.
+        # this will be useful for arrays/seq too:
+        # [ref DerivedA, ref DerivedB, ref Base]
+        typeMismatch(cs, resType, value.typ)
+
+      cs{-1} = newNode(nkAsgn, cs.info, @[resNode, value])
+    else:
+      IllFormedAst(caseStmt)
+
+  result = newNode(nkStmtListExpr, info, @[
+    newNode(nkVarSection, info, @[
+      newNode(nkIdentDefs, info, @[
+        resNode,
+        symNodeFromType(c, resType, info),
+        emptyNode])]),
+    caseStmt,
+    resNode])
+
+  result = semStmtListExpr(c, result)
+    
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1686,7 +1772,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTryStmt: result = semTry(c, n)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
   of nkForStmt, nkParForStmt: result = semFor(c, n)
-  of nkCaseStmt: result = semCase(c, n)
+  of nkCaseStmt:
+    if efWantStmt in flags: result = semCase(c, n)
+    else: result = semCaseExpr(c, n)
   of nkReturnStmt: result = semReturn(c, n)
   of nkAsmStmt: result = semAsm(c, n)
   of nkYieldStmt: result = semYield(c, n)

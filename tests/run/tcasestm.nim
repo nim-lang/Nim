@@ -1,6 +1,6 @@
 discard """
   file: "tcasestm.nim"
-  output: "ayyy"
+  output: "ayyydd"
 """
 # Test the case statement
 
@@ -22,16 +22,18 @@ of "aa", "bb": write(stdout, "Du bist nicht mein Meister")
 of "cc", "hash", "when": nil
 of "will", "it", "finally", "be", "generated": nil
 
-case i
-of 1..5, 8, 9: nil
-of 6, 7: nil
-elif x == "Ha": 
-  nil
-elif x == "yyy":
-  write(stdout, x)
-else:
-  nil
+var z = case i
+  of 1..5, 8, 9: "aa"
+  of 6, 7: "bb"
+  elif x == "Ha": 
+    "cc"
+  elif x == "yyy":
+    write(stdout, x)
+    "dd"
+  else:
+    "zz"
 
+echo z
 #OUT ayyy
 
 

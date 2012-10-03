@@ -11,7 +11,7 @@
 ## the call to overloaded procs, generic procs and operators.
 
 import 
-  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
+  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options
 
 type
@@ -257,32 +257,6 @@ proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
           var y = a.n.sons[i].sym
           if x.name.id != y.name.id: return isNone
 
-proc matchTypeClass(c: var TCandidate, typeClass, t: PType): TTypeRelation =
-  for i in countup(0, typeClass.sonsLen - 1):
-    let req = typeClass.sons[i]
-    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
-      
-    if not match:
-      case req.kind
-      of tyGenericBody:
-        if t.kind == tyGenericInst and t.sons[0] == req:
-          match = true
-          put(c.bindings, typeClass, t)
-      of tyTypeClass:
-        match = matchTypeClass(c, req, t) == isGeneric
-      else: nil
-    elif t.kind in {tyObject}:
-      match = sameType(t, req)
-
-    if tfAny in typeClass.flags:
-      if match: return isGeneric
-    else:
-      if not match: return isNone
-
-  # if the loop finished without returning, either all constraints matched
-  # or none of them matched.
-  result = if tfAny in typeClass.flags: isNone else: isGeneric
-  
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
@@ -324,6 +298,10 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       else:
         result = isNone
   else: nil
+
+proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
+  result = if matchTypeClass(c.bindings, f, a): isGeneric
+           else: isNone
 
 proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation = 
   # is a subtype of f?

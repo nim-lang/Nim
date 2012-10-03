@@ -350,6 +350,8 @@ type
                       # pass of semProcTypeNode performed after instantiation.
                       # this won't be needed if we don't perform this redundant
                       # second pass (stay tuned).
+    tfRetType         # marks return types in proc (used to detect type classes 
+                      # used as return types for return type inference)
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
     tfCapturesEnv,    # whether proc really captures some environment
@@ -779,6 +781,11 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
+# son access operators with support for negative indices
+template `{}`*(n: PNode, i: int): expr = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+  n.sons[i -| n] = s
+  
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 

@@ -2237,6 +2237,28 @@ An if expression always results in a value, so the ``else`` part is
 required. ``Elif`` parts are also allowed (but unlikely to be good
 style).
 
+When expression
+~~~~~~~~~~~~~~~
+
+Just like an `if expression`, but corresponding to the when statement.
+
+Case expression
+~~~~~~~~~~~~~~~
+
+The `case expression` is again very similar to the case statement:
+
+.. code-block:: nimrod
+  var favoriteFood = case animal
+    of "dog": "bones"
+    of "cat": "mice"
+    elif animal.endsWith"whale": "plankton"
+    else:
+      echo "I'm not sure what to serve, but everybody loves ice cream"
+      "ice cream"
+
+As seen in the above example, the case expression can also introduce side
+effects. When multiple statements are given for a branch, Nimrod will use
+the last expression as the result value, much like in an `expr` template.
 
 Table constructor
 ~~~~~~~~~~~~~~~~~
@@ -2244,10 +2266,10 @@ Table constructor
 A `table constructor`:idx: is syntactic sugar for an array constructor:
 
 .. code-block:: nimrod
-  {"key1": "value1", "key2": "value2"}
+  {"key1": "value1", "key2", "key3": "value2"}
   
   # is the same as:
-  [("key1", "value1"), ("key2", "value2")]
+  [("key1", "value1"), ("key2", "value2"), ("key3", "value")]
 
 
 The empty table can be written ``{:}`` (in contrast to the empty set 
@@ -2940,6 +2962,13 @@ from the proc body. This is usually used with the ``auto`` type class:
 .. code-block:: nimrod
   proc makePair(a, b): auto = (first: a, second: b)
 
+The return type will be treated as additional generic param and can be
+explicitly specified at call sites as any other generic param.
+
+Future versions of nimrod may also support overloading based on the return type
+of the overloads. In such settings, the expected result type at call sites may 
+also influence the inferred return type.
+
 Symbol lookup in generics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3431,7 +3460,7 @@ typedesc
 
 `typedesc` is a special type allowing you to treat types as compile-time values
 (i.e. if types are compile-time values and all values have a type, then 
- typedesc must be their type).
+typedesc must be their type).
 
 When used as a regular proc param, typedesc acts as a type class. The proc
 will be instantiated for each unique type parameter and you can refer to the
@@ -3457,15 +3486,14 @@ a type-safe wrapper for the unsafe `printf` function form C:
   macro safePrintF(formatString: string{lit}, args: vararg[expr]): expr =
     var i = 0
     for c in formatChars(formatString):
-      const FormatChars = {
-        'c': char,
-        'd', 'i', 'x', 'X': int,
-        'f', 'e', 'E', 'g', 'G': float,
-        's': string,
-        'p': pointer,
-      }
+      var expectedType = case c
+        of 'c': char
+        of 'd', 'i', 'x', 'X': int
+        of 'f', 'e', 'E', 'g', 'G': float
+        of 's': string
+        of 'p': pointer
+        else: EOutOfRange
       
-      var expectedType = find(FormatChars, c, EOutOfRange)
       var actualType = args[i].getType
       inc i
 
@@ -3642,21 +3670,25 @@ proc with no side effects:
 
 destructor pragma
 -----------------
-`RAII`:idx:
-`automatic variables`:idx:
-`destructors`:idx:
+
 The `destructor` pragma is used to mark a proc to act as a type destructor.
-The proc must have a single parameter, having a concrete type. 
+The proc must have a single parameter with a concrete type (the name of a
+generic type is allowed too).
+
 Destructors will be automatically invoked when a local stack variable goes 
-out of scope. If a record type features a field with destructable type and 
+out of scope.
+
+If a record type features a field with destructable type and 
 the user have not provided explicit implementation, Nimrod will automatically
-generate a destructor for the record type.
+generate a destructor for the record type. Nimrod will automatically insert
+calls to any base class destructors in both user-defined and generated
+destructors.
+
 
 procvar pragma
 --------------
 The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
 procedural variable.
-
 
 
 compileTime pragma
