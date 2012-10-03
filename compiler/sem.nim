@@ -22,8 +22,7 @@ proc semPass*(): TPass
 
 type 
   TExprFlag = enum 
-    efLValue, efWantIterator, efInTypeof, efWantStmt, 
-    efMacroStmt # expr to semcheck is a macro statement
+    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType
   TExprFlags = set[TExprFlag]
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
@@ -35,7 +34,7 @@ proc semProcBody(c: PContext, n: PNode): PNode
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
 proc changeType(n: PNode, newType: PType)
 
-proc semLambda(c: PContext, n: PNode): PNode
+proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
 proc semStmt(c: PContext, n: PNode): PNode
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
@@ -44,6 +43,8 @@ proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind)
 proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc fixImmediateParams(n: PNode): PNode
+proc activate(c: PContext, n: PNode)
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
@@ -91,8 +92,6 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode
-proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags,
-                  semCheck = true): PNode
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode

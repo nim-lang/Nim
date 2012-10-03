@@ -38,7 +38,7 @@ type
     nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit,
     nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef,
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch,
-    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt,
+    nnkElifBranch, nnkExceptBranch, nnkElse,
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,

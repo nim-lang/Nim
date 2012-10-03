@@ -304,16 +304,17 @@ proc semIs(c: PContext, n: PNode): PNode =
     # BUGFIX: don't evaluate this too early: ``T is void``
     if not containsGenericType(t1): result = evalIsOp(n)
   
-proc semOpAux(c: PContext, n: PNode, tailToExclude = 1) =
-  for i in countup(1, sonsLen(n) - tailToExclude):
+proc semOpAux(c: PContext, n: PNode) =
+  let flags = {efDetermineType}
+  for i in countup(1, n.sonsLen- 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
       a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
-      a.sons[1] = semExprWithType(c, a.sons[1])
+      a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
-      n.sons[i] = semExprWithType(c, a)
+      n.sons[i] = semExprWithType(c, a, flags)
     
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
@@ -668,8 +669,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
-  semOpAux(c, n, 1 + ord(efMacroStmt in flags))
-  let flags = flags - {efMacroStmt}
+  semOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result == nil:
     result = overloadedCallOpr(c, n)
@@ -679,8 +679,9 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let callee = result.sons[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, result, nOrig, callee)
-  of skTemplate: result = semTemplateExpr(c, nOrig, callee)
+  of skTemplate: result = semTemplateExpr(c, result, callee)
   else:
+    activate(c, n)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
@@ -1281,7 +1282,7 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
   if sonsLen(n) != 2: return semDirectOp(c, n, flags)
   
-  result = newIntNode(nkIntLit, ord(tryExpr(c, n, flags) != nil))
+  result = newIntNode(nkIntLit, ord(tryExpr(c, n[1], flags) != nil))
   result.info = n.info
   result.typ = getSysType(tyBool)
 
@@ -1496,52 +1497,6 @@ proc buildCall(n: PNode): PNode =
   else:
     result = n
 
-proc semMacroStmt(c: PContext, n: PNode, flags: TExprFlags, 
-                  semCheck = true): PNode =
-  checkMinSonsLen(n, 2)
-  var a: PNode
-  if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
-  else: a = n.sons[0]
-  var s = qualifiedLookup(c, a, {checkUndeclared})
-  if s != nil: 
-    # transform
-    # nkMacroStmt(nkCall(a...), stmt, b...)
-    # to
-    # nkCall(a..., stmt, b...)
-    result = newNodeI(nkCall, n.info)
-    addSon(result, a)
-    if isCallExpr(n.sons[0]):
-      for i in countup(1, sonsLen(n.sons[0]) - 1):
-        addSon(result, n.sons[0].sons[i])
-    # for sigmatch this need to have a type; we use 'void':
-    for i in countup(1, sonsLen(n) - 1):
-      n.sons[i].typ = newTypeS(tyEmpty, c)
-      addSon(result, n.sons[i])
-
-    case s.kind
-    of skMacro:
-      if sfImmediate notin s.flags:
-        result = semDirectOp(c, result, flags+{efMacroStmt})
-      else:
-        result = semMacroExpr(c, result, n, s, semCheck)
-    of skTemplate: 
-      if sfImmediate notin s.flags:
-        result = semDirectOp(c, result, flags+{efMacroStmt})
-      else:
-        result = semTemplateExpr(c, result, s, semCheck)
-    else:
-      LocalError(n.info, errXisNoMacroOrTemplate, s.name.s)
-      result = errorNode(c, n)
-  elif a.kind == nkDotExpr:
-    # 'x.m(y): stmt' ==  nkMacroStmt(nkCall(nkDotExpr(x, m), y), stmt)
-    # -->                nkMacroStmt(nkCall(m, x, y), stmt)
-    n.sons[0] = buildCall(n.sons[0])
-    result = semMacroStmt(c, n, flags, semCheck)
-  else:
-    LocalError(n.info, errInvalidExpressionX, 
-               renderTree(a, {renderNoComments}))
-    result = errorNode(c, n)
-
 proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
   # The case expression is simply rewritten to a StmtListExpr:
   #   var res {.noInit, genSym.}: type(values)
@@ -1553,7 +1508,7 @@ proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
   #   res
   var
     info = caseStmt.info
-    resVar = newSym(skVar, getIdent":res", getCurrOwner(), info)
+    resVar = newSym(skVar, idAnon, getCurrOwner(), info)
     resNode = newSymNode(resVar, info)
     resType: PType
 
@@ -1592,7 +1547,15 @@ proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
     resNode])
 
   result = semStmtListExpr(c, result)
-    
+
+proc fixImmediateParams(n: PNode): PNode =
+  # XXX: Temporary work-around until we carry out
+  # the planned overload resolution reforms
+  for i in 1 .. <n.len:
+    if n[i].kind == nkDo: n.sons[i] = n[i][bodyPos]
+  
+  result = n
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1670,12 +1633,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
-          result = semMacroExpr(c, n, n, s)
+          var p = fixImmediateParams(n)
+          result = semMacroExpr(c, p, p, s)
       of skTemplate:
         if sfImmediate notin s.flags:
           result = semDirectOp(c, n, flags)
         else:
-          result = semTemplateExpr(c, n, s)
+          var p = fixImmediateParams(n)
+          result = semTemplateExpr(c, p, s)
       of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:
@@ -1695,8 +1660,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
-  of nkMacroStmt: 
-    result = semMacroStmt(c, n, flags)
   of nkWhen:
     if efWantStmt in flags:
       result = semWhen(c, n, true)
@@ -1725,7 +1688,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n)
-  of nkLambdaKinds: result = semLambda(c, n)
+  of nkLambdaKinds: result = semLambda(c, n, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr: 
     result = n
