@@ -623,9 +623,9 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     let m = lookupMacro(c, key)
     if m == nil: continue
-    # we transform ``proc p {.m, rest.}`` into ``m: proc p {.rest.}`` and
+    # we transform ``proc p {.m, rest.}`` into ``m(proc p {.rest.})`` and
     # let the semantic checker deal with it:
-    var x = newNodeI(nkMacroStmt, n.info)
+    var x = newNodeI(nkCall, n.info)
     x.add(newSymNode(m))
     prc.sons[pragmasPos] = copyExcept(n, i)
     if it.kind == nkExprColonExpr:
@@ -634,15 +634,19 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
     return semStmt(c, x)
-  
-proc semLambda(c: PContext, n: PNode): PNode = 
+
+proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semProcAnnotation(c, n)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
-  var s = newSym(skProc, getIdent":anonymous", getCurrOwner(), n.info)
-  s.ast = n
-  n.sons[namePos] = newSymNode(s)
+  var s: PSym
+  if n[namePos].kind != nkSym:
+    s = newSym(skProc, idAnon, getCurrOwner(), n.info)
+    s.ast = n
+    n.sons[namePos] = newSymNode(s)
+  else:
+    s = n[namePos].sym
   pushOwner(s)
   openScope(c.tab)
   if n.sons[genericParamsPos].kind != nkEmpty:
@@ -659,18 +663,30 @@ proc semLambda(c: PContext, n: PNode): PNode =
   if n.sons[bodyPos].kind != nkEmpty: 
     if sfImportc in s.flags: 
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
-    pushProcCon(c, s)
-    addResult(c, s.typ.sons[0], n.info, skProc)
-    let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-    n.sons[bodyPos] = transformBody(c.module, semBody, s)
-    addResultNode(c, n)
-    popProcCon(c)
+    if efDetermineType notin flags:
+      pushProcCon(c, s)
+      addResult(c, s.typ.sons[0], n.info, skProc)
+      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+      n.sons[bodyPos] = transformBody(c.module, semBody, s)
+      addResultNode(c, n)
+      popProcCon(c)
+      sideEffectsCheck(c, s)
   else:
     LocalError(n.info, errImplOfXexpected, s.name.s)
-  sideEffectsCheck(c, s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
   result.typ = s.typ
+
+proc activate(c: PContext, n: PNode) =
+  # XXX: This proc is part of my plan for getting rid of
+  # forward declarations. stay tuned.
+  case n.kind
+  of nkLambdaKinds:
+    discard semLambda(c, n, {})
+  of nkCallKinds:
+    for i in 1 .. <n.len: activate(c, n[i])
+  else:
+    nil
 
 proc instantiateDestructor*(c: PContext, typ: PType): bool
 

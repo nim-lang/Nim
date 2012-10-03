@@ -53,6 +53,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
     if macroToExpand(s):
+      let n = fixImmediateParams(n)
       result = semTemplateExpr(c, n, s, false)
     else:
       result = symChoice(c, n, s, scOpen)
@@ -123,6 +124,7 @@ proc semGenericStmt(c: PContext, n: PNode,
           result = n
       of skTemplate: 
         if macroToExpand(s):
+          let n = fixImmediateParams(n)
           result = semTemplateExpr(c, n, s, false)
         else:
           n.sons[0] = symChoice(c, n.sons[0], s, scOpen)
@@ -150,17 +152,6 @@ proc semGenericStmt(c: PContext, n: PNode,
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
     let flags = if isDefinedMagic: flags+{withinMixin} else: flags
     for i in countup(first, sonsLen(result) - 1):
-      result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
-  of nkMacroStmt: 
-    checkMinSonsLen(n, 2)
-    var a: PNode
-    if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
-    else: a = n.sons[0]
-    let luf = if withinMixin notin flags: {checkUndeclared} else: {}
-    var s = qualifiedLookup(c, a, luf)
-    if s != nil and macroToExpand(s):
-      result = semMacroStmt(c, n, {}, false)
-    for i in countup(0, sonsLen(result)-1): 
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, toBind)
   of nkIfStmt: 
     for i in countup(0, sonsLen(n)-1): 

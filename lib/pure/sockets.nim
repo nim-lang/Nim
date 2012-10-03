@@ -940,7 +940,7 @@ proc readIntoBuf(socket: TSocket, flags: int32): int =
   socket.currPos = 0
 
 template retRead(flags, readBytes: int) =
-  let res = socket.readIntoBuf(flags)
+  let res = socket.readIntoBuf(flags.int32)
   if res <= 0:
     if readBytes > 0:
       return readBytes

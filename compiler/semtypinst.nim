@@ -64,10 +64,11 @@ proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
   result.typ = ReplaceTypeVarsT(cl, n.typ)
+  if result.kind == nkSym: result.sym = ReplaceTypeVarsS(cl, n.sym)
   for i in 0 .. safeLen(n)-1: 
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f` 
     if i == 0: result.add(n[i])
-    else: result.add(ReplaceTypeVarsN(cl, n[i]))
+    else: result.add(prepareNode(cl, n[i]))
 
 proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
   if n == nil: return

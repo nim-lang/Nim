@@ -151,7 +151,7 @@ template require*(conditions: stmt): stmt {.immediate, dirty.} =
     const AbortOnError {.inject.} = true
     check conditions
 
-macro expect*(exp: stmt): stmt {.immediate.} =
+macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
                       body: stmt): PNimrodNode {.dirty.} =
@@ -162,12 +162,11 @@ macro expect*(exp: stmt): stmt {.immediate.} =
     except errorTypes:
       nil
 
-  var expectCall = exp[0]
-  var body = exp[1]
-  
+  var body = exp[exp.len - 1]
+
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, expectCall.len - 1):
-    errorTypes.add(expectCall[i])
+  for i in countup(1, exp.len - 2):
+    errorTypes.add(exp[i])
 
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 
