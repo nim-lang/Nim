@@ -16,7 +16,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
-  tables, docgen2
+  tables, docgen2, service
 
 const
   has_LLVM_Backend = false
@@ -292,5 +292,16 @@ proc MainCommand =
     gCmd = cmdIdeTools
     wantMainModule()
     CommandSuggest()
+  of "serve":
+    gCmd = cmdIdeTools
+    msgs.gErrorMax = high(int)  # do not stop after first error
+    semanticPasses()
+    # no need to write rod files and would slow down things:
+    #registerPass(rodwrite.rodwritePass())
+    discard CompileModule(options.libpath / "system", {sfSystemModule})
+    service.serve(proc () =
+      let projectFile = gProjectFull
+      discard CompileModule(projectFile, {sfMainModule})
+    )
   else: rawMessage(errInvalidCommandX, command)
 

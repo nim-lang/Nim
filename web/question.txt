@@ -9,13 +9,15 @@ General
 What is Nimrod?
 ---------------
 
-Nimrod is a new statically typed, imperative
-programming language, that supports procedural, functional, object oriented and
-generic programming styles while remaining simple and efficient. A special
-feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
-(*AST*) is part of the specification - this allows a powerful macro system which
-can be used to create domain specific languages. Nimrod does not sacrifice
-flexibility for speed. You get both.
+Nimrod is a statically typed, imperative programming language that tries to
+give the programmer ultimate power without compromises on runtime efficiency. 
+This means it focuses on compile-time mechanisms in all their
+various forms. Beneath a nice infix/indentation based syntax with a 
+powerful (AST based, hygienic) macro system lies a semantic model that supports 
+a soft realtime GC on thread local heaps. Asynchronous message passing is used 
+between threads, so no "stop the world" mechanism is necessary. An unsafe 
+shared memory heap is also provided for the increased efficiency that results 
+from that model.
 
 ..
   Don't give me that marketing crap. What is Nimrod?

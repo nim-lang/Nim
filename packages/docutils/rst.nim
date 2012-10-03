@@ -818,7 +818,7 @@ proc getDirective(p: var TRstParser): string =
 proc parseComment(p: var TRstParser): PRstNode = 
   case p.tok[p.idx].kind
   of tkIndent, tkEof: 
-    if p.tok[p.idx + 1].kind == tkIndent: 
+    if p.tok[p.idx].kind != tkEof and p.tok[p.idx + 1].kind == tkIndent: 
       inc(p.idx)              # empty comment
     else: 
       var indent = p.tok[p.idx].ival
@@ -1348,9 +1348,20 @@ proc parseSectionWrapper(p: var TRstParser): PRstNode =
   while (result.kind == rnInner) and (len(result) == 1): 
     result = result.sons[0]
   
+proc `$`(t: TToken): string =
+  result = $t.kind & ' ' & (if isNil(t.symbol): "NIL" else: t.symbol)
+
 proc parseDoc(p: var TRstParser): PRstNode = 
   result = parseSectionWrapper(p)
-  if p.tok[p.idx].kind != tkEof: rstMessage(p, meGeneralParseError)
+  if p.tok[p.idx].kind != tkEof: 
+    when false:
+      assert isAllocatedPtr(cast[pointer](p.tok))
+      for i in 0 .. high(p.tok):
+        assert isNil(p.tok[i].symbol) or 
+               isAllocatedPtr(cast[pointer](p.tok[i].symbol))
+      echo "index: ", p.idx, " length: ", high(p.tok), "##",
+          p.tok[p.idx-1], p.tok[p.idx], p.tok[p.idx+1]
+    rstMessage(p, meGeneralParseError)
   
 type
   TDirFlag = enum

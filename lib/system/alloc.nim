@@ -729,7 +729,8 @@ template InstantiateForRegion(allocator: expr) =
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
 
-    proc isAllocatedPtr*(p: pointer): bool = 
+    proc isAllocatedPtr*(p: pointer): bool =
+      let p = cast[pointer](cast[TAddress](p)-%TAddress(sizeof(TCell)))
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)
