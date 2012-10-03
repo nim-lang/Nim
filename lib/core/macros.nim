@@ -8,74 +8,74 @@
 #
 
 
-## This module contains the interface to the compiler's abstract syntax 
+## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 
 ## .. include:: ../doc/astspec.txt
 
 type
   TNimrodNodeKind* = enum
-    nnkNone, nnkEmpty, nnkIdent, nnkSym, 
-    nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
-    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit, 
-    nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit, 
-    nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit, 
-    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall, 
-    nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
-    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 
+    nnkNone, nnkEmpty, nnkIdent, nnkSym,
+    nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit,
+    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit,
+    nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit,
+    nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
+    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
+    nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr,
+    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix,
     nnkPrefix, nnkPostfix, nnkPar, nnkCurly, nnkCurlyExpr,
-    nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
-    nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
-    nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted, 
+    nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange,
+    nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr,
+    nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted,
     nnkTableConstr, nnkBind,
     nnkClosedSymChoice,
     nnkOpenSymChoice,
     nnkHiddenStdConv,
     nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, nnkStaticExpr,
-    nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
-    nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
-    nnkStringToCString, nnkCStringToString, nnkAsgn, 
-    nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, 
-    nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef, 
-    nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
-    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
-    nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt, 
-    nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt, 
-    nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection, 
-    nnkConstDef, nnkTypeDef, 
-    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
+    nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv,
+    nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange,
+    nnkStringToCString, nnkCStringToString, nnkAsgn,
+    nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit,
+    nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef,
+    nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch,
+    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt,
+    nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,
+    nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
+    nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
+    nnkConstDef, nnkTypeDef,
+    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
-    nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
+    nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt,
     nnkIncludeStmt, nnkBindStmt, nnkMixinStmt,
-    nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
-    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
-    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
-    nnkRefTy, nnkPtrTy, nnkVarTy, 
+    nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
+    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
+    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
-    nnkDistinctTy, 
-    nnkProcTy, nnkEnumTy, 
-    nnkEnumFieldDef, 
+    nnkDistinctTy,
+    nnkProcTy, nnkEnumTy,
+    nnkEnumFieldDef,
     nnkArglist, nnkPattern
     nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
-    ntyNone, ntyBool, ntyChar, ntyEmpty, 
-    ntyArrayConstr, ntyNil, ntyExpr, ntyStmt, 
-    ntyTypeDesc, ntyGenericInvokation, ntyGenericBody, ntyGenericInst, 
-    ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal, 
-    ntyArray, ntyObject, ntyTuple, ntySet, 
-    ntyRange, ntyPtr, ntyRef, ntyVar, 
-    ntySequence, ntyProc, ntyPointer, ntyOpenArray, 
-    ntyString, ntyCString, ntyForward, ntyInt, 
-    ntyInt8, ntyInt16, ntyInt32, ntyInt64, 
+    ntyNone, ntyBool, ntyChar, ntyEmpty,
+    ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
+    ntyTypeDesc, ntyGenericInvokation, ntyGenericBody, ntyGenericInst,
+    ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal,
+    ntyArray, ntyObject, ntyTuple, ntySet,
+    ntyRange, ntyPtr, ntyRef, ntyVar,
+    ntySequence, ntyProc, ntyPointer, ntyOpenArray,
+    ntyString, ntyCString, ntyForward, ntyInt,
+    ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128
   TNimTypeKinds* = set[TNimrodTypeKind]
   TNimrodSymKind* = enum
-    nskUnknown, nskConditional, nskDynLib, nskParam, 
-    nskGenericParam, nskTemp, nskType, nskConst, 
-    nskVar, nskProc, nskMethod, nskIterator, 
-    nskConverter, nskMacro, nskTemplate, nskField, 
-    nskEnumField, nskForVar, nskModule, nskLabel, 
+    nskUnknown, nskConditional, nskDynLib, nskParam,
+    nskGenericParam, nskTemp, nskType, nskConst,
+    nskVar, nskProc, nskMethod, nskIterator,
+    nskConverter, nskMacro, nskTemplate, nskField,
+    nskEnumField, nskForVar, nskModule, nskLabel,
     nskStub
   TNimSymKinds* = set[TNimrodSymKind]
 
@@ -84,16 +84,10 @@ type
     ## represents a Nimrod identifier in the AST
 
   TNimrodSymbol {.final.} = object # hidden
-  TNimrodType {.final.} = object   # hidden
-  
-  PNimrodType* {.compilerproc.} = ref TNimrodType
-    ## represents a Nimrod type in the compiler; currently this is not very
-    ## useful as there is no API to deal with Nimrod types.
-  
   PNimrodSymbol* {.compilerproc.} = ref TNimrodSymbol
     ## represents a Nimrod *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
-  
+
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
@@ -131,7 +125,7 @@ proc add*(father: PNimrodNode, children: varargs[PNimrodNode]) {.
   ## adds each child of `children` to the `father` node
 
 proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
-  ## deletes `n` children of `father` starting at index `idx`. 
+  ## deletes `n` children of `father` starting at index `idx`.
 
 proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind".}
   ## returns the `kind` of the node `n`.
@@ -140,14 +134,14 @@ proc intVal*(n: PNimrodNode): biggestInt {.magic: "NIntVal".}
 proc floatVal*(n: PNimrodNode): biggestFloat {.magic: "NFloatVal".}
 proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol".}
 proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent".}
-proc typ*(n: PNimrodNode): PNimrodType {.magic: "NGetType".}
+proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType".}
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal".}
 
 proc `intVal=`*(n: PNimrodNode, val: biggestInt) {.magic: "NSetIntVal".}
 proc `floatVal=`*(n: PNimrodNode, val: biggestFloat) {.magic: "NSetFloatVal".}
 proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol".}
 proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent".}
-proc `typ=`*(n: PNimrodNode, typ: PNimrodType) {.magic: "NSetType".}
+proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
 proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal".}
 
 proc newNimNode*(kind: TNimrodNodeKind,
@@ -212,7 +206,7 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## returned even if the symbol is not ambiguous.
 
 proc callsite*(): PNimrodNode {.magic: "NCallSite".}
-  ## returns the AST if the invokation expression that invoked this macro. 
+  ## returns the AST if the invokation expression that invoked this macro.
 
 proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nimrod code and wraps that
@@ -234,17 +228,17 @@ proc parseStmt*(s: string): PNimrodNode {.magic: "ParseStmtToAst".}
 proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
-  ## 
+  ##
   ## .. code-block:: nimrod
   ##
-  ##   macro FooMacro() = 
+  ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
 template emit*(s: expr): stmt =
   ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program
   ## Example:
-  ## 
+  ##
   ##   emit("echo " & '"' & "hello world".toUpper & '"')
   ##
   block:
@@ -260,13 +254,13 @@ proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
 proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
-  ## macros that check its number of arguments. 
+  ## macros that check its number of arguments.
   if n.len < min: error("macro expects a node with " & $min & " children")
 
 proc expectLen*(n: PNimrodNode, len: int) {.compileTime.} =
   ## checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
-  ## macros that check its number of arguments. 
+  ## macros that check its number of arguments.
   if n.len != len: error("macro expects a node with " & $len & " children")
 
 proc newCall*(theProc: PNimrodNode,
@@ -284,7 +278,7 @@ proc newCall*(theProc: TNimrodIdent,
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
-  
+
 proc newCall*(theProc: string,
               args: varargs[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
@@ -310,7 +304,7 @@ proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   proc traverse(res: var string, level: int, n: PNimrodNode) =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
-    
+
     case n.kind
     of nnkEmpty: nil # same as nil node in this representation
     of nnkNilLit: res.add(" nil")
@@ -332,10 +326,10 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
   ## See also `repr` and `treeRepr`.
-  
+
   result = ($n.kind).substr(3)
   add(result, "(")
-  
+
   case n.kind
   of nnkEmpty: nil # same as nil node in this representation
   of nnkNilLit: add(result, "nil")
@@ -356,7 +350,7 @@ macro dumpTree*(s: stmt): stmt = echo s.treeRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
-  ## You can use this as a tool to explore the Nimrod's abstract syntax 
+  ## You can use this as a tool to explore the Nimrod's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 

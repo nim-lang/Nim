@@ -41,6 +41,7 @@ type
     callsite: PNode           # for 'callsite' magic
     mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
+    getType*: proc(n: PNode): PNode
   
   PEvalContext* = ref TEvalContext
 
@@ -521,7 +522,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   else: result = nil
   if result == nil or {sfImportc, sfForward} * s.flags != {}:
     result = raiseCannotEval(c, n.info)
-  
+
 proc evalIncDec(c: PEvalContext, n: PNode, sign: biggestInt): PNode = 
   result = evalAux(c, n.sons[1], {efLValue})
   if isSpecial(result): return 
@@ -875,6 +876,27 @@ proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   else:
     internalAssert false
 
+proc evalIsOp*(n: PNode): PNode =
+  InternalAssert n.sonsLen == 3 and
+    n[1].kind == nkSym and n[1].sym.kind == skType and
+    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
+  
+  let t1 = n[1].sym.typ
+
+  if n[2].kind in {nkStrLit..nkTripleStrLit}:
+    case n[2].strVal.normalize
+    of "closure":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure))
+  else:
+    let t2 = n[2].typ
+    var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
+                else: sameType(t1, t2)
+    result = newIntNode(nkIntLit, ord(match))
+
+  result.typ = n.typ
+
 proc expectString(n: PNode) =
   if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
     GlobalError(n.info, errStringLiteralExpected)
@@ -968,6 +990,9 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mTypeTrait:
     n.sons[1] = evalAux(c, n.sons[1], {})
     result = evalTypeTrait(n, c.module)
+  of mIs:
+    n.sons[1] = evalAux(c, n.sons[1], {})
+    result = evalIsOp(n)
   of mSlurp: result = evalSlurp(evalAux(c, n.sons[1], {}), c.module)
   of mStaticExec:
     let cmd = evalAux(c, n.sons[1], {})
@@ -1067,7 +1092,10 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
     if result.kind != nkIdent: stackTrace(c, n, errFieldXNotFound, "ident")
-  of mNGetType: result = evalAux(c, n.sons[1], {})
+  of mNGetType:
+    var ast = evalAux(c, n.sons[1], {})
+    InternalAssert c.getType != nil
+    result = c.getType(ast)
   of mNStrVal: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
@@ -1128,7 +1156,8 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     var a = result
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
-    a.typ = result.typ        # XXX: exception handling?
+    InternalAssert result.kind == nkSym and result.sym.kind == skType
+    a.typ = result.sym.typ
     result = emptyNode
   of mNSetStrVal:
     result = evalAux(c, n.sons[1], {efLValue})

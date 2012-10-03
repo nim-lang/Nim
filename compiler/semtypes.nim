@@ -584,22 +584,20 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
       result.typ = newTypeS(tyTypeDesc, c)
       result.typ.sons = paramType.sons
   of tyDistinct:
-    # type T1 = distinct expr
-    # type S1 = distinct Sortable
-    # proc x(a, b: T1, c, d: S1)
-    # This forces bindOnce behavior for the type class, equivalent to
-    # proc x[T, S](a, b: T, c, d: S)
     result = paramTypeClass(c, paramType.lastSon, procKind)
-    result.id = paramType.sym.name
+    # disable the bindOnce behavior for the type class
+    result.id = nil
+    return
   of tyGenericBody:
     # type Foo[T] = object
     # proc x(a: Foo, b: Foo) 
     result.typ = newTypeS(tyTypeClass, c)
     result.typ.addSonSkipIntLit(paramType)
-    result.id = paramType.sym.name # bindOnce by default
   of tyTypeClass:
     result.typ = copyType(paramType, getCurrOwner(), false)
   else: nil
+  # bindOnce by default
+  if paramType.sym != nil: result.id = paramType.sym.name
 
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
@@ -619,7 +617,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       let s = SymtabGet(c.tab, paramTypId)
       # tests/run/tinterf triggers this:
       if s != nil: result = s.typ
-      else: 
+      else:
         LocalError(info, errCannotInstantiateX, paramName)
         result = errorType(c)
     else:
@@ -684,8 +682,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymG(skParam, a.sons[j], c)
-      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s,
-                                    arg.info).skipIntLit
+      var finalType = liftParamType(c, kind, genericParams, typ,
+                                    arg.name.s, arg.info).skipIntLit
       arg.typ = finalType
       arg.position = counter
       inc(counter)
@@ -703,6 +701,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       if r.sym == nil or sfAnon notin r.sym.flags:
         r = liftParamType(c, kind, genericParams, r, "result", n.sons[0].info)
+        r.flags.incl tfRetType
       result.sons[0] = skipIntLit(r)
       res.typ = result.sons[0]
 
@@ -800,22 +799,25 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkCallKinds:
-    let op = n.sons[0].ident
-    if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
-      var
-        t1 = semTypeNode(c, n.sons[1], nil)
-        t2 = semTypeNode(c, n.sons[2], nil)
-      if   t1 == nil: 
-        LocalError(n.sons[1].info, errTypeExpected)
-        result = newOrPrevType(tyError, prev, c)
-      elif t2 == nil: 
-        LocalError(n.sons[2].info, errTypeExpected)
-        result = newOrPrevType(tyError, prev, c)
+    if n[0].kind == nkIdent:
+      let op = n.sons[0].ident
+      if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
+        var
+          t1 = semTypeNode(c, n.sons[1], nil)
+          t2 = semTypeNode(c, n.sons[2], nil)
+        if   t1 == nil: 
+          LocalError(n.sons[1].info, errTypeExpected)
+          result = newOrPrevType(tyError, prev, c)
+        elif t2 == nil: 
+          LocalError(n.sons[2].info, errTypeExpected)
+          result = newOrPrevType(tyError, prev, c)
+        else:
+          result = newTypeS(tyTypeClass, c)
+          result.addSonSkipIntLit(t1)
+          result.addSonSkipIntLit(t2)
+          result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
       else:
-        result = newTypeS(tyTypeClass, c)
-        result.addSonSkipIntLit(t1)
-        result.addSonSkipIntLit(t2)
-        result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
+        result = semTypeExpr(c, n)
     else:
       result = semTypeExpr(c, n)
   of nkCurlyExpr:
