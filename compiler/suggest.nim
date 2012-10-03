@@ -18,11 +18,6 @@ const
   sectionContext = "con"
   sectionUsage = "use"
 
-proc SuggestWriteln(s: string) = 
-  if gSilence == 0: 
-    Writeln(stdout, s)
-    
-
 proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
@@ -238,7 +233,7 @@ proc findUsages(node: PNode, s: PSym) =
 proc findDefinition(node: PNode, s: PSym) =
   if isTracked(node.info, s.name.s.len):
     SuggestWriteln(SymToStr(s, isLocal=false, sectionDef))
-    quit(0)
+    SuggestQuit()
 
 proc suggestSym*(n: PNode, s: PSym) {.inline.} =
   ## misnamed: should be 'symDeclared'
@@ -295,7 +290,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestCall(c, a, n, outputs)
   
   dec(c.InCompilesContext)
-  if outputs > 0 and optUsages notin gGlobalOptions: quit(0)
+  if outputs > 0 and optUsages notin gGlobalOptions: SuggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) = 
   suggestExpr(c, n)

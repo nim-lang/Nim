@@ -64,8 +64,8 @@ proc serve*(action: proc (){.nimcall.}) =
   var inp = "".TaintedString
   server.listen()
   while true:
-    var client = InvalidSocket
-    accept(server, client)
-    discard client.recvLine(inp)
+    accept(server, stdoutSocket)
+    discard stdoutSocket.recvLine(inp)
     processCmdLine(passCmd2, inp.string)
     action()
+    stdoutSocket.send("\c\L")
