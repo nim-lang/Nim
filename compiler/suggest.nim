@@ -18,6 +18,11 @@ const
   sectionContext = "con"
   sectionUsage = "use"
 
+proc SuggestWriteln(s: string) = 
+  if gSilence == 0: 
+    Writeln(stdout, s)
+    
+
 proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
@@ -51,7 +56,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
 
 proc suggestField(c: PContext, s: PSym, outputs: var int) = 
   if filterSym(s) and fieldVisible(c, s):
-    OutWriteln(SymToStr(s, isLocal=true, sectionSuggest))
+    SuggestWriteln(SymToStr(s, isLocal=true, sectionSuggest))
     inc outputs
 
 when not defined(nimhygiene):
@@ -62,7 +67,7 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
     for item in items(c.tab.stack[i]):
       let it {.inject.} = item
       if cond:
-        OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
+        SuggestWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
         inc outputs
 
 proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
@@ -120,7 +125,7 @@ proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   for i in countdown(c.tab.tos-1, 1):
     for it in items(c.tab.stack[i]):
       if filterSym(it):
-        OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, sectionSuggest))
+        SuggestWriteln(SymToStr(it, isLocal = i > ModuleTablePos, sectionSuggest))
         inc outputs
 
 proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
@@ -134,12 +139,12 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         # all symbols accessible, because we are in the current module:
         for it in items(c.tab.stack[ModuleTablePos]): 
           if filterSym(it): 
-            OutWriteln(SymToStr(it, isLocal=false, sectionSuggest))
+            SuggestWriteln(SymToStr(it, isLocal=false, sectionSuggest))
             inc outputs
       else: 
         for it in items(n.sym.tab): 
           if filterSym(it): 
-            OutWriteln(SymToStr(it, isLocal=false, sectionSuggest))
+            SuggestWriteln(SymToStr(it, isLocal=false, sectionSuggest))
             inc outputs
     else:
       # fallback:
@@ -224,15 +229,15 @@ var
 proc findUsages(node: PNode, s: PSym) =
   if usageSym == nil and isTracked(node.info, s.name.s.len):
     usageSym = s
-    OutWriteln(SymToStr(s, isLocal=false, sectionUsage))
+    SuggestWriteln(SymToStr(s, isLocal=false, sectionUsage))
   elif s == usageSym:
     if lastLineInfo != node.info:
-      OutWriteln(SymToStr(s, isLocal=false, sectionUsage, node.info))
+      SuggestWriteln(SymToStr(s, isLocal=false, sectionUsage, node.info))
     lastLineInfo = node.info
 
 proc findDefinition(node: PNode, s: PSym) =
   if isTracked(node.info, s.name.s.len):
-    OutWriteln(SymToStr(s, isLocal=false, sectionDef))
+    SuggestWriteln(SymToStr(s, isLocal=false, sectionDef))
     quit(0)
 
 proc suggestSym*(n: PNode, s: PSym) {.inline.} =

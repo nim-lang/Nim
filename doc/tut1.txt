@@ -16,10 +16,10 @@ Introduction
   </p></blockquote>
 
 
-This document is a tutorial for the programming language *Nimrod*. After this
-tutorial you will have a decent knowledge of Nimrod. This tutorial assumes
-that you are familiar with basic programming concepts like variables, types
-or statements.
+This document is a tutorial for the programming language *Nimrod*. 
+This tutorial assumes that you are familiar with basic programming concepts 
+like variables, types or statements but is kept very basic. The manual 
+contains many more examples of the advanced language features.
 
 
 
@@ -593,7 +593,7 @@ caller, a ``var`` parameter can be used:
 
 In the example, ``res`` and ``remainder`` are `var parameters`.
 Var parameters can be modified by the procedure and the changes are
-visible to the caller. Note that the above example would better make usage of
+visible to the caller. Note that the above example would better make use of
 a tuple as a return value instead of using var parameters.
 
 

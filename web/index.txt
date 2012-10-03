@@ -8,23 +8,20 @@ Home
   -- D. E. Knuth
 
 
-**This page is about the Nimrod programming language, which combines Lisp's
-power with Python's readability and C's performance.**
+**Nimrod combines Lisp's power with Python's readability and C's performance.**
 
 Welcome to Nimrod
 -----------------
 
-**Nimrod** is a new statically typed, imperative
-programming language, that supports procedural, object oriented, functional 
-and generic programming styles while remaining simple and efficient. 
-A special feature that Nimrod inherited from Lisp is that Nimrod's abstract 
-syntax tree (*AST*) is part of the specification - this allows a powerful 
-macro system which allows domain specific languages.
-
-Nimrod is a compiled, garbage-collected systems programming language
-which has an excellent productivity/performance ratio. Nimrod's design
-focuses on the 3E: efficiency, expressiveness, elegance (in the order of
-priority).
+**Nimrod** is a statically typed, imperative programming language that tries to
+give the programmer ultimate power without compromises on runtime efficiency. 
+This means it focuses on compile-time mechanisms in all their
+various forms. Beneath a nice infix/indentation based syntax with a 
+powerful (AST based, hygienic) macro system lies a semantic model that supports 
+a soft realtime GC on thread local heaps. Asynchronous message passing is used 
+between threads, so no "stop the world" mechanism is necessary. An unsafe 
+shared memory heap is also provided for the increased efficiency that results 
+from that model.
 
 
 .. container:: snippet
@@ -33,7 +30,8 @@ priority).
   .. code-block:: nimrod
     import strutils
     
-    echo "Type in a list of ints of ints (separate by whitespace): "
+    # Prints the maximum integer from a list of integers
+    # delimited by whitespace read from stdin.
     let tokens = stdin.readLine.split
     echo tokens.each(parseInt).max, " is the maximum."
 

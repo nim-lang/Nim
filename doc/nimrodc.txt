@@ -159,6 +159,7 @@ Define               Effect
                      systems. See the documentation of the `gc <gc.html>`_ 
                      for further information.
 ``nodejs``           The EcmaScript target is actually ``node.js``.
+``ssl``              Enables OpenSSL support for the sockets module.
 ==================   =========================================================
 
 
