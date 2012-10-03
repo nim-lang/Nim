@@ -41,7 +41,7 @@ type
     callsite: PNode           # for 'callsite' magic
     mode*: TEvalMode
     globals*: TIdNodeTable    # state of global vars
-    getType*: proc(n: PNode): PNode
+    getType*: proc(n: PNode): PNode {.closure.}
   
   PEvalContext* = ref TEvalContext
 

@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables
+  options, strutils, os, tables, sockets
 
 type 
   TMsgKind* = enum 
@@ -466,6 +466,16 @@ var
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
   gSilence*: int              # == 0 if we produce any output at all 
+  stdoutSocket*: TSocket
+
+proc SuggestWriteln*(s: string) = 
+  if gSilence == 0: 
+    if isNil(stdoutSocket): Writeln(stdout, s)
+    else: stdoutSocket.send(s & "\c\L")
+    
+proc SuggestQuit*() =
+  if isNil(stdoutSocket): quit(0)
+  else: stdoutSocket.send("\c\L")
   
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
@@ -575,22 +585,19 @@ proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
-  template maybeTrace =
-    if defined(debug) or gVerbosity >= 3:
-      writeStackTrace()
-
-  if msg == errInternal:
-    writeStackTrace() # we always want a stack trace here
+proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) = 
+  if msg == errInternal: 
+    assert(false)             # we want a stack trace here
   if msg >= fatalMin and msg <= fatalMax: 
-    maybeTrace()
+    if gVerbosity >= 3: assert(false)
     quit(1)
   if msg >= errMin and msg <= errMax: 
-    maybeTrace()
+    if gVerbosity >= 3: assert(false)
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax or eh == doAbort: 
-      quit(1)                        # one error stops the compiler
+      if gVerbosity >= 3: assert(false)
+      quit(1)                 # one error stops the compiler
     elif eh == doRaise:
       raiseRecoverableError(s)
   
