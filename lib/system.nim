@@ -2349,9 +2349,8 @@ template eval*(blk: stmt): stmt =
   ## executes a block of code at compile time just as if it was a macro
   ## optionally, the block can return an AST tree that will replace the 
   ## eval expression
-  block:
-    macro payload(x: stmt): stmt = blk
-    payload()
+  macro payload: stmt {.gensym.} = blk
+  payload()
 
 proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
   ## inserts `item` into `x` at position `i`.
