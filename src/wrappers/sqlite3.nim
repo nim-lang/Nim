@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,7 +13,7 @@ when defined(windows):
     Lib = "sqlite3.dll"
 elif defined(macosx): 
   const 
-    Lib = "sqlite-3.6.13.dylib"
+    Lib = "(libsqlite3(|.0).dylib|sqlite-3.6.13.dylib)"
 else: 
   const 
     Lib = "libsqlite3.so(|.0)"
