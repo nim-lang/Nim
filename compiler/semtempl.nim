@@ -181,7 +181,8 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   if n.kind notin nkLambdaKinds and symBinding(n.sons[pragmasPos]) == spGenSym:
     let ident = getIdentNode(c, n.sons[namePos])
     if not isTemplParam(c, ident):
-      let s = newGenSym(k, ident, c)
+      var s = newGenSym(k, ident, c)
+      s.ast = n
       addPrelimDecl(c.c, s)
       n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
     else:
