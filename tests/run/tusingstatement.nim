@@ -28,12 +28,12 @@ import
 #  `opened` is defined to `optional.hasValue`
 macro using(e: expr): stmt {.immediate.} =
   let e = callsite()
-  if e.len != 2:
+  if e.len != 3:
     error "Using statement: unexpected number of arguments. Got " &
       $e.len & ", expected: 1 or more variable assignments and a block"
 
-  var args = e[0]
-  var body = e[1]
+  var args = e
+  var body = e[2]
   
   var 
     variables : seq[PNimrodNode]
@@ -41,8 +41,8 @@ macro using(e: expr): stmt {.immediate.} =
 
   newSeq(variables, 0)
   newSeq(closingCalls, 0)
-
-  for i in countup(1, args.len-1):
+  
+  for i in countup(1, args.len-2):
     if args[i].kind == nnkExprEqExpr:
       var varName = args[i][0]
       var varValue = args[i][1]

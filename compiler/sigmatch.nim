@@ -637,8 +637,12 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isGeneric:
     inc(m.genericMatches)
     if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:
-      if f.kind == tyTypeDesc: result = arg
-      else: result = argOrig
+      if f.kind == tyStmt and argOrig.kind == nkDo:
+        result = argOrig[bodyPos]
+      elif f.kind == tyTypeDesc:
+        result = arg
+      else:
+        result = argOrig
     else:
       result = copyTree(arg)
       result.typ = getInstantiatedType(c, arg, m, f) 

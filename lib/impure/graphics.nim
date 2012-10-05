@@ -22,7 +22,7 @@ type
 
   PSurface* = ref TSurface ## a surface to draw onto
   TSurface* {.pure, final.} = object
-    w*, h*: int
+    w*, h*: Natural
     s*: sdl.PSurface
   
   EGraphics* = object of EIO

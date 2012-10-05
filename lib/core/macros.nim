@@ -38,7 +38,7 @@ type
     nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit,
     nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef,
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch,
-    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt,
+    nnkElifBranch, nnkExceptBranch, nnkElse,
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
     nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
@@ -234,16 +234,14 @@ proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-template emit*(s: expr): stmt =
+template emit*(e: expr[string]): stmt =
   ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program
   ## Example:
   ##
   ##   emit("echo " & '"' & "hello world".toUpper & '"')
   ##
-  block:
-    const evaluated = s
-    eval: result = evaluated.parseStmt
+  eval: result = e.parseStmt
 
 proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
