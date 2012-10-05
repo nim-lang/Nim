@@ -19,11 +19,10 @@ import
 # repeated CRC calculations may turn out to be too slow.
 
 var 
-  arguments: string = ""      # the arguments to be passed to the program that
+  arguments*: string = ""     # the arguments to be passed to the program that
                               # should be run
 
-proc ProcessCmdLine(pass: TCmdLinePass, cmd: string) = 
-  # XXX remove duplication with nimrod.nim
+proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   while true: 
@@ -69,3 +68,4 @@ proc serve*(action: proc (){.nimcall.}) =
     processCmdLine(passCmd2, inp.string)
     action()
     stdoutSocket.send("\c\L")
+    stdoutSocket.close()
