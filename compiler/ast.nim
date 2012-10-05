@@ -145,7 +145,6 @@ type
     nkElifBranch,         # used in if statements
     nkExceptBranch,       # an except section
     nkElse,               # an else part
-    nkMacroStmt,          # a macro statement
     nkAsmStmt,            # an assembler block
     nkPragma,             # a pragma statement
     nkPragmaBlock,        # a pragma with a block
@@ -910,6 +909,18 @@ proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
 proc newMetaNodeIT*(tree: PNode, info: TLineInfo, typ: PType): PNode =
   result = newNodeIT(nkMetaNode, info, typ)
   result.add(tree)
+
+var emptyParams = newNode(nkFormalParams)
+emptyParams.addSon(emptyNode)
+
+proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
+                 params = emptyParams,
+                 name, pattern, genericParams,
+                 pragmas, exceptions = ast.emptyNode): PNode =
+  result = newNodeI(kind, info)
+  result.sons = @[name, pattern, genericParams, params,
+                  pragmas, exceptions, body]
+
 
 proc NewType(kind: TTypeKind, owner: PSym): PType = 
   new(result)

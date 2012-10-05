@@ -101,4 +101,6 @@ proc getIdent*(identifier: string, h: THash): PIdent =
 
 proc IdentEq*(id: PIdent, name: string): bool = 
   result = id.id == getIdent(name).id
-  
+
+let idAnon* = getIdent":anonymous"
+

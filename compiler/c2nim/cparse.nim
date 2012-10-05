@@ -1382,7 +1382,7 @@ proc nestedStatement(p: var TParser): PNode =
   # Nimrod requires complex statements to be nested in whitespace!
   const
     complexStmt = {nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef,
-      nkTemplateDef, nkIteratorDef, nkMacroStmt, nkIfStmt,
+      nkTemplateDef, nkIteratorDef, nkIfStmt,
       nkWhenStmt, nkForStmt, nkWhileStmt, nkCaseStmt, nkVarSection, 
       nkConstSection, nkTypeSection, nkTryStmt, nkBlockStmt, nkStmtList,
       nkCommentStmt, nkStmtListExpr, nkBlockExpr, nkStmtListType, nkBlockType}

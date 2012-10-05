@@ -175,8 +175,7 @@ proc findClosestDot(n: PNode): PNode =
       if result != nil: return
 
 const
-  CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit,
-               nkMacroStmt}
+  CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit}
 
 proc findClosestCall(n: PNode): PNode = 
   if n.kind in callNodes and msgs.inCheckpoint(n.info) == cpExact: 
