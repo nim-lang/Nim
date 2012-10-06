@@ -17,8 +17,9 @@
 
 # some platforms have really weird unmap behaviour: unmap(blockStart, PageSize)
 # really frees the whole block. Happens for Linux/PowerPC for example. Amd64
-# and x86 are safe though:
-const weirdUnmap = not (defined(amd64) or defined(i386))
+# and x86 are safe though; Windows is special because MEM_RELEASE can only be
+# used with a size of 0:
+const weirdUnmap = not (defined(amd64) or defined(i386)) or defined(windows)
 
 when defined(posix): 
   const
@@ -75,7 +76,10 @@ elif defined(windows):
     # This means that the OS has some different view over how big the block is
     # that we want to free! So, we cannot reliably release the memory back to
     # Windows :-(. We have to live with MEM_DECOMMIT instead.
-    when reallyOsDealloc: VirtualFree(p, size, MEM_DECOMMIT)
+    # Well that used to be the case but MEM_DECOMMIT fragments the address
+    # space heavily, so we now treat Windows as a strange unmap target.
+    when reallyOsDealloc: VirtualFree(p, 0, MEM_RELEASE)
+    #VirtualFree(p, size, MEM_DECOMMIT)
 
 else: 
   {.error: "Port memory manager to your platform".}
