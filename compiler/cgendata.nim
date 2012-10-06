@@ -115,8 +115,6 @@ type
 var
   mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module
   gMapping*: PRope             # the generated mapping file (if requested)
-  gPendingModules*: seq[BModule] = @[] # list of modules that are not
-                                       # finished with code generation
   gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0
 
