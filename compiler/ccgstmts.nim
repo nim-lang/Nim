@@ -778,11 +778,6 @@ proc genPragma(p: BProc, n: PNode) =
       genEmit(p, it)
     of wBreakpoint: 
       genBreakPoint(p, it)
-    of wDeadCodeElim: 
-      if not (optDeadCodeElim in gGlobalOptions): 
-        # we need to keep track of ``deadCodeElim`` pragma
-        if (sfDeadCodeElim in p.module.module.flags): 
-          addPendingModule(p.module)
     of wWatchpoint:
       genWatchpoint(p, it)
     else: nil
