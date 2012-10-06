@@ -38,17 +38,11 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.forwardedProcs.add(prc)
   inc(gForwardedProcsCounter)
 
-proc addPendingModule(m: BModule) = 
-  for i in countup(0, high(gPendingModules)): 
-    if gPendingModules[i] == m: 
-      InternalError("module already pending: " & m.module.name.s)
-  gPendingModules.add(m)
-
 proc findPendingModule(m: BModule, s: PSym): BModule = 
   var ms = getModule(s)
   if ms.id == m.module.id: return m
-  for i in countup(0, high(gPendingModules)): 
-    result = gPendingModules[i]
+  for i in countup(0, high(gModules)): 
+    result = gModules[i]
     if result.module.id == ms.id: return 
   # else we found no pending module: This can happen for procs that are in
   # a module that is already closed. This is fine, don't generate code for
@@ -1021,8 +1015,7 @@ proc newModule(module: PSym, filename: string): BModule =
   if (optDeadCodeElim in gGlobalOptions): 
     if (sfDeadCodeElim in module.flags): 
       InternalError("added pending module twice: " & filename)
-    addPendingModule(result)
-
+  
 proc myOpen(module: PSym, filename: string): PPassContext = 
   result = newModule(module, filename)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
