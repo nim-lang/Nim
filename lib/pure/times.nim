@@ -317,9 +317,9 @@ when not defined(ECMAScript):
     result.isDST = tm.isDST > 0
     if local:
       if result.isDST:
-        result.tzname = getTzname()[0]
-      if not result.isDST:
-        result.tzname = getTzname()[1]
+        result.tzname = getTzname().DST
+      else:
+        result.tzname = getTzname().nonDST
     else:
       result.tzname = "UTC"
     
@@ -538,13 +538,14 @@ proc format*(info: TTimeInfo, f: string): string =
   ## ==========  =================================================================================  ================================================
   ##
   ## Other strings can be inserted by putting them in ``''``. For example ``hh'->'mm`` will give ``01->56``.
+  ## The following characters can be inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]`` ``,``
 
   result = ""
   var i = 0
   var currentF = ""
   while True:
     case f[i]
-    of ' ', '-', '/', ':', '\'', '\0':
+    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       case currentF
       of "d":
         result.add($info.monthday)
@@ -557,9 +558,9 @@ proc format*(info: TTimeInfo, f: string): string =
       of "dddd":
         result.add($info.weekday)
       of "h":
-        result.add($(info.hour - 12))
+        result.add($(if info.hour > 12: info.hour - 12 else: info.hour))
       of "hh":
-        let amerHour = info.hour - 12
+        let amerHour = if info.hour > 12: info.hour - 12 else: info.hour
         if amerHour < 10:
           result.add('0')
         result.add($amerHour)
@@ -578,7 +579,7 @@ proc format*(info: TTimeInfo, f: string): string =
       of "M":
         result.add($(int(info.month)+1))
       of "MM":
-        if int(info.month) < 10:
+        if info.month < mOct:
           result.add('0')
         result.add($(int(info.month)+1))
       of "MMM":
@@ -600,22 +601,33 @@ proc format*(info: TTimeInfo, f: string): string =
           result.add("PM")
         else: result.add("AM")
       of "y":
-        var fr = ($info.year).len()-2
+        var fr = ($info.year).len()-1
         if fr < 0: fr = 0
         result.add(($info.year)[fr .. ($info.year).len()-1])
       of "yy":
+        var fr = ($info.year).len()-2
+        if fr < 0: fr = 0
+        var fyear = ($info.year)[fr .. ($info.year).len()-1]
+        if fyear.len != 2: fyear = repeatChar(2-fyear.len(), '0') & fyear
+        result.add(fyear)
+      of "yyy":
         var fr = ($info.year).len()-3
         if fr < 0: fr = 0
-        result.add(($info.year)[fr .. ($info.year).len()-1])
-      of "yyy":
+        var fyear = ($info.year)[fr .. ($info.year).len()-1]
+        if fyear.len != 3: fyear = repeatChar(3-fyear.len(), '0') & fyear
+        result.add(fyear)
+      of "yyyy":
         var fr = ($info.year).len()-4
         if fr < 0: fr = 0
-        result.add(($info.year)[fr .. ($info.year).len()-1])
-      of "yyyy":
-        result.add($info.year)
+        var fyear = ($info.year)[fr .. ($info.year).len()-1]
+        if fyear.len != 4: fyear = repeatChar(4-fyear.len(), '0') & fyear
+        result.add(fyear)
       of "yyyyy":
-        result.add('0')
-        result.add($info.year)
+        var fr = ($info.year).len()-5
+        if fr < 0: fr = 0
+        var fyear = ($info.year)[fr .. ($info.year).len()-1]
+        if fyear.len != 5: fyear = repeatChar(5-fyear.len(), '0') & fyear
+        result.add(fyear)
       of "z":
         let hrs = (info.timezone div 60) div 60
         result.add($hrs)
@@ -654,3 +666,30 @@ proc format*(info: TTimeInfo, f: string): string =
     inc(i)
 
 {.pop.}
+
+when isMainModule:
+  # $ date --date='@2147483647'
+  # Tue 19 Jan 03:14:07 GMT 2038
+
+  var t = getGMTime(TTime(2147483647))
+  echo t.format("ddd dd MMM hh:mm:ss ZZZ yyyy")
+  assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
+  
+  assert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
+    "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
+  
+  var t2 = getGMTime(TTime(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
+  assert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
+    "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
+  
+  var t3 = getGMTime(TTime(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
+  assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
+    "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
+  
+  var t4 = getGMTime(TTime(876124714)) # Mon  6 Oct 08:58:34 BST 1997
+  assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
+  
+  assert t3.format(":,[]()-/") == ":,[]()-/" 
