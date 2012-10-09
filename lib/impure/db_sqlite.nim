@@ -130,9 +130,11 @@ proc GetValue*(db: TDbConn, query: TSqlQuery,
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
-    if cb == 0: return ""
-    result = newStringOfCap(cb)
-    add(result, column_text(stmt, 0))
+    if cb == 0: 
+      result = ""
+    else:
+      result = newStringOfCap(cb)
+      add(result, column_text(stmt, 0))
     if finalize(stmt) != SQLITE_OK: dbError(db)
   else:
     result = ""
