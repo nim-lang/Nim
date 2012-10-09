@@ -20,7 +20,7 @@ import
 when hasTinyCBackend:
   import tccgen
 
-when defined(profiler):
+when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
   

@@ -2045,7 +2045,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when defined(endb):
     include "system/debugger"
 
-  when defined(profiler):
+  when defined(profiler) or defined(memProfiler):
     include "system/profiler"
   {.pop.} # stacktrace
 

@@ -1,7 +1,6 @@
 version 0.9.2
 =============
 
-- memory profiler
 - implement the compiler as a service
 - implement for loop transformation for first class iterators
 - ``=`` should be overloadable; requires specialization for ``=``

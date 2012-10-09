@@ -28,6 +28,8 @@ const
 
 when withRealTime and not defined(getTicks):
   include "system/timers"
+when defined(memProfiler):
+  proc nimProfile(requestedSize: int)
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
@@ -431,12 +433,15 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
+  when defined(memProfiler): nimProfile(size)
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
-  result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+  result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
+  when defined(memProfiler): nimProfile(size)
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
@@ -463,11 +468,14 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = cellToUsr(res)
   zeroMem(result, size)
   sysAssert(allocInv(gch.region), "newObjRC1 end")
+  when defined(memProfiler): nimProfile(size)
 
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  result = newObjRC1(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+  result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
+  when defined(memProfiler): nimProfile(size)
   
 proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   acquire(gch)
@@ -512,6 +520,7 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   release(gch)
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "growObj end")
+  when defined(memProfiler): nimProfile(newsize-oldsize)
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(old, newsize, gch)

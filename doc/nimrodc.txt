@@ -160,6 +160,7 @@ Define               Effect
                      for further information.
 ``nodejs``           The EcmaScript target is actually ``node.js``.
 ``ssl``              Enables OpenSSL support for the sockets module.
+``memProfiler``      Enables memory profiling for the native GC.
 ==================   =========================================================
 
 
