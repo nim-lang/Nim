@@ -11,14 +11,16 @@
 ## ``--profiler:on``. You only need to import this module to get a profiling
 ## report at program exit.
 
-when not defined(profiler):
+when not defined(profiler) and not defined(memProfiler):
   {.warning: "Profiling support is turned off!".}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
 import hashes, algorithm, strutils, tables, sets
-include "system/timers"
+
+when not defined(memProfiler):
+  include "system/timers"
 
 const
   withThreads = compileOption("threads")
@@ -47,15 +49,15 @@ var
   maxChainLen = 0
   totalCalls = 0
 
-var
-  interval: TNanos = 5_000_000 - tickCountCorrection # 5ms
+when not defined(memProfiler):
+  var interval: TNanos = 5_000_000 - tickCountCorrection # 5ms
 
-proc setSamplingFrequency*(intervalInUs: int) =
-  ## set this to change the sampling frequency. Default value is 5ms.
-  ## Set it to 0 to disable time based profiling; it uses an imprecise
-  ## instruction count measure instead then.
-  if intervalInUs <= 0: interval = 0
-  else: interval = intervalInUs * 1000 - tickCountCorrection
+  proc setSamplingFrequency*(intervalInUs: int) =
+    ## set this to change the sampling frequency. Default value is 5ms.
+    ## Set it to 0 to disable time based profiling; it uses an imprecise
+    ## instruction count measure instead then.
+    if intervalInUs <= 0: interval = 0
+    else: interval = intervalInUs * 1000 - tickCountCorrection
   
 when withThreads:
   var
@@ -63,7 +65,7 @@ when withThreads:
 
   InitLock profilingLock
 
-proc hookAux(st: TStackTrace) =
+proc hookAux(st: TStackTrace, costs: int) =
   # this is quite performance sensitive!
   when withThreads: Acquire profilingLock
   inc totalCalls
@@ -79,13 +81,13 @@ proc hookAux(st: TStackTrace) =
     while probes >= 0:
       if profileData[h].st == st:
         # wow, same entry found:
-        inc profileData[h].total
+        inc profileData[h].total, costs
         return
       if profileData[minIdx].total < profileData[h].total:
         minIdx = h
       h = ((5 * h) + 1) and high(profileData)
       dec probes
-    profileData[minIdx].total = 1
+    profileData[minIdx].total = costs
     profileData[minIdx].st = st
   else:
     var chain = 0
@@ -93,28 +95,45 @@ proc hookAux(st: TStackTrace) =
       if profileData[h] == nil:
         profileData[h] = cast[ptr TProfileEntry](
                              allocShared0(sizeof(TProfileEntry)))
-        profileData[h].total = 1
+        profileData[h].total = costs
         profileData[h].st = st
         dec emptySlots
         break
       if profileData[h].st == st:
         # wow, same entry found:
-        inc profileData[h].total
+        inc profileData[h].total, costs
         break
       h = ((5 * h) + 1) and high(profileData)
       inc chain
     maxChainLen = max(maxChainLen, chain)
   when withThreads: Release profilingLock
 
-var
-  t0 {.threadvar.}: TTicks
+when defined(memProfiler):
+  const
+    SamplingInterval = 50_000
+  var
+    gTicker {.threadvar.}: int
 
-proc hook(st: TStackTrace) {.nimcall.} =
-  if interval == 0:
-    hookAux(st)
-  elif getticks() - t0 > interval:
-    hookAux(st)
-    t0 = getticks()  
+  proc hook(st: TStackTrace, size: int) {.nimcall.} =
+    if gTicker == 0:
+      gTicker = -1
+      when defined(ignoreAllocationSize):
+        hookAux(st, 1)
+      else:
+        hookAux(st, size)
+      gTicker = SamplingInterval
+    dec gTicker
+
+else:
+  var
+    t0 {.threadvar.}: TTicks
+
+  proc hook(st: TStackTrace) {.nimcall.} =
+    if interval == 0:
+      hookAux(st, 1)
+    elif getticks() - t0 > interval:
+      hookAux(st, 1)
+      t0 = getticks()  
 
 proc getTotal(x: ptr TProfileEntry): int =
   result = if isNil(x): 0 else: x.total
