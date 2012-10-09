@@ -1552,11 +1552,16 @@ proc parseAll(p: var TParser): PNode =
   while true: 
     case p.tok.tokType
     of tkSad: getTok(p)
-    of tkDed, tkInd: parMessage(p, errInvalidIndentation)
-    of tkEof: break 
+    of tkDed, tkInd: 
+      parMessage(p, errInvalidIndentation)
+      getTok(p)
+    of tkEof: break
     else: 
       var a = complexOrSimpleStmt(p)
-      if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+      if a.kind == nkEmpty: 
+        parMessage(p, errExprExpected, p.tok)
+        # bugfix: consume a token here to prevent an endless loop:
+        getTok(p)
       addSon(result, a)
 
 proc parseTopLevelStmt(p: var TParser): PNode = 
