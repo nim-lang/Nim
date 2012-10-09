@@ -1,7 +1,10 @@
 version 0.9.2
 =============
 
+- memory profiler
 - implement the compiler as a service
+- implement for loop transformation for first class iterators
+- ``=`` should be overloadable; requires specialization for ``=``
 - fix broken expr/stmt handling for proc bodies
 - make 'bind' default for templates and introduce 'mixin'
 - implicit deref for parameter matching; overloading based on 'var T'
@@ -36,7 +39,6 @@ version 0.9.XX
 
 - implement the "snoopResult" pragma
 - implement "closure tuple consists of a single 'ref'" optimization
-- implement for loop transformation for first class iterators
 - JS gen:
   - fix exception handling
 - object branch transitions can't work with the current 'reset'; add a 'reset'
@@ -52,11 +54,10 @@ version 0.9.XX
   is that often the scope of ``try`` is wrong and apart from that ``try`` is
   a full blown statement; a ``try`` expression might be a good idea to make
   error handling more light-weight
-- ``=`` should be overloadable; requires specialization for ``=``
 - fix destructors; don't work yet when used as expression
 - make use of ``tyIter`` to fix the implicit items/pairs issue
 - better support for macros that rewrite procs
-- macros need access to types and symbols
+- macros need access to types and symbols (partially implemented)
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
 - implement a warning message for shadowed 'result' variable

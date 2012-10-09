@@ -111,6 +111,8 @@ type
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: PRope # used for type info generation
     labels*: natural          # for generating unique module-scope names
+    extensionLoaders*: array['0'..'9', PRope] # special procs for the
+                                              # OpenGL wrapper
 
 var
   mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module

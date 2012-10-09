@@ -62,6 +62,7 @@ proc serve*(action: proc (){.nimcall.}) =
   server.bindAddr(port, getConfigVar("server.address"))
   var inp = "".TaintedString
   server.listen()
+  new(stdoutSocket)
   while true:
     accept(server, stdoutSocket)
     discard stdoutSocket.recvLine(inp)

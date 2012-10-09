@@ -11,6 +11,9 @@
 ## ``useGlew`` this wrapper does not use Nimrod's ``dynlib`` mechanism, 
 ## but `glew`:idx: instead. However, this shouldn't be necessary anymore; even
 ## extension loading for the different operating systems is handled here.
+##
+## You need to call ``loadExtensions`` after a rendering context has been
+## created to load any extension proc that your code uses.
 
 when defined(linux):
   import X, XLib, XUtil
@@ -75,12 +78,20 @@ else:
       if gluHandle == nil: quit("could not load: " & gludll)
     result = glGetProc(gluHandle, procname)
   
-  # undocumented 'dynlib' feature: the empty string literal is replaced by
+  # undocumented 'dynlib' feature: the string literal is replaced by
   # the imported proc name:
   {.pragma: ogl, dynlib: glGetProc(oglHandle, "").}
-  {.pragma: oglx, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: oglx, dynlib: glGetProc(oglHandle, "0").}
   {.pragma: wgl, dynlib: glGetProc(oglHandle, "").}
   {.pragma: glu, dynlib: gluGetProc("").}
+  
+  proc nimLoadProcs0() {.importc.}
+  
+  template loadExtensions*() =
+    ## call this after your rendering context has been setup if you use
+    ## extensions.
+    bind nimLoadProcs0
+    nimLoadProcs0()
 
 #==============================================================================
 #                                                                              

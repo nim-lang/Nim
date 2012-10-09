@@ -552,10 +552,19 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
       initLocExpr(m.initProc, n[i], a)
       params.app(rdLoc(a))
       params.app(", ")
-    appcg(m, m.initProc.s(cpsStmts),
-        "\t$1 = ($2) ($3$4));$n",
+    let load = ropef("\t$1 = ($2) ($3$4));$n",
         [tmp, getTypeDesc(m, sym.typ),
         params, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
+    var last = lastSon(n)
+    if last.kind == nkHiddenStdConv: last = last.sons[1]
+    InternalAssert(last.kind == nkStrLit)
+    let idx = last.strVal
+    if idx.len == 0:
+      app(m.initProc.s(cpsStmts), load)
+    elif idx.len == 1 and idx[0] in {'0'..'9'}:
+      app(m.extensionLoaders[idx[0]], load)
+    else:
+      InternalError(sym.info, "wrong index: " & idx)
   else:
     appcg(m, m.s[cfsDynLibInit], 
         "\t$1 = ($2) #nimGetProcAddr($3, $4);$n", 
@@ -972,6 +981,12 @@ proc genInitCode(m: BModule) =
   # that would lead to a *nesting* of merge sections which the merger does
   # not support. So we add it to another special section: ``cfsInitProc``
   app(m.s[cfsInitProc], prc)
+  
+  for i, el in pairs(m.extensionLoaders):
+    if el != nil:
+      let ex = ropef("N_NIMCALL(void, nimLoadProcs$1)(void) {$2}$N$N",
+        (i.ord - '0'.ord).toRope, el)
+      app(m.s[cfsInitProc], ex)
 
 proc genModule(m: BModule, cfilenoext: string): PRope = 
   result = getFileHeader(cfilenoext)

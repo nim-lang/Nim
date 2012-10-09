@@ -300,7 +300,7 @@ proc MainCommand =
     #registerPass(rodwrite.rodwritePass())
     discard CompileModule(options.libpath / "system", {sfSystemModule})
     service.serve(proc () =
-      let projectFile = gProjectFull
+      let projectFile = mainCommandArg()
       discard CompileModule(projectFile, {sfMainModule})
     )
   else: rawMessage(errInvalidCommandX, command)
