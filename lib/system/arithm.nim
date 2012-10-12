@@ -240,7 +240,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
             :"%edx"
     """
 
-# Platform independant versions of the above (slower!)
+# Platform independent versions of the above (slower!)
 when not defined(addInt):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
     result = a +% b
