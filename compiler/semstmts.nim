@@ -1088,6 +1088,10 @@ proc insertDestructors(c: PContext, varSection: PNode):
 
       return
 
+proc ImplicitelyDiscardable(n: PNode): bool =
+  result = isCallExpr(n) and n.sons[0].kind == nkSym and 
+           sfDiscardable in n.sons[0].sym.flags
+
 proc semStmtList(c: PContext, n: PNode): PNode =
   # these must be last statements in a block:
   const
@@ -1134,7 +1138,12 @@ proc semStmtList(c: PContext, n: PNode): PNode =
   
   # a statement list (s; e) has the type 'e':
   if result.kind == nkStmtList and result.len > 0:
-    result.typ = lastSon(result).typ
+    var lastStmt = lastSon(result)
+    if not ImplicitelyDiscardable(lastStmt):
+      result.typ = lastStmt.typ
+      #localError(lastStmt.info, errGenerated,
+      #  "Last expression must be explicitly returned if it " &
+      #  "is discardable or discarded")
 
 proc SemStmt(c: PContext, n: PNode): PNode = 
   # now: simply an alias:
