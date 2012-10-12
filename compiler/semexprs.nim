@@ -471,7 +471,8 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
   case n.kind
   of nkSym: 
-    if skipTypes(n.sym.typ, abstractInst).kind != tyVar: 
+    # n.sym.typ can be nil in 'check' mode ...
+    if n.sym.typ != nil and skipTypes(n.sym.typ, abstractInst).kind != tyVar: 
       incl(n.sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkDotExpr: 

@@ -87,7 +87,7 @@ proc Lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     if ident.id notin ctx and withinMixin notin flags:
       localError(n.info, errUndeclaredIdentifier, ident.s)
   else:
-    if withinMixin in flags:
+    if withinBind in flags:
       result = symChoice(c, n, s, scClosed)
     elif s.name.id in ctx:
       result = symChoice(c, n, s, scForceOpen)
@@ -134,26 +134,27 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s != nil: 
       incl(s.flags, sfUsed)
       isDefinedMagic = s.magic in {mDefined, mDefinedInScope, mCompiles}
+      let scOption = if s.name.id in ctx: scForceOpen else: scOpen
       case s.kind
       of skMacro:
         if macroToExpand(s):
           result = semMacroExpr(c, n, n, s, false)
         else:
-          n.sons[0] = symChoice(c, n.sons[0], s, scOpen)
+          n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
       of skTemplate: 
         if macroToExpand(s):
           let n = fixImmediateParams(n)
           result = semTemplateExpr(c, n, s, false)
         else:
-          n.sons[0] = symChoice(c, n.sons[0], s, scOpen)
+          n.sons[0] = symChoice(c, n.sons[0], s, scOption)
           result = n
         # BUGFIX: we must not return here, we need to do first phase of
         # symbol lookup ...
       of skUnknown, skParam: 
         # Leave it as an identifier.
       of skProc, skMethod, skIterator, skConverter: 
-        result.sons[0] = symChoice(c, n.sons[0], s, scOpen)
+        result.sons[0] = symChoice(c, n.sons[0], s, scOption)
         first = 1
       of skGenericParam: 
         result.sons[0] = newSymNode(s, n.sons[0].info)
