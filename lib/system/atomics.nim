@@ -40,3 +40,37 @@ proc atomicDec(memLoc: var int, x: int = 1): int =
     dec(memLoc, x)
     result = memLoc  
 
+
+# atomic compare and swap (CAS) funcitons to implement lock-free algorithms
+
+when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
+  proc compareAndSwap*[T: ptr|ref|pointer](mem: var T, expected: T, newValue: T): bool {.nodecl, 
+      importc: " __sync_bool_compare_and_swap".}
+    ## Returns true if successfully set value at mem to newValue when value
+    ## at mem == expected
+      
+elif defined(windows) and hasThreadSupport:
+    proc InterlockedCompareExchangePointer(mem: ptr pointer,
+      newValue: pointer, comparand: pointer) : pointer {.nodecl, 
+        importc: "InterlockedCompareExchangePointer", header:"windows.h".}
+
+
+    proc compareAndSwap*[T: ptr|ref|pointer](mem: var T, 
+      expected: T, newValue: T): bool {.inline.}=
+      ## Returns true if successfully set value at mem to newValue when value
+      ## at mem == expected
+      return InterlockedCompareExchangePointer(addr(mem), 
+        newValue, expected) == expected
+    
+elif not hasThreadSupport:
+  proc compareAndSwap*[T: ptr|ref|pointer](mem: var T, 
+    expected: T, newValue: T): bool {.inline.} =
+      ## Returns true if successfully set value at mem to newValue when value
+      ## at mem == expected
+      var oldval = mem
+      if oldval == expected:
+        mem = newValue
+        return true
+      return false
+
+
