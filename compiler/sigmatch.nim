@@ -279,24 +279,24 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         var m = typeRel(c, f.sons[0], a.sons[0])
         # Subtype is sufficient for return types!
         if m < isSubtype or inconsistentVarTypes(f.sons[0], a.sons[0]):
-          result = isNone
+          return isNone
         elif m == isSubtype: result = isConvertible
         else: result = minRel(m, result)
       else:
-        result = isNone
+        return isNone
     elif a.sons[0] != nil:
-      result = isNone
+      return isNone
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
-      result = isNone
+      return isNone
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
       # noSideEffect implies ``tfThread``! XXX really?
-      result = isNone
+      return isNone
     elif f.callconv != a.callconv:
       # valid to pass a 'nimcall' thingie to 'closure':
       if f.callconv == ccClosure and a.callconv == ccDefault:
         result = isConvertible
       else:
-        result = isNone
+        return isNone
   else: nil
 
 proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =

@@ -1139,7 +1139,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
   # a statement list (s; e) has the type 'e':
   if result.kind == nkStmtList and result.len > 0:
     var lastStmt = lastSon(result)
-    if not ImplicitelyDiscardable(lastStmt):
+    if lastStmt.kind != nkNilLit and not ImplicitelyDiscardable(lastStmt):
       result.typ = lastStmt.typ
       #localError(lastStmt.info, errGenerated,
       #  "Last expression must be explicitly returned if it " &
