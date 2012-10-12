@@ -355,6 +355,8 @@ typedef NU8 NU;
 #  endif
 #endif
 
+typedef assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+
 extern NI nim_program_result;
 
 typedef float NF32;
