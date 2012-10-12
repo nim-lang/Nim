@@ -903,9 +903,9 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
     result.sons[0] = emptyNode
 
 # special marker values that indicates that we are
-# 1) AnalyzingDestructor: currenlty analyzing the type for destructor 
+# 1) AnalyzingDestructor: currently analyzing the type for destructor 
 # generation (needed for recursive types)
-# 2) DestructorIsTrivial: completed the anlysis before and determined
+# 2) DestructorIsTrivial: completed the analysis before and determined
 # that the type has a trivial destructor
 var AnalyzingDestructor, DestructorIsTrivial: PSym
 new(AnalyzingDestructor)
@@ -1131,6 +1131,10 @@ proc semStmtList(c: PContext, n: PNode): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: nil
+  
+  # a statement list (s; e) has the type 'e':
+  if result.kind == nkStmtList and result.len > 0:
+    result.typ = lastSon(result).typ
 
 proc SemStmt(c: PContext, n: PNode): PNode = 
   # now: simply an alias:
