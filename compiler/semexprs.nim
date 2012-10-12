@@ -723,9 +723,6 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   addSon(result, semExpr(c, arg))
 
 proc discardCheck(result: PNode) =
-  proc ImplicitelyDiscardable(n: PNode): bool {.inline.} =
-    result = isCallExpr(n) and n.sons[0].kind == nkSym and 
-             sfDiscardable in n.sons[0].sym.flags
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       # XXX too much work and fixing would break bootstrapping:
@@ -1105,7 +1102,9 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     # ``result``:
     if result.kind == nkSym and result.sym == c.p.resultSym:
       nil
-    elif result.kind == nkNilLit:
+    elif result.kind == nkNilLit or ImplicitelyDiscardable(result):
+      # intended semantic: if it's 'discardable' and the context allows for it,
+      # discard it. This is bad for chaining but nicer for C wrappers. 
       # ambiguous :-(
       result.typ = nil
     else:
