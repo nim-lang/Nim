@@ -90,29 +90,6 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
     else:
       illFormedAst(a)
   result = newNodeI(nkNilLit, n.info)
-
-when false:
-  # not active before 0.9.0 is out
-  proc semMixinStmt(c: PContext, n: PNode, toMixin: var TIntSet): PNode =
-    for i in 0 .. < n.len:
-      var a = n.sons[i]
-      # If 'a' is an overloaded symbol, we used to use the first symbol
-      # as a 'witness' and use the fact that subsequent lookups will yield
-      # the same symbol!
-      # This is however not true anymore for hygienic templates as semantic
-      # processing for them changes the symbol table...
-      let s = QualifiedLookUp(c, a)
-      if s != nil:
-        # we need to mark all symbols:
-        let sc = symChoice(c, n, s, scForceOpen)
-        if sc.kind == nkSym:
-          toMixin.incl(sc.sym.id)
-        else:
-          for x in items(sc): toMixin.incl(x.sym.id)
-      else:
-        # do nothing: identifiers are already not bound:
-        nil
-    result = newNodeI(nkNilLit, n.info)
   
 proc replaceIdentBySym(n: var PNode, s: PNode) =
   case n.kind

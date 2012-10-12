@@ -1,6 +1,8 @@
 version 0.9.2
 =============
 
+- document 'mixin' for generics and symbol lookup rules; special rule 
+  for ``[]=``
 - implement the compiler as a service
 - implement for loop transformation for first class iterators
 - ``=`` should be overloadable; requires specialization for ``=``
@@ -65,7 +67,6 @@ version 0.9.XX
 - proc specialization in the code gen for write barrier specialization
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking; tuple unpacking in non-var-context
-- test branch coverage
 - make pegs support a compile-time option and make c2nim use regexes instead
   per default?
 - 'const' objects including case objects
