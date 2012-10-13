@@ -905,6 +905,12 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a.sons[i]
   result = a.kind == last
 
+proc isGenericAlias*(t: PType): bool =
+  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+
+proc skipGenericAlias*(t: PType): PType =
+  return if t.isGenericAlias: t.lastSon else: t
+
 proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
   for i in countup(0, typeClass.sonsLen - 1):
     let req = typeClass.sons[i]

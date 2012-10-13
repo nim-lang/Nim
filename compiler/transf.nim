@@ -603,7 +603,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     dec c.inLoop
   of nkCaseStmt: result = transformCase(c, n)
   of nkContinueStmt:
-    result = PTransNode(newNode(nkBreakStmt))
+    result = PTransNode(newNodeI(nkBreakStmt, n.info))
     var labl = c.contSyms[c.contSyms.high]
     add(result, PTransNode(newSymNode(labl)))
   of nkBreakStmt: result = transformBreak(c, n)
