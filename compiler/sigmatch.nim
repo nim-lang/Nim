@@ -476,22 +476,23 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     let ff = lastSon(f)
     if ff != nil: result = typeRel(c, ff, a)
   of tyGenericInvokation:
+    var x = a.skipGenericAlias
     assert(f.sons[0].kind == tyGenericBody)
-    if a.kind == tyGenericInvokation: 
+    if x.kind == tyGenericInvokation:
       #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
       # simply no match for now:
       nil
-    elif a.kind == tyGenericInst and 
-          (f.sons[0].containerID == a.sons[0].containerID) and
-          (sonsLen(a) - 1 == sonsLen(f)): 
-      assert(a.sons[0].kind == tyGenericBody)
+    elif x.kind == tyGenericInst and 
+          (f.sons[0].containerID == x.sons[0].containerID) and
+          (sonsLen(x) - 1 == sonsLen(f)): 
+      assert(x.sons[0].kind == tyGenericBody)
       for i in countup(1, sonsLen(f) - 1): 
-        if a.sons[i].kind == tyGenericParam: 
+        if x.sons[i].kind == tyGenericParam: 
           InternalError("wrong instantiated type!")
-        elif typeRel(c, f.sons[i], a.sons[i]) <= isSubtype: return 
+        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return 
       result = isGeneric
     else:
-      result = typeRel(c, f.sons[0], a)
+      result = typeRel(c, f.sons[0], x)
       if result != isNone:
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
