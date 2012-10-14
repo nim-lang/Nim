@@ -85,7 +85,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   var f = s.typ.sonsLen
   if a > f: GlobalError(n.info, errWrongNumberOfArguments)
 
-  result = copyNode(n)
+  result = newNodeI(nkArgList, n.info)
   for i in countup(1, f - 1):
     var arg = if i < a: n.sons[i] else: copyTree(s.typ.n.sons[i].sym.ast)
     if arg == nil or arg.kind == nkEmpty:
