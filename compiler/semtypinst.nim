@@ -171,6 +171,10 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     result.flags = result.flags + newbody.flags
     newbody.callConv = body.callConv
     newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
+    # This type may be a generic alias and we want to resolve it here.
+    # One step is enough, because the recursive nature of
+    # handleGenericInvokation will handle the alias-to-alias-to-alias case
+    if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
     rawAddSon(result, newbody)
     checkPartialConstructedType(cl.info, newbody)
   else:
