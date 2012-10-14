@@ -287,6 +287,11 @@ type
     tyGenericInvokation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
+                         # realInstance will be a concrete type like tyObject
+                         # unless this is an instance of a generic alias type.
+                         # then realInstance will be the tyGenericInst of the
+                         # completely (recursively) resolved alias.
+                         
     tyGenericParam,      # ``a`` in the above patterns
     tyDistinct,
     tyEnum,

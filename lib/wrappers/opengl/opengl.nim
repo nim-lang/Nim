@@ -80,9 +80,9 @@ else:
   
   # undocumented 'dynlib' feature: the string literal is replaced by
   # the imported proc name:
-  {.pragma: ogl, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: ogl, dynlib: glGetProc(oglHandle, "0").}
   {.pragma: oglx, dynlib: glGetProc(oglHandle, "0").}
-  {.pragma: wgl, dynlib: glGetProc(oglHandle, "").}
+  {.pragma: wgl, dynlib: glGetProc(oglHandle, "0").}
   {.pragma: glu, dynlib: gluGetProc("").}
   
   proc nimLoadProcs0() {.importc.}
