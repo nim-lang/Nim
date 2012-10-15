@@ -271,7 +271,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
-  if not isComplexValueType(skipTypes(loc.t, abstractVarRange)):
+  if not isComplexValueType(skipTypes(loc.t, abstractRange)):
     lineF(p, section, "$1 = 0;$n", [rdLoc(loc)])
   else:
     lineF(p, section, "memset((void*)$1, 0, sizeof($2));$n",
