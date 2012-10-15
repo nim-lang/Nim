@@ -18,13 +18,14 @@ proc leftAppearsOnRightSide(le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call.sons[0].kind == nkSym and sfNoInit in call.sons[0].sym.flags
 
-proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc, pl: PRope) =
-  var pl = pl
+proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
+               callee, params: PRope) =
+  var pl = con(callee, "(".toRope, params)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(ri) > 1: app(pl, ", ")
+      if params != nil: pl.app(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -125,9 +126,9 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
+  assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
-    assert(sonsLen(typ) == sonsLen(typ.n))
     if ri.sons[i].typ.isCompileTimeOnly: continue
     if params != nil: app(params, ", ")
     if i < sonsLen(typ):
@@ -135,7 +136,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
       app(params, genArgNoParam(p, ri.sons[i]))
-  fixupCall(p, le, ri, d, con(op.r, "(".toRope, params))
+  fixupCall(p, le, ri, d, op.r, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
@@ -210,16 +211,16 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, "->")
   else: app(pl, ".")
   app(pl, op.r)
-  app(pl, "(")
+  var params: PRope
   for i in countup(2, length - 1):
+    if params != nil: params.app(", ")
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
+      app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
-      app(pl, genArgNoParam(p, ri.sons[i]))
-    if i < length - 1: app(pl, ", ")
-  fixupCall(p, le, ri, d, pl)
+      app(params, genArgNoParam(p, ri.sons[i]))
+  fixupCall(p, le, ri, d, pl, params)
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
