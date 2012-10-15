@@ -715,6 +715,7 @@ const
                   nkCommand, nkCallStrLit}
 
   nkLambdaKinds* = {nkLambda, nkDo}
+  nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam}
 
