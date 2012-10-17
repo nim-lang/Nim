@@ -15,6 +15,7 @@ compiler/c2nim/nimcache
 compiler/pas2nim/nimcache
 misc
 doc/*.html
+doc/*.idx
 web/upload/*.html
 koch
 compiler/nimrod*
