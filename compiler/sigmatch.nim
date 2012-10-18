@@ -685,8 +685,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
           result = userConvMatch(c, m, base(f), a, arg)
 
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                     arg, argOrig: PNode): PNode = 
-  if arg == nil or arg.kind != nkClosedSymChoice:
+                     arg, argOrig: PNode): PNode =
+  if arg == nil or arg.kind notin nkSymChoices:
     result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
     # CAUTION: The order depends on the used hashing scheme. Thus it is
