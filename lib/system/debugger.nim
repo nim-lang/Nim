@@ -664,6 +664,9 @@ proc dbgRegisterWatchpoint(address: pointer, name: cstring,
   Watchpoints[L].oldValue = genericHash(address, typ)
   inc WatchpointsLen
 
+proc dbgUnregisterWatchpoints*() =
+  WatchpointsLen = 0
+
 proc dbgWriteStackTrace(f: PFrame) =
   const
     firstCalls = 32
@@ -706,15 +709,22 @@ proc dbgWriteStackTrace(f: PFrame) =
       write(stdout, tempFrames[j].procname)
     write(stdout, "\n")
   
+proc strstr(s1, s2: cstring): cstring {.importc, header: "<string.h>".}
+
+proc interestingFilename(filename: cstring): bool =
+  #result = strstr(filename, "/rst.nim") == nil
+  result = true
+  
 proc checkWatchpoints =
   let L = WatchpointsLen
   for i in 0.. <L:
     let newHash = genericHash(Watchpoints[i].address, Watchpoints[i].typ)
     if newHash != Watchpoints[i].oldValue:
-      dbgWriteStackTrace(framePtr)
-      debugOut(Watchpoints[i].name)
+      if interestingFilename(framePtr.filename):
+        dbgWriteStackTrace(framePtr)
+        debugOut(Watchpoints[i].name)
       Watchpoints[i].oldValue = newHash
-      
+
 proc endb(line: int) {.compilerproc.} =
   # This proc is called before every Nimrod code line!
   # Thus, it must have as few parameters as possible to keep the
