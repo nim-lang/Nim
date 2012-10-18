@@ -167,6 +167,7 @@ when not defined(useNimRtl):
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
                      cl: var TReprClosure) =
+    if isNil(n) : return
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:
