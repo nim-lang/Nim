@@ -125,44 +125,48 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   else:
     markUsed(n, s)
     result = newSymNode(s, n.info)
-  
-proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) =
-  var diff = inheritanceDiff(castDest, src)
-  if diff == high(int):
-    LocalError(info, errGenerated, MsgKindToString(errIllegalConvFromXtoY) % [
-        src.typeToString, castDest.typeToString])
+
+type
+  TConvStatus = enum
+    convOK,
+    convNotNeedeed,
+    convNotLegal
+
+proc checkConversionBetweenObjects(castDest, src: PType): TConvStatus =
+  return if inheritanceDiff(castDest, src) == high(int):
+      convNotLegal
+    else:
+      convOK
 
 const 
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
-proc checkConvertible(info: TLineInfo, castDest, src: PType) = 
-  if sameType(castDest, src) and castDest.sym == src.sym: 
+proc checkConvertible(castDest, src: PType): TConvStatus =
+  result = convOK
+  if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
     if castDest.kind notin IntegralTypes+{tyRange}:
-      Message(info, hintConvFromXtoItselfNotNeeded, typeToString(castDest))
+      result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
   var s = skipTypes(src, abstractVar)
-  while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind): 
+  while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind):
     d = base(d)
     s = base(s)
   if d == nil:
-    LocalError(info, errGenerated, msgKindToString(errIllegalConvFromXtoY) % [
-        src.typeToString, castDest.typeToString])
-  elif d.Kind == tyObject and s.Kind == tyObject: 
-    checkConversionBetweenObjects(info, d, s)
+    result = convNotLegal
+  elif d.Kind == tyObject and s.Kind == tyObject:
+    result = checkConversionBetweenObjects(d, s)
   elif (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes) and
-      (skipTypes(src, abstractVarRange).Kind in IntegralTypes): 
+      (skipTypes(src, abstractVarRange).Kind in IntegralTypes):
     # accept conversion between integral types
-  else: 
+  else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(d, s)
-    of isNone, isGeneric: 
+    of isNone, isGeneric:
       if not compareTypes(castDest, src, dcEqIgnoreDistinct):
-        LocalError(info, errGenerated, `%`(
-            MsgKindToString(errIllegalConvFromXtoY), 
-            [typeToString(src), typeToString(castDest)]))
-    else: 
+        result = convNotLegal
+    else:
       nil
 
 proc isCastable(dst, src: PType): bool = 
@@ -184,23 +188,32 @@ proc isCastable(dst, src: PType): bool =
         (skipTypes(src, abstractInst).kind in IntegralTypes)
   
 proc isSymChoice(n: PNode): bool {.inline.} =
-  result = n.kind in {nkClosedSymChoice, nkOpenSymChoice}
+  result = n.kind in nkSymChoices
 
-proc semConv(c: PContext, n: PNode, s: PSym): PNode = 
-  if sonsLen(n) != 2: 
+proc semConv(c: PContext, n: PNode, s: PSym): PNode =
+  if sonsLen(n) != 2:
     LocalError(n.info, errConvNeedsOneArg)
     return n
   result = newNodeI(nkConv, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil)
+  result.typ = semTypeNode(c, n.sons[0], nil).skipTypes({tyGenericInst})
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   var op = result.sons[1]
+     
   if not isSymChoice(op):
-    checkConvertible(result.info, result.typ, op.typ)
-  else: 
+    let status = checkConvertible(result.typ, op.typ)
+    case status
+    of convOK: nil
+    of convNotNeedeed:
+      Message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
+    of convNotLegal:
+      LocalError(n.info, errGenerated, MsgKindToString(errIllegalConvFromXtoY)%
+        [op.typ.typeToString, result.typ.typeToString])
+  else:
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
-      if sameType(result.typ, it.typ): 
+      let status = checkConvertible(result.typ, it.typ)
+      if status == convOK:
         markUsed(n, it.sym)
         markIndirect(c, it.sym)
         return it
@@ -492,12 +505,16 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     result = newHiddenAddrTaken(c, n) # BUGFIX!
   
 proc analyseIfAddressTakenInCall(c: PContext, n: PNode) = 
+  checkMinSonsLen(n, 1)
   const 
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl, 
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap, 
       mAppendSeqElem, mNewSeq, mReset, mShallowCopy}
-  checkMinSonsLen(n, 1)
-  var t = n.sons[0].typ
+  
+  # get the real type of the callee
+  # it may be a proc var with a generic alias type, so we skip over them
+  var t = n.sons[0].typ.skipTypes({tyGenericInst})
+
   if n.sons[0].kind == nkSym and n.sons[0].sym.magic in FakeVarParams: 
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     for i in countup(1, sonsLen(n) - 1): 
@@ -618,7 +635,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   semOpAux(c, n)
   var t: PType = nil
   if (n.sons[0].typ != nil): t = skipTypes(n.sons[0].typ, abstractInst)
-  if (t != nil) and (t.kind == tyProc): 
+  if (t != nil) and (t.kind == tyProc):
+    # This is a proc variable, apply normal overload resolution
     var m: TCandidate
     initCandidate(m, t)
     matches(c, n, nOrig, m)
@@ -648,6 +666,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
+  elif (t != nil) and t.kind == tyTypeDesc:
+    let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
+    result = semConv(c, n, symFromType(destType, n.info))
+    return 
   else:
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -956,10 +978,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result.typ = elemType(arr)
     #GlobalError(n.info, errIndexTypesDoNotMatch)
   of tyTypeDesc:
-    result = n.sons[0] # The result so far is a tyTypeDesc bound to
-                       # a tyGenericBody. The line below will substitute
-                       # it with the instantiated type.
-    result.typ.sons[0] = semTypeNode(c, n, nil).linkTo(result.sym)
+    # The result so far is a tyTypeDesc bound 
+    # a tyGenericBody. The line below will substitute
+    # it with the instantiated type.
+    result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
   of tyTuple: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
@@ -1715,12 +1737,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTableConstr:
     result = semTableConstr(c, n)
   of nkClosedSymChoice, nkOpenSymChoice:
-    LocalError(n.info, errExprXAmbiguous, renderTree(n, {renderNoComments}))
-    # error correction: Pick first element:
-    result = n.sons[0]
+    # handling of sym choices is context dependent
+    # the node is left intact for now
   of nkStaticExpr:
     result = semStaticExpr(c, n)
-
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt: result = semBlock(c, n)
   of nkStmtList: result = semStmtList(c, n)

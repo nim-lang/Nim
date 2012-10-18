@@ -223,7 +223,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     return
-  var ty = skipTypes(dest.t, abstractVarRange)
+  var ty = skipTypes(dest.t, abstractRange)
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src, flags)
@@ -282,7 +282,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange:
+     tyInt..tyUInt64, tyRange, tyVar:
     lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: InternalError("genAssignment(" & $ty.kind & ')')
 
