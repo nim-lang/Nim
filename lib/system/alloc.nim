@@ -553,7 +553,7 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
       sysAssert(allocInv(a), "rawAlloc: before listRemove test")
       ListRemove(a.freeSmallChunks[s], c)
       sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[TAddress](result) and PageMask) -% smallChunkOverhead()) %%
+    sysAssert(((cast[TAddress](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
   else:
@@ -582,7 +582,7 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
     var s = c.size
-    sysAssert(((cast[TAddress](p) and PageMask) -% smallChunkOverhead()) %%
+    sysAssert(((cast[TAddress](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 3")
     var f = cast[ptr TFreeCell](p)
     #echo("setting to nil: ", $cast[TAddress](addr(f.zeroField)))
@@ -605,7 +605,7 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
         ListRemove(a.freeSmallChunks[s div memAlign], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
-    sysAssert(((cast[TAddress](p) and PageMask) -% smallChunkOverhead()) %%
+    sysAssert(((cast[TAddress](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:

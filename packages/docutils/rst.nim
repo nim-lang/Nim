@@ -318,13 +318,18 @@ proc rstMessage(p: TRstParser, msgKind: TMsgKind) =
                              p.col + p.tok[p.idx].col, msgKind, 
                              p.tok[p.idx].symbol)
 
+when false:
+  proc corrupt(p: TRstParser) =
+    assert p.indentStack[0] == 0
+    for i in 1 .. high(p.indentStack): assert p.indentStack[i] < 1_000
+
 proc currInd(p: TRstParser): int = 
   result = p.indentStack[high(p.indentStack)]
 
 proc pushInd(p: var TRstParser, ind: int) = 
   add(p.indentStack, ind)
 
-proc popInd(p: var TRstParser) = 
+proc popInd(p: var TRstParser) =
   if len(p.indentStack) > 1: setlen(p.indentStack, len(p.indentStack) - 1)
   
 proc initParser(p: var TRstParser, sharedState: PSharedState) = 
@@ -616,8 +621,8 @@ when false:
 
 proc isURL(p: TRstParser, i: int): bool =
   result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
-          (p.tok[i+3].kind == tkWord) and 
-          (p.tok[i].symbol in ["http", "ftp", "gopher", "telnet", "file"])
+    (p.tok[i+3].kind == tkWord) and
+    (p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"])
 
 proc parseURL(p: var TRstParser, father: PRstNode) = 
   #if p.tok[p.idx].symbol[strStart] == '<':
@@ -1062,7 +1067,7 @@ proc parseParagraph(p: var TRstParser, result: PRstNode) =
         parseInline(p, result)
     of tkWhite, tkWord, tkAdornment, tkOther: 
       parseInline(p, result)
-    else: break 
+    else: break
 
 proc parseHeadline(p: var TRstParser): PRstNode = 
   result = newRstNode(rnHeadline)
@@ -1308,9 +1313,8 @@ proc parseSection(p: var TRstParser, result: PRstNode) =
         popInd(p)
       else: 
         leave = true
-        break 
-    if leave: break 
-    if p.tok[p.idx].kind == tkEof: break 
+        break
+    if leave or p.tok[p.idx].kind == tkEof: break
     var a: PRstNode = nil
     var k = whichSection(p)
     case k
@@ -1361,6 +1365,7 @@ proc parseDoc(p: var TRstParser): PRstNode =
                isAllocatedPtr(cast[pointer](p.tok[i].symbol))
       echo "index: ", p.idx, " length: ", high(p.tok), "##",
           p.tok[p.idx-1], p.tok[p.idx], p.tok[p.idx+1]
+    #assert isAllocatedPtr(cast[pointer](p.indentStack))
     rstMessage(p, meGeneralParseError)
   
 type
