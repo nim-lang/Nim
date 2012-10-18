@@ -33,6 +33,7 @@ when defined(posix):
   type
     TTimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int
     TTime* = distinct TTimeImpl ## distinct type that represents a time
+                                ## measured as number of seconds since the epoch
     
     Ttimeval {.importc: "struct timeval", header: "<sys/select.h>", 
                final, pure.} = object ## struct timeval
@@ -131,7 +132,10 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-proc getTime*(): TTime ## gets the current calendar time
+proc getTime*(): TTime
+  ## gets the current calendar time as a UNIX epoch value (number of seconds
+  ## elapsed since 1970) with integer precission. Use epochTime for higher
+  ## resolution.
 proc getLocalTime*(t: TTime): TTimeInfo
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
@@ -153,6 +157,11 @@ proc `$` *(time: TTime): string
 proc `-`*(a, b: TTime): int64 {.
   rtl, extern: "ntDiffTime".}
   ## computes the difference of two calendar times. Result is in seconds.
+
+proc `==`*(a, b: TTime): bool {.
+  rtl, extern: "ntEqTime".} =
+  ## returns true if ``a == b``, that is if both times represent the same value
+  result = a - b == 0
 
 proc `<`*(a, b: TTime): bool {.
   rtl, extern: "ntLtTime".} = 
