@@ -45,7 +45,7 @@ when defined(WINDOWS):
     DLLUtilName = "libeay32.dll"
 else:
   const
-    versions = "(|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4|.0.9.3|.0.9.2)"
+    versions = "(|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
   when defined(posix):
     const 
       DLLSSLName = "libssl.so" & versions
