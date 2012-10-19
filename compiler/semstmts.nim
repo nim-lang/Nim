@@ -623,7 +623,7 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     let m = lookupMacro(c, key)
     if m == nil: continue
-    # we transform ``proc p {.m, rest.}`` into ``m(proc p {.rest.})`` and
+    # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
     x.add(newSymNode(m))
@@ -631,7 +631,7 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     if it.kind == nkExprColonExpr:
       # pass pragma argument to the macro too:
       x.add(it.sons[1])
-    x.add(prc)
+    x.add(newProcNode(nkDo, prc.info, prc))
     # recursion assures that this works for multiple macro annotations too:
     return semStmt(c, x)
 
