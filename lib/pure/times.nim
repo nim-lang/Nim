@@ -154,10 +154,8 @@ proc `-`*(a, b: TTime): int64 {.
   rtl, extern: "ntDiffTime".}
   ## computes the difference of two calendar times. Result is in seconds.
 
-proc `==`*(a, b: TTime): bool {.
-  rtl, extern: "ntEqTime".} =
-  ## returns true if ``a == b``, that is if both times represent the same value
-  result = a - b == 0
+proc `==`*(a, b: TTime): bool {.borrow.}
+  ## returns true if ``a == b``, that is if both values are equal.
 
 proc `<`*(a, b: TTime): bool {.
   rtl, extern: "ntLtTime".} = 
@@ -697,4 +695,10 @@ when isMainModule:
   var t4 = getGMTime(TTime(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
   
-  assert t3.format(":,[]()-/") == ":,[]()-/" 
+  assert t3.format(":,[]()-/") == ":,[]()-/"
+
+  # Test conversion back and forth between integer and TTime.
+  var t5 = 876124714
+  var t6 = TTime(t5)
+  assert t6 == TTime(t5)
+  assert t5 == int(t6)
