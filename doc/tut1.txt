@@ -86,14 +86,7 @@ Lexical elements
 
 Let us look at Nimrod's lexical elements in more detail: like other
 programming languages Nimrod consists of (string) literals, identifiers,
-keywords, comments, operators, and other punctuation marks. Case is
-*insignificant* in Nimrod and even underscores are ignored:
-``This_is_an_identifier`` and ``ThisIsAnIdentifier`` are the same identifier.
-This feature enables you to use other
-people's code without bothering about a naming convention that conflicts with
-yours. A Nimrod-aware editor or IDE can show the identifiers as
-preferred. It also frees you from remembering the exact spelling of an 
-identifier (was it ``parseURL`` or ``parseUrl`` or ``parse_URL``?).
+keywords, comments, operators, and other punctuation marks.
 
 
 String and character literals

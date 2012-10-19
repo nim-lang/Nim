@@ -555,10 +555,10 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, a.t.sons[0], ropef("(*$1)", [rdLoc(a)]))
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
-  var a: TLoc
   if mapType(e.sons[0].typ) == ctArray:
     expr(p, e.sons[0], d)
   else:
+    var a: TLoc
     InitLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e.typ, addrLoc(a))
 
@@ -1634,7 +1634,8 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, n.sons[0], a)
     var r = rdLoc(a)
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyRef, tyPtr, tyVar}:
+    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyRef, tyPtr, tyVar} and
+        n.sons[0].kind notin {nkHiddenAddr, nkAddr}:
       app(r, "->Sup")
       for i in countup(2, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
       r = con("&", r)
