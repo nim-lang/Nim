@@ -15,11 +15,13 @@ compiler/c2nim/nimcache
 compiler/pas2nim/nimcache
 misc
 doc/*.html
+doc/*.idx
 web/upload/*.html
 koch
 compiler/nimrod*
 build/[0-9]_[0-9]
 bin/nimrod
+examples/cross_calculator/nimrod_commandline/nimcalculator
 
 # iOS specific wildcards.
 *.mode1v3
