@@ -694,11 +694,14 @@ when false:
     var tmp = getNimType(m)
     appf(m.s[cfsTypeInit2], "$2 = &$1;$n", [tmp, name])
 
+proc isObjLackingTypeField(typ: PType): bool {.inline.} =
+  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
+      (typ.sons[0] == nil) or isPureObject(typ))
+
 proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) = 
   var nimtypeKind: int
   #allocMemTI(m, typ, name)
-  if (typ.kind == tyObject) and (tfFinal in typ.flags) and
-      (typ.sons[0] == nil): 
+  if isObjLackingTypeField(typ):
     nimtypeKind = ord(tyPureObject)
   else:
     nimtypeKind = ord(typ.kind)

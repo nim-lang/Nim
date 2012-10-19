@@ -11,6 +11,17 @@ var val = {a, b}
 stdout.write(repr(val))
 stdout.writeln(repr({'a'..'z', 'A'..'Z'}))
 
+type
+  TObj {.pure, inheritable.} = object
+    data: int
+  TFoo = ref object of TObj
+    d2: float
+var foo: TFoo
+new(foo)
+
+when false:
+  # cannot capture this output as it contains a memory address :-/
+  echo foo.repr
 #var testseq: seq[string] = @[
 #  "a", "b", "c", "d", "e"
 #]

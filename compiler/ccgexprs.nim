@@ -1036,6 +1036,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     while (t.kind == tyObject) and (t.sons[0] != nil):
       app(r, ".Sup")
       t = skipTypes(t.sons[0], typedescInst)
+  if isObjLackingTypeField(t):
+    GlobalError(x.info, errGenerated, 
+      "no 'of' operator available for pure objects")
   if nilCheck != nil:
     r = ropecg(p.module, "(($1) && #isObj($2.m_type, $3))",
               [nilCheck, r, genTypeInfo(p.module, dest)])
@@ -1597,7 +1600,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   var dest = skipTypes(n.typ, abstractPtrs)
-  if optObjCheck in p.options and not isPureObject(dest):
+  if optObjCheck in p.options and not isObjLackingTypeField(dest):
     var r = rdLoc(a)
     var nilCheck: PRope = nil
     var t = skipTypes(a.t, abstractInst)
