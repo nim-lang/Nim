@@ -92,7 +92,7 @@ proc InvalidGenericInst(f: PType): bool =
 
 proc isPureObject(typ: PType): bool = 
   var t = typ
-  while t.sons[0] != nil: t = t.sons[0]
+  while t.kind == tyObject and t.sons[0] != nil: t = t.sons[0]
   result = t.sym != nil and sfPure in t.sym.flags
 
 proc getOrdValue(n: PNode): biggestInt = 
