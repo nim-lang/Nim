@@ -52,7 +52,7 @@ proc `mod`*[T: SomeUInt](x, y: T): T {.magic: "ModU", noSideEffect.}
   ## computes the integer modulo operation. This is the same as
   ## ``x - (x div y) * y``.
 
-proc `<=`*[T: SomeUInt](x, y: SomeUInt): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*[T: SomeUInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
   ## Returns true iff ``x <= y``.
 
 proc `<`*[T: SomeUInt](x, y: T): bool {.magic: "LtU", noSideEffect.}
