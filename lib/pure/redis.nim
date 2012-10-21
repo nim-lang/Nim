@@ -34,7 +34,7 @@ type
 
 proc open*(host = "localhost", port = 6379.TPort): TRedis =
   ## Opens a connection to the redis server.
-  result.socket = socket()
+  result.socket = socket(buffered = false)
   if result.socket == InvalidSocket:
     OSError()
   result.socket.connect(host, port)
