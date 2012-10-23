@@ -413,6 +413,7 @@ type
     fileIndex*: int32
     
   ERecoverableError* = object of EInvalidValue
+  ESuggestDone* = object of EBase
 
 var
   filenameToIndexTbl = initTable[string, int32]()
@@ -471,11 +472,15 @@ var
 proc SuggestWriteln*(s: string) = 
   if gSilence == 0: 
     if isNil(stdoutSocket): Writeln(stdout, s)
-    else: stdoutSocket.send(s & "\c\L")
+    else: 
+      Writeln(stdout, s)
+      stdoutSocket.send(s & "\c\L")
     
 proc SuggestQuit*() =
   if isNil(stdoutSocket): quit(0)
-  else: stdoutSocket.send("\c\L")
+  else: 
+    stdoutSocket.send("\c\L")
+    raise newException(ESuggestDone, "suggest done")
   
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
@@ -599,8 +604,10 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
     maybeTrace()
     inc(gErrorCounter)
     options.gExitcode = 1'i8
-    if gErrorCounter >= gErrorMax or eh == doAbort: 
-      quit(1)                        # one error stops the compiler
+    if gErrorCounter >= gErrorMax: 
+      quit(1)
+    elif eh == doAbort and gCmd != cmdIdeTools:
+      quit(1)
     elif eh == doRaise:
       raiseRecoverableError(s)
 

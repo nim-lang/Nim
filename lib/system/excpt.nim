@@ -206,7 +206,8 @@ proc raiseExceptionAux(e: ref E_Base) =
   else:
     when hasSomeStackTrace:
       var buf = newStringOfCap(2000)
-      rawWriteStackTrace(buf)
+      if isNil(e.trace): rawWriteStackTrace(buf)
+      else: add(buf, e.trace)
       add(buf, "Error: unhandled exception: ")
       if not isNil(e.msg): add(buf, e.msg)
       add(buf, " [")
