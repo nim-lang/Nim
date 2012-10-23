@@ -259,12 +259,12 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
     let oldInGenericInst = c.InGenericInst
     try:
       result = SemStmtAndGenerateGenerics(c, n)
-    except ERecoverableError:
+    except ERecoverableError, ESuggestDone:
       RecoverContext(c)
       c.InGenericInst = oldInGenericInst
-      result = ast.emptyNode
       msgs.setInfoContextLen(oldContextLen)
-      if gCmd == cmdIdeTools: findSuggest(c, n)
+      result = ast.emptyNode
+      #if gCmd == cmdIdeTools: findSuggest(c, n)
   
 proc checkThreads(c: PContext) =
   if not needsGlobalAnalysis(): return
