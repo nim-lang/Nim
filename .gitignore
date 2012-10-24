@@ -16,7 +16,7 @@ compiler/pas2nim/nimcache
 misc
 doc/*.html
 doc/*.idx
-web/upload/*.html
+/web/upload
 koch
 compiler/nimrod*
 build/[0-9]_[0-9]
