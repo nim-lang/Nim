@@ -684,6 +684,10 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
       else:
         lineCg(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError();$n",
              [rdCharLoc(b), first, intLiteral(lastOrd(ty))])
+    else:
+      let idx = getOrdValue(e.sons[1])
+      if idx < firstOrd(ty) or idx > lastOrd(ty):
+        localError(e.info, errIndexOutOfBounds)
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
               ropef("$1[($2)- $3]", [rdLoc(a), rdCharLoc(b), first]))
