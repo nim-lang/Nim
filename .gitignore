@@ -22,6 +22,10 @@ compiler/nimrod*
 build/[0-9]_[0-9]
 bin/nimrod
 examples/cross_calculator/nimrod_commandline/nimcalculator
+examples/cross_todo/nimrod_backend/*.html
+examples/cross_todo/nimrod_backend/backend
+examples/cross_todo/nimrod_backend/testbackend
+examples/cross_todo/nimrod_backend/todo.sqlite3
 
 # iOS specific wildcards.
 *.mode1v3
