@@ -102,11 +102,14 @@ proc closePasses(a: var TPassContextArray) =
     if not isNil(gPasses[i].close): m = gPasses[i].close(a[i], m)
     a[i] = nil                # free the memory here
   
-proc processTopLevelStmt(n: PNode, a: var TPassContextArray) = 
+proc processTopLevelStmt(n: PNode, a: var TPassContextArray): bool = 
   # this implements the code transformation pipeline
   var m = n
   for i in countup(0, gPassesLen - 1): 
-    if not isNil(gPasses[i].process): m = gPasses[i].process(a[i], m)
+    if not isNil(gPasses[i].process): 
+      m = gPasses[i].process(a[i], m)
+      if isNil(m): return false
+  result = true
   
 proc processTopLevelStmtCached(n: PNode, a: var TPassContextArray) = 
   # this implements the code transformation pipeline
@@ -128,7 +131,7 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     var str = newStrNode(nkStrLit, module)
     str.info = gCmdLineInfo
     importStmt.addSon str
-    processTopLevelStmt importStmt, a
+    if not processTopLevelStmt(importStmt, a): break
   
 proc processModule(module: PSym, filename: string, stream: PLLStream, 
                    rd: PRodReader) = 
@@ -159,7 +162,7 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
       while true: 
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break 
-        processTopLevelStmt(n, a)
+        if not processTopLevelStmt(n, a): break
 
       closeParsers(p)
       if s.kind != llsStdIn: break 
