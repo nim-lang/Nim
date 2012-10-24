@@ -18,6 +18,8 @@ const
   sectionContext = "con"
   sectionUsage = "use"
 
+#template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
+
 proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)

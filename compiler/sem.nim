@@ -263,7 +263,8 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       RecoverContext(c)
       c.InGenericInst = oldInGenericInst
       msgs.setInfoContextLen(oldContextLen)
-      result = ast.emptyNode
+      if getCurrentException() of ESuggestDone: result = nil
+      else: result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
   
 proc checkThreads(c: PContext) =
