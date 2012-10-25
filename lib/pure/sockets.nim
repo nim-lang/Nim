@@ -1267,7 +1267,10 @@ proc send*(socket: TSocket, data: pointer, size: int): int =
   when defined(windows) or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
   else:
-    result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
+    when(defined(solaris)):
+      result = send(socket.fd, data, size, int32(0))
+    else:
+      result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: TSocket, data: string) =
   ## sends data to a socket.

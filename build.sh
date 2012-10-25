@@ -68,7 +68,7 @@ case $uos in
     ;;
   *solaris* | *sun* ) 
     myos="solaris"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
     ;;
   *haiku* )
     myos="haiku"
@@ -80,7 +80,7 @@ case $uos in
 esac
 
 case $ucpu in
-  *i386* | *i486* | *i586* | *i686* | *bepc* ) 
+  *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* ) 
     mycpu="i386" ;;
   *amd*64* | *x86-64* | *x86_64* ) 
     mycpu="amd64" ;;
