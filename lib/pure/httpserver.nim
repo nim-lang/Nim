@@ -20,7 +20,7 @@
 ##    client.send("Hello for the $#th time." % $counter & wwwNL)
 ##    return false # do not stop processing
 ##
-##  run(handleRequest, TPort(80))
+##  run(handleRequest : TServer, TPort(80), useSSL : false, sslContext : PSSLContext = newContext())
 ##
 
 import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
@@ -220,10 +220,16 @@ type
   TAsyncHTTPServer = object of TServer
     asyncSocket: PAsyncSocket
   
-proc open*(s: var TServer, port = TPort(80)) =
+proc open*(s: var TServer, port = TPort(80), useSSL : bool = false, sslContext : PSSLContext) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
+
   s.socket = socket(AF_INET)
+
+  when defined(ssl):
+    if useSSL == true:
+      wrapSocket(sslContext, s.socket)
+
   if s.socket == InvalidSocket: OSError()
   bindAddr(s.socket, port)
   listen(s.socket)
@@ -356,14 +362,15 @@ proc close*(s: TServer) =
 
 proc run*(handleRequest: proc (client: TSocket, 
                                path, query: string): bool {.closure.},
-          port = TPort(80)) =
+          port = TPort(80), useSSL : bool = false, sslContext : PSSLContext) =
   ## encapsulates the server object and main loop
   var s: TServer
-  open(s, port)
+  open(s, port, useSSL, sslContext)
   #echo("httpserver running on port ", s.port)
   while true:
     next(s)
-    if handleRequest(s.client, s.path, s.query): break
+    if handleRequest(s.client, s.path, s.query):
+      break
     close(s.client)
   close(s)
 
@@ -510,7 +517,11 @@ when isMainModule:
   var counter = 0
 
   var s: TServer
-  open(s, TPort(0))
+
+  #ssl test
+  #open(s, TPort(5000), true, newContext(protVersion = ProtTLSv1, verifyMode = CVerifyNone, certFile = "mycert.pem", keyFile = "mycert.pem"))
+  #http test, newContext doesnt really have sane defaults.
+  open(s, TPort(5000), false, newContext())
   echo("httpserver running on port ", s.port)
   while true:
     next(s)
@@ -521,4 +532,3 @@ when isMainModule:
     
     close(s.client)
   close(s)
-
