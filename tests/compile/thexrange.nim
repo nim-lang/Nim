@@ -4,5 +4,5 @@ type
   
 var a: TArray
 
-echo a[0] #OUT 0
+echo a[0x0012] #OUT 0
 

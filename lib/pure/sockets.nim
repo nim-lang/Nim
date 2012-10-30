@@ -24,6 +24,9 @@ when defined(Windows):
   import winlean
 else:
   import posix
+  
+  when defined(solaris):
+    {.passl: "-lsocket -lnsl".}
 
 # Note: The enumerations are mapped to Window's constants.
 

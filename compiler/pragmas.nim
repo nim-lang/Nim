@@ -41,7 +41,7 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
     wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns}
+    wLinearScanEnd, wPatterns, wEffects}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
@@ -292,14 +292,14 @@ proc processOption(c: PContext, n: PNode) =
       if n.sons[1].kind != nkIdent: 
         invalidPragma(n)
       else: 
-        case whichKeyword(n.sons[1].ident)
-        of wSpeed: 
+        case n.sons[1].ident.s.normalize
+        of "speed": 
           incl(gOptions, optOptimizeSpeed)
           excl(gOptions, optOptimizeSize)
-        of wSize: 
+        of "size":
           excl(gOptions, optOptimizeSpeed)
           incl(gOptions, optOptimizeSize)
-        of wNone: 
+        of "none": 
           excl(gOptions, optOptimizeSpeed)
           excl(gOptions, optOptimizeSize)
         else: LocalError(n.info, errNoneSpeedOrSizeExpected)
@@ -656,6 +656,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wEmit: PragmaEmit(c, it)
           of wUnroll: PragmaUnroll(c, it)
           of wLinearScanEnd: PragmaLinearScanEnd(c, it)
+          of wEffects:
+            # is later processed in effect analysis:
+            noVal(it)
           of wIncompleteStruct:
             noVal(it)
             if sym.typ == nil: invalidPragma(it)

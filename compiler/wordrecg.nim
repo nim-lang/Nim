@@ -18,7 +18,7 @@ import
 
 # Keywords must be kept sorted and within a range
 
-type 
+type
   TSpecialWord* = enum 
     wInvalid, 
     
@@ -52,7 +52,7 @@ type
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wPatterns, wWarnings,
-    wHints, wOptimization, wSpeed, wSize, wNone, 
+    wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects,
     wDeadCodeElim, wSafecode, 
     wPragma,
     wCompileTime, wNoInit,
@@ -62,7 +62,7 @@ type
     wAcyclic, wShallow, wUnroll, wLinearScanEnd,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
     wNoStackFrame,
-    wImplicitStatic, wGlobal, wHoist
+    wImplicitStatic, wGlobal, wHoist,
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -133,7 +133,7 @@ const
     "floatchecks", "nanchecks", "infchecks",
 
     "assertions", "patterns", "warnings", "hints", 
-    "optimization", "speed", "size", "none", 
+    "optimization", "raises", "writes", "reads", "size", "effects",
     "deadcodeelim", "safecode", 
     "pragma",
     "compiletime", "noinit",

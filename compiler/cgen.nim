@@ -1131,11 +1131,6 @@ proc writeModule(m: BModule, pending: bool) =
     addFileToCompile(cfilenoext)
   addFileToLink(cfilenoext)
 
-proc genPlatformAsserts(m: BModule) =
-  appf(m.s[cfsForwardTypes],
-    "typedef assert_numbits[sizeof(NI) == sizeof(void*) &&" &
-                           "NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];$N")
-
 proc myClose(b: PPassContext, n: PNode): PNode = 
   result = n
   if b == nil or passes.skipCodegen(n): return 
@@ -1149,7 +1144,6 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags: 
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
-    genPlatformAsserts(m)
     genMainProc(m) 
     # we need to process the transitive closure because recursive module
     # deps are allowed (and the system module is processed in the wrong
