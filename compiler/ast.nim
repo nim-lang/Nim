@@ -277,6 +277,13 @@ const
   # getting ready for the future expr/stmt merge
   nkWhen* = nkWhenStmt
   nkWhenExpr* = nkWhenStmt
+  nkEffectList* = nkArgList 
+  # hacks ahead: an nkEffectList is a node with 4 children:
+  exceptionEffects* = 0 # exceptions at position 0
+  readEffects* = 1      # read effects at position 1
+  writeEffects* = 2     # write effects at position 2
+  tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
+  effectListLen* = 4    # list of effects list
 
 type
   TTypeKind* = enum  # order is important!

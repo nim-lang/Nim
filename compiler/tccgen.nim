@@ -59,6 +59,8 @@ proc setupEnvironment =
     #addFile(nimrodDir / r"tinyc\lib\libtcc1.c")
   else:
     addSysincludePath(gTinyC, "/usr/include")
+    when defined(amd64):
+      addSysincludePath(gTinyC, "/usr/include/x86_64-linux-gnu")
 
 proc compileCCode*(ccode: string) = 
   if not libIncluded:
@@ -66,11 +68,11 @@ proc compileCCode*(ccode: string) =
     setupEnvironment()
   discard compileString(gTinyC, ccode)
   
-proc run*() = 
+proc run*() =
   var a: array[0..1, cstring]
   a[0] = ""
   a[1] = ""
-  var err = tinyc.run(gTinyC, 0'i32, addr(a)) != 0'i32
+  var err = tinyc.run(gTinyC, 0'i32, cast[cstringArray](addr(a))) != 0'i32
   closeCCState(gTinyC)
-  if err: rawMessage(errExecutionOfProgramFailed, "")  
+  if err: rawMessage(errExecutionOfProgramFailed, "")
 

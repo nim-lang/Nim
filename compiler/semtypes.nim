@@ -647,7 +647,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if genericParams != nil and sonsLen(genericParams) == 0:
     cl = initIntSet()
   rawAddSon(result, nil) # return type
-  res = newNodeI(nkType, n.info)
+  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because 
+  # the effects are now stored in there too ... this is a bit hacky, but as
+  # usual we desperately try to save memory:
+  res = newNodeI(nkEffectList, n.info)
   addSon(result.n, res)
   var check = initIntSet()
   var counter = 0

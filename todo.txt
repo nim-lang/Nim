@@ -37,7 +37,8 @@ version 0.9.XX
     echo a
     echo b)
 
-- implement the "snoopResult" pragma
+- implement the "snoopResult" pragma; no, make a strutils with string append
+  semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization
 - JS gen:
   - fix exception handling
