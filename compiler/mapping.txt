@@ -14,6 +14,7 @@
 --file:r"compiler/nimcache/hashes.c"
 --file:r"compiler/nimcache/tables.c"
 --file:r"compiler/nimcache/math.c"
+--file:r"compiler/nimcache/sockets.c"
 --file:r"compiler/nimcache/nversion.c"
 --file:r"compiler/nimcache/condsyms.c"
 --file:r"compiler/nimcache/ast.c"
@@ -60,6 +61,7 @@
 --file:r"compiler/nimcache/transf.c"
 --file:r"compiler/nimcache/cgmeth.c"
 --file:r"compiler/nimcache/lambdalifting.c"
+--file:r"compiler/nimcache/sempass2.c"
 --file:r"compiler/nimcache/evaltempl.c"
 --file:r"compiler/nimcache/sem.c"
 --file:r"compiler/nimcache/procfind.c"
@@ -82,12 +84,13 @@
 --file:r"compiler/nimcache/passaux.c"
 --file:r"compiler/nimcache/depends.c"
 --file:r"compiler/nimcache/docgen2.c"
+--file:r"compiler/nimcache/service.c"
 --file:r"compiler/nimcache/parseopt.c"
 
 [C_Compiler]
 Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
-Flags="-ldl -lm"
+Flags="-ldl -lm -lsocket -lnsl"
 [Environment]
 libpath="/home/andreas/projects/nimrod/lib"
 [Symbols]

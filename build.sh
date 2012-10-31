@@ -29,7 +29,7 @@ done
 CC="gcc"
 LINKER="gcc"
 COMP_FLAGS="-w -O3 -fno-strict-aliasing$extraBuildArgs"
-LINK_FLAGS=""
+LINK_FLAGS="-lsocket -lnsl"
 # platform detection
 ucpu=`uname -m`
 uos=`uname`
@@ -68,7 +68,7 @@ case $uos in
     ;;
   *solaris* | *sun* ) 
     myos="solaris"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
   *haiku* )
     myos="haiku"
@@ -80,7 +80,7 @@ case $uos in
 esac
 
 case $ucpu in
-  *i386* | *i486* | *i586* | *i686* | *bepc* ) 
+  *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* ) 
     mycpu="i386" ;;
   *amd*64* | *x86-64* | *x86_64* ) 
     mycpu="amd64" ;;
@@ -140,6 +140,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sockets.c -o build/1_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sockets.c -o build/1_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/condsyms.c -o build/1_1/condsyms.o"
@@ -232,6 +234,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
@@ -276,6 +280,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen2.c -o build/1_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/docgen2.c -o build/1_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/service.c -o build/1_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/service.c -o build/1_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -294,6 +300,7 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/tables.o \
 build/1_1/math.o \
+build/1_1/sockets.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -340,6 +347,7 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/sempass2.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -362,6 +370,7 @@ build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/docgen2.o \
+build/1_1/service.o \
 build/1_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_1/system.o \
@@ -379,6 +388,7 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/tables.o \
 build/1_1/math.o \
+build/1_1/sockets.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -425,6 +435,7 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/sempass2.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -447,6 +458,7 @@ build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/docgen2.o \
+build/1_1/service.o \
 build/1_1/parseopt.o
     ;;
   amd64)
@@ -480,6 +492,8 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sockets.c -o build/1_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sockets.c -o build/1_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/condsyms.c -o build/1_2/condsyms.o"
@@ -572,6 +586,8 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
@@ -616,6 +632,8 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen2.c -o build/1_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen2.c -o build/1_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/service.c -o build/1_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/service.c -o build/1_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -634,6 +652,7 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/tables.o \
 build/1_2/math.o \
+build/1_2/sockets.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -680,6 +699,7 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/sempass2.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -702,6 +722,7 @@ build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/docgen2.o \
+build/1_2/service.o \
 build/1_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_2/system.o \
@@ -719,6 +740,7 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/tables.o \
 build/1_2/math.o \
+build/1_2/sockets.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -765,6 +787,7 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/sempass2.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -787,11 +810,12 @@ build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/docgen2.o \
+build/1_2/service.o \
 build/1_2/parseopt.o
     ;;
   powerpc64)
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/system.c -o build/1_3/system.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_3/system.c -o build/1_3/system.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/system.c -o build/1_2/system.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/system.c -o build/1_2/system.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nimrod.c -o build/1_2/nimrod.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/nimrod.c -o build/1_2/nimrod.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o"
@@ -820,6 +844,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/tables.c -o build/1_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/math.c -o build/1_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/sockets.c -o build/1_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/sockets.c -o build/1_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/nversion.c -o build/1_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/condsyms.c -o build/1_2/condsyms.o"
@@ -912,6 +938,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
@@ -956,10 +984,12 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen2.c -o build/1_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/docgen2.c -o build/1_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/service.c -o build/1_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/service.c -o build/1_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
-build/1_3/system.o \
+build/1_2/system.o \
 build/1_2/nimrod.o \
 build/1_2/times.o \
 build/1_2/strutils.o \
@@ -974,6 +1004,7 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/tables.o \
 build/1_2/math.o \
+build/1_3/sockets.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -1020,6 +1051,7 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/sempass2.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -1042,9 +1074,10 @@ build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/docgen2.o \
+build/1_2/service.o \
 build/1_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
-build/1_3/system.o \
+build/1_2/system.o \
 build/1_2/nimrod.o \
 build/1_2/times.o \
 build/1_2/strutils.o \
@@ -1059,6 +1092,7 @@ build/1_2/strtabs.o \
 build/1_2/hashes.o \
 build/1_2/tables.o \
 build/1_2/math.o \
+build/1_3/sockets.o \
 build/1_2/nversion.o \
 build/1_2/condsyms.o \
 build/1_2/ast.o \
@@ -1105,6 +1139,7 @@ build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
 build/1_2/lambdalifting.o \
+build/1_2/sempass2.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -1127,11 +1162,12 @@ build/1_2/ecmasgen.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/docgen2.o \
+build/1_2/service.o \
 build/1_2/parseopt.o
     ;;
   arm)
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/system.c -o build/1_4/system.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/system.c -o build/1_4/system.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/system.c -o build/1_1/system.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/system.c -o build/1_1/system.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nimrod.c -o build/1_1/nimrod.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/nimrod.c -o build/1_1/nimrod.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o"
@@ -1160,6 +1196,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/tables.c -o build/1_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sockets.c -o build/1_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sockets.c -o build/1_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/nversion.c -o build/1_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/condsyms.c -o build/1_1/condsyms.o"
@@ -1252,6 +1290,8 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
@@ -1296,10 +1336,12 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen2.c -o build/1_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/docgen2.c -o build/1_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/service.c -o build/1_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/service.c -o build/1_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
-build/1_4/system.o \
+build/1_1/system.o \
 build/1_1/nimrod.o \
 build/1_1/times.o \
 build/1_1/strutils.o \
@@ -1314,6 +1356,7 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/tables.o \
 build/1_1/math.o \
+build/1_1/sockets.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -1360,6 +1403,7 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/sempass2.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -1382,9 +1426,10 @@ build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/docgen2.o \
+build/1_1/service.o \
 build/1_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
-build/1_4/system.o \
+build/1_1/system.o \
 build/1_1/nimrod.o \
 build/1_1/times.o \
 build/1_1/strutils.o \
@@ -1399,6 +1444,7 @@ build/1_1/strtabs.o \
 build/1_1/hashes.o \
 build/1_1/tables.o \
 build/1_1/math.o \
+build/1_1/sockets.o \
 build/1_1/nversion.o \
 build/1_1/condsyms.o \
 build/1_1/ast.o \
@@ -1445,6 +1491,7 @@ build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
 build/1_1/lambdalifting.o \
+build/1_1/sempass2.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -1467,6 +1514,7 @@ build/1_1/ecmasgen.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/docgen2.o \
+build/1_1/service.o \
 build/1_1/parseopt.o
     ;;
   *)
@@ -1508,6 +1556,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sockets.c -o build/2_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sockets.c -o build/2_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/condsyms.c -o build/2_1/condsyms.o"
@@ -1600,6 +1650,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
@@ -1644,6 +1696,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/depends.c -o build/2_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen2.c -o build/2_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/docgen2.c -o build/2_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/service.c -o build/2_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/service.c -o build/2_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -1662,6 +1716,7 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/tables.o \
 build/2_1/math.o \
+build/2_1/sockets.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -1708,6 +1763,7 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -1730,6 +1786,7 @@ build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/docgen2.o \
+build/2_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_1/system.o \
@@ -1747,6 +1804,7 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/tables.o \
 build/2_1/math.o \
+build/2_1/sockets.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -1793,6 +1851,7 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -1815,6 +1874,7 @@ build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/docgen2.o \
+build/2_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -1848,6 +1908,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sockets.c -o build/2_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sockets.c -o build/2_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o"
@@ -1940,6 +2002,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
@@ -1984,6 +2048,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen2.c -o build/2_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen2.c -o build/2_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/service.c -o build/2_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/service.c -o build/2_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2002,6 +2068,7 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/tables.o \
 build/2_2/math.o \
+build/2_2/sockets.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -2048,6 +2115,7 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2070,6 +2138,7 @@ build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/docgen2.o \
+build/2_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_2/system.o \
@@ -2087,6 +2156,7 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/tables.o \
 build/2_2/math.o \
+build/2_2/sockets.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -2133,6 +2203,7 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2155,6 +2226,7 @@ build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/docgen2.o \
+build/2_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -2188,6 +2260,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/tables.c -o build/2_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/sockets.c -o build/2_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_3/sockets.c -o build/2_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o"
@@ -2280,6 +2354,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
@@ -2324,6 +2400,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen2.c -o build/2_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/docgen2.c -o build/2_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/service.c -o build/2_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/service.c -o build/2_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2342,6 +2420,7 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/tables.o \
 build/2_2/math.o \
+build/2_3/sockets.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -2388,6 +2467,7 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2410,6 +2490,7 @@ build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/docgen2.o \
+build/2_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_3/system.o \
@@ -2427,6 +2508,7 @@ build/2_2/strtabs.o \
 build/2_2/hashes.o \
 build/2_2/tables.o \
 build/2_2/math.o \
+build/2_3/sockets.o \
 build/2_2/nversion.o \
 build/2_2/condsyms.o \
 build/2_2/ast.o \
@@ -2473,6 +2555,7 @@ build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
 build/2_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2495,6 +2578,7 @@ build/2_2/ecmasgen.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/docgen2.o \
+build/2_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -2528,6 +2612,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/tables.c -o build/2_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sockets.c -o build/2_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sockets.c -o build/2_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/condsyms.c -o build/2_1/condsyms.o"
@@ -2620,6 +2706,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
@@ -2664,6 +2752,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/depends.c -o build/2_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen2.c -o build/2_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/docgen2.c -o build/2_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/service.c -o build/2_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/service.c -o build/2_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -2682,6 +2772,7 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/tables.o \
 build/2_1/math.o \
+build/2_1/sockets.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -2728,6 +2819,7 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -2750,6 +2842,7 @@ build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/docgen2.o \
+build/2_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_4/system.o \
@@ -2767,6 +2860,7 @@ build/2_1/strtabs.o \
 build/2_1/hashes.o \
 build/2_1/tables.o \
 build/2_1/math.o \
+build/2_1/sockets.o \
 build/2_1/nversion.o \
 build/2_1/condsyms.o \
 build/2_1/ast.o \
@@ -2813,6 +2907,7 @@ build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
 build/2_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -2835,6 +2930,7 @@ build/2_1/ecmasgen.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/docgen2.o \
+build/2_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
@@ -2876,6 +2972,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/tables.c -o build/3_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sockets.c -o build/3_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sockets.c -o build/3_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/condsyms.c -o build/3_1/condsyms.o"
@@ -2968,6 +3066,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
@@ -3012,6 +3112,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/depends.c -o build/3_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen2.c -o build/3_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen2.c -o build/3_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3030,6 +3132,7 @@ build/3_1/strtabs.o \
 build/2_1/hashes.o \
 build/3_1/tables.o \
 build/2_1/math.o \
+build/3_1/sockets.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -3076,6 +3179,7 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -3098,6 +3202,7 @@ build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
+build/3_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/system.o \
@@ -3115,6 +3220,7 @@ build/3_1/strtabs.o \
 build/2_1/hashes.o \
 build/3_1/tables.o \
 build/2_1/math.o \
+build/3_1/sockets.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -3161,6 +3267,7 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -3183,6 +3290,7 @@ build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
+build/3_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -3216,6 +3324,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/tables.c -o build/3_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sockets.c -o build/3_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sockets.c -o build/3_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o"
@@ -3308,6 +3418,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
@@ -3352,6 +3464,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen2.c -o build/3_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen2.c -o build/3_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3370,6 +3484,7 @@ build/3_2/strtabs.o \
 build/2_2/hashes.o \
 build/3_2/tables.o \
 build/2_2/math.o \
+build/3_2/sockets.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -3416,6 +3531,7 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3438,6 +3554,7 @@ build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
+build/3_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/system.o \
@@ -3455,6 +3572,7 @@ build/3_2/strtabs.o \
 build/2_2/hashes.o \
 build/3_2/tables.o \
 build/2_2/math.o \
+build/3_2/sockets.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -3501,6 +3619,7 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3523,6 +3642,7 @@ build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
+build/3_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -3556,6 +3676,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/tables.c -o build/3_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/sockets.c -o build/3_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/sockets.c -o build/3_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o"
@@ -3648,6 +3770,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
@@ -3692,6 +3816,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen2.c -o build/3_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen2.c -o build/3_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -3710,6 +3836,7 @@ build/3_2/strtabs.o \
 build/2_2/hashes.o \
 build/3_2/tables.o \
 build/2_2/math.o \
+build/3_3/sockets.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -3756,6 +3883,7 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3778,6 +3906,7 @@ build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
+build/3_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_3/system.o \
@@ -3795,6 +3924,7 @@ build/3_2/strtabs.o \
 build/2_2/hashes.o \
 build/3_2/tables.o \
 build/2_2/math.o \
+build/3_3/sockets.o \
 build/2_2/nversion.o \
 build/3_2/condsyms.o \
 build/3_2/ast.o \
@@ -3841,6 +3971,7 @@ build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3863,6 +3994,7 @@ build/3_2/ecmasgen.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
+build/3_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -3896,6 +4028,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/tables.c -o build/3_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sockets.c -o build/3_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sockets.c -o build/3_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/condsyms.c -o build/3_1/condsyms.o"
@@ -3988,6 +4122,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
@@ -4032,6 +4168,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/depends.c -o build/3_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen2.c -o build/3_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen2.c -o build/3_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4050,6 +4188,7 @@ build/3_1/strtabs.o \
 build/2_1/hashes.o \
 build/3_1/tables.o \
 build/2_1/math.o \
+build/3_1/sockets.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -4096,6 +4235,7 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -4118,6 +4258,7 @@ build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
+build/3_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_4/system.o \
@@ -4135,6 +4276,7 @@ build/3_1/strtabs.o \
 build/2_1/hashes.o \
 build/3_1/tables.o \
 build/2_1/math.o \
+build/3_1/sockets.o \
 build/2_1/nversion.o \
 build/3_1/condsyms.o \
 build/3_1/ast.o \
@@ -4181,6 +4323,7 @@ build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -4203,6 +4346,7 @@ build/3_1/ecmasgen.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
+build/3_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
@@ -4244,6 +4388,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -4336,6 +4482,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -4380,6 +4528,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4398,6 +4548,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -4444,6 +4595,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -4466,6 +4618,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/system.o \
@@ -4483,6 +4636,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -4529,6 +4683,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -4551,6 +4706,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -4584,6 +4740,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -4676,6 +4834,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -4720,6 +4880,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -4738,6 +4900,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4784,6 +4947,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -4806,6 +4970,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/system.o \
@@ -4823,6 +4988,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -4869,6 +5035,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -4891,6 +5058,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -4924,6 +5092,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -5016,6 +5186,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -5060,6 +5232,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5078,6 +5252,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5124,6 +5299,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5146,6 +5322,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_3/system.o \
@@ -5163,6 +5340,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -5209,6 +5387,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5231,6 +5410,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -5264,6 +5444,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -5356,6 +5538,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -5400,6 +5584,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5418,6 +5604,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5464,6 +5651,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5486,6 +5674,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_4/system.o \
@@ -5503,6 +5692,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5549,6 +5739,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5571,6 +5762,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
@@ -5612,6 +5804,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -5704,6 +5898,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -5748,6 +5944,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -5766,6 +5964,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5812,6 +6011,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5834,6 +6034,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/system.o \
@@ -5851,6 +6052,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -5897,6 +6099,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5919,6 +6122,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -5952,6 +6156,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -6044,6 +6250,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -6088,6 +6296,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -6106,6 +6316,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6152,6 +6363,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -6174,6 +6386,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/system.o \
@@ -6191,6 +6404,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6237,6 +6451,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -6259,6 +6474,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -6292,6 +6508,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -6384,6 +6602,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -6428,6 +6648,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -6446,6 +6668,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6492,6 +6715,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -6514,6 +6738,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_3/system.o \
@@ -6531,6 +6756,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -6577,6 +6803,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -6599,6 +6826,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -6632,6 +6860,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -6724,6 +6954,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -6768,6 +7000,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -6786,6 +7020,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -6832,6 +7067,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -6854,6 +7090,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_4/system.o \
@@ -6871,6 +7108,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -6917,6 +7155,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -6939,6 +7178,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
@@ -6980,6 +7220,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -7072,6 +7314,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -7116,6 +7360,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -7134,6 +7380,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -7180,6 +7427,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -7202,6 +7450,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_1/system.o \
@@ -7219,6 +7468,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -7265,6 +7515,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -7287,6 +7538,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -7320,6 +7572,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sockets.c -o build/4_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -7412,6 +7666,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -7456,6 +7712,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -7474,6 +7732,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -7520,6 +7779,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -7542,6 +7802,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_2/system.o \
@@ -7559,6 +7820,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_2/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -7605,6 +7867,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -7627,6 +7890,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -7660,6 +7924,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/tables.c -o build/4_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_3/sockets.c -o build/4_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/condsyms.c -o build/4_2/condsyms.o"
@@ -7752,6 +8018,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -7796,6 +8064,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/docgen2.c -o build/4_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/service.c -o build/4_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -7814,6 +8084,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -7860,6 +8131,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -7882,6 +8154,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_3/system.o \
@@ -7899,6 +8172,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/4_2/tables.o \
 build/2_2/math.o \
+build/4_3/sockets.o \
 build/2_2/nversion.o \
 build/4_2/condsyms.o \
 build/4_2/ast.o \
@@ -7945,6 +8219,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
 build/4_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -7967,6 +8242,7 @@ build/4_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/docgen2.o \
+build/4_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -8000,6 +8276,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/tables.c -o build/4_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sockets.c -o build/4_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/condsyms.c -o build/4_1/condsyms.o"
@@ -8092,6 +8370,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -8136,6 +8416,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/docgen2.c -o build/4_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/service.c -o build/4_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -8154,6 +8436,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -8200,6 +8483,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -8222,6 +8506,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/4_4/system.o \
@@ -8239,6 +8524,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/4_1/tables.o \
 build/2_1/math.o \
+build/4_1/sockets.o \
 build/2_1/nversion.o \
 build/4_1/condsyms.o \
 build/4_1/ast.o \
@@ -8285,6 +8571,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
 build/4_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -8307,6 +8594,7 @@ build/4_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/docgen2.o \
+build/4_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
@@ -8348,6 +8636,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/7_1/tables.c -o build/7_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sockets.c -o build/7_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/sockets.c -o build/7_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/condsyms.c -o build/7_1/condsyms.o"
@@ -8440,6 +8730,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/7_1/cgmeth.c -o build/7_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o"
@@ -8484,6 +8776,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/7_1/depends.c -o build/7_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/docgen2.c -o build/7_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/docgen2.c -o build/7_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/service.c -o build/7_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/service.c -o build/7_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -8502,6 +8796,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/7_1/tables.o \
 build/2_1/math.o \
+build/7_1/sockets.o \
 build/2_1/nversion.o \
 build/7_1/condsyms.o \
 build/4_1/ast.o \
@@ -8548,6 +8843,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
@@ -8570,6 +8866,7 @@ build/7_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/7_1/depends.o \
 build/7_1/docgen2.o \
+build/7_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/7_1/system.o \
@@ -8587,6 +8884,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/7_1/tables.o \
 build/2_1/math.o \
+build/7_1/sockets.o \
 build/2_1/nversion.o \
 build/7_1/condsyms.o \
 build/4_1/ast.o \
@@ -8633,6 +8931,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
@@ -8655,6 +8954,7 @@ build/7_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/7_1/depends.o \
 build/7_1/docgen2.o \
+build/7_1/service.o \
 build/2_1/parseopt.o
     ;;
   amd64)
@@ -8688,6 +8988,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/tables.c -o build/7_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/sockets.c -o build/7_2/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/sockets.c -o build/7_2/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/condsyms.c -o build/7_2/condsyms.o"
@@ -8780,6 +9082,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/cgmeth.c -o build/7_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o"
@@ -8824,6 +9128,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/depends.c -o build/7_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/docgen2.c -o build/7_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/docgen2.c -o build/7_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/service.c -o build/7_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/service.c -o build/7_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -8842,6 +9148,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/7_2/tables.o \
 build/2_2/math.o \
+build/7_2/sockets.o \
 build/2_2/nversion.o \
 build/7_2/condsyms.o \
 build/4_2/ast.o \
@@ -8888,6 +9195,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
@@ -8910,6 +9218,7 @@ build/7_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/7_2/depends.o \
 build/7_2/docgen2.o \
+build/7_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/7_2/system.o \
@@ -8927,6 +9236,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/7_2/tables.o \
 build/2_2/math.o \
+build/7_2/sockets.o \
 build/2_2/nversion.o \
 build/7_2/condsyms.o \
 build/4_2/ast.o \
@@ -8973,6 +9283,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
@@ -8995,6 +9306,7 @@ build/7_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/7_2/depends.o \
 build/7_2/docgen2.o \
+build/7_2/service.o \
 build/2_2/parseopt.o
     ;;
   powerpc64)
@@ -9028,6 +9340,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/tables.c -o build/7_2/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/math.c -o build/2_2/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_3/sockets.c -o build/7_3/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_3/sockets.c -o build/7_3/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/condsyms.c -o build/7_2/condsyms.o"
@@ -9120,6 +9434,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/cgmeth.c -o build/7_2/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/lambdalifting.c -o build/7_2/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/sem.c -o build/7_2/sem.o"
@@ -9164,6 +9480,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_2/depends.c -o build/7_2/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/docgen2.c -o build/7_2/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_2/docgen2.c -o build/7_2/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/service.c -o build/7_2/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_2/service.c -o build/7_2/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -9182,6 +9500,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/7_2/tables.o \
 build/2_2/math.o \
+build/7_3/sockets.o \
 build/2_2/nversion.o \
 build/7_2/condsyms.o \
 build/4_2/ast.o \
@@ -9228,6 +9547,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
@@ -9250,6 +9570,7 @@ build/7_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/7_2/depends.o \
 build/7_2/docgen2.o \
+build/7_2/service.o \
 build/2_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/7_3/system.o \
@@ -9267,6 +9588,7 @@ build/4_2/strtabs.o \
 build/2_2/hashes.o \
 build/7_2/tables.o \
 build/2_2/math.o \
+build/7_3/sockets.o \
 build/2_2/nversion.o \
 build/7_2/condsyms.o \
 build/4_2/ast.o \
@@ -9313,6 +9635,7 @@ build/2_2/saturate.o \
 build/4_2/transf.o \
 build/7_2/cgmeth.o \
 build/7_2/lambdalifting.o \
+build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/7_2/sem.o \
 build/7_2/procfind.o \
@@ -9335,6 +9658,7 @@ build/7_2/ecmasgen.o \
 build/4_2/passaux.o \
 build/7_2/depends.o \
 build/7_2/docgen2.o \
+build/7_2/service.o \
 build/2_2/parseopt.o
     ;;
   arm)
@@ -9368,6 +9692,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_1/tables.c -o build/7_1/tables.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/math.c -o build/2_1/math.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sockets.c -o build/7_1/sockets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/sockets.c -o build/7_1/sockets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/condsyms.c -o build/7_1/condsyms.o"
@@ -9460,6 +9786,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_1/cgmeth.c -o build/7_1/cgmeth.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/lambdalifting.c -o build/7_1/lambdalifting.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/sem.c -o build/7_1/sem.o"
@@ -9504,6 +9832,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/7_1/depends.c -o build/7_1/depends.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/docgen2.c -o build/7_1/docgen2.o"
     $CC $COMP_FLAGS -Ibuild -c build/7_1/docgen2.c -o build/7_1/docgen2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/service.c -o build/7_1/service.o"
+    $CC $COMP_FLAGS -Ibuild -c build/7_1/service.c -o build/7_1/service.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
@@ -9522,6 +9852,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/7_1/tables.o \
 build/2_1/math.o \
+build/7_1/sockets.o \
 build/2_1/nversion.o \
 build/7_1/condsyms.o \
 build/4_1/ast.o \
@@ -9568,6 +9899,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
@@ -9590,6 +9922,7 @@ build/7_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/7_1/depends.o \
 build/7_1/docgen2.o \
+build/7_1/service.o \
 build/2_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/7_4/system.o \
@@ -9607,6 +9940,7 @@ build/4_1/strtabs.o \
 build/2_1/hashes.o \
 build/7_1/tables.o \
 build/2_1/math.o \
+build/7_1/sockets.o \
 build/2_1/nversion.o \
 build/7_1/condsyms.o \
 build/4_1/ast.o \
@@ -9653,6 +9987,7 @@ build/2_1/saturate.o \
 build/4_1/transf.o \
 build/7_1/cgmeth.o \
 build/7_1/lambdalifting.o \
+build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/7_1/sem.o \
 build/7_1/procfind.o \
@@ -9675,6 +10010,7 @@ build/7_1/ecmasgen.o \
 build/4_1/passaux.o \
 build/7_1/depends.o \
 build/7_1/docgen2.o \
+build/7_1/service.o \
 build/2_1/parseopt.o
     ;;
   *)
