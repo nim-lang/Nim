@@ -20,7 +20,7 @@
 import 
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os, 
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting
+  lambdalifting, sempass2
 
 const 
   genPrefix* = ":tmp"         # prefix for generated names
@@ -691,6 +691,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
     result = n
   else:
+    when false: trackProc(prc, n)
     var c = openTransf(module, "")
     result = processTransf(c, n)
     if prc.kind != skMacro:
