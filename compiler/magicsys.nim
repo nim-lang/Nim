@@ -41,7 +41,7 @@ proc getSysSym(name: string): PSym =
   if result == nil: rawMessage(errSystemNeeds, name)
   if result.kind == skStub: loadStub(result)
   
-proc sysTypeFromName(name: string): PType = 
+proc sysTypeFromName*(name: string): PType = 
   result = getSysSym(name).typ
 
 proc getSysType(kind: TTypeKind): PType = 

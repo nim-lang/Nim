@@ -8,7 +8,7 @@
 #
 
 import
-  ast, astalgo, msgs, semdata
+  ast, astalgo, msgs, renderer, magicsys, types, idents, trees, wordrecg
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -44,13 +44,14 @@ import
 # done: It essentially requires a built-in 'indexSplit' operation and dependent
 # typing.
 
-proc sem2call(c: PContext, n: PNode): PNode =
-  assert n.kind in nkCallKinds
-  
-  
+when false:
+  proc sem2call(c: PContext, n: PNode): PNode =
+    assert n.kind in nkCallKinds
+    
+    
 
-proc sem2sym(c: PContext, n: PNode): PNode =
-  assert n.kind == nkSym
+  proc sem2sym(c: PContext, n: PNode): PNode =
+    assert n.kind == nkSym
   
   
 # ------------------------ exception tracking -------------------------------
@@ -96,13 +97,16 @@ proc excType(n: PNode): PType =
           else: n.sons[0].typ
   result = skipTypes(t, skipPtrs)
 
-proc mergeEffects(a: PEffects, b: PNode) =
+proc addEffect(a: PEffects, e: PNode) =
+  assert e.kind == nkRaiseStmt
   var aa = a.exc
+  for i in a.bottom .. <aa.len:
+    if sameType(aa[i].excType, e.excType) and aa[i].info == e.info: return
+  throws(a, e)
+
+proc mergeEffects(a: PEffects, b: PNode) =
   for effect in items(b):
-    block search
-      for i in a.bottom .. <aa.len:
-        if sameType(aa[i].excType, b.excType): break search
-      throws(a, effect)
+    addEffect(a, effect)
 
 proc listEffects(a: PEffects) =
   var aa = a.exc
@@ -111,7 +115,7 @@ proc listEffects(a: PEffects) =
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
-  let L = tracked.exc.len
+  var L = tracked.exc.len
   var i = tracked.bottom
   while i < L:
     # e supertype of r?
@@ -160,25 +164,29 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkRaiseStmt: throws(tracked, n)
-  of nkCallNode:
+  of nkCallKinds:
     # p's effects are ours too:
     let op = n.sons[0].typ
-    InternalAssert op.kind == tyProc and op.n.sons[0].kind == nkEffectList
-    var effectList = op.n.sons[0]
-    if effectList.len == 0:
-      if isIndirectCall(n.sons[0]) or isForwardedProc(n.sons[0]):
-        # assume the worst: raise of exception 'E_Base':
-        var rs = newNodeI(nkRaiseStmt, n.info)
-        var re = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
-        rs.add(re)
-        effectList.add(rs)
-    mergeEffects(tracked, effectList)
+    if op != nil and op.kind == tyProc:
+      InternalAssert op.kind == tyProc and op.n.sons[0].kind == nkEffectList
+      var effectList = op.n.sons[0]
+      if effectList.len == 0:
+        if isIndirectCall(n.sons[0]) or isForwardedProc(n.sons[0]):
+          # assume the worst: raise of exception 'E_Base':
+          var rs = newNodeI(nkRaiseStmt, n.info)
+          var re = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
+          rs.add(re)
+          addEffect(tracked, rs)
+      else:
+        effectList = effectList.sons[exceptionEffects]
+        mergeEffects(tracked, effectList)
   of nkTryStmt:
     trackTryStmt(tracked, n)
     return
   of nkPragma:
     trackPragmaStmt(tracked, n)
     return
+  of nkMacroDef, nkTemplateDef: return
   else: nil
   for i in 0 .. <safeLen(n):
     track(tracked, n.sons[i])
@@ -189,6 +197,7 @@ proc trackProc*(s: PSym, body: PNode) =
   # effects already computed?
   if effects.len == effectListLen: return
   newSeq(effects.sons, effectListLen)
+  effects.sons[exceptionEffects] = newNodeI(nkArgList, body.info)
   
   var t: TEffects
   t.exc = effects.sons[exceptionEffects]

@@ -1,6 +1,10 @@
 version 0.9.2
 =============
 
+- implement/generalize the effect system; checked exceptions
+- overloading based on ASTs: 'constraint' should not be in PType but for the
+  parameter *symbol*
+
 - document 'mixin' for generics and symbol lookup rules; special rule 
   for ``[]=``
 - implement the compiler as a service
@@ -135,7 +139,6 @@ Version 2 and beyond
   troublesome, but maybe we can come up with a simple heuristic. (All procs
   that `new` shared memory are syncGC() candidates...)
 
-- implement/generalize the effect system; checked exceptions
 - const ptr/ref
 
 - language change: inheritance should only work with reference types, so that
