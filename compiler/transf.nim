@@ -691,7 +691,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
     result = n
   else:
-    when false: trackProc(prc, n)
+    when useEffectSystem: trackProc(prc, n)
     var c = openTransf(module, "")
     result = processTransf(c, n)
     if prc.kind != skMacro:
