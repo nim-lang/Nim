@@ -69,7 +69,7 @@ case $uos in
     ;;
   *solaris* | *sun* ) 
     myos="solaris"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
     ;;
   *haiku* )
     myos="haiku"

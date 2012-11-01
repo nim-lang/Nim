@@ -1671,7 +1671,6 @@ proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
 template newException*(exceptn: typeDesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  # block: # open a new scope
   var
     e: ref exceptn
   new(e)

@@ -12,7 +12,7 @@
 import 
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer, 
   wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees,
-  rodread
+  rodread, types
 
 const 
   FirstCallConv* = wNimcall
@@ -24,7 +24,7 @@ const
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wHoist,
-    wGenSym, wInject}
+    wGenSym, wInject, wRaises}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty}
@@ -33,7 +33,7 @@ const
     wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject}
+    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises}
   exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -44,7 +44,8 @@ const
     wLinearScanEnd, wPatterns, wEffects}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
-    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame}
+    wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
+    wRaises}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
     wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef,
@@ -59,7 +60,7 @@ const
     wExtern, wImportcpp, wImportobjc, wError, wGenSym, wInject}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
-                      wThread}
+                      wThread, wRaises}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
@@ -463,6 +464,22 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   userPragma.ast = body
   StrTableAdd(c.userPragmas, userPragma)
 
+proc pragmaRaises(c: PContext, n: PNode) =
+  proc processExc(c: PContext, x: PNode) =
+    var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
+    if t.kind != tyObject:
+      localError(x.info, errGenerated, "invalid exception type")
+    x.typ = t
+    
+  if n.kind == nkExprColonExpr:
+    let it = n.sons[1]
+    if it.kind notin {nkCurly, nkBracket}:
+      processExc(c, it)
+    else:
+      for e in items(it): processExc(c, e)
+  else:
+    invalidPragma(n)
+
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   for i in countup(0, sonsLen(n) - 1): 
@@ -679,6 +696,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym == nil: invalidPragma(it)
           of wLine: PragmaLine(c, it)
+          of wRaises: pragmaRaises(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

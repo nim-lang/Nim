@@ -765,6 +765,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s = proto
     n.sons[genericParamsPos] = proto.ast.sons[genericParamsPos]
     n.sons[paramsPos] = proto.ast.sons[paramsPos]
+    n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
     proto.ast = n             # needed for code generation
