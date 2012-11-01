@@ -90,7 +90,7 @@
 [C_Compiler]
 Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
-Flags="-ldl -lm -lsocket -lnsl"
+Flags=" -lm"
 [Environment]
 libpath="/home/andreas/projects/nimrod/lib"
 [Symbols]
