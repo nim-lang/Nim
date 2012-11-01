@@ -14,7 +14,7 @@ type
   TKeyValPair = tuple[key, val: string]
   TConfigData = object of TObject
     tabs, links: seq[TKeyValPair]
-    doc, srcdoc, webdoc, pdf: seq[string]
+    doc, srcdoc, srcdoc2, webdoc, pdf: seq[string]
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
@@ -24,6 +24,7 @@ proc initConfigData(c: var TConfigData) =
   c.links = @[]
   c.doc = @[]
   c.srcdoc = @[]
+  c.srcdoc2 = @[]
   c.webdoc = @[]
   c.pdf = @[]
   c.infile = ""
@@ -139,6 +140,7 @@ proc parseIniFile(c: var TConfigData) =
           of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
           of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
           of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
+          of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
           of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
         else: nil
@@ -166,6 +168,9 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
   for d in items(c.srcdoc):
     Exec("nimrod doc $# -o:$# --index:on $#" %
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
+  for d in items(c.srcdoc2):
+    Exec("nimrod doc2 $# -o:$# --index:on $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
   Exec("nimrod buildIndex -o:$1/theindex.html $1" % [destPath])
 

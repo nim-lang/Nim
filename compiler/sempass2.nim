@@ -219,8 +219,8 @@ proc checkRaisesSpec(spec, real: PNode) =
   for r in items(real):
     block search:
       for s in 0 .. <spec.len:
-        # r supertype of s?
-        if inheritanceDiff(r.excType, spec[s].typ) <= 0:
+        # s supertype of r?
+        if inheritanceDiff(spec[s].typ, r.excType) <= 0:
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!

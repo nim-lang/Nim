@@ -487,7 +487,8 @@ proc fillSurface*(sur: PSurface, color: TColor) =
   if sdl.FillRect(sur.s, nil, sur.createSdlColor(color)) == -1:
     raiseEGraphics()
 
-template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt =
+template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt {.
+  immediate.} =
   ## Simple template which creates an event loop. ``Event`` is the name of the
   ## variable containing the TEvent object.
   while True:
