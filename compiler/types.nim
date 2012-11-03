@@ -1189,3 +1189,26 @@ proc baseOfDistinct*(t: PType): PType =
     if it.kind == tyDistinct:
       internalAssert parent != nil
       parent.sons[0] = it.sons[0]
+
+proc compatibleEffects*(formal, actual: PType): bool =
+  # for proc type compatibility checking:
+  assert formal.kind == tyProc and actual.kind == tyProc
+  InternalAssert formal.n.sons[0].kind == nkEffectList
+  InternalAssert actual.n.sons[0].kind == nkEffectList
+  
+  var spec = formal.n.sons[0]
+  # if 'spec.sons[0].kind == nkArgList' it is no formal type really, but a
+  # computed effect and as such no spec:
+  # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
+  if spec.len != 0 and spec.sons[0].kind != nkArgList:
+    var real = actual.n.sons[0]
+    if real.len == 0: 
+      # we don't know anything about 'real' ...
+      return false
+    for r in items(real):
+      block search:
+        for s in items(spec):
+          if inheritanceDiff(r.typ, s.typ) <= 0:
+            break search
+        return false
+  result = true

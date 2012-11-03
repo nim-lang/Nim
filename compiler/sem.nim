@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns
+  evaltempl, patterns, parampatterns, sempass2
 
 proc semPass*(): TPass
 # implementation

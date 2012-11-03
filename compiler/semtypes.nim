@@ -893,9 +893,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
       if result.callConv == ccDefault:
         result.callConv = ccClosure
-        Message(n.info, warnImplicitClosure, renderTree(n))
+        #Message(n.info, warnImplicitClosure, renderTree(n))
     else:
       pragma(c, s, n.sons[1], procTypePragmas)
+      when useEffectSystem: SetEffectsForProcType(result, n.sons[1])
     closeScope(c.tab)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ

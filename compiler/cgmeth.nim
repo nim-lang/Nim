@@ -10,7 +10,8 @@
 ## This module implements code generation for multi methods.
 
 import 
-  intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys
+  intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
+  sempass2
 
 proc genConv(n: PNode, d: PType, downcast: bool): PNode = 
   var dest = skipTypes(d, abstractPtrs)
@@ -81,10 +82,12 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
 
 proc methodDef*(s: PSym, fromCache: bool) =
   var L = len(gMethods)
-  for i in countup(0, L - 1): 
-    if sameMethodBucket(gMethods[i][0], s): 
+  for i in countup(0, L - 1):
+    let disp = gMethods[i][0]
+    if sameMethodBucket(disp, s):
       add(gMethods[i], s)
-      attachDispatcher(s, lastSon(gMethods[i][0].ast))
+      attachDispatcher(s, lastSon(disp.ast))
+      when useEffectSystem: checkMethodEffects(disp, s)
       return 
   add(gMethods, @[s])
   # create a new dispatcher:
