@@ -25,7 +25,7 @@ import
 #   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
 #   side effect (accesses global), store (stores into *type*),
 #   store_unkown (performs some store) --> store(any)|store(x) 
-#   load (loads from *type*), recursive (recursive call),
+#   load (loads from *type*), recursive (recursive call), unsafe,
 #   endless (has endless loops), --> user effects are defined over *patterns*
 #   --> a TR macro can annotate the proc with user defined annotations
 #   --> the effect system can access these
@@ -84,20 +84,16 @@ type
   PEffects = var TEffects
 
 proc throws(tracked: PEffects, n: PNode) =
-  # since a 'raise' statement occurs rarely and we need distinct reasons;
-  # we simply do not merge anything here, this would be problematic for the
-  # stack of exceptions anyway:
   tracked.exc.add n
   
 proc excType(n: PNode): PType =
-  assert n.kind == nkRaiseStmt
+  assert n.kind != nkRaiseStmt
   # reraise is like raising E_Base:
-  let t = if n.sons[0].kind == nkEmpty: sysTypeFromName"E_Base"
-          else: n.sons[0].typ
+  let t = if n.kind == nkEmpty: sysTypeFromName"E_Base" else: n.typ
   result = skipTypes(t, skipPtrs)
 
 proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
-  assert e.kind == nkRaiseStmt
+  assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom .. <aa.len:
     if sameType(aa[i].excType, e.excType):
@@ -111,7 +107,7 @@ proc mergeEffects(a: PEffects, b: PNode, useLineInfo) =
 proc listEffects(a: PEffects) =
   var aa = a.exc
   for e in items(aa):
-    Message(e.info, hintUser, renderTree(e))
+    Message(e.info, hintUser, typeToString(e.typ))
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
@@ -172,13 +168,12 @@ proc raisesSpec(n: PNode): PNode =
         result.add(it.sons[1])
       return
 
-proc createRaise(n: PNode, t: PType): PNode =
-  result = newNodeI(nkRaiseStmt, n.info)
-  result.add(newNodeIT(nkType, n.info, t))
+proc createRaise(n: PNode): PNode =
+  result = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
-  of nkRaiseStmt: throws(tracked, n)
+  of nkRaiseStmt: throws(tracked, n.sons[0])
   of nkCallKinds:
     # p's effects are ours too:
     let op = n.sons[0].typ
@@ -191,9 +186,9 @@ proc track(tracked: PEffects, n: PNode) =
           if not isNil(spec):
             mergeEffects(tracked, spec, useLineInfo=false)
           else:
-            addEffect(tracked, createRaise(n, sysTypeFromName"E_Base"))
+            addEffect(tracked, createRaise(n))
         elif isIndirectCall(n.sons[0]):
-          addEffect(tracked, createRaise(n, sysTypeFromName"E_Base"))
+          addEffect(tracked, createRaise(n))
       else:
         effectList = effectList.sons[exceptionEffects]
         mergeEffects(tracked, effectList, useLineInfo=true)
@@ -209,7 +204,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.sons[i])
 
 # XXX
-# - make use of 'raises' in proc types compatibility
+# - doc2 should report effects
 # - check for 'raises' consistency for multi-methods
 
 proc checkRaisesSpec(spec, real: PNode) =
@@ -224,22 +219,37 @@ proc checkRaisesSpec(spec, real: PNode) =
           break search
       # XXX call graph analysis would be nice here!
       localError(r.info, errGenerated, "can raise an unlisted exception: " &
-        typeToString(r.sons[0].typ))
+        typeToString(r.typ))
   # hint about unnecessarily listed exception types:
   for s in 0 .. <spec.len:
     if not used.contains(s):
       Message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
-proc compatibleEffects*(formal, actual: PType): bool =
-  # for proc type compatibility checking:
-  assert formal.kind == tyProc and actual.kind == tyProc
-  InternalAssert formal.n.sons[0].kind == nkEffectList
-  InternalAssert actual.n.sons[0].kind == nkEffectList
-  
-  var effectList = formal.n.sons[0]
-  if effectList.len == 0:
-    # 'formal' has no restrictions :-)
-    result = true
+proc checkMethodEffects*(disp, branch: PSym) =
+  ## checks for consistent effects for multi methods.
+  let spec = raisesSpec(disp.ast.sons[pragmasPos])
+  if not isNil(spec):
+    let actual = branch.typ.n.sons[0]
+    if actual.len != effectListLen: return
+    let real = actual.sons[exceptionEffects]
+    
+    for r in items(real):
+      block search:
+        for s in 0 .. <spec.len:
+          if inheritanceDiff(r.excType, spec[s].typ) <= 0:
+            break search
+        localError(r.info, errGenerated, "can raise an unlisted exception: " &
+          typeToString(r.typ))
+
+proc setEffectsForProcType*(t: PType, n: PNode) =
+  var effects = t.n.sons[0]
+  InternalAssert t.kind == tyProc and effects.kind == nkEffectList
+
+  let spec = raisesSpec(n)
+  if not isNil(spec):
+    InternalAssert effects.len == 0
+    newSeq(effects.sons, effectListLen)
+    effects.sons[exceptionEffects] = spec
 
 proc trackProc*(s: PSym, body: PNode) =
   var effects = s.typ.n.sons[0]

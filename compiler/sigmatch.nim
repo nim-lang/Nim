@@ -297,6 +297,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         result = isConvertible
       else:
         return isNone
+    when useEffectSystem:
+      if not compatibleEffects(f, a): return isNone
   else: nil
 
 proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =

@@ -12,7 +12,7 @@ import
   
 const
   hasTinyCBackend* = defined(tinyc)
-  useEffectSystem* = false
+  useEffectSystem* = true
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
