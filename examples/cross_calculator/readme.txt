@@ -9,3 +9,5 @@ platforms.
 To avoid duplication of code, the backend code lies in a separate directory and
 each platform compiles it with a different custom build process, usually
 generating C code in a temporary build directory.
+
+For a more ellaborate and useful example see the cross_todo example.
