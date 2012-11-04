@@ -5,11 +5,13 @@ discard """
 type
   Test = object of TObject
 
-method doMethod(a: ref TObject) =
+method doMethod(a: ref TObject) {.raises: [EIO].} =
   quit "override"
 
 method doMethod(a: ref Test) =
   echo "hello"
+  if a == nil:
+    raise newException(EIO, "arg")
 
 proc doProc(a: ref Test) =
   echo "hello"

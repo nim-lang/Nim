@@ -360,7 +360,8 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     if n.sons[0].kind != nkEmpty: result = analyse(c, n.sons[0])
     else: result = toVoid
   of nkAsmStmt, nkPragma, nkIteratorDef, nkProcDef, nkMethodDef,
-     nkConverterDef, nkMacroDef, nkTemplateDef, nkLambdaKinds: 
+     nkConverterDef, nkMacroDef, nkTemplateDef, nkLambdaKinds, nkClosure,
+     nkGotoState, nkState: 
       result = toVoid
   of nkExprColonExpr:
     result = analyse(c, n.sons[1])
