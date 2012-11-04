@@ -1,5 +1,5 @@
 discard """
-  line: 16
+  line: 15
   errormsg: "instantiation from here"
 """
 
