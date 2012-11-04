@@ -66,16 +66,16 @@ type
   
   TIRCEventType* = enum
     EvMsg, EvDisconnected
-  TIRCEvent* = object
+  TIRCEvent* = object ## IRC Event
     case typ*: TIRCEventType
-    of EvDisconnected: nil
-    of EvMsg:
-      cmd*: TIRCMType
+    of EvDisconnected: nil ## Disconnected from the server
+    of EvMsg:              ## Message from the server
+      cmd*: TIRCMType      ## Command (e.g. PRIVMSG)
       nick*, user*, host*, servername*: string
-      numeric*: string
-      params*: seq[string]
-      origin*: string ## The channel/user that this msg originated from
-      raw*: string
+      numeric*: string     ## Only applies to ``MNumeric``
+      params*: seq[string] ## Parameters of the IRC message
+      origin*: string      ## The channel/user that this msg originated from
+      raw*: string         ## Raw IRC message
   
 proc send*(irc: var TIRC, message: string, sendImmediately = false) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.

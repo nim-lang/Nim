@@ -211,6 +211,9 @@ proc select*(readfds: var seq[PProcess], timeout = 500): int
   ## Specify -1 for no timeout. Returns the number of processes that are
   ## ready to read from. The processes that are ready to be read from are
   ## removed from `readfds`.
+  ##
+  ## **Warning**: This function may give unexpected or completely wrong
+  ## results on Windows.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
