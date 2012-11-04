@@ -123,7 +123,8 @@ proc catches(tracked: PEffects, e: PType) =
   setLen(tracked.exc.sons, L)
   
 proc catchesAll(tracked: PEffects) =
-  setLen(tracked.exc.sons, tracked.bottom)
+  if not isNil(tracked.exc.sons):
+    setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
 proc trackTryStmt(tracked: PEffects, n: PNode) =
@@ -156,7 +157,9 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
+      pushInfoContext(n.info)
       listEffects(tracked)
+      popInfoContext()
 
 proc raisesSpec*(n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
@@ -253,9 +256,10 @@ proc checkRaisesSpec(spec, real: PNode) =
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!
-      localError(spec.info, errInstantiationFrom)
+      pushInfoContext(spec.info)
       localError(r.info, errGenerated, "can raise an unlisted exception: " &
         typeToString(r.typ))
+      popInfoContext()
   # hint about unnecessarily listed exception types:
   for s in 0 .. <spec.len:
     if not used.contains(s):
@@ -274,9 +278,10 @@ proc checkMethodEffects*(disp, branch: PSym) =
         for s in 0 .. <spec.len:
           if inheritanceDiff(r.excType, spec[s].typ) <= 0:
             break search
-        localError(branch.info, errInstantiationFrom)
+        pushInfoContext(branch.info)
         localError(r.info, errGenerated, "can raise an unlisted exception: " &
           typeToString(r.typ))
+        popInfoContext()
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]
