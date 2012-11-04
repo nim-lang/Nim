@@ -80,7 +80,8 @@ type
     case typ*: FTPEventType
     of EvLines:
       lines*: string ## Lines that have been transferred.
-    of EvRetr, EvStore: nil
+    of EvRetr, EvStore: ## Retr/Store operation finished.
+      nil 
     of EvTransferProgress:
       bytesTotal*: biggestInt     ## Bytes total.
       bytesFinished*: biggestInt  ## Bytes transferred.

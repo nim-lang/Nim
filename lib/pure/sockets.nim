@@ -236,6 +236,20 @@ when defined(ssl):
 
   proc newContext*(protVersion = ProtSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = ""): PSSLContext =
+    ## Creates an SSL context.
+    ## 
+    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 are 
+    ## are available with the addition of ``ProtSSLv23`` which allows for 
+    ## compatibility with all of them.
+    ##
+    ## There are currently only two options for verify mode; one is ``CVerifyNone``
+    ## and with it certificates will not be verified the other is ``CVerifyPeer``
+    ## and certificates will be verified for it, ``CVerifyPeer`` is the safest choice.
+    ##
+    ## The last two parameters specify the certificate file path and the key file
+    ## path, a server socket will most likely not work without these.
+    ## Certificates can be generated using the following command:
+    ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
     var newCTX: PSSL_CTX
     case protVersion
     of protSSLv23:
@@ -261,24 +275,11 @@ when defined(ssl):
     return PSSLContext(newCTX)
 
   proc wrapSocket*(ctx: PSSLContext, socket: TSocket) =
-    ## Creates a SSL context for ``socket`` and wraps the socket in it.
-    ## 
-    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1 are 
-    ## are available with the addition of ``ProtSSLv23`` which allows for 
-    ## compatibility with all of them.
+    ## Wraps a socket in an SSL context. This function effectively turns
+    ## ``socket`` into an SSL socket.
     ##
-    ## There are currently only two options for verify mode; one is ``CVerifyNone``
-    ## and with it certificates will not be verified the other is ``CVerifyPeer``
-    ## and certificates will be verified for it, ``CVerifyPeer`` is the safest choice.
-    ##
-    ## The last two parameters specify the certificate file path and the key file
-    ## path, a server socket will most likely not work without these.
-    ## Certificates can be generated using the following command:
-    ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
-    ##
-    ## **Warning:** Because SSL is meant to be secure I feel the need to warn you
-    ## that this "wrapper" has not been thorougly tested and is therefore 
-    ## most likely very prone to security vulnerabilities.
+    ## **Disclaimer**: This code is not well tested, may be very unsafe and
+    ## prone to security vulnerabilities.
     
     socket.isSSL = true
     socket.sslContext = ctx
@@ -390,6 +391,13 @@ proc getSockName*(socket: TSocket): TPort =
   result = TPort(sockets.ntohs(name.sin_port))
 
 proc selectWrite*(writefds: var seq[TSocket], timeout = 500): int
+  ## When a socket in ``writefds`` is ready to be written to then a non-zero
+  ## value will be returned specifying the count of the sockets which can be
+  ## written to. The sockets which can be written to will also be removed
+  ## from ``writefds``.
+  ##
+  ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
+  ## an unlimited time.
 
 template acceptAddrPlain(noClientRet, successRet: expr, 
                          sslImplementation: stmt): stmt {.immediate.} =
@@ -443,11 +451,11 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) =
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
   ##
-  ## **Note**: ``client`` must be initialised, this function makes no effort to
-  ## initialise the ``client`` variable.
+  ## **Note**: ``client`` must be initialised (with ``new``), this function 
+  ## makes no effort to initialise the ``client`` variable.
   ##
   ## **Warning:** When using SSL with non-blocking sockets, it is best to use
-  ## the acceptAddrAsync procedure as this procedure will most likely block.
+  ## the acceptAddrSSL procedure as this procedure will most likely block.
   acceptAddrPlain(-1, -1):
     when defined(ssl):
       if server.isSSL:
@@ -463,7 +471,7 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) =
               SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
             of SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
                SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-              SSLError("Please use acceptAsync instead of accept.")
+              SSLError("acceptAddrSSL should be used for non-blocking SSL sockets.")
             of SSL_ERROR_WANT_X509_LOOKUP:
               SSLError("Function for x509 lookup has been called.")
             of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
@@ -476,7 +484,7 @@ when defined(ssl):
   proc acceptAddrSSL*(server: TSocket, client: var TSocket,
                       address: var string): TSSLAcceptResult =
     ## This procedure should only be used for non-blocking **SSL** sockets. 
-    ## It will immediatelly return with one of the following values:
+    ## It will immediately return with one of the following values:
     ## 
     ## ``AcceptSuccess`` will be returned when a client has been successfully
     ## accepted and the handshake has been successfully performed between
@@ -527,8 +535,8 @@ proc accept*(server: TSocket, client: var TSocket) =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
   ## 
-  ## **Note**: ``client`` must be initialised, this function makes no effort to
-  ## initialise the ``client`` variable.
+  ## **Note**: ``client`` must be initialised (with ``new``), this function
+  ## makes no effort to initialise the ``client`` variable.
   
   var addrDummy = ""
   acceptAddr(server, client, addrDummy)
@@ -787,7 +795,7 @@ when defined(ssl):
       SSLError("Socket is not an SSL socket.")
 
   proc gotHandshake*(socket: TSocket): bool =
-    ## Determines whether a handshake has occurred between a client - ``socket``
+    ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
     ##
     ## Throws ESSL if ``socket`` is not an SSL socket.
@@ -848,11 +856,12 @@ proc checkBuffer(readfds: var seq[TSocket]): int =
 proc select*(readfds, writefds, exceptfds: var seq[TSocket], 
              timeout = 500): int = 
   ## Traditional select function. This function will return the number of
-  ## sockets that are ready, if none are ready; 0 is returned. 
+  ## sockets that are ready to be read from, written to, or which have errors
+  ## if there are none; 0 is returned. 
   ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
   ## 
-  ## You can determine whether a socket is ready by checking if it's still
-  ## in one of the TSocket sequences.
+  ## A socket is removed from the specific ``seq`` when it has data waiting to
+  ## be read/written to or has errors (``exceptfds``).
   let buffersFilled = checkBuffer(readfds)
   if buffersFilled > 0:
     return buffersFilled
@@ -876,6 +885,7 @@ proc select*(readfds, writefds, exceptfds: var seq[TSocket],
 
 proc select*(readfds, writefds: var seq[TSocket], 
              timeout = 500): int =
+  ## variant of select with only a read and write list.
   let buffersFilled = checkBuffer(readfds)
   if buffersFilled > 0:
     return buffersFilled
@@ -910,6 +920,7 @@ proc selectWrite*(writefds: var seq[TSocket],
   pruneSocketSet(writefds, (wr))
 
 proc select*(readfds: var seq[TSocket], timeout = 500): int =
+  ## variant of select with a read list only
   let buffersFilled = checkBuffer(readfds)
   if buffersFilled > 0:
     return buffersFilled
@@ -1126,7 +1137,7 @@ proc recvLineAsync*(socket: TSocket, line: var TaintedString): TRecvLineResult =
     add(line.string, c)
 
 proc recv*(socket: TSocket): TaintedString =
-  ## receives all the data from the socket.
+  ## receives all the available data from the socket.
   ## Socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
@@ -1238,7 +1249,8 @@ proc recvFrom*(socket: TSocket, data: var string, length: int,
 
 proc recvFromAsync*(socket: TSocket, data: var String, length: int,
                     address: var string, port: var TPort, flags = 0'i32): bool =
-  ## Similar to ``recvFrom`` but raises an EOS error when an error occurs.
+  ## Similar to ``recvFrom`` but raises an EOS error when an error occurs and
+  ## is also meant for non-blocking sockets.
   ## Returns False if no messages could be received from ``socket``.
   result = true
   var callRes = recvFrom(socket, data, length, address, port, flags)
