@@ -111,5 +111,4 @@ Version 0.9.x
   * message passing performance will be greatly improved
   * the syntactic distinction between statements and expressions will be
     removed
-  * exception tracking
   * the need for forward declarations may be removed

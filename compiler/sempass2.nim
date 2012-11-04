@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees, 
-  wordrecg
+  wordrecg, strutils
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -158,7 +158,7 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
       # list the computed effects up to here:
       listEffects(tracked)
 
-proc raisesSpec(n: PNode): PNode =
+proc raisesSpec*(n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == wRaises:
@@ -168,26 +168,62 @@ proc raisesSpec(n: PNode): PNode =
         result.add(it.sons[1])
       return
 
+proc documentRaises*(n: PNode) =
+  if n.sons[namePos].kind != nkSym: return
+
+  var x = n.sons[pragmasPos]
+  let spec = raisesSpec(x)
+  if isNil(spec):
+    let s = n.sons[namePos].sym
+    
+    let actual = s.typ.n.sons[0]
+    if actual.len != effectListLen: return
+    let real = actual.sons[exceptionEffects]
+    
+    # warning: hack ahead: 
+    var effects = newNodeI(nkBracket, n.info, real.len)
+    for i in 0 .. <real.len:
+      var t = typeToString(real[i].typ)
+      if t.startsWith("ref "): t = substr(t, 4)
+      effects.sons[i] = newIdentNode(getIdent(t), n.info)
+
+    var pair = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent"raises", n.info), effects])
+    
+    if x.kind == nkEmpty:
+      x = newNodeI(nkPragma, n.info)
+      n.sons[pragmasPos] = x
+    x.add(pair)
+
 proc createRaise(n: PNode): PNode =
   result = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
-  of nkRaiseStmt: throws(tracked, n.sons[0])
+  of nkRaiseStmt: 
+    n.sons[0].info = n.info
+    throws(tracked, n.sons[0])
   of nkCallKinds:
     # p's effects are ours too:
-    let op = n.sons[0].typ
+    let a = n.sons[0]
+    let op = a.typ
     if op != nil and op.kind == tyProc:
       InternalAssert op.n.sons[0].kind == nkEffectList
       var effectList = op.n.sons[0]
-      if effectList.len == 0:
-        if isForwardedProc(n.sons[0]):
-          let spec = raisesSpec(n.sons[0].sym.ast.sons[pragmasPos])
+      if a.kind == nkSym and a.sym.kind == skMethod:
+        let spec = raisesSpec(a.sym.ast.sons[pragmasPos])
+        if not isNil(spec):
+          mergeEffects(tracked, spec, useLineInfo=false)
+        else:
+          addEffect(tracked, createRaise(n))
+      elif effectList.len == 0:
+        if isForwardedProc(a):
+          let spec = raisesSpec(a.sym.ast.sons[pragmasPos])
           if not isNil(spec):
             mergeEffects(tracked, spec, useLineInfo=false)
           else:
             addEffect(tracked, createRaise(n))
-        elif isIndirectCall(n.sons[0]):
+        elif isIndirectCall(a):
           addEffect(tracked, createRaise(n))
       else:
         effectList = effectList.sons[exceptionEffects]
@@ -204,8 +240,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.sons[i])
 
 # XXX
-# - doc2 should report effects
-# - check for 'raises' consistency for multi-methods
+# - more tests
 
 proc checkRaisesSpec(spec, real: PNode) =
   # check that any real exception is listed in 'spec'; mark those as used;
@@ -218,6 +253,7 @@ proc checkRaisesSpec(spec, real: PNode) =
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!
+      localError(spec.info, errInstantiationFrom)
       localError(r.info, errGenerated, "can raise an unlisted exception: " &
         typeToString(r.typ))
   # hint about unnecessarily listed exception types:
@@ -238,6 +274,7 @@ proc checkMethodEffects*(disp, branch: PSym) =
         for s in 0 .. <spec.len:
           if inheritanceDiff(r.excType, spec[s].typ) <= 0:
             break search
+        localError(branch.info, errInstantiationFrom)
         localError(r.info, errGenerated, "can raise an unlisted exception: " &
           typeToString(r.typ))
 

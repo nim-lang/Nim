@@ -14,7 +14,7 @@
 import 
   ast, strutils, strtabs, options, msgs, os, ropes, idents, 
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite, 
-  importer
+  importer, sempass2
 
 type
   TSections = array[TSymKind, PRope]
@@ -245,12 +245,20 @@ proc traceDeps(d: PDoc, n: PNode) =
 proc generateDoc*(d: PDoc, n: PNode) = 
   case n.kind
   of nkCommentStmt: app(d.modDesc, genComment(d, n))
-  of nkProcDef: genItem(d, n, n.sons[namePos], skProc)
-  of nkMethodDef: genItem(d, n, n.sons[namePos], skMethod)
-  of nkIteratorDef: genItem(d, n, n.sons[namePos], skIterator)
+  of nkProcDef: 
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skProc)
+  of nkMethodDef:
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skMethod)
+  of nkIteratorDef: 
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skIterator)
   of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
-  of nkConverterDef: genItem(d, n, n.sons[namePos], skConverter)
+  of nkConverterDef:
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
       if n.sons[i].kind != nkCommentStmt: 
