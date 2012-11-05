@@ -1969,116 +1969,6 @@ a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
 
-Try statement
-~~~~~~~~~~~~~
-
-Syntax::
-
-  qualifiedIdent ::= symbol ['.' symbol]
-  exceptList ::= [qualifiedIdent (comma qualifiedIdent)* [comma]]
-  tryStmt ::= 'try' ':' stmt
-             ('except' exceptList ':' stmt)*
-             ['finally' ':' stmt]
-
-Example:
-
-.. code-block:: nimrod
-  # read the first two lines of a text file that should contain numbers
-  # and tries to add them
-  var
-    f: TFile
-  if open(f, "numbers.txt"):
-    try:
-      var a = readLine(f)
-      var b = readLine(f)
-      echo("sum: " & $(parseInt(a) + parseInt(b)))
-    except EOverflow:
-      echo("overflow!")
-    except EInvalidValue:
-      echo("could not convert string to integer")
-    except EIO:
-      echo("IO error!")
-    except:
-      echo("Unknown exception!")
-    finally:
-      close(f)
-
-
-
-The statements after the `try`:idx: are executed in sequential order unless
-an exception ``e`` is raised. If the exception type of ``e`` matches any
-of the list ``exceptlist`` the corresponding statements are executed.
-The statements following the ``except`` clauses are called
-`exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-in no list. It is similar to an ``else`` clause in ``if`` statements.
-
-If there is a `finally`:idx: clause, it is always executed after the
-exception handlers.
-
-The exception is *consumed* in an exception handler. However, an
-exception handler may raise another exception. If the exception is not
-handled, it is propagated through the call stack. This means that often
-the rest of the procedure - that is not within a ``finally`` clause -
-is not executed (if an exception occurs).
-
-
-Except and finally statements
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`except`:idx: and `finally`:idx: can also be used as a stand-alone statements.
-Any statements following them in the current block will be considered to be 
-in an implicit try block:
-
-.. code-block:: nimrod
-  var f = open("numbers.txt")
-  finally: close(f)
-  ...
-
-
-Raise statement
-~~~~~~~~~~~~~~~
-
-Syntax::
-
-  raiseStmt ::= 'raise' [expr]
-
-Example:
-
-.. code-block:: nimrod
-  raise newEOS("operating system failed")
-
-Apart from built-in operations like array indexing, memory allocation, etc.
-the ``raise`` statement is the only way to raise an exception.
-
-.. XXX document this better!
-
-If no exception name is given, the current exception is `re-raised`:idx:. The
-`ENoExceptionToReraise`:idx: exception is raised if there is no exception to
-re-raise. It follows that the ``raise`` statement *always* raises an
-exception (unless a raise hook has been provided).
-
-
-OnRaise builtin
-~~~~~~~~~~~~~~~
-
-``system.onRaise`` can be used to override the behaviour of ``raise`` for a
-single ``try`` statement. `onRaise`:idx: has to be called within the ``try`` 
-statement that should be affected.
-
-This allows for a Lisp-like `condition system`:idx:\:
-
-.. code-block:: nimrod
-  var myFile = open("broken.txt", fmWrite)
-  try:
-    onRaise(proc (e: ref E_Base): bool =
-      stdout.writeln "ok, writing to stdout instead")
-    myFile.writeln "writing to broken file"
-  finally:
-    myFile.close()
-
-
 Return statement
 ~~~~~~~~~~~~~~~~
 
@@ -2779,6 +2669,132 @@ A `type`:idx: section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
 can be recursive or even mutually recursive. Mutually recursive types are only
 possible within a single ``type`` section.
+
+
+Exception handling
+------------------
+
+Try statement
+~~~~~~~~~~~~~
+
+Syntax::
+
+  qualifiedIdent ::= symbol ['.' symbol]
+  exceptList ::= [qualifiedIdent (comma qualifiedIdent)* [comma]]
+  tryStmt ::= 'try' ':' stmt
+             ('except' exceptList ':' stmt)*
+             ['finally' ':' stmt]
+
+Example:
+
+.. code-block:: nimrod
+  # read the first two lines of a text file that should contain numbers
+  # and tries to add them
+  var
+    f: TFile
+  if open(f, "numbers.txt"):
+    try:
+      var a = readLine(f)
+      var b = readLine(f)
+      echo("sum: " & $(parseInt(a) + parseInt(b)))
+    except EOverflow:
+      echo("overflow!")
+    except EInvalidValue:
+      echo("could not convert string to integer")
+    except EIO:
+      echo("IO error!")
+    except:
+      echo("Unknown exception!")
+    finally:
+      close(f)
+
+
+
+The statements after the `try`:idx: are executed in sequential order unless
+an exception ``e`` is raised. If the exception type of ``e`` matches any
+of the list ``exceptlist`` the corresponding statements are executed.
+The statements following the ``except`` clauses are called
+`exception handlers`:idx:.
+
+The empty `except`:idx: clause is executed if there is an exception that is
+in no list. It is similar to an ``else`` clause in ``if`` statements.
+
+If there is a `finally`:idx: clause, it is always executed after the
+exception handlers.
+
+The exception is *consumed* in an exception handler. However, an
+exception handler may raise another exception. If the exception is not
+handled, it is propagated through the call stack. This means that often
+the rest of the procedure - that is not within a ``finally`` clause -
+is not executed (if an exception occurs).
+
+
+Except and finally statements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`except`:idx: and `finally`:idx: can also be used as a stand-alone statements.
+Any statements following them in the current block will be considered to be 
+in an implicit try block:
+
+.. code-block:: nimrod
+  var f = open("numbers.txt")
+  finally: close(f)
+  ...
+
+
+Raise statement
+~~~~~~~~~~~~~~~
+
+Syntax::
+
+  raiseStmt ::= 'raise' [expr]
+
+Example:
+
+.. code-block:: nimrod
+  raise newEOS("operating system failed")
+
+Apart from built-in operations like array indexing, memory allocation, etc.
+the ``raise`` statement is the only way to raise an exception.
+
+.. XXX document this better!
+
+If no exception name is given, the current exception is `re-raised`:idx:. The
+`ENoExceptionToReraise`:idx: exception is raised if there is no exception to
+re-raise. It follows that the ``raise`` statement *always* raises an
+exception (unless a raise hook has been provided).
+
+
+OnRaise builtin
+~~~~~~~~~~~~~~~
+
+``system.onRaise`` can be used to override the behaviour of ``raise`` for a
+single ``try`` statement. `onRaise`:idx: has to be called within the ``try`` 
+statement that should be affected.
+
+This allows for a Lisp-like `condition system`:idx:\:
+
+.. code-block:: nimrod
+  var myFile = open("broken.txt", fmWrite)
+  try:
+    onRaise(proc (e: ref E_Base): bool =
+      stdout.writeln "ok, writing to stdout instead")
+    myFile.writeln "writing to broken file"
+  finally:
+    myFile.close()
+
+
+Exception tracking
+~~~~~~~~~~~~~~~~~~
+
+Nimrod supports `exception tracking`:idx:. XXX
+
+- Raises pragma
+- Inference rules
+  * Forwarding rule
+  * Multi-method rule
+  * proc type rule
+- Effects pragma
 
 
 Generics
