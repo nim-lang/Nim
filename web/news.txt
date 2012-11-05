@@ -2,10 +2,10 @@
 News
 ====
 
-2012-XX-XX Version 0.9.XX released
-==================================
+2012-XX-XX Version 0.9.2 released
+=================================
 
-Version 0.8.XX has been released! Get it `here <download.html>`_. 
+Version 0.9.2 has been released! Get it `here <download.html>`_. 
 
 Bugfixes
 --------
@@ -15,6 +15,7 @@ Bugfixes
 Library Additions
 -----------------
 
+- Added ``system.onRaise`` to support a condition system.
 
 
 Changes affecting backwards compatibility
@@ -31,8 +32,11 @@ Language Additions
 ------------------
 
 - ``case expressions`` are now supported.
-- table constructors now mimic more closely the syntax of case... of...
-- Nimrod can now infer the return type of a proc from its body
+- Table constructors now mimic more closely the syntax of the ``case`` 
+  statement.
+- Nimrod can now infer the return type of a proc from its body.
+- Exception tracking has been added and the ``doc2`` command annotates possible
+  exceptions for you.
 
 
 2012-09-23 Version 0.9.0 released
