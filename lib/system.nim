@@ -1941,6 +1941,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       prev: PSafePoint # points to next safe point ON THE STACK
       status: int
       context: C_JmpBuf
+      hasRaiseAction: bool
       raiseAction: proc (e: ref E_Base): bool {.closure.}
   
   when defined(initAllocator):
@@ -2047,7 +2048,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## raise an exception but instead calls ``action``.
       ## If ``action`` returns false, the exception has been handled and
       ## does not propagate further through the call stack.
-      if not isNil(excHandler): excHandler.raiseAction = action
+      if not isNil(excHandler):
+        excHandler.hasRaiseAction = true
+        excHandler.raiseAction = action
 
   {.push stack_trace: off, profiler:off.}
   when defined(endb):

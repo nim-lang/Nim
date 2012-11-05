@@ -51,8 +51,8 @@ proc popFrame {.compilerRtl, inl.} =
 proc setFrame(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
 
-proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = 
-  s.raiseAction = nil
+proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
+  s.hasRaiseAction = false
   s.prev = excHandler
   excHandler = s
 
@@ -199,7 +199,7 @@ proc raiseExceptionAux(e: ref E_Base) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   if excHandler != nil:
-    if isNil(excHandler.raiseAction) or excHandler.raiseAction(e):
+    if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
       pushCurrentException(e)
       c_longjmp(excHandler.context, 1)
   elif e[] of EOutOfMemory:
