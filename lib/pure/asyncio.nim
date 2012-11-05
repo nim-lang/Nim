@@ -202,8 +202,8 @@ proc asyncSockHandleRead(h: PObject) =
       return
 
   if PAsyncSocket(h).info != SockListening:
-    assert PAsyncSocket(h).info != SockConnecting
-    PAsyncSocket(h).handleRead(PAsyncSocket(h))
+    if PAsyncSocket(h).info != SockConnecting:
+      PAsyncSocket(h).handleRead(PAsyncSocket(h))
   else:
     PAsyncSocket(h).handleAccept(PAsyncSocket(h))
 

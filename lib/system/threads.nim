@@ -309,7 +309,7 @@ proc joinThread*[TArg](t: TThread[TArg]) {.inline.} =
   else:
     discard pthread_join(t.sys, nil)
 
-proc joinThreads*[TArg](t: openArray[TThread[TArg]]) = 
+proc joinThreads*[TArg](t: varargs[TThread[TArg]]) = 
   ## waits for every thread in `t` to finish.
   when hostOS == "windows":
     var a: array[0..255, TSysThread]
