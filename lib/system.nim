@@ -1941,6 +1941,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       prev: PSafePoint # points to next safe point ON THE STACK
       status: int
       context: C_JmpBuf
+      raiseAction: proc (e: ref E_Base): bool {.closure.}
   
   when defined(initAllocator):
     initAllocator()
@@ -2039,6 +2040,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## exception; if there is none, "" is returned.
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
+
+    proc onRaise*(action: proc(e: ref E_Base): bool{.closure.}) =
+      ## can be used in a ``try`` statement to setup a Lisp-like
+      ## `condition system`:idx:\: This prevents the 'raise' statement to
+      ## raise an exception but instead calls ``action``.
+      ## If ``action`` returns false, the exception has been handled and
+      ## does not propagate further through the call stack.
+      if not isNil(excHandler): excHandler.raiseAction = action
 
   {.push stack_trace: off, profiler:off.}
   when defined(endb):

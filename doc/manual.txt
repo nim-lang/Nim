@@ -1969,29 +1969,6 @@ a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
 
-Raise statement
-~~~~~~~~~~~~~~~
-
-Syntax::
-
-  raiseStmt ::= 'raise' [expr]
-
-Example:
-
-.. code-block:: nimrod
-  raise newEOS("operating system failed")
-
-Apart from built-in operations like array indexing, memory allocation, etc.
-the ``raise`` statement is the only way to raise an exception.
-
-.. XXX document this better!
-
-If no exception name is given, the current exception is `re-raised`:idx:. The
-`ENoExceptionToReraise`:idx: exception is raised if there is no exception to
-re-raise. It follows that the ``raise`` statement *always* raises an
-exception.
-
-
 Try statement
 ~~~~~~~~~~~~~
 
@@ -2058,6 +2035,48 @@ in an implicit try block:
   var f = open("numbers.txt")
   finally: close(f)
   ...
+
+
+Raise statement
+~~~~~~~~~~~~~~~
+
+Syntax::
+
+  raiseStmt ::= 'raise' [expr]
+
+Example:
+
+.. code-block:: nimrod
+  raise newEOS("operating system failed")
+
+Apart from built-in operations like array indexing, memory allocation, etc.
+the ``raise`` statement is the only way to raise an exception.
+
+.. XXX document this better!
+
+If no exception name is given, the current exception is `re-raised`:idx:. The
+`ENoExceptionToReraise`:idx: exception is raised if there is no exception to
+re-raise. It follows that the ``raise`` statement *always* raises an
+exception (unless a raise hook has been provided).
+
+
+OnRaise builtin
+~~~~~~~~~~~~~~~
+
+``system.onRaise`` can be used to override the behaviour of ``raise`` for a
+single ``try`` statement. `onRaise`:idx: has to be called within the ``try`` 
+statement that should be affected.
+
+This allows for a Lisp-like `condition system`:idx:\:
+
+.. code-block:: nimrod
+  var myFile = open("broken.txt", fmWrite)
+  try:
+    onRaise(proc (e: ref E_Base): bool =
+      stdout.writeln "ok, writing to stdout instead")
+    myFile.writeln "writing to broken file"
+  finally:
+    myFile.close()
 
 
 Return statement

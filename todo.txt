@@ -1,7 +1,7 @@
 version 0.9.2
 =============
 
-- implement/generalize the effect system; checked exceptions
+- implement/generalize the effect system; document checked exceptions
 - overloading based on ASTs: 'constraint' should not be in PType but for the
   parameter *symbol*
 
@@ -96,8 +96,6 @@ Library
 Low priority
 ------------
 
-- make 'raiseHook' take a closure and provide push and pop for this
-  --> Lisp-style condition system
 - change how comments are part of the AST
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``

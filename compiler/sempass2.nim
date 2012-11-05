@@ -157,10 +157,8 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
-      pushInfoContext(n.info)
       listEffects(tracked)
-      popInfoContext()
-
+      
 proc raisesSpec*(n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
