@@ -1,9 +1,14 @@
 version 0.9.2
 =============
 
-- implement/generalize the effect system; document checked exceptions
+- implement the effect system
 - overloading based on ASTs: 'constraint' should not be in PType but for the
   parameter *symbol*
+
+  - implement ``partial`` pragma for partial evaluation: easily done with AST
+    overloading
+  - ``hoist`` pragma for loop hoisting: can be easily done with 
+    AST overloading + global
 
 - document 'mixin' for generics and symbol lookup rules; special rule 
   for ``[]=``
@@ -172,9 +177,3 @@ Version 2 and beyond
   a generalized case statement looks like:
     
     case x with `=~`
-
-- implement ``partial`` pragma for partial evaluation: easily done with AST
-  overloading
-- ``hoist`` pragma for loop hoisting: can be easily done with 
-  AST overloading + global
-

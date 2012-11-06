@@ -2784,17 +2784,111 @@ This allows for a Lisp-like `condition system`:idx:\:
     myFile.close()
 
 
+Effect system
+-------------
+
 Exception tracking
 ~~~~~~~~~~~~~~~~~~
 
-Nimrod supports `exception tracking`:idx:. XXX
+Nimrod supports `exception tracking`:idx:. The `raises`:idx: pragma can used to
+explicitly define which exceptions a proc/iterator/method/converter is allowed
+to raise. The compiler verifies this:
 
-- Raises pragma
-- Inference rules
-  * Forwarding rule
-  * Multi-method rule
-  * proc type rule
-- Effects pragma
+.. code-block:: nimrod
+  proc p(what: bool) {.raises: [EIO, EOS].} =
+    if what: raise newException(EIO, "IO")
+    else: raise newException(EOS, "OS")
+
+An empty ``raises`` list (``raises: []``) means that no exception may be raised:
+  
+.. code-block:: nimrod
+  proc p(): bool {.raises: [].} =
+    try:
+      unsafeCall()
+      result = true
+    except:
+      result = false
+
+
+A ``raises`` list can also be attached to a proc type. This affects type 
+compatibility:
+
+.. code-block:: nimrod
+  type
+    TCallback = proc (s: string) {.raises: [EIO].}
+  var
+    c: TCallback
+
+  proc p(x: string) =
+    raise newException(EOS, "OS")
+  
+  c = p # type error
+
+
+For a routine ``p`` the compiler uses inference rules to determine the set of
+possibly raised exceptions; the algorithm operates on ``p``'s call graph:
+
+1. Every indirect call via some proc type ``T`` is assumed to 
+   raise ``system.E_Base`` (the base type of the exception hierarchy) and thus
+   any exception unless ``T`` has an explicit ``raises`` list.
+2. Every call to a proc ``q`` which has an unknown body (due to a forward 
+   declaration or an ``importc`` pragma) is assumed to 
+   raise ``system.E_Base`` unless ``q`` has an explicit ``raises`` list.
+3. Every call to a method ``m`` is assumed to 
+   raise ``system.E_Base`` unless ``m`` has an explicit ``raises`` list.
+4. For every other call the analysis can determine an 
+   exact ``raises`` list.
+5. For determining a ``raises`` list, the ``raise`` and ``try`` statements 
+   of ``p`` are taken into consideration.
+
+
+Tag tracking
+~~~~~~~~~~~~
+
+**Note**: Tag tracking is not yet implemented!
+
+The exception tracking is part of Nimrod's `effect system`:idx:. Raising an
+exception is an *effect*. Other effects can also be defined. A user defined 
+effect is a means to *tag* a routine and perform checks against this tag:
+
+.. code-block:: nimrod
+  type IO = object ## input/output effect
+  proc readLine(): string {.tags: [IO].}
+  
+  proc no_IO_please() {.tags: [].} =
+    # the compiler prevents this:
+    let x = readLine()
+
+The inference for tag tracking is analogous to the inference for 
+exception tracking.
+
+
+Read/Write tracking
+~~~~~~~~~~~~~~~~~~~
+
+**Note**: Read/write tracking is not yet implemented!
+
+The inference for read/write tracking is analogous to the inference for 
+exception tracking.
+
+
+Effects pragma
+~~~~~~~~~~~~~~
+
+The `effects`:idx: pragma has been designed to assist the programmer with the
+effects analysis. It is a statement that makes the compiler output all inferred
+effects up to the ``effects``'s position:
+
+.. code-block:: nimrod
+  proc p(what: bool) =
+    if what:
+      raise newException(EIO, "IO")
+      {.effect.}
+    else:
+      raise newException(EOS, "OS")
+
+The compiler produces a hint message that ``EIO`` can be raised. ``EOS`` is not
+listed as it cannot be raised in the branch the ``effects`` pragma appears in.
 
 
 Generics
