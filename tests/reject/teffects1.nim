@@ -1,6 +1,6 @@
 discard """
   line: 15
-  errormsg: "instantiation from here"
+  errormsg: "can raise an unlisted exception: ref EIO"
 """
 
 type

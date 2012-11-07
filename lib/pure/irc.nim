@@ -68,7 +68,9 @@ type
     EvMsg, EvDisconnected
   TIRCEvent* = object ## IRC Event
     case typ*: TIRCEventType
-    of EvDisconnected: nil ## Disconnected from the server
+    of EvDisconnected: 
+      ## Disconnected from the server
+      nil
     of EvMsg:              ## Message from the server
       cmd*: TIRCMType      ## Command (e.g. PRIVMSG)
       nick*, user*, host*, servername*: string
