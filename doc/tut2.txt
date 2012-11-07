@@ -357,10 +357,13 @@ Exceptions
 ==========
 
 In Nimrod `exceptions`:idx: are objects. By convention, exception types are
-prefixed with an 'E', not 'T'. The ``system`` module defines an exception
-hierarchy that you might want to stick to.
+prefixed with an 'E', not 'T'. The `system <system.html>`_ module defines an
+exception hierarchy that you might want to stick to. Exceptions derive from
+E_Base, which provides the common interface.
 
 Exceptions should be allocated on the heap because their lifetime is unknown.
+All raised exceptions should at least specify the reason for being raised in
+the ``msg`` field.
 
 A convention is that exceptions should be raised in *exceptional* cases:
 For example, if a file cannot be opened, this should not raise an
@@ -379,7 +382,11 @@ Raising an exception is done with the ``raise`` statement:
   raise e
 
 If the ``raise`` keyword is not followed by an expression, the last exception
-is *re-raised*.
+is *re-raised*. For the purpose of avoiding repeating this common code pattern,
+the template ``newException`` in the ``system`` module can be used:
+
+.. code-block:: nimrod
+  raise newException(EOS, "the request to the OS failed")
 
 
 Try statement
@@ -424,6 +431,81 @@ The exception is *consumed* in an ``except`` part. If an exception is not
 handled, it is propagated through the call stack. This means that often
 the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
+
+
+Exception hierarchy
+-------------------
+
+If you want to create your own exceptions you can inherit from E_Base, but you
+can also inherit from one of the existing exceptions if they fit your purpose.
+The exception tree is:
+
+* E_Base
+	* EAsynch
+		* EControlC
+	* ESynch
+		* ESystem
+			* EIO
+			* EOS
+				* EInvalidLibrary
+		* EResourceExhausted
+		* EOutOfMemory
+		* EStackOverflow
+	* EArithmetic
+		* EDivByZero
+		* EOverflow
+	* EAccessViolation
+	* EAssertionFailed
+	* EInvalidValue
+		* EInvalidKey
+	* EInvalidIndex
+	* EInvalidField
+	* EOutOfRange
+	* ENoExceptionToReraise
+	* EInvalidObjectAssignment
+	* EInvalidObjectConversion
+	* EFloatingPoint
+		* EFloatInvalidOp
+		* EFloatDivByZero
+		* EFloatOverflow
+		* EFloatUnderflow
+		* EFloatInexact
+	* EDeadThread
+
+See the `system <system.html>`_ module for a description of each exception.
+
+
+Annotating procs with raised exceptions
+---------------------------------------
+
+Through the use of the optional ``{.raises.}`` pragma you can specify that a
+proc is meant to raise a specific set of exceptions, or none at all. If the
+``{.raises.}`` pragma is used, the compiler will verify that this is true. For
+instance, if you specify that a proc raises ``EIO``, and at some point it (or
+one of the procs it calls) starts raising a new exception the compiler will
+prevent that proc from compiling. Usage example:
+
+.. code-block:: nimrod
+  proc complexProc() {.raises: [EIO, EArithmetic].} =
+    ...
+
+  proc simpleProc() {.raises: [].} =
+    ...
+
+Once you have code like this in place, if the list of raised exception changes
+the compiler will stop with an error specifying the line of the proc which
+stopped validating the pragma and the raised exception not being caught, along
+with the file and line where the uncaught exception is being raised, which may
+help you locate the offending code which has changed.
+
+If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
+also help you. You can add the ``{.effect.}`` pragma statement to your proc and
+the compiler will output all inferred effects up to that point (exception
+tracking is part of Nimrod's effect system). Another more roundabout way to
+find out the list of exceptions raised by a proc is to use the Nimrod ``doc2``
+command which generates documentation for a whole module and decorates all
+procs with the list of raised exceptions. You can read more about Nimrod's
+`effect system and related pragmas in the manual <manual.html#effect-system>`_.
 
 
 Generics
