@@ -84,7 +84,7 @@ type
   PEffects = var TEffects
 
 proc throws(tracked: PEffects, n: PNode) =
-  tracked.exc.add n
+  if n.typ.kind != tyError: tracked.exc.add n
   
 proc excType(n: PNode): PType =
   assert n.kind != nkRaiseStmt
@@ -239,9 +239,6 @@ proc track(tracked: PEffects, n: PNode) =
   else: nil
   for i in 0 .. <safeLen(n):
     track(tracked, n.sons[i])
-
-# XXX
-# - more tests
 
 proc checkRaisesSpec(spec, real: PNode) =
   # check that any real exception is listed in 'spec'; mark those as used;
