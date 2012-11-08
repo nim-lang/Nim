@@ -361,7 +361,8 @@ prefixed with an 'E', not 'T'. The `system <system.html>`_ module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
 E_Base, which provides the common interface.
 
-Exceptions should be allocated on the heap because their lifetime is unknown.
+Exceptions have to be allocated on the heap because their lifetime is unknown.
+The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
 the ``msg`` field.
 
