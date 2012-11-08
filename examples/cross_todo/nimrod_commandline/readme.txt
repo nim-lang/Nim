@@ -13,6 +13,7 @@ in your user's data directory. To cope with an empty database, a special
 generation switch can be used to fill the database with some basic todo entries
 you can play with.
 
-Compilation of the interface is fairly easy, just include the path to the
-backend in your compilation command. A basic build.sh is provided for unix like
-platforms with the correct parameters.
+Compilation is fairly easy despite having the source split in different
+directories. Thanks to the nimrod.cfg file, which adds the ../nimrod_backend
+directory as a search path, you can compile and run the example just fine from
+the command line with 'nimrod c -r nimtodo.nim'.
