@@ -2778,7 +2778,12 @@ This allows for a Lisp-like `condition system`:idx:\:
   var myFile = open("broken.txt", fmWrite)
   try:
     onRaise(proc (e: ref E_Base): bool =
-      stdout.writeln "ok, writing to stdout instead")
+      if e of EIO:
+        stdout.writeln "ok, writing to stdout instead"
+      else:
+        # do raise other exceptions:
+        result = true
+    )
     myFile.writeln "writing to broken file"
   finally:
     myFile.close()
@@ -2858,6 +2863,9 @@ effect is a means to *tag* a routine and perform checks against this tag:
   proc no_IO_please() {.tags: [].} =
     # the compiler prevents this:
     let x = readLine()
+
+A tag has to be a type name. A ``tags`` list - like a ``raises`` list - can 
+also be attached to a proc type. This affects type compatibility.
 
 The inference for tag tracking is analogous to the inference for 
 exception tracking.
@@ -2947,6 +2955,7 @@ Example:
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator or type.
+
 
 Is operator
 ~~~~~~~~~~~
@@ -3084,6 +3093,8 @@ To be written.
 Return Type Inference
 ~~~~~~~~~~~~~~~~~~~~~
 
+**Note**: ``auto`` is not yet implemented.
+
 If a type class is used as the return type of a proc and it won't be bound to
 a concrete type by some of the proc params, Nimrod will infer the return type
 from the proc body. This is usually used with the ``auto`` type class:
@@ -3098,12 +3109,17 @@ Future versions of nimrod may also support overloading based on the return type
 of the overloads. In such settings, the expected result type at call sites may 
 also influence the inferred return type.
 
+
 Symbol lookup in generics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Symbols in generics are looked up in two different contexts: Both the context
-at definition and the context at instantiation are considered for any symbol 
-occurring in a generic:
+The symbol binding rules in generics are slightly subtle: There are "open" and
+"closed" symbols. A "closed" symbol cannot be re-bound in the instantiation
+context, an "open" symbol can be. Per default overloaded symbols are open
+and every other symbol is closed.
+
+Open symbols are looked up in two different contexts: Both the context
+at definition and the context at instantiation are considered:
 
 .. code-block:: nimrod
   type
@@ -3121,6 +3137,16 @@ uses the ``==`` operators of the tuple's components. However, the ``==`` for
 the ``TIndex`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
 too.
+
+A symbol can be forced to be open by a `mixin`:idx: declaration: 
+
+.. code-block:: nimrod
+  proc create*[T](): ref T =
+    # there is no overloaded 'mixin' here, so we need to state that it's an
+    # open symbol explicitly:
+    mixin init
+    new result
+    init result
 
 
 Templates

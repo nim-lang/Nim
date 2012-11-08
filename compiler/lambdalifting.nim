@@ -692,4 +692,7 @@ Is transformed to:
     let i = foo(cl)
     if cl.state == -1: break
 """
+  InternalAssert body.kind == nkForStmt
+  # gather vars in a tuple:
+  var L = body.len
   
