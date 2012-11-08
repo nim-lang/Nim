@@ -35,6 +35,7 @@ Language Additions
 - Table constructors now mimic more closely the syntax of the ``case`` 
   statement.
 - Nimrod can now infer the return type of a proc from its body.
+- Added a ``mixin`` declaration to affect symbol binding rules in generics.
 - Exception tracking has been added and the ``doc2`` command annotates possible
   exceptions for you.
 
