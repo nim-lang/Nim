@@ -84,7 +84,7 @@ type
   PEffects = var TEffects
 
 proc throws(tracked: PEffects, n: PNode) =
-  if n.typ.kind != tyError: tracked.exc.add n
+  if n.typ == nil or n.typ.kind != tyError: tracked.exc.add n
   
 proc excType(n: PNode): PType =
   assert n.kind != nkRaiseStmt
