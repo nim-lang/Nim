@@ -2850,11 +2850,9 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
 Tag tracking
 ~~~~~~~~~~~~
 
-**Note**: Tag tracking is not yet implemented!
-
 The exception tracking is part of Nimrod's `effect system`:idx:. Raising an
 exception is an *effect*. Other effects can also be defined. A user defined 
-effect is a means to *tag* a routine and perform checks against this tag:
+effect is a means to *tag* a routine and to perform checks against this tag:
 
 .. code-block:: nimrod
   type IO = object ## input/output effect
@@ -3092,8 +3090,6 @@ To be written.
 
 Return Type Inference
 ~~~~~~~~~~~~~~~~~~~~~
-
-**Note**: ``auto`` is not yet implemented.
 
 If a type class is used as the return type of a proc and it won't be bound to
 a concrete type by some of the proc params, Nimrod will infer the return type

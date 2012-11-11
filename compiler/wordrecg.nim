@@ -52,7 +52,7 @@ type
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wPatterns, wWarnings,
-    wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects,
+    wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElim, wSafecode, 
     wPragma,
     wCompileTime, wNoInit,
@@ -94,7 +94,7 @@ const
   
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
-    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile }
+    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile}
 
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
@@ -133,7 +133,7 @@ const
     "floatchecks", "nanchecks", "infchecks",
 
     "assertions", "patterns", "warnings", "hints", 
-    "optimization", "raises", "writes", "reads", "size", "effects",
+    "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim", "safecode", 
     "pragma",
     "compiletime", "noinit",

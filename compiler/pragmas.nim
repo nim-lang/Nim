@@ -24,7 +24,7 @@ const
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wHoist,
-    wGenSym, wInject, wRaises}
+    wGenSym, wInject, wRaises, wTags}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty}
@@ -33,7 +33,8 @@ const
     wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises}
+    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises,
+    wTags}
   exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -45,7 +46,7 @@ const
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
-    wRaises}
+    wRaises, wTags}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
     wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef,
@@ -60,7 +61,7 @@ const
     wExtern, wImportcpp, wImportobjc, wError, wGenSym, wInject}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect,
-                      wThread, wRaises}
+                      wThread, wRaises, wTags}
   allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
@@ -464,11 +465,11 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   userPragma.ast = body
   StrTableAdd(c.userPragmas, userPragma)
 
-proc pragmaRaises(c: PContext, n: PNode) =
+proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   proc processExc(c: PContext, x: PNode) =
     var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
     if t.kind != tyObject:
-      localError(x.info, errGenerated, "invalid exception type")
+      localError(x.info, errGenerated, "invalid type for raises/tags list")
     x.typ = t
     
   if n.kind == nkExprColonExpr:
@@ -696,7 +697,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym == nil: invalidPragma(it)
           of wLine: PragmaLine(c, it)
-          of wRaises: pragmaRaises(c, it)
+          of wRaises, wTags: pragmaRaisesOrTags(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

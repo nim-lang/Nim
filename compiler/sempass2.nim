@@ -53,7 +53,7 @@ when false:
     assert n.kind == nkSym
   
   
-# ------------------------ exception tracking -------------------------------
+# ------------------------ exception and tag tracking -------------------------
 
 discard """
   exception tracking:
@@ -79,15 +79,15 @@ discard """
 type
   TEffects = object
     exc: PNode  # stack of exceptions
+    tags: PNode # list of tags
     bottom: int
   
   PEffects = var TEffects
 
-proc throws(tracked: PEffects, n: PNode) =
-  if n.typ == nil or n.typ.kind != tyError: tracked.exc.add n
+proc throws(tracked, n: PNode) =
+  if n.typ == nil or n.typ.kind != tyError: tracked.add n
   
 proc excType(n: PNode): PType =
-  assert n.kind != nkRaiseStmt
   # reraise is like raising E_Base:
   let t = if n.kind == nkEmpty: sysTypeFromName"E_Base" else: n.typ
   result = skipTypes(t, skipPtrs)
@@ -99,15 +99,25 @@ proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
     if sameType(aa[i].excType, e.excType):
       if not useLineInfo: return
       elif aa[i].info == e.info: return
-  throws(a, e)
+  throws(a.exc, e)
 
-proc mergeEffects(a: PEffects, b: PNode, useLineInfo) =
+proc mergeEffects(a: PEffects, b: PNode, useLineInfo: bool) =
   for effect in items(b): addEffect(a, effect, useLineInfo)
 
+proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
+  var aa = a.tags
+  for i in 0 .. <aa.len:
+    if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
+      if not useLineInfo: return
+      elif aa[i].info == e.info: return
+  throws(a.tags, e)
+
+proc mergeTags(a: PEffects, b: PNode, useLineInfo: bool) =
+  for effect in items(b): addTag(a, effect, useLineInfo)
+
 proc listEffects(a: PEffects) =
-  var aa = a.exc
-  for e in items(aa):
-    Message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.exc):  Message(e.info, hintUser, typeToString(e.typ))
+  for e in items(a.tags): Message(e.info, hintUser, typeToString(e.typ))
 
 proc catches(tracked: PEffects, e: PType) =
   let e = skipTypes(e, skipPtrs)
@@ -159,27 +169,25 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
       # list the computed effects up to here:
       listEffects(tracked)
       
-proc raisesSpec*(n: PNode): PNode =
+proc effectSpec(n: PNode, effectType = wRaises): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
-    if it.kind == nkExprColonExpr and whichPragma(it) == wRaises:
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it.sons[1]
       if result.kind notin {nkCurly, nkBracket}:
         result = newNodeI(nkCurly, result.info)
         result.add(it.sons[1])
       return
 
-proc documentRaises*(n: PNode) =
-  if n.sons[namePos].kind != nkSym: return
-
-  var x = n.sons[pragmasPos]
-  let spec = raisesSpec(x)
+proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
+  var x = x
+  let spec = effectSpec(x, effectType)
   if isNil(spec):
     let s = n.sons[namePos].sym
     
     let actual = s.typ.n.sons[0]
     if actual.len != effectListLen: return
-    let real = actual.sons[exceptionEffects]
+    let real = actual.sons[idx]
     
     # warning: hack ahead: 
     var effects = newNodeI(nkBracket, n.info, real.len)
@@ -189,21 +197,45 @@ proc documentRaises*(n: PNode) =
       effects.sons[i] = newIdentNode(getIdent(t), n.info)
 
     var pair = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent"raises", n.info), effects])
+      newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
     
     if x.kind == nkEmpty:
       x = newNodeI(nkPragma, n.info)
       n.sons[pragmasPos] = x
     x.add(pair)
 
+proc documentRaises*(n: PNode) =
+  if n.sons[namePos].kind != nkSym: return
+
+  var x = n.sons[pragmasPos]
+  documentEffect(n, x, wRaises, exceptionEffects)
+  documentEffect(n, x, wTags, tagEffects)
+
 proc createRaise(n: PNode): PNode =
   result = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
+
+proc createTag(n: PNode): PNode =
+  result = newNodeIT(nkType, n.info, sysTypeFromName"TEffect")
+
+proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
+  let pragma = s.ast.sons[pragmasPos]
+  let spec = effectSpec(pragma, wRaises)
+  if not isNil(spec):
+    mergeEffects(tracked, spec, useLineInfo=false)
+  else:
+    addEffect(tracked, createRaise(n))
+  
+  let tagSpec = effectSpec(pragma, wTags)
+  if not isNil(tagSpec):
+    mergeTags(tracked, tagSpec, useLineInfo=false)
+  else:
+    addTag(tracked, createTag(n))
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkRaiseStmt: 
     n.sons[0].info = n.info
-    throws(tracked, n.sons[0])
+    throws(tracked.exc, n.sons[0])
   of nkCallKinds:
     # p's effects are ours too:
     let a = n.sons[0]
@@ -212,23 +244,16 @@ proc track(tracked: PEffects, n: PNode) =
       InternalAssert op.n.sons[0].kind == nkEffectList
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
-        let spec = raisesSpec(a.sym.ast.sons[pragmasPos])
-        if not isNil(spec):
-          mergeEffects(tracked, spec, useLineInfo=false)
-        else:
-          addEffect(tracked, createRaise(n))
+        propagateEffects(tracked, n, a.sym)
       elif effectList.len == 0:
         if isForwardedProc(a):
-          let spec = raisesSpec(a.sym.ast.sons[pragmasPos])
-          if not isNil(spec):
-            mergeEffects(tracked, spec, useLineInfo=false)
-          else:
-            addEffect(tracked, createRaise(n))
+          propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a):
           addEffect(tracked, createRaise(n))
+          addTag(tracked, createTag(n))
       else:
-        effectList = effectList.sons[exceptionEffects]
-        mergeEffects(tracked, effectList, useLineInfo=true)
+        mergeEffects(tracked, effectList.sons[exceptionEffects], true)
+        mergeTags(tracked, effectList.sons[tagEffects], true)
   of nkTryStmt:
     trackTryStmt(tracked, n)
     return
@@ -240,7 +265,7 @@ proc track(tracked: PEffects, n: PNode) =
   for i in 0 .. <safeLen(n):
     track(tracked, n.sons[i])
 
-proc checkRaisesSpec(spec, real: PNode) =
+proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool) =
   # check that any real exception is listed in 'spec'; mark those as used;
   # report any unused exception
   var used = initIntSet()
@@ -252,41 +277,43 @@ proc checkRaisesSpec(spec, real: PNode) =
           break search
       # XXX call graph analysis would be nice here!
       pushInfoContext(spec.info)
-      localError(r.info, errGenerated, "can raise an unlisted exception: " &
-        typeToString(r.typ))
+      localError(r.info, errGenerated, msg & typeToString(r.typ))
       popInfoContext()
   # hint about unnecessarily listed exception types:
-  for s in 0 .. <spec.len:
-    if not used.contains(s):
-      Message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
+  if hints:
+    for s in 0 .. <spec.len:
+      if not used.contains(s):
+        Message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
 proc checkMethodEffects*(disp, branch: PSym) =
   ## checks for consistent effects for multi methods.
-  let spec = raisesSpec(disp.ast.sons[pragmasPos])
-  if not isNil(spec):
-    let actual = branch.typ.n.sons[0]
-    if actual.len != effectListLen: return
-    let real = actual.sons[exceptionEffects]
-    
-    for r in items(real):
-      block search:
-        for s in 0 .. <spec.len:
-          if inheritanceDiff(r.excType, spec[s].typ) <= 0:
-            break search
-        pushInfoContext(branch.info)
-        localError(r.info, errGenerated, "can raise an unlisted exception: " &
-          typeToString(r.typ))
-        popInfoContext()
+  let actual = branch.typ.n.sons[0]
+  if actual.len != effectListLen: return
+
+  let p = disp.ast.sons[pragmasPos]
+  let raisesSpec = effectSpec(p, wRaises)
+  if not isNil(raisesSpec):
+    checkRaisesSpec(raisesSpec, actual.sons[exceptionEffects],
+      "can raise an unlisted exception: ", hints=off)
+  let tagsSpec = effectSpec(p, wTags)
+  if not isNil(tagsSpec):
+    checkRaisesSpec(tagsSpec, actual.sons[tagEffects],
+      "can have an unlisted effect: ", hints=off)
 
 proc setEffectsForProcType*(t: PType, n: PNode) =
   var effects = t.n.sons[0]
   InternalAssert t.kind == tyProc and effects.kind == nkEffectList
 
-  let spec = raisesSpec(n)
-  if not isNil(spec):
+  let
+    raisesSpec = effectSpec(n, wRaises)
+    tagsSpec = effectSpec(n, wTags)
+  if not isNil(raisesSpec) or not isNil(tagsSpec):
     InternalAssert effects.len == 0
     newSeq(effects.sons, effectListLen)
-    effects.sons[exceptionEffects] = spec
+    if not isNil(raisesSpec):
+      effects.sons[exceptionEffects] = raisesSpec
+    if not isNil(tagsSpec):
+      effects.sons[tagEffects] = tagsSpec
 
 proc trackProc*(s: PSym, body: PNode) =
   var effects = s.typ.n.sons[0]
@@ -296,11 +323,24 @@ proc trackProc*(s: PSym, body: PNode) =
   if effects.len == effectListLen: return
   newSeq(effects.sons, effectListLen)
   effects.sons[exceptionEffects] = newNodeI(nkArgList, body.info)
+  effects.sons[tagEffects] = newNodeI(nkArgList, body.info)
   
   var t: TEffects
   t.exc = effects.sons[exceptionEffects]
+  t.tags = effects.sons[tagEffects]
   track(t, body)
   
-  let spec = raisesSpec(s.ast.sons[pragmasPos])
-  if not isNil(spec):
-    checkRaisesSpec(spec, t.exc)
+  let p = s.ast.sons[pragmasPos]
+  let raisesSpec = effectSpec(p, wRaises)
+  if not isNil(raisesSpec):
+    checkRaisesSpec(raisesSpec, t.exc, "can raise an unlisted exception: ",
+                    hints=on)
+    # after the check, use the formal spec:
+    effects.sons[exceptionEffects] = raisesSpec
+
+  let tagsSpec = effectSpec(p, wTags)
+  if not isNil(tagsSpec):
+    checkRaisesSpec(tagsSpec, t.tags, "can have an unlisted effect: ",
+                    hints=on)
+    # after the check, use the formal spec:
+    effects.sons[tagEffects] = tagsSpec

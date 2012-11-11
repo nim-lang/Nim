@@ -1190,6 +1190,16 @@ proc baseOfDistinct*(t: PType): PType =
       internalAssert parent != nil
       parent.sons[0] = it.sons[0]
 
+proc compatibleEffectsAux(se, re: PNode): bool =
+  if re.isNil: return false
+  for r in items(re):
+    block search:
+      for s in items(se):
+        if inheritanceDiff(r.typ, s.typ) <= 0:
+          break search
+      return false
+  result = true
+ 
 proc compatibleEffects*(formal, actual: PType): bool =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
@@ -1197,18 +1207,23 @@ proc compatibleEffects*(formal, actual: PType): bool =
   InternalAssert actual.n.sons[0].kind == nkEffectList
   
   var spec = formal.n.sons[0]
-  # if 'spec.sons[0].kind == nkArgList' it is no formal type really, but a
-  # computed effect and as such no spec:
-  # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
-  if spec.len != 0 and spec.sons[0].kind != nkArgList:
+  if spec.len != 0:
     var real = actual.n.sons[0]
-    if real.len == 0: 
-      # we don't know anything about 'real' ...
-      return false
-    for r in items(real):
-      block search:
-        for s in items(spec):
-          if inheritanceDiff(r.typ, s.typ) <= 0:
-            break search
-        return false
+
+    let se = spec.sons[exceptionEffects]
+    # if 'se.kind == nkArgList' it is no formal type really, but a
+    # computed effect and as such no spec:
+    # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
+    if not IsNil(se) and se.kind != nkArgList:
+      # spec requires some exception or tag, but we don't know anything:
+      if real.len == 0: return false
+      result = compatibleEffectsAux(se, real.sons[exceptionEffects])
+      if not result: return
+
+    let st = spec.sons[tagEffects]
+    if not isNil(st) and st.kind != nkArgList:
+      # spec requires some exception or tag, but we don't know anything:
+      if real.len == 0: return false
+      result = compatibleEffectsAux(st, real.sons[tagEffects])
+      if not result: return
   result = true
