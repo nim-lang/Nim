@@ -45,6 +45,7 @@ proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc fixImmediateParams(n: PNode): PNode
 proc activate(c: PContext, n: PNode)
+proc semQuoteAst(c: PContext, n: PNode): PNode
 
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 

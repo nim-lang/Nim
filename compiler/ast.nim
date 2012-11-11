@@ -415,7 +415,7 @@ type
     mDefined, mDefinedInScope, mCompiles,
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
-    mParseExprToAst, mParseStmtToAst, mExpandToAst,
+    mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
@@ -723,6 +723,7 @@ const
 
   nkLambdaKinds* = {nkLambda, nkDo}
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
+  nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam}
 
