@@ -898,7 +898,7 @@ proc evalIsOp*(n: PNode): PNode =
   result.typ = n.typ
 
 proc expectString(n: PNode) =
-  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+  if n.kind notin nkStrKinds:
     GlobalError(n.info, errStringLiteralExpected)
 
 proc evalSlurp*(e: PNode, module: PSym): PNode =

@@ -354,6 +354,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
 
+proc newSeq*[T](len = 0): seq[T] =
+  ## creates a new sequence of type ``seq[T]`` with length ``len``.
+  newSeq(result, len)
+
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
