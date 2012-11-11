@@ -1,5 +1,6 @@
 discard """
-  line: 15
+  line: 47
+  file: "sysio.nim"
   errormsg: "can raise an unlisted exception: ref EIO"
 """
 
