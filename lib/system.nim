@@ -209,6 +209,16 @@ type
            ## objects that have no ancestor are allowed.
   PObject* = ref TObject ## reference to TObject
 
+  TEffect* {.compilerproc.} = object of TObject ## \
+    ## base effect class; each effect should
+    ## inherit from `TEffect` unless you know what
+    ## you doing.
+  FTime* = object of TEffect   ## Time effect.
+  FIO* = object of TEffect     ## IO effect.
+  FReadIO* = object of FIO     ## Effect describing a read IO operation.
+  FWriteIO* = object of FIO    ## Effect describing a write IO operation.
+  FExecIO* = object of FIO     ## Effect describing an executing IO operation.
+
   E_Base* {.compilerproc.} = object of TObject ## base exception class;
                                                ## each exception has to
                                                ## inherit from `E_Base`.
