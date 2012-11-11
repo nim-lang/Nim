@@ -1,5 +1,5 @@
 discard """
-  line: 13
+  line: 19
   errormsg: "can raise an unlisted exception: ref EIO"
 """
 
