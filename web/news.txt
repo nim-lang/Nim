@@ -16,6 +16,7 @@ Library Additions
 -----------------
 
 - Added ``system.onRaise`` to support a condition system.
+- Added ``macros.quote`` for AST quasi-quoting.
 
 
 Changes affecting backwards compatibility

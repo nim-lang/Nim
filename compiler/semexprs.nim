@@ -1241,24 +1241,99 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
     LocalError(n.info, errXisNoMacroOrTemplate, n.renderTree)
     result = errorSym(c, n)
 
+proc expectString(c: PContext, n: PNode): string =
+  var n = semConstExpr(c, n)
+  if n.kind in nkStrKinds:
+    return n.strVal
+  else:
+    LocalError(n.info, errStringLiteralExpected)
+
+proc getMagicSym(magic: TMagic): PSym =
+  result = newSym(skProc, getIdent($magic), GetCurrOwner(), gCodegenLineInfo)
+  result.magic = magic
+
+proc newAnonSym(kind: TSymKind, info: TLineInfo,
+                owner = getCurrOwner()): PSym =
+  result = newSym(kind, idAnon, owner, info)
+  result.flags = { sfGenSym }
+
+proc semExpandToAst(c: PContext, n: PNode): PNode =
+  var macroCall = n[1]
+  var expandedSym = expectMacroOrTemplateCall(c, macroCall)
+
+  macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
+  markUsed(n, expandedSym)
+
+  for i in countup(1, macroCall.len-1):
+    macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+
+  # Preserve the magic symbol in order to be handled in evals.nim
+  InternalAssert n.sons[0].sym.magic == mExpandToAst
+  n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
+  result = n
+
 proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
-                    flags: TExprFlags): PNode =
+                    flags: TExprFlags = {}): PNode =
   if sonsLen(n) == 2:
-    var macroCall = n[1]
-    var expandedSym = expectMacroOrTemplateCall(c, macroCall)
-
-    macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-    markUsed(n, expandedSym)
-
-    for i in countup(1, macroCall.len-1):
-      macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
-
-    # Preserve the magic symbol in order to be handled in evals.nim
     n.sons[0] = newSymNode(magicSym, n.info)
-    n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
-    result = n
+    result = semExpandToAst(c, n)
   else:
     result = semDirectOp(c, n, flags)
+
+proc processQuotations(n: var PNode, op: string,
+                       quotes: var seq[PNode],
+                       ids: var seq[PNode]) =
+  template returnQuote(q) =
+    quotes.add q
+    n = newIdentNode(getIdent($quotes.len), n.info)
+    ids.add n
+    return
+
+  if n.kind == nkPrefix:
+    checkSonsLen(n, 2)
+    if n[0].kind == nkIdent:
+      var examinedOp = n[0].ident.s
+      if examinedOp == op:
+        returnQuote n[1]
+      elif examinedOp.startsWith(op):
+        n.sons[0] = newIdentNode(getIdent(examinedOp.substr(op.len)), n.info)
+  elif n.kind == nkAccQuoted and op == "``":
+    returnQuote n[0]
+ 
+  if not n.isAtom:
+    for i in 0 .. <n.len:
+      processQuotations(n.sons[i], op, quotes, ids)
+
+proc semQuoteAst(c: PContext, n: PNode): PNode =
+  InternalAssert n.len == 2 or n.len == 3
+  # We transform the do block into a template with a param for
+  # each interpolation. We'll pass this template to getAst.
+  var
+    doBlk = n{-1}
+    op = if n.len == 3: expectString(c, n[1]) else: "``"
+    quotes = newSeq[PNode](1)
+      # the quotes will be added to a nkCall statement 
+      # leave some room for the callee symbol
+    ids = newSeq[PNode]()
+      # this will store the generated param names
+
+  internalAssert doBlk.kind == nkDo
+  processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
+  
+  doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
+  if ids.len > 0:
+    doBlk[paramsPos].sons.setLen(2)
+    doBlk[paramsPos].sons[0] = getSysSym("stmt").newSymNode # return type
+    ids.add getSysSym("expr").newSymNode # params type
+    ids.add emptyNode # no default value
+    doBlk[paramsPos].sons[1] = newNode(nkIdentDefs, n.info, ids)
+  
+  var tmpl = semTemplateDef(c, doBlk)
+  quotes[0] = tmpl[namePos]
+  result = newNode(nkCall, n.info, @[
+    getMagicSym(mExpandToAst).newSymNode,
+    newNode(nkCall, n.info, quotes)])
+  result = semExpandToAst(c, result)
 
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
@@ -1335,6 +1410,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mEcho: result = semEcho(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
+  of mQuoteAst: result = semQuoteAst(c, n)
   else: result = semDirectOp(c, n, flags)
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
