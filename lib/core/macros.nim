@@ -251,7 +251,7 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##     # unittest module.
   ##
   ##     # If there is a failed check, we want to make it easy for
-  ##     # the user to just to the faulty line in the code, so we
+  ##     # the user to jump to the faulty line in the code, so we
   ##     # get the line info here:
   ##     var info = ex.lineinfo
   ##
