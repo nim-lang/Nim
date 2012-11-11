@@ -234,6 +234,35 @@ proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst".}
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
+proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
+  ## Quasi-quoting operator.
+  ## Accepts an expression or a block and returns the AST that represents it.
+  ## Within the quoted AST, you are able to interpolate PNimrodNode expressions
+  ## from the surrounding scope. If no operator is given, quoting is done using
+  ## backticks. Otherwise, the given operator must be used as a prefix operator
+  ## for any interpolated expression. The original meaning of the interpolation
+  ## operator may be obtained by escaping it (by prefixing it with itself):
+  ## e.g. `@` is escaped as `@@`, `@@` is escaped as `@@@` and so on.
+  ##
+  ## Example:
+  ##   
+  ##   macro check(ex: expr): stmt =
+  ##     # this is a simplified version of the check macro from the
+  ##     # unittest module.
+  ##
+  ##     # If there is a failed check, we want to make it easy for
+  ##     # the user to jump to the faulty line in the code, so we
+  ##     # get the line info here:
+  ##     var info = ex.lineinfo
+  ##
+  ##     # We will also display the code string of the failed check:
+  ##     var expString = ex.toStrLit
+  ##
+  ##     # Finally we compose the code to implement the check:
+  ##     result = quote do:
+  ##       if not `ex`:
+  ##         echo `info` & ": Check failed: " & `expString`
+  
 template emit*(e: expr[string]): stmt =
   ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program

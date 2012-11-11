@@ -457,6 +457,9 @@ proc newLineInfo*(filename: string, line, col: int): TLineInfo {.inline.} =
 fileInfos.add(newFileInfo("", "command line"))
 var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
 
+fileInfos.add(newFileInfo("", "compilation artifact"))
+var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
+
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
