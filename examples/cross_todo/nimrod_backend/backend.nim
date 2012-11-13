@@ -2,10 +2,7 @@
 #
 # Most procs dealing with a TDbConn object may raise an EDb exception.
 
-import db_sqlite
-import parseutils
-import strutils
-import times
+import db_sqlite, parseutils, strutils, times
 
 
 type

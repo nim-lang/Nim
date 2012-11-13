@@ -1,12 +1,6 @@
 # Implements a command line interface against the backend.
 
-import backend
-import db_sqlite
-import os
-import parseopt
-import parseutils
-import strutils
-import times
+import backend, db_sqlite, os, parseopt, parseutils, strutils, times
 
 const
   USAGE = """nimtodo - Nimrod cross platform todo manager
@@ -39,20 +33,20 @@ Examples:
 """
 
 type
-  TCommand = enum        # The possible types of commands
-    commandAdd          # The user wants to add a new todo entry.
-    commandCheck        # User wants to check a todo entry.
-    commandUncheck      # User wants to uncheck a todo entry.
-    commandDelete       # User wants to delete a single todo entry.
-    commandNuke         # User wants to purge all database entries.
-    commandGenerate     # Add random rows to the database, for testing.
-    commandList         # User wants to list contents.
+  TCommand = enum     # The possible types of commands
+    cmdAdd            # The user wants to add a new todo entry.
+    cmdCheck          # User wants to check a todo entry.
+    cmdUncheck        # User wants to uncheck a todo entry.
+    cmdDelete         # User wants to delete a single todo entry.
+    cmdNuke           # User wants to purge all database entries.
+    cmdGenerate       # Add random rows to the database, for testing.
+    cmdList           # User wants to list contents.
 
   TParamConfig = object of TObject
     # Structure containing the parsed options from the commandline.
     command: TCommand         # Store the type of operation
-    addPriority: int          # Only valid with commandAdd, stores priority.
-    addText: seq[string]      # Only valid with commandAdd, stores todo text.
+    addPriority: int          # Only valid with cmdAdd, stores priority.
+    addText: seq[string]      # Only valid with cmdAdd, stores todo text.
     todoId: int64             # The todo id for operations like check or delete.
     listParams: TPagedParams  # Uses the backend structure directly for params.
 
@@ -87,7 +81,7 @@ proc parseCmdLine(): TParamConfig =
 
       case p.kind
       of cmdArgument:
-        if specifiedCommand and commandAdd == result.command:
+        if specifiedCommand and cmdAdd == result.command:
           result.addText.add(key)
         else:
           stdout.write(USAGE)
@@ -102,7 +96,7 @@ proc parseCmdLine(): TParamConfig =
             stdout.write(USAGE)
             quit("Only one command can be specified at a time! ($1)" % [val], 2)
           else:
-            result.command = commandAdd
+            result.command = cmdAdd
             result.addPriority = val.parseInt
             specifiedCommand = true
         of "c":
@@ -110,7 +104,7 @@ proc parseCmdLine(): TParamConfig =
             stdout.write(USAGE)
             quit("Only one command can be specified at a time! ($1)" % [val], 2)
           else:
-            result.command = commandCheck
+            result.command = cmdCheck
             let numChars = string(val).parseBiggestInt(newId)
             if numChars < 1: raise newException(EInvalidValue, "Empty string?")
             result.todoId = newId
@@ -120,7 +114,7 @@ proc parseCmdLine(): TParamConfig =
             stdout.write(USAGE)
             quit("Only one command can be specified at a time! ($1)" % [val], 2)
           else:
-            result.command = commandUncheck
+            result.command = cmdUncheck
             let numChars = val.parseBiggestInt(newId)
             if numChars < 1: raise newException(EInvalidValue, "Empty string?")
             result.todoId = newId
@@ -131,9 +125,9 @@ proc parseCmdLine(): TParamConfig =
             quit("Only one command can be specified at a time! ($1)" % [val], 2)
           else:
             if "all" == val:
-              result.command = commandNuke
+              result.command = cmdNuke
             else:
-              result.command = commandDelete
+              result.command = cmdDelete
               let numChars = val.parseBiggestInt(newId)
               if numChars < 1:
                 raise newException(EInvalidValue, "Empty string?")
@@ -147,7 +141,7 @@ proc parseCmdLine(): TParamConfig =
             if val.len > 0:
               stdout.write(USAGE)
               quit("Unexpected value '$1' for switch l." % [val], 3)
-            result.command = commandGenerate
+            result.command = cmdGenerate
             specifiedCommand = true
         of "l":
           if specifiedCommand:
@@ -157,22 +151,24 @@ proc parseCmdLine(): TParamConfig =
             if val.len > 0:
               stdout.write(USAGE)
               quit("Unexpected value '$1' for switch l." % [val], 3)
-            result.command = commandList
+            result.command = cmdList
             specifiedCommand = true
         of "p":
           usesListParams = true
-          if "+" == val:
+          case val
+          of "+":
             result.listParams.priorityAscending = true
-          elif "-" == val:
+          of "-":
             result.listParams.priorityAscending = false
           else:
             stdout.write(USAGE)
             quit("Priority parameter ($1) should be + or |." % [val], 4)
         of "m":
           usesListParams = true
-          if "+" == val:
+          case val
+          of "+":
             result.listParams.dateAscending = true
-          elif "-" == val:
+          of "-":
             result.listParams.dateAscending = false
           else:
             stdout.write(USAGE)
@@ -202,11 +198,11 @@ proc parseCmdLine(): TParamConfig =
     stdout.write(USAGE)
     quit("Didn't specify any command.", 8)
 
-  if commandAdd == result.command and result.addText.len < 1:
+  if cmdAdd == result.command and result.addText.len < 1:
     stdout.write(USAGE)
     quit("Used the add command, but provided no text/description.", 9)
 
-  if usesListParams and commandList != result.command:
+  if usesListParams and cmdList != result.command:
     stdout.write(USAGE)
     quit("Used list options, but didn't specify the list command.", 10)
 
@@ -336,12 +332,12 @@ when isMainModule:
   let conn = openDatabase(dbPath)
   try:
     case opt.command
-    of commandAdd: addTodo(conn, opt.addPriority, opt.addText)
-    of commandCheck: setTodoCheck(conn, opt.todoId, true)
-    of commandUncheck: setTodoCheck(conn, opt.todoId, false)
-    of commandDelete: deleteOneTodo(conn, opt.todoId)
-    of commandNuke: deleteAllTodos(conn)
-    of commandGenerate: generateDatabaseRows(conn)
-    of commandList: listDatabaseContents(conn, opt.listParams)
+    of cmdAdd: addTodo(conn, opt.addPriority, opt.addText)
+    of cmdCheck: setTodoCheck(conn, opt.todoId, true)
+    of cmdUncheck: setTodoCheck(conn, opt.todoId, false)
+    of cmdDelete: deleteOneTodo(conn, opt.todoId)
+    of cmdNuke: deleteAllTodos(conn)
+    of cmdGenerate: generateDatabaseRows(conn)
+    of cmdList: listDatabaseContents(conn, opt.listParams)
   finally:
     conn.close
