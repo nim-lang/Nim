@@ -1,8 +1,6 @@
 # Implements a command line interface against the backend.
 
-import backend
-import parseopt
-import strutils
+import backend, parseopt, strutils
 
 const
   USAGE = """nimcalculator - Nimrod cross platform calculator
@@ -19,12 +17,12 @@ If no options are used, an interactive mode is entered.
 """
 
 type
-  TAction = enum        # The possible types of operation
-    rtParams,           # Two valid parameters were provided
-    rtInteractive       # No parameters were provided, run interactive mode
+  TCommand = enum       # The possible types of operation
+    cmdParams,          # Two valid parameters were provided
+    cmdInteractive      # No parameters were provided, run interactive mode
 
   TParamConfig = object of TObject
-    action: TAction       # store the type of operation
+    action: TCommand      # store the type of operation
     paramA, paramB: int   # possibly store the valid parameters
 
 
@@ -37,9 +35,9 @@ proc parseCmdLine(): TParamConfig =
     hasA = false
     hasB = false
     p = initOptParser()
-    key, val : TaintedString
+    key, val: TaintedString
 
-  result.action = rtInteractive # By default presume interactive mode.
+  result.action = cmdInteractive # By default presume interactive mode.
   try:
     while true:
       next(p)
@@ -70,7 +68,7 @@ proc parseCmdLine(): TParamConfig =
     quit("Invalid value " & val &  " for parameter " & key, 3)
 
   if hasA and hasB:
-    result.action = rtParams
+    result.action = cmdParams
   elif hasA or hasB:
     stdout.write(USAGE)
     quit("Error: provide both A and B to operate in param mode", 4)
@@ -102,7 +100,7 @@ proc interactiveMode() =
 when isMainModule:
   ## Main entry point.
   let opt = parseCmdLine()
-  if rtParams == opt.action:
+  if cmdParams == opt.action:
     echo("Param mode: $1 + $2 = $3" % [$opt.paramA, $opt.paramB,
       $backend.myAdd(opt.paramA, opt.paramB)])
   else:
