@@ -40,19 +40,19 @@ proc parseCmdLine(): TParamConfig =
   result.action = cmdInteractive # By default presume interactive mode.
   try:
     while true:
-      next(p)
+      next p
       key = p.key
       val = p.val
 
       case p.kind
       of cmdArgument:
-        stdout.write(USAGE)
-        quit("Erroneous argument detected: " & key, 1)
+        stdout.write USAGE
+        quit "Erroneous argument detected: " & key, 1
       of cmdLongOption, cmdShortOption:
-        case normalize(key)
+        case key.normalize
         of "help", "h":
-          stdout.write(USAGE)
-          quit(0)
+          stdout.write USAGE
+          quit 0
         of "a":
           result.paramA = val.parseInt
           hasA = true
@@ -60,18 +60,18 @@ proc parseCmdLine(): TParamConfig =
           result.paramB = val.parseInt
           hasB = true
         else:
-          stdout.write(USAGE)
-          quit("Unexpected option: " & key, 2)
+          stdout.write USAGE
+          quit "Unexpected option: " & key, 2
       of cmdEnd: break
   except EInvalidValue:
-    stdout.write(USAGE)
-    quit("Invalid value " & val &  " for parameter " & key, 3)
+    stdout.write USAGE
+    quit "Invalid value " & val &  " for parameter " & key, 3
 
   if hasA and hasB:
     result.action = cmdParams
   elif hasA or hasB:
-    stdout.write(USAGE)
-    quit("Error: provide both A and B to operate in param mode", 4)
+    stdout.write USAGE
+    quit "Error: provide both A and B to operate in param mode", 4
 
 
 proc parseUserInput(question: string): int =
@@ -80,29 +80,30 @@ proc parseUserInput(question: string): int =
   ## If the user input is an empty line quit() is called. Returns the value
   ## parsed as an integer.
   while true:
-    echo(question)
+    echo question
     let input = stdin.readLine
     try:
       result = input.parseInt
       break
     except EInvalidValue:
-      if input.len < 1: quit("Blank line detected, quitting.", 0)
-      echo("Sorry, `$1' doesn't seem to be a valid integer" % input)
+      if input.len < 1: quit "Blank line detected, quitting.", 0
+      echo "Sorry, `$1' doesn't seem to be a valid integer" % input
 
 proc interactiveMode() =
   ## Asks the user for two integer values, adds them and exits.
-  let paramA = parseUserInput("Enter the first parameter (blank to exit):")
-  let paramB = parseUserInput("Enter the second parameter (blank to exit):")
-  echo("Calculating... $1 + $2 = $3" % [$paramA, $paramB,
-    $backend.myAdd(paramA, paramB)])
+  let
+    paramA = parseUserInput("Enter the first parameter (blank to exit):")
+    paramB = parseUserInput("Enter the second parameter (blank to exit):")
+  echo "Calculating... $1 + $2 = $3" % [$paramA, $paramB,
+    $backend.myAdd(paramA, paramB)]
 
 
 when isMainModule:
   ## Main entry point.
   let opt = parseCmdLine()
   if cmdParams == opt.action:
-    echo("Param mode: $1 + $2 = $3" % [$opt.paramA, $opt.paramB,
-      $backend.myAdd(opt.paramA, opt.paramB)])
+    echo "Param mode: $1 + $2 = $3" % [$opt.paramA, $opt.paramB,
+      $backend.myAdd(opt.paramA, opt.paramB)]
   else:
-    echo("Entering interactive addition mode")
+    echo "Entering interactive addition mode"
     interactiveMode()
