@@ -61,8 +61,7 @@ proc newStackFrame*(): PStackFrame =
   initIdNodeTable(result.mapping)
   result.params = @[]
 
-proc newEvalContext*(module: PSym, filename: string, 
-                     mode: TEvalMode): PEvalContext = 
+proc newEvalContext*(module: PSym, mode: TEvalMode): PEvalContext =
   new(result)
   result.module = module
   result.mode = mode
@@ -1392,7 +1391,7 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
       stackTrace(c, n, errCannotInterpretNodeX, renderTree(n))
 
 proc evalConstExprAux(module: PSym, e: PNode, mode: TEvalMode): PNode = 
-  var p = newEvalContext(module, "", mode)
+  var p = newEvalContext(module, mode)
   var s = newStackFrame()
   s.call = e
   pushStackFrame(p, s)
@@ -1432,8 +1431,8 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   dec(evalTemplateCounter)
   c.callsite = nil
 
-proc myOpen(module: PSym, filename: string): PPassContext = 
-  var c = newEvalContext(module, filename, emRepl)
+proc myOpen(module: PSym): PPassContext = 
+  var c = newEvalContext(module, emRepl)
   pushStackFrame(c, newStackFrame())
   result = c
 

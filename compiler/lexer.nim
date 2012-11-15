@@ -126,7 +126,7 @@ proc pushInd*(L: var TLexer, indent: int)
 
 proc popInd*(L: var TLexer)
 proc isKeyword*(kind: TTokType): bool
-proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream)
+proc openLexer*(lex: var TLexer, fileidx: int32, inputstream: PLLStream)
 proc rawGetTok*(L: var TLexer, tok: var TToken)
   # reads in the next token into tok and skips it
 proc getColumn*(L: TLexer): int
@@ -134,6 +134,9 @@ proc getLineInfo*(L: TLexer): TLineInfo
 proc closeLexer*(lex: var TLexer)
 proc PrintTok*(tok: TToken)
 proc tokToStr*(tok: TToken): string
+
+proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
+  OpenLexer(lex, filename.fileInfoIdx, inputStream)
 
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "")
 
@@ -211,10 +214,10 @@ proc fillToken(L: var TToken) =
   L.base = base10
   L.ident = dummyIdent
   
-proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) = 
+proc openLexer(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
   lex.indentStack = @[0]
-  lex.fileIdx = filename.fileInfoIdx
+  lex.fileIdx = fileIdx
   lex.indentAhead = - 1
   inc(lex.Linenumber, inputstream.lineOffset) 
 

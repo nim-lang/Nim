@@ -64,11 +64,14 @@ proc parseCase(p: var TParser): PNode
 proc getTok(p: var TParser) = 
   rawGetTok(p.lex, p.tok)
 
-proc OpenParser(p: var TParser, filename: string, inputStream: PLLStream) = 
+proc OpenParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream) =
   initToken(p.tok)
-  OpenLexer(p.lex, filename, inputstream)
+  OpenLexer(p.lex, fileIdx, inputstream)
   getTok(p)                   # read the first token
-  
+
+proc OpenParser*(p: var TParser, filename: string, inputStream: PLLStream) =
+  openParser(p, filename.fileInfoIdx, inputStream)
+
 proc CloseParser(p: var TParser) = 
   CloseLexer(p.lex)
 

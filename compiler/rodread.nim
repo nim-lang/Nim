@@ -126,7 +126,7 @@ type
     s: cstring               # mmap'ed file contents
     options: TOptions
     reason: TReasonForRecompile
-    modDeps: TStringSeq
+    modDeps: seq[int32]
     files: TStringSeq
     dataIdx: int             # offset of start of data section
     convertersIdx: int       # offset of start of converters section
@@ -145,7 +145,7 @@ type
 
 var rodCompilerprocs*: TStrTable
 
-proc handleSymbolFile*(module: PSym, filename: string): PRodReader
+proc handleSymbolFile*(module: PSym): PRodReader
 # global because this is needed by magicsys
 proc loadInitSection*(r: PRodReader): PNode
 
@@ -602,7 +602,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
     of "DEPS":
       inc(r.pos)              # skip ':'
       while r.s[r.pos] > '\x0A': 
-        r.modDeps.add r.files[decodeVInt(r.s, r.pos)]
+        r.modDeps.add int32(decodeVInt(r.s, r.pos))
         if r.s[r.pos] == ' ': inc(r.pos)
     of "INTERF": 
       r.interfIdx = r.pos + 2
@@ -699,10 +699,11 @@ type
     reason*: TReasonForRecompile
     rd*: PRodReader
     crc*: TCrc32
+    crcDone*: bool
 
   TFileModuleMap = seq[TFileModuleRec]
 
-var gMods: TFileModuleMap = @[]
+var gMods*: TFileModuleMap = @[]
 
 proc decodeSymSafePos(rd: PRodReader, offset: int, info: TLineInfo): PSym = 
   # all compiled modules
@@ -720,6 +721,10 @@ proc findSomeWhere(id: int) =
       if d != invalidKey:
         echo "found id ", id, " in ", gMods[i].filename
 
+proc getReader(moduleId: int): PRodReader =
+  InternalAssert moduleId >= 0 and moduleId < gMods.len
+  result = gMods[moduleId].rd
+
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym = 
   result = PSym(IdTableGet(r.syms, id))
   if result == nil: 
@@ -732,25 +737,15 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
         var x = ""
         encodeVInt(id, x)
         InternalError(info, "missing from both indexes: +" & x)
-      # find the reader with the correct moduleID:
-      for i in countup(0, high(gMods)): 
-        var rd = gMods[i].rd
-        if rd != nil: 
-          if rd.moduleID == moduleID: 
-            d = IITableGet(rd.index.tab, id)
-            if d != invalidKey: 
-              result = decodeSymSafePos(rd, d, info)
-              break 
-            else:
-              var x = ""
-              encodeVInt(id, x)
-              when false: findSomeWhere(id)
-              InternalError(info, "rrGetSym: no reader found: +" & x)
-          else:
-            #if IiTableGet(rd.index.tab, id) <> invalidKey then
-            # XXX expensive check!
-            #InternalError(info,
-            #'id found in other module: +' + ropeToStr(encodeInt(id)))
+      var rd = getReader(moduleID)
+      d = IITableGet(rd.index.tab, id)
+      if d != invalidKey: 
+        result = decodeSymSafePos(rd, d, info)
+      else:
+        var x = ""
+        encodeVInt(id, x)
+        when false: findSomeWhere(id)
+        InternalError(info, "rrGetSym: no reader found: +" & x)
     else: 
       # own symbol:
       result = decodeSymSafePos(r, d, info)
@@ -789,27 +784,32 @@ proc loadMethods(r: PRodReader) =
     var d = decodeVInt(r.s, r.pos)
     r.methods.add(rrGetSym(r, d, UnknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
-  
-proc getModuleIdx(filename: string): int = 
-  for i in countup(0, high(gMods)): 
-    if gMods[i].filename == filename: return i
-  result = len(gMods)
-  setlen(gMods, result + 1)
 
-proc checkDep(filename: string): TReasonForRecompile =
-  assert(not isNil(filename)) 
-  var idx = getModuleIdx(filename)
-  if gMods[idx].reason != rrEmpty: 
+proc GetCRC*(fileIdx: int32): TCrc32 =
+  InternalAssert fileIdx >= 0 and fileIdx < gMods.len
+
+  if gMods[fileIdx].crcDone:
+    return gMods[fileIdx].crc
+  
+  result = crcFromFile(fileIdx.toFilename)
+  gMods[fileIdx].crc = result
+
+template growCache*(cache, pos) =
+  if cache.len <= fileIdx: cache.setLen(pos+1)
+
+proc checkDep(fileIdx: int32): TReasonForRecompile =
+  assert fileIdx != InvalidFileIDX
+  growCache gMods, fileIdx
+  if gMods[fileIdx].reason != rrEmpty: 
     # reason has already been computed for this module:
-    return gMods[idx].reason
-  var crc: TCrc32 = crcFromFile(filename)
-  gMods[idx].reason = rrNone  # we need to set it here to avoid cycles
-  gMods[idx].filename = filename
-  gMods[idx].crc = crc
+    return gMods[fileIdx].reason
+  let filename = fileIdx.toFilename
+  var crc = GetCRC(fileIdx)
+  gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename, RodExt)
-  r = newRodReader(rodfile, crc, idx)
+  r = newRodReader(rodfile, crc, fileIdx)
   if r == nil: 
     result = (if ExistsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
@@ -819,7 +819,7 @@ proc checkDep(filename: string): TReasonForRecompile =
       # NOTE: we need to process the entire module graph so that no ID will
       # be used twice! However, compilation speed does not suffer much from
       # this, since results are cached.
-      var res = checkDep(options.libpath / addFileExt("system", nimExt))
+      var res = checkDep(SystemFileIdx)
       if res != rrNone: result = rrModDeps
       for i in countup(0, high(r.modDeps)): 
         res = checkDep(r.modDeps[i])
@@ -832,19 +832,19 @@ proc checkDep(filename: string): TReasonForRecompile =
     # recompilation is necessary:
     if r != nil: memfiles.close(r.memFile)
     r = nil
-  gMods[idx].rd = r
-  gMods[idx].reason = result  # now we know better
+  gMods[fileIdx].rd = r
+  gMods[fileIdx].reason = result  # now we know better
   
-proc handleSymbolFile(module: PSym, filename: string): PRodReader = 
+proc handleSymbolFile(module: PSym): PRodReader = 
+  let fileIdx = module.fileIdx
   if optSymbolFiles notin gGlobalOptions: 
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
 
-  discard checkDep(filename)
-  var idx = getModuleIdx(filename)
-  if gMods[idx].reason == rrEmpty: InternalError("handleSymbolFile")
-  result = gMods[idx].rd
+  discard checkDep(fileIdx)
+  if gMods[fileIdx].reason == rrEmpty: InternalError("handleSymbolFile")
+  result = gMods[fileIdx].rd
   if result != nil: 
     module.id = result.moduleID
     IdTablePut(result.syms, module, module)
@@ -854,14 +854,6 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
     loadMethods(result)
   else:
     module.id = getID()
-  
-proc GetCRC*(filename: string): TCrc32 = 
-  for i in countup(0, high(gMods)): 
-    if gMods[i].filename == filename: return gMods[i].crc
-  
-  result = crcFromFile(filename)
-  #var idx = getModuleIdx(filename)
-  #result = gMods[idx].crc
 
 proc rawLoadStub(s: PSym) =
   if s.kind != skStub: InternalError("loadStub")

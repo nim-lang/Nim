@@ -43,6 +43,7 @@ type                          # please make sure we have under 32 options
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
     optSymbolFiles,           # use symbol files for speeding up compilation
+    optCaasEnabled            # compiler-as-a-service is running
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
     optSkipUserConfigFile,    # skip the users's config file
@@ -96,6 +97,7 @@ var
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool # for 'doc2': output any dependency
   gEvalExpr*: string          # expression for idetools --eval
+  gLastCmdTime*: float        # when caas is enabled, we measure each command
   
 const 
   genSubDir* = "nimcache"
@@ -115,6 +117,7 @@ var
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
+  gProjectMainIdx*: int32 # the canonical path id of the main module
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
   commandArgs*: seq[string] = @[] # any arguments after the main command

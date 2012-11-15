@@ -17,7 +17,6 @@ proc generateDot*(project: string)
 type 
   TGen = object of TPassContext
     module*: PSym
-    filename*: string
   PGen = ref TGen
 
 var gDotGraph: PRope # the generated DOT file; we need a global variable
@@ -47,11 +46,10 @@ proc generateDot(project: string) =
       toRope(changeFileExt(extractFileName(project), "")), gDotGraph]), 
             changeFileExt(project, "dot"))
 
-proc myOpen(module: PSym, filename: string): PPassContext = 
+proc myOpen(module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  g.filename = filename
   result = g
 
 const gendependPass* = makePass(open = myOpen, process = addDotDependency)

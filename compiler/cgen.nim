@@ -991,8 +991,8 @@ proc genModule(m: BModule, cfilenoext: string): PRope =
     app(result, m.s[i])
     app(result, genSectionEnd(i))
   app(result, m.s[cfsInitProc])
-  
-proc rawNewModule(module: PSym, filename: string): BModule = 
+
+proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
   InitLinkedList(result.headerFiles)
   result.declaredThings = initIntSet()
@@ -1013,17 +1013,20 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.nimTypesName = getTempName()
   result.PreventStackTrace = sfSystemModule in module.flags
 
-proc newModule(module: PSym, filename: string): BModule = 
-  result = rawNewModule(module, filename)
+proc rawNewModule(module: PSym): BModule =
+  result = rawNewModule(module, module.filename)
+
+proc newModule(module: PSym): BModule =
+  result = rawNewModule(module)
   if gModules.len <= module.position: gModules.setLen(module.position + 1)
   gModules[module.position] = result
 
   if (optDeadCodeElim in gGlobalOptions): 
     if (sfDeadCodeElim in module.flags): 
-      InternalError("added pending module twice: " & filename)
+      InternalError("added pending module twice: " & module.filename)
   
-proc myOpen(module: PSym, filename: string): PPassContext = 
-  result = newModule(module, filename)
+proc myOpen(module: PSym): PPassContext = 
+  result = newModule(module)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
     let f = if headerFile.len > 0: headerFile else: gProjectFull
     generatedHeader = rawNewModule(module,
@@ -1053,9 +1056,8 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): string =
   result = changeFileExt(completeCFilePath(m.cfilename), cExt)
 
-proc myOpenCached(module: PSym, filename: string, 
-                  rd: PRodReader): PPassContext = 
-  var m = newModule(module, filename)
+proc myOpenCached(module: PSym, rd: PRodReader): PPassContext = 
+  var m = newModule(module)
   readMergeInfo(getCFile(m), m)
   result = m
 
@@ -1149,10 +1151,16 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     # order anyway)
     if generatedHeader != nil: finishModule(generatedHeader)
     while gForwardedProcsCounter > 0: 
-      for i in countup(0, high(gModules)): 
-        finishModule(gModules[i])
+      for i in countup(0, high(gModules)):
+        # some modules (like stdin) may exist only in memory
+        # they won't have a cgen BModule for them and we must
+        # skip them
+        if gModules[i] != nil:
+          finishModule(gModules[i])
     for i in countup(0, high(gModules)): 
-      writeModule(gModules[i], pending=true)
+      # see above
+      if gModules[i] != nil:
+        writeModule(gModules[i], pending=true)
     writeMapping(gMapping)
     if generatedHeader != nil: writeHeader(generatedHeader)
 

@@ -892,13 +892,12 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
     var f = checkModuleName(n.sons[i])
-    if f.len > 0:
-      var fileIndex = f.fileInfoIdx
-      if ContainsOrIncl(c.includedFiles, fileIndex): 
-        LocalError(n.info, errRecursiveDependencyX, f.extractFilename)
+    if f != InvalidFileIDX:
+      if ContainsOrIncl(c.includedFiles, f): 
+        LocalError(n.info, errRecursiveDependencyX, f.toFilename)
       else:
-        addSon(result, semStmt(c, gIncludeFile(f)))
-        Excl(c.includedFiles, fileIndex)
+        addSon(result, semStmt(c, gIncludeFile(c.module, f)))
+        Excl(c.includedFiles, f)
   
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 .. <safeLen(n): setLine(n.sons[i], info)

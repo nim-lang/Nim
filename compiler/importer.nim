@@ -32,12 +32,15 @@ proc getModuleName*(n: PNode): string =
     internalError(n.info, "getModuleName")
     result = ""
 
-proc checkModuleName*(n: PNode): string =
+proc checkModuleName*(n: PNode): int32 =
   # This returns the full canonical path for a given module import
-  var modulename = n.getModuleName
-  result = findModule(modulename)
-  if result.len == 0:
+  let modulename = n.getModuleName
+  let fullPath = findModule(modulename)
+  if fullPath.len == 0:
     LocalError(n.info, errCannotOpenFile, modulename)
+    result = InvalidFileIDX
+  else:
+    result = fullPath.fileInfoIdx
 
 proc rawImportSymbol(c: PContext, s: PSym) = 
   # This does not handle stubs, because otherwise loading on demand would be
@@ -111,8 +114,8 @@ proc evalImport(c: PContext, n: PNode): PNode =
   result = n
   for i in countup(0, sonsLen(n) - 1): 
     var f = checkModuleName(n.sons[i])
-    if f.len > 0:
-      var m = gImportModule(f)
+    if f != InvalidFileIDX:
+      var m = gImportModule(c.module, f)
       if sfDeprecated in m.flags: 
         Message(n.sons[i].info, warnDeprecated, m.name.s) 
       # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -123,8 +126,8 @@ proc evalFrom(c: PContext, n: PNode): PNode =
   result = n
   checkMinSonsLen(n, 2)
   var f = checkModuleName(n.sons[0])
-  if f.len > 0:
-    var m = gImportModule(f)
+  if f != InvalidFileIDX:
+    var m = gImportModule(c.module, f)
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
     for i in countup(1, sonsLen(n) - 1): importSymbol(c, n.sons[i], m)

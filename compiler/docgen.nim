@@ -337,7 +337,7 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
     writeRope(content, getOutFile(filename, outExt), useWarning)
 
 proc CommandDoc*() =
-  var ast = parseFile(addFileExt(gProjectFull, nimExt))
+  var ast = parseFile(gProjectMainIdx)
   if ast == nil: return 
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true

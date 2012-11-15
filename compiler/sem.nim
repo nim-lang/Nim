@@ -158,7 +158,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
 
   if c.evalContext == nil:
-    c.evalContext = newEvalContext(c.module, "", emStatic)
+    c.evalContext = newEvalContext(c.module, emStatic)
     c.evalContext.getType = proc (n: PNode): PNode =
       var e = tryExpr(c, n)
       if e == nil:
@@ -201,8 +201,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
 proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} = 
   result = semExpr(c, n, {})
 
-proc myOpen(module: PSym, filename: string): PPassContext = 
-  var c = newContext(module, filename)
+proc myOpen(module: PSym): PPassContext =
+  var c = newContext(module)
   if c.p != nil: InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExprNoFlags
@@ -222,9 +222,8 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   openScope(c.tab)            # scope for the module's symbols  
   result = c
 
-proc myOpenCached(module: PSym, filename: string, 
-                  rd: PRodReader): PPassContext = 
-  result = myOpen(module, filename)
+proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
+  result = myOpen(module)
   for m in items(rd.methods): methodDef(m, true)
 
 proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 

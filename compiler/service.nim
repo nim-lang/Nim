@@ -18,9 +18,14 @@ import
 # file changes but expect the client to tell us about them, otherwise the
 # repeated CRC calculations may turn out to be too slow.
 
-var 
-  arguments*: string = ""     # the arguments to be passed to the program that
-                              # should be run
+var
+  curCaasCmd* = ""
+  lastCaasCmd* = ""
+    # in caas mode, the list of defines and options will be given at start-up?
+    # it's enough to check that the previous compilation command is the same?
+  arguments* = ""
+    # the arguments to be passed to the program that
+    # should be run
 
 proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
@@ -56,14 +61,18 @@ proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
       rawMessage(errArgsNeedRunOption, [])
 
 proc serve*(action: proc (){.nimcall.}) =
+  template execute(cmd) =
+    curCaasCmd = cmd
+    processCmdLine(passCmd2, cmd)
+    action()
+
   let typ = getConfigVar("server.type")
   case typ
   of "stdin":
     while true:
       var line = stdin.readLine.string
       if line == "quit": quit()
-      processCmdLine(passCmd2, line)
-      action()
+      execute line
   of "tcp", "":
     var server = Socket()
     let p = getConfigVar("server.port")
@@ -75,8 +84,7 @@ proc serve*(action: proc (){.nimcall.}) =
     while true:
       accept(server, stdoutSocket)
       discard stdoutSocket.recvLine(inp)
-      processCmdLine(passCmd2, inp.string)
-      action()
+      execute inp.string
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
   else:

@@ -31,14 +31,13 @@ type
     converters, methods: string
     init: string
     data: string
-    filename: string
     sstack: TSymSeq          # a stack of symbols to process
     tstack: TTypeSeq         # a stack of types to process
     files: TStringSeq
 
   PRodWriter = ref TRodWriter
 
-proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter
+proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter
 proc addModDep(w: PRodWriter, dep: string)
 proc addInclDep(w: PRodWriter, dep: string)
 proc addInterfaceSym(w: PRodWriter, s: PSym)
@@ -63,7 +62,10 @@ proc fileIdx(w: PRodWriter, filename: string): int =
   setlen(w.files, result + 1)
   w.files[result] = filename
 
-proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter = 
+template filename*(w: PRodWriter): string =
+  w.module.filename
+
+proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter = 
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -71,7 +73,6 @@ proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter =
   InitIITable(result.imports.tab)
   result.index.r = ""
   result.imports.r = ""
-  result.filename = modfilename
   result.crc = crc
   result.module = module
   result.defines = getDefines()
@@ -570,9 +571,9 @@ proc process(c: PPassContext, n: PNode): PNode =
   else: 
     nil
 
-proc myOpen(module: PSym, filename: string): PPassContext =
+proc myOpen(module: PSym): PPassContext =
   if module.id < 0: InternalError("rodwrite: module ID not set")
-  var w = newRodWriter(filename, rodread.GetCRC(module.info.toFullPath), module)
+  var w = newRodWriter(module.fileIdx.GetCRC, module)
   rawAddInterfaceSym(w, module)
   result = w
 

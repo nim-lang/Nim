@@ -12,7 +12,7 @@
 import 
   strutils, ast, astalgo, passes, msgs, options, idgen
 
-proc verboseOpen(s: PSym, filename: string): PPassContext = 
+proc verboseOpen(s: PSym): PPassContext =
   #MessageOut('compiling ' + s.name.s);
   result = nil                # we don't need a context
   if gVerbosity > 0: rawMessage(hintProcessing, s.name.s)
@@ -29,7 +29,7 @@ proc verboseProcess(context: PPassContext, n: PNode): PNode =
 const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)
 
 proc cleanUp(c: PPassContext, n: PNode): PNode = 
-  result = n                  
+  result = n
   # we cannot clean up if dead code elimination is activated
   if optDeadCodeElim in gGlobalOptions or n == nil: return 
   case n.kind
