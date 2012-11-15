@@ -589,7 +589,7 @@ proc cgsym(m: BModule, name: string): PRope =
   var sym = magicsys.getCompilerProc(name)
   if sym != nil: 
     case sym.kind
-    of skProc, skMethod, skConverter: genProc(m, sym)
+    of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: InternalError("cgsym: " & name)

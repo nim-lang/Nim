@@ -214,8 +214,14 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   incl(routine.typ.flags, tfCapturesEnv)
   #echo "produced environment: ", param.id, " for ", routine.name.s
 
+proc getHiddenParam(routine: PSym): PSym =
+  let params = routine.ast.sons[paramsPos]
+  let hidden = lastSon(params)
+  assert hidden.kind == nkSym
+  result = hidden.sym
+
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skIterator, skMethod, skConverter} and
+  result = s.kind in {skProc, skMethod, skConverter} and
     s.owner == outerProc and not isGenericRoutine(s)
   #s.typ.callConv == ccClosure
 
@@ -481,7 +487,6 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
                newSymNode(getClosureVar(o, e))))
 
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
-  # XXX I wish I knew where these 'nil' nodes come from: 'array[.. |X]'
   if n == nil: return nil
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
@@ -593,13 +598,16 @@ proc newIterResult(iter: PSym): PSym =
   result.typ = iter.typ.sons[0]
   incl(result.flags, sfUsed)
 
+proc interestingIterVar(s: PSym): bool {.inline.} =
+  result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
+
 proc transfIterBody(c: var TIterContext, n: PNode): PNode =
   # gather used vars for closure generation
   if n == nil: return nil
   case n.kind
   of nkSym:
     var s = n.sym
-    if interestingVar(s) and c.iter.id == s.owner.id:
+    if interestingIterVar(s) and c.iter.id == s.owner.id:
       if not containsOrIncl(c.capturedVars, s.id): addField(c.tup, s)
       result = indirectAccess(newSymNode(c.closureParam), s, n.info)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: nil
@@ -609,19 +617,20 @@ proc transfIterBody(c: var TIterContext, n: PNode): PNode =
 
     var stateAsgnStmt = newNodeI(nkAsgn, n.info)
     stateAsgnStmt.add(indirectAccess(newSymNode(c.closureParam),c.state,n.info))
-    stateAsgnStmt.add(newIntNode(nkIntLit, stateNo))
+    stateAsgnStmt.add(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
 
     var retStmt = newNodeI(nkReturnStmt, n.info)
     if n.sons[0].kind != nkEmpty:
       var a = newNodeI(nkAsgn, n.sons[0].info)
+      var retVal = transfIterBody(c, n.sons[0])
       addSon(a, newSymNode(c.resultSym))
-      addSon(a, n.sons[0])
+      addSon(a, if retVal.isNil: n.sons[0] else: retVal)
       retStmt.add(a)
     else:
       retStmt.add(emptyNode)
     
     var stateLabelStmt = newNodeI(nkState, n.info)
-    stateLabelStmt.add(newIntNode(nkIntLit, stateNo-1))
+    stateLabelStmt.add(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
     
     result = newNodeI(nkStmtList, n.info)
     result.add(stateAsgnStmt)
@@ -676,23 +685,82 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
     result.add(newBody)
   else:
     result.add(body)
-    
-  var state1 = newNodeI(nkState, iter.info)
-  state1.add(newIntNode(nkIntLit, -1))
-  result.add(state1)
 
-proc transformForLoop*(iter: PSym, body: PNode): PNode =
+  var stateAsgnStmt = newNodeI(nkAsgn, iter.info)
+  stateAsgnStmt.add(indirectAccess(newSymNode(c.closureParam),
+                    c.state,iter.info))
+  stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
+  result.add(stateAsgnStmt)
+
+proc liftForLoop*(body: PNode): PNode =
+  # BIG problem ahead: the iterator could be invoked indirectly, but then
+  # we don't know what environment to create here: 
+  # 
+  # iterator count(): int =
+  #   yield 0
+  # 
+  # iterator count2(): int =
+  #   var x = 3
+  #   yield x
+  #   inc x
+  #   yield x
+  # 
+  # proc invoke(iter: iterator(): int) =
+  #   for x in iter(): echo x
+  #
+  # --> When to create the closure? --> for the (count) occurence!
   discard """
-  for i in foo(): nil
+      for i in foo(): ...
 
-Is transformed to:
-  
-  cl = createClosure()
-  while true:
-    let i = foo(cl)
-    if cl.state == -1: break
-"""
-  InternalAssert body.kind == nkForStmt
-  # gather vars in a tuple:
+    Is transformed to:
+      
+      cl = createClosure()
+      while true:
+        let i = foo(cl)
+        nkBreakState(cl.state)
+        ...
+    """
   var L = body.len
+  InternalAssert body.kind == nkForStmt and body[L-2].kind in nkCallKinds
+  var call = body[L-2]
+
+  result = newNodeI(nkStmtList, body.info)
   
+  # static binding?
+  var env: PSym
+  if call[0].kind == nkSym and call[0].sym.kind == skIterator:
+    # createClose()
+    let iter = call[0].sym
+    assert iter.kind == skIterator
+    env = copySym(getHiddenParam(iter))
+
+    var v = newNodeI(nkVarSection, body.info)
+    addVar(v, newSymNode(env))
+    result.add(v)
+    # add 'new' statement:
+    result.add(newCall(getSysSym"internalNew", env))
+  
+  var loopBody = newNodeI(nkStmtList, body.info, 3)
+  var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
+  whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(tyBool))
+  whileLoop.sons[1] = loopBody
+  result.add whileLoop
+  
+  # setup loopBody:
+  # gather vars in a tuple:
+  var v2 = newNodeI(nkLetSection, body.info)
+  var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
+  for i in 0 .. L-3: addSon(vpart, body[i])
+
+  addSon(vpart, ast.emptyNode) # no explicit type
+  if not env.isnil:
+    call.sons[0] = makeClosure(call.sons[0].sym, env, body.info)
+  addSon(vpart, call)
+  addSon(v2, vpart)
+
+  loopBody.sons[0] = v2
+  var bs = newNodeI(nkBreakState, body.info)
+  bs.addSon(indirectAccess(env, 
+      newSym(skField, getIdent(":state"), env, env.info), body.info))
+  loopBody.sons[1] = bs
+  loopBody.sons[2] = body[L-1]
