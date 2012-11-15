@@ -115,7 +115,12 @@ proc genGotoState(p: BProc, n: PNode) =
 proc genBreakState(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
+  if n.sons[0].kind == nkClosure:
+    # XXX this produces quite inefficient code!
+    # the environment is guaranteed to contain the 'state' field at offset 0:
+    lineF(p, cpsStmts, "if ((((NI*) $1.ClEnv)[0]) < 0) break;$n", [rdLoc(a)])
+  else:
+    lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym

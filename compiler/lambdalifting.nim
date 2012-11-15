@@ -693,7 +693,7 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
   result.add(stateAsgnStmt)
 
 proc liftForLoop*(body: PNode): PNode =
-  # BIG problem ahead: the iterator could be invoked indirectly, but then
+  # problem ahead: the iterator could be invoked indirectly, but then
   # we don't know what environment to create here: 
   # 
   # iterator count(): int =
@@ -750,7 +750,10 @@ proc liftForLoop*(body: PNode): PNode =
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0 .. L-3: addSon(vpart, body[i])
+  for i in 0 .. L-3: 
+    assert body[i].kind == nkSym
+    body[i].sym.kind = skLet
+    addSon(vpart, body[i])
 
   addSon(vpart, ast.emptyNode) # no explicit type
   if not env.isnil:
@@ -760,7 +763,10 @@ proc liftForLoop*(body: PNode): PNode =
 
   loopBody.sons[0] = v2
   var bs = newNodeI(nkBreakState, body.info)
-  bs.addSon(indirectAccess(env, 
-      newSym(skField, getIdent(":state"), env, env.info), body.info))
+  if not env.isNil:
+    bs.addSon(indirectAccess(env, 
+      newSym(skField, getIdent":state", env, env.info), body.info))
+  else:
+    bs.addSon(call.sons[0])
   loopBody.sons[1] = bs
   loopBody.sons[2] = body[L-1]
