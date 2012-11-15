@@ -1678,7 +1678,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter:
+    of skProc, skConverter, skIterator:
       genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         InternalError(e.info, "expr: proc not init " & sym.name.s)

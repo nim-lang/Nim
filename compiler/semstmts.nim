@@ -817,11 +817,16 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil:
     LocalError(n.info, errXNeedsReturnType, "iterator")
-  # iterators are either 'inline' or 'closure':
-  if s.typ.callConv != ccInline: 
-    s.typ.callConv = ccClosure
-    # and they always at least use the 'env' for the state field:
+  # iterators are either 'inline' or 'closure'; for backwards compatibility,
+  # we require first class iterators to be marked with 'closure' explicitly
+  # -- at least for 0.9.2.
+  if s.typ.callConv == ccClosure:
     incl(s.typ.flags, tfCapturesEnv)
+  when false:
+    if s.typ.callConv != ccInline: 
+      s.typ.callConv = ccClosure
+      # and they always at least use the 'env' for the state field:
+      incl(s.typ.flags, tfCapturesEnv)
   if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   

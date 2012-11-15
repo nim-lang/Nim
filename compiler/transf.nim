@@ -415,17 +415,23 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
   if n.kind != nkForStmt: InternalError(n.info, "transformFor")
+
+  var length = sonsLen(n)
+  var call = n.sons[length - 2]
+  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or 
+      call.sons[0].typ.callConv == ccClosure or
+      call.sons[0].sym.kind != skIterator:
+    n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).pnode
+    return lambdalifting.liftForLoop(n).ptransNode
+    #InternalError(call.info, "transformFor")
+
   #echo "transforming: ", renderTree(n)
   result = newTransNode(nkStmtList, n.info, 0)
-  var length = sonsLen(n)
   var loopBody = transformLoopBody(c, n.sons[length-1])
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3): 
     addVar(v, copyTree(n.sons[i])) # declare new vars
   add(result, v.ptransNode)
-  var call = n.sons[length - 2]
-  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym:
-    InternalError(call.info, "transformFor")
   
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
@@ -697,6 +703,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     if prc.kind != skMacro:
       # XXX no closures yet for macros:
       result = liftLambdas(prc, result)
+    if prc.kind == skIterator and prc.typ.callConv == ccClosure:
+      result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =

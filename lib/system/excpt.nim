@@ -135,21 +135,27 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     it = f
     i = 0
     total = 0
-  while it != nil and i <= high(tempFrames)-(firstCalls-1):
-    # the (-1) is for a nil entry that marks where the '...' should occur
+  # setup long head:
+  while it != nil and i <= high(tempFrames)-firstCalls:
     tempFrames[i] = it
     inc(i)
     inc(total)
     it = it.prev
+  # go up the stack to count 'total':
   var b = it
   while it != nil:
     inc(total)
     it = it.prev
-  for j in 1..total-i-(firstCalls-1): 
-    if b != nil: b = b.prev
-  if total != i:
+  var skipped = 0
+  if total > len(tempFrames):
+    # skip N
+    skipped = total-i-firstCalls+1
+    for j in 1..skipped:
+      if b != nil: b = b.prev
+    # create '...' entry:
     tempFrames[i] = nil
     inc(i)
+  # setup short tail:
   while b != nil and i <= high(tempFrames):
     tempFrames[i] = b
     inc(i)
@@ -157,7 +163,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
   for j in countdown(i-1, 0):
     if tempFrames[j] == nil: 
       add(s, "(")
-      add(s, $(total-i-1))
+      add(s, $skipped)
       add(s, " calls omitted) ...")
     else:
       var oldLen = s.len

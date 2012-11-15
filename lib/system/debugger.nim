@@ -675,21 +675,27 @@ proc dbgWriteStackTrace(f: PFrame) =
     i = 0
     total = 0
     tempFrames: array [0..127, PFrame]
-  while it != nil and i <= high(tempFrames)-(firstCalls-1):
-    # the (-1) is for a nil entry that marks where the '...' should occur
+  # setup long head:
+  while it != nil and i <= high(tempFrames)-firstCalls:
     tempFrames[i] = it
     inc(i)
     inc(total)
     it = it.prev
+  # go up the stack to count 'total':
   var b = it
   while it != nil:
     inc(total)
     it = it.prev
-  for j in 1..total-i-(firstCalls-1): 
-    if b != nil: b = b.prev
-  if total != i:
+  var skipped = 0
+  if total > len(tempFrames):
+    # skip N
+    skipped = total-i-firstCalls+1
+    for j in 1..skipped:
+      if b != nil: b = b.prev
+    # create '...' entry:
     tempFrames[i] = nil
     inc(i)
+  # setup short tail:
   while b != nil and i <= high(tempFrames):
     tempFrames[i] = b
     inc(i)
@@ -697,7 +703,7 @@ proc dbgWriteStackTrace(f: PFrame) =
   for j in countdown(i-1, 0):
     if tempFrames[j] == nil: 
       write(stdout, "(")
-      write(stdout, (total-i-1))
+      write(stdout, skipped)
       write(stdout, " calls omitted) ...")
     else:
       write(stdout, tempFrames[j].filename)

@@ -106,9 +106,16 @@ proc genGotoState(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
+  p.BeforeRetNeeded = true
+  lineF(p, cpsStmts, "case -1: goto BeforeRet;$n", [])
   for i in 0 .. lastOrd(n.sons[0].typ):
     lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [toRope(i)])
   lineF(p, cpsStmts, "}$n", [])
+
+proc genBreakState(p: BProc, n: PNode) =
+  var a: TLoc
+  initLocExpr(p, n.sons[0], a)
+  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
@@ -713,7 +720,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode): PRope =
       app(result, t.sons[i].strVal)
     of nkSym: 
       var sym = t.sons[i].sym
-      if sym.kind in {skProc, skMethod}: 
+      if sym.kind in {skProc, skIterator, skMethod}: 
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         app(result, rdLoc(a))
@@ -884,5 +891,6 @@ proc genStmts(p: BProc, t: PNode) =
   of nkParForStmt: genParForStmt(p, t)
   of nkState: genState(p, t)
   of nkGotoState: genGotoState(p, t)
+  of nkBreakState: genBreakState(p, t)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
   
