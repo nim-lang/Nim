@@ -406,7 +406,10 @@ proc semFor(c: PContext, n: PNode): PNode =
   openScope(c.tab)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
-  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
+  if call.kind in nkCallKinds and call.sons[0].typ.callConv == ccClosure:
+    # first class iterator:
+    result = semForVars(c, n)
+  elif call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator: 
     if length == 3:
       n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])

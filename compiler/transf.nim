@@ -112,7 +112,9 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result[0] = PTransNode(le)
   result[1] = ri
 
-proc transformSymAux(c: PTransf, n: PNode): PNode = 
+proc transformSymAux(c: PTransf, n: PNode): PNode =
+  if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
+    return liftIterSym(n)
   var b: PNode
   var tc = c.transCon
   if sfBorrow in n.sym.flags: 

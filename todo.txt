@@ -53,7 +53,8 @@ version 0.9.XX
 - JS gen:
   - fix exception handling
 - object branch transitions can't work with the current 'reset'; add a 'reset'
-  with an additional parameter
+  with an additional parameter --> re-evaluate this issue after constructors
+  have been added
 - fix remaining closure bugs:
   - test evals.nim with closures
   - what about macros with closures?
@@ -143,7 +144,8 @@ Version 2 and beyond
   troublesome, but maybe we can come up with a simple heuristic. (All procs
   that `new` shared memory are syncGC() candidates...)
 
-- const ptr/ref
+- const ptr/ref  --> pointless because of aliasing; 
+  much better: 'writes: []' effect
 
 - language change: inheritance should only work with reference types, so that
   the ``type`` field is not needed for objects! --> zero overhead aggregation
