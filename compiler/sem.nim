@@ -17,7 +17,6 @@ import
   semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2
 
-proc semPass*(): TPass
 # implementation
 
 type 
@@ -288,9 +287,5 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   popOwner()
   popProcCon(c)
 
-proc semPass(): TPass =
-  initPass(result)
-  result.open = myOpen
-  result.openCached = myOpenCached
-  result.close = myClose
-  result.process = myProcess
+const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+

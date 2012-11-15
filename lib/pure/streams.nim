@@ -180,8 +180,12 @@ proc readLine*(s: PStream): TaintedString =
     if c == '\c': 
       c = readChar(s)
       break
-    elif c == '\L' or c == '\0': break
-    result.string.add(c)
+    if c == '\b':
+      result.string.setLen(result.len - 1)
+    elif c == '\L' or c == '\0':
+      break
+    else:
+      result.string.add(c)
 
 type
   PStringStream* = ref TStringStream ## a stream that encapsulates a string

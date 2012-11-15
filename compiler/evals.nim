@@ -1440,9 +1440,5 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 proc myProcess(c: PPassContext, n: PNode): PNode = 
   result = eval(PEvalContext(c), n)
 
-proc evalPass*(): TPass = 
-  initPass(result)
-  result.open = myOpen
-  result.close = myProcess
-  result.process = myProcess
+const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 

@@ -16,7 +16,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
-  tables, docgen2, service
+  tables, docgen2, service, magicsys, parser
 
 const
   has_LLVM_Backend = false
@@ -89,22 +89,30 @@ proc `==^`(a, b: string): bool =
   except EOS:
     result = false
 
+proc compileSystemModule =
+  if magicsys.SystemModule == nil:
+    discard CompileModule(options.libpath /"system", {sfSystemModule})
+
 proc CompileProject(projectFile = gProjectFull) =
   let systemFile = options.libpath / "system"
   if projectFile.addFileExt(nimExt) ==^ systemFile.addFileExt(nimExt):
     discard CompileModule(projectFile, {sfMainModule, sfSystemModule})
   else:
-    discard CompileModule(systemFile, {sfSystemModule})
+    compileSystemModule()
     discard CompileModule(projectFile, {sfMainModule})
 
+proc rodPass =
+  if optSymbolFiles in gGlobalOptions:
+    registerPass(rodwritePass)
+
 proc semanticPasses =
-  registerPass(verbosePass())
-  registerPass(sem.semPass())
+  registerPass verbosePass
+  registerPass semPass
 
 proc CommandGenDepend =
   semanticPasses()
-  registerPass(genDependPass())
-  registerPass(cleanupPass())
+  registerPass(genDependPass)
+  registerPass(cleanupPass)
   compileProject()
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
@@ -113,21 +121,21 @@ proc CommandGenDepend =
 proc CommandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
-  registerPass(rodwrite.rodwritePass())
+  rodPass()
   compileProject(mainCommandArg())
 
 proc CommandDoc2 =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
-  registerPass(docgen2Pass())
+  registerPass(docgen2Pass)
   #registerPass(cleanupPass())
   compileProject(mainCommandArg())
   finishDoc2Pass(gProjectFull)
 
 proc CommandCompileToC =
   semanticPasses()
-  registerPass(cgen.cgenPass())
-  registerPass(rodwrite.rodwritePass())
+  registerPass(cgenPass)
+  rodPass()
   #registerPass(cleanupPass())
   compileProject()
   if gCmd != cmdRun:
@@ -137,7 +145,7 @@ when has_LLVM_Backend:
   proc CommandCompileToLLVM =
     semanticPasses()
     registerPass(llvmgen.llvmgenPass())
-    registerPass(rodwrite.rodwritePass())
+    rodPass()
     #registerPass(cleanupPass())
     compileProject()
 
@@ -148,26 +156,49 @@ proc CommandCompileToEcmaScript =
   DefineSymbol("nimrod") # 'nimrod' is always defined
   DefineSymbol("ecmascript")
   semanticPasses()
-  registerPass(ecmasgenPass())
+  registerPass(ecmasgenPass)
   compileProject()
 
-proc CommandInteractive =
-  msgs.gErrorMax = high(int)  # do not stop after first error
+proc InteractivePasses =
   incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   DefineSymbol("nimrodvm")
-  registerPass(verbosePass())
-  registerPass(sem.semPass())
-  registerPass(evals.evalPass()) # load system module:
-  discard CompileModule(options.libpath /"system", {sfSystemModule})
+  registerPass(verbosePass)
+  registerPass(semPass)
+  registerPass(evalPass)
+
+var stdinModule: PSym
+proc makeStdinModule: PSym =
+  if stdinModule == nil:
+    stdinModule = newModule("stdin")
+    stdinModule.id = getID()
+  result = stdinModule
+
+proc CommandInteractive =
+  msgs.gErrorMax = high(int)  # do not stop after first error
+  InteractivePasses()
+  compileSystemModule()
   if commandArgs.len > 0:
     discard CompileModule(mainCommandArg(), {})
   else:
-    var m = newModule("stdin")
-    m.id = getID()
+    var m = makeStdinModule()
     incl(m.flags, sfMainModule)
     processModule(m, "stdin", LLStreamOpenStdIn(), nil)
+
+const evalPasses = [verbosePass, semPass, evalPass]
+
+proc evalNim(nodes: PNode, module: PSym, filename: string) =
+  # we don't want to mess with gPasses here, because in nimrod serve
+  # scenario, it may be set up properly for normal cgenPass() compilation
+  carryPasses(nodes, module, filename, evalPasses)
+
+proc commandEval(exp: string) =
+  if SystemModule == nil:
+    InteractivePasses()
+    compileSystemModule()
+  var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
+  evalNim(echoExp.parseString, makeStdinModule(), "stdin")
 
 proc CommandPretty =
   var module = parseFile(addFileExt(mainCommandArg(), NimExt))
@@ -194,7 +225,7 @@ proc CommandScan =
 proc CommandSuggest =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
-  registerPass(rodwrite.rodwritePass())
+  rodPass()
   compileProject()
 
 proc wantMainModule =
@@ -202,6 +233,8 @@ proc wantMainModule =
     Fatal(gCmdLineInfo, errCommandExpectsFilename)
   
 proc MainCommand =
+  # In "nimrod serve" scenario, each command must reset the registered passes
+  clearPasses()
   appendStr(searchPaths, options.libpath)
   if gProjectFull.len != 0:
     # current path is always looked first for modules
@@ -299,20 +332,20 @@ proc MainCommand =
   of "i": 
     gCmd = cmdInteractive
     CommandInteractive()
+  of "e":
+    # XXX: temporary command for easier testing
+    commandEval(mainCommandArg())
   of "idetools":
     gCmd = cmdIdeTools
-    wantMainModule()
-    CommandSuggest()
+    if gEvalExpr != "":
+      commandEval(gEvalExpr)
+    else:
+      wantMainModule()
+      CommandSuggest()
   of "serve":
     gCmd = cmdIdeTools
-    msgs.gErrorMax = high(int)  # do not stop after first error
-    semanticPasses()
-    # no need to write rod files and would slow down things:
-    #registerPass(rodwrite.rodwritePass())
-    discard CompileModule(options.libpath / "system", {sfSystemModule})
-    service.serve(proc () =
-      let projectFile = mainCommandArg()
-      discard CompileModule(projectFile, {sfMainModule})
-    )
+    msgs.gErrorMax = high(int)  # do not stop after first error     
+    serve(MainCommand)
+    
   else: rawMessage(errInvalidCommandX, command)
 

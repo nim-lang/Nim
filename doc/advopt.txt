@@ -16,6 +16,7 @@ Advanced commands:
     --def                   list all possible definitions at position
     --context               list possible invokation context
     --usages                list all usages of the symbol at position
+    --eval                  evaluates an expression
 
 Advanced options:
   -m, --mainmodule:FILE     set the project main module

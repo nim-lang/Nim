@@ -26,10 +26,7 @@ proc verboseProcess(context: PPassContext, n: PNode): PNode =
     incl(msgs.gNotes, hintProcessing)
     Message(n.info, hintProcessing, $idgen.gBackendId)
   
-proc verbosePass*(): TPass = 
-  initPass(result)
-  result.open = verboseOpen
-  result.process = verboseProcess
+const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)
 
 proc cleanUp(c: PPassContext, n: PNode): PNode = 
   result = n                  
@@ -46,7 +43,5 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
   else: 
     nil
 
-proc cleanupPass*(): TPass = 
-  initPass(result)
-  result.process = cleanUp
-  result.close = cleanUp
+const cleanupPass* = makePass(process = cleanUp, close = cleanUp)
+

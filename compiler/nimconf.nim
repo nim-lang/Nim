@@ -235,15 +235,16 @@ proc LoadConfigs*(cfg: string) =
   if optSkipParentConfigFiles notin gGlobalOptions:
     for dir in parentDirs(pd, fromRoot=true, inclusive=false):
       readConfigFile(dir / cfg)
-    
-  if optSkipProjConfigFile notin gGlobalOptions and gProjectName.len != 0:
+  
+  if optSkipProjConfigFile notin gGlobalOptions:
     readConfigFile(pd / cfg)
     
-    var conffile = changeFileExt(gProjectFull, "cfg")
-    if conffile != pd / cfg and existsFile(conffile):
-      readConfigFile(conffile)
-      rawMessage(warnConfigDeprecated, conffile)
-    
-    # new project wide config file:
-    readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
+    if gProjectName.len != 0:
+      var conffile = changeFileExt(gProjectFull, "cfg")
+      if conffile != pd / cfg and existsFile(conffile):
+        readConfigFile(conffile)
+        rawMessage(warnConfigDeprecated, conffile)
+      
+      # new project wide config file:
+      readConfigFile(changeFileExt(gProjectFull, "nimrod.cfg"))
  
