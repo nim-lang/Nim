@@ -1,9 +1,6 @@
 # Tests the backend code.
 
-import backend
-import db_sqlite
-import strutils
-import times
+import backend, db_sqlite, strutils, times
 
 
 proc showPagedResults(conn: TDbConn; params: TPagedParams) =
@@ -58,7 +55,7 @@ proc dumTest() =
     discard clonedTodo.update(conn)
     assert(clonedTodo.text == todo.text, "Should be equal")
 
-    var params : TPagedParams
+    var params: TPagedParams
     params.initDefaults
     conn.showPagedResults(params)
     conn.deleteTodo(todo.getId)
