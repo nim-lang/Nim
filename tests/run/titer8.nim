@@ -1,6 +1,11 @@
 discard """
   output: '''tada
-ta da'''
+1
+2
+3
+ta da1
+2
+3'''
 """
 # Test first class iterator:
 
@@ -21,13 +26,26 @@ iterator tokenize2(s: string, seps: set[char] = Whitespace): tuple[
         yield (substr(s, i, j-1), false)
     i = j
 
+iterator count3(): int {.closure.} =
+  yield 1
+  yield 2
+  yield 3
+
 for word, isSep in tokenize2("ta da", whiteSpace):
   if not isSep:
     stdout.write(word)
 echo ""
 
 proc inProc() =
+  for c in count3():
+    echo c
+  
   for word, isSep in tokenize2("ta da", whiteSpace):
     stdout.write(word)
 
+  for c in count3():
+    echo c
+
+
 inProc()
+
