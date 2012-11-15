@@ -692,6 +692,28 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
   stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
   result.add(stateAsgnStmt)
 
+# TODO:
+# - nested iterators
+# - arglist as a type
+# - tyIterator everywhere
+# - 'finished' builtin
+# - 'start' builtin (XXX copy Lua's terminology?)
+
+proc liftIterSym*(n: PNode): PNode =
+  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  let iter = n.sym
+  assert iter.kind == skIterator
+  var env = copySym(getHiddenParam(iter))
+  env.kind = skLet
+
+  var v = newNodeI(nkVarSection, n.info)
+  addVar(v, newSymNode(env))
+  result.add(v)
+  # add 'new' statement:
+  result.add(newCall(getSysSym"internalNew", env))
+  result.add makeClosure(iter, env, n.info)
+
 proc liftForLoop*(body: PNode): PNode =
   # problem ahead: the iterator could be invoked indirectly, but then
   # we don't know what environment to create here: 
@@ -763,10 +785,10 @@ proc liftForLoop*(body: PNode): PNode =
 
   loopBody.sons[0] = v2
   var bs = newNodeI(nkBreakState, body.info)
-  if not env.isNil:
-    bs.addSon(indirectAccess(env, 
-      newSym(skField, getIdent":state", env, env.info), body.info))
-  else:
-    bs.addSon(call.sons[0])
+  #if not env.isNil:
+  #  bs.addSon(indirectAccess(env, 
+  #    newSym(skField, getIdent":state", env, env.info), body.info))
+  #else:
+  bs.addSon(call.sons[0])
   loopBody.sons[1] = bs
   loopBody.sons[2] = body[L-1]

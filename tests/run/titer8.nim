@@ -3,9 +3,18 @@ discard """
 1
 2
 3
-ta da1
-2
-3'''
+ta da1 1
+1 2
+1 3
+2 1
+2 2
+2 3
+3 1
+3 2
+3 3
+0
+1
+2'''
 """
 # Test first class iterator:
 
@@ -44,8 +53,27 @@ proc inProc() =
     stdout.write(word)
 
   for c in count3():
-    echo c
+    for d in count3():
+      echo c, " ", d
 
 
 inProc()
 
+iterator count0(): int {.closure.} =
+  # note: doesn't require anything in its closure (except 'state')
+  yield 0
+ 
+iterator count2(): int {.closure.} =
+  # note: requires 'x' in its closure
+  var x = 1
+  yield x
+  inc x
+  yield x
+
+# a first class iterator has the type 'proc {.closure.}', but maybe
+# it shouldn't:
+proc invoke(iter: proc(): int {.closure.}) =
+  for x in iter(): echo x
+
+invoke(count0)
+invoke(count2)
