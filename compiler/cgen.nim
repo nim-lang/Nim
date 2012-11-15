@@ -19,7 +19,6 @@ import
 when options.hasTinyCBackend:
   import tccgen
 
-proc cgenPass*(): TPass
 # implementation
 
 var
@@ -1157,10 +1156,5 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     writeMapping(gMapping)
     if generatedHeader != nil: writeHeader(generatedHeader)
 
-proc cgenPass(): TPass = 
-  initPass(result)
-  result.open = myOpen
-  result.openCached = myOpenCached
-  result.process = myProcess
-  result.close = myClose
+const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
 

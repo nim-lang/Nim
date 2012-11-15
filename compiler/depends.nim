@@ -12,7 +12,6 @@
 import 
   os, options, ast, astalgo, msgs, ropes, idents, passes, importer
 
-proc genDependPass*(): TPass
 proc generateDot*(project: string)
 
 type 
@@ -55,7 +54,5 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   g.filename = filename
   result = g
 
-proc gendependPass(): TPass = 
-  initPass(result)
-  result.open = myOpen
-  result.process = addDotDependency
+const gendependPass* = makePass(open = myOpen, process = addDotDependency)
+

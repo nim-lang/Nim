@@ -18,21 +18,34 @@ import
 type  
   TPassContext* = object of TObject # the pass's context
     fromCache*: bool  # true if created by "openCached"
-    
+   
   PPassContext* = ref TPassContext
-  TPass* = tuple[
-    open: proc (module: PSym, filename: string): PPassContext {.nimcall.},
-    openCached: proc (module: PSym, filename: string,
-                     rd: PRodReader): PPassContext {.nimcall.},
-    close: proc (p: PPassContext, n: PNode): PNode {.nimcall.},
-    process: proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}]
-    
+
+  TPassOpen* = proc (module: PSym, filename: string): PPassContext {.nimcall.}
+  TPassOpenCached* = proc (module: PSym, filename: string,
+                           rd: PRodReader): PPassContext {.nimcall.}
+  TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
+
+  TPass* = tuple[open: TPassOpen, openCached: TPassOpenCached,
+                 process: TPassProcess, close: TPassClose]
+
+  TPassData* = tuple[input: PNode, closeOutput: Pnode]
+  TPasses* = openarray[TPass]
+
 # a pass is a tuple of procedure vars ``TPass.close`` may produce additional 
 # nodes. These are passed to the other close procedures. 
 # This mechanism used to be used for the instantiation of generics.
 
-proc registerPass*(p: TPass)
-proc initPass*(p: var TPass)
+proc makePass*(open: TPassOpen = nil,
+               openCached: TPassOpenCached = nil,
+               process: TPassProcess = nil,
+               close: TPassClose = nil): TPass =
+  result.open = open
+  result.openCached = openCached
+  result.close = close
+  result.process = process
+
   # This implements a memory preserving scheme: Top level statements are
   # processed in a pipeline. The compiler never looks at a whole module
   # any longer. However, this is simple to change, as new passes may perform
@@ -74,11 +87,27 @@ type
 
 var 
   gPasses: array[0..maxPasses - 1, TPass]
-  gPassesLen: int
+  gPassesLen*: int
 
-proc registerPass(p: TPass) = 
+proc clearPasses* =
+  gPassesLen = 0
+
+proc registerPass*(p: TPass) = 
   gPasses[gPassesLen] = p
   inc(gPassesLen)
+
+proc carryPass*(p: TPass, module: PSym, filename: string,
+                m: TPassData): TPassData =
+  var c = p.open(module, filename)
+  result.input = p.process(c, m.input)
+  result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
+                       else: m.closeOutput
+
+proc carryPasses*(nodes: PNode, module: PSym, file: string, passes: TPasses) =
+  var passdata: TPassData
+  passdata.input = nodes
+  for pass in passes:
+    passdata = carryPass(pass, module, file, passdata)
 
 proc openPasses(a: var TPassContextArray, module: PSym, filename: string) = 
   for i in countup(0, gPassesLen - 1): 
@@ -175,8 +204,3 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
 
-proc initPass(p: var TPass) = 
-  p.open = nil
-  p.openCached = nil
-  p.close = nil
-  p.process = nil

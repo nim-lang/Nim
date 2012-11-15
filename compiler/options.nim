@@ -94,8 +94,8 @@ var
   gCmd*: TCommands = cmdNone  # the command
   gVerbosity*: int            # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
-
   gWholeProject*: bool # for 'doc2': output any dependency
+  gEvalExpr*: string          # expression for idetools --eval
   
 const 
   genSubDir* = "nimcache"

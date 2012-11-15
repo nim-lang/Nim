@@ -56,17 +56,30 @@ proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
       rawMessage(errArgsNeedRunOption, [])
 
 proc serve*(action: proc (){.nimcall.}) =
-  var server = Socket()
-  let p = getConfigVar("server.port")
-  let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
-  server.bindAddr(port, getConfigVar("server.address"))
-  var inp = "".TaintedString
-  server.listen()
-  new(stdoutSocket)
-  while true:
-    accept(server, stdoutSocket)
-    discard stdoutSocket.recvLine(inp)
-    processCmdLine(passCmd2, inp.string)
-    action()
-    stdoutSocket.send("\c\L")
-    stdoutSocket.close()
+  let typ = getConfigVar("server.type")
+  case typ
+  of "stdin":
+    while true:
+      var line = stdin.readLine.string
+      if line == "quit": quit()
+      processCmdLine(passCmd2, line)
+      action()
+  of "tcp", "":
+    var server = Socket()
+    let p = getConfigVar("server.port")
+    let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
+    server.bindAddr(port, getConfigVar("server.address"))
+    var inp = "".TaintedString
+    server.listen()
+    new(stdoutSocket)
+    while true:
+      accept(server, stdoutSocket)
+      discard stdoutSocket.recvLine(inp)
+      processCmdLine(passCmd2, inp.string)
+      action()
+      stdoutSocket.send("\c\L")
+      stdoutSocket.close()
+  else:
+    echo "Invalid server.type:", typ
+    quit 1
+

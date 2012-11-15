@@ -458,6 +458,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "def":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optDef)
+  of "eval":
+    expectArg(switch, arg, pass, info)
+    gEvalExpr = arg
   of "context":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optContext)

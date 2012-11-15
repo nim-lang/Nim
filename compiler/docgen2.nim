@@ -45,11 +45,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   g.doc = d
   result = g
 
-proc docgen2Pass*(): TPass = 
-  initPass(result)
-  result.open = myOpen
-  result.process = processNode
-  result.close = close
+const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
 
 proc finishDoc2Pass*(project: string) = 
   nil

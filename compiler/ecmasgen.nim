@@ -17,7 +17,6 @@ import
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth
 
-proc ecmasgenPass*(): TPass
 # implementation
 
 type 
@@ -1620,9 +1619,4 @@ proc myOpenCached(s: PSym, filename: string, rd: PRodReader): PPassContext =
 proc myOpen(s: PSym, filename: string): PPassContext = 
   result = newModule(s, filename)
 
-proc ecmasgenPass(): TPass = 
-  InitPass(result)
-  result.open = myOpen
-  result.close = myClose
-  result.openCached = myOpenCached
-  result.process = myProcess
+const ecmasgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

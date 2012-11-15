@@ -15,7 +15,6 @@ import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
   condsyms, ropes, idents, crc, rodread, passes, importer, idgen, rodutils
 
-proc rodwritePass*(): TPass
 # implementation
 
 type 
@@ -583,10 +582,5 @@ proc myClose(c: PPassContext, n: PNode): PNode =
   writeRod(w)
   idgen.saveMaxIds(options.gProjectPath / options.gProjectName)
 
-proc rodwritePass(): TPass = 
-  initPass(result)
-  if optSymbolFiles in gGlobalOptions: 
-    result.open = myOpen
-    result.close = myClose
-    result.process = process
+const rodwritePass* = makePass(open = myOpen, close = myClose, process = process)
 

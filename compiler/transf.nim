@@ -696,12 +696,8 @@ when false:
     result = openTransf(module, filename)
     for m in items(rd.methods): methodDef(m, true)
 
-  proc transfPass(): TPass = 
-    initPass(result)
-    result.open = openTransf
-    result.openCached = openTransfCached
-    result.process = processTransf
-    result.close = processTransf # we need to process generics too!
+  const transfPass* = makePass(openTransf, openTransfCached,
+    processTransf, processTransf) # we need to process generics too!
   
 proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
