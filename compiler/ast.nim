@@ -824,6 +824,14 @@ proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
   s.typ = t
   result = s
 
+template fileIdx*(c: PSym): int32 =
+  # XXX: this should be used only on module symbols
+  c.position.int32
+
+template filename*(c: PSym): string =
+  # XXX: this should be used only on module symbols
+  c.position.int32.toFileName
+
 proc appendToModule*(m: PSym, n: PNode) =
   ## The compiler will use this internally to add nodes that will be
   ## appended to the module after the sem pass

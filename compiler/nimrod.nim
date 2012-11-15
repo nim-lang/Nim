@@ -14,7 +14,7 @@ when defined(gcc) and defined(windows):
     {.link: "icons/nimrod_icon.o".}
 
 import 
-  times, commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
+  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
   extccomp, strutils, os, platform, main, parseopt, service
 
 when hasTinyCBackend:
@@ -32,7 +32,6 @@ proc prependCurDir(f: string): string =
     result = f
 
 proc HandleCmdLine() =
-  var start = epochTime()
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
@@ -60,10 +59,6 @@ proc HandleCmdLine() =
       when hasTinyCBackend:
         if gCmd == cmdRun:
           tccgen.run()
-      if gCmd notin {cmdInterpret, cmdRun}:
-        rawMessage(hintSuccessX, [$gLinesCompiled,
-                   formatFloat(epochTime() - start, ffDecimal, 3),
-                   formatSize(getTotalMem())])
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToEcmaScript:
           var ex = quoteIfContainsWhite(

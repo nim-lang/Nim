@@ -17,14 +17,13 @@ type
   TGen = object of TPassContext
     doc: PDoc
     module: PSym
-    filename: string
   PGen = ref TGen
 
 proc close(p: PPassContext, n: PNode): PNode =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
   if gWholeProject or sfMainModule in g.module.flags:
-    writeOutput(g.doc, g.filename, HtmlExt, useWarning)
+    writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
     try:
       generateIndex(g.doc)
     except EIO:
@@ -35,12 +34,11 @@ proc processNode(c: PPassContext, n: PNode): PNode =
   var g = PGen(c)
   generateDoc(g.doc, n)
 
-proc myOpen(module: PSym, filename: string): PPassContext = 
+proc myOpen(module: PSym): PPassContext = 
   var g: PGen
   new(g)
   g.module = module
-  g.filename = filename
-  var d = newDocumentor(filename, options.gConfigVars)
+  var d = newDocumentor(module.filename, options.gConfigVars)
   d.hasToc = true
   g.doc = d
   result = g

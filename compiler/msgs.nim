@@ -416,9 +416,13 @@ type
   ERecoverableError* = object of EInvalidValue
   ESuggestDone* = object of EBase
 
+const
+  InvalidFileIDX* = int32(-1)
+
 var
   filenameToIndexTbl = initTable[string, int32]()
-  fileInfos: seq[TFileInfo] = @[]
+  fileInfos*: seq[TFileInfo] = @[]
+  SystemFileIdx*: int32
 
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.fullPath = fullPath

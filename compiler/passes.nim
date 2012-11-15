@@ -21,9 +21,9 @@ type
    
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (module: PSym, filename: string): PPassContext {.nimcall.}
-  TPassOpenCached* = proc (module: PSym, filename: string,
-                           rd: PRodReader): PPassContext {.nimcall.}
+  TPassOpen* = proc (module: PSym): PPassContext {.nimcall.}
+  TPassOpenCached* =
+    proc (module: PSym, rd: PRodReader): PPassContext {.nimcall.}
   TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
@@ -50,13 +50,12 @@ proc makePass*(open: TPassOpen = nil,
   # processed in a pipeline. The compiler never looks at a whole module
   # any longer. However, this is simple to change, as new passes may perform
   # whole program optimizations. For now, we avoid it to save a lot of memory.
-proc processModule*(module: PSym, filename: string, stream: PLLStream, 
-                    rd: PRodReader)
+proc processModule*(module: PSym, stream: PLLStream, rd: PRodReader)
 
 # the semantic checker needs these:
 var 
-  gImportModule*: proc (filename: string): PSym {.nimcall.}
-  gIncludeFile*: proc (filename: string): PNode {.nimcall.}
+  gImportModule*: proc (m: PSym, fileIdx: int32): PSym {.nimcall.}
+  gIncludeFile*: proc (m: PSym, fileIdx: int32): PNode {.nimcall.}
 
 # implementation
 
@@ -96,30 +95,28 @@ proc registerPass*(p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 
-proc carryPass*(p: TPass, module: PSym, filename: string,
-                m: TPassData): TPassData =
-  var c = p.open(module, filename)
+proc carryPass*(p: TPass, module: PSym, m: TPassData): TPassData =
+  var c = p.open(module)
   result.input = p.process(c, m.input)
   result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
                        else: m.closeOutput
 
-proc carryPasses*(nodes: PNode, module: PSym, file: string, passes: TPasses) =
+proc carryPasses*(nodes: PNode, module: PSym, passes: TPasses) =
   var passdata: TPassData
   passdata.input = nodes
   for pass in passes:
-    passdata = carryPass(pass, module, file, passdata)
+    passdata = carryPass(pass, module, passdata)
 
-proc openPasses(a: var TPassContextArray, module: PSym, filename: string) = 
+proc openPasses(a: var TPassContextArray, module: PSym) =
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].open): 
-      a[i] = gPasses[i].open(module, filename)
+      a[i] = gPasses[i].open(module)
     else: a[i] = nil
   
-proc openPassesCached(a: var TPassContextArray, module: PSym, filename: string, 
-                      rd: PRodReader) = 
+proc openPassesCached(a: var TPassContextArray, module: PSym, rd: PRodReader) =
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].openCached): 
-      a[i] = gPasses[i].openCached(module, filename, rd)
+      a[i] = gPasses[i].openCached(module, rd)
       if a[i] != nil: 
         a[i].fromCache = true
     else:
@@ -162,23 +159,24 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     importStmt.addSon str
     if not processTopLevelStmt(importStmt, a): break
   
-proc processModule(module: PSym, filename: string, stream: PLLStream, 
-                   rd: PRodReader) = 
+proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
   var 
     p: TParsers
     a: TPassContextArray
     s: PLLStream
+    fileIdx = module.fileIdx
   if rd == nil: 
-    openPasses(a, module, filename)
+    openPasses(a, module)
     if stream == nil: 
+      let filename = fileIdx.toFilename
       s = LLStreamOpen(filename, fmRead)
       if s == nil: 
         rawMessage(errCannotOpenFile, filename)
-        return 
+        return
     else: 
       s = stream
     while true: 
-      openParsers(p, filename, s)
+      openParsers(p, fileIdx, s)
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the 
@@ -199,7 +197,7 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
     # id synchronization point for more consistent code generation:
     IDsynchronizationPoint(1000)
   else:
-    openPassesCached(a, module, filename, rd)
+    openPassesCached(a, module, rd)
     var n = loadInitSection(rd)
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)

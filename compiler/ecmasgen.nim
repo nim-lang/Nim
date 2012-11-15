@@ -1549,9 +1549,8 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   
 var globals: PGlobals
 
-proc newModule(module: PSym, filename: string): BModule = 
+proc newModule(module: PSym): BModule = 
   new(result)
-  result.filename = filename
   result.module = module
   if globals == nil: globals = newGlobals()
   
@@ -1612,11 +1611,11 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     var outfile = changeFileExt(completeCFilePath(m.filename), "js")
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 
-proc myOpenCached(s: PSym, filename: string, rd: PRodReader): PPassContext = 
+proc myOpenCached(s: PSym, rd: PRodReader): PPassContext = 
   InternalError("symbol files are not possible with the Ecmas code generator")
   result = nil
 
-proc myOpen(s: PSym, filename: string): PPassContext = 
-  result = newModule(s, filename)
+proc myOpen(s: PSym): PPassContext = 
+  result = newModule(s)
 
 const ecmasgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

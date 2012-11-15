@@ -81,7 +81,6 @@ type
                               filter: TSymKinds): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
     includedFiles*: TIntSet    # used to detect recursive include files
-    filename*: string          # the module's filename
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     UnknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
@@ -90,12 +89,16 @@ type
 var
   gGenericsCache: PGenericsCache # save for modularity
 
+proc filename*(c: PContext): string =
+  # the module's filename
+  return c.module.filename
+
 proc newGenericsCache*(): PGenericsCache =
   new(result)
   initIdTable(result.InstTypes)
   result.generics = @[]
 
-proc newContext*(module: PSym, nimfile: string): PContext
+proc newContext*(module: PSym): PContext
 
 proc lastOptionEntry*(c: PContext): POptionEntry
 proc newOptionEntry*(): POptionEntry
@@ -152,7 +155,7 @@ proc newOptionEntry(): POptionEntry =
   result.dynlib = nil
   result.notes = gNotes
 
-proc newContext(module: PSym, nimfile: string): PContext = 
+proc newContext(module: PSym): PContext =
   new(result)
   InitSymTab(result.tab)
   result.AmbiguousSymbols = initIntset()
@@ -164,7 +167,6 @@ proc newContext(module: PSym, nimfile: string): PContext =
   result.threadEntries = @[]
   result.converters = @[]
   result.patterns = @[]
-  result.filename = nimfile
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
   if optSymbolFiles notin gGlobalOptions:

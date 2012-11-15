@@ -30,8 +30,8 @@ type
     parser*: TParser
 
 
-proc ParseFile*(filename: string): PNode{.procvar.}
-proc openParsers*(p: var TParsers, filename: string, inputstream: PLLStream)
+proc parseFile*(fileIdx: int32): PNode{.procvar.}
+proc openParsers*(p: var TParsers, fileIdx: int32, inputstream: PLLStream)
 proc closeParsers*(p: var TParsers)
 proc parseAll*(p: var TParsers): PNode
 proc parseTopLevelStmt*(p: var TParsers): PNode
@@ -40,14 +40,15 @@ proc parseTopLevelStmt*(p: var TParsers): PNode
 
 # implementation
 
-proc ParseFile(filename: string): PNode = 
+proc ParseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
     f: tfile
-  if not open(f, filename): 
+  let filename = fileIdx.toFilename
+  if not open(f, filename):
     rawMessage(errCannotOpenFile, filename)
     return 
-  OpenParsers(p, filename, LLStreamOpen(f))
+  OpenParsers(p, fileIdx, LLStreamOpen(f))
   result = ParseAll(p)
   CloseParsers(p)
 
@@ -160,15 +161,16 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
   else: 
     result = applyFilter(p, n, filename, result)
   
-proc openParsers(p: var TParsers, filename: string, inputstream: PLLStream) = 
+proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) = 
   var s: PLLStream
   p.skin = skinStandard
+  let filename = fileIdx.toFilename
   var pipe = parsePipe(filename, inputStream)
   if pipe != nil: s = evalPipe(p, pipe, filename, inputStream)
   else: s = inputStream
   case p.skin
-  of skinStandard, skinBraces, skinEndX: 
-    parser.openParser(p.parser, filename, s)
+  of skinStandard, skinBraces, skinEndX:
+    parser.openParser(p.parser, fileIdx, s)
   
 proc closeParsers(p: var TParsers) = 
   parser.closeParser(p.parser)
