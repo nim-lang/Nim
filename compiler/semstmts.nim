@@ -818,7 +818,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skIterator, iteratorPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil:
+  if t.sons[0] == nil and s.typ.callConv != ccClosure:
     LocalError(n.info, errXNeedsReturnType, "iterator")
   # iterators are either 'inline' or 'closure'; for backwards compatibility,
   # we require first class iterators to be marked with 'closure' explicitly

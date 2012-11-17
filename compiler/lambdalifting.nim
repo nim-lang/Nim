@@ -692,13 +692,6 @@ proc liftIterator*(iter: PSym, body: PNode): PNode =
   stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
   result.add(stateAsgnStmt)
 
-# TODO:
-# - nested iterators
-# - arglist as a type
-# - tyIterator everywhere
-# - 'finished' builtin
-# - 'start' builtin (XXX copy Lua's terminology?)
-
 proc liftIterSym*(n: PNode): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env)) 
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)

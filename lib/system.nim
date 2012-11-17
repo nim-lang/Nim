@@ -2096,6 +2096,12 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     `result` = `x`.ClEnv;
     """.}
 
+  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+    ## can be used to determine if a first class iterator has finished.
+    {.emit: """
+    `result` = *((NI*) `x`.ClEnv) < 0;
+    """.}
+
 elif defined(ecmaScript) or defined(NimrodVM):
   # Stubs:
   proc GC_disable() = nil
