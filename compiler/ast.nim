@@ -344,7 +344,7 @@ type
     nfSem       # node has been checked for semantics
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 15 for efficiency reasons (now: 14)
+  TTypeFlag* = enum   # keep below 17 for efficiency reasons (now: 16)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?

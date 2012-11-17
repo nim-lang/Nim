@@ -1,7 +1,11 @@
 version 0.9.2
 =============
 
-- test&finish first class iterators
+- test&finish first class iterators:
+  * nested iterators
+  * arglist as a type?
+  * tyIterator?
+
 - fix closure bug finally
 - overloading based on ASTs: 'constraint' should not be in PType but for the
   parameter *symbol*

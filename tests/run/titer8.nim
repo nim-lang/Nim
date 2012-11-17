@@ -14,7 +14,14 @@ ta da1 1
 3 3
 0
 1
-2'''
+2
+a1: A
+a2: A
+a1: B
+a2: B
+a1: C
+a2: C
+a1: D'''
 """
 # Test first class iterator:
 
@@ -77,3 +84,34 @@ proc invoke(iter: proc(): int {.closure.}) =
 
 invoke(count0)
 invoke(count2)
+
+
+# simple tasking:
+type
+  TTask = proc (ticker: int) {.closure.}
+
+iterator a1(ticker: int) {.closure.} =
+  echo "a1: A"
+  yield
+  echo "a1: B"
+  yield
+  echo "a1: C"
+  yield
+  echo "a1: D"
+
+iterator a2(ticker: int) {.closure.} =
+  echo "a2: A"
+  yield
+  echo "a2: B"
+  yield
+  echo "a2: C"
+
+proc runTasks(t: varargs[TTask]) =
+  var ticker = 0
+  while true:
+    let x = t[ticker mod t.len]
+    if finished(x): break
+    x(ticker)
+    inc ticker
+
+runTasks(a1, a2)

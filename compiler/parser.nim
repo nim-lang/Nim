@@ -1473,7 +1473,7 @@ proc simpleStmt(p: var TParser): PNode =
   case p.tok.tokType
   of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
   of tkRaise: result = parseReturnOrRaise(p, nkRaiseStmt)
-  of tkYield: result = parseYieldOrDiscard(p, nkYieldStmt)
+  of tkYield: result = parseReturnOrRaise(p, nkYieldStmt)
   of tkDiscard: result = parseReturnOrRaise(p, nkDiscardStmt)
   of tkBreak: result = parseBreakOrContinue(p, nkBreakStmt)
   of tkContinue: result = parseBreakOrContinue(p, nkContinueStmt)

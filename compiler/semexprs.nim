@@ -1173,6 +1173,8 @@ proc SemYield(c: PContext, n: PNode): PNode =
       SemYieldVarResult(c, n, restype)
     else:
       localError(n.info, errCannotReturnExpr)
+  elif c.p.owner.typ.sons[0] != nil:
+    localError(n.info, errGenerated, "yield statement must yield a value")
 
 proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
   if onlyCurrentScope: 
