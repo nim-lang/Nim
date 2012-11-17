@@ -255,9 +255,16 @@ proc processLine(irc: var TIRC, line: string): TIRCEvent =
       irc.lastPong = epochTime()
     if result.cmd == MNumeric:
       if result.numeric == "001":
+        # Check the nickname.
+        if irc.nick != result.params[0]:
+          assert ' ' notin result.params[0]
+          irc.nick = result.params[0]
         for chan in items(irc.channelsToJoin):
           irc.join(chan)
-
+    if result.cmd == MNick:
+      if result.nick == irc.nick:
+        irc.nick = result.params[0]
+    
 proc processOther(irc: var TIRC, ev: var TIRCEvent): bool =
   result = false
   if epochTime() - irc.lastPing >= 20.0:
@@ -312,6 +319,10 @@ proc getLag*(irc: var TIRC): float =
 proc isConnected*(irc: var TIRC): bool =
   ## Returns whether this IRC client is connected to an IRC server.
   return irc.status == SockConnected
+
+proc getNick*(irc: var TIRC): string =
+  ## Returns the current nickname of the client.
+  return irc.nick
 
 # -- Asyncio dispatcher
 
