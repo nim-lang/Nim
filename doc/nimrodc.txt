@@ -37,6 +37,38 @@ Advanced command line switches are:
 .. include:: advopt.txt
 
 
+
+List of warnings
+----------------
+
+Each warning can be activated individually with ``--warning[NAME]:on|off`` or
+in a ``push`` pragma. 
+
+==========================       ============================================
+Name                             Description
+==========================       ============================================
+CannotOpenFile                   Some file not essential for the compiler's
+                                 working could not be opened.
+OctalEscape                      The code contains an unsupported octal 
+                                 sequence.
+Deprecated                       The code uses a deprecated symbol.
+ConfigDeprecated                 The project makes use of a deprecated config
+                                 file.
+SmallLshouldNotBeUsed            The letter 'l' should not be used as an 
+                                 identifier.
+AnalysisLoophole                 The thread analysis was incomplete due to
+                                 an indirect call.
+DifferentHeaps                   The code mixes different local heaps in a
+                                 very dangerous way.
+WriteToForeignHeap               The code contains a threading error. 
+EachIdentIsTuple                 The code contains a confusing ``var`` 
+                                 declaration.
+ShadowIdent                      A local variable shadows another local 
+                                 variable of an outer scope.
+User                             Some user defined warning.
+==========================       ============================================
+
+
 Configuration files
 -------------------
 

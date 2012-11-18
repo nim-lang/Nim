@@ -34,8 +34,8 @@ type
   TDbConn* = TMongo    ## a database connection; alias for ``TMongo``
 
   FDb* = object of FIO ## effect that denotes a database operation
-  FReadDb* = object of FReadIO   ## effect that denotes a read operation
-  FWriteDb* = object of FWriteIO ## effect that denotes a write operation
+  FReadDb* = object of FDB   ## effect that denotes a read operation
+  FWriteDb* = object of FDB  ## effect that denotes a write operation
 
 proc dbError*(db: TDbConn, msg: string) {.noreturn.} = 
   ## raises an EDb exception with message `msg`.
