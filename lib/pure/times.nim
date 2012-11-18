@@ -131,7 +131,7 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-proc getTime*(): TTime ## gets the current calendar time
+proc getTime*(): TTime {.tags: [FTime].} ## gets the current calendar time
 proc getLocalTime*(t: TTime): TTimeInfo
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
@@ -164,14 +164,14 @@ proc `<=` * (a, b: TTime): bool {.
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
-proc getTzname*(): tuple[nonDST, DST: string]
+proc getTzname*(): tuple[nonDST, DST: string] {.tags: [FTime].}
   ## returns the local timezone; ``nonDST`` is the name of the local non-DST
   ## timezone, ``DST`` is the name of the local DST timezone.
 
-proc getTimezone*(): int
+proc getTimezone*(): int {.tags: [FTime].}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc getStartMilsecs*(): int {.deprecated.}
+proc getStartMilsecs*(): int {.deprecated, tags: [FTime].}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
@@ -247,12 +247,12 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
     result = getLocalTime(TTime(float(t) - secs))
 
 when not defined(ECMAScript):  
-  proc epochTime*(): float {.rtl, extern: "nt$1".}
+  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
     ## because sub-second resolution is likely to be supported (depending 
     ## on the hardware/OS).
 
-  proc cpuTime*(): float {.rtl, extern: "nt$1".}
+  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
     ## gets time spent that the CPU spent to run the current process in
     ## seconds. This may be more useful for benchmarking than ``epochTime``.
     ## However, it may measure the real time instead (depending on the OS).
@@ -478,13 +478,13 @@ else:
     return int(getTime() - startMilsecs)
 
 
-proc getDateStr*(): string {.rtl, extern: "nt$1".} =
+proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
     '-' & intToStr(ti.monthDay, 2)
 
-proc getClockStr*(): string {.rtl, extern: "nt$1".} =
+proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [FTime].} =
   ## gets the current clock time as a string of the format ``HH:MM:SS``.
   var ti = getLocalTime(getTime())
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &

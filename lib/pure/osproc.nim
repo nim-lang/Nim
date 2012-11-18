@@ -58,7 +58,7 @@ proc startProcess*(command: string,
                    args: openarray[string] = [],
                    env: PStringTable = nil, 
                    options: set[TProcessOption] = {poStdErrToStdOut}): 
-              PProcess {.rtl, extern: "nosp$1", tags: [FExecIO].}
+              PProcess {.rtl, extern: "nosp$1", tags: [FExecIO, FReadEnv].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -74,7 +74,8 @@ proc startProcess*(command: string,
   ## but ``EOS`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[TProcessOption] = {
-               poStdErrToStdOut, poUseShell}): PProcess {.tags: [FExecIO].} =
+               poStdErrToStdOut, poUseShell}): PProcess {.
+               tags: [FExecIO, FReadEnv].} =
   ## a simpler version of `startProcess` that parses the command line into
   ## program and arguments and then calls `startProcess` with the empty string
   ## for `workingDir` and the nil string table for `env`.
@@ -159,7 +160,7 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors()): int {.rtl, extern: "nosp$1", 
-                    tags: [FExecIO].} =
+                    tags: [FExecIO, FTime, FReadEnv].} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
