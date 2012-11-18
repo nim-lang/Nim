@@ -6,7 +6,7 @@ import db_sqlite, parseutils, strutils, times
 
 
 type
-  TTodo* = object of TObject
+  TTodo* = object
     ## A todo object holding the information serialized to the database.
     id: int64                 ## Unique identifier of the object in the
                               ## database, use the getId() accessor to read it.
@@ -17,7 +17,7 @@ type
                               ## outside of this module, use the
                               ## getModificationDate accessor.
 
-  TPagedParams* = object of TObject
+  TPagedParams* = object
     ## Contains parameters for a query, initialize default values with
     ## initDefaults().
     pageSize*: int64          ## Lines per returned query page, -1 for
