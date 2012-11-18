@@ -20,8 +20,8 @@ type
   TSqlQuery* = distinct string ## an SQL query string
 
   FDb* = object of FIO ## effect that denotes a database operation
-  FReadDb* = object of FReadIO   ## effect that denotes a read operation
-  FWriteDb* = object of FWriteIO ## effect that denotes a write operation
+  FReadDb* = object of FDb   ## effect that denotes a read operation
+  FWriteDb* = object of FDb  ## effect that denotes a write operation
 
 proc dbError(db: TDbConn) {.noreturn.} = 
   ## raises an EDb exception.
