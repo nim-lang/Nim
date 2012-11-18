@@ -104,7 +104,7 @@ type
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
-    warnEachIdentIsTuple, warnUser,
+    warnEachIdentIsTuple, warnShadowIdent, warnUser,
     hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
@@ -351,6 +351,7 @@ const
     warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
     warnImplicitClosure: "implicit closure convention: '$1' [ImplicitClosure]",
     warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
+    warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
@@ -370,14 +371,14 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..18, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..19, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
-    "ImplicitClosure", "EachIdentIsTuple", "User"]
+    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
@@ -464,7 +465,7 @@ proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
 var
-  gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)}
+  gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent}
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0

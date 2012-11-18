@@ -35,12 +35,13 @@ var
   c_stderr {.importc: "stderr", noDecl.}: C_TextFileStar
 
 # constants faked as variables:
-var 
-  SIGINT {.importc: "SIGINT", nodecl.}: cint
-  SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
-  SIGABRT {.importc: "SIGABRT", nodecl.}: cint
-  SIGFPE {.importc: "SIGFPE", nodecl.}: cint
-  SIGILL {.importc: "SIGILL", nodecl.}: cint
+when not defined(SIGINT):
+  var 
+    SIGINT {.importc: "SIGINT", nodecl.}: cint
+    SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
+    SIGABRT {.importc: "SIGABRT", nodecl.}: cint
+    SIGFPE {.importc: "SIGFPE", nodecl.}: cint
+    SIGILL {.importc: "SIGILL", nodecl.}: cint
 
 when defined(macosx):
   var
@@ -95,7 +96,8 @@ proc c_malloc(size: int): pointer {.importc: "malloc", nodecl.}
 proc c_free(p: pointer) {.importc: "free", nodecl.}
 proc c_realloc(p: pointer, newsize: int): pointer {.importc: "realloc", nodecl.}
 
-var errno {.importc, header: "<errno.h>".}: cint ## error variable
+when not defined(errno):
+  var errno {.importc, header: "<errno.h>".}: cint ## error variable
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
 proc c_remove(filename: CString): cint {.importc: "remove", noDecl.}

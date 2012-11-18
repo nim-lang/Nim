@@ -237,7 +237,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if c.InUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
           let shadowed = findShadowedVar(c, v)
-          if shadowed != nil: shadowed.flags.incl(sfShadowed)
+          if shadowed != nil:
+            shadowed.flags.incl(sfShadowed)
+            Message(a.info, warnShadowIdent, v.name.s)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def

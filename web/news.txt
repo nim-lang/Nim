@@ -27,6 +27,8 @@ Changes affecting backwards compatibility
 Compiler Additions
 ------------------
 
+- The compiler can now warn about shadowed local variables. However, this needs
+  to be turned on explicitly via ``--warning[ShadowIdent]:on``.
 
 
 Language Additions

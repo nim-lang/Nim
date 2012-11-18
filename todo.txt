@@ -152,7 +152,8 @@ Version 2 and beyond
   "stop the world". However, it may be worthwhile to generate explicit 
   (or implicit) syncGC() calls in loops. Automatic loop injection seems
   troublesome, but maybe we can come up with a simple heuristic. (All procs
-  that `new` shared memory are syncGC() candidates...)
+  that `new` shared memory are syncGC() candidates... But then 'new' itself
+  calls syncGC() so that's pointless.)
 
 - const ptr/ref  --> pointless because of aliasing; 
   much better: 'writes: []' effect

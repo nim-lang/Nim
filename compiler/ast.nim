@@ -726,7 +726,7 @@ const
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
-  skLocalVars* = {skVar, skLet, skForVar, skParam}
+  skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
 
 
 # creator procs:
