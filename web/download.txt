@@ -8,9 +8,10 @@ Please choose your platform:
   (includes GCC and everything else you need)
 
 The source-based installation has been tested on these systems:
-* Linux: i386, AMD64, PowerPC
+* Linux: i386, AMD64, PowerPC, ARM
 * BSD: AMD64
 * Mac OS X: i386, AMD64
+* Solaris: AMD64
 
 Other UNIX-based operating systems may work.
 
