@@ -33,7 +33,12 @@ type
     address: string
     port: TPort
     nick, user, realname, serverPass: string
-    sock: TSocket
+    case isAsync: bool
+    of false:
+      sock: TSocket
+    of true:
+      handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent) {.closure.}
+      asyncSock: PAsyncSocket
     status: TInfo
     lastPing: float
     lastPong: float
@@ -44,8 +49,6 @@ type
 
   PAsyncIRC* = ref TAsyncIRC
   TAsyncIRC* = object of TIRC
-    handleEvent: proc (irc: var TAsyncIRC, ev: TIRCEvent) {.closure.}
-    asyncSock: PAsyncSocket
 
   TIRCMType* = enum
     MUnknown,
@@ -92,7 +95,10 @@ proc send*(irc: var TIRC, message: string, sendImmediately = false) =
 
   if sendMsg:
     try:
-      irc.sock.send(message & "\c\L")
+      if irc.isAsync:
+        irc.asyncSock.send(message & "\c\L")
+      else:
+        irc.sock.send(message & "\c\L")
     except EOS:
       # Assuming disconnection of every EOS could be bad,
       # but I can't exactly check for EBrokenPipe.
@@ -255,9 +261,16 @@ proc processLine(irc: var TIRC, line: string): TIRCEvent =
       irc.lastPong = epochTime()
     if result.cmd == MNumeric:
       if result.numeric == "001":
+        # Check the nickname.
+        if irc.nick != result.params[0]:
+          assert ' ' notin result.params[0]
+          irc.nick = result.params[0]
         for chan in items(irc.channelsToJoin):
           irc.join(chan)
-
+    if result.cmd == MNick:
+      if result.nick == irc.nick:
+        irc.nick = result.params[0]
+    
 proc processOther(irc: var TIRC, ev: var TIRCEvent): bool =
   result = false
   if epochTime() - irc.lastPing >= 20.0:
@@ -313,6 +326,10 @@ proc isConnected*(irc: var TIRC): bool =
   ## Returns whether this IRC client is connected to an IRC server.
   return irc.status == SockConnected
 
+proc getNick*(irc: var TIRC): string =
+  ## Returns the current nickname of the client.
+  return irc.nick
+
 # -- Asyncio dispatcher
 
 proc connect*(irc: PAsyncIRC) =
@@ -348,10 +365,10 @@ proc handleRead(s: PAsyncSocket, irc: PAsyncIRC) =
       var ev: TIRCEvent
       irc[].close()
       ev.typ = EvDisconnected
-      irc.handleEvent(irc[], ev)
+      irc[].handleEvent(irc[], ev)
     else:
       var ev = irc[].processLine(line.string)
-      irc.handleEvent(irc[], ev)
+      irc[].handleEvent(irc[], ev)
 
 discard """proc handleRead(h: PObject) =
   var irc = PAsyncIRC(h)
@@ -398,6 +415,7 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
   ## synchronous IRC client implementation, use ``irc`` for that.
   
   new(result)
+  result.isAsync = true
   result.address = address
   result.port = port
   result.nick = nick
