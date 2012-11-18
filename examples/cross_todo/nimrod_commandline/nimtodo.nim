@@ -42,7 +42,7 @@ type
     cmdGenerate       # Add random rows to the database, for testing.
     cmdList           # User wants to list contents.
 
-  TParamConfig = object of TObject
+  TParamConfig = object
     # Structure containing the parsed options from the commandline.
     command: TCommand         # Store the type of operation
     addPriority: int          # Only valid with cmdAdd, stores priority.
