@@ -59,6 +59,48 @@ proc initDefaults(params: var TParamConfig) =
   params.addText = @[]
 
 
+proc abort(message: string, value: int) =
+  # Simple wrapper to abort also displaying the help to the user.
+  stdout.write(USAGE)
+  quit(message, value)
+
+
+template parseTodoIdAndSetCommand(newCommand: TCommand): stmt =
+  ## Helper to parse a big todo identifier into todoId and set command.
+  try:
+    let numChars = val.parseBiggestInt(newId)
+    if numChars < 1: raise newException(EInvalidValue, "Empty string?")
+    result.command = newCommand
+    result.todoId = newId
+  except EOverflow:
+    raise newException(EInvalidValue, "Value $1 too big" % val)
+
+
+template verifySingleCommand(actions: stmt): stmt =
+  ## Helper to make sure only one command has been specified so far.
+  if specifiedCommand:
+    abort("Only one command can be specified at a time! (extra:$1)" % [key], 2)
+  else:
+    actions
+    specifiedCommand = true
+
+
+proc parsePlusMinus(val: string, debugText: string): bool =
+  ## Helper to process a plus or minus character from the commandline.
+  ##
+  ## Pass the string to parse and the type of parameter for debug errors.
+  ## The processed parameter will be returned as true for a '+' and false for a
+  ## '-'. The proc aborts with a debug message if the passed parameter doesn't
+  ## contain one of those values.
+  case val
+  of "+":
+    return true
+  of "-":
+    return false
+  else:
+    abort("$1 parameter should be + or - but was '$2'." % [debugText, val], 4)
+
+
 proc parseCmdLine(): TParamConfig =
   ## Parses the commandline.
   ##
@@ -84,127 +126,69 @@ proc parseCmdLine(): TParamConfig =
         if specifiedCommand and cmdAdd == result.command:
           result.addText.add(key)
         else:
-          stdout.write(USAGE)
-          quit("Argument ($1) detected without add command." % [key], 1)
+          abort("Argument ($1) detected without add command." % [key], 1)
       of cmdLongOption, cmdShortOption:
         case normalize(key)
         of "help", "h":
           stdout.write(USAGE)
           quit(0)
         of "a":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
+          verifySingleCommand:
             result.command = cmdAdd
             result.addPriority = val.parseInt
-            specifiedCommand = true
         of "c":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
-            result.command = cmdCheck
-            let numChars = string(val).parseBiggestInt(newId)
-            if numChars < 1: raise newException(EInvalidValue, "Empty string?")
-            result.todoId = newId
-            specifiedCommand = true
+          verifySingleCommand:
+            parseTodoIdAndSetCommand(cmdCheck)
         of "u":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
-            result.command = cmdUncheck
-            let numChars = val.parseBiggestInt(newId)
-            if numChars < 1: raise newException(EInvalidValue, "Empty string?")
-            result.todoId = newId
-            specifiedCommand = true
+          verifySingleCommand:
+            parseTodoIdAndSetCommand cmdUncheck
         of "d":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
+          verifySingleCommand:
             if "all" == val:
               result.command = cmdNuke
             else:
-              result.command = cmdDelete
-              let numChars = val.parseBiggestInt(newId)
-              if numChars < 1:
-                raise newException(EInvalidValue, "Empty string?")
-              result.todoId = newId
-            specifiedCommand = true
+              parseTodoIdAndSetCommand cmdDelete
         of "g":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
+          verifySingleCommand:
             if val.len > 0:
-              stdout.write(USAGE)
-              quit("Unexpected value '$1' for switch l." % [val], 3)
+              abort("Unexpected value '$1' for switch l." % [val], 3)
             result.command = cmdGenerate
-            specifiedCommand = true
         of "l":
-          if specifiedCommand:
-            stdout.write(USAGE)
-            quit("Only one command can be specified at a time! ($1)" % [val], 2)
-          else:
+          verifySingleCommand:
             if val.len > 0:
-              stdout.write(USAGE)
-              quit("Unexpected value '$1' for switch l." % [val], 3)
+              abort("Unexpected value '$1' for switch l." % [val], 3)
             result.command = cmdList
-            specifiedCommand = true
         of "p":
           usesListParams = true
-          case val
-          of "+":
-            result.listParams.priorityAscending = true
-          of "-":
-            result.listParams.priorityAscending = false
-          else:
-            stdout.write(USAGE)
-            quit("Priority parameter ($1) should be + or |." % [val], 4)
+          result.listParams.priorityAscending = parsePlusMinus(val, "Priority")
         of "m":
           usesListParams = true
-          case val
-          of "+":
-            result.listParams.dateAscending = true
-          of "-":
-            result.listParams.dateAscending = false
-          else:
-            stdout.write(USAGE)
-            quit("Date parameter ($1) should be + or |." % [val], 4)
+          result.listParams.dateAscending = parsePlusMinus(val, "Date")
         of "t":
           usesListParams = true
           if val.len > 0:
-            stdout.write(USAGE)
-            quit("Unexpected value '$1' for switch t." % [val], 5)
+            abort("Unexpected value '$1' for switch t." % [val], 5)
           result.listParams.showChecked = true
         of "z":
           usesListParams = true
           if val.len > 0:
-            stdout.write(USAGE)
-            quit("Unexpected value '$1' for switch z." % [val], 5)
+            abort("Unexpected value '$1' for switch z." % [val], 5)
           result.listParams.showUnchecked = false
         else:
-          stdout.write(USAGE)
-          quit("Unexpected option '$1'." % [key], 6)
+          abort("Unexpected option '$1'." % [key], 6)
       of cmdEnd:
         break
   except EInvalidValue:
-    stdout.write(USAGE)
-    quit("Invalid int value '$1' for parameter '$2'." % [val, key], 7)
+    abort("Invalid integer value '$1' for parameter '$2'." % [val, key], 7)
 
   if not specifiedCommand:
-    stdout.write(USAGE)
-    quit("Didn't specify any command.", 8)
+    abort("Didn't specify any command.", 8)
 
   if cmdAdd == result.command and result.addText.len < 1:
-    stdout.write(USAGE)
-    quit("Used the add command, but provided no text/description.", 9)
+    abort("Used the add command, but provided no text/description.", 9)
 
   if usesListParams and cmdList != result.command:
-    stdout.write(USAGE)
-    quit("Used list options, but didn't specify the list command.", 10)
+    abort("Used list options, but didn't specify the list command.", 10)
 
 
 proc generateDatabaseRows(conn: TDbConn) =
