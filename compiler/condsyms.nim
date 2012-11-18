@@ -59,6 +59,7 @@ proc InitDefines*() =
   DefineSymbol("nimhygiene")
   DefineSymbol("niminheritable")
   DefineSymbol("nimmixin")
+  DefineSymbol("nimeffects")
   
   # add platform specific symbols:
   case targetCPU

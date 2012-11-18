@@ -16,23 +16,25 @@
                        # of the standard library!
 
 
-proc fputs(c: cstring, f: TFile) {.importc: "fputs", noDecl.}
-proc fgets(c: cstring, n: int, f: TFile): cstring {.importc: "fgets", noDecl.}
-proc fgetc(stream: TFile): cint {.importc: "fgetc", nodecl.}
-proc ungetc(c: cint, f: TFile) {.importc: "ungetc", nodecl.}
-proc putc(c: Char, stream: TFile) {.importc: "putc", nodecl.}
-proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", nodecl, varargs.}
-proc strlen(c: cstring): int {.importc: "strlen", nodecl.}
+proc fputs(c: cstring, f: TFile) {.importc: "fputs", noDecl, tags: [FWriteIO].}
+proc fgets(c: cstring, n: int, f: TFile): cstring {.importc: "fgets", noDecl,
+                                                    tags: [FReadIO].}
+proc fgetc(stream: TFile): cint {.importc: "fgetc", nodecl, tags: [FReadIO].}
+proc ungetc(c: cint, f: TFile) {.importc: "ungetc", nodecl, tags: [].}
+proc putc(c: Char, stream: TFile) {.importc: "putc", nodecl, tags: [FWriteIO].}
+proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", nodecl, varargs,
+                                        tags: [FWriteIO].}
+proc strlen(c: cstring): int {.importc: "strlen", nodecl, tags: [].}
 
 
 # C routine that is used here:
 proc fread(buf: Pointer, size, n: int, f: TFile): int {.
-  importc: "fread", noDecl.}
+  importc: "fread", noDecl, tags: [FReadIO].}
 proc fseek(f: TFile, offset: clong, whence: int): int {.
-  importc: "fseek", noDecl.}
-proc ftell(f: TFile): int {.importc: "ftell", noDecl.}
+  importc: "fseek", noDecl, tags: [].}
+proc ftell(f: TFile): int {.importc: "ftell", noDecl, tags: [].}
 proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
-  importc, nodecl.}
+  importc, nodecl, tags: [].}
 
 proc write(f: TFile, c: cstring) = fputs(c, f)
 
