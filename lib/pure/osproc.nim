@@ -43,11 +43,12 @@ type
 proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
                                                   poUseShell}): TaintedString {.
-                                                  rtl, extern: "nosp$1".}
+                                                  rtl, extern: "nosp$1",
+                                                  tags: [FExecIO, FReadIO].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
 
-proc execCmd*(command: string): int {.rtl, extern: "nosp$1".}
+proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [FExecIO].}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process. This operation
   ## is also often called `system`:idx:.
@@ -57,7 +58,7 @@ proc startProcess*(command: string,
                    args: openarray[string] = [],
                    env: PStringTable = nil, 
                    options: set[TProcessOption] = {poStdErrToStdOut}): 
-              PProcess {.rtl, extern: "nosp$1".}
+              PProcess {.rtl, extern: "nosp$1", tags: [FExecIO].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -73,7 +74,7 @@ proc startProcess*(command: string,
   ## but ``EOS`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[TProcessOption] = {
-               poStdErrToStdOut, poUseShell}): PProcess =
+               poStdErrToStdOut, poUseShell}): PProcess {.tags: [FExecIO].} =
   ## a simpler version of `startProcess` that parses the command line into
   ## program and arguments and then calls `startProcess` with the empty string
   ## for `workingDir` and the nil string table for `env`.
@@ -83,38 +84,39 @@ proc startCmd*(command: string, options: set[TProcessOption] = {
   for i in 1 .. c.len-1: a[i-1] = c[i]
   result = startProcess(command=c[0], args=a, options=options)
 
-proc close*(p: PProcess) {.rtl, extern: "nosp$1".}
+proc close*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## When the process has finished executing, cleanup related handles
 
-proc suspend*(p: PProcess) {.rtl, extern: "nosp$1".}
+proc suspend*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## Suspends the process `p`.
 
-proc resume*(p: PProcess) {.rtl, extern: "nosp$1".}
+proc resume*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## Resumes the process `p`.
 
-proc terminate*(p: PProcess) {.rtl, extern: "nosp$1".}
+proc terminate*(p: PProcess) {.rtl, extern: "nosp$1", tags: [].}
   ## Terminates the process `p`.
 
-proc running*(p: PProcess): bool {.rtl, extern: "nosp$1".}
+proc running*(p: PProcess): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: PProcess): int {.rtl, extern: "nosp$1".} =
   ## returns `p`'s process ID.
   return p.id
 
-proc waitForExit*(p: PProcess, timeout: int = -1): int {.rtl, extern: "nosp$1".}
+proc waitForExit*(p: PProcess, timeout: int = -1): int {.rtl, 
+  extern: "nosp$1", tags: [].}
   ## waits for the process to finish and returns `p`'s error code.
 
-proc peekExitCode*(p: PProcess): int
+proc peekExitCode*(p: PProcess): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
 
-proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
+proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
   ## opens ``p``'s input stream for writing to
 
-proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
+proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
   ## opens ``p``'s output stream for reading from
 
-proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
+proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
   ## opens ``p``'s output stream for reading from
 
 when defined(macosx) or defined(bsd):
@@ -156,7 +158,8 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
-                    n = countProcessors()): int {.rtl, extern: "nosp$1".} =
+                    n = countProcessors()): int {.rtl, extern: "nosp$1", 
+                    tags: [FExecIO].} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -731,7 +734,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[TProcessOption] = {
                 poStdErrToStdOut, poUseShell}): tuple[
                 output: TaintedString, 
-                exitCode: int] =
+                exitCode: int] {.tags: [FExecIO, FReadIO].} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   var p = startCmd(command, options)

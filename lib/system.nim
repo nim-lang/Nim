@@ -1080,21 +1080,21 @@ proc equalMem*(a, b: Pointer, size: int): bool {.
   ## otherwise. Like any procedure dealing with raw memory this is
   ## *unsafe*.
 
-proc alloc*(size: int): pointer {.noconv, rtl.}
+proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is not initialized, so reading
   ## from it before writing to it is undefined behaviour!
   ## The allocated memory belongs to its allocating thread!
   ## Use `allocShared` to allocate from a shared heap.
-proc alloc0*(size: int): pointer {.noconv, rtl.}
+proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is initialized with all bytes
   ## containing zero, so it is somewhat safer than ``alloc``.
   ## The allocated memory belongs to its allocating thread!
   ## Use `allocShared0` to allocate from a shared heap.
-proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
   ## grows or shrinks a given memory block. If p is **nil** then a new
   ## memory block is returned. In either way the block has at least
   ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
@@ -1102,7 +1102,7 @@ proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
   ## be freed with ``dealloc``.
   ## The allocated memory belongs to its allocating thread!
   ## Use `reallocShared` to reallocate from a shared heap.
-proc dealloc*(p: Pointer) {.noconv, rtl.}
+proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
   ## frees the memory allocated with ``alloc``, ``alloc0`` or
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
@@ -1618,7 +1618,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
     
-  outOfMemHook*: proc () {.nimcall.}
+  outOfMemHook*: proc () {.nimcall, tags: [].}
     ## set this variable to provide a procedure that should be called 
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can
@@ -1668,7 +1668,7 @@ else:
 
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
-proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo".}
+proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO].}
   ## special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
@@ -1677,7 +1677,8 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo".}
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience.
 
-proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect.}
+proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect, 
+                                         tags: [], raises: [].}
   ## Same as ``echo``, but as a special semantic rule, ``debugEcho`` pretends
   ## to be free of side effects, so that it can be used for debugging routines
   ## marked as ``noSideEffect``.
@@ -1780,14 +1781,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## to ``stderr``.
 
   proc Open*(f: var TFile, filename: string,
-             mode: TFileMode = fmRead, bufSize: int = -1): Bool
+             mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
     ## Opens a file named `filename` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
     ## This throws no exception if the file could not be opened.
 
   proc Open*(f: var TFile, filehandle: TFileHandle,
-             mode: TFileMode = fmRead): Bool
+             mode: TFileMode = fmRead): Bool {.tags: [].}
     ## Creates a ``TFile`` from a `filehandle` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
@@ -1801,56 +1802,57 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     if not open(result, filename, mode, bufSize):
       raise newException(EIO, "cannot open: " & filename)
 
-  proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool
+  proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool {.
+    tags: [].}
     ## reopens the file `f` with given `filename` and `mode`. This 
     ## is often used to redirect the `stdin`, `stdout` or `stderr`
     ## file variables.
     ##
     ## Default mode is readonly. Returns true iff the file could be reopened.
 
-  proc Close*(f: TFile) {.importc: "fclose", nodecl.}
+  proc Close*(f: TFile) {.importc: "fclose", nodecl, tags: [].}
     ## Closes the file.
 
-  proc EndOfFile*(f: TFile): Bool
+  proc EndOfFile*(f: TFile): Bool {.tags: [].}
     ## Returns true iff `f` is at the end.
     
-  proc readChar*(f: TFile): char {.importc: "fgetc", nodecl.}
+  proc readChar*(f: TFile): char {.importc: "fgetc", nodecl, tags: [FReadIO].}
     ## Reads a single character from the stream `f`. If the stream
     ## has no more characters, `EEndOfFile` is raised.
-  proc FlushFile*(f: TFile) {.importc: "fflush", noDecl.}
+  proc FlushFile*(f: TFile) {.importc: "fflush", noDecl, tags: [FWriteIO].}
     ## Flushes `f`'s buffer.
 
-  proc readAll*(file: TFile): TaintedString
+  proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
     ## Reads all data from the stream `file`. Raises an IO exception
     ## in case of an error
   
-  proc readFile*(filename: string): TaintedString
+  proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
     ## Opens a file named `filename` for reading. Then calls `readAll`
     ## and closes the file afterwards. Returns the string. 
     ## Raises an IO exception in case of an error.
 
-  proc writeFile*(filename, content: string)
+  proc writeFile*(filename, content: string) {.tags: [FWriteIO].}
     ## Opens a file named `filename` for writing. Then writes the
     ## `content` completely to the file and closes the file afterwards.
     ## Raises an IO exception in case of an error.
 
-  proc write*(f: TFile, r: float)
-  proc write*(f: TFile, i: int)
-  proc write*(f: TFile, i: biggestInt)
-  proc write*(f: TFile, r: biggestFloat)
-  proc write*(f: TFile, s: string)
-  proc write*(f: TFile, b: Bool)
-  proc write*(f: TFile, c: char)
-  proc write*(f: TFile, c: cstring)
-  proc write*(f: TFile, a: varargs[string, `$`])
+  proc write*(f: TFile, r: float) {.tags: [FWriteIO].}
+  proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
+  proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
+  proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
+  proc write*(f: TFile, s: string) {.tags: [FWriteIO].}
+  proc write*(f: TFile, b: Bool) {.tags: [FWriteIO].}
+  proc write*(f: TFile, c: char) {.tags: [FWriteIO].}
+  proc write*(f: TFile, c: cstring) {.tags: [FWriteIO].}
+  proc write*(f: TFile, a: varargs[string, `$`]) {.tags: [FWriteIO].}
     ## Writes a value to the file `f`. May throw an IO exception.
 
-  proc readLine*(f: TFile): TaintedString
+  proc readLine*(f: TFile): TaintedString  {.tags: [FReadIO].}
     ## reads a line of text from the file `f`. May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
     ## ``CRLF``. The newline character(s) are not part of the returned string.
   
-  proc readLine*(f: TFile, line: var TaintedString): bool
+  proc readLine*(f: TFile, line: var TaintedString): bool {.tags: [FReadIO].}
     ## reads a line of text from the file `f` into `line`. `line` must not be
     ## ``nil``! May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -1858,39 +1860,44 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## Returns ``false`` if the end of the file has been reached, ``true``
     ## otherwise. If ``false`` is returned `line` contains no new data.
 
-  proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline.}
+  proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, tags: [FWriteIO].}
     ## writes the values `x` to `f` and then writes "\n".
     ## May throw an IO exception.
 
-  proc getFileSize*(f: TFile): int64
+  proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
     ## retrieves the file size (in bytes) of `f`.
 
-  proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int
+  proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
+    tags: [FReadIO].}
     ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
     ## the actual number of bytes that have been read which may be less than
     ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int
+  proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int {.
+    tags: [FReadIO].}
     ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
     ## the actual number of bytes that have been read which may be less than
     ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc readBuffer*(f: TFile, buffer: pointer, len: int): int
+  proc readBuffer*(f: TFile, buffer: pointer, len: int): int {.tags: [FReadIO].}
     ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
     ## the actual number of bytes that have been read which may be less than
     ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int
+  proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int {.
+    tags: [FWriteIO].}
     ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
     ## the number of actual written bytes, which may be less than `len` in case
     ## of an error.
 
-  proc writeChars*(f: tFile, a: openarray[char], start, len: int): int
+  proc writeChars*(f: tFile, a: openarray[char], start, len: int): int {.
+    tags: [FWriteIO].}
     ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
     ## the number of actual written bytes, which may be less than `len` in case
     ## of an error.
 
-  proc writeBuffer*(f: TFile, buffer: pointer, len: int): int
+  proc writeBuffer*(f: TFile, buffer: pointer, len: int): int {.
+    tags: [FWriteIO].}
     ## writes the bytes of buffer pointed to by the parameter `buffer` to the
     ## file `f`. Returns the number of actual written bytes, which may be less
     ## than `len` in case of an error.
@@ -1971,7 +1978,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
     
-  proc writeStackTrace*()
+  proc writeStackTrace*() {.tags: [FWriteIO].}
     ## writes the current stack trace to ``stderr``. This is only works
     ## for debug builds.
   when hostOS != "standalone":
@@ -2029,7 +2036,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/channels"
 
-  iterator lines*(filename: string): TaintedString =
+  iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
     ## Iterate over any line in the file named `filename`.
     ## If the file does not exist `EIO` is raised.
     var f = open(filename)
@@ -2037,7 +2044,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     while f.readLine(res): yield res
     close(f)
 
-  iterator lines*(f: TFile): TaintedString =
+  iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
     ## Iterate over any line in the file `f`.
     var res = TaintedString(newStringOfCap(80))
     while f.readLine(res): yield TaintedString(res)
@@ -2308,18 +2315,25 @@ proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
   
 proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
-  
+
+when true:
+  proc hiddenRaiseAssert(msg: string) {.raises: [].} =
+    # trick the compiler to not list ``EAssertionFailed`` when called
+    # by ``assert``.
+    type THide = proc (msg: string) {.noinline, raises: [], noSideEffect.}
+    THide(raiseAssert)(msg)
+
 template assert*(cond: bool, msg = "") =
   ## provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind InstantiationInfo
+  bind InstantiationInfo, hiddenRaiseAssert
   when compileOption("assertions"):
     {.line.}:
       if not cond:
-        raiseAssert(astToStr(cond) & ' ' & msg)
+        hiddenRaiseAssert(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the

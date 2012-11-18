@@ -1190,16 +1190,23 @@ proc baseOfDistinct*(t: PType): PType =
       internalAssert parent != nil
       parent.sons[0] = it.sons[0]
 
+proc safeInheritanceDiff*(a, b: PType): int =
+  # same as inheritanceDiff but checks for tyError:
+  if a.kind == tyError or b.kind == tyError: 
+    result = -1
+  else:
+    result = inheritanceDiff(a, b)
+
 proc compatibleEffectsAux(se, re: PNode): bool =
   if re.isNil: return false
   for r in items(re):
     block search:
       for s in items(se):
-        if inheritanceDiff(r.typ, s.typ) <= 0:
+        if safeInheritanceDiff(r.typ, s.typ) <= 0:
           break search
       return false
   result = true
- 
+
 proc compatibleEffects*(formal, actual: PType): bool =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc

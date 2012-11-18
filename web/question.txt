@@ -19,13 +19,6 @@ between threads, so no "stop the world" mechanism is necessary. An unsafe
 shared memory heap is also provided for the increased efficiency that results 
 from that model.
 
-..
-  Don't give me that marketing crap. What is Nimrod?
-  --------------------------------------------------
-
-  Nimrod = Mutable value based datatypes + static binding + sugar to make 
-    this programming modell as convenient as possible
-
 
 Why is it named Nimrod?
 -----------------------
@@ -57,10 +50,11 @@ memory heap.
 How is Nimrod licensed?
 -----------------------
 
-The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed.
+The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed
+with a special exception that allows for static linking.
 This means that you can use any license for your own programs developed with
-Nimrod. If I receive enough requests with good arguments, I may change the
-license of Nimrod to the BSD license.
+Nimrod.
+
 
 How stable is Nimrod?
 ---------------------

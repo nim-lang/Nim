@@ -23,6 +23,13 @@ type
                     ## in preventDeadlocks-mode guarantees re-entrancy.
   TCond* = TSysCond ## Nimrod condition variable
   
+  FLock* = object of TEffect ## effect that denotes that some lock operation
+                             ## is performed
+  FAquireLock* = object of FLock  ## effect that denotes that some lock is
+                                  ## aquired
+  FReleaseLock* = object of FLock ## effect that denotes that some lock is
+                                  ## released
+  
 const
   noDeadlocks = defined(preventDeadlocks)
   maxLocksPerThread* = 10 ## max number of locks a thread can hold
@@ -51,7 +58,7 @@ proc DeinitLock*(lock: var TLock) {.inline.} =
   ## Frees the resources associated with the lock.
   DeinitSys(lock)
 
-proc TryAcquire*(lock: var TLock): bool = 
+proc TryAcquire*(lock: var TLock): bool {.tags: [FAquireLock].} = 
   ## Tries to acquire the given lock. Returns `true` on success.
   result = TryAcquireSys(lock)
   when noDeadlocks:
@@ -83,7 +90,7 @@ proc TryAcquire*(lock: var TLock): bool =
     inc(locksLen)
     assert OrderedLocks()
 
-proc Acquire*(lock: var TLock) =
+proc Acquire*(lock: var TLock) {.tags: [FAquireLock].} =
   ## Acquires the given lock.
   when nodeadlocks:
     var p = addr(lock)
@@ -128,7 +135,7 @@ proc Acquire*(lock: var TLock) =
   else:
     AcquireSys(lock)
   
-proc Release*(lock: var TLock) =
+proc Release*(lock: var TLock) {.tags: [FReleaseLock].} =
   ## Releases the given lock.
   when nodeadlocks:
     var p = addr(lock)

@@ -14,12 +14,14 @@
 ## wanted functionality.
 
 when defined(Windows):
-  proc ReadLineFromStdin*(prompt: string): TaintedString = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString {.
+                          tags: [FReadIO, FWriteIO].} = 
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
-  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool =
+  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+                          tags: [FReadIO, FWriteIO].} =
     ## Reads a `line` from stdin. `line` must not be
     ## ``nil``! May throw an IO exception.
     ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -32,7 +34,8 @@ when defined(Windows):
 else:
   import readline, history
     
-  proc ReadLineFromStdin*(prompt: string): TaintedString = 
+  proc ReadLineFromStdin*(prompt: string): TaintedString {.
+                          tags: [FReadIO, FWriteIO].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     result = TaintedString($buffer)
@@ -40,7 +43,8 @@ else:
       add_history(buffer)
     readline.free(buffer)
 
-  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool =
+  proc ReadLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+                          tags: [FReadIO, FWriteIO].} =
     var buffer = readline.readLine(prompt)
     if isNil(buffer): quit(0)
     line = TaintedString($buffer)

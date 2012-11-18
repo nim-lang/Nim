@@ -102,7 +102,8 @@ proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   throws(a.exc, e)
 
 proc mergeEffects(a: PEffects, b: PNode, useLineInfo: bool) =
-  for effect in items(b): addEffect(a, effect, useLineInfo)
+  if not b.isNil:
+    for effect in items(b): addEffect(a, effect, useLineInfo)
 
 proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.tags
@@ -113,7 +114,8 @@ proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   throws(a.tags, e)
 
 proc mergeTags(a: PEffects, b: PNode, useLineInfo: bool) =
-  for effect in items(b): addTag(a, effect, useLineInfo)
+  if not b.isNil:
+    for effect in items(b): addTag(a, effect, useLineInfo)
 
 proc listEffects(a: PEffects) =
   for e in items(a.exc):  Message(e.info, hintUser, typeToString(e.typ))
@@ -125,7 +127,7 @@ proc catches(tracked: PEffects, e: PType) =
   var i = tracked.bottom
   while i < L:
     # r supertype of e?
-    if inheritanceDiff(tracked.exc[i].excType, e) <= 0:
+    if safeInheritanceDiff(tracked.exc[i].excType, e) <= 0:
       tracked.exc.sons[i] = tracked.exc.sons[L-1]
       dec L
     else:
@@ -272,7 +274,7 @@ proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool) =
   for r in items(real):
     block search:
       for s in 0 .. <spec.len:
-        if inheritanceDiff(r.excType, spec[s].typ) <= 0:
+        if safeInheritanceDiff(r.excType, spec[s].typ) <= 0:
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!
@@ -341,6 +343,6 @@ proc trackProc*(s: PSym, body: PNode) =
   let tagsSpec = effectSpec(p, wTags)
   if not isNil(tagsSpec):
     checkRaisesSpec(tagsSpec, t.tags, "can have an unlisted effect: ",
-                    hints=on)
+                    hints=off)
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
