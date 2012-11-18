@@ -232,10 +232,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
@@ -346,8 +346,8 @@ build/1_1/semfold.o \
 build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
-build/1_1/lambdalifting.o \
 build/1_1/sempass2.o \
+build/1_1/lambdalifting.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -434,8 +434,8 @@ build/1_1/semfold.o \
 build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
-build/1_1/lambdalifting.o \
 build/1_1/sempass2.o \
+build/1_1/lambdalifting.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -584,10 +584,10 @@ build/1_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
@@ -698,8 +698,8 @@ build/1_2/semfold.o \
 build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
-build/1_2/lambdalifting.o \
 build/1_2/sempass2.o \
+build/1_2/lambdalifting.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -786,8 +786,8 @@ build/1_2/semfold.o \
 build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
-build/1_2/lambdalifting.o \
 build/1_2/sempass2.o \
+build/1_2/lambdalifting.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -936,10 +936,10 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/sempass2.c -o build/1_2/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/lambdalifting.c -o build/1_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/evaltempl.c -o build/1_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sem.c -o build/1_2/sem.o"
@@ -1050,8 +1050,8 @@ build/1_2/semfold.o \
 build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
-build/1_2/lambdalifting.o \
 build/1_2/sempass2.o \
+build/1_2/lambdalifting.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -1138,8 +1138,8 @@ build/1_2/semfold.o \
 build/1_2/saturate.o \
 build/1_2/transf.o \
 build/1_2/cgmeth.o \
-build/1_2/lambdalifting.o \
 build/1_2/sempass2.o \
+build/1_2/lambdalifting.o \
 build/1_2/evaltempl.o \
 build/1_2/sem.o \
 build/1_2/procfind.o \
@@ -1288,10 +1288,10 @@ build/1_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/sempass2.c -o build/1_1/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/lambdalifting.c -o build/1_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/evaltempl.c -o build/1_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sem.c -o build/1_1/sem.o"
@@ -1402,8 +1402,8 @@ build/1_1/semfold.o \
 build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
-build/1_1/lambdalifting.o \
 build/1_1/sempass2.o \
+build/1_1/lambdalifting.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -1490,8 +1490,8 @@ build/1_1/semfold.o \
 build/1_1/saturate.o \
 build/1_1/transf.o \
 build/1_1/cgmeth.o \
-build/1_1/lambdalifting.o \
 build/1_1/sempass2.o \
+build/1_1/lambdalifting.o \
 build/1_1/evaltempl.o \
 build/1_1/sem.o \
 build/1_1/procfind.o \
@@ -1648,10 +1648,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
@@ -1762,8 +1762,8 @@ build/2_1/semfold.o \
 build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
-build/2_1/lambdalifting.o \
 build/2_1/sempass2.o \
+build/2_1/lambdalifting.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -1850,8 +1850,8 @@ build/2_1/semfold.o \
 build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
-build/2_1/lambdalifting.o \
 build/2_1/sempass2.o \
+build/2_1/lambdalifting.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -2000,10 +2000,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
@@ -2114,8 +2114,8 @@ build/2_2/semfold.o \
 build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
-build/2_2/lambdalifting.o \
 build/2_2/sempass2.o \
+build/2_2/lambdalifting.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2202,8 +2202,8 @@ build/2_2/semfold.o \
 build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
-build/2_2/lambdalifting.o \
 build/2_2/sempass2.o \
+build/2_2/lambdalifting.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2352,10 +2352,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/lambdalifting.c -o build/2_2/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/evaltempl.c -o build/2_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sem.c -o build/2_2/sem.o"
@@ -2466,8 +2466,8 @@ build/2_2/semfold.o \
 build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
-build/2_2/lambdalifting.o \
 build/2_2/sempass2.o \
+build/2_2/lambdalifting.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2554,8 +2554,8 @@ build/2_2/semfold.o \
 build/2_2/saturate.o \
 build/2_2/transf.o \
 build/2_2/cgmeth.o \
-build/2_2/lambdalifting.o \
 build/2_2/sempass2.o \
+build/2_2/lambdalifting.o \
 build/2_2/evaltempl.o \
 build/2_2/sem.o \
 build/2_2/procfind.o \
@@ -2704,10 +2704,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/lambdalifting.c -o build/2_1/lambdalifting.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/evaltempl.c -o build/2_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sem.c -o build/2_1/sem.o"
@@ -2818,8 +2818,8 @@ build/2_1/semfold.o \
 build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
-build/2_1/lambdalifting.o \
 build/2_1/sempass2.o \
+build/2_1/lambdalifting.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -2906,8 +2906,8 @@ build/2_1/semfold.o \
 build/2_1/saturate.o \
 build/2_1/transf.o \
 build/2_1/cgmeth.o \
-build/2_1/lambdalifting.o \
 build/2_1/sempass2.o \
+build/2_1/lambdalifting.o \
 build/2_1/evaltempl.o \
 build/2_1/sem.o \
 build/2_1/procfind.o \
@@ -3064,10 +3064,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sempass2.c -o build/3_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sempass2.c -o build/3_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
@@ -3178,8 +3178,8 @@ build/3_1/semfold.o \
 build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sempass2.o \
 build/3_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -3266,8 +3266,8 @@ build/3_1/semfold.o \
 build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sempass2.o \
 build/3_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -3416,10 +3416,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sempass2.c -o build/3_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sempass2.c -o build/3_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
@@ -3530,8 +3530,8 @@ build/3_2/semfold.o \
 build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sempass2.o \
 build/3_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3618,8 +3618,8 @@ build/3_2/semfold.o \
 build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sempass2.o \
 build/3_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3768,10 +3768,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sempass2.c -o build/3_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sempass2.c -o build/3_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lambdalifting.c -o build/3_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evaltempl.c -o build/3_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sem.c -o build/3_2/sem.o"
@@ -3882,8 +3882,8 @@ build/3_2/semfold.o \
 build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sempass2.o \
 build/3_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -3970,8 +3970,8 @@ build/3_2/semfold.o \
 build/2_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
+build/3_2/sempass2.o \
 build/3_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/3_2/evaltempl.o \
 build/3_2/sem.o \
 build/3_2/procfind.o \
@@ -4120,10 +4120,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sempass2.c -o build/3_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sempass2.c -o build/3_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lambdalifting.c -o build/3_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evaltempl.c -o build/3_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sem.c -o build/3_1/sem.o"
@@ -4234,8 +4234,8 @@ build/3_1/semfold.o \
 build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sempass2.o \
 build/3_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -4322,8 +4322,8 @@ build/3_1/semfold.o \
 build/2_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
+build/3_1/sempass2.o \
 build/3_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/3_1/evaltempl.o \
 build/3_1/sem.o \
 build/3_1/procfind.o \
@@ -4480,10 +4480,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sempass2.c -o build/4_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sempass2.c -o build/4_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -4594,8 +4594,8 @@ build/4_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sempass2.o \
 build/4_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -4682,8 +4682,8 @@ build/4_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sempass2.o \
 build/4_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -4832,10 +4832,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sempass2.c -o build/4_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sempass2.c -o build/4_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -4946,8 +4946,8 @@ build/4_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sempass2.o \
 build/4_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5034,8 +5034,8 @@ build/4_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sempass2.o \
 build/4_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5184,10 +5184,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sempass2.c -o build/4_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sempass2.c -o build/4_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/lambdalifting.c -o build/4_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sem.c -o build/4_2/sem.o"
@@ -5298,8 +5298,8 @@ build/4_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sempass2.o \
 build/4_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5386,8 +5386,8 @@ build/4_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/4_2/cgmeth.o \
+build/4_2/sempass2.o \
 build/4_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/4_2/sem.o \
 build/4_2/procfind.o \
@@ -5536,10 +5536,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sempass2.c -o build/4_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sempass2.c -o build/4_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/lambdalifting.c -o build/4_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sem.c -o build/4_1/sem.o"
@@ -5650,8 +5650,8 @@ build/4_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sempass2.o \
 build/4_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5738,8 +5738,8 @@ build/4_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/4_1/cgmeth.o \
+build/4_1/sempass2.o \
 build/4_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/4_1/sem.o \
 build/4_1/procfind.o \
@@ -5896,10 +5896,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -6010,8 +6010,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -6098,8 +6098,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -6248,10 +6248,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -6362,8 +6362,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -6450,8 +6450,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -6600,10 +6600,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -6714,8 +6714,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -6802,8 +6802,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -6952,10 +6952,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -7066,8 +7066,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -7154,8 +7154,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -7312,10 +7312,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -7426,8 +7426,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -7514,8 +7514,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -7664,10 +7664,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -7778,8 +7778,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -7866,8 +7866,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -8016,10 +8016,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -8130,8 +8130,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -8218,8 +8218,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -8368,10 +8368,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -8482,8 +8482,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -8570,8 +8570,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -8728,10 +8728,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -8842,8 +8842,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -8930,8 +8930,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -9080,10 +9080,10 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -9194,8 +9194,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -9282,8 +9282,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -9432,10 +9432,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_2/transf.c -o build/4_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/cgmeth.c -o build/5_2/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/sempass2.c -o build/5_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_2/lambdalifting.c -o build/5_2/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/sempass2.c -o build/2_2/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/evaltempl.c -o build/4_2/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/sem.c -o build/5_2/sem.o"
@@ -9546,8 +9546,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -9634,8 +9634,8 @@ build/5_2/semfold.o \
 build/2_2/saturate.o \
 build/4_2/transf.o \
 build/5_2/cgmeth.o \
+build/5_2/sempass2.o \
 build/5_2/lambdalifting.o \
-build/2_2/sempass2.o \
 build/4_2/evaltempl.o \
 build/5_2/sem.o \
 build/5_2/procfind.o \
@@ -9784,10 +9784,10 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/4_1/transf.c -o build/4_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/cgmeth.c -o build/5_1/cgmeth.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/sempass2.c -o build/5_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o"
     $CC $COMP_FLAGS -Ibuild -c build/5_1/lambdalifting.c -o build/5_1/lambdalifting.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/sempass2.c -o build/2_1/sempass2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/evaltempl.c -o build/4_1/evaltempl.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/sem.c -o build/5_1/sem.o"
@@ -9898,8 +9898,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
@@ -9986,8 +9986,8 @@ build/5_1/semfold.o \
 build/2_1/saturate.o \
 build/4_1/transf.o \
 build/5_1/cgmeth.o \
+build/5_1/sempass2.o \
 build/5_1/lambdalifting.o \
-build/2_1/sempass2.o \
 build/4_1/evaltempl.o \
 build/5_1/sem.o \
 build/5_1/procfind.o \
