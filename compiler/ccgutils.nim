@@ -59,6 +59,12 @@ var
 proc initTypeTables() = 
   for i in countup(low(TTypeKind), high(TTypeKind)): InitIdTable(gTypeTable[i])
 
+proc resetCaches* =
+  ## XXX: fix that more properly
+  initTypeTables()
+  for i in low(gCanonicalTypes)..high(gCanonicalTypes):
+    gCanonicalTypes[i] = nil
+
 when false:
   proc echoStats*() =
     for i in countup(low(TTypeKind), high(TTypeKind)): 

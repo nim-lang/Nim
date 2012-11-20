@@ -379,8 +379,17 @@ proc toObjFile*(filenameWithoutExt: string): string =
   # Object file for compilation
   result = changeFileExt(filenameWithoutExt, cc[ccompiler].objExt)
 
-proc addFileToCompile*(filename: string) = 
+proc addFileToCompile*(filename: string) =
   appendStr(toCompile, filename)
+
+proc resetCompilationLists* =
+  initLinkedList(toCompile)
+  ## XXX: we must associate these with their originating module
+  # when the module is loaded/unloaded it adds/removes its items
+  # That's because we still need to CRC check the external files
+  # Maybe we can do that in checkDep on the other hand?
+  initLinkedList(externalToCompile)
+  initLinkedList(toLink)
 
 proc footprint(filename: string): TCrc32 =
   result = crcFromFile(filename) >< 
@@ -405,11 +414,11 @@ proc externalFileChanged(filename: string): bool =
       f.writeln($currentCrc)
       close(f)
 
-proc addExternalFileToCompile*(filename: string) = 
+proc addExternalFileToCompile*(filename: string) =
   if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
     appendStr(externalToCompile, filename)
 
-proc addFileToLink*(filename: string) = 
+proc addFileToLink*(filename: string) =
   prependStr(toLink, filename) 
   # BUGFIX: was ``appendStr``
 
@@ -540,7 +549,7 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
       app(script, tnl)
     it = PStrEntry(it.next)
 
-proc CallCCompiler*(projectfile: string) = 
+proc CallCCompiler*(projectfile: string) =
   var 
     linkCmd, buildgui, builddll: string
   if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}: 

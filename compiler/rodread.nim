@@ -795,7 +795,7 @@ proc GetCRC*(fileIdx: int32): TCrc32 =
   gMods[fileIdx].crc = result
 
 template growCache*(cache, pos) =
-  if cache.len <= fileIdx: cache.setLen(pos+1)
+  if cache.len <= pos: cache.setLen(pos+1)
 
 proc checkDep(fileIdx: int32): TReasonForRecompile =
   assert fileIdx != InvalidFileIDX

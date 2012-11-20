@@ -12,7 +12,7 @@
 import 
   sockets,
   times, commands, options, msgs, nimconf,
-  extccomp, strutils, os, platform, main, parseopt
+  extccomp, strutils, os, platform, parseopt
 
 # We cache modules and the dependency graph. However, we don't check for
 # file changes but expect the client to tell us about them, otherwise the

@@ -14,9 +14,9 @@ import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
   os, lists, condsyms, rodread, rodwrite, ropes, trees, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, ecmasgen,
+  cgen, ecmasgen, cgendata,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
-  tables, docgen2, service, magicsys, parser, crc
+  tables, docgen2, service, magicsys, parser, crc, ccgutils
 
 const
   has_LLVM_Backend = false
@@ -29,11 +29,15 @@ proc MainCommand*()
 # ------------------ module handling -----------------------------------------
 
 type
+  TNeedRecompile = enum Maybe, No, Yes, Probing, Recompiled
+  TCrcStatus = enum crcNotTaken, crcCached, crcHasChanged, crcNotChanged
+
   TModuleInMemory = object
     compiledAt: float
-    crc: int
+    crc: TCrc32
     deps: seq[int32] ## XXX: slurped files are not currently tracked
-    needsRecompile: bool
+    needsRecompile: TNeedRecompile
+    crcStatus: TCrcStatus
 
 var
   gCompiledModules: seq[PSym] = @[]
@@ -53,24 +57,76 @@ template compiledAt(x: PSym): expr =
 template crc(x: PSym): expr =
   gMemCacheData[x.position].crc
 
-template addDep(x: Psym, dep: int32) =
-  gMemCacheData[x.position].deps.add(dep)
+proc crcChanged(fileIdx: int32): bool =
+  InternalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
+  
+  template updateStatus =
+    gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
+                                       else: crcNotChanged
+    # echo "TESTING CRC: ", fileIdx.toFilename, " ", result
+    
+  case gMemCacheData[fileIdx].crcStatus:
+  of crcHasChanged:
+    result = true
+  of crcNotChanged:
+    result = false
+  of crcCached:
+    let newCrc = crcFromFile(fileIdx.toFilename)
+    result = newCrc != gMemCacheData[fileIdx].crc
+    gMemCacheData[fileIdx].crc = newCrc
+    updateStatus()
+  of crcNotTaken:
+    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+    result = true
+    updateStatus()
 
-proc checkDepMem(fileIdx: int32): bool =
+proc doCRC(fileIdx: int32) =
+  if gMemCacheData[fileIdx].crcStatus == crcNotTaken:
+    # echo "FIRST CRC: ", fileIdx.ToFilename
+    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+
+proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  if x == nil: x = @[y]
+  else: x.add(y)
+
+proc safeAdd*(x: var string, y: char) =
+  if x == nil: x = ""
+  x.add(y)
+
+proc safeAdd*(x: var string, y: string) =
+  if x == nil: x = y
+  else: x.add(y)
+
+proc addDep(x: Psym, dep: int32) =
+  growCache gMemCacheData, dep
+  gMemCacheData[x.position].deps.safeAdd(dep)
+
+proc checkDepMem(fileIdx: int32): TNeedRecompile  =
   template markDirty =
-    gMemCacheData[fileIdx].needsRecompile = true
-    return true
+    echo "HARD RESETTING ", fileIdx.toFilename
+    gMemCacheData[fileIdx].needsRecompile = Yes
+    gCompiledModules[fileIdx] = nil
+    cgendata.gModules[fileIdx] = nil
+      
+    return Yes
+
+  if gMemCacheData[fileIdx].needsRecompile != Maybe:
+    return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or
-     curCaasCmd != lastCaasCmd: markDirty
+     curCaasCmd != lastCaasCmd or
+     crcChanged(fileIdx): markDirty
   
-  let crc = crcFromFile(fileIdx.toFilename)
-  if crc != gMemCacheData[fileIdx].crc: markDirty
-
-  for dep in gMemCacheData[fileIdx].deps:
-    if checkDepMem(dep): markDirty
-
-  return false
+  if gMemCacheData[fileIdx].deps != nil:
+    gMemCacheData[fileIdx].needsRecompile = Probing
+    for dep in gMemCacheData[fileIdx].deps:
+      let d = checkDepMem(dep)
+      if d in { Yes, Recompiled }:
+        echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
+        markDirty
+  
+  gMemCacheData[fileIdx].needsRecompile = No
+  return No
 
 proc newModule(fileIdx: int32): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -94,10 +150,12 @@ proc newModule(fileIdx: int32): PSym =
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   StrTableAdd(result.tab, result) # a module knows itself
-  
+
 proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
   if result == nil:
+    growCache gMemCacheData, fileIdx
+    gMemCacheData[fileIdx].needsRecompile = Probing
     result = newModule(fileIdx)
     var rd = handleSymbolFile(result)
     result.flags = result.flags + flags
@@ -109,12 +167,12 @@ proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
     else:
       result.id = getID()
     processModule(result, nil, rd)
-    gMemCacheData[fileIdx].compiledAt = gLastCmdTime
-    gMemCacheData[fileIdx].needsRecompile = false
+    if optCaasEnabled in gGlobalOptions:
+      gMemCacheData[fileIdx].compiledAt = gLastCmdTime
+      gMemCacheData[fileIdx].needsRecompile = Recompiled
+      doCRC fileIdx
   else:
-    InternalAssert optCaasEnabled in gGlobalOptions
-    if checkDepMem(fileIdx):
-      gCompiledModules[fileIdx] = nil
+    if checkDepMem(fileIdx) == Yes:
       result = CompileModule(fileIdx, flags)
     else:
       result = gCompiledModules[fileIdx]
@@ -124,17 +182,17 @@ proc compileModule(filename: string, flags: TSymFlags): PSym =
 
 proc importModule(s: PSym, fileIdx: int32): PSym =
   # this is called by the semantic checking phase
-  result = getModule(fileIdx)
-  if result == nil: 
-    # compile the module
-    result = compileModule(fileIdx, {})
-    if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
-  elif sfSystemModule in result.flags: 
+  result = compileModule(fileIdx, {})
+  if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
+  if sfSystemModule in result.flags:
     LocalError(result.info, errAttemptToRedefine, result.Name.s)
 
 proc includeModule(s: PSym, fileIdx: int32): PNode =
   result = syntaxes.parseFile(fileIdx)
-  if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
+  if optCaasEnabled in gGlobalOptions:
+    growCache gMemCacheData, fileIdx
+    addDep(s, fileIdx)
+    doCrc(fileIdx)
 
 proc `==^`(a, b: string): bool =
   try:
@@ -191,11 +249,55 @@ proc CommandCompileToC =
   registerPass(cgenPass)
   rodPass()
   #registerPass(cleanupPass())
+  if optCaasEnabled in gGlobalOptions:
+    # echo "BEFORE CHECK DEP"
+    # discard checkDepMem(gProjectMainIdx)
+    # echo "CHECK DEP COMPLETE"
+
   compileProject()
+
+  if optCaasEnabled in gGlobalOptions:
+    cgenCaasUpdate()
+
   if gCmd != cmdRun:
     extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
-  # caas will keep track only of the compilation commands
-  lastCaasCmd = curCaasCmd
+
+  if optCaasEnabled in gGlobalOptions:
+    # caas will keep track only of the compilation commands
+    lastCaasCmd = curCaasCmd
+    resetCgenModules()
+    for i in 0 .. <gMemCacheData.len:
+      gMemCacheData[i].crcStatus = crcCached
+      gMemCacheData[i].needsRecompile = Maybe
+
+      # XXX: clean these global vars
+      # ccgstmts.gBreakpoints
+      # ccgthreadvars.nimtv
+      # ccgthreadvars.nimtVDeps
+      # ccgthreadvars.nimtvDeclared
+      # cgendata
+      # cgmeth?
+      # condsyms?
+      # depends?
+      # lexer.gLinesCompiled
+      # msgs - error counts
+      # magicsys, when system.nim changes
+      # rodread.rodcompilerProcs
+      # rodread.gTypeTable
+      # rodread.gMods
+      
+      # !! ropes.cache
+      # !! semdata.gGenericsCache
+      # semthreads.computed?
+      #
+      # suggest.usageSym
+      #
+      # XXX: can we run out of IDs?
+      # XXX: detect config reloading (implement as error/require restart)
+      # XXX: options are appended (they will accumulate over time)
+    resetCompilationLists()
+    ccgutils.resetCaches()
+    GC_fullCollect()
 
 when has_LLVM_Backend:
   proc CommandCompileToLLVM =

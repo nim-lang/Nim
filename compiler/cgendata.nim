@@ -141,3 +141,9 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
 
+iterator cgenModules*: var BModule =
+  for i in 0..high(gModules):
+    # some modules (like stdin) may exist only in memory.
+    # they won't have a cgen BModule for them and we must skip them.
+    if gModules[i] != nil: yield gModules[i]
+
