@@ -143,7 +143,7 @@ __clang__
 #define N_NOINLINE_PTR(rettype, name) rettype (*name)
 
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
-    defined(__POCC__) || defined(_MSC_VER)
+    defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
 #  define N_NIMCALL(rettype, name) rettype __fastcall name
 #  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
