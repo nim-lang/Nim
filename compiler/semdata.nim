@@ -36,17 +36,16 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
   
-  TInstantiatedSymbol* {.final.} = object
-    genericSym*, instSym*: PSym
-    concreteTypes*: seq[PType]
-  
+  TInstantiationPair* = object
+    genericSym*: PSym
+    inst*: PInstantiation
+
   # If we generate an instance of a generic, we'd like to re-use that
   # instance if possible across module boundaries. However, this is not
   # possible if the compilation cache is enabled. So we give up then and use
   # the caching of generics only per module, not per project.
   TGenericsCache* {.final.} = object
-    InstTypes*: TIdTable # map PType to PType
-    generics*: seq[TInstantiatedSymbol] # a list of the things to compile
+    generics*: seq[TInstantiationPair] # a list of the things to compile
     lastGenericIdx*: int      # used for the generics stack
   
   PGenericsCache* = ref TGenericsCache
@@ -89,13 +88,16 @@ type
 var
   gGenericsCache: PGenericsCache # save for modularity
 
+proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
+  result.genericSym = s
+  result.inst = inst
+
 proc filename*(c: PContext): string =
   # the module's filename
   return c.module.filename
 
 proc newGenericsCache*(): PGenericsCache =
   new(result)
-  initIdTable(result.InstTypes)
   result.generics = @[]
 
 proc newContext*(module: PSym): PContext

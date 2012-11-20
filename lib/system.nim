@@ -112,7 +112,7 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new(T: typedesc): ref T =
+proc new*(T: typedesc): ref T =
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it as result value
   new(result)
@@ -2427,3 +2427,17 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
 
 when defined(initDebugger):
   initDebugger()
+
+# XXX: make these the default (or implement the NilObject optimization)
+proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  if x == nil: x = @[y]
+  else: x.add(y)
+
+proc safeAdd*(x: var string, y: char) =
+  if x == nil: x = ""
+  x.add(y)
+
+proc safeAdd*(x: var string, y: string) =
+  if x == nil: x = y
+  else: x.add(y)
+

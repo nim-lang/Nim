@@ -85,18 +85,6 @@ proc doCRC(fileIdx: int32) =
     # echo "FIRST CRC: ", fileIdx.ToFilename
     gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
 
-proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
-  if x == nil: x = @[y]
-  else: x.add(y)
-
-proc safeAdd*(x: var string, y: char) =
-  if x == nil: x = ""
-  x.add(y)
-
-proc safeAdd*(x: var string, y: string) =
-  if x == nil: x = y
-  else: x.add(y)
-
 proc addDep(x: Psym, dep: int32) =
   growCache gMemCacheData, dep
   gMemCacheData[x.position].deps.safeAdd(dep)

@@ -11,7 +11,7 @@
 # included from sem.nim
 
 proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
-                                 entry: var TInstantiatedSymbol) = 
+                                 entry: var TInstantiation) = 
   if n.kind != nkGenericParams: 
     InternalError(n.info, "instantiateGenericParamList; no generic params")
   newSeq(entry.concreteTypes, n.len)
@@ -43,22 +43,18 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = t
 
-proc sameInstantiation(a, b: TInstantiatedSymbol): bool =
-  if a.genericSym.id == b.genericSym.id and 
-      a.concreteTypes.len == b.concreteTypes.len:
-    for i in 0 .. < a.concreteTypes.len:
+proc sameInstantiation(a, b: TInstantiation): bool =
+  if a.concreteTypes.len == b.concreteTypes.len:
+    for i in 0..a.concreteTypes.high:
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
                           flags = {TypeDescExactMatch}): return
     result = true
 
-proc GenericCacheGet(c: PContext, entry: var TInstantiatedSymbol): PSym = 
-  for i in countup(0, Len(c.generics.generics) - 1):
-    if sameInstantiation(entry, c.generics.generics[i]):
-      result = c.generics.generics[i].instSym
-      # checking for the concrete parameter list is wrong and unnecessary!
-      #if equalParams(b.typ.n, instSym.typ.n) == paramsEqual:
-      #echo "found in cache: ", getProcHeader(result)
-      return
+proc GenericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
+  if genericSym.procInstCache != nil:
+    for inst in genericSym.procInstCache:
+      if sameInstantiation(entry, inst[]):
+        return inst.sym
 
 proc removeDefaultParamValues(n: PNode) = 
   # we remove default params, because they cannot be instantiated properly
@@ -110,7 +106,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, Len(c.generics.generics) - 1):
     if c.generics.generics[i].genericSym.id == s.id:
-      var oldPrc = c.generics.generics[i].instSym
+      var oldPrc = c.generics.generics[i].inst.sym
       pushInfoContext(oldPrc.info)
       openScope(c.tab)
       var n = oldPrc.ast
@@ -155,10 +151,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     InternalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
-  var entry: TInstantiatedSymbol
-  entry.instSym = result
-  entry.genericSym = fn
-  instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry)
+  var entry = TInstantiation.new
+  entry.sym = result
+  instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
   n.sons[genericParamsPos] = ast.emptyNode
   # semantic checking for the parameters:
   if n.sons[paramsPos].kind != nkEmpty:
@@ -168,9 +163,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     rawAddSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
-  var oldPrc = GenericCacheGet(c, entry)
+  var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
-    c.generics.generics.add(entry)
+    fn.procInstCache.safeAdd(entry)
+    c.generics.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
