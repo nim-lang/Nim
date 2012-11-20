@@ -679,6 +679,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       inc(indent)
     if buf[pos] == '#' and (col == indent or lastBackslash > 0):
       tok.literal.add "\n"
+      col = indent
     else:
       if buf[pos] > ' ': 
         L.indentAhead = indent

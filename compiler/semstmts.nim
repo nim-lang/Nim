@@ -247,6 +247,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if a.kind != nkVarTuple:
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
+        if gCmd == cmdDoc:
+          # keep documentation information:
+          b.comment = a.comment
         addSon(b, newSymNode(v))
         addSon(b, a.sons[length-2])      # keep type desc for doc generator
         addSon(b, copyTree(def))
@@ -284,6 +287,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
+    if gCmd == cmdDoc: b.comment = a.comment
     addSon(b, newSymNode(v))
     addSon(b, ast.emptyNode)            # no type description
     addSon(b, copyTree(def))

@@ -246,7 +246,7 @@ type
   EInvalidLibrary* = object of EOS ## raised if a dynamic library
                                    ## could not be loaded.
   EResourceExhausted* = object of ESystem ## raised if a resource request
-                                           ## could not be fullfilled.
+                                          ## could not be fullfilled.
   EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
                                         ## error occured.
   EDivByZero* {.compilerproc.} =
@@ -847,7 +847,12 @@ when taintMode:
   
   proc len*(s: TaintedString): int {.borrow.}
 else:
-  type TaintedString* = string
+  type TaintedString* = string          ## a distinct string type that 
+                                        ## is `tainted`:idx:. It is an alias for
+                                        ## ``string`` if the taint mode is not
+                                        ## turned on. Use the ``-d:taintMode``
+                                        ## command line switch to turn the taint
+                                        ## mode on.
 
 when defined(profiler):
   proc nimProfile() {.compilerProc, noinline.}
@@ -1817,8 +1822,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## Returns true iff `f` is at the end.
     
   proc readChar*(f: TFile): char {.importc: "fgetc", nodecl, tags: [FReadIO].}
-    ## Reads a single character from the stream `f`. If the stream
-    ## has no more characters, `EEndOfFile` is raised.
+    ## Reads a single character from the stream `f`.
   proc FlushFile*(f: TFile) {.importc: "fflush", noDecl, tags: [FWriteIO].}
     ## Flushes `f`'s buffer.
 
@@ -2317,10 +2321,11 @@ proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
 
 when true:
-  proc hiddenRaiseAssert(msg: string) {.raises: [].} =
+  proc hiddenRaiseAssert(msg: string) {.raises: [], tags: [].} =
     # trick the compiler to not list ``EAssertionFailed`` when called
     # by ``assert``.
-    type THide = proc (msg: string) {.noinline, raises: [], noSideEffect.}
+    type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
+                                      tags: [].}
     THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =

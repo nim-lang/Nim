@@ -1,11 +1,6 @@
 version 0.9.2
 =============
-
-- improve 'doc2': 
-  * respect output directory
-  * write only 1 file unless requested 'whole project'
-  * make it work for the 'system' module
-  * the documentation system should default to 'doc2'
+  
 - test&finish first class iterators:
   * allow return in first class iterators
   * nested iterators
@@ -82,9 +77,7 @@ version 0.9.XX
 - macros need access to types and symbols (partially implemented)
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
-- implement a warning message for shadowed 'result' variable
 - we need to support iteration of 2 different data structures in parallel
-- implement proper coroutines
 - proc specialization in the code gen for write barrier specialization
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking; tuple unpacking in non-var-context

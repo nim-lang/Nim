@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees, 
-  wordrecg, strutils
+  wordrecg, strutils, options
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -92,30 +92,44 @@ proc excType(n: PNode): PType =
   let t = if n.kind == nkEmpty: sysTypeFromName"E_Base" else: n.typ
   result = skipTypes(t, skipPtrs)
 
+proc createRaise(n: PNode): PNode =
+  result = newNode(nkType)
+  result.typ = sysTypeFromName"E_Base"
+  if not n.isNil: result.info = n.info
+
+proc createTag(n: PNode): PNode =
+  result = newNode(nkType)
+  result.typ = sysTypeFromName"TEffect"
+  if not n.isNil: result.info = n.info
+
 proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom .. <aa.len:
     if sameType(aa[i].excType, e.excType):
-      if not useLineInfo: return
+      if not useLineInfo or gCmd == cmdDoc: return
       elif aa[i].info == e.info: return
   throws(a.exc, e)
-
-proc mergeEffects(a: PEffects, b: PNode, useLineInfo: bool) =
-  if not b.isNil:
-    for effect in items(b): addEffect(a, effect, useLineInfo)
 
 proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.tags
   for i in 0 .. <aa.len:
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
-      if not useLineInfo: return
+      if not useLineInfo or gCmd == cmdDoc: return
       elif aa[i].info == e.info: return
   throws(a.tags, e)
 
-proc mergeTags(a: PEffects, b: PNode, useLineInfo: bool) =
-  if not b.isNil:
-    for effect in items(b): addTag(a, effect, useLineInfo)
+proc mergeEffects(a: PEffects, b, comesFrom: PNode) =
+  if b.isNil:
+    addEffect(a, createRaise(comesFrom))
+  else:
+    for effect in items(b): addEffect(a, effect, useLineInfo=comesFrom != nil)
+
+proc mergeTags(a: PEffects, b, comesFrom: PNode) =
+  if b.isNil:
+    addTag(a, createTag(comesFrom))
+  else:
+    for effect in items(b): addTag(a, effect, useLineInfo=comesFrom != nil)
 
 proc listEffects(a: PEffects) =
   for e in items(a.exc):  Message(e.info, hintUser, typeToString(e.typ))
@@ -197,6 +211,8 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
       effects.sons[i] = newIdentNode(getIdent(t), n.info)
+      # set the type so that the following analysis doesn't screw up:
+      effects.sons[i].typ = real[i].typ
 
     var pair = newNode(nkExprColonExpr, n.info, @[
       newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
@@ -208,34 +224,20 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
 
 proc documentRaises*(n: PNode) =
   if n.sons[namePos].kind != nkSym: return
-
-  var x = n.sons[pragmasPos]
-  documentEffect(n, x, wRaises, exceptionEffects)
-  documentEffect(n, x, wTags, tagEffects)
-
-proc createRaise(n: PNode): PNode =
-  result = newNodeIT(nkType, n.info, sysTypeFromName"E_Base")
-
-proc createTag(n: PNode): PNode =
-  result = newNodeIT(nkType, n.info, sysTypeFromName"TEffect")
+  documentEffect(n, n.sons[pragmasPos], wRaises, exceptionEffects)
+  documentEffect(n, n.sons[pragmasPos], wTags, tagEffects)
 
 proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast.sons[pragmasPos]
   let spec = effectSpec(pragma, wRaises)
-  if not isNil(spec):
-    mergeEffects(tracked, spec, useLineInfo=false)
-  else:
-    addEffect(tracked, createRaise(n))
+  mergeEffects(tracked, spec, n)
   
   let tagSpec = effectSpec(pragma, wTags)
-  if not isNil(tagSpec):
-    mergeTags(tracked, tagSpec, useLineInfo=false)
-  else:
-    addTag(tracked, createTag(n))
+  mergeTags(tracked, tagSpec, n)
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
-  of nkRaiseStmt: 
+  of nkRaiseStmt:
     n.sons[0].info = n.info
     throws(tracked.exc, n.sons[0])
   of nkCallKinds:
@@ -254,8 +256,8 @@ proc track(tracked: PEffects, n: PNode) =
           addEffect(tracked, createRaise(n))
           addTag(tracked, createTag(n))
       else:
-        mergeEffects(tracked, effectList.sons[exceptionEffects], true)
-        mergeTags(tracked, effectList.sons[tagEffects], true)
+        mergeEffects(tracked, effectList.sons[exceptionEffects], n)
+        mergeTags(tracked, effectList.sons[tagEffects], n)
   of nkTryStmt:
     trackTryStmt(tracked, n)
     return
@@ -346,3 +348,4 @@ proc trackProc*(s: PSym, body: PNode) =
                     hints=off)
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
+    
