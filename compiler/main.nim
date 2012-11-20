@@ -83,9 +83,19 @@ proc CompileModule(filename: string, flags: TSymFlags): PSym =
     result.id = getID()
   processModule(result, f, nil, rd)
 
+proc `==^`(a, b: string): bool =
+  try:
+    result = sameFile(a, b)
+  except EOS:
+    result = false
+
 proc CompileProject(projectFile = gProjectFull) =
-  discard CompileModule(options.libpath / "system", {sfSystemModule})
-  discard CompileModule(projectFile, {sfMainModule})
+  let systemFile = options.libpath / "system"
+  if projectFile.addFileExt(nimExt) ==^ systemFile.addFileExt(nimExt):
+    discard CompileModule(projectFile, {sfMainModule, sfSystemModule})
+  else:
+    discard CompileModule(systemFile, {sfSystemModule})
+    discard CompileModule(projectFile, {sfMainModule})
 
 proc semanticPasses =
   registerPass(verbosePass())

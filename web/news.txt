@@ -27,6 +27,8 @@ Changes affecting backwards compatibility
 Compiler Additions
 ------------------
 
+- The ``doc2`` command does not generate output for the whole project anymore.
+  Use the new ``--project`` switch to enable this behaviour.
 - The compiler can now warn about shadowed local variables. However, this needs
   to be turned on explicitly via ``--warning[ShadowIdent]:on``.
 

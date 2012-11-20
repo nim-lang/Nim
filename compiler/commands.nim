@@ -268,6 +268,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "forcebuild", "f": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optForceFullMake)
+  of "project":
+    expectNoArg(switch, arg, pass, info)
+    gWholeProject = true
   of "gc": 
     expectArg(switch, arg, pass, info)
     case arg.normalize

@@ -150,6 +150,9 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       newVar.owner = getCurrOwner(c)
       IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
       var defs = newTransNode(nkIdentDefs, it.info, 3)
+      if gCmd == cmdDoc:
+        # keep documentation information:
+        pnode(defs).comment = it.comment
       defs[0] = newSymNode(newVar).PTransNode
       defs[1] = it.sons[1].PTransNode
       defs[2] = transform(c, it.sons[2])
@@ -659,6 +662,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformSons(c, n)
   of nkBlockStmt, nkBlockExpr:
     result = transformBlock(c, n)
+  of nkIdentDefs, nkConstDef:
+    result = transformSons(c, n)
+    # XXX comment handling really sucks:
+    if gCmd == cmdDoc:
+      pnode(result).comment = n.comment
   else:
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))

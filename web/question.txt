@@ -72,7 +72,7 @@ statements.
 How fast is Nimrod?
 -------------------
 Benchmarks show it to be comparable to C. Some language features (methods, 
-closures, RTTI) are not yet as optimized as they could and will be.
+closures, message passing) are not yet as optimized as they could and will be.
 The only overhead Nimrod has over C is the GC which has been tuned 
 for years but still needs some work.
 
