@@ -758,6 +758,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       addInterfaceDeclAt(c, s, c.tab.tos - 2)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
+    else:
+      implictPragmas(c, s, n, validPragmas)
   else: 
     if n.sons[pragmasPos].kind != nkEmpty: 
       LocalError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
