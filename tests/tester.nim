@@ -56,7 +56,8 @@ proc extractSpec(filename: string): string =
   var x = readFile(filename).string
   var a = x.find(tripleQuote)
   var b = x.find(tripleQuote, a+3)
-  if a >= 0 and b > a:
+  # look for """ only in the first section
+  if a >= 0 and b > a and a < 40:
     result = x.substr(a+3, b-1).replace("'''", tripleQuote)
   else:
     #echo "warning: file does not contain spec: " & filename
