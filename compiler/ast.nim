@@ -587,11 +587,26 @@ type
     generated*: bool          # needed for the backends:
     name*: PRope
     path*: PNode              # can be a string literal!
-    
-
+  
+  TInstantiation* = object
+    sym*: PSym
+    concreteTypes*: seq[PType]
+    usedBy*: seq[int32]       # list of modules using the generic
+                              # needed in caas mode for purging the cache
+                              # XXX: it's possible to switch to a 
+                              # simple ref count here
+  
+  PInstantiation* = ref TInstantiation
+      
   PLib* = ref TLib
   TSym* = object of TIdObj
-    kind*: TSymKind
+    case kind*: TSymKind
+    of skType:                # generic instantiation caches
+      typeInstCache*: seq[PType]
+    of routineKinds:
+      procInstCache*: seq[PInstantiation]
+    else: nil
+
     magic*: TMagic
     typ*: PType
     name*: PIdent
@@ -615,13 +630,14 @@ type
                               # for a conditional:
                               # 1 iff the symbol is defined, else 0
                               # (or not in symbol table)
-                              # for modules, a unique index corresponding
-                              # to the order of compilation 
+                              # for modules, an unique index corresponding
+                              # to the module's fileIdx
+
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to safe space)
-  
+      
   TTypeSeq* = seq[PType]
   TType* = object of TIdObj   # types are identical iff they have the
                               # same id; there may be multiple copies of a type

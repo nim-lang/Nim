@@ -31,24 +31,31 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
-proc searchInstTypes(tab: TIdTable, key: PType): PType = 
-  # returns nil if we need to declare this type
-  result = PType(IdTableGet(tab, key))
-  if result == nil and tab.counter > 0: 
-    # we have to do a slow linear search because types may need
-    # to be compared by their structure:
-    for h in countup(0, high(tab.data)): 
-      var t = PType(tab.data[h].key)
-      if t != nil: 
-        if key.containerId == t.containerId: 
-          var match = true
-          for j in countup(0, sonsLen(t) - 1): 
-            # XXX sameType is not really correct for nested generics?
-            if not sameType(t.sons[j], key.sons[j]): 
-              match = false
-              break 
-          if match: 
-            return PType(tab.data[h].val)
+proc searchInstTypes(key: PType): PType =
+  let genericTyp = key.sons[0]
+  InternalAssert genericTyp.kind == tyGenericBody and
+                 key.sons[0] == genericTyp and
+                 genericTyp.sym != nil
+
+  if genericTyp.sym.typeInstCache == nil:
+    return
+
+  for inst in genericTyp.sym.typeInstCache:
+    InternalAssert inst.sons.len == key.sons.len + 1
+    if inst.id == key.id: return inst
+    block MatchType:
+      for j in 1 .. high(key.sons):
+        # XXX sameType is not really correct for nested generics?
+        if not sameType(inst.sons[j], key.sons[j]):
+          break MatchType
+      
+      return inst
+
+proc cacheTypeInst(inst: PType) =
+  # XXX: add to module's generics
+  #      update the refcount
+  let genericTyp = inst.sons[0]
+  genericTyp.sym.typeInstCache.safeAdd(inst)
 
 type
   TReplTypeVars* {.final.} = object 
@@ -134,7 +141,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   var header: PType = nil
   when true:
     # search for some instantiation here:
-    result = searchInstTypes(cl.c.generics.InstTypes, t)
+    result = searchInstTypes(t)
     if result != nil: return
     for i in countup(1, sonsLen(t) - 1):
       var x = t.sons[i]
@@ -145,7 +152,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
         #idTablePut(cl.typeMap, body.sons[i-1], x)
     if header != nil:
       # search again after first pass:
-      result = searchInstTypes(cl.c.generics.InstTypes, header)
+      result = searchInstTypes(header)
       if result != nil: return
     else:
       header = copyType(t, t.owner, false)
@@ -153,15 +160,16 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     # we need to add the candidate here, before it's fully instantiated for
     # recursive instantions:
     result = newType(tyGenericInst, t.sons[0].owner)
-    idTablePut(cl.c.generics.InstTypes, header, result)
-
+    result.rawAddSon(header.sons[0])
+    cacheTypeInst(result)
+ 
     for i in countup(1, sonsLen(t) - 1):
       var x = replaceTypeVarsT(cl, t.sons[i])
       assert x.kind != tyGenericInvokation
       header.sons[i] = x
       idTablePut(cl.typeMap, body.sons[i-1], x)
     
-    for i in countup(0, sonsLen(t) - 1): 
+    for i in countup(1, sonsLen(t) - 1): 
       # if one of the params is not concrete, we cannot do anything
       # but we already raised an error!
       rawAddSon(result, header.sons[i])
@@ -212,7 +220,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       result = handleGenericInvokation(cl, result)
   of tyGenericInvokation: 
     result = handleGenericInvokation(cl, t)
-  of tyGenericBody: 
+  of tyGenericBody:
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
     result = ReplaceTypeVarsT(cl, lastSon(t))
   of tyInt:
