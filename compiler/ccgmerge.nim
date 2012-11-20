@@ -44,9 +44,12 @@ const
     cpsStmts: "NIM_merge_PROC_BODY"
   ]
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
-  
+
+template mergeSectionsEnabled: expr =
+  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+
 proc genSectionStart*(fs: TCFileSection): PRope =
-  if optSymbolFiles in gGlobalOptions:
+  if mergeSectionsEnabled:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CFileSectionNames[fs])
@@ -54,11 +57,11 @@ proc genSectionStart*(fs: TCFileSection): PRope =
     app(result, tnl)
 
 proc genSectionEnd*(fs: TCFileSection): PRope =
-  if optSymbolFiles in gGlobalOptions:
+  if mergeSectionsEnabled:
     result = toRope(NimMergeEndMark & tnl)
 
 proc genSectionStart*(ps: TCProcSection): PRope =
-  if optSymbolFiles in gGlobalOptions:
+  if mergeSectionsEnabled:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CProcSectionNames[ps])
@@ -66,7 +69,7 @@ proc genSectionStart*(ps: TCProcSection): PRope =
     app(result, tnl)
 
 proc genSectionEnd*(ps: TCProcSection): PRope =
-  if optSymbolFiles in gGlobalOptions:
+  if mergeSectionsEnabled:
     result = toRope(NimMergeEndMark & tnl)
 
 proc writeTypeCache(a: TIdTable, s: var string) =

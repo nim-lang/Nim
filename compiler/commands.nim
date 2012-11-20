@@ -23,6 +23,7 @@ type
 
 proc ProcessCommand*(switch: string, pass: TCmdLinePass)
 proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
+
 # implementation
 
 const

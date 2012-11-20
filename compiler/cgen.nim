@@ -37,6 +37,10 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.forwardedProcs.add(prc)
   inc(gForwardedProcsCounter)
 
+proc getCgenModule(s: PSym): BModule =
+  result = if s.position >= 0 and s.position < gModules.len: gModules[s.position]
+           else: nil
+
 proc findPendingModule(m: BModule, s: PSym): BModule = 
   var ms = getModule(s)
   result = gModules[ms.position]
@@ -1013,18 +1017,67 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.nimTypesName = getTempName()
   result.PreventStackTrace = sfSystemModule in module.flags
 
+proc nullify[T](arr: var T) =
+  for i in low(arr)..high(arr):
+    arr[i] = nil
+
+proc resetModule*(m: var BModule) =
+  # between two compilations in CAAS mode, we can throw
+  # away all the data that was written to disk
+  InitLinkedList(m.headerFiles)
+  m.declaredProtos = initIntSet()
+  initIdTable(m.forwTypeCache)
+  m.initProc = newProc(nil, m)
+  m.initProc.options = gOptions
+  m.preInitProc = newProc(nil, m)
+  initNodeTable(m.dataCache)
+  m.typeStack = @[]
+  m.forwardedProcs = @[]
+  m.typeNodesName = getTempName()
+  m.nimTypesName = getTempName()
+  m.PreventStackTrace = sfSystemModule in m.module.flags
+  nullify m.s
+  m.usesThreadVars = false
+  m.typeNodes = 0
+  m.nimTypes = 0
+  nullify m.extensionLoaders
+  
+  # indicate that this is now cached module
+  # the cache will be invalidated by nullifying gModules
+  m.fromCache = true
+  
+  # we keep only the "merge info" information for the module
+  # and the properties that can't change:
+  # m.filename
+  # m.cfilename
+  # m.isHeaderFile
+  # m.module ?
+  # m.typeCache
+  # m.declaredThings
+  # m.typeInfoMarker
+  # m.labels
+  # m.FrameDeclared
+
+proc resetCgenModules* =
+  for m in cgenModules(): resetModule(m)
+
 proc rawNewModule(module: PSym): BModule =
   result = rawNewModule(module, module.filename)
 
 proc newModule(module: PSym): BModule =
-  result = rawNewModule(module)
-  if gModules.len <= module.position: gModules.setLen(module.position + 1)
-  gModules[module.position] = result
+  result = getCgenModule(module)
+  if result == nil:
+    result = rawNewModule(module)
+    growCache gModules, module.position
+    gModules[module.position] = result
 
-  if (optDeadCodeElim in gGlobalOptions): 
-    if (sfDeadCodeElim in module.flags): 
-      InternalError("added pending module twice: " & module.filename)
-  
+    if (optDeadCodeElim in gGlobalOptions): 
+      if (sfDeadCodeElim in module.flags): 
+        InternalError("added pending module twice: " & module.filename)
+  else:
+    echo "CGEN CACHED MODULE: ", result.filename
+    assert optCaasEnabled in gGlobalOptions
+
 proc myOpen(module: PSym): PPassContext = 
   result = newModule(module)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
@@ -1056,7 +1109,8 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): string =
   result = changeFileExt(completeCFilePath(m.cfilename), cExt)
 
-proc myOpenCached(module: PSym, rd: PRodReader): PPassContext = 
+proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
+  assert optSymbolFiles in gGlobalOptions
   var m = newModule(module)
   readMergeInfo(getCFile(m), m)
   result = m
@@ -1130,7 +1184,27 @@ proc writeModule(m: BModule, pending: bool) =
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     addFileToCompile(cfilenoext)
+  
   addFileToLink(cfilenoext)
+
+proc updateCachedModule(m: BModule) =
+  let cfile = getCFile(m)
+  let cfilenoext = changeFileExt(cfile, "")
+  
+  if mergeRequired(m):
+    echo "MERGE REQUIRED FOR ", m.filename
+    mergeFiles(cfile, m)
+    genInitCode(m)
+    finishTypeDescriptions(m)
+    var code = genModule(m, cfilenoext)
+    writeRope(code, cfile)
+    addFileToCompile(cfilenoext)
+
+  addFileToLink(cfilenoext)
+
+proc cgenCaasUpdate* =
+  for m in cgenModules():
+    if m.fromCache: m.updateCachedModule
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
   result = n
@@ -1150,17 +1224,13 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     # deps are allowed (and the system module is processed in the wrong
     # order anyway)
     if generatedHeader != nil: finishModule(generatedHeader)
-    while gForwardedProcsCounter > 0: 
-      for i in countup(0, high(gModules)):
-        # some modules (like stdin) may exist only in memory
-        # they won't have a cgen BModule for them and we must
-        # skip them
-        if gModules[i] != nil:
-          finishModule(gModules[i])
-    for i in countup(0, high(gModules)): 
-      # see above
-      if gModules[i] != nil:
-        writeModule(gModules[i], pending=true)
+    while gForwardedProcsCounter > 0:
+      for m in cgenModules():
+        if not m.fromCache:
+          finishModule(m)
+    for m in cgenModules():
+      if not m.fromCache:
+        writeModule(m, pending=true)
     writeMapping(gMapping)
     if generatedHeader != nil: writeHeader(generatedHeader)
 
