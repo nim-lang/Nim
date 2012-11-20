@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     Notes*: TNoteKinds
+    otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon

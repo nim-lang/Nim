@@ -259,6 +259,7 @@ proc MainCommand =
     gCmd = cmdDoc
     LoadConfigs(DocConfig)
     wantMainModule()
+    DefineSymbol("nimdoc")
     CommandDoc2()
   of "rst2html": 
     gCmd = cmdRst2html
