@@ -473,7 +473,9 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) {.
             else:
               SSLError("Unknown error")
 
-proc setBlocking*(s: TSocket, blocking: bool)
+proc setBlocking*(s: TSocket, blocking: bool) {.tags: [].}
+  ## sets blocking mode on socket
+
 when defined(ssl):
   proc acceptAddrSSL*(server: TSocket, client: var TSocket,
                       address: var string): TSSLAcceptResult {.
@@ -762,7 +764,7 @@ proc connectAsync*(socket: TSocket, name: string, port = TPort(0),
       socket.sslNoHandshake = true
 
 when defined(ssl):
-  proc handshake*(socket: TSocket): bool {.tags: [FReadIO, RWriteIO].} =
+  proc handshake*(socket: TSocket): bool {.tags: [FReadIO, FWriteIO].} =
     ## This proc needs to be called on a socket after it connects. This is
     ## only applicable when using ``connectAsync``.
     ## This proc performs the SSL handshake.
@@ -1394,8 +1396,7 @@ when defined(Windows):
                    argptr: ptr clong): cint {.
                    stdcall, importc:"ioctlsocket", dynlib: "ws2_32.dll".}
 
-proc setBlocking*(s: TSocket, blocking: bool) =
-  ## sets blocking mode on socket
+proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if SOCKET_ERROR == ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)):
