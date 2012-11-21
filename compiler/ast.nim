@@ -198,6 +198,9 @@ type
     nkMutableTy,          # ``mutable T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
+    nkIteratorTy,         # iterator type
+    nkSharedTy,           # 'shared T'
+                          # we use 'nkPostFix' for the 'not nil' addition
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
