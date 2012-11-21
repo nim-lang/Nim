@@ -303,11 +303,11 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
       while (s.kind == tyObject) and (s.sons[0] != nil):
         app(r, ".Sup")
         s = skipTypes(s.sons[0], abstractInst)
-    lineCg(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
+    lineCg2(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
   of frEmbedded:
     # worst case for performance:
     var r = if takeAddr: addrLoc(a) else: rdLoc(a)
-    lineCg(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t)])
+    lineCg2(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t))
 
 type
   TAssignmentFlag = enum
@@ -330,27 +330,27 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       nilLoc.r = toRope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
-      lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
+      lineCg2(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
     if loc.s != OnStack:
-      lineCg(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-        [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+      lineCg2(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+              addrLoc(loc), genTypeInfo(p.module, loc.t))
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      lineF(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-        [addrLoc(loc), rdLoc(loc)])
+      lineCg2(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+              addrLoc(loc), rdLoc(loc))
       # XXX: We can be extra clever here and call memset only 
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
   if not isComplexValueType(skipTypes(loc.t, abstractRange)):
-    lineF(p, section, "$1 = 0;$n", [rdLoc(loc)])
+    lineCg2(p, section, "$1 = 0;$n", rdLoc(loc))
   else:
-    lineF(p, section, "memset((void*)$1, 0, sizeof($2));$n",
-       [addrLoc(loc), rdLoc(loc)])
+    lineCg2(p, section, "memset((void*)$1, 0, sizeof($2));$n",
+            addrLoc(loc), rdLoc(loc))
     genObjectInit(p, section, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
@@ -377,7 +377,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
     result.r = con("%LOC", toRope(p.labels))
   else: 
     result.r = con("LOC", toRope(p.labels))
-    lineF(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+    lineCg2(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   result.a = - 1
   result.t = getUniqueType(t)
@@ -403,11 +403,11 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     result.flags = {}
 
     if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      lineF(p, cpsStmts, "$1 = $2;$n", [rdLoc(result), rdLoc(toKeepAlive)])
+      lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
     else:
-      lineCg(p, cpsStmts,
+      lineCg2(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-           [addrLoc(result), addrLoc(toKeepAlive), rdLoc(result)])
+           addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
 
 proc initGCFrame(p: BProc): PRope =
   if p.gcFrameId > 0: result = ropef("struct {$1} GCFRAME;$n", p.gcFrameType)

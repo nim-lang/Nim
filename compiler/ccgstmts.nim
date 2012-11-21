@@ -72,14 +72,12 @@ proc endBlock(p: BProc, blockEnd: PRope) =
   # properly indented when pretty printing is enabled
   line(p, cpsStmts, blockEnd)
 
-var gBlockEndBracket = ropef("}$n")
-
 proc endBlock(p: BProc) =
   let topBlock = p.blocks.len - 1  
   let blockEnd = if p.blocks[topBlock].label != nil:
       ropef("} $1: ;$n", [p.blocks[topBlock].label])
     else:
-      gBlockEndBracket
+      ~"}$n"
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =

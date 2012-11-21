@@ -20,12 +20,12 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: PRope) =
-  var pl = con(callee, "(".toRope, params)
+  var pl = con(callee, ~"(", params)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if params != nil: pl.app(", ")
+      if params != nil: pl.app(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -34,17 +34,17 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           # reset before pass as 'result' var:
           resetLoc(p, d)
         app(pl, addrLoc(d))
-        appf(pl, ");$n")
+        app(pl, ~");$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
-        appf(pl, ");$n")
+        app(pl, ~");$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
-      app(pl, ")")
+      app(pl, ~")")
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
@@ -52,7 +52,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    appf(pl, ");$n")
+    app(pl, ~");$n")
     line(p, cpsStmts, pl)
 
 proc isInCurrentFrame(p: BProc, n: PNode): bool =
@@ -130,7 +130,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     if ri.sons[i].typ.isCompileTimeOnly: continue
-    if params != nil: app(params, ", ")
+    if params != nil: app(params, ~", ")
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
       app(params, genArg(p, ri.sons[i], typ.n.sons[i].sym))
@@ -144,7 +144,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     result = getClosureType(p.module, t, clHalf)
 
   proc addComma(r: PRope): PRope =
-    result = if r == nil: r else: con(r, ", ")
+    result = if r == nil: r else: con(r, ~", ")
 
   const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2);$n"
   var op: TLoc
@@ -161,7 +161,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym))
     else:
       app(pl, genArgNoParam(p, ri.sons[i]))
-    if i < length - 1: app(pl, ", ")
+    if i < length - 1: app(pl, ~", ")
   
   template genCallPattern =
     lineF(p, cpsStmts, CallPattern, op.r, pl, pl.addComma, rawProc)
@@ -169,7 +169,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let rawProc = getRawProcType(p, typ)
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(ri) > 1: app(pl, ", ")
+      if sonsLen(ri) > 1: app(pl, ~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -208,12 +208,12 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var param = typ.n.sons[1].sym
   app(pl, genArg(p, ri.sons[1], param))
   
-  if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, "->")
-  else: app(pl, ".")
+  if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, ~"->")
+  else: app(pl, ~".")
   app(pl, op.r)
   var params: PRope
   for i in countup(2, length - 1):
-    if params != nil: params.app(", ")
+    if params != nil: params.app(~", ")
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
@@ -226,7 +226,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
-  var pl = toRope"["
+  var pl = ~"["
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
@@ -235,10 +235,10 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   
   if length > 1:
     app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym))
-    app(pl, " ")
+    app(pl, ~" ")
   app(pl, op.r)
   if length > 2:
-    app(pl, ": ")
+    app(pl, ~": ")
     app(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym))
   for i in countup(3, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
@@ -246,30 +246,30 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       InternalError(ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
-    app(pl, " ")
+    app(pl, ~" ")
     app(pl, param.name.s)
-    app(pl, ": ")
+    app(pl, ~": ")
     app(pl, genArg(p, ri.sons[i], param))
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(ri) > 1: app(pl, " ")
+      if sonsLen(ri) > 1: app(pl, ~" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
         if d.k == locNone: getTemp(p, typ.sons[0], d)
-        app(pl, "Result: ")
+        app(pl, ~"Result: ")
         app(pl, addrLoc(d))
-        appf(pl, "];$n")
+        app(pl, ~"];$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp)
         app(pl, addrLoc(tmp))
-        appf(pl, "];$n")
+        app(pl, ~"];$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
-      app(pl, "]")
+      app(pl, ~"]")
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
@@ -277,7 +277,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    appf(pl, "];$n")
+    app(pl, ~"];$n")
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
