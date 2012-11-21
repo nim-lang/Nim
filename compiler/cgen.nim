@@ -133,74 +133,80 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
 
-import macros
+const compileTimeRopeFmt = not defined(booting)
 
-type TFmtFragmentKind = enum
-  ffSym,
-  ffLit,
-  ffParam
+when compileTimeRopeFmt:
+  import macros
 
-type TFragment = object
-  case kind: TFmtFragmentKind
-  of ffSym, ffLit:
-    value: string
-  of ffParam:
-    intValue: int
+  type TFmtFragmentKind = enum
+    ffSym,
+    ffLit,
+    ffParam
 
-iterator fmtStringFragments(s: string): tuple[kind: TFmtFragmentKind,
-                                              value: string,
-                                              intValue: int] =
-  # This is a bit less featured version of the ropecg's algorithm
-  # (be careful when replacing ropecg calls)
-  var
-    i = 0
-    length = s.len
+  type TFragment = object
+    case kind: TFmtFragmentKind
+    of ffSym, ffLit:
+      value: string
+    of ffParam:
+      intValue: int
 
-  while i < length:
-    var start = i
-    case s[i]
-    of '$':
-      let n = s[i+1]
-      case n
-      of '$':
-        inc i, 2
-      of '0'..'9':
-        # XXX: use the new case object construction syntax when it's ready
-        yield (kind: ffParam, value: "", intValue: n.ord - ord('1'))
-        inc i, 2
-        start = i
-      else:
-        inc i
-    of '#':
-      inc i
-      var j = i
-      while s[i] in IdentChars: inc i
-      yield (kind: ffSym, value: substr(s, j, i-1), intValue: 0)
-      start = i
-    else: nil
+  iterator fmtStringFragments(s: string): tuple[kind: TFmtFragmentKind,
+                                                value: string,
+                                                intValue: int] =
+    # This is a bit less featured version of the ropecg's algorithm
+    # (be careful when replacing ropecg calls)
+    var
+      i = 0
+      length = s.len
 
     while i < length:
-      if s[i] != '$' and s[i] != '#': inc i
-      else: break
+      var start = i
+      case s[i]
+      of '$':
+        let n = s[i+1]
+        case n
+        of '$':
+          inc i, 2
+        of '0'..'9':
+          # XXX: use the new case object construction syntax when it's ready
+          yield (kind: ffParam, value: "", intValue: n.ord - ord('1'))
+          inc i, 2
+          start = i
+        else:
+          inc i
+      of '#':
+        inc i
+        var j = i
+        while s[i] in IdentChars: inc i
+        yield (kind: ffSym, value: substr(s, j, i-1), intValue: 0)
+        start = i
+      else: nil
 
-    if i - 1 >= start:
-      yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
+      while i < length:
+        if s[i] != '$' and s[i] != '#': inc i
+        else: break
 
-macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
-  ## Experimental optimized rope-formatting operator
-  ## The run-time code it produces will be very fast, but will it speed up
-  ## the compilation of nimrod itself or will the macro execution time
-  ## offset the gains?
-  result = newCall(bindSym"ropeConcat")
-  for frag in fmtStringFragments(fmt.strVal):
-    case frag.kind
-    of ffSym:
-      result.add(newCall(bindSym"cgsym", m, newStrLitNode(frag.value)))
-    of ffLit:
-      result.add(newCall(bindSym"~", newStrLitNode(frag.value)))
-    of ffParam:
-      result.add(args[frag.intValue])
-  
+      if i - 1 >= start:
+        yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
+
+  macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+    ## Experimental optimized rope-formatting operator
+    ## The run-time code it produces will be very fast, but will it speed up
+    ## the compilation of nimrod itself or will the macro execution time
+    ## offset the gains?
+    result = newCall(bindSym"ropeConcat")
+    for frag in fmtStringFragments(fmt.strVal):
+      case frag.kind
+      of ffSym:
+        result.add(newCall(bindSym"cgsym", m, newStrLitNode(frag.value)))
+      of ffLit:
+        result.add(newCall(bindSym"~", newStrLitNode(frag.value)))
+      of ffParam:
+        result.add(args[frag.intValue])
+else:
+  template rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+    ropecg(m, fmt, args)
+
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
            args: varargs[PRope]) = 
   app(c, ropecg(m, frmt, args))
@@ -232,9 +238,14 @@ proc lineCg(p: BProc, s: TCProcSection, frmt: TFormatStr,
                args: varargs[PRope]) =
   app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
-template lineCg2(p: BProc, s: TCProcSection, frmt: TFormatStr,
-                 args: varargs[PRope]) =
-  line(p, s, rfmt(p.module, frmt, args))
+when compileTimeRopeFmt:
+  template linefmt(p: BProc, s: TCProcSection, frmt: TFormatStr,
+                   args: varargs[PRope]) =
+    line(p, s, rfmt(p.module, frmt, args))
+else:
+  proc linefmt(p: BProc, s: TCProcSection, frmt: TFormatStr,
+               args: varargs[PRope]) =
+    app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
 proc appLineCg(p: BProc, r: var PRope, frmt: TFormatStr,
                args: varargs[PRope]) =
@@ -263,7 +274,7 @@ proc genLineDir(p: BProc, t: PNode) =
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
-    lineCg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
+    linefmt(p, cpsStmts, "#endb($1);$n", toRope(line))
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
@@ -303,11 +314,11 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
       while (s.kind == tyObject) and (s.sons[0] != nil):
         app(r, ".Sup")
         s = skipTypes(s.sons[0], abstractInst)
-    lineCg2(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
+    linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
   of frEmbedded:
     # worst case for performance:
     var r = if takeAddr: addrLoc(a) else: rdLoc(a)
-    lineCg2(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t))
+    linefmt(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t))
 
 type
   TAssignmentFlag = enum
@@ -330,16 +341,16 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       nilLoc.r = toRope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
-      lineCg2(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
+      linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
     if loc.s != OnStack:
-      lineCg2(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+      linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(loc), genTypeInfo(p.module, loc.t))
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      lineCg2(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
               addrLoc(loc), rdLoc(loc))
       # XXX: We can be extra clever here and call memset only 
       # on the bytes following the m_type field?
@@ -347,9 +358,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
   if not isComplexValueType(skipTypes(loc.t, abstractRange)):
-    lineCg2(p, section, "$1 = 0;$n", rdLoc(loc))
+    linefmt(p, section, "$1 = 0;$n", rdLoc(loc))
   else:
-    lineCg2(p, section, "memset((void*)$1, 0, sizeof($2));$n",
+    linefmt(p, section, "memset((void*)$1, 0, sizeof($2));$n",
             addrLoc(loc), rdLoc(loc))
     genObjectInit(p, section, loc.t, loc, true)
 
@@ -377,7 +388,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
     result.r = con("%LOC", toRope(p.labels))
   else: 
     result.r = con("LOC", toRope(p.labels))
-    lineCg2(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+    linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   result.a = - 1
   result.t = getUniqueType(t)
@@ -403,9 +414,9 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     result.flags = {}
 
     if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
+      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
     else:
-      lineCg2(p, cpsStmts,
+      linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
 
@@ -714,7 +725,7 @@ proc initFrame(p: BProc, procname, filename: PRope): PRope =
     "\t#pushFrame((TFrame*)&F);$n", [procname, filename])
 
 proc deinitFrame(p: BProc): PRope =
-  result = ropecg(p.module, "\t#popFrame();$n")
+  result = rfmt(p.module, "\t#popFrame();$n")
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
@@ -726,8 +737,8 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, env)
   # generate cast assignment:
-  lineCg(p, cpsStmts, "$1 = ($2) ClEnv;$n", rdLoc(env.loc),
-         getTypeDesc(p.module, env.typ))
+  linefmt(p, cpsStmts, "$1 = ($2) ClEnv;$n",
+          rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
@@ -741,7 +752,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # declare the result symbol:
       assignLocalVar(p, res)
       assert(res.loc.r != nil)
-      returnStmt = ropeff("\treturn $1;$n", "ret $1$n", [rdLoc(res.loc)])
+      returnStmt = rfmt(nil, "\treturn $1;$n", rdLoc(res.loc))
       initLocalVar(p, res, immediateAsgn=false)
     else:
       fillResult(res)
@@ -757,10 +768,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
   if sfPure in prc.flags: 
-    generatedProc = ropeff("$N$1 {$n$2$3$4}$N$N", "define $1 {$n$2$3$4}$N",
-        [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
+    generatedProc = rfmt(nil, "$N$1 {$n$2$3$4}$N$N",
+                         header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
   else:
-    generatedProc = ropeff("$N$1 {$N", "$Ndefine $1 {$N", [header])
+    generatedProc = rfmt(nil, "$N$1 {$N", header)
     app(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options: 
       getFrameDecl(p)
@@ -775,11 +786,11 @@ proc genProcAux(m: BModule, prc: PSym) =
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
     app(generatedProc, p.s(cpsInit))
     app(generatedProc, p.s(cpsStmts))
-    if p.beforeRetNeeded: appf(generatedProc, "\tBeforeRet: ;$n")
+    if p.beforeRetNeeded: app(generatedProc, ~"\tBeforeRet: ;$n")
     app(generatedProc, deinitGCFrame(p))
     if optStackTrace in prc.options: app(generatedProc, deinitFrame(p))
     app(generatedProc, returnStmt)
-    appf(generatedProc, "}$N")
+    app(generatedProc, ~"}$N")
   app(m.s[cfsProcs], generatedProc)
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
@@ -788,11 +799,11 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   if lfDynamicLib in sym.loc.Flags:
     if getModule(sym).id != m.module.id and
         not ContainsOrIncl(m.declaredThings, sym.id): 
-      appf(m.s[cfsVars], "extern $1 $2;$n", 
-           [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
+      app(m.s[cfsVars], rfmt(nil, "extern $1 $2;$n",
+                        getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
   elif not ContainsOrIncl(m.declaredProtos, sym.id): 
-    appf(m.s[cfsProcHeaders], "$1;$n", [genProcHeader(m, sym)])
+    app(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", genProcHeader(m, sym)))
 
 proc genProcNoForward(m: BModule, prc: PSym) = 
   fillProcLoc(prc)

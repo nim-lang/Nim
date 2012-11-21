@@ -65,9 +65,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(tyInt), i)
-    lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
-        i.r, arraySize.toRope)
-    genTraverseProc(c, ropef("$1[$2]", accessor, i.r), typ.sons[1])
+    linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
+            i.r, arraySize.toRope)
+    genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
     lineF(p, cpsStmts, "}$n")
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
@@ -76,12 +76,12 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   of tyTuple:
     let typ = GetUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, ropef("$1.Field$2", accessor, i.toRope), typ.sons[i])
+      genTraverseProc(c, rfmt(nil, "$1.Field$2", accessor, i.toRope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, ropef("$1.ClEnv", accessor))
+      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClEnv", accessor))
   else:
     nil
 

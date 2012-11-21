@@ -96,7 +96,7 @@ proc ropeLen(a: PRope): int =
   if a == nil: result = 0
   else: result = a.length
   
-proc newRope(data: string = nil): PRope = 
+proc newRope*(data: string = nil): PRope = 
   new(result)
   if data != nil: 
     result.length = len(data)
@@ -129,6 +129,7 @@ proc RopeInvariant(r: PRope): bool =
 
 var gCacheTries* = 0
 var gCacheMisses* = 0
+var gCacheIntTries* = 0
 
 proc insertInCache(s: string): PRope = 
   inc gCacheTries
@@ -195,7 +196,9 @@ proc ropeConcat*(a: varargs[PRope]): PRope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
   for i in countup(0, high(a)): result = con(result, a[i])
 
-proc toRope(i: BiggestInt): PRope = result = toRope($i)
+proc toRope(i: BiggestInt): PRope =
+  inc gCacheIntTries
+  result = toRope($i)
 
 proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)

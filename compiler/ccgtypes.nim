@@ -126,13 +126,13 @@ proc mangleName(s: PSym): PRope =
       # These are not properly scoped now - we need to add blocks
       # around for loops in transf
       if keepOrigName:
-        result = s.name.s.mangle.toRope
+        result = s.name.s.mangle.newRope
       else:
-        app(result, toRope(mangle(s.name.s)))
+        app(result, newRope(mangle(s.name.s)))
         app(result, ~"_")
         app(result, toRope(s.id))
     else:
-      app(result, toRope(mangle(s.name.s)))
+      app(result, newRope(mangle(s.name.s)))
       app(result, ~"_")
       app(result, toRope(s.id))
     s.loc.r = result

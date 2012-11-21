@@ -504,5 +504,6 @@ proc MainCommand =
   echo "rope cache stats: "
   echo "  tries : ", gCacheTries
   echo "  misses: ", gCacheMisses
+  echo "  int tries: ", gCacheIntTries
   echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
 
