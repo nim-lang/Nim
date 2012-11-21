@@ -19,15 +19,15 @@ proc intLiteral(i: biggestInt): PRope =
     result = toRope(i)
   elif i == low(int32):
     # Nimrod has the same bug for the same reasons :-)
-    result = toRope("(-2147483647 -1)")
+    result = ~"(-2147483647 -1)"
   elif i > low(int64):
-    result = ropef("IL64($1)", [toRope(i)])
+    result = rfmt(nil, "IL64($1)", toRope(i))
   else:
-    result = toRope("(IL64(-9223372036854775807) - IL64(1))")
+    result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
 proc int32Literal(i: Int): PRope =
   if i == int(low(int32)):
-    result = toRope("(-2147483647 -1)")
+    result = ~"(-2147483647 -1)"
   else:
     result = toRope(i)
 
@@ -57,8 +57,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): PRope =
       else:
         result = intLiteral(n.intVal)
     of tyBool:
-      if n.intVal != 0: result = toRope("NIM_TRUE")
-      else: result = toRope("NIM_FALSE")
+      if n.intVal != 0: result = ~"NIM_TRUE"
+      else: result = ~"NIM_FALSE"
     else:
       result = ropef("(($1) $2)", [getTypeDesc(p.module,
           skipTypes(ty, abstractVarRange)), intLiteral(n.intVal)])
@@ -185,14 +185,14 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     #      lineF(p, cpsStmts, 'if ($1) nimGCunref($1);$n', [rdLoc(dest)])
     #    lineF(p, cpsStmts, '$1 = $2;$n', [rdLoc(dest), rdLoc(src)])
     if canFormAcycle(dest.t):
-      lineCg(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
-           [addrLoc(dest), rdLoc(src)])
+      lineCg2(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
+              addrLoc(dest), rdLoc(src))
     else:
-      lineCg(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
-           [addrLoc(dest), rdLoc(src)])
+      lineCg2(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
+              addrLoc(dest), rdLoc(src))
   else:
-    lineCg(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
-         [addrLoc(dest), rdLoc(src)])
+    lineCg2(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
+            addrLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
@@ -205,23 +205,23 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if needToCopy notin flags or 
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if dest.s == OnStack or optRefcGC notin gGlobalOptions:
-      lineCg(p, cpsStmts,
+      lineCg2(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-           [addrLoc(dest), addrLoc(src), rdLoc(dest)])
+           addrLoc(dest), addrLoc(src), rdLoc(dest))
       if needToKeepAlive in flags: keepAlive(p, dest)
     else:
-      lineCg(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+      lineCg2(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
+              addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
   else:
-    lineCg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-         [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+    lineCg2(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
+            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
 
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
   if src.t != nil and src.t.kind == tyPtr:
     # little HACK to support the new 'var T' as return type:
-    lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     return
   var ty = skipTypes(dest.t, abstractRange)
   case ty.kind
@@ -231,8 +231,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
     else:
-      lineCg(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
-           [addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t)])
+      lineCg2(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
+              addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyString:
     if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
@@ -244,46 +244,46 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         # we use a temporary to care for the dreaded self assignment:
         var tmp: TLoc
         getTemp(p, ty, tmp)
-        lineCg(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
-             [dest.rdLoc, src.rdLoc, tmp.rdLoc])
+        lineCg2(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
+                dest.rdLoc, src.rdLoc, tmp.rdLoc)
         lineCg(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", tmp.rdLoc)
       else:
-        lineCg(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
-             [addrLoc(dest), rdLoc(src)])
+        lineCg2(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
+               addrLoc(dest), rdLoc(src))
         if needToKeepAlive in flags: keepAlive(p, dest)
   of tyTuple, tyObject, tyProc:
     # XXX: check for subtyping?
     if needsComplexAssignment(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
-      lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+      lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyArray, tyArrayConstr:
     if needsComplexAssignment(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
-      lineCg(p, cpsStmts,
+      lineCg2(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
-           [rdLoc(dest), rdLoc(src)])
+           rdLoc(dest), rdLoc(src))
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
     if needsComplexAssignment(dest.t):
-      lineCg(p, cpsStmts,     # XXX: is this correct for arrays?
+      lineCg2(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+           addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
     else:
-      lineCg(p, cpsStmts,
+      lineCg2(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len0);$n",
-           [rdLoc(dest), rdLoc(src)])
+           rdLoc(dest), rdLoc(src))
   of tySet:
     if mapType(ty) == ctArray:
-      lineCg(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
-           [rdLoc(dest), rdLoc(src), toRope(getSize(dest.t))])
+      lineCg2(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
+              rdLoc(dest), rdLoc(src), toRope(getSize(dest.t)))
     else:
-      lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+      lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
      tyInt..tyUInt64, tyRange, tyVar:
-    lineCg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    lineCg2(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: InternalError("genAssignment(" & $ty.kind & ')')
 
 proc expr(p: BProc, e: PNode, d: var TLoc)
@@ -322,7 +322,7 @@ proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   if d.k != locNone: InternalError(e.info, "binaryStmt")
   InitLocExpr(p, e.sons[1], d)
   InitLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, [rdLoc(d), rdLoc(b)])
+  lineCg(p, cpsStmts, frmt, rdLoc(d), rdLoc(b))
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc

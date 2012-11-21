@@ -70,12 +70,12 @@ proc mangleName(s: PSym): PRope =
     if gCmd == cmdCompileToLLVM: 
       case s.kind
       of skProc, skMethod, skConverter, skConst, skIterator: 
-        result = toRope("@")
+        result = ~"@"
       of skVar, skForVar, skResult, skLet: 
-        if sfGlobal in s.flags: result = toRope("@")
-        else: result = toRope("%")
+        if sfGlobal in s.flags: result = ~"@"
+        else: result = ~"%"
       of skTemp, skParam, skType, skEnumField, skModule: 
-        result = toRope("%")
+        result = ~"%"
       else: InternalError(s.info, "mangleName")
     when oKeepVariableNames:
       let keepOrigName = s.kind in skLocalVars - {skForVar} and 
@@ -129,11 +129,11 @@ proc mangleName(s: PSym): PRope =
         result = s.name.s.mangle.toRope
       else:
         app(result, toRope(mangle(s.name.s)))
-        app(result, "_")
+        app(result, ~"_")
         app(result, toRope(s.id))
     else:
       app(result, toRope(mangle(s.name.s)))
-      app(result, "_")
+      app(result, ~"_")
       app(result, toRope(s.id))
     s.loc.r = result
 
@@ -148,11 +148,9 @@ proc containsCompileTimeOnly(t: PType): bool =
         return true
   return false
 
-var anonTypeName = toRope"TY"
-
 proc typeName(typ: PType): PRope =
   result = if typ.sym != nil: typ.sym.name.s.mangle.toRope
-           else: anonTypeName
+           else: ~"TY"
 
 proc getTypeName(typ: PType): PRope = 
   if (typ.sym != nil) and ({sfImportc, sfExportc} * typ.sym.flags != {}) and
@@ -161,7 +159,7 @@ proc getTypeName(typ: PType): PRope =
   else:
     if typ.loc.r == nil:
       typ.loc.r = if gCmd != cmdCompileToLLVM: con(typ.typeName, typ.id.toRope)
-                  else: con(["%".toRope, typ.typeName, typ.id.toRope])
+                  else: con([~"%", typ.typeName, typ.id.toRope])
     result = typ.loc.r
   if result == nil: InternalError("getTypeName: " & $typ.kind)
   
@@ -249,10 +247,10 @@ proc CacheGetType(tab: TIdTable, key: PType): PRope =
   result = PRope(IdTableGet(tab, key))
 
 proc getTempName(): PRope = 
-  result = ropeff("TMP$1", "%TMP$1", [toRope(backendId())])
+  result = rfmt(nil, "TMP$1", toRope(backendId()))
 
 proc getGlobalTempName(): PRope = 
-  result = ropeff("TMP$1", "@TMP$1", [toRope(backendId())])
+  result = rfmt(nil, "TMP$1", toRope(backendId()))
 
 proc ccgIntroducedPtr(s: PSym): bool = 
   var pt = skipTypes(s.typ, abstractInst)
@@ -273,7 +271,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
   else: result = false
   
 proc fillResult(param: PSym) = 
-  fillLoc(param.loc, locParam, param.typ, ropeff("Result", "%Result", []), 
+  fillLoc(param.loc, locParam, param.typ, ~"Result",
           OnStack)
   if (mapReturnType(param.typ) != ctArray) and IsInvalidReturnType(param.typ): 
     incl(param.loc.flags, lfIndirect)
@@ -291,21 +289,21 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
                    check: var TIntSet, declareEnvironment=true) = 
   params = nil
   if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
-    rettype = toRope("void")
+    rettype = ~"void"
   else: 
     rettype = getTypeDescAux(m, t.sons[0], check)
   for i in countup(1, sonsLen(t.n) - 1): 
     if t.n.sons[i].kind != nkSym: InternalError(t.n.info, "genProcParams")
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
-    if params != nil: app(params, ", ")
+    if params != nil: app(params, ~", ")
     fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
     app(params, getParamTypeDesc(m, param.typ, check))
     if ccgIntroducedPtr(param): 
-      app(params, "*")
+      app(params, ~"*")
       incl(param.loc.flags, lfIndirect)
       param.loc.s = OnUnknown
-    app(params, " ")
+    app(params, ~" ")
     app(params, param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
