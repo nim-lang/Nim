@@ -2,10 +2,10 @@ version 0.9.2
 =============
   
 - test&finish first class iterators:
+  * tyIterator: implement nkIteratorTy, nkSharedTy
   * allow return in first class iterators
   * nested iterators
   * arglist as a type?
-  * tyIterator?
 
 - fix closure bug finally
 - overloading based on ASTs: 'constraint' should not be in PType but for the

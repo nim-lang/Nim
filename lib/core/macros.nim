@@ -53,7 +53,10 @@ type
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
-    nnkProcTy, nnkEnumTy,
+    nnkProcTy, 
+    nnkIteratorTy,         # iterator type
+    nnkSharedTy,           # 'shared T'
+    nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
     nnkReturnToken
