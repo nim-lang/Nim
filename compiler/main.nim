@@ -501,3 +501,8 @@ proc MainCommand =
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem())])
 
+  echo "rope cache stats: "
+  echo "  tries : ", gCacheTries
+  echo "  misses: ", gCacheMisses
+  echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
+

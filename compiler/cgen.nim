@@ -106,10 +106,10 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
           internalError("ropes: invalid format string $" & $j)
         app(result, args[j-1])
       of 'n':
-        if optLineDir notin gOptions: app(result, tnl)
+        if optLineDir notin gOptions: app(result, rnl)
         inc(i)
       of 'N': 
-        app(result, tnl)
+        app(result, rnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
     elif frmt[i] == '#' and frmt[i+1] in IdentStartChars:
@@ -133,6 +133,74 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
 
+import macros
+
+type TFmtFragmentKind = enum
+  ffSym,
+  ffLit,
+  ffParam
+
+type TFragment = object
+  case kind: TFmtFragmentKind
+  of ffSym, ffLit:
+    value: string
+  of ffParam:
+    intValue: int
+
+iterator fmtStringFragments(s: string): tuple[kind: TFmtFragmentKind,
+                                              value: string,
+                                              intValue: int] =
+  # This is a bit less featured version of the ropecg's algorithm
+  # (be careful when replacing ropecg calls)
+  var
+    i = 0
+    length = s.len
+
+  while i < length:
+    var start = i
+    case s[i]
+    of '$':
+      let n = s[i+1]
+      case n
+      of '$':
+        inc i, 2
+      of '0'..'9':
+        # XXX: use the new case object construction syntax when it's ready
+        yield (kind: ffParam, value: "", intValue: n.ord - ord('1'))
+        inc i, 2
+        start = i
+      else:
+        inc i
+    of '#':
+      inc i
+      var j = i
+      while s[i] in IdentChars: inc i
+      yield (kind: ffSym, value: substr(s, j, i-1), intValue: 0)
+      start = i
+    else: nil
+
+    while i < length:
+      if s[i] != '$' and s[i] != '#': inc i
+      else: break
+
+    if i - 1 >= start:
+      yield (kind: ffLit, value: substr(s, start, i-1), intValue: 0)
+
+macro rfmt(m: BModule, fmt: expr[string], args: varargs[PRope]): expr =
+  ## Experimental optimized rope-formatting operator
+  ## The run-time code it produces will be very fast, but will it speed up
+  ## the compilation of nimrod itself or will the macro execution time
+  ## offset the gains?
+  result = newCall(bindSym"ropeConcat")
+  for frag in fmtStringFragments(fmt.strVal):
+    case frag.kind
+    of ffSym:
+      result.add(newCall(bindSym"cgsym", m, newStrLitNode(frag.value)))
+    of ffLit:
+      result.add(newCall(bindSym"~", newStrLitNode(frag.value)))
+    of ffParam:
+      result.add(args[frag.intValue])
+  
 proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
            args: varargs[PRope]) = 
   app(c, ropecg(m, frmt, args))
@@ -163,6 +231,10 @@ proc lineF(p: BProc, s: TCProcSection, frmt: TFormatStr,
 proc lineCg(p: BProc, s: TCProcSection, frmt: TFormatStr,
                args: varargs[PRope]) =
   app(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
+
+template lineCg2(p: BProc, s: TCProcSection, frmt: TFormatStr,
+                 args: varargs[PRope]) =
+  line(p, s, rfmt(p.module, frmt, args))
 
 proc appLineCg(p: BProc, r: var PRope, frmt: TFormatStr,
                args: varargs[PRope]) =

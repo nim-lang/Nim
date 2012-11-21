@@ -127,10 +127,15 @@ proc RopeInvariant(r: PRope): bool =
                   #      if result then result := ropeInvariant(r.right);
                   #    end 
 
+var gCacheTries* = 0
+var gCacheMisses* = 0
+
 proc insertInCache(s: string): PRope = 
+  inc gCacheTries
   var h = hash(s) and high(cache)
   result = cache[h]
   if isNil(result) or result.data != s:
+    inc gCacheMisses
     result = newRope(s)
     cache[h] = result
   
@@ -186,6 +191,10 @@ proc con(a: string, b: PRope): PRope = result = con(toRope(a), b)
 proc con(a: varargs[PRope]): PRope = 
   for i in countup(0, high(a)): result = con(result, a[i])
 
+proc ropeConcat*(a: varargs[PRope]): PRope =
+  # not overloaded version of concat to speed-up `rfmt` a little bit
+  for i in countup(0, high(a)): result = con(result, a[i])
+
 proc toRope(i: BiggestInt): PRope = result = toRope($i)
 
 proc app(a: var PRope, b: PRope) = a = con(a, b)
@@ -211,6 +220,10 @@ proc WriteRope*(head: PRope, filename: string, useWarning = false) =
   else:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
                filename)
+
+var
+  rnl* = tnl.newRope
+  softRnl* = tnl.newRope
 
 proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope = 
   var i = 0
@@ -240,10 +253,10 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
         else:
           app(result, args[j - 1])
       of 'n':
-        if optLineDir notin gOptions: app(result, tnl)
+        app(result, softRnl)
         inc i
       of 'N':
-        app(result, tnl)
+        app(result, rnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
     var start = i
@@ -253,6 +266,14 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
     if i - 1 >= start: 
       app(result, substr(frmt, start, i - 1))
   assert(RopeInvariant(result))
+
+{.push stack_trace: off, line_trace: off.}
+proc `~`*(r: expr[string]): PRope =
+  # this is the new optimized "to rope" operator
+  # the mnemonic is that `~` looks a bit like a rope :)
+  var r {.global.} = r.ropef
+  return r
+{.pop.}
 
 proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) = 
   app(c, ropef(frmt, args))
