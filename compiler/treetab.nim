@@ -22,7 +22,7 @@ proc hashTree(n: PNode): THash =
     result = result !& n.ident.h
   of nkSym:
     result = result !& n.sym.name.h
-  of nkCharLit..nkInt64Lit: 
+  of nkCharLit..nkUInt64Lit: 
     if (n.intVal >= low(int)) and (n.intVal <= high(int)): 
       result = result !& int(n.intVal)
   of nkFloatLit..nkFloat64Lit:
@@ -42,7 +42,7 @@ proc TreesEquivalent(a, b: PNode): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     of nkSym: result = a.sym.id == b.sym.id
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     else: 
