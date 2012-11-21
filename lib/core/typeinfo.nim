@@ -198,6 +198,13 @@ proc len*(x: TAny): int =
   of tySequence: result = cast[PGenSeq](cast[ppointer](x.value)[]).len
   else: assert false
 
+
+proc base*(x: TAny): TAny =
+  ## returns base TAny (useful for inherited object types).
+  result.rawType = x.rawType.base
+  result.value = x.value
+
+
 proc isNil*(x: TAny): bool =
   ## `isNil` for an any `x` that represents a sequence, string, cstring,
   ## proc or some pointer type.
