@@ -1299,7 +1299,7 @@ proc send*(socket: TSocket, data: pointer, size: int): int {.
   when defined(windows) or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
   else:
-    when not defined(MSG_NOSIGNAL): 
+    when defined(solaris): 
       const MSG_NOSIGNAL = 0
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
