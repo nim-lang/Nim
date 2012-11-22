@@ -731,7 +731,8 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
 
 proc isExprStart(p: TParser): bool = 
   case p.tok.tokType
-  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkProc, tkBind, 
+  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, 
+     tkProc, tkIterator, tkBind, 
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
      tkTuple, tkType, tkWhen, tkCase:
     result = true
@@ -811,6 +812,9 @@ proc primary(p: var TParser, skipSuffix = false): PNode =
   
 proc parseTypeDesc(p: var TParser): PNode = 
   if p.tok.toktype == tkProc: result = parseProcExpr(p, false)
+  elif p.tok.toktype == tkIterator: 
+    result = parseProcExpr(p, false)
+    result.kind = nkIteratorTy
   else: result = parseExpr(p)
 
 proc parseExprStmt(p: var TParser): PNode = 
