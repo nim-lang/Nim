@@ -43,7 +43,7 @@ type
     tkLambda, tkLet,
     tkMacro, tkMethod, tkMixin, tkMod, tkNil, tkNot, tkNotin, 
     tkObject, tkOf, tkOr, tkOut, 
-    tkProc, tkPtr, tkRaise, tkRef, tkReturn, tkShl, tkShr, tkStatic,
+    tkProc, tkPtr, tkRaise, tkRef, tkReturn, tkShared, tkShl, tkShr, tkStatic,
     tkTemplate, 
     tkTry, tkTuple, tkType, tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
     tkYield, # end of keywords
@@ -78,7 +78,8 @@ const
     "lambda", "let", 
     "macro", "method", "mixin", "mod", 
     "nil", "not", "notin", "object", "of", "or", 
-    "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "static",
+    "out", "proc", "ptr", "raise", "ref", "return", 
+    "shared", "shl", "shr", "static",
     "template", 
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",

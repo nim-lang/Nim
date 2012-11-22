@@ -30,7 +30,7 @@ type
     wInclude, wInterface, wIs, wIsnot, wIterator, wLambda, wLet,
     wMacro, wMethod, wMixin, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
-    wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
+    wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
     wWhen, wWhile, wWith, wWithout, wXor, wYield,
     
     wColon, wColonColon, wEquals, wDot, wDotDot,
@@ -108,7 +108,8 @@ const
     "lambda", "let",
     "macro", "method", "mixin", "mod", "nil", "not", "notin", 
     "object", "of", "or", 
-    "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "static",
+    "out", "proc", "ptr", "raise", "ref", "return",
+    "shared", "shl", "shr", "static",
     "template", "try", "tuple", "type", "var", 
     "when", "while", "with", "without", "xor",
     "yield",

@@ -425,6 +425,8 @@ proc lsub(n: PNode): int =
   of nkTypeDef: result = lsons(n) + 3
   of nkOfInherit: result = lsub(n.sons[0]) + len("of_")
   of nkProcTy: result = lsons(n) + len("proc_")
+  of nkIteratorTy: result = lsons(n) + len("iterator_")
+  of nkSharedTy: result = lsons(n) + len("shared_")
   of nkEnumTy: 
     if sonsLen(n) > 0:
       result = lsub(n.sons[0]) + lcomma(n, 1) + len("enum_")
@@ -1025,7 +1027,20 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[1])
     else:
       put(g, tkProc, "proc")
-  of nkEnumTy: 
+  of nkIteratorTy:
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkIterator, "iterator")
+      gsub(g, n.sons[0])
+      gsub(g, n.sons[1])
+    else:
+      put(g, tkIterator, "iterator")
+  of nkSharedTy:
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkShared, "shared")
+      gsub(g, n.sons[0])
+    else:
+      put(g, tkShared, "shared")
+  of nkEnumTy:
     if sonsLen(n) > 0:
       putWithSpace(g, tkEnum, "enum")
       gsub(g, n.sons[0])
