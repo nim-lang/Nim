@@ -672,7 +672,7 @@ when false:
         add(n, newLeaf(p))
         inc(p.idx)
       add(father, n)
-    elif not verbatim and roSupportSmilies in p.shared.options:
+    elif not verbatim and roSupportSmilies in p.sharedState.options:
       let n = parseSmiley(p)
       if s != nil:
         add(father, n)

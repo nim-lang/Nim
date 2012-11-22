@@ -12,7 +12,7 @@ nil not notin
 object of or out
 proc ptr
 raise ref return
-shl shr static
+shared shl shr static
 template try tuple type
 var
 when while with without
