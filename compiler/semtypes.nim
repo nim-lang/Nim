@@ -882,7 +882,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
-  of nkProcTy:
+  of nkProcTy, nkIteratorTy:
     if n.sonsLen == 0: return newConstraint(c, tyProc)
     checkSonsLen(n, 2)
     openScope(c.tab)

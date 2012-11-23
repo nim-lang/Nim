@@ -339,9 +339,11 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
     else: 
       result = t.id == startId
-    if t.kind == tyObject and tfFinal notin t.flags:
-      # damn inheritance may introduce cycles:
-      result = true
+    # Inheritance can introduce cyclic types, however this is not relevant
+    # as the type that is passed to 'new' is statically known!
+    #if t.kind == tyObject and tfFinal notin t.flags:
+    #  # damn inheritance may introduce cycles:
+    #  result = true
   else: nil
 
 proc canFormAcycle(typ: PType): bool = 
@@ -410,7 +412,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "float", "float32", "float64", "float128",
       "uint", "uint8", "uint16", "uint32", "uint64",
       "bignum", "const ",
-      "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass" ]
+      "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass"]
   var t = typ
   result = ""
   if t == nil: return 
@@ -476,8 +478,8 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind] & typeToString(t.sons[0])
   of tyRange: 
     result = "range " & rangeToStr(t.n)
-  of tyProc: 
-    result = "proc ("
+  of tyProc:
+    result = if tfIterator in t.flags: "iterator (" else: "proc ("
     for i in countup(1, sonsLen(t) - 1): 
       add(result, typeToString(t.sons[i]))
       if i < sonsLen(t) - 1: add(result, ", ")
@@ -497,6 +499,8 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else: 
     result = typeToStr[t.kind]
+  if tfShared in t.flags: result = "shared " & result
+  if tfNotNil in t.flags: result.add(" not nil")
 
 proc resultType(t: PType): PType = 
   assert(t.kind == tyProc)

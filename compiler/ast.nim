@@ -347,7 +347,7 @@ type
     nfSem       # node has been checked for semantics
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 17 for efficiency reasons (now: 16)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 19)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -359,19 +359,22 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfInstantiated    # XXX: used to mark generic params after instantiation.
+    tfInstantiated,   # XXX: used to mark generic params after instantiation.
                       # if the concrete type happens to be an implicit generic
                       # this can lead to invalid proc signatures in the second
                       # pass of semProcTypeNode performed after instantiation.
                       # this won't be needed if we don't perform this redundant
                       # second pass (stay tuned).
-    tfRetType         # marks return types in proc (used to detect type classes 
+    tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
-    tfByRef           # pass object/tuple by reference (C backend)
+    tfByRef,          # pass object/tuple by reference (C backend)
+    tfIterator,       # type is really an iterator, not a tyProc
+    tfShared,         # type is 'shared'
+    tfNotNil          # type cannot be 'nil'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -412,6 +415,9 @@ const
     skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   skError* = skUnknown
+  
+  # type flags that are essential for type equality:
+  eqTypeFlags* = {tfIterator, tfShared, tfNotNil}
 
 type
   TMagic* = enum # symbols that require compiler magic:

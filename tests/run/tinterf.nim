@@ -9,12 +9,12 @@ type
     getter2: proc(): int {.closure.}]
 
 proc getInterf(): ITest =
-  var shared, shared2: int
+  var shared1, shared2: int
   
   return (setter: proc (x: int) = 
-            shared = x
+            shared1 = x
             shared2 = x + 10,
-          getter1: proc (): int = result = shared,
+          getter1: proc (): int = result = shared1,
           getter2: proc (): int = return shared2)
 
 var i = getInterf()
