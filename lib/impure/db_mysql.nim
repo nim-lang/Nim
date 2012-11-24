@@ -14,7 +14,8 @@ import strutils, mysql
 
 type
   TDbConn* = PMySQL    ## encapsulates a database connection
-  TRow* = seq[string]  ## a row of a dataset
+  TRow* = seq[string]  ## a row of a dataset. NULL database values will be
+                       ## transformed always to the empty string.
   EDb* = object of EIO ## exception that is raised if a database error occurs
 
   TSqlQuery* = distinct string ## an SQL query string
@@ -111,7 +112,8 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
 
 proc getRow*(db: TDbConn, query: TSqlQuery,
              args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
-  ## retrieves a single row.
+  ## retrieves a single row. If the query doesn't return any rows, this proc
+  ## will return a TRow with empty strings for each column.
   rawExec(db, query, args)
   var sqlres = mysql.UseResult(db)
   if sqlres != nil:
@@ -150,9 +152,9 @@ iterator Rows*(db: TDbConn, query: TSqlQuery,
 
 proc GetValue*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
-  ## executes the query and returns the result dataset's the first column 
-  ## of the first row. Returns "" if the dataset contains no rows. This uses
-  ## `FastRows`, so it inherits its fragile behaviour.
+  ## executes the query and returns the first column of the first row of the
+  ## result dataset. Returns "" if the dataset contains no rows or the database
+  ## value is NULL.
   result = ""
   for row in FastRows(db, query, args): 
     result = row[0]
