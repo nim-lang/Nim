@@ -14,7 +14,8 @@ import strutils, sqlite3
 
 type
   TDbConn* = PSqlite3  ## encapsulates a database connection
-  TRow* = seq[string]  ## a row of a dataset
+  TRow* = seq[string]  ## a row of a dataset. NULL database values will be
+                       ## transformed always to the empty string.
   EDb* = object of EIO ## exception that is raised if a database error occurs
   
   TSqlQuery* = distinct string ## an SQL query string
@@ -108,7 +109,8 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
 
 proc getRow*(db: TDbConn, query: TSqlQuery,
              args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
-  ## retrieves a single row.
+  ## retrieves a single row. If the query doesn't return any rows, this proc
+  ## will return a TRow with empty strings for each column.
   var stmt = setupQuery(db, query, args)
   var L = (columnCount(stmt))
   result = newRow(L)
@@ -130,8 +132,9 @@ iterator Rows*(db: TDbConn, query: TSqlQuery,
 
 proc GetValue*(db: TDbConn, query: TSqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
-  ## executes the query and returns the result dataset's the first column 
-  ## of the first row. Returns "" if the dataset contains no rows.
+  ## executes the query and returns the first column of the first row of the
+  ## result dataset. Returns "" if the dataset contains no rows or the database
+  ## value is NULL.
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
