@@ -257,12 +257,14 @@ proc tupleRel(c: var TCandidate, f, a: PType): TTypeRelation =
           var y = a.n.sons[i].sym
           if x.name.id != y.name.id: return isNone
 
+proc allowsNil(f: PType): TTypeRelation {.inline.} =
+  result = if tfNotNil notin f.flags: isSubtype else: isNone
+
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
 
   case a.kind
-  of tyNil: result = isSubtype
   of tyProc:
     if sonsLen(f) != sonsLen(a): return
     # Note: We have to do unification for the parameters before the
@@ -299,6 +301,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     when useEffectSystem:
       if not compatibleEffects(f, a): return isNone
+  of tyNil: result = f.allowsNil
   else: nil
 
 proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
@@ -388,16 +391,15 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       elif typeRel(c, base(f), a.sons[0]) >= isGeneric: 
         result = isConvertible
     else: nil
-  of tySequence: 
+  of tySequence:
     case a.Kind
-    of tyNil: 
-      result = isSubtype
-    of tySequence: 
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty): 
+    of tySequence:
+      if (f.sons[0].kind != tyGenericParam) and (a.sons[0].kind == tyEmpty):
         result = isSubtype
-      else: 
+      else:
         result = typeRel(c, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
+    of tyNil: result = f.allowsNil
     else: nil
   of tyOrdinal:
     if isOrdinalType(a):
@@ -432,21 +434,21 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     of tyPtr: 
       result = typeRel(c, base(f), base(a))
       if result <= isConvertible: result = isNone
-    of tyNil: result = isSubtype
+    of tyNil: result = f.allowsNil
     else: nil
   of tyRef: 
     case a.kind
-    of tyRef: 
+    of tyRef:
       result = typeRel(c, base(f), base(a))
       if result <= isConvertible: result = isNone
-    of tyNil: result = isSubtype
+    of tyNil: result = f.allowsNil
     else: nil
-  of tyProc: 
+  of tyProc:
     result = procTypeRel(c, f, a)
   of tyPointer: 
     case a.kind
     of tyPointer: result = isEqual
-    of tyNil: result = isSubtype
+    of tyNil: result = f.allowsNil
     of tyProc:
       if a.callConv != ccClosure: result = isConvertible
     of tyPtr, tyCString: result = isConvertible
@@ -454,15 +456,15 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyString: 
     case a.kind
     of tyString: result = isEqual
-    of tyNil: result = isSubtype
+    of tyNil: result = f.allowsNil
     else: nil
-  of tyCString: 
+  of tyCString:
     # conversion from string to cstring is automatic:
     case a.Kind
     of tyCString: result = isEqual
-    of tyNil: result = isSubtype
+    of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
-    of tyPtr: 
+    of tyPtr:
       if a.sons[0].kind == tyChar: result = isConvertible
     of tyArray: 
       if (firstOrd(a.sons[0]) == 0) and
@@ -706,8 +708,7 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1): 
-      # iterators are not first class yet, so ignore them
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}: 
+      if arg.sons[i].sym.kind in {skProc, skIterator, skMethod, skConverter}: 
         copyCandidate(z, m)
         var r = typeRel(z, f, arg.sons[i].typ)
         if r != isNone: 

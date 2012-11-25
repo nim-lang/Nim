@@ -799,16 +799,18 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
+      # XXX support anon tuple here
       LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkCallKinds:
     if n[0].kind == nkIdent:
       let op = n.sons[0].ident
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
+        checkSonsLen(n, 3)
         var
           t1 = semTypeNode(c, n.sons[1], nil)
           t2 = semTypeNode(c, n.sons[2], nil)
-        if   t1 == nil: 
+        if t1 == nil: 
           LocalError(n.sons[1].info, errTypeExpected)
           result = newOrPrevType(tyError, prev, c)
         elif t2 == nil: 
@@ -819,6 +821,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result.addSonSkipIntLit(t1)
           result.addSonSkipIntLit(t2)
           result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
+      elif op.id == ord(wNot):
+        checkSonsLen(n, 3)
+        result = semTypeNode(c, n.sons[1], prev)
+        if result.kind in NilableTypes and n.sons[2].kind == nkNilLit:
+          result.flags.incl(tfNotNil)
+        else:
+          LocalError(n.info, errGenerated, "invalid type")
       else:
         result = semTypeExpr(c, n)
     else:
@@ -883,25 +892,33 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkProcTy, nkIteratorTy:
-    if n.sonsLen == 0: return newConstraint(c, tyProc)
-    checkSonsLen(n, 2)
-    openScope(c.tab)
-    result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
-    # dummy symbol for `pragma`:
-    var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
-    s.typ = result
-    if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
-      if result.callConv == ccDefault:
-        result.callConv = ccClosure
-        #Message(n.info, warnImplicitClosure, renderTree(n))
+    if n.sonsLen == 0:
+      result = newConstraint(c, tyProc)
     else:
-      pragma(c, s, n.sons[1], procTypePragmas)
-      when useEffectSystem: SetEffectsForProcType(result, n.sons[1])
-    closeScope(c.tab)
+      checkSonsLen(n, 2)
+      openScope(c.tab)
+      result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
+      # dummy symbol for `pragma`:
+      var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
+      s.typ = result
+      if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
+        if result.callConv == ccDefault:
+          result.callConv = ccClosure
+          #Message(n.info, warnImplicitClosure, renderTree(n))
+      else:
+        pragma(c, s, n.sons[1], procTypePragmas)
+        when useEffectSystem: SetEffectsForProcType(result, n.sons[1])
+      closeScope(c.tab)
+    if n.kind == nkIteratorTy:
+      result.flags.incl(tfIterator)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
+  of nkSharedTy:
+    checkSonsLen(n, 1)
+    result = semTypeNode(c, n.sons[0], prev)
+    result.flags.incl(tfShared)
   else:
     LocalError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)

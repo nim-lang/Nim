@@ -78,9 +78,10 @@ exprList ::= [expr (comma expr)* [comma]]
 
 qualifiedIdent ::= symbol ['.' symbol]
 
-typeDesc ::= exprOrType
+typeDesc ::= (exprOrType
          | 'proc' paramList [pragma]
-         | 'iterator' paramList [pragma]
+         | 'iterator' paramList [pragma] ) 
+           ['not' expr]  # for now only 'not nil' suffix is supported
 
 macroStmt ::= ':' [stmt] ('of' [exprList] ':' stmt
                          |'elif' expr ':' stmt
