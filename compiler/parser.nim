@@ -11,7 +11,7 @@
 # The parser strictly reflects the grammar ("doc/grammar.txt"); however
 # it uses several helper routines to keep the parser small. A special
 # efficient algorithm is used for the precedence levels. The parser here can
-# be seen as a refinement of the grammar, as it specifies how the AST is build
+# be seen as a refinement of the grammar, as it specifies how the AST is built
 # from the grammar and how comments belong to the AST.
 
 import
@@ -183,15 +183,14 @@ proc getPrecedence(tok: TToken): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotIn, tkIs, tkIsNot, tkOf, tkAs: result = 5
+  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf, tkAs: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor: result = 3
-  of tkNot: result = -2
   else: result = - 10
   
 proc isOperator(tok: TToken): bool = 
-  result = getPrecedence(tok) >= -2
+  result = getPrecedence(tok) >= 0
 
 proc parseSymbol(p: var TParser): PNode = 
   case p.tok.tokType
@@ -511,7 +510,7 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
     else: break
 
 type
-  TPrimaryMode = enum pmNormal, pmIsType, pmSkipSuffix
+  TPrimaryMode = enum pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
 
@@ -519,14 +518,15 @@ proc lowestExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok)
-  while opPrec >= limit: 
+  let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
+  while opPrec >= limit:
     var leftAssoc = ord(IsLeftAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
     optInd(p, opNode)         
     # read sub-expression with higher priority:
-    var b = lowestExprAux(p, opPrec + leftAssoc, mode)
+    var b = lowestExprAux(p, opPrec + leftAssoc, modeB)
     addSon(a, opNode)
     addSon(a, result)
     addSon(a, b)
@@ -742,20 +742,12 @@ proc isExprStart(p: TParser): bool =
     result = true
   else: result = false
   
-when false:
-  proc parseTypeDescNoSuffix(p: var TParser): PNode = 
-    if p.tok.toktype == tkProc: result = parseProcExpr(p, false)
-    elif p.tok.toktype == tkIterator: 
-      result = parseProcExpr(p, false)
-      result.kind = nkIteratorTy
-    else: result = primary(p)
-  
-proc parseTypeDescKAux(p: var TParser, kind: TNodeKind): PNode = 
+proc parseTypeDescKAux(p: var TParser, kind: TNodeKind, mode: TPrimaryMode): PNode = 
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
-    addSon(result, primary(p, pmIsType))
+    addSon(result, primary(p, mode))
 
 proc parseExpr(p: var TParser): PNode = 
   #
@@ -770,6 +762,10 @@ proc parseExpr(p: var TParser): PNode =
   else: result = lowestExpr(p)
   # XXX needs proper support:
   #of tkTry: result = parseTry(p)
+
+proc parseObject(p: var TParser): PNode
+proc parseDistinct(p: var TParser): PNode
+proc parseEnum(p: var TParser): PNode
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode = 
   # prefix operator?
@@ -789,14 +785,14 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     return
   
   case p.tok.tokType:
-  of tkVar: result = parseTypeDescKAux(p, nkVarTy)
-  of tkRef: result = parseTypeDescKAux(p, nkRefTy)
-  of tkPtr: result = parseTypeDescKAux(p, nkPtrTy)
-  of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr)
+  of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
+  of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
+  of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
+  of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr, mode)
   of tkTuple: result = parseTuple(p)
-  of tkProc: result = parseProcExpr(p, mode != pmIsType)
+  of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
   of tkIterator:
-    if mode == pmIsType:
+    if mode in {pmTypeDesc, pmTypeDef}:
       result = parseProcExpr(p, false)
       result.kind = nkIteratorTy
     else:
@@ -805,14 +801,23 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       getTok(p)  # we must consume a token here to prevend endless loops!
       result = ast.emptyNode
   of tkEnum:
-    result = newNodeP(nkEnumTy, p)
-    getTok(p)
+    if mode == pmTypeDef:
+      result = parseEnum(p)
+    else:
+      result = newNodeP(nkEnumTy, p)
+      getTok(p)
   of tkObject:
-    result = newNodeP(nkObjectTy, p)
-    getTok(p)
+    if mode == pmTypeDef:
+      result = parseObject(p)
+    else:
+      result = newNodeP(nkObjectTy, p)
+      getTok(p)
   of tkDistinct:
-    result = newNodeP(nkDistinctTy, p)
-    getTok(p)
+    if mode == pmTypeDef:
+      result = parseDistinct(p)
+    else:
+      result = newNodeP(nkDistinctTy, p)
+      getTok(p)
   of tkAddr:
     result = newNodeP(nkAddr, p)
     getTok(p)
@@ -832,19 +837,10 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result = primarySuffix(p, result)
 
 proc parseTypeDesc(p: var TParser): PNode = 
-  result = lowestExpr(p, pmIsType)
-  when false:
-    result = parseTypeDescNoSuffix(p)
-    # optional 'not nil' suffix?
-    if p.tok.tokType == tkNot:
-      # we don't call 'getTok' here, so 'parseExpr' includes the 'not' in the
-      # expression; this will yield an nkPrefix AST ;-)
-      let ex = parseExpr(p)
-      let a = newNodeI(nkInfix, result.info, 3)
-      a.sons[0] = ex.sons[0]
-      a.sons[1] = result
-      a.sons[2] = ex.sons[1]
-      result = a
+  result = lowestExpr(p, pmTypeDesc)
+
+proc parseTypeDefAux(p: var TParser): PNode = 
+  result = lowestExpr(p, pmTypeDef)
 
 proc parseExprStmt(p: var TParser): PNode = 
   var a = lowestExpr(p)
@@ -1445,16 +1441,16 @@ proc parseTypeDef(p: var TParser): PNode =
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
-    var a: PNode
-    case p.tok.tokType
-    of tkObject: a = parseObject(p)
-    of tkEnum: a = parseEnum(p)
-    of tkDistinct: a = parseDistinct(p)
-    of tkTuple: a = parseTuple(p, true)
-    of tkRef: a = parsePointerInTypeSection(p, nkRefTy)
-    of tkPtr: a = parsePointerInTypeSection(p, nkPtrTy)
-    else: a = parseTypeDesc(p)
-    addSon(result, a)
+    #var a: PNode
+    #case p.tok.tokType
+    #of tkObject: a = parseObject(p)
+    #of tkEnum: a = parseEnum(p)
+    #of tkDistinct: a = parseDistinct(p)
+    #of tkTuple: a = parseTuple(p, true)
+    #of tkRef: a = parsePointerInTypeSection(p, nkRefTy)
+    #of tkPtr: a = parsePointerInTypeSection(p, nkPtrTy)
+    #else: a = parseTypeDesc(p)
+    addSon(result, parseTypeDefAux(p))
   else:
     addSon(result, ast.emptyNode)
   indAndComment(p, result)    # special extension!
