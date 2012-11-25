@@ -791,6 +791,9 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     else:
       if containsOrIncl(c, a, b): return true
 
+  proc sameFlags(a, b: PType): bool {.inline.} =
+    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
+    
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst})
   var b = skipTypes(y, {tyGenericInst})
@@ -809,36 +812,37 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt:
-    result = true
+    result = sameFlags(a, b)
   of tyExpr:
-    result = ExprStructuralEquivalent(a.n, b.n)
+    result = ExprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
     IfFastObjectTypeCheckFailed(a, b):
       CycleCheck()
-      result = sameObjectStructures(a, b, c)
+      result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
     CycleCheck()
-    if c.cmp == dcEq: result = sameDistinctTypes(a, b)
-    else: result = sameTypeAux(a.sons[0], b.sons[0], c)
+    if c.cmp == dcEq: result = sameDistinctTypes(a, b) and sameFlags(a, b)
+    else: result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
-    result = a.id == b.id
+    result = a.id == b.id and sameFlags(a, b)
   of tyTuple:
     CycleCheck()
-    result = sameTuple(a, b, c)
-  of tyGenericInst: result = sameTypeAux(lastSon(a), lastSon(b), c)
+    result = sameTuple(a, b, c) and sameFlags(a, b)
+  of tyGenericInst:
+    result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if TypeDescExactMatch in c.flags:
       CycleCheck()
-      result = sameChildrenAux(x, y, c)
+      result = sameChildrenAux(x, y, c) and sameFlags(a, b)
     else:
-      result = true
+      result = sameFlags(a, b)
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClass:
     CycleCheck()
-    result = sameChildrenAux(a, b, c)
+    result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and (a.kind == tyProc):
       result = a.callConv == b.callConv
   of tyRange:

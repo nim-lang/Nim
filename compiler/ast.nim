@@ -715,6 +715,8 @@ const
     tyFloat..tyFloat128, tyUInt..tyUInt64}
   ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet, 
                                     tyTuple, tySequence}
+  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
+    tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}

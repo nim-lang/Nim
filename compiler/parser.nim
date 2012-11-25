@@ -183,14 +183,15 @@ proc getPrecedence(tok: TToken): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotIn, tkIs, tkIsNot, tkNot, tkOf, tkAs: result = 5
+  of tkIn, tkNotIn, tkIs, tkIsNot, tkOf, tkAs: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor: result = 3
+  of tkNot: result = -2
   else: result = - 10
   
 proc isOperator(tok: TToken): bool = 
-  result = getPrecedence(tok) >= 0
+  result = getPrecedence(tok) >= -2
 
 proc parseSymbol(p: var TParser): PNode = 
   case p.tok.tokType
@@ -509,10 +510,13 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
     else: break
 
-proc primary(p: var TParser, skipSuffix = false): PNode
+type
+  TPrimaryMode = enum pmNormal, pmIsType, pmSkipSuffix
 
-proc lowestExprAux(p: var TParser, limit: int): PNode = 
-  result = primary(p) 
+proc primary(p: var TParser, mode: TPrimaryMode): PNode
+
+proc lowestExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
+  result = primary(p, mode)
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok)
   while opPrec >= limit: 
@@ -522,15 +526,15 @@ proc lowestExprAux(p: var TParser, limit: int): PNode =
     getTok(p)
     optInd(p, opNode)         
     # read sub-expression with higher priority:
-    var b = lowestExprAux(p, opPrec + leftAssoc)
+    var b = lowestExprAux(p, opPrec + leftAssoc, mode)
     addSon(a, opNode)
     addSon(a, result)
     addSon(a, b)
     result = a
     opPrec = getPrecedence(p.tok)
   
-proc lowestExpr(p: var TParser): PNode = 
-  result = lowestExprAux(p, -1)
+proc lowestExpr(p: var TParser, mode = pmNormal): PNode = 
+  result = lowestExprAux(p, -1, mode)
 
 proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode = 
   result = newNodeP(kind, p)
@@ -738,12 +742,20 @@ proc isExprStart(p: TParser): bool =
     result = true
   else: result = false
   
+when false:
+  proc parseTypeDescNoSuffix(p: var TParser): PNode = 
+    if p.tok.toktype == tkProc: result = parseProcExpr(p, false)
+    elif p.tok.toktype == tkIterator: 
+      result = parseProcExpr(p, false)
+      result.kind = nkIteratorTy
+    else: result = primary(p)
+  
 proc parseTypeDescKAux(p: var TParser, kind: TNodeKind): PNode = 
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
-    addSon(result, parseTypeDesc(p))
+    addSon(result, primary(p, pmIsType))
 
 proc parseExpr(p: var TParser): PNode = 
   #
@@ -759,7 +771,7 @@ proc parseExpr(p: var TParser): PNode =
   # XXX needs proper support:
   #of tkTry: result = parseTry(p)
 
-proc primary(p: var TParser, skipSuffix = false): PNode = 
+proc primary(p: var TParser, mode: TPrimaryMode): PNode = 
   # prefix operator?
   if isOperator(p.tok):
     let isSigil = IsSigilLike(p.tok)
@@ -770,10 +782,10 @@ proc primary(p: var TParser, skipSuffix = false): PNode =
     optInd(p, a)
     if isSigil: 
       #XXX prefix operators
-      addSon(result, primary(p, true))
+      addSon(result, primary(p, pmSkipSuffix))
       result = primarySuffix(p, result)
     else:
-      addSon(result, primary(p))
+      addSon(result, primary(p, pmNormal))
     return
   
   case p.tok.tokType:
@@ -782,7 +794,16 @@ proc primary(p: var TParser, skipSuffix = false): PNode =
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy)
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr)
   of tkTuple: result = parseTuple(p)
-  of tkProc: result = parseProcExpr(p, true)
+  of tkProc: result = parseProcExpr(p, mode != pmIsType)
+  of tkIterator:
+    if mode == pmIsType:
+      result = parseProcExpr(p, false)
+      result.kind = nkIteratorTy
+    else:
+      # no anon iterators for now:
+      parMessage(p, errExprExpected, p.tok)
+      getTok(p)  # we must consume a token here to prevend endless loops!
+      result = ast.emptyNode
   of tkEnum:
     result = newNodeP(nkEnumTy, p)
     getTok(p)
@@ -795,27 +816,35 @@ proc primary(p: var TParser, skipSuffix = false): PNode =
   of tkAddr:
     result = newNodeP(nkAddr, p)
     getTok(p)
-    addSon(result, primary(p))
+    addSon(result, primary(p, pmNormal))
   of tkStatic:
     result = newNodeP(nkStaticExpr, p)
     getTok(p)
-    addSon(result, primary(p))
+    addSon(result, primary(p, pmNormal))
   of tkBind: 
     result = newNodeP(nkBind, p)
     getTok(p)
     optInd(p, result)
-    addSon(result, primary(p))
+    addSon(result, primary(p, pmNormal))
   else:
     result = identOrLiteral(p)
-    if not skipSuffix:
+    if mode != pmSkipSuffix:
       result = primarySuffix(p, result)
-  
+
 proc parseTypeDesc(p: var TParser): PNode = 
-  if p.tok.toktype == tkProc: result = parseProcExpr(p, false)
-  elif p.tok.toktype == tkIterator: 
-    result = parseProcExpr(p, false)
-    result.kind = nkIteratorTy
-  else: result = parseExpr(p)
+  result = lowestExpr(p, pmIsType)
+  when false:
+    result = parseTypeDescNoSuffix(p)
+    # optional 'not nil' suffix?
+    if p.tok.tokType == tkNot:
+      # we don't call 'getTok' here, so 'parseExpr' includes the 'not' in the
+      # expression; this will yield an nkPrefix AST ;-)
+      let ex = parseExpr(p)
+      let a = newNodeI(nkInfix, result.info, 3)
+      a.sons[0] = ex.sons[0]
+      a.sons[1] = result
+      a.sons[2] = ex.sons[1]
+      result = a
 
 proc parseExprStmt(p: var TParser): PNode = 
   var a = lowestExpr(p)

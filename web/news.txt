@@ -47,6 +47,10 @@ Language Additions
   exceptions for you.
 - User defined effects ("tags") tracking has been added and the ``doc2`` 
   command annotates possible tags for you.
+- Types can be annotated with the new syntax ``not nil`` to explictly state
+  that ``nil`` is not allowed. However currently the compiler performs no
+  advanced static checking for this; for now it's merely for documentation
+  purposes.
 
 
 2012-09-23 Version 0.9.0 released
