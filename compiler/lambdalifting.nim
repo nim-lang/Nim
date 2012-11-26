@@ -594,9 +594,11 @@ type
     tup: PType
 
 proc newIterResult(iter: PSym): PSym =
-  result = newSym(skResult, getIdent":result", iter, iter.info)
-  result.typ = iter.typ.sons[0]
-  incl(result.flags, sfUsed)
+  result = iter.ast.sons[resultPos].sym
+  when false:
+    result = newSym(skResult, getIdent":result", iter, iter.info)
+    result.typ = iter.typ.sons[0]
+    incl(result.flags, sfUsed)
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
@@ -636,6 +638,13 @@ proc transfIterBody(c: var TIterContext, n: PNode): PNode =
     result.add(stateAsgnStmt)
     result.add(retStmt)
     result.add(stateLabelStmt)
+  of nkReturnStmt:
+    result = newNodeI(nkStmtList, n.info)
+    var stateAsgnStmt = newNodeI(nkAsgn, n.info)
+    stateAsgnStmt.add(indirectAccess(newSymNode(c.closureParam),c.state,n.info))
+    stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
+    result.add(stateAsgnStmt)
+    result.add(n)
   else:
     for i in countup(0, sonsLen(n)-1):
       let x = transfIterBody(c, n.sons[i])

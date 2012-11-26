@@ -1199,6 +1199,31 @@ details like this when mixing garbage collected data with unmanaged memory.
 .. XXX finalizers for traced objects
 
 
+Not nil annotation
+~~~~~~~~~~~~~~~~~~
+
+All types for that ``nil`` is a valid value can be annotated to 
+exclude ``nil`` as a valid value with the `not nil`:idx: annotation:
+
+.. code-block:: nimrod
+  type
+    PObject = ref TObj not nil
+    TProc = (proc (x, y: int)) not nil
+    
+  proc p(x: PObject) =
+    echo "not nil"
+  
+  # compiler catches this:
+  p(nil)
+  
+  # but not this:
+  var x: PObject
+  p(x)
+
+As shown in the example this is merely an annotation for documentation purposes;
+for now the compiler can only catch the most trivial type violations.
+
+
 Procedural type
 ~~~~~~~~~~~~~~~
 A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is

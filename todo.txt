@@ -2,7 +2,6 @@ version 0.9.2
 =============
   
 - test&finish first class iterators:
-  * allow return in first class iterators
   * nested iterators
   * arglist as a type?
 
@@ -17,7 +16,7 @@ version 0.9.2
 
 - improve the compiler as a service
 - ``=`` should be overloadable; requires specialization for ``=``
-- implement constructors and non-nil types
+- implement constructors
 - make 'bind' default for templates and introduce 'mixin'; 
   special rule for ``[]=``
 - implicit deref for parameter matching; overloading based on 'var T'
@@ -38,6 +37,7 @@ Bugs
 version 0.9.XX
 ==============
 
+- improve not-nil types
 - make:
   p(a, b): 
     echo a
@@ -144,7 +144,9 @@ Version 2 and beyond
   (or implicit) syncGC() calls in loops. Automatic loop injection seems
   troublesome, but maybe we can come up with a simple heuristic. (All procs
   that `new` shared memory are syncGC() candidates... But then 'new' itself
-  calls syncGC() so that's pointless.)
+  calls syncGC() so that's pointless.) Hm instead of an heuristic simply
+  provide a ``syncgc`` pragma to trigger compiler injection --> more general:
+  an ``injectLoop`` pragma
 
 - const ptr/ref  --> pointless because of aliasing; 
   much better: 'writes: []' effect

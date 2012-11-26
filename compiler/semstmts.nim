@@ -792,7 +792,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[genericParamsPos].kind == nkEmpty: 
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
-      if s.typ.sons[0] != nil and kind != skIterator: 
+      if s.typ.sons[0] != nil and
+          (kind != skIterator or s.typ.callConv == ccClosure):
         addResult(c, s.typ.sons[0], n.info, kind)
         addResultNode(c, n)
       if sfImportc notin s.flags:
