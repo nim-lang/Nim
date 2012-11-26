@@ -744,11 +744,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     rawAddSon(s.typ, nil)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
+  if s.kind == skIterator: s.typ.flags.incl(tfIterator)
   
   var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
                                                # open for parameters
   if proto == nil: 
-    s.typ.callConv = lastOptionEntry(c).defaultCC 
+    s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     # -2 because we have a scope open for parameters
     if sfGenSym in s.flags: nil
