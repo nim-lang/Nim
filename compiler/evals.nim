@@ -888,7 +888,13 @@ proc evalIsOp*(n: PNode): PNode =
     of "closure":
       let t = skipTypes(t1, abstractRange)
       result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                        t.callConv == ccClosure))
+                                        t.callConv == ccClosure and 
+                                        tfIterator notin t.flags))
+    of "iterator":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure and 
+                                        tfIterator in t.flags))
   else:
     let t2 = n[2].typ
     var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)

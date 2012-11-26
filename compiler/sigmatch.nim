@@ -293,6 +293,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {}:
       # noSideEffect implies ``tfThread``! XXX really?
       return isNone
+    elif f.flags * {tfIterator} != a.flags * {tfIterator}:
+      return isNone
     elif f.callconv != a.callconv:
       # valid to pass a 'nimcall' thingie to 'closure':
       if f.callconv == ccClosure and a.callconv == ccDefault:

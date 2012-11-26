@@ -2,7 +2,6 @@ version 0.9.2
 =============
   
 - test&finish first class iterators:
-  * tyIterator: implement nkIteratorTy, nkSharedTy
   * allow return in first class iterators
   * nested iterators
   * arglist as a type?
@@ -34,7 +33,6 @@ Bugs
 - bug: the parser is not strict enough with newlines: 'echo "a" echo "b"' 
   compiles
 - bug: blocks can "export" an identifier but the CCG generates {} for them ...
-- bug: what if we pass an iterator to a proc var? iterators use tyProc too ...
 
 
 version 0.9.XX

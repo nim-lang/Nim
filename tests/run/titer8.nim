@@ -79,7 +79,7 @@ iterator count2(): int {.closure.} =
 
 # a first class iterator has the type 'proc {.closure.}', but maybe
 # it shouldn't:
-proc invoke(iter: proc(): int {.closure.}) =
+proc invoke(iter: iterator(): int {.closure.}) =
   for x in iter(): echo x
 
 invoke(count0)
@@ -88,7 +88,7 @@ invoke(count2)
 
 # simple tasking:
 type
-  TTask = proc (ticker: int) {.closure.}
+  TTask = iterator (ticker: int)
 
 iterator a1(ticker: int) {.closure.} =
   echo "a1: A"

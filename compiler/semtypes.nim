@@ -911,6 +911,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       closeScope(c.tab)
     if n.kind == nkIteratorTy:
       result.flags.incl(tfIterator)
+      result.callConv = ccClosure
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
