@@ -738,7 +738,7 @@ proc isExprStart(p: TParser): bool =
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, 
      tkProc, tkIterator, tkBind, 
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
-     tkTuple, tkType, tkWhen, tkCase, tkShared:
+     tkTuple, tkObject, tkType, tkWhen, tkCase, tkShared:
     result = true
   else: result = false
   
@@ -790,7 +790,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkShared: result = parseTypeDescKAux(p, nkSharedTy, mode)
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr, mode)
-  of tkTuple: result = parseTuple(p)
+  of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
   of tkIterator:
     if mode in {pmTypeDesc, pmTypeDef}:
