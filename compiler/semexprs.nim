@@ -1098,23 +1098,25 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
 
-proc SemReturn(c: PContext, n: PNode): PNode = 
+proc SemReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner.kind notin {skConverter, skMethod, skProc, skMacro}:
+  if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or
+     (c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
+    if n.sons[0].kind != nkEmpty:
+      # transform ``return expr`` to ``result = expr; return``
+      if c.p.resultSym != nil: 
+        var a = newNodeI(nkAsgn, n.sons[0].info)
+        addSon(a, newSymNode(c.p.resultSym))
+        addSon(a, n.sons[0])
+        n.sons[0] = semAsgn(c, a)
+        # optimize away ``result = result``:
+        if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym: 
+          n.sons[0] = ast.emptyNode
+      else:
+        LocalError(n.info, errNoReturnTypeDeclared)
+  else:
     LocalError(n.info, errXNotAllowedHere, "\'return\'")
-  elif n.sons[0].kind != nkEmpty:
-    # transform ``return expr`` to ``result = expr; return``
-    if c.p.resultSym != nil: 
-      var a = newNodeI(nkAsgn, n.sons[0].info)
-      addSon(a, newSymNode(c.p.resultSym))
-      addSon(a, n.sons[0])
-      n.sons[0] = semAsgn(c, a)
-      # optimize away ``result = result``:
-      if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym: 
-        n.sons[0] = ast.emptyNode
-    else:
-      LocalError(n.info, errNoReturnTypeDeclared)
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c.tab)
