@@ -77,6 +77,15 @@ proc getSysType(kind: TTypeKind): PType =
 var
   intTypeCache: array[-5..64, PType]
 
+proc resetSysTypes* =
+  systemModule = nil
+  initStrTable(compilerprocs)
+  for i in low(gSysTypes)..high(gSysTypes):
+    gSysTypes[i] = nil
+
+  for i in low(intTypeCache)..high(intTypeCache):
+    intTypeCache[i] = nil
+
 proc getIntLitType*(literal: PNode): PType =
   # we cache some common integer literal types for performance:
   let value = literal.intVal

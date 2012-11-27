@@ -355,9 +355,10 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
       var d = cast[TAddress](cellToUsr(cell))
       var s = cast[PGenericSeq](d)
       if s != nil:
+        let baseAddr = d +% GenericSeqSize
         for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+          forAllChildrenAux(cast[pointer](baseAddr +% i *% cell.typ.base.size),
+                            cell.typ.base, op)
     else: nil
 
 proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
@@ -414,10 +415,12 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector and not hasThreadSupport:
-    if framePtr != nil and framePtr.prev != nil:
-      res.filename = framePtr.prev.filename
-      res.line = framePtr.prev.line
+  when trackAllocationSource and not hasThreadSupport:
+    if framePtr != nil and framePtr.prev != nil and framePtr.prev.prev != nil:
+      res.filename = framePtr.prev.prev.filename
+      res.line = framePtr.prev.prev.line
+    else:
+      res.filename = "nofile"
   res.refcount = rcZct # refcount is zero, but mark it to be in the ZCT  
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
@@ -456,10 +459,12 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector and not hasThreadSupport:
-    if framePtr != nil and framePtr.prev != nil:
-      res.filename = framePtr.prev.filename
-      res.line = framePtr.prev.line
+  when trackAllocationSource and not hasThreadSupport:
+    if framePtr != nil and framePtr.prev != nil and framePtr.prev.prev != nil:
+      res.filename = framePtr.prev.prev.filename
+      res.line = framePtr.prev.prev.line
+    else:
+      res.filename = "nofile"
   res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
@@ -597,6 +602,21 @@ proc collectCycles(gch: var TGcHeap) =
   Deinit(gch.cycleRoots)
   Init(gch.cycleRoots)
 
+var gcDebugging* = false
+var vis*: proc (a: pointer, b: PNimType)
+
+proc debugNode(n: ptr TNimNode) =
+  c_fprintf(c_stdout, "node %s\n", n.name)
+  for i in 0..n.len-1:
+    debugNode(n.sons[i])
+
+proc debugTyp(x: PNimType) =
+  c_fprintf(c_stdout, "type %d\n", x.kind)
+  if x.node != nil:
+    debugNode(x.node)
+
+var seqdbg* : proc (s: PGenericSeq) {.cdecl.}
+
 proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   sysAssert(allocInv(gch.region), "gcMark begin")
@@ -607,8 +627,16 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
     if objStart != nil:
       # mark the cell:
-      objStart.refcount = objStart.refcount +% rcIncrement
-      add(gch.decStack, objStart)
+      if gcDebugging:
+        c_fprintf(c_stdout, "object root found %d\nfile: %s\nline: %d\n", objStart.typ.kind, objStart.filename, objStart.line)
+        if objStart.typ.kind == tySequence:
+          let sq = cast[PGenericSeq](cellToUsr(objStart))
+          c_fprintf(c_stdout, "seq len: %d\noffset: %ld\n", sq.len, cast[TAddress](p) - cast[TAddress](sq))
+          seqdbg(sq)
+        
+      if not gcDebugging:
+        objStart.refcount = objStart.refcount +% rcIncrement
+        add(gch.decStack, objStart)
     when false:
       if isAllocatedPtr(gch.region, cell):
         sysAssert false, "allocated pointer but not interior?"

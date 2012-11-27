@@ -89,13 +89,23 @@ proc addDep(x: Psym, dep: int32) =
   growCache gMemCacheData, dep
   gMemCacheData[x.position].deps.safeAdd(dep)
 
+proc ResetModule(fileIdx: int32) =
+  echo "HARD RESETTING ", fileIdx.toFilename
+  gMemCacheData[fileIdx].needsRecompile = Yes
+  gCompiledModules[fileIdx] = nil
+  cgendata.gModules[fileIdx] = nil
+
+proc ResetAllModules =
+  for i in 0..gCompiledModules.high:
+    if gCompiledModules[i] != nil:
+      ResetModule(i.int32)
+
+  for m in cgenModules():
+    echo "CGEN MODULE FOUND"
+
 proc checkDepMem(fileIdx: int32): TNeedRecompile  =
   template markDirty =
-    echo "HARD RESETTING ", fileIdx.toFilename
-    gMemCacheData[fileIdx].needsRecompile = Yes
-    gCompiledModules[fileIdx] = nil
-    cgendata.gModules[fileIdx] = nil
-      
+    ResetModule(fileIdx)
     return Yes
 
   if gMemCacheData[fileIdx].needsRecompile != Maybe:
@@ -377,7 +387,13 @@ proc wantMainModule =
   if gProjectFull.len == 0:
     Fatal(gCmdLineInfo, errCommandExpectsFilename)
   gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
-  
+
+var oss: PGenericSeq
+proc dbgseqimp(x: PGenericSeq) {.cdecl.} =
+  oss = x
+
+seqdbg = dbgseqimp
+
 proc MainCommand =
   # In "nimrod serve" scenario, each command must reset the registered passes
   clearPasses()
@@ -482,6 +498,48 @@ proc MainCommand =
   of "e":
     # XXX: temporary command for easier testing
     commandEval(mainCommandArg())
+  of "reset":
+    ResetModule(gProjectMainIdx)
+    gcDebugging = true
+    GC_fullCollect()
+
+    resetCompilationLists()
+    ccgutils.resetCaches()
+    ResetAllModules()
+    resetRopeCache()
+    resetSysTypes()
+    gGenericsCache = nil
+    gOwners = @[]
+    rangeDestructorProc = nil
+    
+    # XXX: clean these global vars
+    # ccgstmts.gBreakpoints
+    # ccgthreadvars.nimtv
+    # ccgthreadvars.nimtVDeps
+    # ccgthreadvars.nimtvDeclared
+    # cgendata
+    # cgmeth?
+    # condsyms?
+    # depends?
+    # lexer.gLinesCompiled
+    # msgs - error counts
+    # magicsys, when system.nim changes
+    # rodread.rodcompilerProcs
+    # rodread.gTypeTable
+    # rodread.gMods
+    
+    # !! ropes.cache
+    # !! semdata.gGenericsCache
+    # semthreads.computed?
+    #
+    # suggest.usageSym
+    #
+    # XXX: can we run out of IDs?
+    # XXX: detect config reloading (implement as error/require restart)
+    # XXX: options are appended (they will accumulate over time)
+    # vis = visimpl
+    GC_fullCollect()
+    echo GC_getStatistics()
   of "idetools":
     gCmd = cmdIdeTools
     if gEvalExpr != "":

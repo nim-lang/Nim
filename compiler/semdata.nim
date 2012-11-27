@@ -86,7 +86,7 @@ type
                                # naming it multiple times
 
 var
-  gGenericsCache: PGenericsCache # save for modularity
+  gGenericsCache*: PGenericsCache # save for modularity
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s

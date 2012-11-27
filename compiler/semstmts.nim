@@ -933,7 +933,7 @@ var
   destructorName = getIdent"destroy_"
   destructorParam = getIdent"this_"
   destructorPragma = newIdentNode(getIdent"destructor", UnknownLineInfo())
-  rangeDestructorProc: PSym
+  rangeDestructorProc*: PSym
 
 proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
   if instantiateDestructor(c, field.typ):
