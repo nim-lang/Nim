@@ -179,9 +179,9 @@ when not defined(niminheritable):
 
 when not defined(EcmaScript) and not defined(NimrodVM):
   type
-    TGenericSeq {.compilerproc, pure, inheritable.} = object
+    TGenericSeq* {.compilerproc, pure, inheritable.} = object
       len, reserved: int
-    PGenericSeq {.exportc.} = ptr TGenericSeq
+    PGenericSeq* {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: array[0..100_000_000, char]
@@ -558,7 +558,7 @@ proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
   ## checking is turned on).
 
 type
-  IntMax32 = int|int8|int16|int32
+  IntMax32 = bool|int|int8|int16|int32
 
 proc `+%` *(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: Int64): Int64 {.magic: "AddU", noSideEffect.}

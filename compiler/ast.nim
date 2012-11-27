@@ -517,7 +517,7 @@ type
   TNodeSeq* = seq[PNode]
   PType* = ref TType
   PSym* = ref TSym
-  TNode*{.acyclic, final.} = object # on a 32bit machine, this takes 32 bytes
+  TNode*{.final.} = object # on a 32bit machine, this takes 32 bytes
     typ*: PType
     comment*: string
     info*: TLineInfo

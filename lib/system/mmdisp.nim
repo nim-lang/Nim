@@ -21,6 +21,7 @@ const
   alwaysGC = false # collect after every memory allocation (for debugging)
   leakDetector = false
   overwriteFree = false
+  trackAllocationSource = true or leakDetector
   
   cycleGC = true # (de)activate the cycle GC
   reallyDealloc = true # for debugging purposes this can be set to false

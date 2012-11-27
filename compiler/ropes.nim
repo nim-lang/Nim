@@ -114,6 +114,10 @@ proc freezeMutableRope*(r: PRope) {.inline.} =
 var 
   cache: array[0..2048*2 -1, PRope]
 
+proc resetRopeCache* =
+  for i in low(cache)..high(cache):
+    cache[i] = nil
+
 proc RopeInvariant(r: PRope): bool = 
   if r == nil: 
     result = true
