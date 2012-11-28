@@ -82,7 +82,6 @@ version 0.9.XX
 Not essential for 1.0.0
 =======================
 
-- investigate the implicit items/pairs issue
 - optimize method dispatchers
 - ``with proc `+`(x, y: T): T`` for generic code
 - new feature: ``distinct T with operations``
