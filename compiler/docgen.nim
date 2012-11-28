@@ -273,7 +273,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
       generateDoc(d, lastSon(n.sons[0]))
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i]) 
-  of nkFromStmt: traceDeps(d, n.sons[0])
+  of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   else: nil
 
 proc genSection(d: PDoc, kind: TSymKind) = 

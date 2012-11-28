@@ -1465,7 +1465,8 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkAsmStmt: genAsmStmt(p, n, r)
   of nkTryStmt: genTryStmt(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n, r)
-  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt, nkImportStmt, 
+  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt, 
+     nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
      nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: nil
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym

@@ -172,10 +172,11 @@ type
     nkDiscardStmt,        # a discard statement
     nkStmtList,           # a list of statements
     nkImportStmt,         # an import statement
-    nkFromStmt,           # a from * import statement
     nkImportExceptStmt,   # an import x except a statement
-    nkIncludeStmt,        # an include statement
     nkExportStmt,         # an export statement
+    nkExportExceptStmt,   # an 'export except' statement
+    nkFromStmt,           # a from * import statement
+    nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
     nkMixinStmt,          # a mixin statement
     nkCommentStmt,        # a comment statement
