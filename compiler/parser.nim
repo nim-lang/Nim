@@ -901,27 +901,30 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(result, b)
         if b.kind == nkElse: break
     
-proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode = 
+proc parseModuleName(p: var TParser): PNode {.inline.} =
+  result = parseExpr(p)
+
+proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode =
   var a: PNode
   result = newNodeP(kind, p)
   getTok(p)                   # skip `import` or `include`
   optInd(p, result)
-  while true: 
+  while true:
     case p.tok.tokType
-    of tkEof, tkSad, tkDed: 
-      break 
-    of tkSymbol, tkAccent: 
+    of tkEof, tkSad, tkDed:
+      break
+    of tkSymbol, tkAccent:
       a = parseSymbol(p)
-    of tkRStrLit: 
+    of tkRStrLit:
       a = newStrNodeP(nkRStrLit, p.tok.literal, p)
       getTok(p)
-    of tkStrLit: 
+    of tkStrLit:
       a = newStrNodeP(nkStrLit, p.tok.literal, p)
       getTok(p)
-    of tkTripleStrLit: 
+    of tkTripleStrLit:
       a = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
       getTok(p)
-    else: 
+    else:
       parMessage(p, errIdentifierExpected, p.tok)
       break 
     addSon(result, a)
@@ -931,25 +934,10 @@ proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode =
   expectNl(p)
 
 proc parseFromStmt(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkFromStmt, p)
   getTok(p)                   # skip `from`
   optInd(p, result)
-  case p.tok.tokType
-  of tkSymbol, tkAccent: 
-    a = parseSymbol(p)
-  of tkRStrLit: 
-    a = newStrNodeP(nkRStrLit, p.tok.literal, p)
-    getTok(p)
-  of tkStrLit: 
-    a = newStrNodeP(nkStrLit, p.tok.literal, p)
-    getTok(p)
-  of tkTripleStrLit: 
-    a = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
-    getTok(p)
-  else: 
-    parMessage(p, errIdentifierExpected, p.tok)
-    return 
+  var a = parseModuleName(p)
   addSon(result, a)           #optInd(p, a);
   eat(p, tkImport)
   optInd(p, result)

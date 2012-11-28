@@ -1148,8 +1148,23 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkImport, "import")
     gcomma(g, n, emptyContext, 1)
     putNL(g)
+  of nkImportExceptStmt:
+    putWithSpace(g, tkImport, "import")
+    gsub(g, n.sons[0])
+    put(g, tkSpaces, Space)
+    putWithSpace(g, tkExcept, "except")
+    gcommaAux(g, n, g.indent, 1)
+    gcoms(g)
+    putNL(g)
   of nkIncludeStmt: 
     putWithSpace(g, tkInclude, "include")
+    gcoms(g)
+    indentNL(g)
+    gcommaAux(g, n, g.indent)
+    dedent(g)
+    putNL(g)
+  of nkExportStmt:
+    putWithSpace(g, tkExport, "export")
     gcoms(g)
     indentNL(g)
     gcommaAux(g, n, g.indent)
