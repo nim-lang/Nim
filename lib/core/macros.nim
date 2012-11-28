@@ -47,10 +47,12 @@ type
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
     nnkDiscardStmt, nnkStmtList, 
     
-    nnkImportStmt, nnkFromStmt,
-    nkImportExceptStmt,
-    nnkIncludeStmt,
+    nnkImportStmt,
+    nnkImportExceptStmt,
     nnkExportStmt,
+    nnkExportExceptStmt,
+    nnkFromStmt,
+    nnkIncludeStmt,
     
     nnkBindStmt, nnkMixinStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
