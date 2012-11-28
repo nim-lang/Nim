@@ -11,7 +11,7 @@
 
 import 
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes
+  semdata, passes, renderer
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
@@ -29,7 +29,8 @@ proc getModuleName*(n: PNode): string =
   of nkSym:
     result = n.sym.name.s
   else:
-    internalError(n.info, "getModuleName")
+    localError(n.info, errGenerated,
+      "invalide module name: '$1'" % renderTree(n))
     result = ""
 
 proc checkModuleName*(n: PNode): string =
