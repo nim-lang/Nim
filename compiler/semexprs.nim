@@ -589,11 +589,10 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if efWantIterator in flags:
-    result = semOverloadedCall(c, n, nOrig, {skIterator})
-  elif efInTypeOf in flags:
+  if {efInTypeOf, efWantIterator} * flags != {}:
+    # consider 'proc p(): seq[int];  for x in p()' here and
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
-    result = semOverloadedCall(c, n, nOrig, 
+    result = semOverloadedCall(c, n, nOrig,
       {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
   else:
     result = semOverloadedCall(c, n, nOrig, 
