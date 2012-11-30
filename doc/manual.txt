@@ -3741,6 +3741,19 @@ This is best illustrated by an example:
     return x + 1
 
 
+Import statement
+~~~~~~~~~~~~~~~~
+
+After the import statement a list of module names can follow or a single
+module name followed by an ``except`` to prevent some symbols to be imported:
+
+.. code-block:: nimrod
+  import strutils except `%`
+
+  # doesn't work then:
+  echo "$1" % "abc"
+
+
 Scope rules
 -----------
 Identifiers are valid from the point of their declaration until the end of

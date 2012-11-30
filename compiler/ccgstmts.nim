@@ -880,7 +880,8 @@ proc genStmts(p: BProc, t: PNode) =
     # we have to emit the type information for object types here to support
     # separate compilation:
     genTypeSection(p.module, t)
-  of nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, nkImportStmt, 
+  of nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, 
+     nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
      nkFromStmt, nkTemplateDef, nkMacroDef: 
     nil
   of nkPragma: genPragma(p, t)
