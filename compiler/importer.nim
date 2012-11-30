@@ -29,9 +29,11 @@ proc getModuleName*(n: PNode): string =
   of nkSym:
     result = n.sym.name.s
   else:
-    localError(n.info, errGenerated,
-      "invalide module name: '$1'" % renderTree(n))
-    result = ""
+    # hacky way to implement 'x / y /../ z':
+    result = renderTree(n, {renderNoComments}).replace(" ")
+    #localError(n.info, errGenerated,
+    #  "invalide module name: '$1'" % renderTree(n))
+    #result = ""
 
 proc checkModuleName*(n: PNode): string =
   # This returns the full canonical path for a given module import
