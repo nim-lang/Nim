@@ -1,7 +1,7 @@
 # iterate over all files with a given filter:
 
 import
-  os, times
+  "../../lib/pure/os.nim", ../../ lib / pure / times
 
 proc main(filter: string) =
   for filename in walkFiles(filter):
