@@ -594,7 +594,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already for
     # typeof support.
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
-    result = semOverloadedCall(c, n, nOrig, 
+    result = semOverloadedCall(c, n, nOrig,
       {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
   else:
     result = semOverloadedCall(c, n, nOrig, 
@@ -1852,6 +1852,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkImportStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
+  of nkImportExceptStmt:
+    if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "import")
+    result = evalImportExcept(c, n)
   of nkFromStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "from")
     result = evalFrom(c, n)

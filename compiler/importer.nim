@@ -11,7 +11,7 @@
 
 import 
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes
+  semdata, passes, renderer
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
@@ -29,7 +29,8 @@ proc getModuleName*(n: PNode): string =
   of nkSym:
     result = n.sym.name.s
   else:
-    internalError(n.info, "getModuleName")
+    localError(n.info, errGenerated,
+      "invalide module name: '$1'" % renderTree(n))
     result = ""
 
 proc checkModuleName*(n: PNode): string =
@@ -102,9 +103,21 @@ proc importAllSymbols(c: PContext, fromMod: PSym) =
   while s != nil: 
     if s.kind != skModule: 
       if s.kind != skEnumField: 
-        if not (s.Kind in ExportableSymKinds): 
+        if s.Kind notin ExportableSymKinds:
           InternalError(s.info, "importAllSymbols: " & $s.kind)
         rawImportSymbol(c, s) # this is correct!
+    s = NextIter(i, fromMod.tab)
+
+proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: TIntSet) =
+  var i: TTabIter
+  var s = InitTabIter(i, fromMod.tab)
+  while s != nil:
+    if s.kind != skModule:
+      if s.kind != skEnumField:
+        if s.Kind notin ExportableSymKinds:
+          InternalError(s.info, "importAllSymbols: " & $s.kind)
+        if s.name.id notin exceptSet:
+          rawImportSymbol(c, s)
     s = NextIter(i, fromMod.tab)
 
 proc evalImport(c: PContext, n: PNode): PNode = 
@@ -128,3 +141,17 @@ proc evalFrom(c: PContext, n: PNode): PNode =
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
     for i in countup(1, sonsLen(n) - 1): importSymbol(c, n.sons[i], m)
+
+proc evalImportExcept*(c: PContext, n: PNode): PNode = 
+  result = n
+  checkMinSonsLen(n, 2)
+  var f = checkModuleName(n.sons[0])
+  if f.len > 0:
+    var m = gImportModule(f)
+    n.sons[0] = newSymNode(m)
+    addDecl(c, m)               # add symbol to symbol table of module
+    var exceptSet = initIntSet()
+    for i in countup(1, sonsLen(n) - 1): 
+      let ident = lookups.considerAcc(n.sons[i])
+      exceptSet.incl(ident.id)
+    importAllSymbolsExcept(c, m, exceptSet)
