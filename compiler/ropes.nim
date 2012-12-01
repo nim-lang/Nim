@@ -58,6 +58,9 @@
 import 
   msgs, strutils, platform, hashes, crc, options
 
+const
+  PayloadSize = 64_000 # dummy size for range checking
+
 type
   TFormatStr* = string # later we may change it to CString for better
                        # performance of the code generator (assignments 
@@ -66,9 +69,9 @@ type
   PRope* = ref TRope
   TRope*{.acyclic.} = object of TObject # the empty rope is represented 
                                         # by nil to safe space
-    left*, right*: PRope
-    length*: int
-    data*: string             # != nil if a leaf
+    left, right: PRope
+    L: int                            # < 0 if a leaf
+    d: array [0..PayloadSize, char]             # != nil if a leaf
   
   TRopeSeq* = seq[PRope]
 
@@ -94,22 +97,31 @@ proc RopeInvariant*(r: PRope): bool
 
 proc ropeLen(a: PRope): int = 
   if a == nil: result = 0
-  else: result = a.length
+  else: result = a.L.abs
   
-proc newRope(data: string = nil): PRope = 
-  new(result)
-  if data != nil: 
-    result.length = len(data)
-    result.data = data
+proc newRope(data: string = nil): PRope =
+  if data != nil:
+    unsafeNew(result, sizeof(TRope)-PayloadSize+len(data))
+    result.L = -len(data)
+    # copy including '\0':
+    copyMem(addr result.d, cstring(data), len(data))
+  else:
+    unsafeNew(result, sizeof(TRope)-PayloadSize)
 
-proc newMutableRope*(capacity = 30): PRope =
-  ## creates a new rope that supports direct modifications of the rope's
-  ## 'data' and 'length' fields.
-  new(result)
-  result.data = newStringOfCap(capacity)
+proc eqContent(r: PRope, s: string): bool =
+  assert r.L < 0
+  if -r.L == s.len:
+    result = equalMem(addr(r.d), cstring(s), s.len)
 
-proc freezeMutableRope*(r: PRope) {.inline.} =
-  r.length = r.data.len
+when false:
+  proc newMutableRope*(capacity = 30): PRope =
+    ## creates a new rope that supports direct modifications of the rope's
+    ## 'data' and 'length' fields.
+    new(result)
+    result.data = newStringOfCap(capacity)
+
+  proc freezeMutableRope*(r: PRope) {.inline.} =
+    r.length = r.data.len
 
 var 
   cache: array[0..2048*2 -1, PRope]
@@ -130,7 +142,7 @@ proc RopeInvariant(r: PRope): bool =
 proc insertInCache(s: string): PRope = 
   var h = hash(s) and high(cache)
   result = cache[h]
-  if isNil(result) or result.data != s:
+  if isNil(result) or not eqContent(result, s):
     result = newRope(s)
     cache[h] = result
   
@@ -155,19 +167,19 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
   var stack = @[r]
   while len(stack) > 0: 
     var it = pop(stack)
-    while it.data == nil: 
+    while it.L >= 0:
       add(stack, it.right)
       it = it.left
-    assert(it.data != nil)
-    CopyMem(addr(result[resultLen]), addr(it.data[0]), it.length)
-    Inc(resultLen, it.length)
+    assert(it.L < 0)
+    CopyMem(addr(result[resultLen]), addr(it.d[0]), -it.L)
+    Inc(resultLen, -it.L)
     assert(resultLen <= len(result))
 
 proc ropeToStr(p: PRope): string = 
   if p == nil: 
     result = ""
-  else: 
-    result = newString(p.length)
+  else:
+    result = newString(p.L.abs)
     var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
@@ -176,7 +188,7 @@ proc con(a, b: PRope): PRope =
   elif b == nil: result = a
   else:
     result = newRope()
-    result.length = a.length + b.length
+    result.L = a.L.abs + b.L.abs
     result.left = a
     result.right = b
 
@@ -192,16 +204,16 @@ proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
 
-proc writeRope*(f: TFile, c: PRope) = 
+proc writeRope*(f: TFile, c: PRope) =
   var stack = @[c]
-  while len(stack) > 0: 
+  while len(stack) > 0:
     var it = pop(stack)
-    while it.data == nil: 
+    while it.L >= 0:
       add(stack, it.right)
       it = it.left
       assert(it != nil)
-    assert(it.data != nil)
-    write(f, it.data)
+    assert(it.L < 0)
+    write(f, cstring(it.d), -it.L)
 
 proc WriteRope*(head: PRope, filename: string, useWarning = false) =
   var f: tfile
@@ -261,14 +273,14 @@ const
   bufSize = 1024              # 1 KB is reasonable
 
 proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool = 
-  if r.data != nil:
-    if r.length > bufSize: 
+  if r.L < 0:
+    if -r.L > bufSize: 
       internalError("ropes: token too long")
       return
-    var readBytes = readBuffer(bin, buf, r.length)
-    result = readBytes == r.length and
-        equalMem(buf, addr(r.data[0]), r.length) # BUGFIX
-  else: 
+    var readBytes = readBuffer(bin, buf, -r.L)
+    result = readBytes == -r.L and
+        equalMem(buf, addr(r.d[0]), readBytes)
+  else:
     result = auxRopeEqualsFile(r.left, bin, buf)
     if result: result = auxRopeEqualsFile(r.right, bin, buf)
   
@@ -284,29 +296,20 @@ proc RopeEqualsFile(r: PRope, f: string): bool =
   dealloc(buf)
   close(bin)
 
-proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 = 
-  if r.data != nil: 
-    result = startVal
-    for i in countup(0, len(r.data) - 1): 
-      result = updateCrc32(r.data[i], result)
-  else: 
-    result = crcFromRopeAux(r.left, startVal)
-    result = crcFromRopeAux(r.right, result)
-
 proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 = 
   # XXX profiling shows this is actually expensive
   var stack: TRopeSeq = @[r]
   result = startVal
   while len(stack) > 0: 
     var it = pop(stack)
-    while it.data == nil: 
+    while it.L >= 0:
       add(stack, it.right)
       it = it.left
-    assert(it.data != nil)
+    assert(it.L < 0)
     var i = 0
-    var L = len(it.data)
-    while i < L: 
-      result = updateCrc32(it.data[i], result)
+    var L = -it.L
+    while i < L:
+      result = updateCrc32(it.d[i], result)
       inc(i)
 
 proc crcFromRope(r: PRope): TCrc32 = 
