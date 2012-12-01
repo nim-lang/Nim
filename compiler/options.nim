@@ -233,7 +233,7 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
   result = - 1
 
 # Can we keep this? I'm using it all the time
-template nimdbg*: expr = c.filename.endsWith"hallo.nim"
-template cnimdbg*: expr = p.module.filename.endsWith"hallo.nim"
-template enimdbg*: expr = c.module.name.s == "hallo"
-template pnimdbg*: expr = p.lex.fileIdx.ToFilename.endsWith"hallo.nim"
+template nimdbg*: expr = c.module.fileIdx == gProjectMainIdx
+template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
+template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
+

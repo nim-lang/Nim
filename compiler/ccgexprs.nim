@@ -165,7 +165,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if dest.s == OnStack or optRefcGC notin gGlobalOptions:
-    lineF(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+    linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
   elif dest.s == OnHeap:
     # location is on heap
@@ -188,9 +188,19 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
               addrLoc(dest), rdLoc(src))
     else:
+      if cnimdbg:
+        echo "ASSIGN REF ", dest.k, " ", dest.s, " ", dest.r.ropeToStr
+        if dest.heapRoot != nil:
+          echo "ROOTED AT ", dest.heapRoot.ropeToStr
+
       linefmt(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
               addrLoc(dest), rdLoc(src))
   else:
+    if cnimdbg:
+      echo "ASSIGN REF ", dest.k, " ", dest.s, " ", dest.r.ropeToStr
+      if dest.heapRoot != nil:
+        echo "ROOTED AT ", dest.heapRoot.ropeToStr
+        
     linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
             addrLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
@@ -562,10 +572,15 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     InitLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e.typ, addrLoc(a))
 
+template inheritLocation(d: var TLoc, a: TLoc) =
+  if d.k == locNone: d.s = a.s
+  if d.heapRoot == nil:
+    d.heapRoot = if a.heapRoot != nil: a.heapRoot else: a.r
+  
 proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc): PType =
   initLocExpr(p, e.sons[0], a)
   if e.sons[1].kind != nkSym: InternalError(e.info, "genRecordFieldAux")
-  if d.k == locNone: d.s = a.s
+  d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
   result = a.t
 
@@ -598,7 +613,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
     a: TLoc
     i: int
   initLocExpr(p, e.sons[0], a)
-  if d.k == locNone: d.s = a.s
+  d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
   var ty = a.t
   var r = rdLoc(a)
@@ -688,7 +703,7 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
       let idx = getOrdValue(e.sons[1])
       if idx < firstOrd(ty) or idx > lastOrd(ty):
         localError(e.info, errIndexOutOfBounds)
-  if d.k == locNone: d.s = a.s
+  d.inheritLocation(a)
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
               rfmt(nil, "$1[($2)- $3]", rdLoc(a), rdCharLoc(b), first))
 
@@ -729,6 +744,7 @@ proc genSeqElem(p: BPRoc, e: PNode, d: var TLoc) =
            "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
            rdLoc(b), rdLoc(a), lenField())
   if d.k == locNone: d.s = OnHeap
+  d.heapRoot = a.r
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = rfmt(nil, "(*$1)", a.r)
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),

@@ -576,6 +576,9 @@ type
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
     r*: PRope                 # rope value of location (code generators)
+    heapRoot*: PRope          # keeps track of the enclosing heap object that
+                              # owns this location (required by GC algorithms
+                              # employing heap snapshots or sliding views)
     a*: int                   # location's "address", i.e. slot for temporaries
 
   # ---------------- end of backend information ------------------------------
