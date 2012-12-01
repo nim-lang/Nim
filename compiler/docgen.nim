@@ -350,9 +350,11 @@ proc CommandRstAux(filename, outExt: string) =
   var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})
-  d.modDesc = newMutableRope(30_000)
-  renderRstToOut(d[], rst, d.modDesc.data)
-  freezeMutableRope(d.modDesc)
+  var modDesc = newStringOfCap(30_000)
+  #d.modDesc = newMutableRope(30_000)
+  renderRstToOut(d[], rst, modDesc)
+  #freezeMutableRope(d.modDesc)
+  d.modDesc = toRope(modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
