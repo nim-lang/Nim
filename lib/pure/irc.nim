@@ -281,8 +281,8 @@ proc processLine(irc: PIRC, line: string): TIRCEvent =
       result.typ = EvDisconnected
       return
 
-    #if result.cmd == MPing:
-    #  irc.send("PONG " & result.params[0])
+    if result.cmd == MPing:
+      irc.send("PONG " & result.params[0])
     if result.cmd == MPong:
       irc.lag = epochTime() - parseFloat(result.params[result.params.high])
       irc.lastPong = epochTime()
@@ -300,9 +300,9 @@ proc processLine(irc: PIRC, line: string): TIRCEvent =
     
 proc processOther(irc: PIRC, ev: var TIRCEvent): bool =
   result = false
-  #if epochTime() - irc.lastPing >= 20.0:
-  #  irc.lastPing = epochTime()
-  #  irc.send("PING :" & formatFloat(irc.lastPing), true)
+  if epochTime() - irc.lastPing >= 20.0:
+    irc.lastPing = epochTime()
+    irc.send("PING :" & formatFloat(irc.lastPing), true)
 
   if epochTime() - irc.lastPong >= 120.0 and irc.lastPong != -1.0:
     irc.close()
@@ -463,6 +463,8 @@ when isMainModule:
     var event: TIRCEvent
     if client.poll(event):
       case event.typ
+      of EvConnected:
+        nil
       of EvDisconnected:
         break
       of EvMsg:
