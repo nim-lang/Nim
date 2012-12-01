@@ -23,6 +23,8 @@
 ##
 ##    run(handleRequest)
 ##
+## **Warning:** The API of this module is unstable, and therefore is subject
+## to change.
 
 import sockets, strutils, os, strtabs, asyncio
 

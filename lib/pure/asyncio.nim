@@ -35,6 +35,9 @@ import sockets, os
 ## that in the future this type's fields will not be exported therefore breaking
 ## your code.
 ##
+## **Warning:** The API of this module is unstable, and therefore is subject
+## to change.
+##
 ## Asynchronous sockets
 ## ====================
 ##
