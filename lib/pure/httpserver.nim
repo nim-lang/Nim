@@ -22,6 +22,8 @@
 ##
 ##  run(handleRequest, TPort(80))
 ##
+## **Warning:** The API of this module is unstable, and therefore is subject
+## to change.
 
 import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
 

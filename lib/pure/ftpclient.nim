@@ -26,6 +26,10 @@ import sockets, strutils, parseutils, times, os, asyncio
 ##    var ftp = FTPClient("example.org", user = "user", pass = "pass")
 ##    ftp.connect()
 ##    ftp.retrFile("file.ext", "file.ext")
+##
+## **Warning:** The API of this module is unstable, and therefore is subject
+## to change.
+
 
 type
   TFTPClient* = object of TObject
