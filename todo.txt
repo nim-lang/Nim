@@ -15,8 +15,6 @@ version 0.9.2
   - ``hoist`` pragma for loop hoisting: can be easily done with 
     AST overloading + global
 
-- implement ``system.unsafeNew``.
-
 
 version 0.9.X
 =============
@@ -50,7 +48,7 @@ Concurrency
   provide a ``syncgc`` pragma to trigger compiler injection --> more general:
   an ``injectLoop`` pragma
 - 'writes: []' effect; track reads/writes for shared types
-- use the effect system for static deadlock prevention
+- use the effect system for static deadlock prevention and race detection
 
 
 version 0.9.XX

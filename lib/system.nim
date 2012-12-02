@@ -112,11 +112,17 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new(T: typedesc): ref T =
+proc new*(T: typedesc): ref T =
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it as result value
   new(result)
-  
+
+proc unsafeNew*[T](a: var ref T, size: int) {.magic: "New", noSideEffect.}
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it in ``a``. This is **unsafe** as it allocates an object
+  ## of the passed ``size``. This should only be used for optimization
+  ## purposes when you know what you're doing!
+
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
 
