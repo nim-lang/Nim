@@ -271,15 +271,18 @@ proc genCLineDir(r: var PRope, info: TLineInfo) =
 
 proc genLineDir(p: BProc, t: PNode) = 
   var line = t.info.safeLineNm
+  if optEmbedOrigSrc in gGlobalOptions:
+    app(p.s(cpsStmts), con(~"//", t.info.sourceLine, rnl))
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags): 
     linefmt(p, cpsStmts, "#endb($1);$n", toRope(line))
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags): 
-    lineF(p, cpsStmts, "F.line = $1;F.filename = $2;$n", 
-        [toRope(line), makeCString(toFilename(t.info).extractFilename)])
+      (p.prc == nil or sfPure notin p.prc.flags):
+   
+    linefmt(p, cpsStmts, "nimln($1, $2);$n",
+            line.toRope, t.info.quotedFilename)
 
 include "ccgtypes.nim"
 
@@ -696,33 +699,17 @@ proc generateHeaders(m: BModule) =
       appf(m.s[cfsHeaders], "$N#include $1$N", [toRope(it.data)])
     it = PStrEntry(it.Next)
 
-proc getFrameDecl(p: BProc) = 
-  var slots: PRope
-  if p.frameLen > 0: 
-    discard cgsym(p.module, "TVarSlot")
-    slots = ropeff("  TVarSlot s[$1];$n", ", [$1 x %TVarSlot]", 
-                   [toRope(p.frameLen)])
-  else: 
-    slots = nil
-  lineFF(p, cpsLocals, "volatile struct {TFrame* prev;" &
-      "NCSTRING procname;NI line;NCSTRING filename;" &
-      "NI len;$1} F;$n",
-      "%TF = type {%TFrame*, i8*, %NI, %NI$1}$n" & 
-      "%F = alloca %TF$n", [slots])
-  inc(p.labels)
-  prepend(p.s(cpsInit), indentLine(p, ropeff("F.len = $1;$n", 
-      "%LOC$2 = getelementptr %TF %F, %NI 4$n" &
-      "store %NI $1, %NI* %LOC$2$n", [toRope(p.frameLen), toRope(p.labels)])))
-
 proc retIsNotVoid(s: PSym): bool = 
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
-proc initFrame(p: BProc, procname, filename: PRope): PRope = 
-  result = ropecg(p.module, 
-    "\tF.procname = $1;$n" &
-    "\tF.filename = $2;$n" & 
-    "\tF.line = 0;$n" & 
-    "\t#pushFrame((TFrame*)&F);$n", [procname, filename])
+proc initFrame(p: BProc, procname, filename: PRope): PRope =
+  discard cgsym(p.module, "pushFrame")
+  if p.frameLen > 0:
+    discard cgsym(p.module, "TVarSlot")
+    result = rfmt(nil, "\tnimfrs($1, $2, $3)$N",
+                  procname, filename, p.frameLen.toRope)
+  else:
+    result = rfmt(nil, "\tnimfr($1, $2)$N", procname, filename)
 
 proc deinitFrame(p: BProc): PRope =
   result = rfmt(p.module, "\t#popFrame();$n")
@@ -774,11 +761,9 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc = rfmt(nil, "$N$1 {$N", header)
     app(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options: 
-      getFrameDecl(p)
       app(generatedProc, p.s(cpsLocals))
       var procname = CStringLit(p, generatedProc, prc.name.s)
-      var filename = CStringLit(p, generatedProc, toFilename(prc.info))
-      app(generatedProc, initFrame(p, procname, filename))
+      app(generatedProc, initFrame(p, procname, prc.info.quotedFilename))
     else: 
       app(generatedProc, p.s(cpsLocals))
     if (optProfiler in prc.options) and (gCmd != cmdCompileToLLVM):
@@ -1014,11 +999,6 @@ proc genInitCode(m: BModule) =
   if m.nimTypes > 0: 
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n", 
           [m.nimTypesName, toRope(m.nimTypes)])
-  if optStackTrace in m.initProc.options and not m.FrameDeclared:
-    # BUT: the generated init code might depend on a current frame, so
-    # declare it nevertheless:
-    m.FrameDeclared = true
-    getFrameDecl(m.initProc)
   
   app(prc, initGCFrame(m.initProc))
  
@@ -1027,11 +1007,16 @@ proc genInitCode(m: BModule) =
   app(prc, m.preInitProc.s(cpsLocals))
   app(prc, genSectionEnd(cpsLocals))
 
-  if optStackTrace in m.initProc.options and not m.PreventStackTrace: 
-    var procname = CStringLit(m.initProc, prc, m.module.name.s)
-    var filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
-    app(prc, initFrame(m.initProc, procname, filename))
- 
+  if optStackTrace in m.initProc.options and not m.FrameDeclared:
+    # BUT: the generated init code might depend on a current frame, so
+    # declare it nevertheless:
+    m.FrameDeclared = true
+    if not m.PreventStackTrace:
+      var procname = CStringLit(m.initProc, prc, m.module.name.s)
+      app(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
+    else:
+      app(prc, ~"\tvolatile TFrame F; F.len = 0;$N")
+    
   app(prc, genSectionStart(cpsInit))
   app(prc, m.preInitProc.s(cpsInit))
   app(prc, m.initProc.s(cpsInit))

@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, sockets
+  options, strutils, os, tables, sockets, ropes, platform
 
 type 
   TMsgKind* = enum 
@@ -403,6 +403,14 @@ type
   TFileInfo*{.final.} = object 
     fullPath*: string          # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
+    
+    quotedName*: PRope         # cached quoted short name for codegen
+                               # purpoes
+    
+    lines*: seq[PRope]         # the source code of the module
+                               #   used for better error messages and
+                               #   embedding the original source in the
+                               #   generated code
 
   TLineInfo*{.final.} = object # This is designed to be as small as possible,
                                # because it is used
@@ -424,11 +432,40 @@ var
   fileInfos*: seq[TFileInfo] = @[]
   SystemFileIdx*: int32
 
+proc toCChar*(c: Char): string = 
+  case c
+  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
+  of '\'', '\"', '\\': result = '\\' & c
+  else: result = $(c)
+
+proc makeCString*(s: string): PRope =
+  # BUGFIX: We have to split long strings into many ropes. Otherwise
+  # this could trigger an InternalError(). See the ropes module for
+  # further information.
+  const 
+    MaxLineLength = 64
+  result = nil
+  var res = "\""
+  for i in countup(0, len(s) - 1):
+    if (i + 1) mod MaxLineLength == 0:
+      add(res, '\"')
+      add(res, tnl)
+      app(result, toRope(res)) # reset:
+      setlen(res, 1)
+      res[0] = '\"'
+    add(res, toCChar(s[i]))
+  add(res, '\"')
+  app(result, toRope(res))
+
+
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.fullPath = fullPath
   #shallow(result.fullPath)
   result.projPath = projPath
   #shallow(result.projPath)
+  result.quotedName = projPath.extractFilename.makeCString
+  if optEmbedOrigSrc in gGlobalOptions or true:
+    result.lines = @[]
 
 proc fileInfoIdx*(filename: string): int32 =
   var
@@ -524,11 +561,11 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = UnknownLineInfo()
   else: result = msgContext[i]
 
-proc ToFilename*(info: TLineInfo): string =
+proc toFilename*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
   else: result = fileInfos[info.fileIndex].projPath
 
-proc ToFilename*(fileIdx: int32): string =
+proc toFilename*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"
   else: result = fileInfos[fileIdx].projPath
 
@@ -536,7 +573,7 @@ proc toFullPath*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
   else: result = fileInfos[info.fileIndex].fullPath
   
-proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
+proc toLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
 
 proc toColumn*(info: TLineInfo): int {.inline.} = 
@@ -714,3 +751,28 @@ template AssertNotNil*(e: expr): expr =
 
 template InternalAssert*(e: bool): stmt =
   if not e: InternalError($InstantiationInfo())
+
+proc addSourceLine*(fileIdx: int32, line: string) =
+  fileInfos[fileIdx].lines.add line.toRope
+
+proc sourceLine*(i: TLineInfo): PRope =
+  if i.fileIndex < 0: return nil
+  InternalAssert i.fileIndex < fileInfos.len and
+                 i.line <= fileInfos[i.fileIndex].lines.len
+
+  result = fileInfos[i.fileIndex].lines[i.line-1]
+
+proc quotedFilename*(i: TLineInfo): PRope =
+  InternalAssert i.fileIndex >= 0
+  result = fileInfos[i.fileIndex].quotedName
+
+ropes.ErrorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
+  case err
+  of rInvalidFormatStr:
+    internalError("ropes: invalid format string: " & msg)
+  of rTokenTooLong:
+    internalError("ropes: token too long: " & msg)
+  of rCannotOpenFile:
+    rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
+               msg)
+ 

@@ -436,6 +436,17 @@ struct TFrame {
   NI len;
 };
 
+#define nimfr(proc, file) \
+  volatile TFrame F; \
+  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; pushFrame(&F);
+
+#define nimfrs(proc, file, slots) \
+  volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
+  F.procname = proc; F.filename = file; F.line = 0; F.len = slots; pushFrame((TFrame*)&F);
+
+#define nimln(n, file) \
+  F.line = n; F.filename = file;
+
 #define NIM_POSIX_INIT  __attribute__((constructor)) 
 
 #if defined(_MSCVER) && defined(__i386__)

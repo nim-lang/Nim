@@ -56,7 +56,7 @@
 #  To cache them they are inserted in a `cache` array.
 
 import 
-  msgs, strutils, platform, hashes, crc, options
+  strutils, platform, hashes, crc, options
 
 type
   TFormatStr* = string # later we may change it to CString for better
@@ -71,6 +71,11 @@ type
     data*: string             # != nil if a leaf
   
   TRopeSeq* = seq[PRope]
+
+  TRopesError* = enum
+    rCannotOpenFile
+    rInvalidFormatStr
+    rTokenTooLong
 
 proc con*(a, b: PRope): PRope
 proc con*(a: PRope, b: string): PRope
@@ -92,6 +97,9 @@ proc RopeInvariant*(r: PRope): bool
   # exported for debugging
 # implementation
 
+var ErrorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
+  # avoid dependency on msgs.nim
+  
 proc ropeLen(a: PRope): int = 
   if a == nil: result = 0
   else: result = a.length
@@ -225,8 +233,7 @@ proc WriteRope*(head: PRope, filename: string, useWarning = false) =
     if head != nil: WriteRope(f, head)
     close(f)
   else:
-    rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile,
-               filename)
+    ErrorHandler(rCannotOpenFile, filename, useWarning)
 
 var
   rnl* = tnl.newRope
@@ -255,8 +262,8 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
           inc(i)
           if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break 
         num = j
-        if j > high(args) + 1: 
-          internalError("ropes: invalid format string $" & $(j))
+        if j > high(args) + 1:
+          ErrorHandler(rInvalidFormatStr, $(j))
         else:
           app(result, args[j - 1])
       of 'n':
@@ -265,7 +272,8 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       of 'N':
         app(result, rnl)
         inc(i)
-      else: InternalError("ropes: invalid format string $" & frmt[i])
+      else:
+        ErrorHandler(rInvalidFormatStr, $(frmt[i]))
     var start = i
     while i < length:
       if frmt[i] != '$': inc(i)
@@ -290,8 +298,8 @@ const
 
 proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool = 
   if r.data != nil:
-    if r.length > bufSize: 
-      internalError("ropes: token too long")
+    if r.length > bufSize:
+      ErrorHandler(rTokenTooLong, r.data)
       return
     var readBytes = readBuffer(bin, buf, r.length)
     result = readBytes == r.length and
