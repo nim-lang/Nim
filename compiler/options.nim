@@ -30,6 +30,7 @@ type                          # please make sure we have under 32 options
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
     optPatterns               # en/disable pattern matching
+
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 
@@ -59,8 +60,9 @@ type                          # please make sure we have under 32 options
     optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
+    optEmbedOrigSrc           # embed the original source in the generated code
                               # also: generate header file
-
+   
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
                               # **keep binary compatible**
@@ -236,4 +238,5 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
 template nimdbg*: expr = c.module.fileIdx == gProjectMainIdx
 template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
 template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
+template lnimdbg*: expr = L.fileIdx == gProjectMainIdx
 

@@ -508,16 +508,31 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     if (xi <= 255): add(tok.literal, Chr(xi))
     else: lexMessage(L, errInvalidCharacterConstant)
   else: lexMessage(L, errInvalidCharacterConstant)
+
+proc newString(s: cstring, l: int): string =
+  ## XXX, how come there is no support for this?
+  result = newString(l)
+  for i in 0 .. <l:
+    result[i] = s[i]
+
+proc HandleCRLF(L: var TLexer, pos: int): int =
+  template registerLine =
+    let col = L.getColNumber(pos)
+    
+    if col > MaxLineLength:
+      lexMessagePos(L, hintLineTooLong, pos)
+
+    if optEmbedOrigSrc in gGlobalOptions:
+      let lineStart = cast[TAddress](L.buf) + L.lineStart
+      let line = newString(cast[cstring](lineStart), col)
+      addSourceLine(L.fileIdx, line)
   
-proc HandleCRLF(L: var TLexer, pos: int): int = 
   case L.buf[pos]
-  of CR: 
-    if getColNumber(L, pos) > MaxLineLength: 
-      lexMessagePos(L, hintLineTooLong, pos)
+  of CR:
+    registerLine()
     result = lexbase.HandleCR(L, pos)
-  of LF: 
-    if getColNumber(L, pos) > MaxLineLength: 
-      lexMessagePos(L, hintLineTooLong, pos)
+  of LF:
+    registerLine()
     result = lexbase.HandleLF(L, pos)
   else: result = pos
   

@@ -154,36 +154,11 @@ proc TableGetType*(tab: TIdTable, key: PType): PObject =
         if sameType(t, key): 
           return tab.data[h].val
 
-proc toCChar*(c: Char): string = 
-  case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
-  of '\'', '\"', '\\': result = '\\' & c
-  else: result = $(c)
-
 proc makeSingleLineCString*(s: string): string =
   result = "\""
   for c in items(s):
     result.add(c.toCChar)
   result.add('\"')
-  
-proc makeCString*(s: string): PRope = 
-  # BUGFIX: We have to split long strings into many ropes. Otherwise
-  # this could trigger an InternalError(). See the ropes module for
-  # further information.
-  const 
-    MaxLineLength = 64
-  result = nil
-  var res = "\""
-  for i in countup(0, len(s) - 1):
-    if (i + 1) mod MaxLineLength == 0:
-      add(res, '\"')
-      add(res, tnl)
-      app(result, toRope(res)) # reset:
-      setlen(res, 1)
-      res[0] = '\"'
-    add(res, toCChar(s[i]))
-  add(res, '\"')
-  app(result, toRope(res))
 
 proc makeLLVMString*(s: string): PRope = 
   const MaxLineLength = 64

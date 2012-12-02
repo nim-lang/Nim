@@ -257,6 +257,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "debuginfo": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCDebug)
+  of "embedsrc":
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optEmbedOrigSrc)
   of "compileonly", "c": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCompileOnly)
