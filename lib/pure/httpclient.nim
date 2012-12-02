@@ -240,7 +240,7 @@ type
 
 when not defined(ssl):
   type PSSLContext = ref object
-  let defaultSSLContext = nil
+  let defaultSSLContext: PSSLContext = nil
 else:
   let defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
