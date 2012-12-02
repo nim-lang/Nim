@@ -554,7 +554,8 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     var dotPos = path.len
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
-        if dotPos == path.len and i > 0: dotPos = i
+        if dotPos == path.len and i > 0 and 
+            path[i-1] notin {dirsep, altsep}: dotPos = i
       elif path[i] in {dirsep, altsep}:
         sepPos = i
         break
