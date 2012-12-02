@@ -3656,7 +3656,7 @@ don't need to instantiate the code multiple times, because types then can be
 manipulated using the unified internal symbol representation. In such context
 typedesc acts as any other type. You can create variables, store typedesc
 values inside containers and so on. For example, here is how we can create 
-a type-safe wrapper for the unsafe `printf` function form C:
+a type-safe wrapper for the unsafe `printf` function from C:
 
 .. code-block:: nimrod
   macro safePrintF(formatString: string{lit}, args: vararg[expr]): expr =
@@ -3744,7 +3744,7 @@ This is best illustrated by an example:
 Import statement
 ~~~~~~~~~~~~~~~~
 
-After the import statement a list of module names can follow or a single
+After the `import`:idx: statement a list of module names can follow or a single
 module name followed by an ``except`` to prevent some symbols to be imported:
 
 .. code-block:: nimrod
@@ -3752,6 +3752,33 @@ module name followed by an ``except`` to prevent some symbols to be imported:
 
   # doesn't work then:
   echo "$1" % "abc"
+
+
+Export statement
+~~~~~~~~~~~~~~~~
+
+An `export`:idx: statement can be used for symbol fowarding so that client
+modules don't need to import a module's dependencies:
+
+.. code-block:: nimrod
+  # module B
+  type TMyObject* = object
+
+.. code-block:: nimrod
+  # module A
+  import B
+  export B.TMyObject
+  
+  proc `$`*(x: TMyObject): string = "my object"
+
+
+.. code-block:: nimrod
+  # module C
+  import A
+  
+  # B.TMyObject has been imported implicitly here: 
+  var x: TMyObject
+  echo($x)
 
 
 Scope rules

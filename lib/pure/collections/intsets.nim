@@ -190,6 +190,11 @@ proc `$`*(s: TIntSet): string =
   ## The `$` operator for int sets.
   dollarImpl()
 
+proc empty*(s: TIntSet): bool {.inline.} =
+  ## returns true if `s` is empty. This is safe to call even before
+  ## the set has been initialized with `initIntSet`.
+  result = s.counter == 0
+
 when isMainModule:
   var x = initIntSet()
   x.incl(1)

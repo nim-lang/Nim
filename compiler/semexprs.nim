@@ -1659,6 +1659,26 @@ proc fixImmediateParams(n: PNode): PNode =
   
   result = n
 
+proc semExport(c: PContext, n: PNode): PNode =
+  var x = newNodeI(n.kind, n.info)
+  #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
+  for i in 0.. <n.len:
+    let a = n.sons[i]
+    var o: TOverloadIter
+    var s = initOverloadIter(o, c, a)
+    if s == nil:
+      localError(a.info, errGenerated, "invalid expr for 'export': " &
+          renderTree(a))
+    while s != nil:
+      if s.kind in ExportableSymKinds+{skModule}:
+        x.add(newSymNode(s, a.info))
+      s = nextOverloadIter(o, c, a)
+  if c.module.ast.isNil:
+    c.module.ast = newNodeI(nkStmtList, n.info)
+  assert c.module.ast.kind == nkStmtList
+  c.module.ast.add x
+  result = n
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1861,6 +1881,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIncludeStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
+  of nkExportStmt, nkExportExceptStmt:
+    if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "export")
+    result = semExport(c, n)
   of nkPragmaBlock:
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
