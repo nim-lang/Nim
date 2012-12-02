@@ -1,7 +1,7 @@
 version 0.9.2
 =============
 
-- 'export' feature
+- fix tfShared and tfNotNil
 - test&finish first class iterators:
   * nested iterators
   * test generic iterators
@@ -50,7 +50,7 @@ Concurrency
   provide a ``syncgc`` pragma to trigger compiler injection --> more general:
   an ``injectLoop`` pragma
 - 'writes: []' effect; track reads/writes for shared types
-- use the effect system to for static deadlock prevention
+- use the effect system for static deadlock prevention
 
 
 version 0.9.XX
