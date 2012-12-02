@@ -1,7 +1,6 @@
 version 0.9.2
 =============
 
-- fix tfShared and tfNotNil
 - test&finish first class iterators:
   * nested iterators
   * test generic iterators
@@ -20,7 +19,7 @@ version 0.9.X
 =============
 
 - implement the missing features wrt inheritance
-- implement generic methods
+- implement generic methods and generic converters
 - improve the compiler as a service
 - ``=`` should be overloadable; requires specialization for ``=``
 - implement constructors + full 'not nil' checking

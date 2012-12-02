@@ -14,6 +14,8 @@
 ## For OpenSSL support compile with ``-d:ssl``. When using SSL be aware that
 ## most functions will then raise ``ESSL`` on SSL errors.
 
+{.deadCodeElim: on.}
+
 when hostos == "solaris":
   {.passl: "-lsocket -lnsl".}
 

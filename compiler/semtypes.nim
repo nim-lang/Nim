@@ -787,6 +787,12 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
   else:
     LocalError(n.info, errTypeExpected, n.renderTree)
 
+proc freshType(res, prev: PType): PType {.inline.} =
+  if prev.isNil:
+    result = copyType(result, result.owner, keepId=false)
+  else:
+    result = res
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -825,7 +831,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         checkSonsLen(n, 3)
         result = semTypeNode(c, n.sons[1], prev)
         if result.kind in NilableTypes and n.sons[2].kind == nkNilLit:
-          # XXX this is wrong for tyString at least
+          result = freshType(result, prev)
           result.flags.incl(tfNotNil)
         else:
           LocalError(n.info, errGenerated, "invalid type")
@@ -920,6 +926,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkSharedTy:
     checkSonsLen(n, 1)
     result = semTypeNode(c, n.sons[0], prev)
+    result = freshType(result, prev)
     result.flags.incl(tfShared)
   else:
     LocalError(n.info, errTypeExpected)
