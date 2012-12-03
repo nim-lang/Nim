@@ -837,10 +837,10 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
         m.baseTypeMatch = false
         var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
-        if arg == nil: 
+        if arg == nil:
           m.state = csNoMatch
-          return 
-        if m.baseTypeMatch: 
+          return
+        if m.baseTypeMatch:
           assert(container == nil)
           container = newNodeI(nkBracket, n.sons[a].info)
           addSon(container, arg)
