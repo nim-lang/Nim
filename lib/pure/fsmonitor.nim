@@ -17,9 +17,7 @@
 ## module will therefore not work with any Linux kernel prior to that, unless
 ## it has been patched to support inotify.
 
-when defined(windows):
-  {.error: "Windows is not yet supported by this module.".}
-elif defined(linux):
+when defined(linux) or defined(nimdoc):
   from posix import read
 else:
   {.error: "Your platform is not supported.".}
