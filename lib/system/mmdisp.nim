@@ -14,9 +14,9 @@
 {.push checks:off.}
 
 const
-  debugGC = false # we wish to debug the GC...
+  debugGC = true # we wish to debug the GC...
   logGC = false
-  traceGC = false # extensive debugging
+  traceGC = true # extensive debugging
   alwaysCycleGC = false
   alwaysGC = false # collect after every memory allocation (for debugging)
   leakDetector = false
@@ -307,7 +307,10 @@ else:
   include "system/cellsets"
   when not leakDetector:
     sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
-  include "system/gc"
+  when true:
+    include "system/gc"
+  else:
+    include "system/oldgc"
   
 {.pop.}
 

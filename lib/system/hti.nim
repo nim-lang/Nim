@@ -13,11 +13,19 @@ when defined(NimString):
 else:
   {.pragma: codegenType.}
 
-type # This should be he same as ast.TTypeKind
-     # many enum fields are not used at runtime
+type 
+  # This should be he same as ast.TTypeKind
+  # many enum fields are not used at runtime
   TNimKind = enum
-    tyNone, tyBool, tyChar,
-    tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyNone,
+    tyBool,
+    tyChar,
+    tyEmpty,
+    tyArrayConstr,
+    tyNil,
+    tyExpr,
+    tyStmt,
+    tyTypeDesc,
     tyGenericInvokation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -30,15 +38,30 @@ type # This should be he same as ast.TTypeKind
     tyTuple,             # WARNING: The compiler uses tyTuple for pure objects!
     tySet,
     tyRange,
-    tyPtr, tyRef,
+    tyPtr,
+    tyRef,
     tyVar,
     tySequence,
     tyProc,
-    tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
-    tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-    tyFloat, tyFloat32, tyFloat64, tyFloat128,
-    tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
+    tyPointer,
+    tyOpenArray,
+    tyString,
+    tyCString,
+    tyForward,
+    tyInt,
+    tyInt8,
+    tyInt16,
+    tyInt32,
+    tyInt64,
+    tyFloat,
+    tyFloat32,
+    tyFloat64,
+    tyFloat128,
+    tyUInt,
+    tyUInt8,
+    tyUInt16,
+    tyUInt32,
+    tyUInt64,
     tyBigNum,
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase

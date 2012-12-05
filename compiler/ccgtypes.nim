@@ -285,6 +285,12 @@ proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
         return getTypeDescAux(m, b, check)
   result = getTypeDescAux(m, t, check)
 
+proc paramStorageLoc(param: PSym): TStorageLoc =
+  if param.typ.skipTypes({tyVar}).kind notin {tyArray, tyOpenArray}:
+    result = OnStack
+  else:
+    result = OnUnknown
+
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
                    check: var TIntSet, declareEnvironment=true) = 
   params = nil
@@ -297,7 +303,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: app(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
+    fillLoc(param.loc, locParam, param.typ, mangleName(param),
+            param.paramStorageLoc)
     app(params, getParamTypeDesc(m, param.typ, check))
     if ccgIntroducedPtr(param): 
       app(params, ~"*")

@@ -44,10 +44,11 @@ elif defined(macosx):
 
   proc getTicks(): TTicks {.inline.} =
     result = TTicks(mach_absolute_time())
-
+  
+  var timeBaseInfo: TMachTimebaseInfoData
+  mach_timebase_info(timeBaseInfo)
+    
   proc `-`(a, b: TTicks): TNanos =
-    var timeBaseInfo: TMachTimebaseInfoData
-    mach_timebase_info(timeBaseInfo)
     result = (a.int64 - b.int64)  * timeBaseInfo.numer div timeBaseInfo.denom
 
 elif defined(posixRealtime):

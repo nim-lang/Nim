@@ -204,9 +204,16 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc):
       for i in newLen..result.len-1:
+        let len0 = gch.tempStack.len
         forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
                           GenericSeqSize +% (i*%elemSize)),
-                          extGetCellType(result).base, waZctDecRef)
+                          extGetCellType(result).base, waPush)
+        let len1 = gch.tempStack.len
+        for i in len0 .. <len1:
+          doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
+        gch.tempStack.len = len0
+                          
+        # XXX add a proper addCycleRoot barrier here!
     # and set the memory to nil:
     zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
            (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
