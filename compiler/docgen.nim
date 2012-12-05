@@ -145,6 +145,9 @@ proc isVisible(n: PNode): bool =
       var v = n.sons[0].ident
       result = v.id == ord(wStar) or v.id == ord(wMinus)
   elif n.kind == nkSym:
+    # we cannot generate code for forwarded symbols here as we have no
+    # exception tracking information here. Instead we copy over the comment
+    # from the proc header.
     result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
   elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
