@@ -84,6 +84,16 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
         args])
 
+proc instantiateGenericConverters(c: PContext, n: PNode, x: TCandidate) {.
+                                  noinline.}=
+  for i in 1 .. <n.len:
+    var a = n.sons[i]
+    if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym and
+        isGenericRoutine(a.sons[0].sym):
+      let finalCallee = generateInstance(c, a.sons[0].sym, x.bindings, n.info)
+      a.sons[0].sym = finalCallee
+      a.sons[0].typ = finalCallee.typ
+
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
@@ -101,6 +111,8 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       if ContainsGenericType(result.typ): result.typ = errorType(c)
       return
   result = x.call
+  if x.genericConverter:
+    instantiateGenericConverters(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
   result.typ = finalCallee.typ.sons[0]
 
