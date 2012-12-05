@@ -330,9 +330,6 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
   if r.s[r.pos] == '@': 
     inc(r.pos)
     result.containerID = decodeVInt(r.s, r.pos)
-  if r.s[r.pos] == '`':
-    inc(r.pos)
-    result.constraint = decodeNode(r, UnknownLineInfo())
   decodeLoc(r, result.loc, info)
   while r.s[r.pos] == '^': 
     inc(r.pos)
@@ -423,6 +420,9 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     result.offset = - 1
   decodeLoc(r, result.loc, result.info)
   result.annex = decodeLib(r, info)
+  if r.s[r.pos] == '#':
+    inc(r.pos)
+    result.constraint = decodeNode(r, UnknownLineInfo())
   if r.s[r.pos] == '(':
     if result.kind in routineKinds:
       result.ast = decodeNodeLazyBody(r, result.info, result)

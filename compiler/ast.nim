@@ -624,6 +624,7 @@ type
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to safe space)
+    constraint*: PNode        # additional constraints like 'lit|result'
   
   TTypeSeq* = seq[PType]
   TType* = object of TIdObj   # types are identical iff they have the
@@ -650,7 +651,6 @@ type
     align*: int               # the type's alignment requirements
     containerID*: int         # used for type checking of generics
     loc*: TLoc
-    constraint*: PNode        # additional constraints like 'lit|result'
 
   TPair*{.final.} = object 
     key*, val*: PObject
