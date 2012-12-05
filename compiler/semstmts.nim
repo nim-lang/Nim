@@ -780,6 +780,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
+    if gCmd == cmdDoc and not isNil(proto.ast.comment):
+      n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
     popOwner()
     pushOwner(s)
