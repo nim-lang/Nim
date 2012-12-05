@@ -10,8 +10,10 @@
 # Efficient set of pointers for the GC (and repr)
 
 type
+  TRefCount = int
+
   TCell {.pure.} = object
-    refcount: int  # the refcount and some flags
+    refcount: TRefCount  # the refcount and some flags
     typ: PNimType
     when trackAllocationSource:
       filename: cstring

@@ -394,7 +394,57 @@ proc dbgseqimp(x: PGenericSeq) {.cdecl.} =
 
 seqdbg = dbgseqimp
 
+proc resetMemory =
+  resetCompilationLists()
+  ccgutils.resetCaches()
+  ResetAllModules()
+  resetRopeCache()
+  resetSysTypes()
+  gGenericsCache = nil
+  gOwners = @[]
+  rangeDestructorProc = nil
+  for i in low(buckets)..high(buckets):
+    buckets[i] = nil
+  idAnon = nil
+  
+  # XXX: clean these global vars
+  # ccgstmts.gBreakpoints
+  # ccgthreadvars.nimtv
+  # ccgthreadvars.nimtVDeps
+  # ccgthreadvars.nimtvDeclared
+  # cgendata
+  # cgmeth?
+  # condsyms?
+  # depends?
+  # lexer.gLinesCompiled
+  # msgs - error counts
+  # magicsys, when system.nim changes
+  # rodread.rodcompilerProcs
+  # rodread.gTypeTable
+  # rodread.gMods
+  
+  # !! ropes.cache
+  # !! semdata.gGenericsCache
+  # semthreads.computed?
+  #
+  # suggest.usageSym
+  #
+  # XXX: can we run out of IDs?
+  # XXX: detect config reloading (implement as error/require restart)
+  # XXX: options are appended (they will accumulate over time)
+  # vis = visimpl
+  gcDebugging = true
+  echo "COLLECT 1"
+  GC_fullCollect()
+  echo "COLLECT 2"
+  GC_fullCollect()
+  echo "COLLECT 3"
+  GC_fullCollect()
+  echo GC_getStatistics()
+
 proc MainCommand =
+  gGlobalOptions.incl(optCaasEnabled)
+    
   # In "nimrod serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()
@@ -499,47 +549,7 @@ proc MainCommand =
     # XXX: temporary command for easier testing
     commandEval(mainCommandArg())
   of "reset":
-    ResetModule(gProjectMainIdx)
-    gcDebugging = true
-    GC_fullCollect()
-
-    resetCompilationLists()
-    ccgutils.resetCaches()
-    ResetAllModules()
-    resetRopeCache()
-    resetSysTypes()
-    gGenericsCache = nil
-    gOwners = @[]
-    rangeDestructorProc = nil
-    
-    # XXX: clean these global vars
-    # ccgstmts.gBreakpoints
-    # ccgthreadvars.nimtv
-    # ccgthreadvars.nimtVDeps
-    # ccgthreadvars.nimtvDeclared
-    # cgendata
-    # cgmeth?
-    # condsyms?
-    # depends?
-    # lexer.gLinesCompiled
-    # msgs - error counts
-    # magicsys, when system.nim changes
-    # rodread.rodcompilerProcs
-    # rodread.gTypeTable
-    # rodread.gMods
-    
-    # !! ropes.cache
-    # !! semdata.gGenericsCache
-    # semthreads.computed?
-    #
-    # suggest.usageSym
-    #
-    # XXX: can we run out of IDs?
-    # XXX: detect config reloading (implement as error/require restart)
-    # XXX: options are appended (they will accumulate over time)
-    # vis = visimpl
-    GC_fullCollect()
-    echo GC_getStatistics()
+    resetMemory()
   of "idetools":
     gCmd = cmdIdeTools
     if gEvalExpr != "":
@@ -564,4 +574,6 @@ proc MainCommand =
   echo "  misses: ", gCacheMisses
   echo "  int tries: ", gCacheIntTries
   echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
+
+  # resetMemory()
 

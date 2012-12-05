@@ -25,7 +25,7 @@ type
     next*: PIdent             # for hash-table chaining
     h*: THash                 # hash value of s
   
-var buckets: array[0..4096 * 2 - 1, PIdent]
+var buckets*: array[0..4096 * 2 - 1, PIdent]
 
 proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   var i = 0
@@ -102,5 +102,5 @@ proc getIdent*(identifier: string, h: THash): PIdent =
 proc IdentEq*(id: PIdent, name: string): bool = 
   result = id.id == getIdent(name).id
 
-let idAnon* = getIdent":anonymous"
+var idAnon* = getIdent":anonymous"
 
