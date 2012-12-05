@@ -233,9 +233,6 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.containerID != 0: 
     add(result, '@')
     encodeVInt(t.containerID, result)
-  if t.constraint != nil:
-    add(result, '`')
-    encodeNode(w, UnknownLineInfo(), t.constraint, result)
   encodeLoc(w, t.loc, result)
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i] == nil: 
@@ -295,6 +292,9 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     encodeVInt(s.offset, result)
   encodeLoc(w, s.loc, result)
   if s.annex != nil: encodeLib(w, s.annex, s.info, result)
+  if s.constraint != nil:
+    add(result, '#')
+    encodeNode(w, UnknownLineInfo(), s.constraint, result)
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:
   if s.ast != nil:
