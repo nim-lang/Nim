@@ -202,9 +202,8 @@ proc addPathRec(dir: string, info: TLineInfo) =
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
-      addPathRec(p, info)
       if not contains(options.searchPaths, p): 
-        Message(info, hintPath, p)
+        #Message(info, hintPath, p)
         lists.PrependStr(options.searchPaths, p)
 
 proc track(arg: string, info: TLineInfo) = 
@@ -226,7 +225,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "path", "p": 
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
-  of "recursivepath":
+  of "shallowpath":
     expectArg(switch, arg, pass, info)
     var path = processPath(arg)
     addPathRec(path, info)

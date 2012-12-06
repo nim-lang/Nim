@@ -25,7 +25,8 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
-  --recursivePath:PATH      add a path and all of its subdirectories
+  --shallowPath:PATH        add a path and all of its subdirectories (but
+                            not recursively)
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
