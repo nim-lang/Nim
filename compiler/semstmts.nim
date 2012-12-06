@@ -780,6 +780,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
+    if gCmd == cmdDoc and not isNil(proto.ast.comment):
+      n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
     popOwner()
     pushOwner(s)
@@ -869,8 +871,6 @@ proc semMethod(c: PContext, n: PNode): PNode =
 proc semConverterDef(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
-  if n.sons[genericParamsPos].kind != nkEmpty: 
-    LocalError(n.info, errNoGenericParamsAllowedForX, "converter")
   result = semProcAux(c, n, skConverter, converterPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ

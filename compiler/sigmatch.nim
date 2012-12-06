@@ -33,6 +33,8 @@ type
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
     proxyMatch*: bool        # to prevent instantiations
+    genericConverter*: bool  # true if a generic converter needs to
+                             # be instantiated
     inheritancePenalty: int  # to prefer closest father object type
   
   TTypeRelation* = enum      # order is important!
@@ -57,6 +59,7 @@ proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} =
   c.callee = callee
   c.call = nil
   c.baseTypeMatch = false
+  c.genericConverter = false
   c.inheritancePenalty = 0
 
 proc initCandidate*(c: var TCandidate, callee: PType) = 
@@ -571,16 +574,26 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   for i in countup(0, len(c.converters) - 1): 
     var src = c.converters[i].typ.sons[1]
     var dest = c.converters[i].typ.sons[0]
-    if (typeRel(m, f, dest) == isEqual) and
-        (typeRel(m, src, a) == isEqual):
+    # for generic type converters we need to check 'src <- a' before
+    # 'f <- dest' in order to not break the unification:
+    # see tests/tgenericconverter:
+    let srca = typeRel(m, src, a)
+    if srca notin {isEqual, isGeneric}: continue
+    
+    let destIsGeneric = containsGenericType(dest)
+    if destIsGeneric:
+      dest = generateTypeInstance(c, m.bindings, arg, dest)
+    let fdest = typeRel(m, f, dest)
+    if fdest in {isEqual, isGeneric}: 
       markUsed(arg, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
-      result = newNodeIT(nkHiddenCallConv, arg.info, s.typ.sons[0])
+      result = newNodeIT(nkHiddenCallConv, arg.info, dest)
       addSon(result, s)
       addSon(result, copyTree(arg))
       inc(m.convMatches)
+      m.genericConverter = srca == isGeneric or destIsGeneric
       return
 
 proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
@@ -837,10 +850,10 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
         m.baseTypeMatch = false
         var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
-        if arg == nil: 
+        if arg == nil:
           m.state = csNoMatch
-          return 
-        if m.baseTypeMatch: 
+          return
+        if m.baseTypeMatch:
           assert(container == nil)
           container = newNodeI(nkBracket, n.sons[a].info)
           addSon(container, arg)

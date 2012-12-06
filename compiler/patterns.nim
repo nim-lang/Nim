@@ -71,8 +71,8 @@ proc inSymChoice(sc, x: PNode): bool =
   
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
-  if p.typ.constraint != nil:
-    result = matchNodeKinds(p.typ.constraint, n)
+  if p.constraint != nil:
+    result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
     result = p.typ.kind in {tyEmpty, tyStmt}
