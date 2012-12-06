@@ -108,3 +108,4 @@ Bugs
   use a qualifier
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - JS gen: fix exception handling
+- the better scoping for locals is the wrong default for endb
