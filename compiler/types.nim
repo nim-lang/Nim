@@ -632,7 +632,8 @@ proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
       result = SameTypeAux(a, b, c)
 
 proc equalParam(a, b: PSym): TParamsEquality = 
-  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): 
+  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}) and
+      ExprStructuralEquivalent(a.constraint, b.constraint):
     if a.ast == b.ast: 
       result = paramsEqual
     elif a.ast != nil and b.ast != nil: 

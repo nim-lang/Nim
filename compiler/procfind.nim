@@ -29,7 +29,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
     a = procA.sons[i].sym
     b = procB.sons[i].sym
     if (a.name.id != b.name.id) or 
-        not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return 
+        not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return
     if (a.ast != nil) and (b.ast != nil): 
       if not ExprStructuralEquivalent(a.ast, b.ast): return 
   result = true
@@ -44,7 +44,7 @@ proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym =
       if equalGenericParams(result.ast.sons[genericParamsPos], 
                             fn.ast.sons[genericParamsPos]): 
         case equalParams(result.typ.n, fn.typ.n)
-        of paramsEqual: 
+        of paramsEqual:
           return 
         of paramsIncompatible: 
           LocalError(fn.info, errNotOverloadable, fn.name.s)
