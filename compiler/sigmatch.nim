@@ -12,18 +12,18 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options
+  magicsys, condsyms, idents, lexer, options, parampatterns
 
 type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
 
   TCandidate* {.final.} = object 
-    exactMatches*: int
+    exactMatches*: int       # also misused to prefer iters over procs
+    genericMatches: int      # also misused to prefer constraints
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
     convMatches: int
-    genericMatches: int
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
@@ -773,6 +773,15 @@ proc setSon(father: PNode, at: int, son: PNode) =
 
 proc matchesAux*(c: PContext, n, nOrig: PNode,
                  m: var TCandidate, marker: var TIntSet) = 
+  template checkConstraint(n: expr) {.immediate, dirty.} =
+    if not formal.constraint.isNil:
+      if matchNodeKinds(formal.constraint, n):
+        # better match over other routines with no such restriction:
+        inc(m.genericMatches, 100)
+      else:
+        m.state = csNoMatch
+        return
+  
   var f = 1 # iterates over formal parameters
   var a = 1 # iterates over the actual given arguments
   m.state = csMatch           # until proven otherwise
@@ -805,7 +814,8 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
                                 n.sons[a].sons[1], nOrig.sons[a].sons[1])
       if arg == nil: 
         m.state = csNoMatch
-        return 
+        return
+      checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch: 
         assert(container == nil)
         container = newNodeI(nkBracket, n.sons[a].info)
@@ -862,6 +872,7 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
           if f != formalLen - 1: container = nil
         else: 
           setSon(m.call, formal.position + 1, arg)
+      checkConstraint(n.sons[a])
     inc(a)
     inc(f)
 
