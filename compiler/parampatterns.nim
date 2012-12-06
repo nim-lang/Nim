@@ -48,8 +48,8 @@ proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
   add(code, chr(ord(op)))
 
 proc whichAlias*(p: PSym): TAliasRequest =
-  if p.typ.constraint != nil:
-    result = TAliasRequest(p.typ.constraint.strVal[0].ord)
+  if p.constraint != nil:
+    result = TAliasRequest(p.constraint.strVal[0].ord)
 
 proc compileConstraints(p: PNode, result: var TPatternCode) =
   case p.kind

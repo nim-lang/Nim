@@ -238,8 +238,15 @@ type
     httpCONNECT       ## Converts the request connection to a transparent 
                       ## TCP/IP tunnel, usually used for proxies.
 
+when not defined(ssl):
+  type PSSLContext = ref object
+  let defaultSSLContext: PSSLContext = nil
+else:
+  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "", 
-              body = ""): TResponse =
+              body = "",
+              sslContext: PSSLContext = defaultSSLContext): TResponse =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   var r = parseUrl(url)
@@ -257,7 +264,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   var port = TPort(80)
   if r.scheme == "https":
     when defined(ssl):
-      s.wrapSocket(verifyMode = CVerifyNone)
+      sslContext.wrapSocket(s)
     else:
       raise newException(EHttpRequestErr, "SSL support was not compiled in. Cannot connect over SSL.")
     port = TPort(443)
@@ -277,7 +284,7 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return True
   
-proc get*(url: string, maxRedirects = 5): TResponse =
+proc get*(url: string, maxRedirects = 5, sslContext: PSSLContext = defaultSSLContext): TResponse =
   ## | GET's the ``url`` and returns a ``TResponse`` object
   ## | This proc also handles redirection
   result = request(url)
@@ -285,24 +292,24 @@ proc get*(url: string, maxRedirects = 5): TResponse =
     if result.status.redirection():
       var locationHeader = result.headers["Location"]
       if locationHeader == "": httpError("location header expected")
-      result = request(locationHeader)
+      result = request(locationHeader, sslContext = sslContext)
       
-proc getContent*(url: string): string =
+proc getContent*(url: string, sslContext: PSSLContext = defaultSSLContext): string =
   ## | GET's the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
-  var r = get(url)
+  var r = get(url, sslContext = sslContext)
   if r.status[0] in {'4','5'}:
     raise newException(EHTTPRequestErr, r.status)
   else:
     return r.body
   
 proc post*(url: string, extraHeaders = "", body = "", 
-           maxRedirects = 5): TResponse =
+           maxRedirects = 5, sslContext: PSSLContext = defaultSSLContext): TResponse =
   ## | POST's ``body`` to the ``url`` and returns a ``TResponse`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   var xh = extraHeaders & "Content-Length: " & $len(body) & "\c\L"
-  result = request(url, httpPOST, xh, body)
+  result = request(url, httpPOST, xh, body, sslContext)
   for i in 1..maxRedirects:
     if result.status.redirection():
       var locationHeader = result.headers["Location"]
@@ -310,7 +317,8 @@ proc post*(url: string, extraHeaders = "", body = "",
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(locationHeader, meth, xh, body)
   
-proc postContent*(url: string, extraHeaders = "", body = ""): string =
+proc postContent*(url: string, extraHeaders = "", body = "",
+                  sslContext: PSSLContext = defaultSSLContext): string =
   ## | POST's ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   var r = post(url, extraHeaders, body)
@@ -319,11 +327,12 @@ proc postContent*(url: string, extraHeaders = "", body = ""): string =
   else:
     return r.body
   
-proc downloadFile*(url: string, outputFilename: string) =
+proc downloadFile*(url: string, outputFilename: string,
+                   sslContext: PSSLContext = defaultSSLContext) =
   ## Downloads ``url`` and saves it to ``outputFilename``
   var f: TFile
   if open(f, outputFilename, fmWrite):
-    f.write(getContent(url))
+    f.write(getContent(url, sslContext))
     f.close()
   else:
     fileError("Unable to open file")
