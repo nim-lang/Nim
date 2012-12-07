@@ -89,7 +89,14 @@ proc Remove*(list: var TLinkedList, entry: PListEntry) =
     list.head = entry.next
   if entry.next != nil: entry.next.prev = entry.prev
   if entry.prev != nil: entry.prev.next = entry.next
-  
+
+proc ExcludeStr*(list: var TLinkedList, data: string) =
+  var it = list.head
+  while it != nil:
+    let nxt = it.next
+    if PStrEntry(it).data == data: remove(list, it)
+    it = nxt
+
 proc Find*(list: TLinkedList, fn: TCompareProc, closure: Pointer): PListEntry = 
   result = list.head
   while result != nil: 

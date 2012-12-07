@@ -25,8 +25,6 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
-  --shallowPath:PATH        add a path and all of its subdirectories (but
-                            not recursively)
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
@@ -65,6 +63,8 @@ Advanced options:
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
+  --babelPath:PATH          add a path for Babel support
+  --excludePath:PATH        exclude a path from the list of search paths
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)

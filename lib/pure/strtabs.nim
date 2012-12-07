@@ -36,10 +36,22 @@ proc len*(t: PStringTable): int {.rtl, extern: "nst$1".} =
   result = t.counter
 
 iterator pairs*(t: PStringTable): tuple[key, value: string] =
-  ## iterates over any (key, value) pair in the table `t`.
+  ## iterates over every (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if not isNil(t.data[h].key):
       yield (t.data[h].key, t.data[h].val)
+
+iterator keys*(t: PStringTable): string =
+  ## iterates over every key in the table `t`.
+  for h in 0..high(t.data):
+    if not isNil(t.data[h].key):
+      yield t.data[h].key
+
+iterator values*(t: PStringTable): string =
+  ## iterates over every value in the table `t`.
+  for h in 0..high(t.data):
+    if not isNil(t.data[h].key):
+      yield t.data[h].val
 
 type
   TFormatFlag* = enum         ## flags for the `%` operator

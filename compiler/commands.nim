@@ -11,7 +11,7 @@
 
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
-  wordrecg, parseutils
+  wordrecg, parseutils, babelcmd
 
 proc writeCommandLineUsage*()
 
@@ -193,19 +193,6 @@ proc processPath(path: string): string =
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
 
-proc addPath(path: string, info: TLineInfo) = 
-  if not contains(options.searchPaths, path): 
-    lists.PrependStr(options.searchPaths, path)
-
-proc addPathRec(dir: string, info: TLineInfo) =
-  var pos = dir.len-1
-  if dir[pos] in {DirSep, AltSep}: inc(pos)
-  for k,p in os.walkDir(dir):
-    if k == pcDir and p[pos] != '.':
-      if not contains(options.searchPaths, p): 
-        #Message(info, hintPath, p)
-        lists.PrependStr(options.searchPaths, p)
-
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')
   if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLUMN")
@@ -225,11 +212,15 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "path", "p": 
     expectArg(switch, arg, pass, info)
     addPath(processPath(arg), info)
-  of "shallowpath":
+  of "babelpath":
+    if pass in {passCmd2, passPP}:
+      expectArg(switch, arg, pass, info)
+      let path = processPath(arg)
+      babelpath(path, info)
+  of "excludepath":
     expectArg(switch, arg, pass, info)
-    var path = processPath(arg)
-    addPathRec(path, info)
-    addPath(path, info)
+    let path = processPath(arg)
+    lists.ExcludeStr(options.searchPaths, path)
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg)
