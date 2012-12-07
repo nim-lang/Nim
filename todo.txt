@@ -1,12 +1,12 @@
 version 0.9.2
 =============
 
-- overloading based on ASTs
+- document overloading based on ASTs
   - implement ``partial`` pragma for partial evaluation: easily done with AST
     overloading
   - ``hoist`` pragma for loop hoisting: can be easily done with 
     AST overloading + global
-  - document overloading based on ASTs
+  - move semantics
 
 - test&finish first class iterators:
   * nested iterators
