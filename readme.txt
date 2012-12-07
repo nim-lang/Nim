@@ -1,5 +1,6 @@
 # Nimrod Compiler
-This repo contains the Nimrod compiler, Nimrod's stdlib, tools and documentation.
+This repo contains the Nimrod compiler, Nimrod's stdlib, tools and 
+documentation.
 
 ## Compiling
 Compiling the Nimrod compiler is quite straightforward. Because
@@ -9,10 +10,11 @@ latest version. The C sources are however included with this repository under
 the build directory.
 
 Pre-compiled snapshots of the compiler are also available on
-[Nimbuild](http://build.nimrod-code.org/). Your platform however may not currently
-be built for.
+[Nimbuild](http://build.nimrod-code.org/). Your platform however may not 
+currently be built for.
 
-The compiler currently supports the following platform and architecture combinations:
+The compiler currently supports the following platform and architecture 
+combinations:
   
   * Windows (Windows XP or greater) - x86 and x86_64
   * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
@@ -47,7 +49,8 @@ instead of ``build.sh``.
 
 ## Getting help
 A [forum](http://forum.nimrod-code.org/) is available if you have any questions,
-and you can also get help in the IRC channel on [Freenode](irc://irc.freenode.net/nimrod) in #nimrod.
+and you can also get help in the IRC channel
+on [Freenode](irc://irc.freenode.net/nimrod) in #nimrod.
 
 ## License
 The compiler is licensed under the GPLv2 license, the standard library is
