@@ -454,11 +454,13 @@ proc doUpload(ftp: PFTPClient, async = false): bool =
   if ftp.dsockConnected:
     if ftp.job.toStore.len() > 0:
       assert(async)
-      if ftp.asyncDSock.sendAsync(ftp.job.toStore):
+      let bytesSent = ftp.asyncDSock.sendAsync(ftp.job.toStore)
+      if bytesSent == ftp.job.toStore.len:
         ftp.job.toStore = ""
-        ftp.job.progress.inc(ftp.job.toStore.len)
-        ftp.job.oneSecond.inc(ftp.job.toStore.len)
-      
+      elif bytesSent != ftp.job.toStore.len and bytesSent != 0:
+        ftp.job.toStore = ftp.job.toStore[bytesSent .. -1]
+      ftp.job.progress.inc(bytesSent)
+      ftp.job.oneSecond.inc(bytesSent)
     else:
       var s = newStringOfCap(4000)
       var len = ftp.job.file.readBuffer(addr(s[0]), 4000)
@@ -476,8 +478,12 @@ proc doUpload(ftp: PFTPClient, async = false): bool =
       if not async:
         getDSock(ftp).send(s)
       else:
-        if not ftp.asyncDSock.sendAsync(s):
-          ftp.job.toStore = s
+        let bytesSent = ftp.asyncDSock.sendAsync(s)
+        if bytesSent == 0:
+          ftp.job.toStore.add(s)
+        elif bytesSent != s.len:
+          ftp.job.toStore.add(s[bytesSent .. -1])
+        len = bytesSent
       
       ftp.job.progress.inc(len)
       ftp.job.oneSecond.inc(len)

@@ -126,6 +126,7 @@ type
     handleTask*: proc (s: PAsyncSocket) {.closure.}
 
     lineBuffer: TaintedString ## Temporary storage for ``recvLine``
+    sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
     proto: TProtocol
     deleg: PDelegate
@@ -155,6 +156,7 @@ proc newAsyncSocket(): PAsyncSocket =
   result.handleTask = (proc (s: PAsyncSocket) = nil)
 
   result.lineBuffer = "".TaintedString
+  result.sendBuffer = ""
 
 proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM, 
                   protocol: TProtocol = IPPROTO_TCP, 
@@ -225,10 +227,22 @@ proc asyncSockHandleWrite(h: PObject) =
     else:
       PAsyncSocket(h).deleg.mode = fmReadWrite
   else:
-    if PAsyncSocket(h).handleWrite != nil:
-      PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+    if PAsyncSocket(h).sendBuffer != "":
+      let sock = PAsyncSocket(h)
+      let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
+      assert bytesSent > 0
+      if bytesSent != sock.sendBuffer.len:
+        sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
+      elif bytesSent == sock.sendBuffer.len:
+        sock.sendBuffer = ""
+      
+      if PAsyncSocket(h).handleWrite != nil:
+        PAsyncSocket(h).handleWrite(PAsyncSocket(h))
     else:
-      PAsyncSocket(h).deleg.mode = fmRead
+      if PAsyncSocket(h).handleWrite != nil:
+        PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+      else:
+        PAsyncSocket(h).deleg.mode = fmRead
 
 when defined(ssl):
   proc asyncSockDoHandshake(h: PObject) =
@@ -340,7 +354,8 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
   # deleg.open is set in ``toDelegate``.
   
   client.socket = c
-  client.lineBuffer = ""
+  client.lineBuffer = "".TaintedString
+  client.sendBuffer = ""
   client.info = SockConnected
 
 proc accept*(server: PAsyncSocket, client: var PAsyncSocket) =
@@ -444,6 +459,26 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
     result = true
   of RecvFail:
     result = false
+
+proc send*(sock: PAsyncSocket, data: string) =
+  ## Sends ``data`` to socket ``sock``. This is basically a nicer implementation
+  ## of ``sockets.sendAsync``.
+  ##
+  ## If ``data`` cannot be sent immediately it will be buffered and sent
+  ## when ``sock`` becomes writeable (during the ``handleWrite`` event).
+  ## It's possible that only a part of ``data`` will be sent immediately, while
+  ## the rest of it will be buffered and sent later.
+  if sock.sendBuffer.len != 0:
+    sock.sendBuffer.add(data)
+    return
+  let bytesSent = sock.socket.sendAsync(data)
+  assert bytesSent >= 0
+  if bytesSent == 0:
+    sock.sendBuffer.add(data)
+    sock.deleg.mode = fmReadWrite
+  elif bytesSent != data.len:
+    sock.sendBuffer.add(data[bytesSent .. -1])
+    sock.deleg.mode = fmReadWrite
 
 proc timeValFromMilliseconds(timeout = 500): TTimeVal =
   if timeout != -1:
