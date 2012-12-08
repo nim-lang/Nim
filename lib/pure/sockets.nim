@@ -1317,13 +1317,18 @@ proc send*(socket: TSocket, data: string) {.tags: [FWriteIO].} =
     
     OSError()
 
-proc sendAsync*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
-  ## sends data to a non-blocking socket. Returns whether ``data`` was sent.
-  result = true
-  var bytesSent = send(socket, cstring(data), data.len)
+proc sendAsync*(socket: TSocket, data: string): int {.tags: [FWriteIO].} =
+  ## sends data to a non-blocking socket.
+  ## Returns ``0`` if no data could be sent, if data has been sent
+  ## returns the amount of bytes of ``data`` that was successfully sent. This
+  ## number may not always be the length of ``data`` but typically is.
+  ##
+  ## An EOS (or ESSL if socket is an SSL socket) exception is raised if an error
+  ## occurs.
+  result = send(socket, cstring(data), data.len)
   when defined(ssl):
     if socket.isSSL:
-      if bytesSent <= 0:
+      if result <= 0:
           let ret = SSLGetError(socket.sslHandle, bytesSent.cint)
           case ret
           of SSL_ERROR_ZERO_RETURN:
@@ -1339,17 +1344,18 @@ proc sendAsync*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
           else: SSLError("Unknown Error")
       else:
         return
-  if bytesSent == -1:
+  if result == -1:
     when defined(windows):
       var err = WSAGetLastError()
       # TODO: Test on windows.
       if err == WSAEINPROGRESS:
-        return false
+        return 0
       else: OSError()
     else:
       if errno == EAGAIN or errno == EWOULDBLOCK:
-        return false
+        return 0
       else: OSError()
+  
 
 proc trySend*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
   ## safe alternative to ``send``. Does not raise an EOS when an error occurs,
