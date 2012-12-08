@@ -1329,14 +1329,14 @@ proc sendAsync*(socket: TSocket, data: string): int {.tags: [FWriteIO].} =
   when defined(ssl):
     if socket.isSSL:
       if result <= 0:
-          let ret = SSLGetError(socket.sslHandle, bytesSent.cint)
+          let ret = SSLGetError(socket.sslHandle, result.cint)
           case ret
           of SSL_ERROR_ZERO_RETURN:
             SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
             SSLError("Unexpected error occured.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
-            return false
+            return 0
           of SSL_ERROR_WANT_X509_LOOKUP:
             SSLError("Function for x509 lookup has been called.")
           of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
