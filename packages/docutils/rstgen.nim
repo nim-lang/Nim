@@ -474,8 +474,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTableRow: 
     if len(n) >= 1:
       if d.target == outLatex:
-        var tmp = ""
-        renderRstToOut(d, n.sons[0], tmp)
+        #var tmp = ""
+        renderRstToOut(d, n.sons[0], result)
         for i in countup(1, len(n) - 1):
           result.add(" & ")
           renderRstToOut(d, n.sons[i], result)

@@ -798,7 +798,7 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
 
 proc freshType(res, prev: PType): PType {.inline.} =
   if prev.isNil:
-    result = copyType(result, result.owner, keepId=false)
+    result = copyType(res, res.owner, keepId=false)
   else:
     result = res
 

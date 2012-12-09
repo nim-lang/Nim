@@ -1,5 +1,5 @@
 discard """
-  output: '''-1'''
+  output: '''-2'''
 """
 
 proc p(x, y: int; cond: bool): int =

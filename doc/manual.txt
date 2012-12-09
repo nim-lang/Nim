@@ -2408,7 +2408,7 @@ simplicity (they require specialized semantic checking)::
   is, of, echo, shallowCopy, getAst
 
 Thus they act more like keywords than like ordinary identifiers; unlike a 
-keyword however, a redefinition may `shadow`:id: the definition in 
+keyword however, a redefinition may `shadow`:idx: the definition in 
 the ``system`` module.
 
 
