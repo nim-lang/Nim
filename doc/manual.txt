@@ -3973,16 +3973,93 @@ parameter is of the type ``varargs`` it is treated specially and it can match
   
 
 
+Example: Partial evaluation
+---------------------------
+
+The following example shows how some simple partial evaluation can be
+implemented with term rewriting:
+
+.. code-block:: nimrod
+  proc p(x, y: int; cond: bool): int =
+    result = if cond: x + y else: x - y
+
+  template optP{p(x, y, true)}(x, y: expr): expr = x + y
+  template optP{p(x, y, false)}(x, y: expr): expr = x - y
+
+
+Example: hoisting
+-----------------
+
+The following example how some form of hoisting can be implemented:
+
+.. code-block:: nimrod
+  import pegs
+
+  template optPeg{peg(pattern)}(pattern: string{lit}): TPeg =
+    var gl {.global, gensym.} = peg(pattern)
+    gl
+
+  for i in 0 .. 3:
+    echo match("(a b c)", peg"'(' @ ')'")
+    echo match("W_HI_Le", peg"\y 'while'")
+
+The ``optPeg`` template optimizes the case of a peg constructor with a string
+literal, so that the pattern will only be parsed once at program startup and
+stored in global ``gl`` which is then re-used. This optimization is called 
+hoisting because it is comparable to classical loop hoisting.
+
+
 AST based overloading
 =====================
 
 Parameter constraints can also be used for ordinary routine parameters; these
 constraints affect ordinary overloading resolution then:
 
+.. code-block:: nimrod
+  proc optLit(a: string{lit|`const`}) =
+    echo "string literal"
+  proc optLit(a: string) =
+    echo "no string literal"
 
+  const
+    constant = "abc"
+
+  var
+    variable = "xyz"
+
+  optLit("literal")
+  optLit(constant)
+  optLit(variable)
 
 However, the constraints ``alias`` and ``noalias`` are not available in
 ordinary routines.
+
+
+Move optimization
+-----------------
+
+The ``call`` constraint is particular useful to implement a `move`:idx: 
+optimization for types that have copying semantics:
+
+.. code-block:: nimrod
+  proc `[]=`*(t: var TTable, key: string, val: string) =
+    ## puts a (key, value)-pair into `t`. The semantics of string require
+    ## a copy here:
+    let idx = findInsertionPosition(key)
+    t[idx] = key
+    t[idx] = val
+
+  proc `[]=`*(t: var TTable, key: string{call}, val: string{call}) =
+    ## puts a (key, value)-pair into `t`. Optimized version that knows that
+    ## the strings are unique and thus don't need to be copied:
+    let idx = findInsertionPosition(key)
+    shallowCopy t[idx], key
+    shallowCopy t[idx], val
+
+  var t: TTable
+  # overloading resolution ensures that the optimized []= is called here:
+  t["abc"] = "xyz"
+
 
 
 Modules
@@ -4692,10 +4769,14 @@ Threadvar pragma
 ----------------
 
 A global variable can be marked with the `threadvar`:idx: pragma; it is 
-a `thead-local`:idx: variable then:
+a `thread-local`:idx: variable then:
 
 .. code-block:: nimrod
-  var checkpoints* {.threadvar.}: seq[string] = @[]
+  var checkpoints* {.threadvar.}: seq[string]
+
+Due to implementation restrictions thread local variables cannot be 
+initialized within the ``var`` section. (Every thread local variable needs to
+be replicated at thread creation.)
 
 
 Actor model
