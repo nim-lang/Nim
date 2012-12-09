@@ -2858,9 +2858,9 @@ compatibility:
 For a routine ``p`` the compiler uses inference rules to determine the set of
 possibly raised exceptions; the algorithm operates on ``p``'s call graph:
 
-1. Every indirect call via some proc type ``T`` is assumed to 
-   raise ``system.E_Base`` (the base type of the exception hierarchy) and thus
-   any exception unless ``T`` has an explicit ``raises`` list.
+1. Every indirect call via some proc type ``T`` is assumed to
+   raise ``system.E_Base`` (the base type of the exception hierarchy) and
+   thus any exception unless ``T`` has an explicit ``raises`` list.
 2. Every call to a proc ``q`` which has an unknown body (due to a forward 
    declaration or an ``importc`` pragma) is assumed to 
    raise ``system.E_Base`` unless ``q`` has an explicit ``raises`` list.
@@ -2914,7 +2914,7 @@ effects up to the ``effects``'s position:
   proc p(what: bool) =
     if what:
       raise newException(EIO, "IO")
-      {.effect.}
+      {.effects.}
     else:
       raise newException(EOS, "OS")
 
@@ -3522,7 +3522,7 @@ BindSym
 The above ``debug`` macro relies on the fact that ``write``, ``writeln`` and
 ``stdout`` are declared in the system module and thus visible in the 
 instantiating context. There is a way to use bound identifiers
-(aka `symbols`:idx) instead of using unbound identifiers. The ``bindSym`` 
+(aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym`` 
 builtin can be used for that:
 
 .. code-block:: nimrod
@@ -4038,7 +4038,7 @@ ordinary routines.
 Move optimization
 -----------------
 
-The ``call`` constraint is particular useful to implement a `move`:idx: 
+The ``call`` constraint is particularly useful to implement a `move`:idx: 
 optimization for types that have copying semantics:
 
 .. code-block:: nimrod

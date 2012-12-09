@@ -1012,10 +1012,10 @@ proc whichSection(p: TRstParser): TRstNodeKind =
       result = rnOptionList
     else: 
       result = rnParagraph
-  of tkWord, tkOther, tkWhite: 
+  of tkWord, tkOther, tkWhite:
     if match(p, tokenAfterNewLine(p), "ai"): result = rnHeadline
-    elif isDefList(p): result = rnDefList
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
+    elif isDefList(p): result = rnDefList
     else: result = rnParagraph
   else: result = rnLeaf
   
