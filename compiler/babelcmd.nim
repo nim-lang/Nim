@@ -9,7 +9,7 @@
 
 ## Implements some helper procs for Babel (Nimrod's package manager) support.
 
-import parseutils, strtabs, os, options, msgs, lists
+import parseutils, strutils, strtabs, os, options, msgs, lists
 
 proc addPath*(path: string, info: TLineInfo) = 
   if not contains(options.searchPaths, path): 
@@ -58,6 +58,23 @@ iterator chosen(packages: PStringTable): string =
     let res = if val == latest: key else: key & '-' & val
     yield res
 
+proc addPathWithNimFiles(p: string, info: TLineInfo) =
+  proc hasNimFile(dir: string): bool =
+    for kind, path in walkDir(dir):
+      if kind == pcFile and path.endsWith(".nim"):
+        return true
+    
+  proc addPath(p: string) =
+    if not contains(options.searchPaths, p):
+      Message(info, hintPath, p)
+      lists.PrependStr(options.searchPaths, p)
+  
+  if hasNimFile(p):
+    addPath(p)
+  else:
+    for kind, p2 in walkDir(p):
+      if hasNimFile(p2): addPath(p2)
+
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
   var pos = dir.len-1
@@ -65,11 +82,8 @@ proc addPathRec(dir: string, info: TLineInfo) =
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
       addPackage(packages, p)
-
   for p in packages.chosen:
-    if not contains(options.searchPaths, p):
-      Message(info, hintPath, p)
-      lists.PrependStr(options.searchPaths, p)
+    addPathWithNimFiles(p, info)
 
 proc babelPath*(path: string, info: TLineInfo) =
   addPathRec(path, info)
