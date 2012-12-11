@@ -279,11 +279,11 @@ proc MainCommand =
     gCmd = cmdGenDepend
     wantMainModule()
     CommandGenDepend()
-  of "dump": 
+  of "dump":
     gCmd = cmdDump
     condsyms.ListSymbols()
-    for it in iterSearchPath(): MsgWriteln(it)
-  of "check": 
+    for it in iterSearchPath(searchPaths): MsgWriteln(it)
+  of "check":
     gCmd = cmdCheck
     wantMainModule()
     CommandCheck()

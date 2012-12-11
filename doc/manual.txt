@@ -4005,7 +4005,7 @@ The following example how some form of hoisting can be implemented:
 
 The ``optPeg`` template optimizes the case of a peg constructor with a string
 literal, so that the pattern will only be parsed once at program startup and
-stored in global ``gl`` which is then re-used. This optimization is called 
+stored in a global ``gl`` which is then re-used. This optimization is called 
 hoisting because it is comparable to classical loop hoisting.
 
 
