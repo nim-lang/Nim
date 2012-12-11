@@ -607,14 +607,14 @@ proc len*(n: PJsonNode): int =
   else: nil
 
 proc `[]`*(node: PJsonNode, name: String): PJsonNode =
-  ## Gets a field from a `JObject`.
+  ## Gets a field from a `JObject`. Returns nil if the key is not found.
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: Int): PJsonNode =
+proc `[]`*(node: PJsonNode, index: Int): PJsonNode {.raises: [EInvalidIndex].} =
   ## Gets the node at `index` in an Array.
   assert(node.kind == JArray)
   return node.elems[index]
@@ -893,6 +893,10 @@ when isMainModule:
   echo(parsed["keyÄÖöoßß"])
   echo()
   echo(pretty(parsed2))
+  try:
+    echo(parsed["key2"][12123])
+    raise newException(EInvalidValue, "That line was expected to fail")
+  except EInvalidIndex: echo()
 
   discard """
   while true:
