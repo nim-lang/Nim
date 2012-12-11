@@ -58,22 +58,22 @@ iterator chosen(packages: PStringTable): string =
     let res = if val == latest: key else: key & '-' & val
     yield res
 
+proc addBabelPath(p: string, info: TLineInfo) =
+  if not contains(options.searchPaths, p):
+    Message(info, hintPath, p)
+    lists.PrependStr(options.lazyPaths, p)
+
 proc addPathWithNimFiles(p: string, info: TLineInfo) =
   proc hasNimFile(dir: string): bool =
     for kind, path in walkDir(dir):
       if kind == pcFile and path.endsWith(".nim"):
-        return true
-    
-  proc addPath(p: string) =
-    if not contains(options.searchPaths, p):
-      Message(info, hintPath, p)
-      lists.PrependStr(options.searchPaths, p)
-  
+        result = true
+        break
   if hasNimFile(p):
-    addPath(p)
+    addBabelPath(p, info)
   else:
     for kind, p2 in walkDir(p):
-      if hasNimFile(p2): addPath(p2)
+      if hasNimFile(p2): addBabelPath(p2, info)
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
@@ -87,4 +87,4 @@ proc addPathRec(dir: string, info: TLineInfo) =
 
 proc babelPath*(path: string, info: TLineInfo) =
   addPathRec(path, info)
-  addPath(path, info)
+  addBabelPath(path, info)

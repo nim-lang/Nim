@@ -221,6 +221,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     let path = processPath(arg)
     lists.ExcludeStr(options.searchPaths, path)
+    lists.ExcludeStr(options.lazyPaths, path)
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg)

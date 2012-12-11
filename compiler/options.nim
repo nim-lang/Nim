@@ -88,7 +88,7 @@ var
                          optPatterns}
   gGlobalOptions*: TGlobalOptions = {optRefcGC, optThreadAnalysis}
   gExitcode*: int8
-  searchPaths*: TLinkedList
+  searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
   headerFile*: string = ""
   gCmd*: TCommands = cmdNone  # the command
@@ -194,22 +194,37 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(): string = 
+iterator iterSearchPath*(SearchPaths: TLinkedList): string = 
   var it = PStrEntry(SearchPaths.head)
-  while it != nil: 
+  while it != nil:
     yield it.data
     it = PStrEntry(it.Next)
 
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath():
+  for it in iterSearchPath(SearchPaths):
     result = JoinPath(it, f)
-    if ExistsFile(result):
+    if existsFile(result):
       return result.canonicalizePath
   result = ""
 
+proc rawFindFile2(f: string): string =
+  var it = PStrEntry(lazyPaths.head)
+  while it != nil:
+    result = JoinPath(it.data, f)
+    if existsFile(result):
+      bringToFront(lazyPaths, it)
+      return result.canonicalizePath
+    it = PStrEntry(it.Next)
+  result = ""
+
 proc FindFile*(f: string): string {.procvar.} = 
-  result = rawFindFile(f)
-  if len(result) == 0: result = rawFindFile(toLower(f))
+  result = f.rawFindFile
+  if result.len == 0:
+    result = f.toLower.rawFindFile
+    if result.len == 0:
+      result = f.rawFindFile2
+      if result.len == 0:
+        result = f.toLower.rawFindFile2
 
 proc findModule*(modulename: string): string {.inline.} =
   # returns path to module
