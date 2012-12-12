@@ -13,6 +13,23 @@
 ## (unlike XML). It is easy for machines to parse and generate.
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
+##
+## Usage example:
+##
+## .. code-block:: nimrod
+##  let
+##    small_json = """{"test": 1.3, "key2": true}"""
+##    jobj = parseJson(small_json)
+##  assert (jobj.kind == JObject)
+##  echo($jobj["test"].fnum)
+##  echo($jobj["key2"].bval)
+##
+## Results in:
+##
+## .. code-block:: nimrod
+##
+##   1.3000000000000000e+00
+##   true
 
 import 
   hashes, strutils, lexbase, streams, unicode
@@ -607,14 +624,14 @@ proc len*(n: PJsonNode): int =
   else: nil
 
 proc `[]`*(node: PJsonNode, name: String): PJsonNode =
-  ## Gets a field from a `JObject`.
+  ## Gets a field from a `JObject`. Returns nil if the key is not found.
   assert(node.kind == JObject)
   for key, item in items(node.fields):
     if key == name:
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: Int): PJsonNode =
+proc `[]`*(node: PJsonNode, index: Int): PJsonNode {.raises: [EInvalidIndex].} =
   ## Gets the node at `index` in an Array.
   assert(node.kind == JArray)
   return node.elems[index]
@@ -893,6 +910,10 @@ when isMainModule:
   echo(parsed["keyÄÖöoßß"])
   echo()
   echo(pretty(parsed2))
+  try:
+    echo(parsed["key2"][12123])
+    raise newException(EInvalidValue, "That line was expected to fail")
+  except EInvalidIndex: echo()
 
   discard """
   while true:
