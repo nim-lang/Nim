@@ -21,7 +21,6 @@ DEST_NIMBASE=build/nimcache/nimbase.h
 # Ok, are we out now?
 if [ -d src ]
 then
-	# You may want to use a wildcard here to compile all nimrod files.
 	$PATH_TO_NIMROD objc --noMain  --app:lib \
 		--nimcache:build/nimcache --compileOnly \
 		--header --cpu:i386 ../nimrod_backend/backend.nim
