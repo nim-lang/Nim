@@ -3,7 +3,7 @@ version 0.9.2
 
 - test&finish first class iterators:
   * nested iterators
-  * test generic iterators
+  * document them
 - fix closure bug finally
 - fix marshal bug
 

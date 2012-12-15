@@ -713,6 +713,12 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
             useSym(t.sons[i].destructor),
             n.sons[paramsPos][1][0]]))
 
+proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
+  if s.typ.sons[0] != nil and
+      (s.kind != skIterator or s.typ.callConv == ccClosure):
+    addResult(c, s.typ.sons[0], n.info, s.kind)
+    addResultNode(c, n)
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
   result = semProcAnnotation(c, n)
@@ -794,17 +800,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[genericParamsPos].kind == nkEmpty: 
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
-      if s.typ.sons[0] != nil and
-          (kind != skIterator or s.typ.callConv == ccClosure):
-        addResult(c, s.typ.sons[0], n.info, kind)
-        addResultNode(c, n)
+      maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
         let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      #if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator:
