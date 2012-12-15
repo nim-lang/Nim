@@ -39,8 +39,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
 proc semStmt(c: PContext, n: PNode): PNode
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
-proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind)
-proc addResultNode(c: PContext, n: PNode)
+proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc fixImmediateParams(n: PNode): PNode
