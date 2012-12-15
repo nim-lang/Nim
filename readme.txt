@@ -34,7 +34,9 @@ If you are on a fairly modern *nix system, the following steps should work:
 ```
 $ git clone git://github.com/Araq/Nimrod.git
 $ cd Nimrod
-$ unzip build/csources.zip
+$ cd build
+$ unzip csources.zip
+$ cd ..
 $ ./build.sh
 $ bin/nimrod c koch
 $ ./koch boot -d:release
