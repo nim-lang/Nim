@@ -664,6 +664,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = nil
     else:
       result = m.call
+      instGenericConvertersSons(c, result, m)
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)

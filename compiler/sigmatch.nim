@@ -594,7 +594,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       addSon(result, copyTree(arg))
       inc(m.convMatches)
       m.genericConverter = srca == isGeneric or destIsGeneric
-      return
+      return result
 
 proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
                     arg: PNode): PNode = 
@@ -705,8 +705,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         else:
           result = userConvMatch(c, m, base(f), a, arg)
 
-proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                     arg, argOrig: PNode): PNode =
+proc ParamTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
+                      arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
     result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
@@ -752,27 +752,12 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
       result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
-proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, arg, nil)
-
-proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, n.typ, n, nil)
-
-proc argtypeMatches*(c: PContext, f, a: PType): bool = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, ast.emptyNode, nil) != nil  
-
 proc setSon(father: PNode, at: int, son: PNode) = 
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
   father.sons[at] = son
 
-proc matchesAux*(c: PContext, n, nOrig: PNode,
-                 m: var TCandidate, marker: var TIntSet) = 
+proc matchesAux(c: PContext, n, nOrig: PNode,
+                m: var TCandidate, marker: var TIntSet) = 
   template checkConstraint(n: expr) {.immediate, dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
@@ -903,5 +888,14 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
+
+proc argtypeMatches*(c: PContext, f, a: PType): bool = 
+  var m: TCandidate
+  initCandidate(m, f)
+  let res = paramTypesMatch(c, m, f, a, ast.emptyNode, nil)
+  #instantiateGenericConverters(c, res, m)
+  # XXX this is used by patterns.nim too; I think it's better to not
+  # instantiate generic converters for that
+  result = res != nil
 
 include suggest

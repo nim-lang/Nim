@@ -87,6 +87,7 @@ GC
 Optimizations
 =============
 
+- optimize 'if' with a constant condition
 - escape analysis for string/seq seems to be easy to do too;
   even further write barrier specialization
 - inlining of first class functions
