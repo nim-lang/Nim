@@ -47,6 +47,8 @@ proc fixImmediateParams(n: PNode): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 
+proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   if formal.kind != tyError and actual.kind != tyError: 
     LocalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &

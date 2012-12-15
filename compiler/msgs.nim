@@ -132,7 +132,7 @@ const
     errNumberOutOfRange: "number $1 out of valid range", 
     errNnotAllowedInCharacter: "\\n not allowed in character literal", 
     errClosingBracketExpected: "closing ']' expected, but end of file reached", 
-    errMissingFinalQuote: "missing final \'", 
+    errMissingFinalQuote: "missing final \' for character literal", 
     errIdentifierExpected: "identifier expected, but found \'$1\'", 
     errNewlineExpected: "newline expected, but found \'$1\'",
     errInvalidModuleName: "invalid module name: '$1'",
