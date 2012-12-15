@@ -186,7 +186,24 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   for word in split(";;this;is;an;;example;;;", {';'}):
   ##     writeln(stdout, word)
   ##
-  ## produces the same output.
+  ## produces the same output. The code:
+  ##
+  ## .. code-block:: nimrod
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeln(stdout, number)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
   var last = 0
   assert(not ('\0' in seps))
   while last < len(s):
