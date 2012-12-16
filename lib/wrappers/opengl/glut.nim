@@ -149,7 +149,7 @@ const                         # glutGet parameters.
   GLUT_INIT_WINDOW_Y* = 501
   GLUT_INIT_WINDOW_WIDTH* = 502
   GLUT_INIT_WINDOW_HEIGHT* = 503
-  constGLUT_INIT_DISPLAY_MODE* = 504
+  GLUT_INIT_DISPLAY_MODE* = 504
   GLUT_ELAPSED_TIME* = 700
   GLUT_WINDOW_FORMAT_ID* = 123 # glutDeviceGet parameters.
   GLUT_HAS_KEYBOARD* = 600
