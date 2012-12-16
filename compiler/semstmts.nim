@@ -1078,7 +1078,8 @@ proc insertDestructors(c: PContext, varSection: PNode):
       varTyp = varId.sym.typ
       info = varId.info
 
-    if varTyp != nil and instantiateDestructor(c, varTyp):
+    if varTyp != nil and instantiateDestructor(c, varTyp) and 
+        sfGlobal notin varId.sym.flags:
       var tryStmt = newNodeI(nkTryStmt, info)
 
       if j < totalVars - 1:
