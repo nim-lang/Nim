@@ -219,7 +219,7 @@ const                         # Version
   GLU_TESS_WINDING_NEGATIVE* = 100133
   GLU_TESS_WINDING_ABS_GEQ_TWO* = 100134 # TessCallback
   GLU_TESS_BEGIN* = 100100    # void (CALLBACK*)(TGLenum    type)
-  constGLU_TESS_VERTEX* = 100101 # void (CALLBACK*)(void      *data)
+  GLU_TESS_VERTEX* = 100101 # void (CALLBACK*)(void      *data)
   GLU_TESS_END* = 100102      # void (CALLBACK*)(void)
   GLU_TESS_ERROR* = 100103    # void (CALLBACK*)(TGLenum    errno)
   GLU_TESS_EDGE_FLAG* = 100104 # void (CALLBACK*)(TGLboolean boundaryEdge)
