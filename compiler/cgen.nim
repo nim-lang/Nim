@@ -799,8 +799,6 @@ proc genVarPrototypeAux(m: BModule, sym: PSym) =
 
 proc genVarPrototype(m: BModule, sym: PSym) =
   genVarPrototypeAux(m, sym)
-  if sfExportc in sym.flags and generatedHeader != nil:
-    genVarPrototypeAux(generatedHeader, sym)
 
 proc addIntTypes(result: var PRope) {.inline.} =
   appf(result, "#define NIM_INTBITS $1", [
