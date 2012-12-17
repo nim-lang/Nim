@@ -124,6 +124,7 @@ proc genBreakState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "if ((((NI*) $1.ClEnv)[0]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
+proc genVarPrototypeAux(m: BModule, sym: PSym)
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
   if sfCompileTime in v.flags: return
@@ -142,6 +143,9 @@ proc genSingleVar(p: BProc, a: PNode) =
     genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
+    if sfExportc in v.flags and generatedHeader != nil:
+      genVarPrototypeAux(generatedHeader, v)
+
   else:
     assignLocalVar(p, v)
     initLocalVar(p, v, immediateAsgn)

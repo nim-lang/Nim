@@ -4,7 +4,6 @@ version 0.9.2
 - fix closure bug finally
 - test&finish first class iterators:
   * nested iterators
-  * document them
 - fix marshal bug
 - investigate nimgame bug
 
