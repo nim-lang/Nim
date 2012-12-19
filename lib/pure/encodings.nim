@@ -254,6 +254,8 @@ when defined(windows):
 else:
   when defined(haiku):
     const iconvDll = "(libc.so.6|libiconv.so|libtextencoding.so)"
+  elif defined(macosx):
+    const iconvDll = "libiconv.dylib"
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
@@ -449,8 +451,13 @@ proc convert*(s: string, destEncoding = "UTF-8",
     close(c)
 
 when IsMainModule:
-  var orig = "öäüß"
-  var crap = convert(orig, "CP1252", "UTF-8")
-  echo convert(crap, "ibm850", "CP1252")
-  echo getCurrentEncoding()
+  let
+    orig = "öäüß"
+    cp1252 = convert(orig, "CP1252", "UTF-8")
+    ibm850 = convert(cp1252, "ibm850", "CP1252")
+    current = getCurrentEncoding()
+  echo "Original string from source code: ", orig
+  echo "Forced ibm850 encoding: ", ibm850
+  echo "Current encoding: ", current
+  echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
 
