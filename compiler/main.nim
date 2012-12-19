@@ -157,6 +157,9 @@ proc CommandInteractive =
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   DefineSymbol("nimrodvm")
+  when hasFFI:
+    DefineSymbol("nimffi")
+
   registerPass(verbosePass())
   registerPass(sem.semPass())
   registerPass(evals.evalPass()) # load system module:
