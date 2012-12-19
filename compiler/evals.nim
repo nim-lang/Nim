@@ -339,16 +339,15 @@ proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
       if not aliasNeeded(result, flags): 
         result = copyTree(result)
     else:
+      when hasFFI:
+        if sfImportc in s.flags:
+          result = importcSymbol(s)
+          IdNodeTablePut(c.globals, s, result)
+          return result
+      
       result = s.ast
       if result == nil or result.kind == nkEmpty:
-        when hasFFI:
-          # for 'stdin' etc. we need to support 'importc' for variables:
-          if sfImportc in s.flags:
-            result = importcSymbol(s)
-          else:
-            result = getNullValue(s.typ, s.info)
-        else:
-          result = getNullValue(s.typ, s.info)
+        result = getNullValue(s.typ, s.info)
       else:
         result = evalAux(c, result, {})
         if isSpecial(result): return
@@ -392,7 +391,7 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
       var newCall = newNodeI(nkCall, n.info, n.len)
       newCall.sons[0] = evalGlobalVar(c, prc.sym, {})
       for i in 1 .. <n.len:
-        newCall.sons[i] = d.params[i-1]
+        newCall.sons[i] = d.params[i]
       return callForeignFunction(newCall)
   
   pushStackFrame(c, d)

@@ -34,19 +34,25 @@ proc getDll(cache: var TDllCache; dll: string): pointer =
     cache[dll] = result
 
 proc importcSymbol*(sym: PSym): PNode =
-  let lib = sym.annex
-  if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
-    InternalError("dynlib needs to be a string literal for the REPL")
-  
-  let dllpath = if lib.isNil: libcDll else: lib.path.strVal
-  let dllhandle = gDllCache.getDll(dllpath)
   let name = ropeToStr(sym.loc.r)
-  let theAddr = dllhandle.checkedSymAddr(name)
   
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
   result = newNodeIT(nkIntLit, sym.info, sym.typ)
-  result.intVal = cast[TAddress](theAddr)
+  case name
+  of "stdin":  result.intVal = cast[TAddress](system.stdin)
+  of "stdout": result.intVal = cast[TAddress](system.stdout)
+  of "stderr": result.intVal = cast[TAddress](system.stderr)
+  else:
+    let lib = sym.annex
+    if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
+      InternalError(sym.info, "dynlib needs to be a string literal for the REPL")
+    
+    let dllpath = if lib.isNil: libcDll else: lib.path.strVal
+    let dllhandle = gDllCache.getDll(dllpath)
+    let theAddr = dllhandle.checkedSymAddr(name)
+    
+    result.intVal = cast[TAddress](theAddr)
 
 proc mapType(t: ast.PType): ptr libffi.TType =
   if t == nil: return addr libffi.type_void
@@ -63,8 +69,10 @@ proc mapType(t: ast.PType): ptr libffi.TType =
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
-     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr:
+     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyNil:
     result = addr libffi.type_pointer
+  of tyDistinct:
+    result = mapType(t.sons[0])
   else:
     InternalError("cannot map type to FFI")
   # too risky:
@@ -80,12 +88,12 @@ proc mapCallConv(cc: TCallingConvention): TABI =
 template rd(T, p: expr): expr {.immediate.} = (cast[ptr T](p))[]
 template wr(T, p, v: expr) {.immediate.} = (cast[ptr T](p))[] = v
 
-proc pack(v: PNode): pointer =
+proc pack(v: PNode, typ: PType): pointer =
   template awr(T, v: expr) {.immediate, dirty.} =
     result = alloc0(sizeof(T))
     wr(T, result, v)
 
-  case v.typ.kind
+  case typ.kind
   of tyBool: awr(bool, v.intVal != 0)
   of tyChar: awr(char, v.intVal.chr)
   of tyInt:  awr(int, v.intVal.int)
@@ -120,6 +128,10 @@ proc pack(v: PNode): pointer =
       result = alloc0(sizeof(pointer))
     else:
       awr(cstring, cstring(v.strVal))
+  of tyNil:
+    result = alloc0(sizeof(pointer))
+  of tyDistinct, tyGenericInst:
+    result = pack(v, typ.sons[0])
   else:
     InternalError("cannot map value to FFI " & typeToString(v.typ))
 
@@ -168,31 +180,36 @@ proc unpack(x: pointer, typ: PType, info: TLineInfo): PNode =
       result = newNodeIT(nkNilLit, info, typ)
     else:
       aws(nkStrLit, $p)
+  of tyNil: result = newNodeIT(nkNilLit, info, typ)
+  of tyDistinct, tyGenericInst:
+    result = unpack(x, typ.sons[0], info)
   else:
     InternalError("cannot map value from FFI " & typeToString(typ))
 
 proc callForeignFunction*(call: PNode): PNode =
   InternalAssert call.sons[0].kind == nkIntLit
-  let typ = call.sons[0].typ
   
   var cif: TCif
   var sig: TParamList
-  for i in 1..typ.len-1: sig[i-1] = mapType(typ.sons[i])
+  # use the arguments' types for varargs support:
+  for i in 1..call.len-1: sig[i-1] = mapType(call.sons[i].typ)
   
-  if prep_cif(cif, mapCallConv(typ.callConv), cuint(typ.len-1), 
+  let typ = call.sons[0].typ
+  if prep_cif(cif, mapCallConv(typ.callConv), cuint(call.len-1), 
               mapType(typ.sons[0]), sig) != OK:
     InternalError(call.info, "error in FFI call")
   
   var args: TArgList
   let fn = cast[pointer](call.sons[0].intVal)
-  for i in 0 .. call.len-1:
-    args[i] = pack(call.sons[i+1])
-  let retVal = alloc(typ.sons[0].getSize.int)
+  for i in 1 .. call.len-1:
+    args[i-1] = pack(call.sons[i], call.sons[i].typ)
+  let retVal = if isEmptyType(typ.sons[0]): pointer(nil)
+               else: alloc(typ.sons[0].getSize.int)
 
   libffi.call(cif, fn, retVal, args)
   
-  if isEmptyType(typ.sons[0]): result = emptyNode
+  if retVal.isNil: result = emptyNode
   else: result = unpack(retVal, typ.sons[0], call.info)
 
-  dealloc retVal
-  for i in countdown(call.len-1, 0): dealloc args[i]
+  if retVal != nil: dealloc retVal
+  for i in countdown(call.len-2, 0): dealloc args[i]
