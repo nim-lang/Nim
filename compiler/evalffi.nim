@@ -33,6 +33,9 @@ proc getDll(cache: var TDllCache; dll: string): pointer =
       InternalError("cannot load: " & dll)
     cache[dll] = result
 
+const
+  nkPtrLit = nkIntLit # hopefully we can get rid of this hack soon
+
 proc importcSymbol*(sym: PSym): PNode =
   let name = ropeToStr(sym.loc.r)
   

@@ -48,14 +48,14 @@ when defined(WINDOWS):
 else:
   const
     versions = "(|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
-  when defined(posix):
-    const 
-      DLLSSLName = "libssl.so" & versions
-      DLLUtilName = "libcrypto.so" & versions
-  else: 
+  when defined(macosx):
     const 
       DLLSSLName = "libssl.dylib" & versions
       DLLUtilName = "libcrypto.dylib" & versions
+  else:
+    const 
+      DLLSSLName = "libssl.so" & versions
+      DLLUtilName = "libcrypto.so" & versions
 
 type 
   SslStruct {.final, pure.} = object
