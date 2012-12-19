@@ -215,7 +215,7 @@ when defined(withUpdate):
       if errcode == 0:
         if output == "":
           # No changes
-          echo("No update. Exiting..")
+          echo("No update. Exiting...")
           return
         else:
           echo("Fetching updates from repo...")
