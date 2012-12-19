@@ -13,6 +13,7 @@ import
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
+  hasFFI* = defined(useFFI)
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -229,6 +230,17 @@ proc FindFile*(f: string): string {.procvar.} =
 proc findModule*(modulename: string): string {.inline.} =
   # returns path to module
   result = FindFile(AddFileExt(modulename, nimExt))
+
+proc libCandidates*(s: string, dest: var seq[string]) = 
+  var le = strutils.find(s, '(')
+  var ri = strutils.find(s, ')', le+1)
+  if le >= 0 and ri > le:
+    var prefix = substr(s, 0, le - 1)
+    var suffix = substr(s, ri + 1)
+    for middle in split(substr(s, le + 1, ri - 1), '|'):
+      libCandidates(prefix & middle & suffix, dest)
+  else: 
+    add(dest, s)
 
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0

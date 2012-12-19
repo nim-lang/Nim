@@ -18,6 +18,9 @@ import
   msgs, os, condsyms, idents, renderer, types, passes, semfold, transf, 
   parser, ropes, rodread, idgen, osproc, streams, evaltempl
 
+when hasFFI:
+  import evalffi
+
 type 
   PStackFrame* = ref TStackFrame
   TStackFrame*{.final.} = object 
@@ -307,42 +310,6 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
           for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
   result = emptyNode
 
-proc evalCall(c: PEvalContext, n: PNode): PNode = 
-  var d = newStackFrame()
-  d.call = n
-  var prc = n.sons[0]
-  let isClosure = prc.kind == nkClosure
-  setlen(d.params, sonsLen(n) + ord(isClosure))
-  if isClosure:
-    #debug prc
-    result = evalAux(c, prc.sons[1], {efLValue})
-    if isSpecial(result): return
-    d.params[sonsLen(n)] = result
-    result = evalAux(c, prc.sons[0], {})
-  else:
-    result = evalAux(c, prc, {})
-
-  if isSpecial(result): return 
-  prc = result
-  # bind the actual params to the local parameter of a new binding
-  if prc.kind != nkSym: 
-    InternalError(n.info, "evalCall " & n.renderTree)
-    return
-  d.prc = prc.sym
-  if prc.sym.kind notin {skProc, skConverter, skMacro}:
-    InternalError(n.info, "evalCall")
-    return
-  for i in countup(1, sonsLen(n) - 1): 
-    result = evalAux(c, n.sons[i], {})
-    if isSpecial(result): return 
-    d.params[i] = result
-  if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
-  pushStackFrame(c, d)
-  result = evalAux(c, prc.sym.getBody, {})
-  if result.kind == nkExceptBranch: return 
-  if n.typ != nil: result = d.params[0]
-  popStackFrame(c)
-
 proc aliasNeeded(n: PNode, flags: TEvalFlags): bool = 
   result = efLValue in flags or n.typ == nil or 
     n.typ.kind in {tyExpr, tyStmt, tyTypeDesc}
@@ -374,13 +341,65 @@ proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
     else:
       result = s.ast
       if result == nil or result.kind == nkEmpty:
-        result = getNullValue(s.typ, s.info)
+        when hasFFI:
+          # for 'stdin' etc. we need to support 'importc' for variables:
+          if sfImportc in s.flags:
+            result = importcSymbol(s)
+          else:
+            result = getNullValue(s.typ, s.info)
+        else:
+          result = getNullValue(s.typ, s.info)
       else:
         result = evalAux(c, result, {})
         if isSpecial(result): return
       IdNodeTablePut(c.globals, s, result)
   else:
     result = raiseCannotEval(nil, s.info)
+
+proc evalCall(c: PEvalContext, n: PNode): PNode = 
+  var d = newStackFrame()
+  d.call = n
+  var prc = n.sons[0]
+  let isClosure = prc.kind == nkClosure
+  setlen(d.params, sonsLen(n) + ord(isClosure))
+  if isClosure:
+    #debug prc
+    result = evalAux(c, prc.sons[1], {efLValue})
+    if isSpecial(result): return
+    d.params[sonsLen(n)] = result
+    result = evalAux(c, prc.sons[0], {})
+  else:
+    result = evalAux(c, prc, {})
+
+  if isSpecial(result): return 
+  prc = result
+  # bind the actual params to the local parameter of a new binding
+  if prc.kind != nkSym: 
+    InternalError(n.info, "evalCall " & n.renderTree)
+    return
+  d.prc = prc.sym
+  if prc.sym.kind notin {skProc, skConverter, skMacro}:
+    InternalError(n.info, "evalCall")
+    return
+  for i in countup(1, sonsLen(n) - 1): 
+    result = evalAux(c, n.sons[i], {})
+    if isSpecial(result): return 
+    d.params[i] = result
+  if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
+  
+  when hasFFI:
+    if sfImportc in prc.sym.flags:
+      var newCall = newNodeI(nkCall, n.info, n.len)
+      newCall.sons[0] = evalGlobalVar(c, prc.sym, {})
+      for i in 1 .. <n.len:
+        newCall.sons[i] = d.params[i-1]
+      return callForeignFunction(newCall)
+  
+  pushStackFrame(c, d)
+  result = evalAux(c, prc.sym.getBody, {})
+  if result.kind == nkExceptBranch: return 
+  if n.typ != nil: result = d.params[0]
+  popStackFrame(c)
 
 proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = evalAux(c, n.sons[0], flags)
@@ -520,7 +539,8 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skConst: result = s.ast
   of skEnumField: result = newIntNodeT(s.position, n)
   else: result = nil
-  if result == nil or {sfImportc, sfForward} * s.flags != {}:
+  const mask = when hasFFI: {sfForward} else: {sfImportc, sfForward}
+  if result == nil or mask * s.flags != {}:
     result = raiseCannotEval(c, n.info)
 
 proc evalIncDec(c: PEvalContext, n: PNode, sign: biggestInt): PNode = 
