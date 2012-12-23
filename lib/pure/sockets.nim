@@ -1504,8 +1504,7 @@ proc sendTo*(socket: TSocket, address: string, port: TPort,
   result = socket.sendTo(address, port, cstring(data), data.len)
 
 when defined(Windows):
-  const 
-    SOCKET_ERROR = -1
+  const
     IOCPARM_MASK = 127
     IOC_IN = int(-2147483648)
     FIONBIO = int(IOC_IN or ((sizeof(int) and IOCPARM_MASK) shl 16) or 
@@ -1518,7 +1517,7 @@ when defined(Windows):
 proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
-    if SOCKET_ERROR == ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)):
+    if ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)) == -1:
       OSError()
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)
