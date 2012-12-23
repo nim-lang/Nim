@@ -96,8 +96,9 @@ type
   EFTP* = object of ESynch
 
 proc FTPClient*(address: string, port = TPort(21),
-                user, pass = ""): TFTPClient =
-  ## Create a ``TFTPClient`` object.
+                user, pass = ""): PFTPClient =
+  ## Create a ``PFTPClient`` object.
+  new(result)
   result.user = user
   result.pass = pass
   result.address = address
@@ -278,11 +279,20 @@ proc getLines(ftp: PFTPClient, async: bool = false): bool =
   ## It doesn't if `async` is true, because it doesn't check for 226 then.
   if ftp.dsockConnected:
     var r = TaintedString""
-    if getDSock(ftp).recvAsync(r):
-      if r.string != "":
-        ftp.job.lines.add(r.string)
-      else:
-        ftp.dsockConnected = False
+    if ftp.isAsync:
+      if ftp.asyncDSock.recvLine(r):
+        if r.string == "":
+          ftp.dsockConnected = false
+        else:
+          ftp.job.lines.add(r.string & "\n")
+    else:
+      assert(not async)
+      if ftp.dsock.recvLine(r):
+        if r.string == "":
+          ftp.dsockConnected = false
+        else:
+          ftp.job.lines.add(r.string & "\n")
+      else: OSError()
   
   if not async:
     var readSocks: seq[TSocket] = @[ftp.getCSock()]
@@ -389,7 +399,7 @@ proc list*(ftp: PFTPClient, dir: string = "", async = false): string =
 proc retrText*(ftp: PFTPClient, file: string, async = false): string =
   ## Retrieves ``file``. File must be ASCII text.
   ## If ``async`` is true, this function will return immediately and
-  ## it will be your job to call ``poll`` to progress this operation.
+  ## it will be your job to call asyncio's ``poll`` to progress this operation.
   ftp.createJob(getLines, JRetrText)
   ftp.pasv()
   assertReply ftp.send("RETR " & file.normalizePathSep), ["125", "150"]
@@ -404,12 +414,14 @@ proc retrText*(ftp: PFTPClient, file: string, async = false): string =
 proc getFile(ftp: PFTPClient, async = false): bool =
   if ftp.dsockConnected:
     var r = "".TaintedString
+    var bytesRead = 0
     var returned = false
     if async:
       if not ftp.isAsync: raise newException(EFTP, "FTPClient must be async.")
-      returned = ftp.AsyncDSock.recvAsync(r)
+      bytesRead = ftp.AsyncDSock.recvAsync(r, BufferSize)
+      returned = bytesRead != -1
     else: 
-      r = getDSock(ftp).recv()
+      bytesRead = getDSock(ftp).recv(r, BufferSize)
       returned = true
     let r2 = r.string
     if r2 != "":
@@ -429,8 +441,9 @@ proc getFile(ftp: PFTPClient, async = false): bool =
 proc retrFile*(ftp: PFTPClient, file, dest: string, async = false) =
   ## Downloads ``file`` and saves it to ``dest``. Usage of this function
   ## asynchronously is recommended to view the progress of the download.
-  ## The ``EvRetr`` event is given by ``poll`` when the download is finished,
-  ## and the ``filename`` field will be equal to ``file``.
+  ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function 
+  ## when the download is finished, and the ``filename`` field will be equal
+  ## to ``file``.
   ftp.createJob(getFile, JRetr)
   ftp.job.file = open(dest, mode = fmWrite)
   ftp.pasv()
@@ -492,8 +505,9 @@ proc store*(ftp: PFTPClient, file, dest: string, async = false) =
   ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
   ## the download.
-  ## The ``EvStore`` event is given by ``poll`` when the upload is finished,
-  ## and the ``filename`` field will be equal to ``file``.
+  ## The ``EvStore`` event is passed to the specified ``handleEvent`` function 
+  ## when the upload is finished, and the ``filename`` field will be 
+  ## equal to ``file``.
   ftp.createJob(doUpload, JStore)
   ftp.job.file = open(file)
   ftp.job.total = ftp.job.file.getFileSize()
@@ -518,16 +532,6 @@ proc close*(ftp: PFTPClient) =
     ftp.csock.close()
     ftp.dsock.close()
 
-discard """proc getSocket(h: PObject): tuple[info: TInfo, sock: TSocket] =
-  result = (SockIdle, InvalidSocket)
-  var ftp = PAsyncFTPClient(h)
-  if ftp.jobInProgress:
-    case ftp.job.typ
-    of JRetrText, JRetr, JStore:
-      if ftp.dsockStatus == SockConnecting or ftp.dsockStatus == SockConnected:
-        result = (ftp.dsockStatus, ftp.dsock)
-      else: result = (SockIdle, ftp.dsock)"""
-
 proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
   if ftp.jobInProgress:
     assertReply ftp.expectReply(), "226" # Make sure the transfer completed.
@@ -549,32 +553,6 @@ proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
     ftp.deleteJob()
     
     ftp.handleEvent(ftp, r)
-
-discard """proc handleConnect(h: PObject) =
-  var ftp = PAsyncFTPClient(h)
-  ftp.dsockStatus = SockConnected
-  assert(ftp.jobInProgress)
-  if ftp.job.typ == JStore:
-    ftp.dele.mode = MWriteable
-  else: 
-    ftp.dele.mode = MReadable"""
-
-discard """proc handleRead(h: PObject) =
-  var ftp = PAsyncFTPClient(h)
-  assert(ftp.jobInProgress)
-  assert(ftp.job.typ != JStore)
-  # This can never return true, because it shouldn't check for code 
-  # 226 from csock.
-  assert(not ftp.job.prc(ftp[], true))
-"""
-
-discard """proc csockGetSocket(h: PObject): tuple[info: TInfo, sock: TSocket] =
-  # This only returns the csock if a job is in progress. Otherwise handle read
-  # would capture data which is not for it to capture.
-  result = (SockIdle, InvalidSocket)
-  var ftp = PAsyncFTPClient(h)
-  if ftp.jobInProgress:
-    result = (SockConnected, ftp.csock)"""
 
 proc AsyncFTPClient*(address: string, port = TPort(21),
                      user, pass = "",

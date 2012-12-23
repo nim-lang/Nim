@@ -47,12 +47,15 @@ when defined(ssl):
     TSSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
+const
+  BufferSize*: int = 4000 ## size of a buffered socket's buffer
+
 type
   TSocketImpl = object ## socket type
     fd: cint
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
-      buffer: array[0..4000, char]
+      buffer: array[0..BufferSize, char]
       currPos: int # current index in buffer
       bufLen: int # current length of buffer
     of false: nil
@@ -299,6 +302,48 @@ when defined(ssl):
     
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       SSLError()
+
+proc SocketError*(socket: TSocket, err: int = -1, async = false) =
+  ## Raises proper errors based on return values of ``recv`` functions.
+  ##
+  ## If ``async`` is ``True`` no error will be thrown in the case when the
+  ## error was caused by no data being available to be read.
+  ##
+  ## If ``err`` is not lower than 0 no exception will be raised.
+  when defined(ssl):
+    if socket.isSSL:
+      if err <= 0:
+        var ret = SSLGetError(socket.sslHandle, err.cint)
+        case ret
+        of SSL_ERROR_ZERO_RETURN:
+          SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
+          if async:
+            return
+          else: SSLError("Not enough data on socket.")
+        of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
+          if async:
+            return
+          else: SSLError("Not enough data on socket.")
+        of SSL_ERROR_WANT_X509_LOOKUP:
+          SSLError("Function for x509 lookup has been called.")
+        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+          SSLError()
+        else: SSLError("Unknown Error")
+  
+  if err == -1 and not (when defined(ssl): socket.isSSL else: false):
+    if async:
+      when defined(windows):
+        # TODO: Test on Windows
+        var err = WSAGetLastError()
+        if err == WSAEWOULDBLOCK:
+          return
+        else: OSError()
+      else:
+        if errno == EAGAIN or errno == EWOULDBLOCK:
+          return
+        else: OSError()
+    else: OSError()
 
 proc listen*(socket: TSocket, backlog = SOMAXCONN) {.tags: [FReadIO].} =
   ## Marks ``socket`` as accepting connections. 
@@ -1012,14 +1057,39 @@ proc recv*(socket: TSocket, data: pointer, size: int): int {.tags: [FReadIO].} =
 
 proc recv*(socket: TSocket, data: var string, size: int): int =
   ## higher-level version of the above
+  ##
+  ## When 0 is returned the socket's connection has been closed.
+  ##
+  ## This function will throw an EOS exception when an error occurs. A value
+  ## lower than 0 is never returned.
+  ##
+  ## **Note**: ``data`` must be initialised.
   data.setLen(size)
   result = recv(socket, cstring(data), size)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError(result)
+  data.setLen(result)
+
+proc recvAsync*(socket: TSocket, data: var string, size: int): int =
+  ## Async version of the above.
+  ##
+  ## When socket is non-blocking and no data is available on the socket,
+  ## ``-1`` will be returned and ``data`` will be ``""``.
+  ##
+  ## **Note**: ``data`` must be initialised.
+  data.setLen(size)
+  result = recv(socket, cstring(data), size)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError(async = true)
+    result = -1
+  data.setLen(result)
 
 proc waitFor(socket: TSocket, waited: var float, timeout: int): int {.
   tags: [FTime].} =
   ## returns the number of characters available to be read. In unbuffered
-  ## sockets this is always 1, otherwise this may as big as the buffer, currently
-  ## 4000.
+  ## sockets this is always 1, otherwise this may as big as ``BufferSize``.
   result = 1
   if socket.isBuffered and socket.bufLen != 0 and socket.bufLen != socket.currPos:
     result = socket.bufLen - socket.currPos
@@ -1050,9 +1120,16 @@ proc recv*(socket: TSocket, data: pointer, size: int, timeout: int): int {.
   result = read
 
 proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
-  # higher-level version of the above
+  ## higher-level version of the above.
+  ##
+  ## Similar to the non-timeout version this will throw an EOS exception
+  ## when an error occurs.
   data.setLen(size)
   result = recv(socket, cstring(data), size, timeout)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError()
+  data.setLen(result)
 
 proc peekChar(socket: TSocket, c: var char): int {.tags: [FReadIO].} =
   if socket.isBuffered:
@@ -1080,7 +1157,7 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool {.
   ## added to ``line``, however if solely ``\r\L`` is received then ``line``
   ## will be set to it.
   ## 
-  ## ``True`` is returned if data is available. ``False`` usually suggests an
+  ## ``True`` is returned if data is available. ``False`` suggests an
   ## error, EOS exceptions are not raised and ``False`` is simply returned
   ## instead.
   ## 
@@ -1112,6 +1189,8 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool {.
   tags: [FReadIO, FTime].} =
   ## variant with a ``timeout`` parameter, the timeout parameter specifies
   ## how many miliseconds to wait for data.
+  ##
+  ## ``ETimeout`` will be raised if ``timeout`` is exceeded.
   template addNLIfEmpty(): stmt =
     if line.len == 0:
       line.add("\c\L")
@@ -1210,12 +1289,14 @@ proc recvTimeout*(socket: TSocket, timeout: int): TaintedString {.
   return socket.recv
 
 proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
-  tags: [FReadIO].} =
+  tags: [FReadIO], deprecated.} =
   ## receives all the data from a non-blocking socket. If socket is non-blocking 
   ## and there are no messages available, `False` will be returned.
   ## Other socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``s`` will be set to ``""``.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 1000
   # ensure bufSize capacity:
   setLen(s.string, bufSize)

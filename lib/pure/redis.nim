@@ -49,26 +49,35 @@ proc raiseNoOK(status: string) =
     raise newException(EInvalidReply, "Expected \"OK\" got \"$1\"" % status)
 
 proc parseStatus(r: TRedis): TRedisStatus =
-  var line = r.socket.recv.string
+  var line = ""
+  if r.socket.recvLine(line):
+    if line == "":
+      raise newException(ERedis, "Server closed connection prematurely")
   
-  if line[0] == '-':
-    raise newException(ERedis, strip(line))
-  if line[0] != '+':
-    raiseInvalidReply('+', line[0])
-  
-  return line.substr(1, line.len-3) # Strip '+' and \c\L.
+    if line[0] == '-':
+      raise newException(ERedis, strip(line))
+    if line[0] != '+':
+      raiseInvalidReply('+', line[0])
+    
+    return line.substr(1) # Strip '+'
+  else:
+    OSError()
   
 proc parseInteger(r: TRedis): TRedisInteger =
-  var line = r.socket.recv.string
+  var line = ""
+  if r.socket.recvLine(line):
+    if line == "":
+      raise newException(ERedis, "Server closed connection prematurely")
 
-  if line[0] == '-':
-    raise newException(ERedis, strip(line))
-  if line[0] != ':':
-    raiseInvalidReply(':', line[0])
-  
-  # Strip ':' and \c\L.
-  if parseBiggestInt(line, result, 1) == 0:
-    raise newException(EInvalidReply, "Unable to parse integer.") 
+    if line[0] == '-':
+      raise newException(ERedis, strip(line))
+    if line[0] != ':':
+      raiseInvalidReply(':', line[0])
+    
+    # Strip ':'
+    if parseBiggestInt(line, result, 1) == 0:
+      raise newException(EInvalidReply, "Unable to parse integer.") 
+  else: OSError()
 
 proc recv(sock: TSocket, size: int): TaintedString =
   result = newString(size).TaintedString
@@ -838,8 +847,11 @@ proc save*(r: TRedis) =
 proc shutdown*(r: TRedis) =
   ## Synchronously save the dataset to disk and then shut down the server
   r.sendCommand("SHUTDOWN")
-  var s = r.socket.recv()
-  if s.string.len != 0: raise newException(ERedis, s.string)
+  var s = "".TaintedString
+  if r.socket.recvLine(s):
+    if s.string.len != 0: raise newException(ERedis, s.string)
+  else:
+    OSError()
 
 proc slaveof*(r: TRedis, host: string, port: string) =
   ## Make the server a slave of another instance, or promote it as master
