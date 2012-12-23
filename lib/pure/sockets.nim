@@ -1164,11 +1164,13 @@ proc recvLineAsync*(socket: TSocket,
     elif c == '\L': return RecvFullLine
     add(line.string, c)
 
-proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO].} =
+proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO], deprecated.} =
   ## receives all the available data from the socket.
   ## Socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 4000
   result = newStringOfCap(bufSize).TaintedString
   var pos = 0
@@ -1194,10 +1196,12 @@ proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO].} =
       if bytesRead != bufSize-1: break
 
 proc recvTimeout*(socket: TSocket, timeout: int): TaintedString {.
-  tags: [FReadIO].} =
+  tags: [FReadIO], deprecated.} =
   ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
   ## parameter specifies the amount of miliseconds to wait for data on the
   ## socket.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   if socket.bufLen == 0:
     var s = @[socket]
     if s.select(timeout) != 1:
@@ -1298,12 +1302,24 @@ proc recvFromAsync*(socket: TSocket, data: var String, length: int,
         return False
       else: OSError()
 
-proc skip*(socket: TSocket) {.tags: [FReadIO].} =
+proc skip*(socket: TSocket) {.tags: [FReadIO], deprecated.} =
   ## skips all the data that is pending for the socket
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 1000
   var buf = alloc(bufSize)
   while recv(socket, buf, bufSize) == bufSize: nil
   dealloc(buf)
+
+proc skip*(socket: TSocket, size: int) =
+  ## Skips ``size`` amount of bytes.
+  ##
+  ## Returns the number of skipped bytes.
+  var dummy = alloc(size)
+  var bytesSkipped = 0
+  while bytesSkipped != size:
+    bytesSkipped += recv(socket, dummy, size-bytesSkipped)
+  dealloc(dummy)
 
 proc send*(socket: TSocket, data: pointer, size: int): int {.
   tags: [FWriteIO].} =
