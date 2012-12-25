@@ -16596,6 +16596,8 @@ proc message_dialog_new*(parent: PWindow, flags: TDialogFlags,
                          thetype: TMessageType, buttons: TButtonsType, 
                          message_format: cstring): PMessageDialog{.varargs, 
     cdecl, importc: "gtk_message_dialog_new", dynlib: lib.}
+proc set_markup*(msgDialog: PMessageDialog, str: cstring) {.cdecl,
+    importc: "gtk_message_dialog_set_markup", dynlib: lib.}
 proc signal_new*(name: cstring, signal_flags: TSignalRunType, 
                  object_type: TType, function_offset: guint, 
                  marshaller: TSignalMarshaller, return_val: TType, n_args: guint): guint{.
