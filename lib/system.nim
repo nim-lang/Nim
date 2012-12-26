@@ -1716,8 +1716,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc initStackBottom() {.inline, compilerproc.} =
     # WARNING: This is very fragile! An array size of 8 does not work on my
-    # Linux 64bit system. Very strange, but we are at the will of GCC's 
-    # optimizer...
+    # Linux 64bit system. -- That's because the stack direction is the other
+    # way round.
     when defined(setStackBottom):
       var locals {.volatile.}: pointer
       locals = addr(locals)
@@ -1754,7 +1754,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     proc endbStep()
 
   # ----------------- IO Part ------------------------------------------------
-
   type
     CFile {.importc: "FILE", nodecl, final.} = object  # empty record for
                                                        # data hiding
@@ -1783,7 +1782,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## The standard error stream.
       ##
       ## Note: In my opinion, this should not be used -- the concept of a
-      ## separate error stream is a design flaw of UNIX. A seperate *message
+      ## separate error stream is a design flaw of UNIX. A separate *message
       ## stream* is a good idea, but since it is named ``stderr`` there are few
       ## programs out there that distinguish properly between ``stdout`` and
       ## ``stderr``. So, that's what you get if you don't name your variables
@@ -2121,6 +2120,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
 elif defined(ecmaScript) or defined(NimrodVM):
   # Stubs:
+  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
+
   proc GC_disable() = nil
   proc GC_enable() = nil
   proc GC_fullCollect() = nil
@@ -2151,6 +2152,10 @@ elif defined(ecmaScript) or defined(NimrodVM):
       if x == y: return 0
       if x < y: return -1
       return 1
+  
+  when defined(nimffi):
+    include "system/sysio"
+
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
