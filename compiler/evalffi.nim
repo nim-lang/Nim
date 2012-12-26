@@ -58,7 +58,7 @@ proc importcSymbol*(sym: PSym): PNode =
       theAddr = gExehandle.symAddr(name)
       # then try libc:
       if theAddr.isNil:
-        let dllhandle = gDllCache.getDll(libcDll)
+        let dllhandle = gDllCache.getDll(libcDll, sym.info)
         theAddr = dllhandle.checkedSymAddr(name)
     else:
       let dllhandle = gDllCache.getDll(lib.path.strVal, sym.info)
@@ -125,7 +125,8 @@ proc pack(v: PNode, typ: PType, res: pointer) =
     of 4: awr(int32, v.intVal.int32)
     of 8: awr(int64, v.intVal.int64)
     else:
-      InternalError("cannot map value to FFI (tyEnum, tySet)")
+      GlobalError(v.info, errGenerated,
+         "cannot map value to FFI (tyEnum, tySet)")
   of tyFloat: awr(float, v.floatVal)
   of tyFloat32: awr(float32, v.floatVal)
   of tyFloat64: awr(float64, v.floatVal)
@@ -137,7 +138,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     else:
-      InternalError("cannot map pointer/proc value to FFI")
+      GlobalError(v.info, errGenerated, "cannot map pointer/proc value to FFI")
   of tyPtr, tyRef, tyVar:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
@@ -148,7 +149,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       # XXX this is pretty hard: we need to allocate a new buffer and store it
       # somewhere to be freed; we also need to write back any changes to the
       # data!
-      InternalError("cannot map pointer/proc value to FFI")
+      GlobalError(v.info, errGenerated, "cannot map pointer/proc value to FFI")
   of tyCString, tyString:
     if v.kind == nkNilLit:
       nil
@@ -162,9 +163,10 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyNil:
     nil
   of tyDistinct, tyGenericInst:
-    result = pack(v, typ.sons[0])
+    pack(v, typ.sons[0], res)
   else:
-    InternalError("cannot map value to FFI " & typeToString(v.typ))
+    GlobalError(v.info, errGenerated, "cannot map value to FFI " & 
+      typeToString(v.typ))
 
 proc unpack(x: pointer, typ: PType, info: TLineInfo): PNode =
   template aw(kind, v, field: expr) {.immediate, dirty.} =
@@ -195,7 +197,8 @@ proc unpack(x: pointer, typ: PType, info: TLineInfo): PNode =
     of 4: awi(nkIntLit, rd(int32, x).biggestInt)
     of 8: awi(nkIntLit, rd(int64, x).biggestInt)
     else:
-      InternalError("cannot map value from FFI (tyEnum, tySet)")
+      GlobalError(info, errGenerated, 
+        "cannot map value from FFI (tyEnum, tySet)")
   of tyFloat: awf(nkFloatLit, rd(float, x))
   of tyFloat32: awf(nkFloatLit, rd(float32, x))
   of tyFloat64: awf(nkFloatLit, rd(float64, x))
@@ -215,7 +218,8 @@ proc unpack(x: pointer, typ: PType, info: TLineInfo): PNode =
   of tyDistinct, tyGenericInst:
     result = unpack(x, typ.sons[0], info)
   else:
-    InternalError("cannot map value from FFI " & typeToString(typ))
+    GlobalError(info, errGenerated, "cannot map value from FFI " & 
+      typeToString(typ))
 
 proc callForeignFunction*(call: PNode): PNode =
   InternalAssert call.sons[0].kind == nkIntLit
@@ -228,7 +232,7 @@ proc callForeignFunction*(call: PNode): PNode =
   let typ = call.sons[0].typ
   if prep_cif(cif, mapCallConv(typ.callConv), cuint(call.len-1), 
               mapType(typ.sons[0]), sig) != OK:
-    InternalError(call.info, "error in FFI call")
+    GlobalError(call.info, errGenerated, "error in FFI call")
   
   var args: TArgList
   let fn = cast[pointer](call.sons[0].intVal)
