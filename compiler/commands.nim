@@ -458,6 +458,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "stdout":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optStdout)
+  of "listfullpaths":
+    expectNoArg(switch, arg, pass, info)
+    gListFullPaths = true
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)

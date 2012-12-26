@@ -97,6 +97,7 @@ var
   gNumberOfProcessors*: int   # number of processors
 
   gWholeProject*: bool # for 'doc2': output any dependency
+  gListFullPaths*: bool
   
 const 
   genSubDir* = "nimcache"
