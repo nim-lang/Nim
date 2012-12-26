@@ -440,6 +440,9 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
   ## add it to the result when a full line is retrieved.
+  ##
+  ## Unlike ``sockets.recvLine`` this function will raise an EOS or ESSL
+  ## exception if an error occurs.
   setLen(line.string, 0)
   var dataReceived = "".TaintedString
   var ret = s.socket.recvLineAsync(dataReceived)
@@ -458,6 +461,7 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   of RecvDisconnected:
     result = true
   of RecvFail:
+    s.SocketError(async = true)
     result = false
 
 proc send*(sock: PAsyncSocket, data: string) =
@@ -594,7 +598,9 @@ when isMainModule:
   
   proc testRead(s: PAsyncSocket, no: int) =
     echo("Reading! " & $no)
-    var data = s.getSocket.recv()
+    var data = ""
+    if not s.recvLine(data):
+      OSError()
     if data == "":
       echo("Closing connection. " & $no)
       s.close()
