@@ -531,7 +531,15 @@ proc ToFilename*(fileIdx: int32): string =
 proc toFullPath*(info: TLineInfo): string =
   if info.fileIndex < 0: result = "???"
   else: result = fileInfos[info.fileIndex].fullPath
-  
+
+proc ToMsgFilename*(info: TLineInfo): string =
+  if info.fileIndex < 0: result = "???"
+  else:
+    if gListFullPaths:
+      result = fileInfos[info.fileIndex].fullPath
+    else:
+      result = fileInfos[info.fileIndex].projPath
+
 proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
 
@@ -622,7 +630,7 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastInfo
   for i in countup(0, len(msgContext) - 1): 
     if msgContext[i] != lastInfo and msgContext[i] != info: 
-      MsgWriteln(posContextFormat % [toFilename(msgContext[i]), 
+      MsgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
                                      coordToStr(msgContext[i].line), 
                                      coordToStr(msgContext[i].col), 
                                      getMessageStr(errInstantiationFrom, "")])
@@ -676,7 +684,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = posHintFormat
     inc(gHintCounter)
-  let s = frmt % [toFilename(info), coordToStr(info.line),
+  let s = frmt % [toMsgFilename(info), coordToStr(info.line),
                   coordToStr(info.col), getMessageStr(msg, arg)]
   if not ignoreMsg:
     MsgWriteln(s)
