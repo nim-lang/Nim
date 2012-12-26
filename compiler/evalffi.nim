@@ -17,11 +17,12 @@ else:
   const libcDll = "libc.so(.6|.5|)"
 
 type
-  TDllCache* = tables.TTable[string, TLibHandle]
+  TDllCache = tables.TTable[string, TLibHandle]
 var
   gDllCache = initTable[string, TLibHandle]()
+  gExeHandle = LoadLib()
 
-proc getDll(cache: var TDllCache; dll: string): pointer =
+proc getDll(cache: var TDllCache; dll: string; info: TLineInfo): pointer =
   result = cache[dll]
   if result.isNil:
     var libs: seq[string] = @[]
@@ -30,7 +31,7 @@ proc getDll(cache: var TDllCache; dll: string): pointer =
       result = LoadLib(c)
       if not result.isNil: break
     if result.isNil:
-      InternalError("cannot load: " & dll)
+      GlobalError(info, errGenerated, "cannot load: " & dll)
     cache[dll] = result
 
 const
@@ -41,7 +42,7 @@ proc importcSymbol*(sym: PSym): PNode =
   
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
-  result = newNodeIT(nkIntLit, sym.info, sym.typ)
+  result = newNodeIT(nkPtrLit, sym.info, sym.typ)
   case name
   of "stdin":  result.intVal = cast[TAddress](system.stdin)
   of "stdout": result.intVal = cast[TAddress](system.stdout)
@@ -49,12 +50,19 @@ proc importcSymbol*(sym: PSym): PNode =
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
-      InternalError(sym.info, "dynlib needs to be a string literal for the REPL")
-    
-    let dllpath = if lib.isNil: libcDll else: lib.path.strVal
-    let dllhandle = gDllCache.getDll(dllpath)
-    let theAddr = dllhandle.checkedSymAddr(name)
-    
+      GlobalError(sym.info, errGenerated,
+        "dynlib needs to be a string lit for the REPL")
+    var theAddr: pointer
+    if lib.isNil and not gExehandle.isNil:
+      # first try this exe itself:
+      theAddr = gExehandle.symAddr(name)
+      # then try libc:
+      if theAddr.isNil:
+        let dllhandle = gDllCache.getDll(libcDll)
+        theAddr = dllhandle.checkedSymAddr(name)
+    else:
+      let dllhandle = gDllCache.getDll(lib.path.strVal, sym.info)
+      theAddr = dllhandle.checkedSymAddr(name)
     result.intVal = cast[TAddress](theAddr)
 
 proc mapType(t: ast.PType): ptr libffi.TType =
@@ -90,11 +98,12 @@ proc mapCallConv(cc: TCallingConvention): TABI =
 
 template rd(T, p: expr): expr {.immediate.} = (cast[ptr T](p))[]
 template wr(T, p, v: expr) {.immediate.} = (cast[ptr T](p))[] = v
+template `+!`(x, y: expr): expr {.immediate.} =
+  cast[pointer](cast[TAddress](x) + y)
 
-proc pack(v: PNode, typ: PType): pointer =
+proc pack(v: PNode, typ: PType, res: pointer) =
   template awr(T, v: expr) {.immediate, dirty.} =
-    result = alloc0(sizeof(T))
-    wr(T, result, v)
+    wr(T, res, v)
 
   case typ.kind
   of tyBool: awr(bool, v.intVal != 0)
@@ -121,18 +130,37 @@ proc pack(v: PNode, typ: PType): pointer =
   of tyFloat32: awr(float32, v.floatVal)
   of tyFloat64: awr(float64, v.floatVal)
   
-  of tyPointer, tyProc, tyPtr, tyRef:
+  of tyPointer, tyProc:
     if v.kind == nkNilLit:
-      result = alloc0(sizeof(pointer))
-    else:
+      # nothing to do since the memory is 0 initialized anyway
+      nil
+    elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
+    else:
+      InternalError("cannot map pointer/proc value to FFI")
+  of tyPtr, tyRef, tyVar:
+    if v.kind == nkNilLit:
+      # nothing to do since the memory is 0 initialized anyway
+      nil
+    elif v.kind == nkPtrLit:
+      awr(pointer, cast[pointer](v.intVal))
+    else:
+      # XXX this is pretty hard: we need to allocate a new buffer and store it
+      # somewhere to be freed; we also need to write back any changes to the
+      # data!
+      InternalError("cannot map pointer/proc value to FFI")
   of tyCString, tyString:
     if v.kind == nkNilLit:
-      result = alloc0(sizeof(pointer))
+      nil
     else:
       awr(cstring, cstring(v.strVal))
+  of tyArray, tyArrayConstr:
+    let baseSize = typ.sons[1].getSize
+    assert(v.len == lengthOrd(typ.sons[0]))
+    for i in 0 .. <v.len:
+      pack(v.sons[i], typ.sons[1], res +! i * baseSize)
   of tyNil:
-    result = alloc0(sizeof(pointer))
+    nil
   of tyDistinct, tyGenericInst:
     result = pack(v, typ.sons[0])
   else:
@@ -205,7 +233,9 @@ proc callForeignFunction*(call: PNode): PNode =
   var args: TArgList
   let fn = cast[pointer](call.sons[0].intVal)
   for i in 1 .. call.len-1:
-    args[i-1] = pack(call.sons[i], call.sons[i].typ)
+    var t = call.sons[i].typ
+    args[i-1] = alloc0(typ.sons[0].getSize.int)
+    pack(call.sons[i], t, args[i-1])
   let retVal = if isEmptyType(typ.sons[0]): pointer(nil)
                else: alloc(typ.sons[0].getSize.int)
 
