@@ -919,6 +919,37 @@ types automatically and vice versa. The ``toInt`` and ``toFloat`` procs can be
 used for these conversions.
 
 
+Internal type representation
+============================
+
+As mentioned earlier, the built-in ``$`` (stringify) operator turns any basic
+type into a string, which you can then print to the screen with the ``echo``
+proc. However, advanced types, or types you may define yourself won't work with
+the ``$`` operator until you define one for them. Sometimes you just want to
+debug the current value of a complex type without having to write its ``$``
+operator.  You can use then the ``repr`` proc which works with any type and
+even complex data graphs with cycles. The following example shows that even for
+basic types there is a difference between the ``$`` and ``repr`` outputs:
+
+.. code-block:: nimrod
+  var
+    myBool = true
+    myCharacter = 'n'
+    myString = "nimrod"
+    myInteger = 42
+    myFloat = 3.14
+  echo($myBool, ":", repr(myBool))
+  # --> true:true
+  echo($myCharacter, ":", repr(myCharacter))
+  # --> n:'n'
+  echo($myString, ":", repr(myString))
+  # --> nimrod:0x10fa8c050"nimrod"
+  echo($myInteger, ":", repr(myInteger))
+  # --> 42:42
+  echo($myFloat, ":", repr(myFloat))
+  # --> 3.1400000000000001e+00:3.1400000000000001e+00
+
+
 Advanced types
 ==============
 
@@ -1091,6 +1122,54 @@ copies the whole array contents.
 
 The built-in ``len`` proc returns the array's length. ``low(a)`` returns the
 lowest valid index for the array `a` and ``high(a)`` the highest valid index.
+
+.. code-block:: nimrod
+  type
+    TDirection = enum
+      north, east, south, west
+    TBlinkLights = enum
+      off, on, slowBlink, mediumBlink, fastBlink
+    TLevelSetting = array[north..west, TBlinkLights]
+  var
+    level : TLevelSetting
+  level[north] = on
+  level[south] = slowBlink
+  level[east] = fastBlink
+  echo repr(level)  # --> [on, fastBlink, slowBlink, off]
+  echo low(level)   # --> north
+  echo len(level)   # --> 4
+  echo high(level)  # --> west
+
+The syntax for nested arrays (multidimensional) in other languages is a matter
+of appending more brackets because usually each dimension is restricted to the
+same index type as the others. In nimrod you can have different dimensions with
+different index types, so the nesting syntax is slightly different. Building on
+the previous example where a level is defined as an array of enums indexed by
+yet another enum, we can add the following lines to add a light tower type
+subdivided in height levels accessed through their integer index:
+
+.. code-block:: nimrod
+  type
+    TLightTower = array[1..10, TLevelSetting]
+  var
+    tower: TLightTower
+  tower[1][north] = slowBlink
+  tower[1][east] = mediumBlink
+  echo len(tower)     # --> 10
+  echo len(tower[1])  # --> 4
+  echo repr(tower)    # --> [[slowBlink, mediumBlink, ...more output..
+  # The following lines don't compile due to type mistmatch errors
+  #tower[north][east] = on
+  #tower[0][1] = on
+
+Note how the built-in ``len`` proc returns only the array's first dimension
+length.  Another way of defining the ``TLightTower`` to show better its
+nested nature would be to omit the previous definition of the ``TLevelSetting``
+type and instead write it embedded directly as the type of the first dimension:
+
+.. code-block:: nimrod
+  type
+    TLightTower = array[1..10, array[north..west, TBlinkLights]]
 
 
 Sequences
