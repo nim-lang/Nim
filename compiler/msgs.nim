@@ -696,6 +696,9 @@ proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
 proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doRaise)
 
+proc GlobalError*(info: TLineInfo, arg: string) =
+  liMessage(info, errGenerated, arg, doRaise)
+
 proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 

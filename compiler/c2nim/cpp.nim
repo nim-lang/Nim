@@ -42,6 +42,7 @@ proc parseDefine(p: var TParser): PNode =
     result = newNodeP(nkTemplateDef, p)
     getTok(p)
     addSon(result, skipIdentExport(p))
+    addSon(result, ast.emptyNode)
     eat(p, pxParLe)
     var params = newNodeP(nkFormalParams, p)
     # return type; not known yet:
@@ -60,6 +61,7 @@ proc parseDefine(p: var TParser): PNode =
     addSon(result, ast.emptyNode) # no generic parameters
     addSon(result, params)
     addSon(result, ast.emptyNode) # no pragmas
+    addSon(result, ast.emptyNode)
     var kind = parseDefineBody(p, result)
     params.sons[0] = newIdentNodeP(kind, p)
     eatNewLine(p, result)

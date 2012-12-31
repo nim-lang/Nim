@@ -37,12 +37,20 @@ type
                               ## emConst?)
     emStatic                  ## evaluate for enforced compile time eval
                               ## ('static' context)
+
+  TSandboxFlag* = enum        ## what the evaluation engine should allow
+    allowCast,                ## allow unsafe language feature: 'cast'
+    allowFFI,                 ## allow the FFI
+    allowInfiniteLoops        ## allow endless loops
+  TSandboxFlags* = set[TSandboxFlag]
+
   TEvalContext* = object of passes.TPassContext
     module*: PSym
     tos*: PStackFrame         # top of stack
     lastException*: PNode
     callsite: PNode           # for 'callsite' magic
     mode*: TEvalMode
+    features: TSandboxFlags
     globals*: TIdNodeTable    # state of global vars
     getType*: proc(n: PNode): PNode {.closure.}
   
@@ -166,9 +174,12 @@ proc evalWhile(c: PEvalContext, n: PNode): PNode =
     of nkExceptBranch, nkReturnToken: break 
     else: nil
     dec(gWhileCounter)
-    if gWhileCounter <= 0: 
-      stackTrace(c, n, errTooManyIterations)
-      break 
+    if gWhileCounter <= 0:
+      if allowInfiniteLoops in c.features:
+        gWhileCounter = 0
+      else:
+        stackTrace(c, n, errTooManyIterations)
+        break
 
 proc evalBlock(c: PEvalContext, n: PNode): PNode =
   result = evalAux(c, n.sons[1], {})
@@ -636,6 +647,14 @@ proc evalConv(c: PEvalContext, n: PNode): PNode =
     if result == nil: 
       # foldConv() cannot deal with everything that we want to do here:
       result = a
+
+proc evalCast(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
+  if allowCast in c.features:
+    # XXX we need better checking here and the new pack/unpack stuff should
+    # be useful for some casts too:
+    result = evalConv(c, n)
+  else:
+    result = raiseCannotEval(c, n.info)
 
 proc evalCheckedFieldAccess(c: PEvalContext, n: PNode, 
                             flags: TEvalFlags): PNode = 
@@ -1383,7 +1402,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     result.typ = n.typ
   of nkPragmaBlock:
     result = evalAux(c, n.sons[1], flags)
-  of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
+  of nkCast:
+    result = evalCast(c, n, flags)
+  of nkIdentDefs, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
      nkLambdaKinds, nkContinueStmt, nkIdent, nkParForStmt, nkBindStmt:
     result = raiseCannotEval(c, n.info)
   of nkRefTy:
