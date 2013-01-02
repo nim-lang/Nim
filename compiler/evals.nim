@@ -77,6 +77,7 @@ proc newEvalContext*(module: PSym, filename: string,
   new(result)
   result.module = module
   result.mode = mode
+  result.features = {allowFFI}
   initIdNodeTable(result.globals)
 
 proc pushStackFrame*(c: PEvalContext, t: PStackFrame) {.inline.} = 
@@ -90,7 +91,7 @@ proc popStackFrame*(c: PEvalContext) {.inline.} =
 proc evalMacroCall*(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode
 
-proc raiseCannotEval(c: PEvalContext, info: TLineInfo): PNode = 
+proc raiseCannotEval(c: PEvalContext, info: TLineInfo): PNode =
   result = newNodeI(nkExceptBranch, info)
   # creating a nkExceptBranch without sons 
   # means that it could not be evaluated
@@ -351,7 +352,7 @@ proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
         result = copyTree(result)
     else:
       when hasFFI:
-        if sfImportc in s.flags:
+        if sfImportc in s.flags and allowFFI in c.features:
           result = importcSymbol(s)
           IdNodeTablePut(c.globals, s, result)
           return result
@@ -398,7 +399,7 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
   if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
   
   when hasFFI:
-    if sfImportc in prc.sym.flags:
+    if sfImportc in prc.sym.flags and allowFFI in c.features:
       var newCall = newNodeI(nkCall, n.info, n.len)
       newCall.sons[0] = evalGlobalVar(c, prc.sym, {})
       for i in 1 .. <n.len:
@@ -549,7 +550,8 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skConst: result = s.ast
   of skEnumField: result = newIntNodeT(s.position, n)
   else: result = nil
-  const mask = when hasFFI: {sfForward} else: {sfImportc, sfForward}
+  let mask = if hasFFI and allowFFI in c.features: {sfForward}
+             else: {sfImportc, sfForward}
   if result == nil or mask * s.flags != {}:
     result = raiseCannotEval(c, n.info)
 
@@ -650,9 +652,13 @@ proc evalConv(c: PEvalContext, n: PNode): PNode =
 
 proc evalCast(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   if allowCast in c.features:
-    # XXX we need better checking here and the new pack/unpack stuff should
-    # be useful for some casts too:
-    result = evalConv(c, n)
+    when hasFFI:
+      result = evalAux(c, n.sons[1], {efLValue})
+      if isSpecial(result): return
+      InternalAssert result.typ != nil
+      result = fficast(result, n.typ)
+    else:
+      result = evalConv(c, n)
   else:
     result = raiseCannotEval(c, n.info)
 
@@ -1429,7 +1435,7 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
     if sonsLen(result) >= 1: 
       stackTrace(c, n, errUnhandledExceptionX, typeToString(result.typ))
     else:
-      stackTrace(c, n, errCannotInterpretNodeX, renderTree(n))
+      stackTrace(c, result, errCannotInterpretNodeX, renderTree(n))
 
 proc evalConstExprAux(module: PSym, e: PNode, mode: TEvalMode): PNode = 
   var p = newEvalContext(module, "", mode)
@@ -1474,6 +1480,7 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
   var c = newEvalContext(module, filename, emRepl)
+  c.features = {allowCast, allowFFI, allowInfiniteLoops}
   pushStackFrame(c, newStackFrame())
   result = c
 
