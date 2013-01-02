@@ -1547,41 +1547,42 @@ when false:
 
 # ----------------- GC interface ---------------------------------------------
 
-proc GC_disable*() {.rtl, inl.}
-  ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
-  ## reactivate the GC. Note that in most circumstances one should only disable
-  ## the mark and sweep phase with `GC_disableMarkAndSweep`.
+when not defined(nimrodVM):
+  proc GC_disable*() {.rtl, inl.}
+    ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
+    ## reactivate the GC. Note that in most circumstances one should only disable
+    ## the mark and sweep phase with `GC_disableMarkAndSweep`.
 
-proc GC_enable*() {.rtl, inl.}
-  ## enables the GC again.
+  proc GC_enable*() {.rtl, inl.}
+    ## enables the GC again.
 
-proc GC_fullCollect*() {.rtl.}
-  ## forces a full garbage collection pass.
-  ## Ordinary code does not need to call this (and should not).
+  proc GC_fullCollect*() {.rtl.}
+    ## forces a full garbage collection pass.
+    ## Ordinary code does not need to call this (and should not).
 
-type
-  TGC_Strategy* = enum ## the strategy the GC should use for the application
-    gcThroughput,      ## optimize for throughput
-    gcResponsiveness,  ## optimize for responsiveness (default)
-    gcOptimizeTime,    ## optimize for speed
-    gcOptimizeSpace    ## optimize for memory footprint
+  type
+    TGC_Strategy* = enum ## the strategy the GC should use for the application
+      gcThroughput,      ## optimize for throughput
+      gcResponsiveness,  ## optimize for responsiveness (default)
+      gcOptimizeTime,    ## optimize for speed
+      gcOptimizeSpace    ## optimize for memory footprint
 
-proc GC_setStrategy*(strategy: TGC_Strategy) {.rtl, deprecated.}
-  ## tells the GC the desired strategy for the application.
-  ## **Deprecated** since version 0.8.14. This has always been a nop.
+  proc GC_setStrategy*(strategy: TGC_Strategy) {.rtl, deprecated.}
+    ## tells the GC the desired strategy for the application.
+    ## **Deprecated** since version 0.8.14. This has always been a nop.
 
-proc GC_enableMarkAndSweep*() {.rtl.}
-proc GC_disableMarkAndSweep*() {.rtl.}
-  ## the current implementation uses a reference counting garbage collector
-  ## with a seldomly run mark and sweep phase to free cycles. The mark and
-  ## sweep phase may take a long time and is not needed if the application
-  ## does not create cycles. Thus the mark and sweep phase can be deactivated
-  ## and activated separately from the rest of the GC.
+  proc GC_enableMarkAndSweep*() {.rtl.}
+  proc GC_disableMarkAndSweep*() {.rtl.}
+    ## the current implementation uses a reference counting garbage collector
+    ## with a seldomly run mark and sweep phase to free cycles. The mark and
+    ## sweep phase may take a long time and is not needed if the application
+    ## does not create cycles. Thus the mark and sweep phase can be deactivated
+    ## and activated separately from the rest of the GC.
 
-proc GC_getStatistics*(): string {.rtl.}
-  ## returns an informative string about the GC's activity. This may be useful
-  ## for tweaking.
-  
+  proc GC_getStatistics*(): string {.rtl.}
+    ## returns an informative string about the GC's activity. This may be useful
+    ## for tweaking.
+    
 proc GC_ref*[T](x: ref T) {.magic: "GCref".}
 proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
 proc GC_ref*(x: string) {.magic: "GCref".}
@@ -1707,28 +1708,29 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
 
-when not defined(EcmaScript) and not defined(NimrodVM):
+when not defined(EcmaScript): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
-  proc initGC()
-  when not defined(boehmgc) and not defined(useMalloc):
-    proc initAllocator() {.inline.}
+  when not defined(NimrodVM):
+    proc initGC()
+    when not defined(boehmgc) and not defined(useMalloc):
+      proc initAllocator() {.inline.}
 
-  proc initStackBottom() {.inline, compilerproc.} =
-    # WARNING: This is very fragile! An array size of 8 does not work on my
-    # Linux 64bit system. -- That's because the stack direction is the other
-    # way round.
-    when defined(setStackBottom):
-      var locals {.volatile.}: pointer
-      locals = addr(locals)
-      setStackBottom(locals)
+    proc initStackBottom() {.inline, compilerproc.} =
+      # WARNING: This is very fragile! An array size of 8 does not work on my
+      # Linux 64bit system. -- That's because the stack direction is the other
+      # way round.
+      when defined(setStackBottom):
+        var locals {.volatile.}: pointer
+        locals = addr(locals)
+        setStackBottom(locals)
 
-  var
-    strDesc: TNimType
+    var
+      strDesc: TNimType
 
-  strDesc.size = sizeof(string)
-  strDesc.kind = tyString
-  strDesc.flags = {ntfAcyclic}
+    strDesc.size = sizeof(string)
+    strDesc.kind = tyString
+    strDesc.flags = {ntfAcyclic}
 
   include "system/ansi_c"
 
@@ -1736,22 +1738,23 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     result = int(c_strcmp(x, y))
 
   const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
-  when defined(windows):
-    # work-around C's sucking abstraction:
-    # BUGFIX: stdin and stdout should be binary files!
-    proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
-                                      header: "<io.h>".}
-    proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
-                                          header: "<fcntl.h>".}
-    var
-      O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
+  when not defined(NimrodVM):
+    when defined(windows):
+      # work-around C's sucking abstraction:
+      # BUGFIX: stdin and stdout should be binary files!
+      proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
+                                        header: "<io.h>".}
+      proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
+                                            header: "<fcntl.h>".}
+      var
+        O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
 
-    # we use binary mode in Windows:
-    setmode(fileno(c_stdin), O_BINARY)
-    setmode(fileno(c_stdout), O_BINARY)
-  
-  when defined(endb):
-    proc endbStep()
+      # we use binary mode in Windows:
+      setmode(fileno(c_stdin), O_BINARY)
+      setmode(fileno(c_stdout), O_BINARY)
+    
+    when defined(endb):
+      proc endbStep()
 
   # ----------------- IO Part ------------------------------------------------
   type
@@ -1957,13 +1960,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       inc(i)
     dealloc(a)
 
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
-    ## atomic increment of `memLoc`. Returns the value after the operation.
-  
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable.}
-    ## atomic decrement of `memLoc`. Returns the value after the operation.
+  when not defined(NimrodVM):
+    proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
+      ## atomic increment of `memLoc`. Returns the value after the operation.
+    
+    proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable.}
+      ## atomic decrement of `memLoc`. Returns the value after the operation.
 
-  include "system/atomics"
+    include "system/atomics"
 
   type
     PSafePoint = ptr TSafePoint
@@ -1979,71 +1983,76 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/syslocks"
     include "system/threads"
-  elif not defined(nogc):
+  elif not defined(nogc) and not defined(NimrodVM):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     initGC()
 
-  proc setControlCHook*(hook: proc () {.noconv.})
-    ## allows you to override the behaviour of your application when CTRL+C
-    ## is pressed. Only one such hook is supported.
-    
-  proc writeStackTrace*() {.tags: [FWriteIO].}
-    ## writes the current stack trace to ``stderr``. This is only works
-    ## for debug builds.
-  when hostOS != "standalone":
-    proc getStackTrace*(): string
-      ## gets the current stack trace. This only works for debug builds.
-
-    proc getStackTrace*(e: ref E_Base): string
-      ## gets the stack trace associated with `e`, which is the stack that
-      ## lead to the ``raise`` statement. This only works for debug builds.
+  when not defined(NimrodVM):
+    proc setControlCHook*(hook: proc () {.noconv.})
+      ## allows you to override the behaviour of your application when CTRL+C
+      ## is pressed. Only one such hook is supported.
       
-  {.push stack_trace: off, profiler:off.}
-  when hostOS == "standalone":
-    include "system/embedded"
-  else:
-    include "system/excpt"
-    
-  # we cannot compile this with stack tracing on
-  # as it would recurse endlessly!
-  include "system/arithm"
-  {.pop.} # stack trace
-  {.pop.} # stack trace
-      
-  when hostOS != "standalone": include "system/dyncalls"
-  include "system/sets"
+    proc writeStackTrace*() {.tags: [FWriteIO].}
+      ## writes the current stack trace to ``stderr``. This is only works
+      ## for debug builds.
+    when hostOS != "standalone":
+      proc getStackTrace*(): string
+        ## gets the current stack trace. This only works for debug builds.
 
-  const
-    GenericSeqSize = (2 * sizeof(int))
-    
-  proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
-    sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-    var d: int
-    var a = cast[TAddress](aa)
-    case n.typ.size
-    of 1: d = ze(cast[ptr int8](a +% n.offset)[])
-    of 2: d = ze(cast[ptr int16](a +% n.offset)[])
-    of 4: d = int(cast[ptr int32](a +% n.offset)[])
-    else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
-    return d
-
-  proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
-    var discr = getDiscriminant(aa, n)
-    if discr <% n.len:
-      result = n.sons[discr]
-      if result == nil: result = n.sons[n.len]
-      # n.sons[n.len] contains the ``else`` part (but may be nil)
+      proc getStackTrace*(e: ref E_Base): string
+        ## gets the stack trace associated with `e`, which is the stack that
+        ## lead to the ``raise`` statement. This only works for debug builds.
+        
+    {.push stack_trace: off, profiler:off.}
+    when hostOS == "standalone":
+      include "system/embedded"
     else:
-      result = n.sons[n.len]
+      include "system/excpt"
+      
+    # we cannot compile this with stack tracing on
+    # as it would recurse endlessly!
+    include "system/arithm"
+    {.pop.} # stack trace
+  {.pop.} # stack trace
+      
+  when hostOS != "standalone" and not defined(NimrodVM):
+    include "system/dyncalls"
+  when not defined(NimrodVM):
+    include "system/sets"
 
-  include "system/mmdisp"
-  {.push stack_trace: off, profiler:off.}
-  when hostOS != "standalone": include "system/sysstr"
-  {.pop.}
+    const
+      GenericSeqSize = (2 * sizeof(int))
+      
+    proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
+      sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
+      var d: int
+      var a = cast[TAddress](aa)
+      case n.typ.size
+      of 1: d = ze(cast[ptr int8](a +% n.offset)[])
+      of 2: d = ze(cast[ptr int16](a +% n.offset)[])
+      of 4: d = int(cast[ptr int32](a +% n.offset)[])
+      else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
+      return d
 
-  include "system/sysio"
-  when hasThreadSupport:
-    include "system/channels"
+    proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
+      var discr = getDiscriminant(aa, n)
+      if discr <% n.len:
+        result = n.sons[discr]
+        if result == nil: result = n.sons[n.len]
+        # n.sons[n.len] contains the ``else`` part (but may be nil)
+      else:
+        result = n.sons[n.len]
+
+    include "system/mmdisp"
+    {.push stack_trace: off, profiler:off.}
+    when hostOS != "standalone": include "system/sysstr"
+    {.pop.}
+
+    include "system/sysio"
+    when hasThreadSupport:
+      include "system/channels"
+  else:
+    include "system/sysio"
 
   iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
     ## Iterate over any line in the file named `filename`.
@@ -2058,7 +2067,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     var res = TaintedString(newStringOfCap(80))
     while f.readLine(res): yield TaintedString(res)
 
-  when hostOS != "standalone":
+  when hostOS != "standalone" and not defined(NimrodVM):
     include "system/assign"
     include "system/repr"
 
@@ -2083,42 +2092,43 @@ when not defined(EcmaScript) and not defined(NimrodVM):
         excHandler.raiseAction = action
 
   {.push stack_trace: off, profiler:off.}
-  when defined(endb):
+  when defined(endb) and not defined(NimrodVM):
     include "system/debugger"
 
   when defined(profiler) or defined(memProfiler):
     include "system/profiler"
   {.pop.} # stacktrace
 
-  proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-    ## can be used to mark a condition to be likely. This is a hint for the 
-    ## optimizer.
-  
-  proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-    ## can be used to mark a condition to be unlikely. This is a hint for the 
-    ## optimizer.
+  when not defined(NimrodVM):
+    proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+      ## can be used to mark a condition to be likely. This is a hint for the 
+      ## optimizer.
     
-  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-    ## retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClPrc;
-    """.}
+    proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+      ## can be used to mark a condition to be unlikely. This is a hint for the 
+      ## optimizer.
+      
+    proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+      ## retrieves the raw proc pointer of the closure `x`. This is
+      ## useful for interfacing closures with C.
+      {.emit: """
+      `result` = `x`.ClPrc;
+      """.}
 
-  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-    ## retrieves the raw environment pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClEnv;
-    """.}
+    proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+      ## retrieves the raw environment pointer of the closure `x`. This is
+      ## useful for interfacing closures with C.
+      {.emit: """
+      `result` = `x`.ClEnv;
+      """.}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-    ## can be used to determine if a first class iterator has finished.
-    {.emit: """
-    `result` = *((NI*) `x`.ClEnv) < 0;
-    """.}
+    proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+      ## can be used to determine if a first class iterator has finished.
+      {.emit: """
+      `result` = *((NI*) `x`.ClEnv) < 0;
+      """.}
 
-elif defined(ecmaScript) or defined(NimrodVM):
+elif defined(ecmaScript):
   # Stubs:
   proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
 

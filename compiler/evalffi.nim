@@ -279,6 +279,13 @@ proc unpackArray(x: pointer, typ: PType, n: PNode): PNode =
   for i in 0 .. < result.len:
     result.sons[i] = unpack(x +! i * baseSize, typ.sons[1], result.sons[i])
 
+proc canonNodeKind(k: TNodeKind): TNodeKind =
+  case k
+  of nkCharLit..nkUInt64Lit: result = nkIntLit
+  of nkFloatLit..nkFloat128Lit: result = nkFloatLit
+  of nkStrLit..nkTripleStrLit: result = nkStrLit
+  else: result = k
+
 proc unpack(x: pointer, typ: PType, n: PNode): PNode =
   template aw(k, v, field: expr) {.immediate, dirty.} =
     if n.isNil:
@@ -287,7 +294,8 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     else:
       # check we have the right field:
       result = n
-      if result.kind != k:
+      if result.kind.canonNodeKind != k.canonNodeKind:
+        echo "expected ", k, " but got ", result.kind
         GlobalError(n.info, "cannot map value from FFI")
     result.field = v
 
@@ -309,15 +317,15 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
   of tyBool: awi(nkIntLit, rd(bool, x).ord)
   of tyChar: awi(nkIntLit, rd(char, x).ord)
   of tyInt:  awi(nkIntLit, rd(int, x))
-  of tyInt8: awi(nkIntLit, rd(int8, x))
-  of tyInt16: awi(nkIntLit, rd(int16, x))
-  of tyInt32: awi(nkIntLit, rd(int32, x))
-  of tyInt64: awi(nkIntLit, rd(int64, x))
-  of tyUInt: awi(nkIntLit, rd(uint, x).biggestInt)
-  of tyUInt8: awi(nkIntLit, rd(uint8, x).biggestInt)
-  of tyUInt16: awi(nkIntLit, rd(uint16, x).biggestInt)
-  of tyUInt32: awi(nkIntLit, rd(uint32, x).biggestInt)
-  of tyUInt64: awi(nkIntLit, rd(uint64, x).biggestInt)
+  of tyInt8: awi(nkInt8Lit, rd(int8, x))
+  of tyInt16: awi(nkInt16Lit, rd(int16, x))
+  of tyInt32: awi(nkInt32Lit, rd(int32, x))
+  of tyInt64: awi(nkInt64Lit, rd(int64, x))
+  of tyUInt: awi(nkUIntLit, rd(uint, x).biggestInt)
+  of tyUInt8: awi(nkUInt8Lit, rd(uint8, x).biggestInt)
+  of tyUInt16: awi(nkUInt16Lit, rd(uint16, x).biggestInt)
+  of tyUInt32: awi(nkUInt32Lit, rd(uint32, x).biggestInt)
+  of tyUInt64: awi(nkUInt64Lit, rd(uint64, x).biggestInt)
   of tyEnum:
     case typ.getSize
     of 1: awi(nkIntLit, rd(uint8, x).biggestInt)
@@ -327,8 +335,8 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     else:
       GlobalError(n.info, "cannot map value from FFI (tyEnum, tySet)")
   of tyFloat: awf(nkFloatLit, rd(float, x))
-  of tyFloat32: awf(nkFloatLit, rd(float32, x))
-  of tyFloat64: awf(nkFloatLit, rd(float64, x))
+  of tyFloat32: awf(nkFloat32Lit, rd(float32, x))
+  of tyFloat64: awf(nkFloat64Lit, rd(float64, x))
   of tyPointer, tyProc:
     let p = rd(pointer, x)
     if p.isNil:
@@ -339,7 +347,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
-    elif n != nil and n.kind == nkPtrLit:
+    elif n == nil or n.kind == nkPtrLit:
       awi(nkPtrLit, cast[TAddress](p))
     elif n != nil and n.len == 1:
       n.sons[0] = unpack(rd(pointer, x), typ.sons[0], n.sons[0])
@@ -362,6 +370,14 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
   else:
     # XXX what to do with 'array' here?
     GlobalError(n.info, "cannot map value from FFI " & typeToString(typ))
+
+proc fficast*(x: PNode, destTyp: PType): PNode =
+  # we play safe here and allocate the max possible size:
+  let allocSize = max(packSize(x, x.typ), packSize(x, destTyp))
+  var a = alloc0(allocSize)
+  pack(x, x.typ, a)
+  result = unpack(a, destTyp, nil)
+  dealloc a
 
 proc callForeignFunction*(call: PNode): PNode =
   InternalAssert call.sons[0].kind == nkPtrLit

@@ -27,6 +27,7 @@ version 0.9.X
 - optimize genericAssign in the code generator
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
+- result = result shr 8 for the "system()" wrapper
 
 - rethink the syntax/grammar:
   * parser is not strict enough with newlines
