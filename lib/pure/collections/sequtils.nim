@@ -9,8 +9,11 @@
 
 ## :Author: Alex Mitchell
 ##
-## This module implements operations for the built-in `seq`:idx: type
-## which were inspired by functional programming languages.
+## This module implements operations for the built-in `seq`:idx: type which
+## were inspired by functional programming languages. If you are looking for
+## the typical `map` function which applies a function to every element in a
+## sequence, it already exists as the `each` proc in the `system
+## <system.html>`_ module in both mutable and immutable styles.
 ##
 ## **Note**: This interface will change as soon as the compiler supports
 ## closures and proper coroutines.
