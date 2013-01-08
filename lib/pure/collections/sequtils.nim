@@ -63,3 +63,9 @@ template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
       if pred: result.add(it)
     result
 
+template toSeq*(iter: expr): expr {.immediate.} =
+  ## Transforms any iterator into a sequence.
+  var result {.gensym.}: seq[type(iter)] = @[]
+  for x in iter: add(result, x)
+  result
+
