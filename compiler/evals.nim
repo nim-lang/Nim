@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -319,7 +319,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
       else:
         if x.kind notin {nkEmpty..nkNilLit}:
           discardSons(x)
-          for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
+          for j in countup(0, sonsLen(result) - 1): addSon(x, result.sons[j])
   result = emptyNode
 
 proc aliasNeeded(n: PNode, flags: TEvalFlags): bool = 

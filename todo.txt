@@ -1,9 +1,6 @@
 version 0.9.2
 =============
 
-- FFI:
-  * test libffi on windows
-  * test: times.format with the FFI
 - fix closure bug finally
 - fix marshal bug
 - investigate nimgame bug
@@ -12,6 +9,9 @@ version 0.9.2
 version 0.9.X
 =============
 
+- FFI:
+  * test libffi on windows
+  * test: times.format with the FFI
 - test&finish first class iterators:
   * nested iterators
 - implement the missing features wrt inheritance

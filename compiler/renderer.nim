@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -753,8 +753,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) = 
   if isNil(n): return
-  var 
-    L: int
+  var
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
@@ -1096,7 +1095,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
   of nkVarSection, nkLetSection:
-    L = sonsLen(n)
+    var L = sonsLen(n)
     if L == 0: return
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
     else: putWithSpace(g, tkLet, "let")

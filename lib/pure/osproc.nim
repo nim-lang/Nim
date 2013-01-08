@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -201,9 +201,9 @@ proc execProcesses*(cmds: openArray[string],
             q[r] = startCmd(cmds[i], options=options)
             inc(i)
             if i > high(cmds): break
-    for i in 0..m-1:
-      if q[i] != nil: close(q[i])
-      result = max(waitForExit(q[i]), result)
+    for j in 0..m-1:
+      if q[j] != nil: close(q[j])
+      result = max(waitForExit(q[j]), result)
   else:
     for i in 0..high(cmds):
       var p = startCmd(cmds[i], options=options)
