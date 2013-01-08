@@ -156,7 +156,10 @@ proc packObject(x: PNode, typ: PType, res: pointer) =
       pack(it, field.typ, res +! field.offset)
     else:
       GlobalError(x.info, "cannot pack unnamed tuple")
-      
+
+const maxPackDepth = 20
+var packRecCheck = 0
+
 proc pack(v: PNode, typ: PType, res: pointer) =
   template awr(T, v: expr) {.immediate, dirty.} =
     wr(T, res, v)
@@ -186,12 +189,14 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyFloat32: awr(float32, v.floatVal)
   of tyFloat64: awr(float64, v.floatVal)
   
-  of tyPointer, tyProc:
+  of tyPointer, tyProc,  tyCString, tyString:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
       nil
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
+    elif v.kind in {nkStrLit..nkTripleStrLit}:
+      awr(cstring, cstring(v.strVal))
     else:
       GlobalError(v.info, "cannot map pointer/proc value to FFI")
   of tyPtr, tyRef, tyVar:
@@ -201,15 +206,13 @@ proc pack(v: PNode, typ: PType, res: pointer) =
     elif v.kind == nkPtrLit:
       awr(pointer, cast[pointer](v.intVal))
     else:
+      if packRecCheck > maxPackDepth:
+        packRecCheck = 0
+        GlobalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
+      inc packRecCheck
       pack(v.sons[0], typ.sons[0], res +! sizeof(pointer))
+      dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
-  of tyCString, tyString:
-    if v.kind == nkNilLit:
-      nil
-    elif v.kind in {nkStrLit..nkTripleStrLit}:
-      awr(cstring, cstring(v.strVal))
-    else:
-      GlobalError(v.info, "cannot map string value to FFI")
   of tyArray, tyArrayConstr:
     let baseSize = typ.sons[1].getSize
     for i in 0 .. <v.len:
@@ -236,6 +239,8 @@ proc unpackObjectAdd(x: pointer, n, result: PNode) =
     var pair = newNodeI(nkExprColonExpr, result.info, 2)
     pair.sons[0] = n
     pair.sons[1] = unpack(x +! n.sym.offset, n.sym.typ, nil)
+    #echo "offset: ", n.sym.name.s, " ", n.sym.offset
+    result.add pair
   else: nil
 
 proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
@@ -295,8 +300,10 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       # check we have the right field:
       result = n
       if result.kind.canonNodeKind != k.canonNodeKind:
-        echo "expected ", k, " but got ", result.kind
-        GlobalError(n.info, "cannot map value from FFI")
+        #echo "expected ", k, " but got ", result.kind
+        #debug result
+        return newNodeI(nkExceptBranch, n.info)
+        #GlobalError(n.info, "cannot map value from FFI")
     result.field = v
 
   template setNil() =
@@ -315,7 +322,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
   
   case typ.kind
   of tyBool: awi(nkIntLit, rd(bool, x).ord)
-  of tyChar: awi(nkIntLit, rd(char, x).ord)
+  of tyChar: awi(nkCharLit, rd(char, x).ord)
   of tyInt:  awi(nkIntLit, rd(int, x))
   of tyInt8: awi(nkInt8Lit, rd(int8, x))
   of tyInt16: awi(nkInt16Lit, rd(int16, x))
@@ -341,6 +348,10 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
+    elif n != nil and n.kind == nkStrLit:
+      # we passed a string literal as a pointer; however strings are already
+      # in their unboxed representation so nothing it to be unpacked:
+      result = n
     else:
       awi(nkPtrLit, cast[TAddress](p))
   of tyPtr, tyRef, tyVar:
@@ -350,7 +361,9 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     elif n == nil or n.kind == nkPtrLit:
       awi(nkPtrLit, cast[TAddress](p))
     elif n != nil and n.len == 1:
-      n.sons[0] = unpack(rd(pointer, x), typ.sons[0], n.sons[0])
+      internalAssert n.kind == nkRefTy
+      n.sons[0] = unpack(p, typ.sons[0], n.sons[0])
+      result = n
     else:
       GlobalError(n.info, "cannot map value from FFI " & typeToString(typ))
   of tyObject, tyTuple:
@@ -372,12 +385,24 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
     GlobalError(n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(x: PNode, destTyp: PType): PNode =
-  # we play safe here and allocate the max possible size:
-  let allocSize = max(packSize(x, x.typ), packSize(x, destTyp))
-  var a = alloc0(allocSize)
-  pack(x, x.typ, a)
-  result = unpack(a, destTyp, nil)
-  dealloc a
+  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyPointer, 
+                                           tyProc, tyCString, tyString, 
+                                           tySequence}:
+    result = newNodeIT(x.kind, x.info, destTyp)
+    result.intVal = x.intVal
+  elif x.kind == nkNilLit:
+    result = newNodeIT(x.kind, x.info, destTyp)
+  else:
+    # we play safe here and allocate the max possible size:
+    let size = max(packSize(x, x.typ), packSize(x, destTyp))
+    var a = alloc0(size)
+    pack(x, x.typ, a)
+    # cast through a pointer needs a new inner object:
+    let y = if x.kind == nkRefTy: newNodeI(nkRefTy, x.info, 1)
+            else: x.copyTree
+    y.typ = x.typ
+    result = unpack(a, destTyp, y)
+    dealloc a
 
 proc callForeignFunction*(call: PNode): PNode =
   InternalAssert call.sons[0].kind == nkPtrLit
@@ -413,6 +438,6 @@ proc callForeignFunction*(call: PNode): PNode =
     result.info = call.info
 
   if retVal != nil: dealloc retVal
-  for i in countdown(call.len-2, 0):
-    call.sons[i+1] = unpack(args[i], typ.sons[i+1], call[i+1])
-    dealloc args[i]
+  for i in 1 .. call.len-1:
+    call.sons[i] = unpack(args[i-1], typ.sons[i], call[i])
+    dealloc args[i-1]
