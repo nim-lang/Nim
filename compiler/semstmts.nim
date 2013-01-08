@@ -172,10 +172,15 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
     changeType(result, typ)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
-  for i in countdown(c.tab.tos - 2, 0):
+  for i in countdown(c.tab.tos - 2, ModuleTablePos+1):
     let shadowed = StrTableGet(c.tab.stack[i], v.name)
     if shadowed != nil and shadowed.kind in skLocalVars:
       return shadowed
+
+proc identWithin(n: PNode, s: PIdent): bool =
+  for i in 0 .. n.safeLen-1:
+    if identWithin(n.sons[i], s): return true
+  result = n.kind == nkSym and n.sym.name.id == s.id
 
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
@@ -239,7 +244,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           let shadowed = findShadowedVar(c, v)
           if shadowed != nil:
             shadowed.flags.incl(sfShadowed)
-            Message(a.info, warnShadowIdent, v.name.s)
+            # a shadowed variable is an error unless it appears on the right
+            # side of the '=':
+            if warnShadowIdent in gNotes and not identWithin(def, v.name):
+              Message(a.info, warnShadowIdent, v.name.s)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
@@ -368,6 +376,15 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   b.add(ast.emptyNode)
   stmts.add(b)
 
+proc addForVarDecl(c: PContext, v: PSym) =
+  if warnShadowIdent in gNotes:
+    let shadowed = findShadowedVar(c, v)
+    if shadowed != nil:
+      # XXX should we do this here?
+      #shadowed.flags.incl(sfShadowed)
+      Message(v.info, warnShadowIdent, v.name.s)
+  addDecl(c, v)
+
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
@@ -383,7 +400,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       # for an example:
       v.typ = n.sons[length-2].typ
       n.sons[0] = newSymNode(v)
-      if sfGenSym notin v.flags: addDecl(c, v)
+      if sfGenSym notin v.flags: addForVarDecl(c, v)
     else:
       LocalError(n.info, errWrongNumberOfVariables)
   elif length-2 != sonsLen(iter):
@@ -394,7 +411,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags: addDecl(c, v)
+      if sfGenSym notin v.flags: addForVarDecl(c, v)
   Inc(c.p.nestedLoopCounter)
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
