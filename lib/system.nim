@@ -1066,86 +1066,87 @@ proc substr*(s: string, first, last: int): string {.
   ## is used instead: This means ``substr`` can also be used to `cut`:idx:
   ## or `limit`:idx: a string's length.
 
-proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
-  ## overwrites the contents of the memory at ``p`` with the value 0.
-  ## Exactly ``size`` bytes will be overwritten. Like any procedure
-  ## dealing with raw memory this is *unsafe*.
+when not defined(nimrodVM):
+  proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
+    ## overwrites the contents of the memory at ``p`` with the value 0.
+    ## Exactly ``size`` bytes will be overwritten. Like any procedure
+    ## dealing with raw memory this is *unsafe*.
 
-proc copyMem*(dest, source: Pointer, size: int) {.importc: "memcpy", noDecl.}
-  ## copies the contents from the memory at ``source`` to the memory
-  ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
-  ## regions may not overlap. Like any procedure dealing with raw
-  ## memory this is *unsafe*.
+  proc copyMem*(dest, source: Pointer, size: int) {.importc: "memcpy", noDecl.}
+    ## copies the contents from the memory at ``source`` to the memory
+    ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
+    ## regions may not overlap. Like any procedure dealing with raw
+    ## memory this is *unsafe*.
 
-proc moveMem*(dest, source: Pointer, size: int) {.importc: "memmove", noDecl.}
-  ## copies the contents from the memory at ``source`` to the memory
-  ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
-  ## regions may overlap, ``moveMem`` handles this case appropriately
-  ## and is thus somewhat more safe than ``copyMem``. Like any procedure
-  ## dealing with raw memory this is still *unsafe*, though.
+  proc moveMem*(dest, source: Pointer, size: int) {.importc: "memmove", noDecl.}
+    ## copies the contents from the memory at ``source`` to the memory
+    ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
+    ## regions may overlap, ``moveMem`` handles this case appropriately
+    ## and is thus somewhat more safe than ``copyMem``. Like any procedure
+    ## dealing with raw memory this is still *unsafe*, though.
 
-proc equalMem*(a, b: Pointer, size: int): bool {.
-  importc: "equalMem", noDecl, noSideEffect.}
-  ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
-  ## be compared. If the blocks are equal, true is returned, false
-  ## otherwise. Like any procedure dealing with raw memory this is
-  ## *unsafe*.
+  proc equalMem*(a, b: Pointer, size: int): bool {.
+    importc: "equalMem", noDecl, noSideEffect.}
+    ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
+    ## be compared. If the blocks are equal, true is returned, false
+    ## otherwise. Like any procedure dealing with raw memory this is
+    ## *unsafe*.
 
-proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
-  ## allocates a new memory block with at least ``size`` bytes. The
-  ## block has to be freed with ``realloc(block, 0)`` or
-  ## ``dealloc(block)``. The block is not initialized, so reading
-  ## from it before writing to it is undefined behaviour!
-  ## The allocated memory belongs to its allocating thread!
-  ## Use `allocShared` to allocate from a shared heap.
-proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
-  ## allocates a new memory block with at least ``size`` bytes. The
-  ## block has to be freed with ``realloc(block, 0)`` or
-  ## ``dealloc(block)``. The block is initialized with all bytes
-  ## containing zero, so it is somewhat safer than ``alloc``.
-  ## The allocated memory belongs to its allocating thread!
-  ## Use `allocShared0` to allocate from a shared heap.
-proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
-  ## grows or shrinks a given memory block. If p is **nil** then a new
-  ## memory block is returned. In either way the block has at least
-  ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
-  ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
-  ## be freed with ``dealloc``.
-  ## The allocated memory belongs to its allocating thread!
-  ## Use `reallocShared` to reallocate from a shared heap.
-proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
-  ## frees the memory allocated with ``alloc``, ``alloc0`` or
-  ## ``realloc``. This procedure is dangerous! If one forgets to
-  ## free the memory a leak occurs; if one tries to access freed
-  ## memory (or just freeing it twice!) a core dump may happen
-  ## or other memory may be corrupted. 
-  ## The freed memory must belong to its allocating thread!
-  ## Use `deallocShared` to deallocate from a shared heap.
+  proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
+    ## allocates a new memory block with at least ``size`` bytes. The
+    ## block has to be freed with ``realloc(block, 0)`` or
+    ## ``dealloc(block)``. The block is not initialized, so reading
+    ## from it before writing to it is undefined behaviour!
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `allocShared` to allocate from a shared heap.
+  proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
+    ## allocates a new memory block with at least ``size`` bytes. The
+    ## block has to be freed with ``realloc(block, 0)`` or
+    ## ``dealloc(block)``. The block is initialized with all bytes
+    ## containing zero, so it is somewhat safer than ``alloc``.
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `allocShared0` to allocate from a shared heap.
+  proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
+    ## grows or shrinks a given memory block. If p is **nil** then a new
+    ## memory block is returned. In either way the block has at least
+    ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+    ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
+    ## be freed with ``dealloc``.
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `reallocShared` to reallocate from a shared heap.
+  proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
+    ## frees the memory allocated with ``alloc``, ``alloc0`` or
+    ## ``realloc``. This procedure is dangerous! If one forgets to
+    ## free the memory a leak occurs; if one tries to access freed
+    ## memory (or just freeing it twice!) a core dump may happen
+    ## or other memory may be corrupted. 
+    ## The freed memory must belong to its allocating thread!
+    ## Use `deallocShared` to deallocate from a shared heap.
 
-proc allocShared*(size: int): pointer {.noconv, rtl.}
-  ## allocates a new memory block on the shared heap with at
-  ## least ``size`` bytes. The block has to be freed with
-  ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
-  ## is not initialized, so reading from it before writing to it is 
-  ## undefined behaviour!
-proc allocShared0*(size: int): pointer {.noconv, rtl.}
-  ## allocates a new memory block on the shared heap with at 
-  ## least ``size`` bytes. The block has to be freed with
-  ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
-  ## The block is initialized with all bytes
-  ## containing zero, so it is somewhat safer than ``allocShared``.
-proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
-  ## grows or shrinks a given memory block on the heap. If p is **nil**
-  ## then a new memory block is returned. In either way the block has at least
-  ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
-  ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
-  ## block has to be freed with ``deallocShared``.
-proc deallocShared*(p: Pointer) {.noconv, rtl.}
-  ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
-  ## ``reallocShared``. This procedure is dangerous! If one forgets to
-  ## free the memory a leak occurs; if one tries to access freed
-  ## memory (or just freeing it twice!) a core dump may happen
-  ## or other memory may be corrupted.
+  proc allocShared*(size: int): pointer {.noconv, rtl.}
+    ## allocates a new memory block on the shared heap with at
+    ## least ``size`` bytes. The block has to be freed with
+    ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
+    ## is not initialized, so reading from it before writing to it is 
+    ## undefined behaviour!
+  proc allocShared0*(size: int): pointer {.noconv, rtl.}
+    ## allocates a new memory block on the shared heap with at 
+    ## least ``size`` bytes. The block has to be freed with
+    ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
+    ## The block is initialized with all bytes
+    ## containing zero, so it is somewhat safer than ``allocShared``.
+  proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+    ## grows or shrinks a given memory block on the heap. If p is **nil**
+    ## then a new memory block is returned. In either way the block has at least
+    ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+    ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
+    ## block has to be freed with ``deallocShared``.
+  proc deallocShared*(p: Pointer) {.noconv, rtl.}
+    ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
+    ## ``reallocShared``. This procedure is dangerous! If one forgets to
+    ## free the memory a leak occurs; if one tries to access freed
+    ## memory (or just freeing it twice!) a core dump may happen
+    ## or other memory may be corrupted.
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
@@ -1221,15 +1222,16 @@ const
 
 # GC interface:
 
-proc getOccupiedMem*(): int {.rtl.}
-  ## returns the number of bytes that are owned by the process and hold data.
+when not defined(nimrodVM):
+  proc getOccupiedMem*(): int {.rtl.}
+    ## returns the number of bytes that are owned by the process and hold data.
 
-proc getFreeMem*(): int {.rtl.}
-  ## returns the number of bytes that are owned by the process, but do not
-  ## hold any meaningful data.
+  proc getFreeMem*(): int {.rtl.}
+    ## returns the number of bytes that are owned by the process, but do not
+    ## hold any meaningful data.
 
-proc getTotalMem*(): int {.rtl.}
-  ## returns the number of bytes that are owned by the process.
+  proc getTotalMem*(): int {.rtl.}
+    ## returns the number of bytes that are owned by the process.
 
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
@@ -1942,25 +1944,25 @@ when not defined(EcmaScript): #and not defined(NimrodVM):
 
   # -------------------------------------------------------------------------
 
-  proc allocCStringArray*(a: openArray[string]): cstringArray =
-    ## creates a NULL terminated cstringArray from `a`. The result has to
-    ## be freed with `deallocCStringArray` after it's not needed anymore.
-    result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-    for i in 0 .. a.high:
-      # XXX get rid of this string copy here:
-      var x = a[i]
-      result[i] = cast[cstring](alloc0(x.len+1))
-      copyMem(result[i], addr(x[0]), x.len)
-
-  proc deallocCStringArray*(a: cstringArray) =
-    ## frees a NULL terminated cstringArray.
-    var i = 0
-    while a[i] != nil:
-      dealloc(a[i])
-      inc(i)
-    dealloc(a)
-
   when not defined(NimrodVM):
+    proc allocCStringArray*(a: openArray[string]): cstringArray =
+      ## creates a NULL terminated cstringArray from `a`. The result has to
+      ## be freed with `deallocCStringArray` after it's not needed anymore.
+      result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
+      for i in 0 .. a.high:
+        # XXX get rid of this string copy here:
+        var x = a[i]
+        result[i] = cast[cstring](alloc0(x.len+1))
+        copyMem(result[i], addr(x[0]), x.len)
+
+    proc deallocCStringArray*(a: cstringArray) =
+      ## frees a NULL terminated cstringArray.
+      var i = 0
+      while a[i] != nil:
+        dealloc(a[i])
+        inc(i)
+      dealloc(a)
+
     proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
       ## atomic increment of `memLoc`. Returns the value after the operation.
     

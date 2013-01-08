@@ -2,9 +2,7 @@ version 0.9.2
 =============
 
 - FFI:
-  * make system.nim aware of nimffi
   * test libffi on windows
-  * test: SDL with the FFI
   * test: times.format with the FFI
 - fix closure bug finally
 - fix marshal bug
@@ -55,7 +53,9 @@ version 0.9.XX
 - object branch transitions can't work with the current 'reset'; add a 'reset'
   with an additional parameter --> re-evaluate this issue after constructors
   have been added
-- fix destructors; don't work yet when used as expression
+- fix destructors; don't work yet when used as expression; alternative for 
+  version 1: disallow expressions yielding a type with a destructor that are
+  not in a 'let/var' context  (p(a.openFile, b.openFile) makes no sense anyway)
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
 
