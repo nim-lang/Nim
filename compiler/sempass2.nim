@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -146,8 +146,11 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  setLen(tracked.exc.sons, L)
-  
+  if not isNil(tracked.exc.sons):
+    setLen(tracked.exc.sons, L)
+  else:
+    assert L == 0
+
 proc catchesAll(tracked: PEffects) =
   if not isNil(tracked.exc.sons):
     setLen(tracked.exc.sons, tracked.bottom)
