@@ -1648,7 +1648,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     initLocExpr(p, n.sons[0], a)
     var r = rdLoc(a)
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyRef, tyPtr, tyVar} and
-        n.sons[0].kind notin {nkHiddenAddr, nkAddr}:
+        n.sons[0].kind notin {nkHiddenAddr, nkAddr, nkObjDownConv}:
       app(r, "->Sup")
       for i in countup(2, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
       r = con("&", r)
