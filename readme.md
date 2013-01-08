@@ -62,5 +62,5 @@ developed with Nimrod, allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2004-2012 Andreas Rumpf.
+Copyright (c) 2004-2013 Andreas Rumpf.
 All rights reserved.
