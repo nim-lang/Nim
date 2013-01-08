@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -247,7 +247,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if a.kind != nkVarTuple:
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
-        if gCmd == cmdDoc:
+        if importantComments():
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
@@ -287,7 +287,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
-    if gCmd == cmdDoc: b.comment = a.comment
+    if importantComments(): b.comment = a.comment
     addSon(b, newSymNode(v))
     addSon(b, ast.emptyNode)            # no type description
     addSon(b, copyTree(def))
@@ -786,7 +786,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
-    if gCmd == cmdDoc and not isNil(proto.ast.comment):
+    if importantComments() and not isNil(proto.ast.comment):
       n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
     popOwner()
