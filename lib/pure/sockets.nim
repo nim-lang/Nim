@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -1274,6 +1274,7 @@ proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO], deprecated.} =
       add(result.string, buf)
       if bytesRead != bufSize-1: break
 
+{.push warning[deprecated]: off.}
 proc recvTimeout*(socket: TSocket, timeout: int): TaintedString {.
   tags: [FReadIO], deprecated.} =
   ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
@@ -1287,6 +1288,7 @@ proc recvTimeout*(socket: TSocket, timeout: int): TaintedString {.
       raise newException(ETimeout, "Call to recv() timed out.")
   
   return socket.recv
+{.pop.}
 
 proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
   tags: [FReadIO], deprecated.} =
