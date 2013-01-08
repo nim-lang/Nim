@@ -1,12 +1,11 @@
 discard """
-  output: "23456"  
+  output: "2345623456"
 """
 
-template toSeq*(iter: expr): expr {.immediate.} =
-  var result: seq[type(iter)] = @[]
-  for x in iter: add(result, x)
-  result
-  
+import sequtils
+
+for x in toSeq(countup(2, 6)): 
+  stdout.write(x)
 for x in items(toSeq(countup(2, 6))): 
   stdout.write(x)
 
