@@ -137,7 +137,27 @@ proc genRecComment(d: PDoc, n: PNode): PRope =
         if result != nil: return 
   else:
     n.comment = nil
-  
+
+proc findDocComment(n: PNode): PNode =
+  if n == nil: return nil
+  if not isNil(n.comment) and startsWith(n.comment, "##"): return n
+  for i in countup(0, safeLen(n)-1):
+    result = findDocComment(n.sons[i])
+    if result != nil: return
+
+proc extractDocComment*(s: PSym, d: PDoc = nil): string =
+  let n = findDocComment(s.ast)
+  result = ""
+  if not n.isNil:
+    if not d.isNil:
+      var dummyHasToc: bool
+      renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+                                   toLineNumber(n.info), toColumn(n.info),
+                                   dummyHasToc, d.options + {roSkipPounds}),
+                     result)
+    else:
+      result = n.comment.substr(2).replace("\n##", "\n").strip
+
 proc isVisible(n: PNode): bool = 
   result = false
   if n.kind == nkPostfix: 

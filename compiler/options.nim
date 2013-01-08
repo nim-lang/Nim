@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -99,6 +99,8 @@ var
   gWholeProject*: bool # for 'doc2': output any dependency
   gListFullPaths*: bool
   
+proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
+
 const 
   genSubDir* = "nimcache"
   NimExt* = "nim"
