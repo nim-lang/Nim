@@ -1529,6 +1529,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
+  of nkCast: gen(p, n.sons[1], r)
   of nkChckRangeF: genRangeChck(p, n, r, "chckRangeF")
   of nkChckRange64: genRangeChck(p, n, r, "chckRange64")
   of nkChckRange: genRangeChck(p, n, r, "chckRange")

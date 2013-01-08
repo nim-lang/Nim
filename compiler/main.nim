@@ -142,7 +142,7 @@ when has_LLVM_Backend:
     compileProject()
 
 proc CommandCompileToEcmaScript =
-  incl(gGlobalOptions, optSafeCode)
+  #incl(gGlobalOptions, optSafeCode)
   setTarget(osEcmaScript, cpuEcmaScript)
   #initDefines()
   DefineSymbol("nimrod") # 'nimrod' is always defined
