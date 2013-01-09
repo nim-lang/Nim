@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -68,7 +68,7 @@ type
                        # though it is not necessary)
 
 when true:
-  # working version:
+  # old version:
   type
     PRope* = ref TRope
     TRope*{.acyclic.} = object of TObject # the empty rope is represented 
@@ -330,7 +330,7 @@ when true:
       result = false
 
 else:
-  # optimized but broken version:
+  # optimized version with 'unsafeNew':
 
   type
     PRope* = ref TRope
@@ -480,7 +480,9 @@ else:
         it = it.left
         assert(it != nil)
       assert(it.L < 0)
-      write(f, cstring(it.d), -it.L)
+      let L = -it.L
+      if writeBuffer(f, cstring(it.d), L) != L:
+        InternalError("cannot store file")
 
   proc WriteRope*(head: PRope, filename: string, useWarning = false) =
     var f: tfile
