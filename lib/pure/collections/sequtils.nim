@@ -48,7 +48,11 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       inc(i)
 
 proc distnct*[T](seq1: seq[T]): seq[T] =
-  ## Returns a new sequence without duplicates. Example:
+  ## Returns a new sequence without duplicates.
+  ##
+  ## This proc is `misspelled` on purpose to avoid a clash with the keyword
+  ## ``distinct`` used to `define a derived type incompatible with its base
+  ## type <manual.html#distinct-type>`_. Example:
   ##
   ## .. code-block:: nimrod
   ##   let
