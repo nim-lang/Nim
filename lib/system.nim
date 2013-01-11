@@ -1461,14 +1461,14 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   setLen(s, L)
 
 proc each*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] = 
-  ## The well-known ``map`` operation from functional programming. Applies
+  ## The well-known `map`:idx: operation from functional programming. Applies
   ## `op` to every item in `data` and returns the result as a sequence.
   newSeq(result, data.len)
   for i in 0..data.len-1: result[i] = op(data[i])
 
 proc each*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
-  ## The well-known ``map`` operation from functional programming. Applies
-  ## `op` to every item in `data`.
+  ## The well-known `map`:idx: operation from functional programming. Applies
+  ## `op` to every item in `data` modifying it directly.
   for i in 0..data.len-1: op(data[i])
 
 iterator fields*[T: tuple](x: T): TObject {.
