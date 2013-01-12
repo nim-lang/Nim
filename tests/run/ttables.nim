@@ -19,6 +19,25 @@ const
     "50": 344490, "60": 344491, "70": 344492,
     "80": 344497}
 
+  sorteddata = {
+    "---00": 346677844,
+    "0": 34404,
+    "1": 344004,
+    "10": 34484, 
+    "11": 34474,
+    "12": 789,
+    "19": 34464,
+    "2": 344774, "20": 34454, 
+    "3": 342244, "30": 34141244,
+    "34": 123456,
+    "4": 3412344, "40": 344114,
+    "5": 341232144, "50": 344490, 
+    "6": 34214544, "60": 344491,
+    "7": 3434544, "70": 344492,
+    "8": 344544, "80": 344497,
+    "9": 34435644,
+    "90": 343}
+
 block tableTest1:
   var t = initTable[tuple[x, y: int], string]()
   t[(0,0)] = "00"
@@ -86,5 +105,25 @@ block countTableTest1:
 block SyntaxTest:
   var x = toTable[int, string]({:})
 
+proc orderedTableSortTest() =
+  var t = initOrderedTable[string, int](2)
+  for key, val in items(data): t[key] = val
+  for key, val in items(data): assert t[key] == val
+  t.sort(proc (x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key))
+  var i = 0
+  # `pairs` needs to yield in sorted order:
+  for key, val in pairs(t):
+    doAssert key == sorteddata[i][0]
+    doAssert val == sorteddata[i][1]
+    inc(i)
+
+  # check that lookup still works:
+  for key, val in pairs(t):
+    doAssert val == t[key]
+  # check that insert still works:
+  t["newKeyHere"] = 80
+
+
+orderedTableSortTest()
 echo "true"
 
