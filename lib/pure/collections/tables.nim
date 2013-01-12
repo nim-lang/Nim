@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -307,6 +307,52 @@ proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A,
 proc `$`*[A, B](t: TOrderedTable[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
+
+proc sort*[A, B](t: var TOrderedTable[A, B], 
+                 cmp: proc (x,y: tuple[key: A, val: B]): int) =
+  ## sorts `t` according to `cmp`. This modifies the internal list
+  ## that kept the insertion order, so insertion order is lost after this
+  ## call but key lookup and insertions remain possible after `sort` (in
+  ## contrast to the `sort` for count tables).
+  var list = t.first
+  var
+    p, q, e, tail, oldhead: int
+    nmerges, psize, qsize, i: int
+  if t.counter == 0: return
+  var insize = 1
+  while true:
+    p = list; oldhead = list
+    list = -1; tail = -1; nmerges = 0
+    while p >= 0:
+      inc(nmerges)
+      q = p
+      psize = 0
+      i = 0
+      while i < insize:
+        inc(psize)
+        q = t.data[q].next
+        if q < 0: break 
+        inc(i)
+      qsize = insize
+      while psize > 0 or (qsize > 0 and q >= 0):
+        if psize == 0:
+          e = q; q = t.data[q].next; dec(qsize)
+        elif qsize == 0 or q < 0:
+          e = p; p = t.data[p].next; dec(psize)
+        elif cmp((t.data[p].key, t.data[p].val), 
+                 (t.data[q].key, t.data[q].val)) <= 0:
+          e = p; p = t.data[p].next; dec(psize)
+        else:
+          e = q; q = t.data[q].next; dec(qsize)
+        if tail >= 0: t.data[tail].next = e
+        else: list = e
+        tail = e
+      p = q
+    t.data[tail].next = -1
+    if nmerges <= 1: break
+    insize = insize * 2
+  t.first = list
+  t.last = tail
 
 # ------------------------------ count tables -------------------------------
 
