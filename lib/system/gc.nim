@@ -124,6 +124,13 @@ type
     tempStack: TCellSeq      # temporary stack for recursion elimination
     freeStack: TCellSeq      # objects ready to be freed
     recGcLock: int           # prevent recursion via finalizers; no thread lock
+    cycleRootsTrimIdx: int   # Trimming is a light-weight collection of the 
+                             # cycle roots table that uses a cheap linear scan
+                             # to find only possitively dead objects.
+                             # One strategy is to perform it only for new objects
+                             # allocated between the invocations of CollectZCT.
+                             # This index indicates the start of the range of
+                             # such new objects within the table.
     when withRealTime:
       maxPause: TNanos       # max allowed pause in nanoseconds; active if > 0
     region: TMemRegion       # garbage collected region
@@ -646,6 +653,20 @@ template eraseAt(cells: var TCellSeq, at: int): stmt =
   cells.d[at] = cells.d[cells.len - 1]
   dec cells.len
 
+template trimAt(roots: var TCellSeq, at: int): stmt =
+  # This will remove a cycle root candidate during trimming.
+  # a candidate is removed either because it received a refup and
+  # it's no longer a candidate or because it received further refdowns
+  # and now it's dead for sure.
+  let c = roots.d[at]
+  c.clearBit(rcInCycleRoots)
+  roots.eraseAt(at)
+  if c.isBitUp(rcReallyDead) and c.refcount <% rcIncrement:
+    # This case covers both dead objects and retired buffers
+    # That's why we must also check the refcount (it may be
+    # kept possitive by stack references).
+    freeCell(gch, c)
+
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   setStackTop(gch)
   result = rawNewObj(typ, size, gch, false)
@@ -770,6 +791,16 @@ proc CollectZCT(gch: var TGcHeap): bool
 template pseudoRecursion(typ: TRecursionType, body: stmt): stmt =
   #
 
+proc trimCycleRoots(gch: var TGcHeap, startIdx = gch.cycleRootsTrimIdx) =
+  var i = startIdx
+  while i < gch.cycleRoots.len:
+    if gch.cycleRoots.d[i].color != rcCycleCandidate:
+      gch.cycleRoots.trimAt i
+    else:
+      inc i
+
+  gch.cycleRootsTrimIdx = gch.cycleRoots.len
+
 # we now use a much simpler and non-recursive algorithm for cycle removal
 proc collectCycles(gch: var TGcHeap) =
   if gch.cycleRoots.len == 0: return
@@ -842,13 +873,7 @@ proc collectCycles(gch: var TGcHeap) =
         recursiveDecRef(roots.d[i])
         inc i
       else:
-        let c = roots.d[i]
-        c.clearBit(rcInCycleRoots)
-        roots.eraseAt(i)
-        if c.isBitUp(rcReallyDead):
-          freeCell(gch, c)
-        elif c.color == rcRetiredBuffer and c.refcount <% rcIncrement:
-          freeCell(gch, c)
+        roots.trimAt i
   
   markRoots(gch.cycleRoots)
   
@@ -1220,7 +1245,7 @@ proc CollectZCT(gch: var TGcHeap): bool =
           if duration >= gch.maxPause - 50_000:
             return false
   result = true
-
+  gch.trimCycleRoots
   #deInit(gch.zct)
   #init(gch.zct)
 

@@ -73,6 +73,7 @@ proc HandleCmdLine() =
 
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
+GC_disableMarkAndSweep()
 condsyms.InitDefines()
 HandleCmdLine()
 quit(options.gExitcode)
