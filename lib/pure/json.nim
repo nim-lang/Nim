@@ -541,6 +541,11 @@ proc newJString*(s: String): PJsonNode =
   result.kind = JString
   result.str = s
 
+proc newJStringMove(s: String): PJsonNode =
+  new(result)
+  result.kind = JString
+  shallowCopy(result.str, s)
+
 proc newJInt*(n: biggestInt): PJsonNode =
   ## Creates a new `JInt PJsonNode`.
   new(result)
@@ -809,7 +814,9 @@ proc parseJson(p: var TJsonParser): PJsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
-    result = newJString(p.a)
+    # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
+    result = newJStringMove(p.a)
+    p.a = ""
     discard getTok(p)
   of tkInt:
     result = newJInt(parseBiggestInt(p.a))

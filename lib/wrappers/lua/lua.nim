@@ -35,19 +35,32 @@
 #**   In french or in english
 #
 
-when defined(MACOSX): 
-  const 
-    NAME* = "liblua(|5.2|5.1|5.0).dylib"
-    LIB_NAME* = "liblua(|5.2|5.1|5.0).dylib"
-elif defined(UNIX): 
-  const 
-    NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
-    LIB_NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
-else: 
-  const 
-    NAME* = "lua(|5.2|5.1|5.0).dll"
-    LIB_NAME* = "lua(|5.2|5.1|5.0).dll"
-
+when defined(useLuajit):
+  when defined(MACOSX):
+    const
+      NAME* = "libluajit.dylib"
+      LIB_NAME* = "libluajit.dylib"
+  elif defined(UNIX):
+    const
+      NAME* = "libluajit.so(|.0)"
+      LIB_NAME* = "libluajit.so(|.0)"
+  else:
+    const
+      NAME* = "luajit.dll"
+      LIB_NAME* = "luajit.dll"
+else:
+  when defined(MACOSX):
+    const
+      NAME* = "liblua(|5.2|5.1|5.0).dylib"
+      LIB_NAME* = "liblua(|5.2|5.1|5.0).dylib"
+  elif defined(UNIX):
+    const
+      NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
+      LIB_NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
+  else:
+    const 
+      NAME* = "lua(|5.2|5.1|5.0).dll"
+      LIB_NAME* = "lua(|5.2|5.1|5.0).dll"
 
 const 
   VERSION* = "Lua 5.1"

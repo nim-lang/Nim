@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -964,23 +964,44 @@ proc genDeref(p: var TProc, n: PNode, r: var TCompRes) =
     if a.kind != etyBaseIndex: InternalError(n.info, "genDeref")
     r.res = ropef("$1[$2]", [a.com, a.res])
 
+proc genArg(p: var TProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
+  gen(p, n, a)
+  if a.kind == etyBaseIndex: 
+    app(r.res, a.com)
+    app(r.res, ", ")
+    app(r.res, a.res)
+  else:
+    app(r.res, mergeExpr(a))
+
 proc genArgs(p: var TProc, n: PNode, r: var TCompRes) =
   app(r.res, "(")
   for i in countup(1, sonsLen(n) - 1): 
     if i > 1: app(r.res, ", ")
-    var a: TCompRes
-    gen(p, n.sons[i], a)
-    if a.kind == etyBaseIndex: 
-      app(r.res, a.com)
-      app(r.res, ", ")
-      app(r.res, a.res)
-    else: 
-      app(r.res, mergeExpr(a))
+    genArg(p, n.sons[i], r)
   app(r.res, ")")
 
 proc genCall(p: var TProc, n: PNode, r: var TCompRes) = 
   gen(p, n.sons[0], r)
   genArgs(p, n, r)
+
+proc genInfixCall(p: var TProc, n: PNode, r: var TCompRes) =
+  gen(p, n.sons[1], r)
+  if r.kind == etyBaseIndex:
+    if r.com == nil:
+      GlobalError(n.info, "cannot invoke with infix syntax")
+    r.res = ropef("$1[0]", [r.res, r.com])
+    r.com = nil
+  app(r.res, ".")
+  var op: TCompRes
+  gen(p, n.sons[0], op)
+  app(r.res, mergeExpr(op))
+  
+  app(r.res, "(")
+  for i in countup(2, sonsLen(n) - 1):
+    if i > 2: app(r.res, ", ")
+    genArg(p, n.sons[i], r)
+  app(r.res, ")")
 
 proc genEcho(p: var TProc, n: PNode, r: var TCompRes) =
   useMagic(p, "rawEcho")
@@ -1513,9 +1534,12 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
     else: r.res = toRope(f.ToStrMaxPrecision)
   of nkBlockExpr: genBlock(p, n, r)
   of nkIfExpr: genIfExpr(p, n, r)
-  of nkCallKinds: 
+  of nkCallKinds:
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone): 
       genMagic(p, n, r)
+    elif n.sons[0].kind == nkSym and sfInfixCall in n.sons[0].sym.flags and
+      n.len >= 2:
+      genInfixCall(p, n, r)
     else: 
       genCall(p, n, r)
   of nkCurly: genSetConstr(p, n, r)
