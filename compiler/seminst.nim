@@ -186,6 +186,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popOwner()
   c.friendModule = oldFriend
   dec(c.InstCounter)
+  if result.kind == skMethod: finishMethod(c, result)
   
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType = 
   var cl: TReplTypeVars

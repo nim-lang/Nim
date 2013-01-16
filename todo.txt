@@ -15,7 +15,6 @@ version 0.9.X
 - test&finish first class iterators:
   * nested iterators
 - implement the missing features wrt inheritance
-- implement generic methods
 - improve the compiler as a service
 - ``=`` should be overloadable; requires specialization for ``=``
 - implement constructors + full 'not nil' checking

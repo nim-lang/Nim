@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,8 +15,22 @@ proc sameMethodDispatcher(a, b: PSym): bool =
   if a.kind == skMethod and b.kind == skMethod: 
     var aa = lastSon(a.ast)
     var bb = lastSon(b.ast)
-    if aa.kind == nkSym and bb.kind == nkSym and aa.sym == bb.sym: 
-      result = true
+    if aa.kind == nkSym and bb.kind == nkSym:
+      if aa.sym == bb.sym: 
+        result = true
+    else:
+      nil
+      # generics have no dispatcher yet, so we need to compare the method
+      # names; however, the names are equal anyway because otherwise we
+      # wouldn't even consider them to be overloaded. But even this does
+      # not work reliably! See tmultim6 for an example:
+      # method collide[T](a: TThing, b: TUnit[T]) is instantiated and not
+      # method collide[T](a: TUnit[T], b: TThing)! This means we need to
+      # *instantiate* every candidate! However, we don't keep more than 2-3
+      # candidated around so we cannot implement that for now. So in order
+      # to avoid subtle problems, the call remains ambiguous and needs to
+      # be disambiguated by the programmer; this way the right generic is
+      # instantiated.
   
 proc resolveOverloads(c: PContext, n, orig: PNode, 
                       filter: TSymKinds): TCandidate =
