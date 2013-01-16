@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -45,6 +45,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc fixImmediateParams(n: PNode): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
+proc finishMethod(c: PContext, s: PSym)
 
 proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
