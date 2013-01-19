@@ -129,11 +129,10 @@ template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
   ##      temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
   ##      acceptable = filterIt(temperatures, it < 50 and it > -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
-  block:
-    var result: type(seq1) = @[]
-    for it in items(seq1):
-      if pred: result.add(it)
-    result
+  var result {.gensym.}: type(seq1) = @[]
+  for it in items(seq1):
+    if pred: result.add(it)
+  result
 
 template toSeq*(iter: expr): expr {.immediate.} =
   ## Transforms any iterator into a sequence.
