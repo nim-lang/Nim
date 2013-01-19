@@ -636,7 +636,7 @@ proc `[]`*(node: PJsonNode, name: String): PJsonNode =
       return item
   return nil
   
-proc `[]`*(node: PJsonNode, index: Int): PJsonNode {.raises: [EInvalidIndex].} =
+proc `[]`*(node: PJsonNode, index: Int): PJsonNode =
   ## Gets the node at `index` in an Array.
   assert(node.kind == JArray)
   return node.elems[index]
