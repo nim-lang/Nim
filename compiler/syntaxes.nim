@@ -44,7 +44,7 @@ proc ParseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
     f: tfile
-  let filename = fileIdx.toFilename
+  let filename = fileIdx.toFullPath
   if not open(f, filename):
     rawMessage(errCannotOpenFile, filename)
     return 

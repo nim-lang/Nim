@@ -175,9 +175,6 @@ proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
     else:
       result = gCompiledModules[fileIdx]
 
-proc compileModule(filename: string, flags: TSymFlags): PSym =
-  result = compileModule(filename.fileInfoIdx, flags)
-
 proc importModule(s: PSym, fileIdx: int32): PSym =
   # this is called by the semantic checking phase
   result = compileModule(fileIdx, {})
@@ -203,9 +200,9 @@ proc compileSystemModule =
     SystemFileIdx = fileInfoIdx(options.libpath/"system.nim")
     discard CompileModule(SystemFileIdx, {sfSystemModule})
 
-proc CompileProject(projectFile = gProjectFull) =
-  let systemFile = options.libpath / "system"
-  if projectFile.addFileExt(nimExt) ==^ systemFile.addFileExt(nimExt):
+proc CompileProject(projectFile = gProjectMainIdx) =
+  let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
+  if projectFile == SystemFileIdx:
     discard CompileModule(projectFile, {sfMainModule, sfSystemModule})
   else:
     compileSystemModule()
@@ -232,15 +229,15 @@ proc CommandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
-  compileProject(mainCommandArg())
+  compileProject()
 
 proc CommandDoc2 =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(docgen2Pass)
   #registerPass(cleanupPass())
-  compileProject(mainCommandArg())
-  finishDoc2Pass(gProjectFull)
+  compileProject()
+  finishDoc2Pass(gProjectName)
 
 proc CommandCompileToC =
   semanticPasses()
@@ -336,7 +333,7 @@ proc CommandInteractive =
   InteractivePasses()
   compileSystemModule()
   if commandArgs.len > 0:
-    discard CompileModule(mainCommandArg(), {})
+    discard CompileModule(gProjectMainIdx, {})
   else:
     var m = makeStdinModule()
     incl(m.flags, sfMainModule)

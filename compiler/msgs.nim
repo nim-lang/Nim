@@ -561,17 +561,19 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = UnknownLineInfo()
   else: result = msgContext[i]
 
-proc toFilename*(info: TLineInfo): string =
-  if info.fileIndex < 0: result = "???"
-  else: result = fileInfos[info.fileIndex].projPath
-
 proc toFilename*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"
   else: result = fileInfos[fileIdx].projPath
 
-proc toFullPath*(info: TLineInfo): string =
-  if info.fileIndex < 0: result = "???"
-  else: result = fileInfos[info.fileIndex].fullPath
+proc toFullPath*(fileIdx: int32): string =
+  if fileIdx < 0: result = "???"
+  else: result = fileInfos[fileIdx].fullPath
+
+template toFilename*(info: TLineInfo): string =
+  info.fileIndex.toFilename
+
+template toFullPath*(info: TLineInfo): string =
+  info.fileIndex.toFullPath
   
 proc toLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
