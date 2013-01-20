@@ -213,7 +213,6 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
           doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
         gch.tempStack.len = len0
                           
-        # XXX add a proper addCycleRoot barrier here!
     # and set the memory to nil:
     zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
            (newLen*%elemSize)), (result.len-%newLen) *% elemSize)

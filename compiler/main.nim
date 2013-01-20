@@ -442,9 +442,14 @@ proc resetMemory =
   GC_fullCollect()
   echo GC_getStatistics()
 
+const
+  SimiluateCaasMemReset = false
+  PrintRopeCacheStats = false
+
 proc MainCommand =
-  gGlobalOptions.incl(optCaasEnabled)
-    
+  when SimiluateCaasMemReset:
+    gGlobalOptions.incl(optCaasEnabled)
+      
   # In "nimrod serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()
@@ -561,19 +566,21 @@ proc MainCommand =
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error     
     serve(MainCommand)
-    
-  else: rawMessage(errInvalidCommandX, command)
+  else:
+    rawMessage(errInvalidCommandX, command)
   
   if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun}:
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem())])
 
-  echo "rope cache stats: "
-  echo "  tries : ", gCacheTries
-  echo "  misses: ", gCacheMisses
-  echo "  int tries: ", gCacheIntTries
-  echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
+  when PrintRopeCacheStats:
+    echo "rope cache stats: "
+    echo "  tries : ", gCacheTries
+    echo "  misses: ", gCacheMisses
+    echo "  int tries: ", gCacheIntTries
+    echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float), ffDecimal, 3)
 
-  # resetMemory()
+  when SimiluateCaasMemReset:
+    resetMemory()
 

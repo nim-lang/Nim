@@ -1133,18 +1133,16 @@ proc rawNewModule(module: PSym): BModule =
   result = rawNewModule(module, module.filename)
 
 proc newModule(module: PSym): BModule =
-  result = getCgenModule(module)
-  if result == nil:
-    result = rawNewModule(module)
-    growCache gModules, module.position
-    gModules[module.position] = result
+  # we should create only one cgen module for each module sym
+  InternalAssert getCgenModule(module) == nil
 
-    if (optDeadCodeElim in gGlobalOptions): 
-      if (sfDeadCodeElim in module.flags): 
-        InternalError("added pending module twice: " & module.filename)
-  else:
-    echo "CGEN CACHED MODULE: ", result.filename
-    assert optCaasEnabled in gGlobalOptions
+  result = rawNewModule(module)
+  growCache gModules, module.position
+  gModules[module.position] = result
+
+  if (optDeadCodeElim in gGlobalOptions): 
+    if (sfDeadCodeElim in module.flags): 
+      InternalError("added pending module twice: " & module.filename)
 
 proc myOpen(module: PSym): PPassContext = 
   result = newModule(module)
@@ -1260,7 +1258,6 @@ proc updateCachedModule(m: BModule) =
   let cfilenoext = changeFileExt(cfile, "")
   
   if mergeRequired(m):
-    echo "MERGE REQUIRED FOR ", m.filename
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1271,6 +1268,7 @@ proc updateCachedModule(m: BModule) =
   addFileToLink(cfilenoext)
 
 proc cgenCaasUpdate* =
+  # XXX(zah): clean-up the fromCache mess
   for m in cgenModules():
     if m.fromCache: m.updateCachedModule
 

@@ -509,10 +509,10 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     else: lexMessage(L, errInvalidCharacterConstant)
   else: lexMessage(L, errInvalidCharacterConstant)
 
-proc newString(s: cstring, l: int): string =
+proc newString(s: cstring, len: int): string =
   ## XXX, how come there is no support for this?
-  result = newString(l)
-  for i in 0 .. <l:
+  result = newString(len)
+  for i in 0 .. <len:
     result[i] = s[i]
 
 proc HandleCRLF(L: var TLexer, pos: int): int =
