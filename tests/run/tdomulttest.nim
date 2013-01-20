@@ -1,6 +1,5 @@
 discard """
-  file: "tasynciossl.nim"
-  cmd: "nimrod cc --hints:on --define:ssl $# $#"
+  file: "tdomulttest.nim"
   output: "555\ntest\nmulti lines\n99999999\nend"
 """
 proc foo(bar, baz: proc (x: int): int) =
