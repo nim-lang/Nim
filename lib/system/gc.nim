@@ -96,6 +96,8 @@ const
     # XXX: still has problems in release mode in the compiler itself.
     # investigate how it affects growObj
 
+  CollectCyclesStats = false
+
 type
   TWalkOp = enum
     waPush
@@ -203,8 +205,6 @@ proc addZCT(zct: var TCellSeq, c: PCell) {.noinline.} =
   if c.isBitDown(rcZct):
     c.setBit rcZct
     zct.add c
-    # writecell("adding to ZCT 1", c)
-    # cprintf ("called from %d\n", framePtr.prev.line)
 
 template setStackTop(gch) =
   # This must be called immediately after we enter the GC code
@@ -257,7 +257,6 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
 # we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
-  # writecell("finalizers", cell)
   if cell.typ.finalizer != nil:
     # the finalizer could invoke something that
     # allocates memory; this could trigger a garbage
@@ -397,7 +396,6 @@ template doDecRef(cc: PCell,
     # this is the last reference from the heap
     # add to a zero-count-table that will be matched against stack pointers
     rtlAddZCT(c)
-    # writeCell("decref to 0", c)
   else:
     when cycleFlag != Acyclic:
       if cycleFlag == Cyclic or canBeCycleRoot(c):
@@ -559,7 +557,6 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
   # all slots             68%
   var L = gch.zct.len
   var d = gch.zct.d
-  #writecell("ZCT ADDING 2", res)
   when true:
     # loop unrolled for performance:
     template replaceZctEntry(i: expr) =
@@ -622,7 +619,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap, rc1: bool): pointer =
     addNewObjToZCT(res, gch)
 
     if NewObjectsAreCycleRoots and canBeCycleRoot(res):
-      # writeCell("cyclic allocation", res)
       res.setBit(rcInCycleRoots)
       res.setColor rcCycleCandidate
       gch.cycleRoots.add res
@@ -647,7 +643,6 @@ proc freeCell(gch: var TGcHeap, c: PCell) =
   else:
     sysAssert(c.typ != nil, "collectCycles")
     zeroMem(c, sizeof(TCell))
-    # writecell("nuked cell", c)
 
 template eraseAt(cells: var TCellSeq, at: int): stmt =
   cells.d[at] = cells.d[cells.len - 1]
@@ -706,16 +701,13 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
       var d = gch.zct.d
       while j >= 0: 
         if d[j] == ol:
-          #writecell("replaced old", ol)
           d[j] = res
-          #writecell("replaced new", res)
           break
         dec(j)
     
     if ol.isBitUp(rcInCycleRoots):
       for i in 0 .. <gch.cycleRoots.len:
         if gch.cycleRoots.d[i] == ol:
-          #writecell("evicted cycleroot", ol)
           eraseAt(gch.cycleRoots, i)
 
     freeCell(gch, ol)
@@ -785,11 +777,9 @@ proc collectCycles(gch: var TGcHeap) =
   if gch.cycleRoots.len == 0: return
   gch.stat.cycleTableSize = max(gch.stat.cycleTableSize, gch.cycleRoots.len)
 
-  #c_printf "collect cycles table:\n"
-  #for i in 0 .. <gch.cycleRoots.len:
-  #  writecell("CROOT ", gch.cycleRoots.d[i])
-  let l0 = gch.cycleRoots.len
-  let tStart = getTicks()
+  when CollectCyclesStats:
+    let l0 = gch.cycleRoots.len
+    let tStart = getTicks()
 
   var
     decrefs = 0
@@ -826,7 +816,9 @@ proc collectCycles(gch: var TGcHeap) =
       earlyMarkAliveRec(c)
 
   earlyMarkAlive(gch.decStack)
-  let tAfterEarlyMarkAlive = getTicks()
+  
+  when CollectCyclesStats:
+    let tAfterEarlyMarkAlive = getTicks()
 
   template recursiveDecRef(cell) =
     let startLen = gch.tempStack.len
@@ -843,7 +835,6 @@ proc collectCycles(gch: var TGcHeap) =
       inc decrefs
       if c.color != rcDecRefApplied:
         c.setColor rcDecRefApplied
-        # writeCell("decref", c)
         c.forAllChildren waPush
  
   template markRoots(roots) =
@@ -862,9 +853,10 @@ proc collectCycles(gch: var TGcHeap) =
           freeCell(gch, c)
   
   markRoots(gch.cycleRoots)
-  let tAfterMark = getTicks()
-
-  c_printf "COLLECT CYCLES %d: %d/%d\n", gcCollectionIdx, gch.cycleRoots.len, l0
+  
+  when CollectCyclesStats:
+    let tAfterMark = getTicks()
+    c_printf "COLLECT CYCLES %d: %d/%d\n", gcCollectionIdx, gch.cycleRoots.len, l0
   
   template recursiveMarkAlive(cell) =
     let startLen = gch.tempStack.len
@@ -877,7 +869,6 @@ proc collectCycles(gch: var TGcHeap) =
       if ignoreObject(c): continue
       inc c.refcount, rcIncrement
       inc increfs
-      # writeCell("mark alive", c)
       
       if c.color != rcAlive:
         c.setColor rcAlive
@@ -905,7 +896,9 @@ proc collectCycles(gch: var TGcHeap) =
             c.forAllChildren waPush
   
   scanRoots(gch.cycleRoots)
-  let tAfterScan = getTicks()
+  
+  when CollectCyclesStats:
+    let tAfterScan = getTicks()
 
   template collectDead(roots) =
     for i in 0 .. <roots.len:
@@ -938,17 +931,18 @@ proc collectCycles(gch: var TGcHeap) =
       freeCell(gch, gch.freeStack.d[i])
 
   collectDead(gch.cycleRoots)
-  let tFinal = getTicks()
   
-  cprintf "times:\n  early mark alive: %d ms\n  mark: %d ms\n  scan: %d ms\n  collect: %d ms\n  decrefs: %d\n  increfs: %d\n  marked dead: %d\n  collected: %d\n",
-    (tAfterEarlyMarkAlive - tStart)  div 1_000_000,
-    (tAfterMark - tAfterEarlyMarkAlive) div 1_000_000,
-    (tAfterScan - tAfterMark) div 1_000_000,
-    (tFinal - tAfterScan) div 1_000_000,
-    decrefs,
-    increfs,
-    maybedeads,
-    collected
+  when CollectCyclesStats:
+    let tFinal = getTicks()
+    cprintf "times:\n  early mark alive: %d ms\n  mark: %d ms\n  scan: %d ms\n  collect: %d ms\n  decrefs: %d\n  increfs: %d\n  marked dead: %d\n  collected: %d\n",
+      (tAfterEarlyMarkAlive - tStart)  div 1_000_000,
+      (tAfterMark - tAfterEarlyMarkAlive) div 1_000_000,
+      (tAfterScan - tAfterMark) div 1_000_000,
+      (tFinal - tAfterScan) div 1_000_000,
+      decrefs,
+      increfs,
+      maybedeads,
+      collected
 
   Deinit(gch.cycleRoots)
   Init(gch.cycleRoots)
@@ -963,20 +957,7 @@ proc collectCycles(gch: var TGcHeap) =
     # CollectZCT may add new cycle candidates and we may decide to loop here
     # if gch.cycleRoots.len > 0: repeat
 
-  # quit 1
-
 var gcDebugging* = false
-var vis*: proc (a: pointer, b: PNimType)
-
-proc debugNode(n: ptr TNimNode) =
-  c_fprintf(c_stdout, "node %s\n", n.name)
-  for i in 0..n.len-1:
-    debugNode(n.sons[i])
-
-proc debugTyp(x: PNimType) =
-  c_fprintf(c_stdout, "type %d\n", x.kind)
-  if x.node != nil:
-    debugNode(x.node)
 
 var seqdbg* : proc (s: PGenericSeq) {.cdecl.}
 
@@ -992,7 +973,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
       # mark the cell:
       if objStart.isBitDown(rcReallyDead):
         if gcDebugging:
-          writeCell("marking ", objStart)
+          # writeCell("marking ", objStart)
         else:
           inc objStart.refcount, rcIncrement
           gch.decStack.add objStart
@@ -1174,18 +1155,14 @@ proc releaseCell(gch: var TGcHeap, cell: PCell) =
     prepareDealloc(cell)
     cell.setColor rcReallyDead
 
-    #writecell("RELEASING ", cell)
-
     let l1 = gch.tempStack.len
     cell.forAllChildren waPush
     let l2 = gch.tempStack.len
     for i in l1 .. <l2:
       var cc = gch.tempStack.d[i]
-      #writecell("SON ", cc)
       if cc.refcount--(LocalHeap):
         releaseCell(gch, cc)
       else:
-        #writecell("crashy", cc)
         if canbeCycleRoot(cc):
           addCycleRoot(gch.cycleRoots, cc)
 
@@ -1203,10 +1180,6 @@ proc releaseCell(gch: var TGcHeap, cell: PCell) =
   # We can ignore it now as the ZCT cleaner will reach it soon.
 
 proc CollectZCT(gch: var TGcHeap): bool =
-  #cprintf "ZCT TABLE START:\n"
-  #for i in 0 .. <gch.zct.len:
-  #  writecell("ZCT CELL", gch.zct.d[i])
-  #cprintf "ZCT TABLE END\n"
   const workPackage = 100
   var L = addr(gch.zct.len)
   
@@ -1217,14 +1190,10 @@ proc CollectZCT(gch: var TGcHeap): bool =
   
   while L[] > 0:
     var c = gch.zct.d[0]
-    if c.isBitDown(rcZct):
-      writecell("BAD ZCT", c)
-      quit 1
-    # writecell("ZCT PROCESS", c)
+    sysAssert c.isBitUp(rcZct), "CollectZCT: rcZct missing!"
     sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
-    # remove from ZCT:
-    sysAssert((c.refcount and rcZct) == rcZct, "collectZCT")
     
+    # remove from ZCT:    
     c.clearBit(rcZct)
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
@@ -1238,13 +1207,9 @@ proc CollectZCT(gch: var TGcHeap): bool =
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
       if c.color == rcRetiredBuffer:
         if c.isBitDown(rcInCycleRoots):
-          # writecell("retired buffer", c)
           freeCell(gch, c)
       else:
-        if c.color == rcReallyDead:
-          # writeCell("ReallyDead in ZCT?", c)
-        
-        # writecell("bad cell in zct", c)
+        # if c.color == rcReallyDead: writeCell("ReallyDead in ZCT?", c)
         releaseCell(gch, c)
     when withRealtime:
       if steps == 0:
@@ -1270,7 +1235,6 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
     sysAssert c.typ != nil, "unmarkStackAndRegisters 2"
     
     if c.color == rcRetiredBuffer:
-      # writecell("unmark retired", c)
       continue
 
     # XXX no need for an atomic dec here:
@@ -1284,10 +1248,7 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
       # a leak if it's orphaned through the stack reference
       # that's because the write-barrier won't be executed for stack
       # locations
-      #writeCell("restoring balance cycle roots", c)
       addCycleRoot(gch.cycleRoots, c)
-
-    #writecell("unmark stack cell", c)
 
   gch.decStack.len = 0
 

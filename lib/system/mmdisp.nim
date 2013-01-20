@@ -14,14 +14,14 @@
 {.push checks:off.}
 
 const
-  debugGC = true # we wish to debug the GC...
+  debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = true # extensive debugging
+  traceGC = false # extensive debugging
   alwaysCycleGC = false
   alwaysGC = false # collect after every memory allocation (for debugging)
   leakDetector = false
   overwriteFree = false
-  trackAllocationSource = true or leakDetector
+  trackAllocationSource = leakDetector
   
   cycleGC = true # (de)activate the cycle GC
   reallyDealloc = true # for debugging purposes this can be set to false

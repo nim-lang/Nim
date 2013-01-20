@@ -188,19 +188,9 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
               addrLoc(dest), rdLoc(src))
     else:
-      if cnimdbg:
-        echo "ASSIGN REF ", dest.k, " ", dest.s, " ", dest.r.ropeToStr
-        if dest.heapRoot != nil:
-          echo "ROOTED AT ", dest.heapRoot.ropeToStr
-
       linefmt(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
               addrLoc(dest), rdLoc(src))
   else:
-    if cnimdbg:
-      echo "ASSIGN REF ", dest.k, " ", dest.s, " ", dest.r.ropeToStr
-      if dest.heapRoot != nil:
-        echo "ROOTED AT ", dest.heapRoot.ropeToStr
-        
     linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
             addrLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
