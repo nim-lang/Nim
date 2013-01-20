@@ -389,7 +389,7 @@ proc parseGStrLit(p: var TParser, a: PNode): PNode =
   else:
     result = a
   
-proc identOrLiteral(p: var TParser): PNode =
+proc identOrLiteral(p: var TParser): PNode = 
   case p.tok.tokType
   of tkSymbol: 
     result = newIdentNodeP(p.tok.ident, p)
@@ -494,6 +494,12 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
+      parseDoBlocks(p, result)
+    of tkDo:
+      var a = result
+      result = newNodeP(nkCall, p)
+      addSon(result, a)
+      parseDoBlocks(p, result)
     of tkDot:
       result = dotExpr(p, result)
       result = parseGStrLit(p, result)
@@ -730,7 +736,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
 proc isExprStart(p: TParser): bool = 
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, 
-     tkProc, tkDo, tkIterator, tkBind, 
+     tkProc, tkIterator, tkBind, 
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
      tkTuple, tkObject, tkType, tkWhen, tkCase, tkShared:
     result = true
@@ -826,8 +832,6 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     getTok(p)
     optInd(p, result)
     addSon(result, primary(p, pmNormal))
-  of tkDo:
-    result = parseDoBlock(p)
   else:
     result = identOrLiteral(p)
     if mode != pmSkipSuffix:
@@ -852,7 +856,7 @@ proc parseExprStmt(p: var TParser): PNode =
     var call = if a.kind == nkCall: a
                else: newNode(nkCommand, a.info, @[a])
     while true:
-      if not isExprStart(p): break
+      if not isExprStart(p): break 
       var e = parseExpr(p)
       addSon(call, e)
       if p.tok.tokType != tkComma: break 
@@ -860,7 +864,7 @@ proc parseExprStmt(p: var TParser): PNode =
       optInd(p, a)
     if p.tok.tokType == tkDo:
       parseDoBlocks(p, call)
-      return call
+      return    
     result = if call.sonsLen <= 1: a
              else: call
     if p.tok.tokType == tkColon:
@@ -1548,14 +1552,14 @@ proc parseAll(p: var TParser): PNode =
 
 proc parseTopLevelStmt(p: var TParser): PNode = 
   result = ast.emptyNode
-  while true:
+  while true: 
     case p.tok.tokType
     of tkSad, tkSemicolon: getTok(p)
     of tkDed, tkInd: 
       parMessage(p, errInvalidIndentation)
       getTok(p)
     of tkEof: break 
-    else:
+    else: 
       result = complexOrSimpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
