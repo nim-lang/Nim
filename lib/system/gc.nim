@@ -31,8 +31,6 @@ when withRealTime and not defined(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
 
-include "system/timers"
-
 const
   rcShift = 6 # the reference count is shifted so we can use
               # the least significat bits for additinal flags:

@@ -41,7 +41,6 @@ proc searchInstTypes(key: PType): PType =
     return
 
   for inst in genericTyp.sym.typeInstCache:
-    InternalAssert inst.sons.len == key.sons.len + 1
     if inst.id == key.id: return inst
     block MatchType:
       for j in 1 .. high(key.sons):
