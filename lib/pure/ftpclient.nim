@@ -114,7 +114,7 @@ proc getDSock(ftp: PFTPClient): TSocket =
 proc getCSock(ftp: PFTPClient): TSocket =
   if ftp.isAsync: return ftp.asyncCSock else: return ftp.csock
 
-template blockingOperation(sock: TSocket, body: stmt) =
+template blockingOperation(sock: TSocket, body: stmt) {.immediate.} =
   if ftp.isAsync:
     sock.setBlocking(true)
   body
