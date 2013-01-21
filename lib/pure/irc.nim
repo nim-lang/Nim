@@ -32,7 +32,7 @@
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
-import sockets, strutils, parseutils, times, asyncio
+import sockets, strutils, parseutils, times, asyncio, os
 
 type
   TIRC* = object of TObject
@@ -56,6 +56,7 @@ type
     channelsToJoin: seq[string]
     msgLimit: bool
     messageBuffer: seq[tuple[timeToSend: float, m: string]]
+    lastReconnect: float
 
   PIRC* = ref TIRC
 
@@ -235,12 +236,19 @@ proc connect*(irc: PIRC) =
   irc.send("NICK " & irc.nick, true)
   irc.send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
 
-proc reconnect*(irc: PIRC) =
+proc reconnect*(irc: PIRC, timeout = 5000) =
   ## Reconnects to an IRC server.
   ##
+  ## ``Timeout`` specifies the time to wait in miliseconds between multiple
+  ## consecutive reconnections.
+  ##
   ## This should be used when an ``EvDisconnected`` event occurs.
+  let secSinceReconnect = int(epochTime() - irc.lastReconnect)
+  if secSinceReconnect < timeout:
+    sleep(timeout - secSinceReconnect)
   irc.sock = socket()
   irc.connect()
+  irc.lastReconnect = epochTime()
 
 proc irc*(address: string, port: TPort = 6667.TPort,
          nick = "NimrodBot",
@@ -409,15 +417,22 @@ proc connect*(irc: PAsyncIRC) =
   
   irc.asyncSock.connect(irc.address, irc.port)
 
-proc reconnect*(irc: PAsyncIRC) =
+proc reconnect*(irc: PAsyncIRC, timeout = 5000) =
   ## Reconnects to an IRC server.
+  ##
+  ## ``Timeout`` specifies the time to wait in miliseconds between multiple
+  ## consecutive reconnections.
   ##
   ## This should be used when an ``EvDisconnected`` event occurs.
   ##
   ## When successfully reconnected an ``EvConnected`` event will occur.
+  let secSinceReconnect = int(epochTime() - irc.lastReconnect)
+  if secSinceReconnect < timeout:
+    sleep(timeout - secSinceReconnect)
   irc.asyncSock = AsyncSocket()
   irc.myDispatcher.register(irc)
   irc.connect()
+  irc.lastReconnect = epochTime()
 
 proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               nick = "NimrodBot",
