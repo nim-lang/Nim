@@ -686,17 +686,18 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
-  if n.sons[bodyPos].kind != nkEmpty: 
-    if sfImportc in s.flags: 
+  if n.sons[bodyPos].kind != nkEmpty:
+    if sfImportc in s.flags:
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
-    if efDetermineType notin flags:
-      pushProcCon(c, s)
-      addResult(c, s.typ.sons[0], n.info, skProc)
-      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      addResultNode(c, n)
-      popProcCon(c)
-      sideEffectsCheck(c, s)
+    #if efDetermineType notin flags:
+    # XXX not good enough
+    pushProcCon(c, s)
+    addResult(c, s.typ.sons[0], n.info, skProc)
+    let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+    n.sons[bodyPos] = transformBody(c.module, semBody, s)
+    addResultNode(c, n)
+    popProcCon(c)
+    sideEffectsCheck(c, s)
   else:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   closeScope(c.tab)           # close scope for parameters
@@ -706,13 +707,16 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc activate(c: PContext, n: PNode) =
   # XXX: This proc is part of my plan for getting rid of
   # forward declarations. stay tuned.
-  case n.kind
-  of nkLambdaKinds:
-    discard semLambda(c, n, {})
-  of nkCallKinds:
-    for i in 1 .. <n.len: activate(c, n[i])
-  else:
-    nil
+  when false:
+    # well for now it breaks code ... I added the test case in main.nim of the
+    # compiler itself to break bootstrapping :P
+    case n.kind
+    of nkLambdaKinds:
+      discard semLambda(c, n, {})
+    of nkCallKinds:
+      for i in 1 .. <n.len: activate(c, n[i])
+    else:
+      nil
 
 proc instantiateDestructor*(c: PContext, typ: PType): bool
 

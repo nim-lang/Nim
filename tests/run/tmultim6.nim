@@ -1,5 +1,5 @@
 discard """
-  output: "collide: unit, thing | collide: unit, thing | collide: thing, unit"
+  output: "collide: unit, thing | collide: unit, thing | collide: thing, unit |"
 """
 # Test multi methods
 
