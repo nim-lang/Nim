@@ -312,9 +312,7 @@ proc MainCommand =
     # no need to write rod files and would slow down things:
     #registerPass(rodwrite.rodwritePass())
     discard CompileModule(options.libpath / "system", {sfSystemModule})
-    # I'm lazy and misused this piece of code as a testcase so don't remove
-    # the invocation with a named parameter:
-    service.serve(action = proc () =
+    service.serve(proc () =
       let projectFile = mainCommandArg()
       discard CompileModule(projectFile, {sfMainModule})
     )
