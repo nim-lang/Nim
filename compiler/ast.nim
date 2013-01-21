@@ -603,11 +603,18 @@ type
       
   PLib* = ref TLib
   TSym* = object of TIdObj
+    # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
-    of skType:                # generic instantiation caches
+    of skType:
       typeInstCache*: seq[PType]
     of routineKinds:
       procInstCache*: seq[PInstantiation]
+    of skModule:
+      # modules keep track of the generic symbols they use from other modules.
+      # this is because in incremental compilation, when a module is about to
+      # be replaced with a newer version, we must decrement the usage count
+      # of all previously used generics.
+      usedGenerics*: seq[PInstantiation]
     else: nil
 
     magic*: TMagic
