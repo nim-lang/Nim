@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -318,7 +318,7 @@ proc semIs(c: PContext, n: PNode): PNode =
     if not containsGenericType(t1): result = evalIsOp(n)
   
 proc semOpAux(c: PContext, n: PNode) =
-  let flags = {efDetermineType}
+  const flags = {efDetermineType}
   for i in countup(1, n.sonsLen- 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 

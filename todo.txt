@@ -3,8 +3,8 @@ version 0.9.2
 
 - implement constructors + full 'not nil' checking
 - ``restrict`` pragma + backend support
-- fix closure bug finally
 - fix marshal bug
+- fix: 'result' is not properly cleaned for NRVO
 - investigate nimgame bug
 
 
@@ -62,6 +62,7 @@ version 0.9.XX
   not in a 'let/var' context  (p(a.openFile, b.openFile) makes no sense anyway)
 - document nimdoc properly finally
 - make 'clamp' a magic for the range stuff
+- better type syntax for functions and tuples: tuple(int, int); (int,int)->int
 
 
 Not essential for 1.0.0
