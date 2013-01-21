@@ -690,7 +690,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if sfImportc in s.flags:
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
     #if efDetermineType notin flags:
-    # XXX not good enough
+    # XXX not good enough; see tnamedparamanonproc.nim
     pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info, skProc)
     let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
