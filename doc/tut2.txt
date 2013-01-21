@@ -433,6 +433,20 @@ handled, it is propagated through the call stack. This means that often
 the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
+If you need to *access* the actual exception object or message inside an
+``except`` branch you can use the getCurrentException() and
+getCurrentExceptionMsg() procs from the `system <system.html>`_ module.
+Example:
+
+.. code-block:: nimrod
+  try:
+    doSomethingHere()
+  except:
+    let
+      e = getCurrentException()
+      msg = getCurrentExceptionMsg()
+    echo "Got exception ", repr(e), " with message ", msg
+
 
 Exception hierarchy
 -------------------
