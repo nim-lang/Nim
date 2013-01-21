@@ -313,6 +313,10 @@ proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) =
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line, 
                              p.col + p.tok[p.idx].col, msgKind, arg)
 
+proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string, line, col: int) = 
+  p.s.msgHandler(p.filename, p.line + line, 
+                             p.col + col, msgKind, arg)
+
 proc rstMessage(p: TRstParser, msgKind: TMsgKind) = 
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line, 
                              p.col + p.tok[p.idx].col, msgKind, 
@@ -684,6 +688,9 @@ when false:
 
 proc parseUntil(p: var TRstParser, father: PRstNode, postfix: string, 
                 interpretBackslash: bool) = 
+  let
+    line = p.tok[p.idx].line
+    col = p.tok[p.idx].col
   while true: 
     case p.tok[p.idx].kind
     of tkPunct: 
@@ -707,7 +714,7 @@ proc parseUntil(p: var TRstParser, father: PRstNode, postfix: string,
     of tkWhite: 
       add(father, newRstNode(rnLeaf, " "))
       inc(p.idx)
-    else: rstMessage(p, meExpected, postfix)
+    else: rstMessage(p, meExpected, postfix, line, col)
 
 proc parseMarkdownCodeblock(p: var TRstParser): PRstNode =
   var args = newRstNode(rnDirArg)
