@@ -1449,7 +1449,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [FTime].} =
   else:
     var a, b: Ttimespec
     a.tv_sec = TTime(milsecs div 1000)
-    a.tv_nsec = (milsecs mod 1000) * 1000
+    a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
 proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1",
