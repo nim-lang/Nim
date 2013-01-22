@@ -38,7 +38,8 @@ type
   char* {.magic: Char.} ## built-in 8 bit character type (unsigned)
   string* {.magic: String.} ## built-in string type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
-  pointer* {.magic: Pointer.} ## built-in pointer type
+  pointer* {.magic: Pointer.} ## built-in pointer type, use the ``addr``
+                              ## operator to get a pointer to a variable
 
 const
   on* = true    ## alias for ``true``

@@ -1303,14 +1303,10 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The empty ``[]`` subscript notation can be used to *derefer* a reference, 
-meaning to retrieve the item the reference points to. The ``addr`` operator 
-returns the address of an item. An address is always an untraced reference:
-``addr`` is an *unsafe* feature.
-
-The ``.`` (access a tuple/object field operator)
-and ``[]`` (array/string/sequence index operator) operators perform implicit
-dereferencing operations for reference types:
+The empty ``[]`` subscript notation can be used to *derefer* a reference,
+meaning to retrieve the item the reference points to. The ``.`` (access a
+tuple/object field operator) and ``[]`` (array/string/sequence index operator)
+operators perform implicit dereferencing operations for reference types:
 
 .. code-block:: nimrod
 
@@ -1327,8 +1323,8 @@ dereferencing operations for reference types:
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
-``realloc`` can be used. The documentation of the system module contains
-further information.
+``realloc`` can be used. The documentation of the `system <system.html>`_
+module contains further information.
 
 If a reference points to *nothing*, it has the value ``nil``.
 
