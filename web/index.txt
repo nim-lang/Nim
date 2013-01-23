@@ -33,7 +33,7 @@ from that model.
     # Prints the maximum integer from a list of integers
     # delimited by whitespace read from stdin.
     let tokens = stdin.readLine.split
-    echo tokens.each(parseInt).max, " is the maximum."
+    echo tokens.map(parseInt).max, " is the maximum."
 
 
 Nimrod is efficient

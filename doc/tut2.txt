@@ -218,7 +218,7 @@ So "pure object oriented" code is easy to write:
   import strutils
   
   stdout.writeln("Give a list of numbers (separated by spaces): ")
-  stdout.write(stdin.readLine.split.each(parseInt).max.`$`)
+  stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
   stdout.writeln(" is the maximum!")
 
 
