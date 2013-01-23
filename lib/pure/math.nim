@@ -141,6 +141,11 @@ proc randomize*()
   ## number, i.e. a tickcount. Note: Does nothing for the ECMAScript target,
   ## as ECMAScript does not support this.
   
+proc randomize*(seed: int)
+  ## initializes the random number generator with a specific seed.
+  ## Note: Does nothing for the ECMAScript target,
+  ## as ECMAScript does not support this.
+
 when not defined(ECMAScript):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
@@ -190,15 +195,17 @@ when not defined(ECMAScript):
   proc rand(): cint {.importc: "rand", nodecl.}
   
   when not defined(windows):
-    proc srand48(seed: cint) {.importc: "srand48", nodecl.}
+    proc srand48(seed: clong) {.importc: "srand48", nodecl.}
     proc drand48(): float {.importc: "drand48", nodecl.}
     proc random(max: float): float =
       result = drand48() * max
     
   proc randomize() =
-    let x = gettime(nil)
-    srand(x)
-    when defined(srand48): srand48(x)
+    randomize(gettime(nil))
+
+  proc randomize(seed: int) =
+    srand(cint(seed))
+    when defined(srand48): srand48(seed)
   proc random(max: int): int =
     result = int(rand()) mod max
 
@@ -217,6 +224,7 @@ else:
   proc random(max: float): float =
     result = float(mathrandom() * float(max))
   proc randomize() = nil
+  proc randomize(seed: int) = nil
   
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float): float {.importc: "Math.log", nodecl.}
@@ -301,3 +309,18 @@ proc standardDeviation*(s: TRunningStat): float =
 
 {.pop.}
 {.pop.}
+
+when isMainModule and not defined(ECMAScript):
+  # Verifies random seed initialization.
+  let seed = gettime(nil)
+  randomize(seed)
+  const SIZE = 10
+  var buf : array[0..SIZE, int]
+  # Fill the buffer with random values
+  for i in 0..SIZE-1:
+    buf[i] = random(high(int))
+  # Check that the second random calls are the same for each position.
+  randomize(seed)
+  for i in 0..SIZE-1:
+    assert buf[i] == random(high(int)), "non deterministic random seeding"
+  echo "random values equal after reseeding"
