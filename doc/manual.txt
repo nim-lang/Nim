@@ -2697,16 +2697,14 @@ In contrast to that, a `closure iterator`:idx: can be passed around:
   invoke(count0)
   invoke(count2)
 
-
 Closure iterators have other restrictions than inline iterators:
 
-1.) ``yield`` in a closure iterator can not occur in a ``try`` statement.
-2.) For now, a closure iterator cannot be evaluated at compile time.
-3.) ``return`` is allowed in a closure iterator (but rarely useful).
-4.) Since closure iterators can be used as a collaborative tasking 
-    system, ``void`` is a valid return type for them.
-5.) Both inline and closure iterators cannot be recursive.
-
+1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
+2. For now, a closure iterator cannot be evaluated at compile time.
+3. ``return`` is allowed in a closure iterator (but rarely useful).
+4. Since closure iterators can be used as a collaborative tasking
+   system, ``void`` is a valid return type for them.
+5. Both inline and closure iterators cannot be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but that this may change in future versions of the
