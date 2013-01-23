@@ -2843,6 +2843,23 @@ in an implicit try block:
   finally: close(f)
   ...
 
+The ``except`` statement has a limitation in this form: you can't specify the
+type of the exception, you have to catch everything. Also, if you want to use
+both ``finally`` and ``except`` you need to reverse the usual sequence of the
+statements. Example:
+
+.. code-block:: nimrod
+  proc test() =
+    raise newException(E_base, "Hey ho")
+  
+  proc tester() =
+    finally: echo "3. Finally block"
+    except: echo "2. Except block"
+    echo "1. Pre exception"
+    test()
+    echo "4. Post exception"
+  # --> 1, 2, 3 is printed, 4 is never reached
+
 
 Raise statement
 ---------------
