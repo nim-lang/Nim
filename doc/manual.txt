@@ -2232,7 +2232,6 @@ Type casts
 ----------
 Example:
 
-
 .. code-block:: nimrod
   cast[int](x)
 
@@ -2243,11 +2242,27 @@ only needed for low-level programming and are inherently unsafe.
 
 The addr operator
 -----------------
-The `addr` operator returns the address of an l-value. If the
-type of the location is ``T``, the `addr` operator result is
-of the type ``ptr T``. Taking the address of an object that resides
-on the stack is **unsafe**, as the pointer may live longer than the
-object on the stack and can thus reference a non-existing object.
+The `addr`:idx: operator returns the address of an l-value. If the type of the
+location is ``T``, the `addr` operator result is of the type ``ptr T``. An
+address is always an untraced reference. Taking the address of an object that
+resides on the stack is **unsafe**, as the pointer may live longer than the
+object on the stack and can thus reference a non-existing object. You can get
+the address of variables, but you can't use it on variables declared through
+``let`` statements:
+
+.. code-block:: nimrod
+
+  let t1 = "Hello"
+  var
+    t2 = t1
+    t3 : pointer = addr(t2)
+  echo repr(addr(t2))
+  # --> ref 0x7fff6b71b670 --> 0x10bb81050"Hello"
+  echo cast[ptr string](t3)[]
+  # --> Hello
+  # The following line doesn't compile:
+  echo repr(addr(t1))
+  # Error: expression has no address
 
 
 Procedures
