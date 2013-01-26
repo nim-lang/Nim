@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -1760,8 +1760,7 @@ when not defined(EcmaScript): #and not defined(NimrodVM):
 
   # ----------------- IO Part ------------------------------------------------
   type
-    CFile {.importc: "FILE", nodecl, final.} = object  # empty record for
-                                                       # data hiding
+    CFile {.importc: "FILE", nodecl, final, incompletestruct.} = object
     TFile* = ptr CFile ## The type representing a file handle.
 
     TFileMode* = enum           ## The file mode when opening a file.
