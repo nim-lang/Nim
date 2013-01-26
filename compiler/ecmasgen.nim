@@ -959,7 +959,7 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
   of skProc, skConverter, skMethod:
     discard mangleName(s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s): nil
+    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s) or {sfImportc, sfInfixCall} * s.flags != {}: nil
     elif s.kind == skMethod and s.getBody.kind == nkEmpty:
       # we cannot produce code for the dispatcher yet:
       nil
