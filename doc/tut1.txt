@@ -349,6 +349,7 @@ provides. The example uses the built-in ``countup`` iterator:
   echo("Counting to ten: ")
   for i in countup(1, 10):
     echo($i)
+  # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 The built-in ``$`` operator turns an integer (``int``) and many other types
 into a string. The variable ``i`` is implicitly declared by the ``for`` loop
@@ -362,6 +363,7 @@ the same:
   while i <= 10:
     echo($i)
     inc(i) # increment i by 1
+  # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 Counting down can be achieved as easily (but is less often needed):
 
@@ -369,6 +371,7 @@ Counting down can be achieved as easily (but is less often needed):
   echo("Counting down from 10 to 1: ")
   for i in countdown(10, 1):
     echo($i)
+  # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nimrod also has a ``..`` iterator
 that does the same:
@@ -1202,6 +1205,28 @@ raised) for performance reasons. Thus one should use empty sequences ``@[]``
 rather than ``nil`` as the *empty* value. But ``@[]`` creates a sequence
 object on the heap, so there is a trade-off to be made here.
 
+The ``for`` statement can be used with one or two variables when used with a
+sequence. When you use the one variable form, the variable will hold the value
+provided by the sequence. The ``for`` statement is looping over the results
+from the ``items()`` iterator from the `system <system.html>`_ module.  But if
+you use the two variable form, the first variable will hold the index position
+and the second variable will hold the value. Here the ``for`` statement is
+looping over the results from the ``pairs()`` iterator from the `system
+<system.html>`_ module.  Examples:
+
+.. code-block:: nimrod
+  for i in @[3, 4, 5]:
+    echo($i)
+  # --> 3
+  # --> 4
+  # --> 5
+
+  for i, value in @[3, 4, 5]:
+    echo("index: ", $i, ", value:", $value)
+  # --> index: 0, value:3
+  # --> index: 1, value:4
+  # --> index: 2, value:5
+
 
 Open arrays
 -----------
@@ -1303,14 +1328,10 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The empty ``[]`` subscript notation can be used to *derefer* a reference, 
-meaning to retrieve the item the reference points to. The ``addr`` operator 
-returns the address of an item. An address is always an untraced reference:
-``addr`` is an *unsafe* feature.
-
-The ``.`` (access a tuple/object field operator)
-and ``[]`` (array/string/sequence index operator) operators perform implicit
-dereferencing operations for reference types:
+The empty ``[]`` subscript notation can be used to *derefer* a reference,
+meaning to retrieve the item the reference points to. The ``.`` (access a
+tuple/object field operator) and ``[]`` (array/string/sequence index operator)
+operators perform implicit dereferencing operations for reference types:
 
 .. code-block:: nimrod
 
@@ -1327,8 +1348,8 @@ dereferencing operations for reference types:
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
-``realloc`` can be used. The documentation of the system module contains
-further information.
+``realloc`` can be used. The documentation of the `system <system.html>`_
+module contains further information.
 
 If a reference points to *nothing*, it has the value ``nil``.
 

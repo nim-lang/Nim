@@ -12,8 +12,8 @@
 ## This module implements operations for the built-in `seq`:idx: type which
 ## were inspired by functional programming languages. If you are looking for
 ## the typical `map` function which applies a function to every element in a
-## sequence, it already exists as the `each` proc in the `system
-## <system.html>`_ module in both mutable and immutable styles.
+## sequence, it already exists in the `system <system.html>`_ module in both
+## mutable and immutable styles.
 ##
 ## Also, for functional style programming you may want to pass `anonymous procs
 ## <manual.html#anonymous-procs>`_ to procs like ``filter`` to reduce typing.
