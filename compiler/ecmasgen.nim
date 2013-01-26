@@ -209,6 +209,24 @@ proc genObjectInfo(p: var TProc, typ: PType, name: PRope) =
     appf(p.g.typeInfo, "$1.base = $2;$n", 
          [name, genTypeInfo(p, typ.sons[0])])
 
+proc genTupleFields(p: var TProc, typ: PType): PRope =
+  var s: PRope = nil
+  for i in 0 .. <typ.len:
+    if i > 0: app(s, ", " & tnl)
+    s.appf("{kind: 1, offset: \"Field$1\", len: 0, " &
+           "typ: $2, name: \"Field$1\", sons: null}",
+           [i.toRope, genTypeInfo(p, typ.sons[i])])
+  result = ropef("{kind: 2, len: $1, offset: 0, " &
+                 "typ: null, name: null, sons: [$2]}", [toRope(typ.len), s])
+
+proc genTupleInfo(p: var TProc, typ: PType, name: PRope) = 
+  var s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
+                "finalizer: null};$n", [name, toRope(ord(typ.kind))])
+  prepend(p.g.typeInfo, s)
+  appf(p.g.typeInfo, "var NNI$1 = $2;$n", 
+       [toRope(typ.id), genTupleFields(p, typ)])
+  appf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, toRope(typ.id)])
+
 proc genEnumInfo(p: var TProc, typ: PType, name: PRope) = 
   var 
     s, n: PRope
@@ -261,7 +279,8 @@ proc genTypeInfo(p: var TProc, typ: PType): PRope =
     appf(p.g.typeInfo, "$1.base = $2;$n", 
          [result, genTypeInfo(p, typ.sons[1])])
   of tyEnum: genEnumInfo(p, t, result)
-  of tyObject, tyTuple: genObjectInfo(p, t, result)
+  of tyObject: genObjectInfo(p, t, result)
+  of tyTuple: genTupleInfo(p, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
   
 proc gen(p: var TProc, n: PNode, r: var TCompRes)
