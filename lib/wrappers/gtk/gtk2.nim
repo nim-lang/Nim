@@ -17050,6 +17050,10 @@ proc remove*(combo_box: PComboBoxText; position: gint){.cdecl,
     importc: "gtk_combo_box_text_remove", dynlib: lib.}
 proc get_active_text*(combo_box: PComboBoxText): cstring{.cdecl, 
     importc: "gtk_combo_box_text_get_active_text", dynlib: lib.}
+proc is_active*(win: PWindow): gboolean{.cdecl,
+    importc: "gtk_window_is_active", dynlib: lib.}
+proc has_toplevel_focus*(win: PWindow): gboolean{.cdecl,
+    importc: "gtk_window_has_toplevel_focus", dynlib: lib.}
 
 proc nimrod_init*() =
   var
