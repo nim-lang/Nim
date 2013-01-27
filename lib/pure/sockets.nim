@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,6 +13,8 @@
 ##
 ## For OpenSSL support compile with ``-d:ssl``. When using SSL be aware that
 ## most functions will then raise ``ESSL`` on SSL errors.
+
+{.deadCodeElim: on.}
 
 when hostos == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -45,12 +47,15 @@ when defined(ssl):
     TSSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
+const
+  BufferSize*: int = 4000 ## size of a buffered socket's buffer
+
 type
   TSocketImpl = object ## socket type
     fd: cint
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
-      buffer: array[0..4000, char]
+      buffer: array[0..BufferSize, char]
       currPos: int # current index in buffer
       bufLen: int # current length of buffer
     of false: nil
@@ -60,6 +65,8 @@ type
         sslHandle: PSSL
         sslContext: PSSLContext
         sslNoHandshake: bool # True if needs handshake.
+        sslHasPeekChar: bool
+        sslPeekChar: char
       of false: nil
   
   TSocket* = ref TSocketImpl
@@ -256,7 +263,10 @@ when defined(ssl):
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      newCTX = SSL_CTX_new(SSLv2_method())
+      when not defined(linux):
+        newCTX = SSL_CTX_new(SSLv2_method())
+      else:
+        SSLError()
     of protSSLv3:
       newCTX = SSL_CTX_new(SSLv3_method())
     of protTLSv1:
@@ -286,11 +296,54 @@ when defined(ssl):
     socket.sslContext = ctx
     socket.sslHandle = SSLNew(PSSLCTX(socket.sslContext))
     socket.sslNoHandshake = false
+    socket.sslHasPeekChar = false
     if socket.sslHandle == nil:
       SSLError()
     
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       SSLError()
+
+proc SocketError*(socket: TSocket, err: int = -1, async = false) =
+  ## Raises proper errors based on return values of ``recv`` functions.
+  ##
+  ## If ``async`` is ``True`` no error will be thrown in the case when the
+  ## error was caused by no data being available to be read.
+  ##
+  ## If ``err`` is not lower than 0 no exception will be raised.
+  when defined(ssl):
+    if socket.isSSL:
+      if err <= 0:
+        var ret = SSLGetError(socket.sslHandle, err.cint)
+        case ret
+        of SSL_ERROR_ZERO_RETURN:
+          SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
+        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
+          if async:
+            return
+          else: SSLError("Not enough data on socket.")
+        of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
+          if async:
+            return
+          else: SSLError("Not enough data on socket.")
+        of SSL_ERROR_WANT_X509_LOOKUP:
+          SSLError("Function for x509 lookup has been called.")
+        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+          SSLError()
+        else: SSLError("Unknown Error")
+  
+  if err == -1 and not (when defined(ssl): socket.isSSL else: false):
+    if async:
+      when defined(windows):
+        # TODO: Test on Windows
+        var err = WSAGetLastError()
+        if err == WSAEWOULDBLOCK:
+          return
+        else: OSError()
+      else:
+        if errno == EAGAIN or errno == EWOULDBLOCK:
+          return
+        else: OSError()
+    else: OSError()
 
 proc listen*(socket: TSocket, backlog = SOMAXCONN) {.tags: [FReadIO].} =
   ## Marks ``socket`` as accepting connections. 
@@ -844,11 +897,8 @@ proc checkBuffer(readfds: var seq[TSocket]): int =
   var res: seq[TSocket] = @[]
   result = 0
   for s in readfds:
-    if s.isBuffered:
-      if s.bufLen <= 0 or s.currPos == s.bufLen:
-        res.add(s)
-      else:
-        inc(result)
+    if hasDataBuffered(s):
+      inc(result)
     else:
       res.add(s)
   readfds = res
@@ -970,47 +1020,76 @@ template retRead(flags, readBytes: int) =
 
 proc recv*(socket: TSocket, data: pointer, size: int): int {.tags: [FReadIO].} =
   ## receives data from a socket
+  if size == 0: return
   if socket.isBuffered:
     if socket.bufLen == 0:
       retRead(0'i32, 0)
     
-    when true:
-      var read = 0
-      while read < size:
-        if socket.currPos >= socket.bufLen:
-          retRead(0'i32, read)
-      
-        let chunk = min(socket.bufLen-socket.currPos, size-read)
-        var d = cast[cstring](data)
-        copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
-        read.inc(chunk)
-        socket.currPos.inc(chunk)
-    else:
-      var read = 0
-      while read < size:
-        if socket.currPos >= socket.bufLen:
-          retRead(0'i32, read)
-      
-        var d = cast[cstring](data)
-        d[read] = socket.buffer[socket.currPos]
-        read.inc(1)
-        socket.currPos.inc(1)
+    var read = 0
+    while read < size:
+      if socket.currPos >= socket.bufLen:
+        retRead(0'i32, read)
     
+      let chunk = min(socket.bufLen-socket.currPos, size-read)
+      var d = cast[cstring](data)
+      copyMem(addr(d[read]), addr(socket.buffer[socket.currPos]), chunk)
+      read.inc(chunk)
+      socket.currPos.inc(chunk)
+
     result = read
   else:
     when defined(ssl):
       if socket.isSSL:
-        result = SSLRead(socket.sslHandle, data, size)
+        if socket.sslHasPeekChar:
+          copyMem(data, addr(socket.sslPeekChar), 1)
+          socket.sslHasPeekChar = false
+          if size-1 > 0:
+            var d = cast[cstring](data)
+            result = SSLRead(socket.sslHandle, addr(d[1]), size-1) + 1
+          else:
+            result = 1
+        else:
+          result = SSLRead(socket.sslHandle, data, size)
       else:
         result = recv(socket.fd, data, size.cint, 0'i32)
     else:
       result = recv(socket.fd, data, size.cint, 0'i32)
 
+proc recv*(socket: TSocket, data: var string, size: int): int =
+  ## higher-level version of the above
+  ##
+  ## When 0 is returned the socket's connection has been closed.
+  ##
+  ## This function will throw an EOS exception when an error occurs. A value
+  ## lower than 0 is never returned.
+  ##
+  ## **Note**: ``data`` must be initialised.
+  data.setLen(size)
+  result = recv(socket, cstring(data), size)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError(result)
+  data.setLen(result)
+
+proc recvAsync*(socket: TSocket, data: var string, size: int): int =
+  ## Async version of the above.
+  ##
+  ## When socket is non-blocking and no data is available on the socket,
+  ## ``-1`` will be returned and ``data`` will be ``""``.
+  ##
+  ## **Note**: ``data`` must be initialised.
+  data.setLen(size)
+  result = recv(socket, cstring(data), size)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError(async = true)
+    result = -1
+  data.setLen(result)
+
 proc waitFor(socket: TSocket, waited: var float, timeout: int): int {.
   tags: [FTime].} =
   ## returns the number of characters available to be read. In unbuffered
-  ## sockets this is always 1, otherwise this may as big as the buffer, currently
-  ## 4000.
+  ## sockets this is always 1, otherwise this may as big as ``BufferSize``.
   result = 1
   if socket.isBuffered and socket.bufLen != 0 and socket.bufLen != socket.currPos:
     result = socket.bufLen - socket.currPos
@@ -1040,6 +1119,18 @@ proc recv*(socket: TSocket, data: pointer, size: int, timeout: int): int {.
   
   result = read
 
+proc recv*(socket: TSocket, data: var string, size: int, timeout: int): int =
+  ## higher-level version of the above.
+  ##
+  ## Similar to the non-timeout version this will throw an EOS exception
+  ## when an error occurs.
+  data.setLen(size)
+  result = recv(socket, cstring(data), size, timeout)
+  if result < 0:
+    data.setLen(0)
+    socket.SocketError()
+  data.setLen(result)
+
 proc peekChar(socket: TSocket, c: var char): int {.tags: [FReadIO].} =
   if socket.isBuffered:
     result = 1
@@ -1052,8 +1143,12 @@ proc peekChar(socket: TSocket, c: var char): int {.tags: [FReadIO].} =
   else:
     when defined(ssl):
       if socket.isSSL:
-        raise newException(ESSL, "Sorry, you cannot use recvLine on an unbuffered SSL socket.")
-  
+        if not socket.sslHasPeekChar:
+          result = SSLRead(socket.sslHandle, addr(socket.sslPeekChar), 1)
+          socket.sslHasPeekChar = true
+        
+        c = socket.sslPeekChar
+        return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
 proc recvLine*(socket: TSocket, line: var TaintedString): bool {.
@@ -1062,14 +1157,12 @@ proc recvLine*(socket: TSocket, line: var TaintedString): bool {.
   ## added to ``line``, however if solely ``\r\L`` is received then ``line``
   ## will be set to it.
   ## 
-  ## ``True`` is returned if data is available. ``False`` usually suggests an
-  ## error, EOS exceptions are not raised in favour of this.
+  ## ``True`` is returned if data is available. ``False`` suggests an
+  ## error, EOS exceptions are not raised and ``False`` is simply returned
+  ## instead.
   ## 
   ## If the socket is disconnected, ``line`` will be set to ``""`` and ``True``
   ## will be returned.
-  ##
-  ## **Warning:** Using this function on a unbuffered ssl socket will result
-  ## in an error.
   template addNLIfEmpty(): stmt =
     if line.len == 0:
       line.add("\c\L")
@@ -1096,6 +1189,8 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout: int): bool {.
   tags: [FReadIO, FTime].} =
   ## variant with a ``timeout`` parameter, the timeout parameter specifies
   ## how many miliseconds to wait for data.
+  ##
+  ## ``ETimeout`` will be raised if ``timeout`` is exceeded.
   template addNLIfEmpty(): stmt =
     if line.len == 0:
       line.add("\c\L")
@@ -1148,11 +1243,13 @@ proc recvLineAsync*(socket: TSocket,
     elif c == '\L': return RecvFullLine
     add(line.string, c)
 
-proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO].} =
+proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO], deprecated.} =
   ## receives all the available data from the socket.
   ## Socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 4000
   result = newStringOfCap(bufSize).TaintedString
   var pos = 0
@@ -1177,25 +1274,31 @@ proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO].} =
       add(result.string, buf)
       if bytesRead != bufSize-1: break
 
+{.push warning[deprecated]: off.}
 proc recvTimeout*(socket: TSocket, timeout: int): TaintedString {.
-  tags: [FReadIO].} =
+  tags: [FReadIO], deprecated.} =
   ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
   ## parameter specifies the amount of miliseconds to wait for data on the
   ## socket.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   if socket.bufLen == 0:
     var s = @[socket]
     if s.select(timeout) != 1:
       raise newException(ETimeout, "Call to recv() timed out.")
   
   return socket.recv
+{.pop.}
 
 proc recvAsync*(socket: TSocket, s: var TaintedString): bool {.
-  tags: [FReadIO].} =
+  tags: [FReadIO], deprecated.} =
   ## receives all the data from a non-blocking socket. If socket is non-blocking 
   ## and there are no messages available, `False` will be returned.
   ## Other socket errors will result in an ``EOS`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``s`` will be set to ``""``.
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 1000
   # ensure bufSize capacity:
   setLen(s.string, bufSize)
@@ -1282,12 +1385,24 @@ proc recvFromAsync*(socket: TSocket, data: var String, length: int,
         return False
       else: OSError()
 
-proc skip*(socket: TSocket) {.tags: [FReadIO].} =
+proc skip*(socket: TSocket) {.tags: [FReadIO], deprecated.} =
   ## skips all the data that is pending for the socket
+  ##
+  ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 1000
   var buf = alloc(bufSize)
   while recv(socket, buf, bufSize) == bufSize: nil
   dealloc(buf)
+
+proc skip*(socket: TSocket, size: int) =
+  ## Skips ``size`` amount of bytes.
+  ##
+  ## Returns the number of skipped bytes.
+  var dummy = alloc(size)
+  var bytesSkipped = 0
+  while bytesSkipped != size:
+    bytesSkipped += recv(socket, dummy, size-bytesSkipped)
+  dealloc(dummy)
 
 proc send*(socket: TSocket, data: pointer, size: int): int {.
   tags: [FWriteIO].} =
@@ -1312,21 +1427,26 @@ proc send*(socket: TSocket, data: string) {.tags: [FWriteIO].} =
     
     OSError()
 
-proc sendAsync*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
-  ## sends data to a non-blocking socket. Returns whether ``data`` was sent.
-  result = true
-  var bytesSent = send(socket, cstring(data), data.len)
+proc sendAsync*(socket: TSocket, data: string): int {.tags: [FWriteIO].} =
+  ## sends data to a non-blocking socket.
+  ## Returns ``0`` if no data could be sent, if data has been sent
+  ## returns the amount of bytes of ``data`` that was successfully sent. This
+  ## number may not always be the length of ``data`` but typically is.
+  ##
+  ## An EOS (or ESSL if socket is an SSL socket) exception is raised if an error
+  ## occurs.
+  result = send(socket, cstring(data), data.len)
   when defined(ssl):
     if socket.isSSL:
-      if bytesSent <= 0:
-          let ret = SSLGetError(socket.sslHandle, bytesSent.cint)
+      if result <= 0:
+          let ret = SSLGetError(socket.sslHandle, result.cint)
           case ret
           of SSL_ERROR_ZERO_RETURN:
             SSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
           of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
             SSLError("Unexpected error occured.") # This should just not happen.
           of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_READ:
-            return false
+            return 0
           of SSL_ERROR_WANT_X509_LOOKUP:
             SSLError("Function for x509 lookup has been called.")
           of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
@@ -1334,17 +1454,18 @@ proc sendAsync*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
           else: SSLError("Unknown Error")
       else:
         return
-  if bytesSent == -1:
+  if result == -1:
     when defined(windows):
       var err = WSAGetLastError()
       # TODO: Test on windows.
       if err == WSAEINPROGRESS:
-        return false
+        return 0
       else: OSError()
     else:
       if errno == EAGAIN or errno == EWOULDBLOCK:
-        return false
+        return 0
       else: OSError()
+  
 
 proc trySend*(socket: TSocket, data: string): bool {.tags: [FWriteIO].} =
   ## safe alternative to ``send``. Does not raise an EOS when an error occurs,
@@ -1385,8 +1506,7 @@ proc sendTo*(socket: TSocket, address: string, port: TPort,
   result = socket.sendTo(address, port, cstring(data), data.len)
 
 when defined(Windows):
-  const 
-    SOCKET_ERROR = -1
+  const
     IOCPARM_MASK = 127
     IOC_IN = int(-2147483648)
     FIONBIO = int(IOC_IN or ((sizeof(int) and IOCPARM_MASK) shl 16) or 
@@ -1399,7 +1519,7 @@ when defined(Windows):
 proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
-    if SOCKET_ERROR == ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)):
+    if ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)) == -1:
       OSError()
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)

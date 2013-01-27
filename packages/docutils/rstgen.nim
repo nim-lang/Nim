@@ -390,7 +390,8 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
   if d.target == outLatex: 
     var fieldname = addNodes(n.sons[0])
     var fieldval = esc(d.target, strip(addNodes(n.sons[1])))
-    if cmpIgnoreStyle(fieldname, "author") == 0:
+    if cmpIgnoreStyle(fieldname, "author") == 0 or 
+       cmpIgnoreStyle(fieldname, "authors") == 0:
       if d.meta[metaAuthor].len == 0:
         d.meta[metaAuthor] = fieldval
         b = true
@@ -474,8 +475,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTableRow: 
     if len(n) >= 1:
       if d.target == outLatex:
-        var tmp = ""
-        renderRstToOut(d, n.sons[0], tmp)
+        #var tmp = ""
+        renderRstToOut(d, n.sons[0], result)
         for i in countup(1, len(n) - 1):
           result.add(" & ")
           renderRstToOut(d, n.sons[i], result)

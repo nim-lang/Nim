@@ -89,9 +89,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
-    if result.kind in {skProc, skMethod, skConverter, skMacro}: 
-      addResult(c, result.typ.sons[0], n.info, result.kind)
-      addResultNode(c, n)
+    maybeAddResult(c, result, n)
     var b = n.sons[bodyPos]
     var symMap: TIdTable
     InitIdTable symMap
@@ -163,6 +161,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.typ = newTypeS(tyProc, c)
     rawAddSon(result.typ, nil)
   result.typ.callConv = fn.typ.callConv
+  if result.kind == skIterator: result.typ.flags.incl(tfIterator)
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
     fn.procInstCache.safeAdd(entry)
@@ -182,6 +181,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popOwner()
   c.friendModule = oldFriend
   dec(c.InstCounter)
+  if result.kind == skMethod: finishMethod(c, result)
   
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType = 
   var cl: TReplTypeVars

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -132,7 +132,7 @@ const
     errNumberOutOfRange: "number $1 out of valid range", 
     errNnotAllowedInCharacter: "\\n not allowed in character literal", 
     errClosingBracketExpected: "closing ']' expected, but end of file reached", 
-    errMissingFinalQuote: "missing final \'", 
+    errMissingFinalQuote: "missing final \' for character literal", 
     errIdentifierExpected: "identifier expected, but found \'$1\'", 
     errNewlineExpected: "newline expected, but found \'$1\'",
     errInvalidModuleName: "invalid module name: '$1'",
@@ -575,7 +575,15 @@ template toFilename*(info: TLineInfo): string =
 
 template toFullPath*(info: TLineInfo): string =
   info.fileIndex.toFullPath
-  
+
+proc toMsgFilename*(info: TLineInfo): string =
+  if info.fileIndex < 0: result = "???"
+  else:
+    if gListFullPaths:
+      result = fileInfos[info.fileIndex].fullPath
+    else:
+      result = fileInfos[info.fileIndex].projPath
+
 proc toLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
 
@@ -666,7 +674,7 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastInfo
   for i in countup(0, len(msgContext) - 1): 
     if msgContext[i] != lastInfo and msgContext[i] != info: 
-      MsgWriteln(posContextFormat % [toFilename(msgContext[i]), 
+      MsgWriteln(posContextFormat % [toMsgFilename(msgContext[i]), 
                                      coordToStr(msgContext[i].line), 
                                      coordToStr(msgContext[i].col), 
                                      getMessageStr(errInstantiationFrom, "")])
@@ -720,7 +728,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = posHintFormat
     inc(gHintCounter)
-  let s = frmt % [toFilename(info), coordToStr(info.line),
+  let s = frmt % [toMsgFilename(info), coordToStr(info.line),
                   coordToStr(info.col), getMessageStr(msg, arg)]
   if not ignoreMsg:
     MsgWriteln(s)
@@ -731,6 +739,9 @@ proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
 
 proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doRaise)
+
+proc GlobalError*(info: TLineInfo, arg: string) =
+  liMessage(info, errGenerated, arg, doRaise)
 
 proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)

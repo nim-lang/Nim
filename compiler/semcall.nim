@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,8 +15,22 @@ proc sameMethodDispatcher(a, b: PSym): bool =
   if a.kind == skMethod and b.kind == skMethod: 
     var aa = lastSon(a.ast)
     var bb = lastSon(b.ast)
-    if aa.kind == nkSym and bb.kind == nkSym and aa.sym == bb.sym: 
-      result = true
+    if aa.kind == nkSym and bb.kind == nkSym:
+      if aa.sym == bb.sym: 
+        result = true
+    else:
+      nil
+      # generics have no dispatcher yet, so we need to compare the method
+      # names; however, the names are equal anyway because otherwise we
+      # wouldn't even consider them to be overloaded. But even this does
+      # not work reliably! See tmultim6 for an example:
+      # method collide[T](a: TThing, b: TUnit[T]) is instantiated and not
+      # method collide[T](a: TUnit[T], b: TThing)! This means we need to
+      # *instantiate* every candidate! However, we don't keep more than 2-3
+      # candidated around so we cannot implement that for now. So in order
+      # to avoid subtle problems, the call remains ambiguous and needs to
+      # be disambiguated by the programmer; this way the right generic is
+      # instantiated.
   
 proc resolveOverloads(c: PContext, n, orig: PNode, 
                       filter: TSymKinds): TCandidate =
@@ -84,6 +98,35 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
         args])
 
+
+proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
+  if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym and
+      isGenericRoutine(a.sons[0].sym):
+    let finalCallee = generateInstance(c, a.sons[0].sym, x.bindings, a.info)
+    a.sons[0].sym = finalCallee
+    a.sons[0].typ = finalCallee.typ
+    #a.typ = finalCallee.typ.sons[0]
+
+proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
+  assert n.kind in nkCallKinds
+  if x.genericConverter:
+    for i in 1 .. <n.len:
+      instGenericConvertersArg(c, n.sons[i], x)
+
+proc IndexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode = 
+  var m: TCandidate
+  initCandidate(m, f)
+  result = paramTypesMatch(c, m, f, a, arg, nil)
+  if m.genericConverter and result != nil:
+    instGenericConvertersArg(c, result, m)
+
+proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
+  var m: TCandidate
+  initCandidate(m, f)
+  result = paramTypesMatch(c, m, f, n.typ, n, nil)
+  if m.genericConverter and result != nil:
+    instGenericConvertersArg(c, result, m)
+
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
@@ -101,6 +144,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       if ContainsGenericType(result.typ): result.typ = errorType(c)
       return
   result = x.call
+  instGenericConvertersSons(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
   result.typ = finalCallee.typ.sons[0]
 

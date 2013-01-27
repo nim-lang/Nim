@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -172,10 +172,15 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
     changeType(result, typ)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
-  for i in countdown(c.tab.tos - 2, 0):
+  for i in countdown(c.tab.tos - 2, ModuleTablePos+1):
     let shadowed = StrTableGet(c.tab.stack[i], v.name)
     if shadowed != nil and shadowed.kind in skLocalVars:
       return shadowed
+
+proc identWithin(n: PNode, s: PIdent): bool =
+  for i in 0 .. n.safeLen-1:
+    if identWithin(n.sons[i], s): return true
+  result = n.kind == nkSym and n.sym.name.id == s.id
 
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   if isTopLevel(c): 
@@ -239,7 +244,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           let shadowed = findShadowedVar(c, v)
           if shadowed != nil:
             shadowed.flags.incl(sfShadowed)
-            Message(a.info, warnShadowIdent, v.name.s)
+            # a shadowed variable is an error unless it appears on the right
+            # side of the '=':
+            if warnShadowIdent in gNotes and not identWithin(def, v.name):
+              Message(a.info, warnShadowIdent, v.name.s)
       if def != nil and def.kind != nkEmpty:
         # this is only needed for the evaluation pass:
         v.ast = def
@@ -247,7 +255,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if a.kind != nkVarTuple:
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
-        if gCmd == cmdDoc:
+        if importantComments():
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
@@ -287,7 +295,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
-    if gCmd == cmdDoc: b.comment = a.comment
+    if importantComments(): b.comment = a.comment
     addSon(b, newSymNode(v))
     addSon(b, ast.emptyNode)            # no type description
     addSon(b, copyTree(def))
@@ -368,6 +376,15 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   b.add(ast.emptyNode)
   stmts.add(b)
 
+proc addForVarDecl(c: PContext, v: PSym) =
+  if warnShadowIdent in gNotes:
+    let shadowed = findShadowedVar(c, v)
+    if shadowed != nil:
+      # XXX should we do this here?
+      #shadowed.flags.incl(sfShadowed)
+      Message(v.info, warnShadowIdent, v.name.s)
+  addDecl(c, v)
+
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
@@ -383,7 +400,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       # for an example:
       v.typ = n.sons[length-2].typ
       n.sons[0] = newSymNode(v)
-      if sfGenSym notin v.flags: addDecl(c, v)
+      if sfGenSym notin v.flags: addForVarDecl(c, v)
     else:
       LocalError(n.info, errWrongNumberOfVariables)
   elif length-2 != sonsLen(iter):
@@ -394,7 +411,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags: addDecl(c, v)
+      if sfGenSym notin v.flags: addForVarDecl(c, v)
   Inc(c.p.nestedLoopCounter)
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
@@ -669,17 +686,18 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
   s.options = gOptions
-  if n.sons[bodyPos].kind != nkEmpty: 
-    if sfImportc in s.flags: 
+  if n.sons[bodyPos].kind != nkEmpty:
+    if sfImportc in s.flags:
       LocalError(n.sons[bodyPos].info, errImplOfXNotAllowed, s.name.s)
-    if efDetermineType notin flags:
-      pushProcCon(c, s)
-      addResult(c, s.typ.sons[0], n.info, skProc)
-      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      addResultNode(c, n)
-      popProcCon(c)
-      sideEffectsCheck(c, s)
+    #if efDetermineType notin flags:
+    # XXX not good enough; see tnamedparamanonproc.nim
+    pushProcCon(c, s)
+    addResult(c, s.typ.sons[0], n.info, skProc)
+    let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+    n.sons[bodyPos] = transformBody(c.module, semBody, s)
+    addResultNode(c, n)
+    popProcCon(c)
+    sideEffectsCheck(c, s)
   else:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   closeScope(c.tab)           # close scope for parameters
@@ -689,13 +707,16 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc activate(c: PContext, n: PNode) =
   # XXX: This proc is part of my plan for getting rid of
   # forward declarations. stay tuned.
-  case n.kind
-  of nkLambdaKinds:
-    discard semLambda(c, n, {})
-  of nkCallKinds:
-    for i in 1 .. <n.len: activate(c, n[i])
-  else:
-    nil
+  when false:
+    # well for now it breaks code ... I added the test case in main.nim of the
+    # compiler itself to break bootstrapping :P
+    case n.kind
+    of nkLambdaKinds:
+      discard semLambda(c, n, {})
+    of nkCallKinds:
+      for i in 1 .. <n.len: activate(c, n[i])
+    else:
+      nil
 
 proc instantiateDestructor*(c: PContext, typ: PType): bool
 
@@ -712,6 +733,12 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
         n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
             useSym(t.sons[i].destructor),
             n.sons[paramsPos][1][0]]))
+
+proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
+  if s.typ.sons[0] != nil and
+      (s.kind != skIterator or s.typ.callConv == ccClosure):
+    addResult(c, s.typ.sons[0], n.info, s.kind)
+    addResultNode(c, n)
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
@@ -780,6 +807,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: InternalError(n.info, "semProcAux")
     n.sons[namePos].sym = proto
+    if importantComments() and not isNil(proto.ast.comment):
+      n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
     popOwner()
     pushOwner(s)
@@ -792,17 +821,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[genericParamsPos].kind == nkEmpty: 
       ParamsTypeCheck(c, s.typ)
       pushProcCon(c, s)
-      if s.typ.sons[0] != nil and
-          (kind != skIterator or s.typ.callConv == ccClosure):
-        addResult(c, s.typ.sons[0], n.info, kind)
-        addResultNode(c, n)
+      maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
         # no semantic checking for importc:
         let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      #if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
       popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator:
@@ -846,31 +871,30 @@ proc semIterator(c: PContext, n: PNode): PNode =
 proc semProc(c: PContext, n: PNode): PNode = 
   result = semProcAux(c, n, skProc, procPragmas)
 
+proc hasObjParam(s: PSym): bool =
+  var t = s.typ
+  for col in countup(1, sonsLen(t)-1):
+    if skipTypes(t.sons[col], skipPtrs).kind == tyObject:
+      return true
+
+proc finishMethod(c: PContext, s: PSym) =
+  if hasObjParam(s):
+    methodDef(s, false)
+
 proc semMethod(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
   
   var s = result.sons[namePos].sym
-  var t = s.typ
-  var hasObjParam = false
-  
-  for col in countup(1, sonsLen(t)-1): 
-    if skipTypes(t.sons[col], skipPtrs).kind == tyObject: 
-      hasObjParam = true
-      break
-  
-  # XXX this not really correct way to do it: Perhaps it should be done after
-  # generic instantiation. Well it's good enough for now: 
-  if hasObjParam:
-    methodDef(s, false)
-  else:
-    LocalError(n.info, errXNeedsParamObjectType, "method")
+  if not isGenericRoutine(s):
+    if hasObjParam(s):
+      methodDef(s, false)
+    else:
+      LocalError(n.info, errXNeedsParamObjectType, "method")
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
-  if n.sons[genericParamsPos].kind != nkEmpty: 
-    LocalError(n.info, errNoGenericParamsAllowedForX, "converter")
   result = semProcAux(c, n, skConverter, converterPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
@@ -1075,7 +1099,8 @@ proc insertDestructors(c: PContext, varSection: PNode):
       varTyp = varId.sym.typ
       info = varId.info
 
-    if varTyp != nil and instantiateDestructor(c, varTyp):
+    if varTyp != nil and instantiateDestructor(c, varTyp) and 
+        sfGlobal notin varId.sym.flags:
       var tryStmt = newNodeI(nkTryStmt, info)
 
       if j < totalVars - 1:

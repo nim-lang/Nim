@@ -875,10 +875,10 @@ proc parseExprStmt(p: var TParser): PNode =
       getTok(p)
       skipComment(p, result)
       if p.tok.tokType == tkSad: getTok(p)
-      if not (p.tok.TokType in {tkOf, tkElif, tkElse, tkExcept}):
+      if p.tok.TokType notin {tkOf, tkElif, tkElse, tkExcept}:
         let body = parseStmt(p)
         addSon(result, newProcNode(nkDo, body.info, body))
-      while true: 
+      while true:
         if p.tok.tokType == tkSad: getTok(p)
         var b: PNode
         case p.tok.tokType
@@ -903,30 +903,34 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(b, parseStmt(p))
         addSon(result, b)
         if b.kind == nkElse: break
-    
-proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode = 
-  var a: PNode
+
+proc parseImport(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
+  getTok(p)                   # skip `import` or `export`
+  optInd(p, result)
+  var a = parseExpr(p)
+  addSon(result, a)
+  if p.tok.tokType in {tkComma, tkExcept}:
+    if p.tok.tokType == tkExcept:
+      result.kind = succ(kind)
+    getTok(p)
+    optInd(p, result)
+    while p.tok.tokType notin {tkEof, tkSad, tkDed}:
+      a = parseExpr(p)
+      if a.kind == nkEmpty: break 
+      addSon(result, a)
+      if p.tok.tokType != tkComma: break 
+      getTok(p)
+      optInd(p, a)
+  expectNl(p)
+
+proc parseIncludeStmt(p: var TParser): PNode =
+  result = newNodeP(nkIncludeStmt, p)
   getTok(p)                   # skip `import` or `include`
   optInd(p, result)
-  while true: 
-    case p.tok.tokType
-    of tkEof, tkSad, tkDed: 
-      break 
-    of tkSymbol, tkAccent: 
-      a = parseSymbol(p)
-    of tkRStrLit: 
-      a = newStrNodeP(nkRStrLit, p.tok.literal, p)
-      getTok(p)
-    of tkStrLit: 
-      a = newStrNodeP(nkStrLit, p.tok.literal, p)
-      getTok(p)
-    of tkTripleStrLit: 
-      a = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
-      getTok(p)
-    else: 
-      parMessage(p, errIdentifierExpected, p.tok)
-      break 
+  while p.tok.tokType notin {tkEof, tkSad, tkDed}:
+    var a = parseExpr(p)
+    if a.kind == nkEmpty: break
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -934,37 +938,16 @@ proc parseImportOrIncludeStmt(p: var TParser, kind: TNodeKind): PNode =
   expectNl(p)
 
 proc parseFromStmt(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkFromStmt, p)
   getTok(p)                   # skip `from`
   optInd(p, result)
-  case p.tok.tokType
-  of tkSymbol, tkAccent: 
-    a = parseSymbol(p)
-  of tkRStrLit: 
-    a = newStrNodeP(nkRStrLit, p.tok.literal, p)
-    getTok(p)
-  of tkStrLit: 
-    a = newStrNodeP(nkStrLit, p.tok.literal, p)
-    getTok(p)
-  of tkTripleStrLit: 
-    a = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
-    getTok(p)
-  else: 
-    parMessage(p, errIdentifierExpected, p.tok)
-    return 
+  var a = parseExpr(p)
   addSon(result, a)           #optInd(p, a);
   eat(p, tkImport)
   optInd(p, result)
-  while true: 
-    case p.tok.tokType        #optInd(p, a);
-    of tkEof, tkSad, tkDed: 
-      break 
-    of tkSymbol, tkAccent: 
-      a = parseSymbol(p)
-    else: 
-      parMessage(p, errIdentifierExpected, p.tok)
-      break 
+  while p.tok.tokType notin {tkEof, tkSad, tkDed}:
+    a = parseExpr(p)
+    if a.kind == nkEmpty: break
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -1279,14 +1262,7 @@ proc parseEnum(p: var TParser): PNode =
   result = newNodeP(nkEnumTy, p)
   a = nil
   getTok(p)
-  if false and p.tok.tokType == tkOf: 
-    a = newNodeP(nkOfInherit, p)
-    getTok(p)
-    optInd(p, a)
-    addSon(a, parseTypeDesc(p))
-    addSon(result, a)
-  else: 
-    addSon(result, ast.emptyNode)
+  addSon(result, ast.emptyNode)
   optInd(p, result)
   while true: 
     case p.tok.tokType
@@ -1425,18 +1401,6 @@ proc parseDistinct(p: var TParser): PNode =
   optInd(p, result)
   addSon(result, parseTypeDesc(p))
 
-proc parsePointerInTypeSection(p: var TParser, kind: TNodeKind): PNode =
-  result = newNodeP(kind, p)
-  getTok(p)
-  optInd(p, result)
-  if not isOperator(p.tok):
-    case p.tok.tokType
-    of tkObject: addSon(result, parseObject(p))
-    of tkTuple: addSon(result, parseTuple(p, true))
-    else:
-      if isExprStart(p):
-        addSon(result, parseTypeDesc(p))
-
 proc parseTypeDef(p: var TParser): PNode = 
   result = newNodeP(nkTypeDef, p)
   addSon(result, identWithPragma(p))
@@ -1445,15 +1409,6 @@ proc parseTypeDef(p: var TParser): PNode =
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
-    #var a: PNode
-    #case p.tok.tokType
-    #of tkObject: a = parseObject(p)
-    #of tkEnum: a = parseEnum(p)
-    #of tkDistinct: a = parseDistinct(p)
-    #of tkTuple: a = parseTuple(p, true)
-    #of tkRef: a = parsePointerInTypeSection(p, nkRefTy)
-    #of tkPtr: a = parsePointerInTypeSection(p, nkPtrTy)
-    #else: a = parseTypeDesc(p)
     addSon(result, parseTypeDefAux(p))
   else:
     addSon(result, ast.emptyNode)
@@ -1511,11 +1466,12 @@ proc simpleStmt(p: var TParser): PNode =
   of tkBreak: result = parseBreakOrContinue(p, nkBreakStmt)
   of tkContinue: result = parseBreakOrContinue(p, nkContinueStmt)
   of tkCurlyDotLe: result = parseStmtPragma(p)
-  of tkImport: result = parseImportOrIncludeStmt(p, nkImportStmt)
+  of tkImport: result = parseImport(p, nkImportStmt)
+  of tkExport: result = parseImport(p, nkExportStmt)
   of tkFrom: result = parseFromStmt(p)
-  of tkInclude: result = parseImportOrIncludeStmt(p, nkIncludeStmt)
+  of tkInclude: result = parseIncludeStmt(p)
   of tkComment: result = newCommentStmt(p)
-  else: 
+  else:
     if isExprStart(p): result = parseExprStmt(p)
     else: result = ast.emptyNode
   if result.kind != nkEmpty: skipComment(p, result)

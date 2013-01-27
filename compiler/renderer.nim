@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -753,8 +753,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) = 
   if isNil(n): return
-  var 
-    L: int
+  var
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
@@ -1096,7 +1095,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
   of nkVarSection, nkLetSection:
-    L = sonsLen(n)
+    var L = sonsLen(n)
     if L == 0: return
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
     else: putWithSpace(g, tkLet, "let")
@@ -1134,12 +1133,26 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkCurlyDotLe, "{.")
       gcomma(g, n, emptyContext)
       put(g, tkCurlyDotRi, ".}")
-  of nkImportStmt: 
-    putWithSpace(g, tkImport, "import")
+  of nkImportStmt, nkExportStmt:
+    if n.kind == nkImportStmt:
+      putWithSpace(g, tkImport, "import")
+    else:
+      putWithSpace(g, tkExport, "export")
     gcoms(g)
     indentNL(g)
     gcommaAux(g, n, g.indent)
     dedent(g)
+    putNL(g)
+  of nkImportExceptStmt, nkExportExceptStmt:
+    if n.kind == nkImportExceptStmt:
+      putWithSpace(g, tkImport, "import")
+    else:
+      putWithSpace(g, tkExport, "export")
+    gsub(g, n.sons[0])
+    put(g, tkSpaces, Space)
+    putWithSpace(g, tkExcept, "except")
+    gcommaAux(g, n, g.indent, 1)
+    gcoms(g)
     putNL(g)
   of nkFromStmt: 
     putWithSpace(g, tkFrom, "from")

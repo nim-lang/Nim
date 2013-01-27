@@ -128,19 +128,19 @@
 #
 #******************************************************************************
 
-import 
+import
   sdl
 
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     ImageLibName = "SDL_Image.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     ImageLibName = "libSDL_image-1.2.0.dylib"
-else: 
-  const 
-    ImageLibName = "libSDL_image.so"
-const 
+else:
+  const
+    ImageLibName = "libSDL_image(.so|-1.2.so.0)"
+const
   IMAGE_MAJOR_VERSION* = 1
   IMAGE_MINOR_VERSION* = 2
   IMAGE_PATCHLEVEL* = 5

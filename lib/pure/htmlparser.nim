@@ -123,7 +123,7 @@ type
     tagVar         ## the HTML ``var`` element
 
 const
-  tagStrs = [
+  tagToStr* = [
     "a", "abbr", "acronym", "address", "applet", "area", 
     "b", "base", "basefont", "bdo", "big", "blockquote", "body", 
     "br", "button", "caption", "center", "cite", "code", 
@@ -243,13 +243,13 @@ proc binaryStrSearch(x: openarray[string], y: string): int =
 proc htmlTag*(n: PXmlNode): THtmlTag = 
   ## gets `n`'s tag as a ``THtmlTag``.
   if n.clientData == 0:
-    n.clientData = binaryStrSearch(tagStrs, n.tag)+1
+    n.clientData = binaryStrSearch(tagToStr, n.tag)+1
   result = THtmlTag(n.clientData)
 
 proc htmlTag*(s: string): THtmlTag =
   ## converts `s` to a ``THtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
   ## returned.
-  result = THtmlTag(binaryStrSearch(tagStrs, s.toLower)+1)
+  result = THtmlTag(binaryStrSearch(tagToStr, s.toLower)+1)
 
 proc entityToUtf8*(entity: string): string = 
   ## converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.

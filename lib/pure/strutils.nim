@@ -186,7 +186,24 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   for word in split(";;this;is;an;;example;;;", {';'}):
   ##     writeln(stdout, word)
   ##
-  ## produces the same output.
+  ## produces the same output. The code:
+  ##
+  ## .. code-block:: nimrod
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeln(stdout, number)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
   var last = 0
   assert(not ('\0' in seps))
   while last < len(s):
@@ -833,13 +850,51 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   for c in items(s):
     case c
     of '\0'..'\31', '\128'..'\255':
-      add(result, '\\')
+      add(result, "\\x")
       add(result, toHex(ord(c), 2))
     of '\\': add(result, "\\\\")
     of '\'': add(result, "\\'")
     of '\"': add(result, "\\\"")
     else: add(result, c)
   add(result, suffix)
+
+proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
+  rtl, extern: "nsuUnescape".} =
+  ## Unescapes a string `s`. This complements ``escape`` as it performs the
+  ## opposite operations.
+  ##
+  ## If `s` does not begin with ``prefix`` and end with ``suffix`` a EInvalidValue
+  ## exception will be raised.
+  result = newStringOfCap(s.len)
+  var i = 0
+  if s[0 .. prefix.len-1] != prefix:
+    raise newException(EInvalidValue,
+                       "String does not start with a prefix of: " & prefix)
+  i.inc()
+  while True:
+    if i == s.len-suffix.len: break
+    case s[i]
+    of '\\':
+      case s[i+1]:
+      of 'x':
+        let j = parseHexInt(s[i+2 .. i+3])
+        result.add(chr(j))
+        inc(i, 2)
+      of '\\':
+        result.add('\\')
+      of '\'':
+        result.add('\'')
+      of '\"':
+        result.add('\"')
+      else: result.add("\\" & s[i+1])
+      inc(i)
+    of '\0': break
+    else:
+      result.add(s[i])
+    i.inc()
+  if s[i .. -1] != suffix:
+    raise newException(EInvalidValue,
+                       "String does not end with a suffix of: " & suffix)
 
 proc validIdentifier*(s: string): bool {.noSideEffect,
   rtl, extern: "nsuValidIdentifier".} =

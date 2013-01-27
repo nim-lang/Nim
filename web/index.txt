@@ -33,7 +33,7 @@ from that model.
     # Prints the maximum integer from a list of integers
     # delimited by whitespace read from stdin.
     let tokens = stdin.readLine.split
-    echo tokens.each(parseInt).max, " is the maximum."
+    echo tokens.map(parseInt).max, " is the maximum."
 
 
 Nimrod is efficient
@@ -101,7 +101,6 @@ Roadmap to 1.0
 ==============
 
 Version 0.9.2
-  * overloading based on ASTs (like already possible for term rewriting macros)
   * better interaction between macros, templates and overloading
   * the symbol binding rules for generics and templates may change again
 

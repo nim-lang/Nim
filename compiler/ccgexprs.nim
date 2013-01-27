@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -939,22 +939,31 @@ proc genNew(p: BProc, e: PNode) =
   var
     a, b: TLoc
     reftype, bt: PType
+    sizeExpr: PRope
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   InitLocExpr(p, e.sons[1], a)
   initLoc(b, locExpr, a.t, OnHeap)
+  # 'genNew' also handles 'unsafeNew':
+  if e.len == 3:
+    var se: TLoc
+    InitLocExpr(p, e.sons[2], se)
+    sizeExpr = se.rdLoc
+  else:
+    sizeExpr = ropef("sizeof($1)",
+        getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange)))
   let args = [getTypeDesc(p.module, reftype),
               genTypeInfo(p.module, refType),
-              getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))]
+              sizeExpr]
   if a.s == OnHeap and optRefcGc in gGlobalOptions:
     # use newObjRC1 as an optimization; and we don't need 'keepAlive' either
     if canFormAcycle(a.t):
       linefmt(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
     else:
       linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", a.rdLoc)
-    b.r = ropecg(p.module, "($1) #newObjRC1($2, sizeof($3))", args)
+    b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
     linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
   else:
-    b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", args)
+    b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
     genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
@@ -1645,7 +1654,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     initLocExpr(p, n.sons[0], a)
     var r = rdLoc(a)
     if skipTypes(n.sons[0].typ, abstractInst).kind in {tyRef, tyPtr, tyVar} and
-        n.sons[0].kind notin {nkHiddenAddr, nkAddr}:
+        n.sons[0].kind notin {nkHiddenAddr, nkAddr, nkObjDownConv}:
       app(r, "->Sup")
       for i in countup(2, abs(inheritanceDiff(dest, src))): app(r, ".Sup")
       r = con("&", r)

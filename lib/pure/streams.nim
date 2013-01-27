@@ -267,7 +267,8 @@ proc newFileStream*(f: TFile): PFileStream =
 
 proc newFileStream*(filename: string, mode: TFileMode): PFileStream = 
   ## creates a new stream from the file named `filename` with the mode `mode`.
-  ## If the file cannot be opened, nil is returned.
+  ## If the file cannot be opened, nil is returned. See the `system
+  ## <system.html>`_ module for a list of available TFileMode enums.
   var f: TFile
   if Open(f, filename, mode): result = newFileStream(f)
 

@@ -17,6 +17,8 @@ int   aw_instance_callback_set (AW_CALLBACK c, callback_t callback);
 
 unsigned long int wawa;
 
+#define MAX(x, y) ((x) < (y)? (y) : (x))
+
 #define AW_BUILD 85 // AW 5.0
 // Limits
 #define AW_MAX_AVCHANGE_PER_SECOND 10

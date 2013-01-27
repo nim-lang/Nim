@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -207,27 +207,42 @@ proc genObjectInfo(p: var TProc, typ: PType, name: PRope) =
     appf(p.g.typeInfo, "$1.base = $2;$n", 
          [name, genTypeInfo(p, typ.sons[0])])
 
-proc genEnumInfo(p: var TProc, typ: PType, name: PRope) = 
-  var 
-    s, n: PRope
-    length: int
-    field: PSym
-  length = sonsLen(typ.n)
-  s = nil
+proc genTupleFields(p: var TProc, typ: PType): PRope =
+  var s: PRope = nil
+  for i in 0 .. <typ.len:
+    if i > 0: app(s, ", " & tnl)
+    s.appf("{kind: 1, offset: \"Field$1\", len: 0, " &
+           "typ: $2, name: \"Field$1\", sons: null}",
+           [i.toRope, genTypeInfo(p, typ.sons[i])])
+  result = ropef("{kind: 2, len: $1, offset: 0, " &
+                 "typ: null, name: null, sons: [$2]}", [toRope(typ.len), s])
+
+proc genTupleInfo(p: var TProc, typ: PType, name: PRope) = 
+  var s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
+                "finalizer: null};$n", [name, toRope(ord(typ.kind))])
+  prepend(p.g.typeInfo, s)
+  appf(p.g.typeInfo, "var NNI$1 = $2;$n", 
+       [toRope(typ.id), genTupleFields(p, typ)])
+  appf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, toRope(typ.id)])
+
+proc genEnumInfo(p: var TProc, typ: PType, name: PRope) =
+  let length = sonsLen(typ.n)
+  var s: PRope = nil
   for i in countup(0, length - 1): 
     if (typ.n.sons[i].kind != nkSym): InternalError(typ.n.info, "genEnumInfo")
-    field = typ.n.sons[i].sym
+    let field = typ.n.sons[i].sym
     if i > 0: app(s, ", " & tnl)
+    let extName = if field.ast == nil: field.name.s else: field.ast.strVal
     appf(s, "{kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}", 
-         [toRope(field.position), name, makeCString(field.name.s)])
-  n = ropef("var NNI$1 = {kind: 2, offset: 0, typ: null, " &
+         [toRope(field.position), name, makeCString(extName)])
+  var n = ropef("var NNI$1 = {kind: 2, offset: 0, typ: null, " &
       "name: null, len: $2, sons: [$3]};$n", [toRope(typ.id), toRope(length), s])
   s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
       "finalizer: null};$n", [name, toRope(ord(typ.kind))])
   prepend(p.g.typeInfo, s)
   app(p.g.typeInfo, n)
   appf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, toRope(typ.id)])
-  if typ.sons[0] != nil: 
+  if typ.sons[0] != nil:
     appf(p.g.typeInfo, "$1.base = $2;$n", 
          [name, genTypeInfo(p, typ.sons[0])])
 
@@ -259,7 +274,8 @@ proc genTypeInfo(p: var TProc, typ: PType): PRope =
     appf(p.g.typeInfo, "$1.base = $2;$n", 
          [result, genTypeInfo(p, typ.sons[1])])
   of tyEnum: genEnumInfo(p, t, result)
-  of tyObject, tyTuple: genObjectInfo(p, t, result)
+  of tyObject: genObjectInfo(p, t, result)
+  of tyTuple: genTupleInfo(p, t, result)
   else: InternalError("genTypeInfo(" & $t.kind & ')')
   
 proc gen(p: var TProc, n: PNode, r: var TCompRes)
@@ -938,7 +954,9 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
   of skProc, skConverter, skMethod:
     discard mangleName(s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s): nil
+    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s) or
+       {sfImportc, sfInfixCall} * s.flags != {}:
+      nil
     elif s.kind == skMethod and s.getBody.kind == nkEmpty:
       # we cannot produce code for the dispatcher yet:
       nil
@@ -962,23 +980,44 @@ proc genDeref(p: var TProc, n: PNode, r: var TCompRes) =
     if a.kind != etyBaseIndex: InternalError(n.info, "genDeref")
     r.res = ropef("$1[$2]", [a.com, a.res])
 
+proc genArg(p: var TProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
+  gen(p, n, a)
+  if a.kind == etyBaseIndex: 
+    app(r.res, a.com)
+    app(r.res, ", ")
+    app(r.res, a.res)
+  else:
+    app(r.res, mergeExpr(a))
+
 proc genArgs(p: var TProc, n: PNode, r: var TCompRes) =
   app(r.res, "(")
   for i in countup(1, sonsLen(n) - 1): 
     if i > 1: app(r.res, ", ")
-    var a: TCompRes
-    gen(p, n.sons[i], a)
-    if a.kind == etyBaseIndex: 
-      app(r.res, a.com)
-      app(r.res, ", ")
-      app(r.res, a.res)
-    else: 
-      app(r.res, mergeExpr(a))
+    genArg(p, n.sons[i], r)
   app(r.res, ")")
 
 proc genCall(p: var TProc, n: PNode, r: var TCompRes) = 
   gen(p, n.sons[0], r)
   genArgs(p, n, r)
+
+proc genInfixCall(p: var TProc, n: PNode, r: var TCompRes) =
+  gen(p, n.sons[1], r)
+  if r.kind == etyBaseIndex:
+    if r.com == nil:
+      GlobalError(n.info, "cannot invoke with infix syntax")
+    r.res = ropef("$1[0]", [r.res, r.com])
+    r.com = nil
+  app(r.res, ".")
+  var op: TCompRes
+  gen(p, n.sons[0], op)
+  app(r.res, mergeExpr(op))
+  
+  app(r.res, "(")
+  for i in countup(2, sonsLen(n) - 1):
+    if i > 2: app(r.res, ", ")
+    genArg(p, n.sons[i], r)
+  app(r.res, ")")
 
 proc genEcho(p: var TProc, n: PNode, r: var TCompRes) =
   useMagic(p, "rawEcho")
@@ -1176,10 +1215,13 @@ proc genConStrStr(p: var TProc, n: PNode, r: var TCompRes) =
 proc genRepr(p: var TProc, n: PNode, r: var TCompRes) =
   var t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
-  of tyInt..tyInt64:
-    unaryExpr(p, n, r, "", "reprInt($1)")
+  of tyInt..tyUInt64:
+    unaryExpr(p, n, r, "", "(\"\"+ ($1))")
   of tyEnum, tyOrdinal:
-    binaryExpr(p, n, r, "", "reprEnum($1, $2)")
+    gen(p, n.sons[1], r)
+    useMagic(p, "cstrToNimstr")
+    r.res = ropef("cstrToNimstr($1.node.sons[$2].name)", 
+                 [genTypeInfo(p, t), r.res])
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented")
@@ -1463,7 +1505,8 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   of nkAsmStmt: genAsmStmt(p, n, r)
   of nkTryStmt: genTryStmt(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n, r)
-  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt, nkImportStmt, 
+  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt, 
+     nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
      nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: nil
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
@@ -1510,9 +1553,12 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
     else: r.res = toRope(f.ToStrMaxPrecision)
   of nkBlockExpr: genBlock(p, n, r)
   of nkIfExpr: genIfExpr(p, n, r)
-  of nkCallKinds: 
+  of nkCallKinds:
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone): 
       genMagic(p, n, r)
+    elif n.sons[0].kind == nkSym and sfInfixCall in n.sons[0].sym.flags and
+      n.len >= 2:
+      genInfixCall(p, n, r)
     else: 
       genCall(p, n, r)
   of nkCurly: genSetConstr(p, n, r)
@@ -1526,6 +1572,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
+  of nkCast: gen(p, n.sons[1], r)
   of nkChckRangeF: genRangeChck(p, n, r, "chckRangeF")
   of nkChckRange64: genRangeChck(p, n, r, "chckRange64")
   of nkChckRange: genRangeChck(p, n, r, "chckRange")
@@ -1555,7 +1602,7 @@ proc newModule(module: PSym): BModule =
   
 proc genHeader(): PRope = 
   result = ropef("/* Generated by the Nimrod Compiler v$1 */$n" &
-      "/*   (c) 2012 Andreas Rumpf */$n$n" & "$nvar Globals = this;$n" &
+      "/*   (c) 2013 Andreas Rumpf */$n$n" & "$nvar Globals = this;$n" &
       "var framePtr = null;$n" & "var excHandler = null;$n", 
                  [toRope(versionAsString)])
 

@@ -103,17 +103,24 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
       line[0] == ' ' or
       line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
 
-proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int = 
-  var inTripleString = false
+proc countTriples(s: string): int =
+  var i = 0
+  while i < s.len:
+    if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':
+      inc result
+      inc i, 2
+    inc i
+
+proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.s = ""
   s.rd = 0
   var line = newStringOfCap(120)
+  var triples = 0
   while ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
     add(s.s, line)
     add(s.s, "\n")
-    if line.contains("\"\"\""):
-      inTripleString = not inTripleString
-    if not continueLine(line, inTripleString): break
+    inc triples, countTriples(line)
+    if not continueLine(line, (triples and 1) == 1): break
   inc(s.lineOffset)
   result = min(bufLen, len(s.s) - s.rd)
   if result > 0: 

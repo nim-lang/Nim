@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -302,7 +302,7 @@ when has_LLVM_Backend:
     compileProject()
 
 proc CommandCompileToEcmaScript =
-  incl(gGlobalOptions, optSafeCode)
+  #incl(gGlobalOptions, optSafeCode)
   setTarget(osEcmaScript, cpuEcmaScript)
   #initDefines()
   DefineSymbol("nimrod") # 'nimrod' is always defined
@@ -316,6 +316,7 @@ proc InteractivePasses =
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   DefineSymbol("nimrodvm")
+  when hasFFI: DefineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
   registerPass(evalPass)
@@ -524,11 +525,11 @@ proc MainCommand =
     gCmd = cmdGenDepend
     wantMainModule()
     CommandGenDepend()
-  of "dump": 
+  of "dump":
     gCmd = cmdDump
     condsyms.ListSymbols()
-    for it in iterSearchPath(): MsgWriteln(it)
-  of "check": 
+    for it in iterSearchPath(searchPaths): MsgWriteln(it)
+  of "check":
     gCmd = cmdCheck
     wantMainModule()
     CommandCheck()

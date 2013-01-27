@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -318,7 +318,7 @@ proc semIs(c: PContext, n: PNode): PNode =
     if not containsGenericType(t1): result = evalIsOp(n)
   
 proc semOpAux(c: PContext, n: PNode) =
-  let flags = {efDetermineType}
+  const flags = {efDetermineType}
   for i in countup(1, n.sonsLen- 1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
@@ -589,11 +589,12 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if efWantIterator in flags:
-    result = semOverloadedCall(c, n, nOrig, {skIterator})
-  elif efInTypeOf in flags:
+  if flags*{efInTypeOf, efWantIterator} != {}:
+    # consider: 'for x in pReturningArray()' --> we don't want the restriction
+    # to 'skIterator' anymore; skIterator is preferred in sigmatch already for
+    # typeof support.
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
-    result = semOverloadedCall(c, n, nOrig, 
+    result = semOverloadedCall(c, n, nOrig,
       {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
   else:
     result = semOverloadedCall(c, n, nOrig, 
@@ -663,6 +664,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = nil
     else:
       result = m.call
+      instGenericConvertersSons(c, result, m)
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
@@ -1658,6 +1660,26 @@ proc fixImmediateParams(n: PNode): PNode =
   
   result = n
 
+proc semExport(c: PContext, n: PNode): PNode =
+  var x = newNodeI(n.kind, n.info)
+  #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
+  for i in 0.. <n.len:
+    let a = n.sons[i]
+    var o: TOverloadIter
+    var s = initOverloadIter(o, c, a)
+    if s == nil:
+      localError(a.info, errGenerated, "invalid expr for 'export': " &
+          renderTree(a))
+    while s != nil:
+      if s.kind in ExportableSymKinds+{skModule}:
+        x.add(newSymNode(s, a.info))
+      s = nextOverloadIter(o, c, a)
+  if c.module.ast.isNil:
+    c.module.ast = newNodeI(nkStmtList, n.info)
+  assert c.module.ast.kind == nkStmtList
+  c.module.ast.add x
+  result = n
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1851,12 +1873,18 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkImportStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
+  of nkImportExceptStmt:
+    if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "import")
+    result = evalImportExcept(c, n)
   of nkFromStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "from")
     result = evalFrom(c, n)
   of nkIncludeStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
+  of nkExportStmt, nkExportExceptStmt:
+    if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "export")
+    result = semExport(c, n)
   of nkPragmaBlock:
     result = semPragmaBlock(c, n)
   of nkStaticStmt:

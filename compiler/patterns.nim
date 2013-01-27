@@ -71,8 +71,8 @@ proc inSymChoice(sc, x: PNode): bool =
   
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
-  if p.typ.constraint != nil:
-    result = matchNodeKinds(p.typ.constraint, n)
+  if p.constraint != nil:
+    result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
     result = p.typ.kind in {tyEmpty, tyStmt}
@@ -236,6 +236,15 @@ proc addToArgList(result, n: PNode) =
     if n.kind != nkArgList: result.add(n)
     else:
       for i in 0 .. <n.len: result.add(n.sons[i])
+
+when false:
+  proc procPatternMatches*(c: PContext, s: PSym, n: PNode): bool =
+    ## for AST-based overloading:
+    var ctx: TPatternContext
+    ctx.owner = s
+    ctx.c = c
+    ctx.formals = sonsLen(s.typ)-1
+    result = matches(ctx, s.ast.sons[patternPos], n)
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
