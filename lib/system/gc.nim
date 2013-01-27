@@ -346,6 +346,7 @@ when traceGC:
     cfprintf(cstdout, "Allocations: %ld; freed: %ld\n", a, f)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
+  when logGC: writeCell($state, cell)
   when traceGC: traceCell(cell, state)
 
 template WithHeapLock(blk: stmt): stmt =
@@ -994,7 +995,7 @@ proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
     if objStart != nil:
       # mark the cell:
-      if objStart.isBitDown(rcReallyDead):
+      if objStart.color != rcReallyDead:
         if gcDebugging:
           # writeCell("marking ", objStart)
         else:
