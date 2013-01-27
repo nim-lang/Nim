@@ -164,7 +164,7 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
 proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) = 
   var s: PLLStream
   p.skin = skinStandard
-  let filename = fileIdx.toFilename
+  let filename = fileIdx.toFullPath
   var pipe = parsePipe(filename, inputStream)
   if pipe != nil: s = evalPipe(p, pipe, filename, inputStream)
   else: s = inputStream
