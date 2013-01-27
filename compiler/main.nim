@@ -382,14 +382,13 @@ proc CommandSuggest =
 
 proc wantMainModule =
   if gProjectFull.len == 0:
-    Fatal(gCmdLineInfo, errCommandExpectsFilename)
+    if optMainModule.len == 0:
+      Fatal(gCmdLineInfo, errCommandExpectsFilename)
+    else:
+      gProjectName = optMainModule
+      gProjectFull = gProjectPath / gProjectName
+
   gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
-
-var oss: PGenericSeq
-proc dbgseqimp(x: PGenericSeq) {.cdecl.} =
-  oss = x
-
-seqdbg = dbgseqimp
 
 proc resetMemory =
   resetCompilationLists()

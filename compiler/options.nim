@@ -99,7 +99,7 @@ var
   gVerbosity*: int            # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool # for 'doc2': output any dependency
-  gEvalExpr*: string          # expression for idetools --eval
+  gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
   
@@ -124,6 +124,7 @@ var
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
   gProjectMainIdx*: int32 # the canonical path id of the main module
+  optMainModule* = "" # the main module that should be used for idetools commands
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
   commandArgs*: seq[string] = @[] # any arguments after the main command

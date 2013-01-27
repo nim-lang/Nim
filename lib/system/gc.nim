@@ -81,7 +81,7 @@ const
     # examined in the decref loop in collectCycles.
     # XXX: not implemented yet as tests didn't show any improvement from this
    
-  MarkingSkipsAcyclicObjects = false
+  MarkingSkipsAcyclicObjects = true
     # Acyclic objects can be safely ignored in the mark and scan phases, 
     # because they cannot contribute to the internal count.
     # XXX: if we generate specialized `markCyclic` and `markAcyclic`
