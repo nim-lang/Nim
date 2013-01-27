@@ -39,21 +39,11 @@ type
   TInstantiationPair* = object
     genericSym*: PSym
     inst*: PInstantiation
-
-  # If we generate an instance of a generic, we'd like to re-use that
-  # instance if possible across module boundaries. However, this is not
-  # possible if the compilation cache is enabled. So we give up then and use
-  # the caching of generics only per module, not per project.
-  TGenericsCache* {.final.} = object
-    generics*: seq[TInstantiationPair] # a list of the things to compile
-    lastGenericIdx*: int      # used for the generics stack
-  
-  PGenericsCache* = ref TGenericsCache
+    
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
     p*: PProcCon               # procedure context
-    generics*: PGenericsCache  # may point to a global or module-local structure
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
@@ -84,9 +74,9 @@ type
     evalContext*: PEvalContext
     UnknownIdents*: TIntSet    # ids of all unknown identifiers to prevent
                                # naming it multiple times
-
-var
-  gGenericsCache*: PGenericsCache # save for modularity
+    generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
+    lastGenericIdx*: int      # used for the generics stack
+    
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -95,10 +85,6 @@ proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
 proc filename*(c: PContext): string =
   # the module's filename
   return c.module.filename
-
-proc newGenericsCache*(): PGenericsCache =
-  new(result)
-  result.generics = @[]
 
 proc newContext*(module: PSym): PContext
 
@@ -171,15 +157,7 @@ proc newContext(module: PSym): PContext =
   result.patterns = @[]
   result.includedFiles = initIntSet()
   initStrTable(result.userPragmas)
-  if optSymbolFiles notin gGlobalOptions:
-    # re-usage of generic instantiations across module boundaries is
-    # very nice for code size:
-    if gGenericsCache == nil: gGenericsCache = newGenericsCache()
-    result.generics = gGenericsCache
-  else:
-    # we have to give up and use a per-module cache for generic instantiations:
-    result.generics = newGenericsCache()
-    assert gGenericsCache == nil
+  result.generics = @[]
   result.UnknownIdents = initIntSet()
 
 proc inclSym(sq: var TSymSeq, s: PSym) =

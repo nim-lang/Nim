@@ -188,15 +188,15 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
-proc addCodeForGenerics(c: PContext, n: PNode) = 
-  for i in countup(c.generics.lastGenericIdx, Len(c.generics.generics) - 1):
-    var prc = c.generics.generics[i].inst.sym
-    if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone: 
-      if prc.ast == nil or prc.ast.sons[bodyPos] == nil: 
+proc addCodeForGenerics(c: PContext, n: PNode) =
+  for i in countup(c.lastGenericIdx, c.generics.len - 1):
+    var prc = c.generics[i].inst.sym
+    if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone:
+      if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
         InternalError(prc.info, "no code for " & prc.name.s)
       else:
         addSon(n, prc.ast)
-  c.generics.lastGenericIdx = Len(c.generics.generics)
+  c.lastGenericIdx = c.generics.len
 
 proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} = 
   result = semExpr(c, n, {})
@@ -229,7 +229,7 @@ proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
 proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
   result = semStmt(c, n)
   # BUGFIX: process newly generated generics here, not at the end!
-  if c.generics.lastGenericIdx < Len(c.generics.generics):
+  if c.lastGenericIdx < c.generics.len:
     var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
     if sonsLen(a) > 0: 
