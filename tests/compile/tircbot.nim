@@ -272,7 +272,7 @@ proc handleWebMessage(state: PState, line: string) =
       message.add(limitCommitMsg(commit["message"].str))
 
       # Send message to #nimrod.
-      state.ircClient[].privmsg(joinChans[0], message)
+      state.ircClient.privmsg(joinChans[0], message)
   elif json.existsKey("redisinfo"):
     assert json["redisinfo"].existsKey("port")
     #let redisPort = json["redisinfo"]["port"].num
@@ -336,10 +336,11 @@ proc hubConnect(state: PState) =
 
   state.dispatcher.register(state.sock)
 
-proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, state: PState) =
+proc handleIrc(irc: PAsyncIRC, event: TIRCEvent, state: PState) =
   case event.typ
+  of EvConnected: nil
   of EvDisconnected:
-    while not state.ircClient[].isConnected:
+    while not state.ircClient.isConnected:
       try:
         state.ircClient.connect()
       except:
@@ -355,12 +356,12 @@ proc handleIrc(irc: var TAsyncIRC, event: TIRCEvent, state: PState) =
       let msg = event.params[event.params.len-1]
       let words = msg.split(' ')
       template pm(msg: string): stmt =
-        state.ircClient[].privmsg(event.origin, msg)
+        state.ircClient.privmsg(event.origin, msg)
       case words[0]
       of "!ping": pm("pong")
       of "!lag":
-        if state.ircClient[].getLag != -1.0:
-          var lag = state.ircClient[].getLag
+        if state.ircClient.getLag != -1.0:
+          var lag = state.ircClient.getLag
           lag = lag * 1000.0
           pm($int(lag) & "ms between me and the server.")
         else:
@@ -433,7 +434,7 @@ proc open(port: TPort = TPort(5123)): PState =
   res.hubPort = port
   res.hubConnect()
   let hirc =
-    proc (a: var TAsyncIRC, ev: TIRCEvent) =
+    proc (a: PAsyncIRC, ev: TIRCEvent) =
       handleIrc(a, ev, res)
   # Connect to the irc server.
   res.ircClient = AsyncIrc(ircServer, nick = botNickname, user = botNickname,

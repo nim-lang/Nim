@@ -349,6 +349,7 @@ provides. The example uses the built-in ``countup`` iterator:
   echo("Counting to ten: ")
   for i in countup(1, 10):
     echo($i)
+  # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 The built-in ``$`` operator turns an integer (``int``) and many other types
 into a string. The variable ``i`` is implicitly declared by the ``for`` loop
@@ -362,6 +363,7 @@ the same:
   while i <= 10:
     echo($i)
     inc(i) # increment i by 1
+  # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 Counting down can be achieved as easily (but is less often needed):
 
@@ -369,6 +371,7 @@ Counting down can be achieved as easily (but is less often needed):
   echo("Counting down from 10 to 1: ")
   for i in countdown(10, 1):
     echo($i)
+  # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nimrod also has a ``..`` iterator
 that does the same:
@@ -780,11 +783,14 @@ important differences:
 * Iterators cannot contain a ``return`` statement and procs cannot contain a
   ``yield`` statement.
 * Iterators have no implicit ``result`` variable.
-* Iterators do not support recursion. (This restriction will be gone in a
-  future version of the compiler.)
+* Iterators do not support recursion.
 * Iterators cannot be forward declared, because the compiler must be able
   to inline an iterator. (This restriction will be gone in a
   future version of the compiler.)
+
+However, you can also use a ``closure`` iterator to get a different set of
+restrictions. See `first class iterators <manual.html#first-class-iterators>`_
+for details.
 
 
 Basic types
@@ -914,6 +920,37 @@ of floating point types is performed: the smaller type is
 converted to the larger. Integer types are **not** converted to floating point
 types automatically and vice versa. The ``toInt`` and ``toFloat`` procs can be
 used for these conversions.
+
+
+Internal type representation
+============================
+
+As mentioned earlier, the built-in ``$`` (stringify) operator turns any basic
+type into a string, which you can then print to the screen with the ``echo``
+proc. However, advanced types, or types you may define yourself won't work with
+the ``$`` operator until you define one for them. Sometimes you just want to
+debug the current value of a complex type without having to write its ``$``
+operator.  You can use then the ``repr`` proc which works with any type and
+even complex data graphs with cycles. The following example shows that even for
+basic types there is a difference between the ``$`` and ``repr`` outputs:
+
+.. code-block:: nimrod
+  var
+    myBool = true
+    myCharacter = 'n'
+    myString = "nimrod"
+    myInteger = 42
+    myFloat = 3.14
+  echo($myBool, ":", repr(myBool))
+  # --> true:true
+  echo($myCharacter, ":", repr(myCharacter))
+  # --> n:'n'
+  echo($myString, ":", repr(myString))
+  # --> nimrod:0x10fa8c050"nimrod"
+  echo($myInteger, ":", repr(myInteger))
+  # --> 42:42
+  echo($myFloat, ":", repr(myFloat))
+  # --> 3.1400000000000001e+00:3.1400000000000001e+00
 
 
 Advanced types
@@ -1089,6 +1126,54 @@ copies the whole array contents.
 The built-in ``len`` proc returns the array's length. ``low(a)`` returns the
 lowest valid index for the array `a` and ``high(a)`` the highest valid index.
 
+.. code-block:: nimrod
+  type
+    TDirection = enum
+      north, east, south, west
+    TBlinkLights = enum
+      off, on, slowBlink, mediumBlink, fastBlink
+    TLevelSetting = array[north..west, TBlinkLights]
+  var
+    level : TLevelSetting
+  level[north] = on
+  level[south] = slowBlink
+  level[east] = fastBlink
+  echo repr(level)  # --> [on, fastBlink, slowBlink, off]
+  echo low(level)   # --> north
+  echo len(level)   # --> 4
+  echo high(level)  # --> west
+
+The syntax for nested arrays (multidimensional) in other languages is a matter
+of appending more brackets because usually each dimension is restricted to the
+same index type as the others. In nimrod you can have different dimensions with
+different index types, so the nesting syntax is slightly different. Building on
+the previous example where a level is defined as an array of enums indexed by
+yet another enum, we can add the following lines to add a light tower type
+subdivided in height levels accessed through their integer index:
+
+.. code-block:: nimrod
+  type
+    TLightTower = array[1..10, TLevelSetting]
+  var
+    tower: TLightTower
+  tower[1][north] = slowBlink
+  tower[1][east] = mediumBlink
+  echo len(tower)     # --> 10
+  echo len(tower[1])  # --> 4
+  echo repr(tower)    # --> [[slowBlink, mediumBlink, ...more output..
+  # The following lines don't compile due to type mistmatch errors
+  #tower[north][east] = on
+  #tower[0][1] = on
+
+Note how the built-in ``len`` proc returns only the array's first dimension
+length.  Another way of defining the ``TLightTower`` to show better its
+nested nature would be to omit the previous definition of the ``TLevelSetting``
+type and instead write it embedded directly as the type of the first dimension:
+
+.. code-block:: nimrod
+  type
+    TLightTower = array[1..10, array[north..west, TBlinkLights]]
+
 
 Sequences
 ---------
@@ -1119,6 +1204,28 @@ operations cannot deal with ``nil`` (leading to an exception being
 raised) for performance reasons. Thus one should use empty sequences ``@[]``
 rather than ``nil`` as the *empty* value. But ``@[]`` creates a sequence
 object on the heap, so there is a trade-off to be made here.
+
+The ``for`` statement can be used with one or two variables when used with a
+sequence. When you use the one variable form, the variable will hold the value
+provided by the sequence. The ``for`` statement is looping over the results
+from the ``items()`` iterator from the `system <system.html>`_ module.  But if
+you use the two variable form, the first variable will hold the index position
+and the second variable will hold the value. Here the ``for`` statement is
+looping over the results from the ``pairs()`` iterator from the `system
+<system.html>`_ module.  Examples:
+
+.. code-block:: nimrod
+  for i in @[3, 4, 5]:
+    echo($i)
+  # --> 3
+  # --> 4
+  # --> 5
+
+  for i, value in @[3, 4, 5]:
+    echo("index: ", $i, ", value:", $value)
+  # --> index: 0, value:3
+  # --> index: 1, value:4
+  # --> index: 2, value:5
 
 
 Open arrays
@@ -1221,14 +1328,10 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The empty ``[]`` subscript notation can be used to *derefer* a reference, 
-meaning to retrieve the item the reference points to. The ``addr`` operator 
-returns the address of an item. An address is always an untraced reference:
-``addr`` is an *unsafe* feature.
-
-The ``.`` (access a tuple/object field operator)
-and ``[]`` (array/string/sequence index operator) operators perform implicit
-dereferencing operations for reference types:
+The empty ``[]`` subscript notation can be used to *derefer* a reference,
+meaning to retrieve the item the reference points to. The ``.`` (access a
+tuple/object field operator) and ``[]`` (array/string/sequence index operator)
+operators perform implicit dereferencing operations for reference types:
 
 .. code-block:: nimrod
 
@@ -1245,8 +1348,8 @@ dereferencing operations for reference types:
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
-``realloc`` can be used. The documentation of the system module contains
-further information.
+``realloc`` can be used. The documentation of the `system <system.html>`_
+module contains further information.
 
 If a reference points to *nothing*, it has the value ``nil``.
 

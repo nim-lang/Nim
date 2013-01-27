@@ -16596,6 +16596,9 @@ proc message_dialog_new*(parent: PWindow, flags: TDialogFlags,
                          thetype: TMessageType, buttons: TButtonsType, 
                          message_format: cstring): PMessageDialog{.varargs, 
     cdecl, importc: "gtk_message_dialog_new", dynlib: lib.}
+proc set_markup*(msgDialog: PMessageDialog, str: cstring) {.cdecl,
+    importc: "gtk_message_dialog_set_markup", dynlib: lib.}
+
 proc signal_new*(name: cstring, signal_flags: TSignalRunType, 
                  object_type: TType, function_offset: guint, 
                  marshaller: TSignalMarshaller, return_val: TType, n_args: guint): guint{.
@@ -16893,6 +16896,15 @@ type
 proc set_tooltip_text*(w: PWidget, t: cstring){.cdecl,
   dynlib: lib, importc: "gtk_widget_set_tooltip_text".}
 
+proc get_tooltip_text*(w: PWidget): cstring{.cdecl,
+  dynlib: lib, importc: "gtk_widget_get_tooltip_text".}
+
+proc set_tooltip_markup*(w: PWidget, m: cstring) {.cdecl, dynlib: lib,
+  importc: "gtk_widget_set_tooltip_markup".}
+
+proc get_tooltip_markup*(w: PWidget): cstring {.cdecl, dynlib: lib,
+  importc: "gtk_widget_get_tooltip_markup".}
+
 proc set_tooltip_column*(w: PTreeview, column: gint){.cdecl,
   dynlib: lib, importc: "gtk_tree_view_set_tooltip_column".}
 
@@ -16904,6 +16916,9 @@ proc trigger_tooltip_query*(widg: PTooltip){.cdecl, dynlib: lib,
 
 proc set_has_tooltip*(widget: PWidget, b: gboolean){.cdecl, dynlib: lib, 
   importc: "gtk_widget_set_has_tooltip".}
+
+proc get_has_tooltip*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+  importc: "gtk_widget_get_has_tooltip".}
 
 proc set_markup*(tp: PTooltip, mk: cstring){.cdecl, dynlib: lib, 
   importc: "gtk_tooltip_set_markup".}
@@ -17035,6 +17050,10 @@ proc remove*(combo_box: PComboBoxText; position: gint){.cdecl,
     importc: "gtk_combo_box_text_remove", dynlib: lib.}
 proc get_active_text*(combo_box: PComboBoxText): cstring{.cdecl, 
     importc: "gtk_combo_box_text_get_active_text", dynlib: lib.}
+proc is_active*(win: PWindow): gboolean{.cdecl,
+    importc: "gtk_window_is_active", dynlib: lib.}
+proc has_toplevel_focus*(win: PWindow): gboolean{.cdecl,
+    importc: "gtk_window_has_toplevel_focus", dynlib: lib.}
 
 proc nimrod_init*() =
   var

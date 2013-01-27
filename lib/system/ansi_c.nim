@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,9 +21,8 @@ proc c_strlen(a: CString): int {.nodecl, noSideEffect, importc: "strlen".}
 proc c_memset(p: pointer, value: cint, size: int) {.nodecl, importc: "memset".}
 
 type
-  C_TextFile {.importc: "FILE", nodecl, final.} = object   # empty record for
-                                                           # data hiding
-  C_BinaryFile {.importc: "FILE", nodecl, final.} = object
+  C_TextFile {.importc: "FILE", nodecl, final, incompleteStruct.} = object
+  C_BinaryFile {.importc: "FILE", nodecl, final, incompleteStruct.} = object
   C_TextFileStar = ptr CTextFile
   C_BinaryFileStar = ptr CBinaryFile
 

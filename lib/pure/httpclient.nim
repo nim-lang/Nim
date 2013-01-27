@@ -80,62 +80,43 @@ proc fileError(msg: string) =
   e.msg = msg
   raise e
 
-proc charAt(d: var string, i: var int, s: TSocket): char {.inline.} = 
-  result = d[i]
-  while result == '\0':
-    d = string(s.recv())
-    i = 0
-    result = d[i]
-
 proc parseChunks(s: TSocket): string =
-  # get chunks:
-  var i = 0
   result = ""
-  var d = s.recv().string
+  var ri = 0
   while true:
+    var chunkSizeStr = ""
     var chunkSize = 0
-    var digitFound = false
-    while true: 
-      case d[i]
-      of '0'..'9': 
-        digitFound = true
-        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('0'))
-      of 'a'..'f': 
-        digitFound = true
-        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('a') + 10)
-      of 'A'..'F': 
-        digitFound = true
-        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('A') + 10)
-      of '\0': 
-        d = string(s.recv())
-        i = -1
-      else: break
-      inc(i)
-    if not digitFound: httpError("Chunksize expected")
+    if s.recvLine(chunkSizeStr):
+      var i = 0
+      if chunkSizeStr == "":
+        httpError("Server terminated connection prematurely")
+      while true:
+        case chunkSizeStr[i]
+        of '0'..'9':
+          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
+        of 'a'..'f':
+          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
+        of 'A'..'F':
+          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
+        of '\0':
+          break
+        of ';':
+          # http://tools.ietf.org/html/rfc2616#section-3.6.1
+          # We don't care about chunk-extensions.
+          break
+        else:
+          httpError("Invalid chunk size: " & chunkSizeStr)
+        inc(i)
     if chunkSize <= 0: break
-    while charAt(d, i, s) notin {'\C', '\L', '\0'}: inc(i)
-    if charAt(d, i, s) == '\C': inc(i)
-    if charAt(d, i, s) == '\L': inc(i)
-    else: httpError("CR-LF after chunksize expected")
-    
-    var x = substr(d, i, i+chunkSize-1)
-    var size = x.len
-    result.add(x)
-    inc(i, size)
-    if size < chunkSize:
-      # read in the rest:
-      var missing = chunkSize - size
-      var L = result.len
-      setLen(result, L + missing)    
-      while missing > 0:
-        var bytesRead = s.recv(addr(result[L]), missing)
-        inc(L, bytesRead)
-        dec(missing, bytesRead)
-      # next chunk:
-      d = string(s.recv())
-      i = 0
-    # skip trailing CR-LF:
-    while charAt(d, i, s) in {'\C', '\L'}: inc(i)
+    result.setLen(ri+chunkSize)
+    var bytesRead = 0
+    while bytesRead != chunkSize:
+      let ret = recv(s, addr(result[ri]), chunkSize-bytesRead)
+      ri += ret
+      bytesRead += ret
+    s.skip(2) # Skip \c\L
+    # Trailer headers will only be sent if the request specifies that we want
+    # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
   
 proc parseBody(s: TSocket,
                headers: PStringTable): string =
@@ -238,12 +219,18 @@ type
     httpCONNECT       ## Converts the request connection to a transparent 
                       ## TCP/IP tunnel, usually used for proxies.
 
+when not defined(ssl):
+  type PSSLContext = ref object
+  let defaultSSLContext: PSSLContext = nil
+else:
+  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "", 
-              body = ""): TResponse =
+              body = "",
+              sslContext: PSSLContext = defaultSSLContext): TResponse =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   var r = parseUrl(url)
-  
   var headers = substr($httpMethod, len("http"))
   headers.add(" /" & r.path & r.query)
 
@@ -257,7 +244,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   var port = TPort(80)
   if r.scheme == "https":
     when defined(ssl):
-      s.wrapSocket(verifyMode = CVerifyNone)
+      sslContext.wrapSocket(s)
     else:
       raise newException(EHttpRequestErr, "SSL support was not compiled in. Cannot connect over SSL.")
     port = TPort(443)
@@ -277,32 +264,32 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return True
   
-proc get*(url: string, maxRedirects = 5): TResponse =
-  ## | GET's the ``url`` and returns a ``TResponse`` object
+proc get*(url: string, maxRedirects = 5, sslContext: PSSLContext = defaultSSLContext): TResponse =
+  ## | GETs the ``url`` and returns a ``TResponse`` object
   ## | This proc also handles redirection
   result = request(url)
   for i in 1..maxRedirects:
     if result.status.redirection():
       var locationHeader = result.headers["Location"]
       if locationHeader == "": httpError("location header expected")
-      result = request(locationHeader)
+      result = request(locationHeader, sslContext = sslContext)
       
-proc getContent*(url: string): string =
-  ## | GET's the body and returns it as a string.
+proc getContent*(url: string, sslContext: PSSLContext = defaultSSLContext): string =
+  ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
-  var r = get(url)
+  var r = get(url, sslContext = sslContext)
   if r.status[0] in {'4','5'}:
     raise newException(EHTTPRequestErr, r.status)
   else:
     return r.body
   
 proc post*(url: string, extraHeaders = "", body = "", 
-           maxRedirects = 5): TResponse =
-  ## | POST's ``body`` to the ``url`` and returns a ``TResponse`` object.
+           maxRedirects = 5, sslContext: PSSLContext = defaultSSLContext): TResponse =
+  ## | POSTs ``body`` to the ``url`` and returns a ``TResponse`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   var xh = extraHeaders & "Content-Length: " & $len(body) & "\c\L"
-  result = request(url, httpPOST, xh, body)
+  result = request(url, httpPOST, xh, body, sslContext)
   for i in 1..maxRedirects:
     if result.status.redirection():
       var locationHeader = result.headers["Location"]
@@ -310,8 +297,9 @@ proc post*(url: string, extraHeaders = "", body = "",
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(locationHeader, meth, xh, body)
   
-proc postContent*(url: string, extraHeaders = "", body = ""): string =
-  ## | POST's ``body`` to ``url`` and returns the response's body as a string
+proc postContent*(url: string, extraHeaders = "", body = "",
+                  sslContext: PSSLContext = defaultSSLContext): string =
+  ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   var r = post(url, extraHeaders, body)
   if r.status[0] in {'4','5'}:
@@ -319,11 +307,12 @@ proc postContent*(url: string, extraHeaders = "", body = ""): string =
   else:
     return r.body
   
-proc downloadFile*(url: string, outputFilename: string) =
+proc downloadFile*(url: string, outputFilename: string,
+                   sslContext: PSSLContext = defaultSSLContext) =
   ## Downloads ``url`` and saves it to ``outputFilename``
   var f: TFile
   if open(f, outputFilename, fmWrite):
-    f.write(getContent(url))
+    f.write(getContent(url, sslContext))
     f.close()
   else:
     fileError("Unable to open file")

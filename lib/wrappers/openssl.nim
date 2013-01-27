@@ -39,6 +39,8 @@
 
 ## OpenSSL support
 
+{.deadCodeElim: on.}
+
 when defined(WINDOWS): 
   const 
     DLLSSLName = "(ssleay32|libssl32).dll"

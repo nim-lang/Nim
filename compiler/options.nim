@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,6 +13,7 @@ import
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
+  hasFFI* = defined(useFFI)
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -91,7 +92,7 @@ var
                          optPatterns}
   gGlobalOptions*: TGlobalOptions = {optRefcGC, optThreadAnalysis}
   gExitcode*: int8
-  searchPaths*: TLinkedList
+  searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
   headerFile*: string = ""
   gCmd*: TCommands = cmdNone  # the command
@@ -100,7 +101,10 @@ var
   gWholeProject*: bool # for 'doc2': output any dependency
   gEvalExpr*: string          # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
+  gListFullPaths*: bool
   
+proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
+
 const 
   genSubDir* = "nimcache"
   NimExt* = "nim"
@@ -199,26 +203,52 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(): string = 
+iterator iterSearchPath*(SearchPaths: TLinkedList): string = 
   var it = PStrEntry(SearchPaths.head)
-  while it != nil: 
+  while it != nil:
     yield it.data
     it = PStrEntry(it.Next)
 
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath():
+  for it in iterSearchPath(SearchPaths):
     result = JoinPath(it, f)
-    if ExistsFile(result):
+    if existsFile(result):
       return result.canonicalizePath
   result = ""
 
+proc rawFindFile2(f: string): string =
+  var it = PStrEntry(lazyPaths.head)
+  while it != nil:
+    result = JoinPath(it.data, f)
+    if existsFile(result):
+      bringToFront(lazyPaths, it)
+      return result.canonicalizePath
+    it = PStrEntry(it.Next)
+  result = ""
+
 proc FindFile*(f: string): string {.procvar.} = 
-  result = rawFindFile(f)
-  if len(result) == 0: result = rawFindFile(toLower(f))
+  result = f.rawFindFile
+  if result.len == 0:
+    result = f.toLower.rawFindFile
+    if result.len == 0:
+      result = f.rawFindFile2
+      if result.len == 0:
+        result = f.toLower.rawFindFile2
 
 proc findModule*(modulename: string): string {.inline.} =
   # returns path to module
   result = FindFile(AddFileExt(modulename, nimExt))
+
+proc libCandidates*(s: string, dest: var seq[string]) = 
+  var le = strutils.find(s, '(')
+  var ri = strutils.find(s, ')', le+1)
+  if le >= 0 and ri > le:
+    var prefix = substr(s, 0, le - 1)
+    var suffix = substr(s, ri + 1)
+    for middle in split(substr(s, le + 1, ri - 1), '|'):
+      libCandidates(prefix & middle & suffix, dest)
+  else: 
+    add(dest, s)
 
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0

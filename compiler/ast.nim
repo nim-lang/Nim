@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -172,6 +172,9 @@ type
     nkDiscardStmt,        # a discard statement
     nkStmtList,           # a list of statements
     nkImportStmt,         # an import statement
+    nkImportExceptStmt,   # an import x except a statement
+    nkExportStmt,         # an export statement
+    nkExportExceptStmt,   # an 'export except' statement
     nkFromStmt,           # a from * import statement
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
@@ -647,7 +650,8 @@ type
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to safe space)
-      
+    constraint*: PNode        # additional constraints like 'lit|result'
+  
   TTypeSeq* = seq[PType]
   TType* = object of TIdObj   # types are identical iff they have the
                               # same id; there may be multiple copies of a type
@@ -673,7 +677,6 @@ type
     align*: int               # the type's alignment requirements
     containerID*: int         # used for type checking of generics
     loc*: TLoc
-    constraint*: PNode        # additional constraints like 'lit|result'
 
   TPair*{.final.} = object 
     key*, val*: PObject

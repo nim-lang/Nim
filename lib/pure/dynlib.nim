@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2012 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -17,6 +17,10 @@ type
 proc LoadLib*(path: string): TLibHandle
   ## loads a library from `path`. Returns nil if the library could not 
   ## be loaded.
+
+proc LoadLib*(): TLibHandle
+  ## gets the handle from the current executable. Returns nil if the 
+  ## library could not be loaded.
 
 proc UnloadLib*(lib: TLibHandle)
   ## unloads the library `lib`
@@ -57,6 +61,7 @@ when defined(posix):
       importc, header: "<dlfcn.h>".}
 
   proc LoadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
+  proc LoadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
   proc UnloadLib(lib: TLibHandle) = dlclose(lib)
   proc symAddr(lib: TLibHandle, name: cstring): pointer = 
     return dlsym(lib, name)
@@ -78,6 +83,8 @@ elif defined(windows) or defined(dos):
 
   proc LoadLib(path: string): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
+  proc LoadLib(): TLibHandle =
+    result = cast[TLibHandle](winLoadLibrary(nil))
   proc UnloadLib(lib: TLibHandle) = FreeLibrary(cast[THINSTANCE](lib))
 
   proc symAddr(lib: TLibHandle, name: cstring): pointer =

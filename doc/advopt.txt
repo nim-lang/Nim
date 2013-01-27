@@ -22,11 +22,11 @@ Advanced options:
   -m, --mainmodule:FILE     set the project main module
   -o, --out:FILE            set the output filename
   --stdout                  output to stdout
+  --listFullPaths           list full paths in messages
   -w, --warnings:on|off     turn all warnings on|off
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
-  --recursivePath:PATH      add a path and all of its subdirectories
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
@@ -67,6 +67,8 @@ Advanced options:
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
+  --babelPath:PATH          add a path for Babel support
+  --excludePath:PATH        exclude a path from the list of search paths
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)

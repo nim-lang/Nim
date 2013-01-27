@@ -218,7 +218,7 @@ So "pure object oriented" code is easy to write:
   import strutils
   
   stdout.writeln("Give a list of numbers (separated by spaces): ")
-  stdout.write(stdin.readLine.split.each(parseInt).max.`$`)
+  stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
   stdout.writeln(" is the maximum!")
 
 
@@ -433,45 +433,59 @@ handled, it is propagated through the call stack. This means that often
 the rest of the procedure - that is not within a ``finally`` clause -
 is not executed (if an exception occurs).
 
+If you need to *access* the actual exception object or message inside an
+``except`` branch you can use the getCurrentException() and
+getCurrentExceptionMsg() procs from the `system <system.html>`_ module.
+Example:
+
+.. code-block:: nimrod
+  try:
+    doSomethingHere()
+  except:
+    let
+      e = getCurrentException()
+      msg = getCurrentExceptionMsg()
+    echo "Got exception ", repr(e), " with message ", msg
+
 
 Exception hierarchy
 -------------------
 
 If you want to create your own exceptions you can inherit from E_Base, but you
 can also inherit from one of the existing exceptions if they fit your purpose.
-The exception tree is:
+The exception tree is::
 
-* E_Base
-	* EAsynch
-		* EControlC
-	* ESynch
-		* ESystem
-			* EIO
-			* EOS
-				* EInvalidLibrary
-		* EResourceExhausted
-		* EOutOfMemory
-		* EStackOverflow
-	* EArithmetic
-		* EDivByZero
-		* EOverflow
-	* EAccessViolation
-	* EAssertionFailed
-	* EInvalidValue
-		* EInvalidKey
-	* EInvalidIndex
-	* EInvalidField
-	* EOutOfRange
-	* ENoExceptionToReraise
-	* EInvalidObjectAssignment
-	* EInvalidObjectConversion
-	* EFloatingPoint
-		* EFloatInvalidOp
-		* EFloatDivByZero
-		* EFloatOverflow
-		* EFloatUnderflow
-		* EFloatInexact
-	* EDeadThread
+  * E_Base
+    * EAsynch
+      * EControlC
+    * ESynch
+      * ESystem
+        * EIO
+        * EOS
+          * EInvalidLibrary
+      * EResourceExhausted
+      * EOutOfMemory
+      * EStackOverflow
+    * EArithmetic
+      * EDivByZero
+      * EOverflow
+    * EAccessViolation
+    * EAssertionFailed
+    * EInvalidValue
+      * EInvalidKey
+    * EInvalidIndex
+    * EInvalidField
+    * EOutOfRange
+    * ENoExceptionToReraise
+    * EInvalidObjectAssignment
+    * EInvalidObjectConversion
+    * EFloatingPoint
+      * EFloatInvalidOp
+      * EFloatDivByZero
+      * EFloatOverflow
+      * EFloatUnderflow
+      * EFloatInexact
+    * EDeadThread
 
 See the `system <system.html>`_ module for a description of each exception.
 

@@ -137,7 +137,27 @@ proc genRecComment(d: PDoc, n: PNode): PRope =
         if result != nil: return 
   else:
     n.comment = nil
-  
+
+proc findDocComment(n: PNode): PNode =
+  if n == nil: return nil
+  if not isNil(n.comment) and startsWith(n.comment, "##"): return n
+  for i in countup(0, safeLen(n)-1):
+    result = findDocComment(n.sons[i])
+    if result != nil: return
+
+proc extractDocComment*(s: PSym, d: PDoc = nil): string =
+  let n = findDocComment(s.ast)
+  result = ""
+  if not n.isNil:
+    if not d.isNil:
+      var dummyHasToc: bool
+      renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+                                   toLineNumber(n.info), toColumn(n.info),
+                                   dummyHasToc, d.options + {roSkipPounds}),
+                     result)
+    else:
+      result = n.comment.substr(2).replace("\n##", "\n").strip
+
 proc isVisible(n: PNode): bool = 
   result = false
   if n.kind == nkPostfix: 
@@ -145,6 +165,9 @@ proc isVisible(n: PNode): bool =
       var v = n.sons[0].ident
       result = v.id == ord(wStar) or v.id == ord(wMinus)
   elif n.kind == nkSym:
+    # we cannot generate code for forwarded symbols here as we have no
+    # exception tracking information here. Instead we copy over the comment
+    # from the proc header.
     result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
   elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
@@ -273,7 +296,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
       generateDoc(d, lastSon(n.sons[0]))
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i]) 
-  of nkFromStmt: traceDeps(d, n.sons[0])
+  of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   else: nil
 
 proc genSection(d: PDoc, kind: TSymKind) = 
@@ -350,9 +373,11 @@ proc CommandRstAux(filename, outExt: string) =
   var d = newDocumentor(filen, options.gConfigVars)
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})
-  d.modDesc = newMutableRope(30_000)
-  renderRstToOut(d[], rst, d.modDesc.data)
-  freezeMutableRope(d.modDesc)
+  var modDesc = newStringOfCap(30_000)
+  #d.modDesc = newMutableRope(30_000)
+  renderRstToOut(d[], rst, modDesc)
+  #freezeMutableRope(d.modDesc)
+  d.modDesc = toRope(modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
 

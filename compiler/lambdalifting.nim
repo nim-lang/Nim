@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -257,6 +257,8 @@ proc captureVar(o: POuterContext, i: PInnerContext, local: PSym,
     # Currently captures are restricted to a single level of nesting:
     LocalError(info, errIllegalCaptureX, local.name.s)
   i.fn.typ.callConv = ccClosure
+  #echo "captureVar ", i.fn.name.s, i.fn.id, " ", local.name.s, local.id
+
   incl(i.fn.typ.flags, tfCapturesEnv)
 
   # we need to remember which inner most closure belongs to this lambda:
@@ -286,9 +288,10 @@ proc interestingVar(s: PSym): bool {.inline.} =
     sfGlobal notin s.flags
 
 proc semCaptureSym*(s, owner: PSym) =
-  if interestingVar(s) and owner.id != s.owner.id:
+  if interestingVar(s) and owner.id != s.owner.id and s.kind != skResult:
     if owner.typ != nil and not isGenericRoutine(owner):
       owner.typ.callConv = ccClosure
+    #echo "semCaptureSym ", owner.name.s, owner.id, " ", s.name.s, s.id
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here
 

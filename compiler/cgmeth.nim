@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -65,10 +65,10 @@ proc sameMethodBucket(a, b: PSym): bool =
         break 
     if sameType(aa, bb) or
         (aa.kind == tyObject) and (bb.kind == tyObject) and
-        (inheritanceDiff(bb, aa) < 0): 
+        (inheritanceDiff(bb, aa) < 0):
       nil
-    else: 
-      return 
+    else:
+      return
   result = true
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
@@ -106,17 +106,16 @@ proc methodDef*(s: PSym, fromCache: bool) =
     # attach to itself to prevent bugs:
     attachDispatcher(disp, newSymNode(disp))
 
-proc relevantCol(methods: TSymSeq, col: int): bool = 
+proc relevantCol(methods: TSymSeq, col: int): bool =
   # returns true iff the position is relevant
   var t = methods[0].typ.sons[col]
-  result = false
-  if skipTypes(t, skipPtrs).kind == tyObject: 
-    for i in countup(1, high(methods)): 
-      if not SameType(methods[i].typ.sons[col], t): 
+  if skipTypes(t, skipPtrs).kind == tyObject:
+    for i in countup(1, high(methods)):
+      let t2 = skipTypes(methods[i].typ.sons[col], skipPtrs)
+      if not SameType(t2, t):
         return true
   
 proc cmpSignatures(a, b: PSym, relevantCols: TIntSet): int = 
-  result = 0
   for col in countup(1, sonsLen(a.typ) - 1): 
     if Contains(relevantCols, col): 
       var aa = skipTypes(a.typ.sons[col], skipPtrs)

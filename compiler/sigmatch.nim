@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,18 +12,19 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options
+  magicsys, condsyms, idents, lexer, options, parampatterns, strutils,
+  docgen
 
 type
   TCandidateState* = enum 
     csEmpty, csMatch, csNoMatch
 
   TCandidate* {.final.} = object 
-    exactMatches*: int
+    exactMatches*: int       # also misused to prefer iters over procs
+    genericMatches: int      # also misused to prefer constraints
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
     convMatches: int
-    genericMatches: int
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
@@ -33,6 +34,8 @@ type
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
     proxyMatch*: bool        # to prevent instantiations
+    genericConverter*: bool  # true if a generic converter needs to
+                             # be instantiated
     inheritancePenalty: int  # to prefer closest father object type
   
   TTypeRelation* = enum      # order is important!
@@ -57,6 +60,7 @@ proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} =
   c.callee = callee
   c.call = nil
   c.baseTypeMatch = false
+  c.genericConverter = false
   c.inheritancePenalty = 0
 
 proc initCandidate*(c: var TCandidate, callee: PType) = 
@@ -571,17 +575,27 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   for i in countup(0, len(c.converters) - 1): 
     var src = c.converters[i].typ.sons[1]
     var dest = c.converters[i].typ.sons[0]
-    if (typeRel(m, f, dest) == isEqual) and
-        (typeRel(m, src, a) == isEqual):
+    # for generic type converters we need to check 'src <- a' before
+    # 'f <- dest' in order to not break the unification:
+    # see tests/tgenericconverter:
+    let srca = typeRel(m, src, a)
+    if srca notin {isEqual, isGeneric}: continue
+    
+    let destIsGeneric = containsGenericType(dest)
+    if destIsGeneric:
+      dest = generateTypeInstance(c, m.bindings, arg, dest)
+    let fdest = typeRel(m, f, dest)
+    if fdest in {isEqual, isGeneric}: 
       markUsed(arg, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
-      result = newNodeIT(nkHiddenCallConv, arg.info, s.typ.sons[0])
+      result = newNodeIT(nkHiddenCallConv, arg.info, dest)
       addSon(result, s)
       addSon(result, copyTree(arg))
       inc(m.convMatches)
-      return
+      m.genericConverter = srca == isGeneric or destIsGeneric
+      return result
 
 proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
                     arg: PNode): PNode = 
@@ -692,8 +706,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         else:
           result = userConvMatch(c, m, base(f), a, arg)
 
-proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
-                     arg, argOrig: PNode): PNode =
+proc ParamTypesMatch*(c: PContext, m: var TCandidate, f, a: PType, 
+                      arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
     result = ParamTypesMatchAux(c, m, f, a, arg, argOrig)
   else: 
@@ -739,27 +753,21 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
       result = ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
 
-proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, arg, nil)
-
-proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, n.typ, n, nil)
-
-proc argtypeMatches*(c: PContext, f, a: PType): bool = 
-  var m: TCandidate
-  initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, ast.emptyNode, nil) != nil  
-
 proc setSon(father: PNode, at: int, son: PNode) = 
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
   father.sons[at] = son
 
-proc matchesAux*(c: PContext, n, nOrig: PNode,
-                 m: var TCandidate, marker: var TIntSet) = 
+proc matchesAux(c: PContext, n, nOrig: PNode,
+                m: var TCandidate, marker: var TIntSet) = 
+  template checkConstraint(n: expr) {.immediate, dirty.} =
+    if not formal.constraint.isNil:
+      if matchNodeKinds(formal.constraint, n):
+        # better match over other routines with no such restriction:
+        inc(m.genericMatches, 100)
+      else:
+        m.state = csNoMatch
+        return
+  
   var f = 1 # iterates over formal parameters
   var a = 1 # iterates over the actual given arguments
   m.state = csMatch           # until proven otherwise
@@ -792,7 +800,8 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
                                 n.sons[a].sons[1], nOrig.sons[a].sons[1])
       if arg == nil: 
         m.state = csNoMatch
-        return 
+        return
+      checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch: 
         assert(container == nil)
         container = newNodeI(nkBracket, n.sons[a].info)
@@ -837,10 +846,10 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
         m.baseTypeMatch = false
         var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
-        if arg == nil: 
+        if arg == nil:
           m.state = csNoMatch
-          return 
-        if m.baseTypeMatch: 
+          return
+        if m.baseTypeMatch:
           assert(container == nil)
           container = newNodeI(nkBracket, n.sons[a].info)
           addSon(container, arg)
@@ -849,6 +858,7 @@ proc matchesAux*(c: PContext, n, nOrig: PNode,
           if f != formalLen - 1: container = nil
         else: 
           setSon(m.call, formal.position + 1, arg)
+      checkConstraint(n.sons[a])
     inc(a)
     inc(f)
 
@@ -879,5 +889,14 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
+
+proc argtypeMatches*(c: PContext, f, a: PType): bool = 
+  var m: TCandidate
+  initCandidate(m, f)
+  let res = paramTypesMatch(c, m, f, a, ast.emptyNode, nil)
+  #instantiateGenericConverters(c, res, m)
+  # XXX this is used by patterns.nim too; I think it's better to not
+  # instantiate generic converters for that
+  result = res != nil
 
 include suggest

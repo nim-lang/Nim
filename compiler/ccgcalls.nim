@@ -146,7 +146,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: PRope): PRope =
     result = if r == nil: r else: con(r, ~", ")
 
-  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2);$n"
+  const CallPattern = "$1.ClEnv? $1.ClPrc($3$1.ClEnv) : (($4)($1.ClPrc))($2)"
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
@@ -164,7 +164,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if i < length - 1: app(pl, ~", ")
   
   template genCallPattern =
-    lineF(p, cpsStmts, CallPattern, op.r, pl, pl.addComma, rawProc)
+    lineF(p, cpsStmts, CallPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
   let rawProc = getRawProcType(p, typ)
   if typ.sons[0] != nil:

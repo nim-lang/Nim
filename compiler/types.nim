@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -632,7 +632,8 @@ proc SameTypeOrNil*(a, b: PType, flags: TTypeCmpFlags = {}): bool =
       result = SameTypeAux(a, b, c)
 
 proc equalParam(a, b: PSym): TParamsEquality = 
-  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): 
+  if SameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}) and
+      ExprStructuralEquivalent(a.constraint, b.constraint):
     if a.ast == b.ast: 
       result = paramsEqual
     elif a.ast != nil and b.ast != nil: 
@@ -875,20 +876,24 @@ proc inheritanceDiff*(a, b: PType): int =
   # | returns: -x iff `a` is the x'th direct superclass of `b`
   # | returns: +x iff `a` is the x'th direct subclass of `b`
   # | returns: `maxint` iff `a` and `b` are not compatible at all
+  assert a.kind == tyObject
+  assert b.kind == tyObject
   var x = a
   result = 0
   while x != nil:
+    x = skipTypes(x, skipPtrs)
     if sameObjectTypes(x, b): return 
     x = x.sons[0]
     dec(result)
   var y = b
   result = 0
   while y != nil:
+    y = skipTypes(y, skipPtrs)
     if sameObjectTypes(y, a): return 
     y = y.sons[0]
     inc(result)
   result = high(int)
-    
+
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool
 proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool = 
   result = true

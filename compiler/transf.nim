@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -150,7 +150,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       newVar.owner = getCurrOwner(c)
       IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
       var defs = newTransNode(nkIdentDefs, it.info, 3)
-      if gCmd == cmdDoc:
+      if importantComments():
         # keep documentation information:
         pnode(defs).comment = it.comment
       defs[0] = newSymNode(newVar).PTransNode
@@ -665,7 +665,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkIdentDefs, nkConstDef:
     result = transformSons(c, n)
     # XXX comment handling really sucks:
-    if gCmd == cmdDoc:
+    if importantComments():
       pnode(result).comment = n.comment
   else:
     result = transformSons(c, n)

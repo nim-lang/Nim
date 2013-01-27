@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Dominik Picheta, Andreas Rumpf
+#        (c) Copyright 2013 Dominik Picheta, Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -139,12 +139,15 @@ proc invokeNewSeq*(x: TAny, len: int) =
   var z = newSeq(x.rawType, len)
   genericShallowAssign(x.value, addr(z), x.rawType)
 
-proc extendSeq*(x: TAny, elems = 1) =
-  ## performs ``setLen(x, x.len+elems)``. `x` needs to represent a ``seq``.
+proc extendSeq*(x: TAny) =
+  ## performs ``setLen(x, x.len+1)``. `x` needs to represent a ``seq``.
   assert x.rawType.kind == tySequence
   var y = cast[ptr PGenSeq](x.value)[]
-  var z = incrSeq(y, x.rawType.base.size * elems)
-  genericShallowAssign(x.value, addr(z), x.rawType)
+  var z = incrSeq(y, x.rawType.base.size)
+  # 'incrSeq' already freed the memory for us and copied over the RC!
+  # So we simply copy the raw pointer into 'x.value':
+  cast[ppointer](x.value)[] = z
+  #genericShallowAssign(x.value, addr(z), x.rawType)
 
 proc setObjectRuntimeType*(x: TAny) =
   ## this needs to be called to set `x`'s runtime object type field.

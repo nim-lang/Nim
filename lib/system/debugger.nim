@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -579,6 +579,10 @@ proc hash(Data: Pointer, Size: int): THash =
     Dec(s)
   result = !$h
 
+proc hashGcHeader(data: pointer): THash =
+  const headerSize = sizeof(int)*2
+  result = hash(cast[pointer](cast[int](data) -% headerSize), headerSize)
+
 proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
                     h: THash): THash
 proc genericHashAux(dest: Pointer, n: ptr TNimNode, shallow: bool,
@@ -606,20 +610,22 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
     result = h
     if x != nil:
       let s = cast[NimString](x)
-      when true:
-        result = result !& hash(x, s.len)
+      when defined(trackGcHeaders):
+        result = result !& hashGcHeader(x)
       else:
-        let y = cast[pointer](cast[int](x) -% 2*sizeof(int))
-        result = result !& hash(y, s.len + 2*sizeof(int))
+        result = result !& hash(x, s.len)
   of tySequence:
     var x = cast[ppointer](dest)
     var dst = cast[taddress](cast[ppointer](dest)[])
     result = h
     if dst != 0:
-      for i in 0..cast[pgenericseq](dst).len-1:
-        result = result !& genericHashAux(
-          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-          mt.Base, shallow, result)
+      when defined(trackGcHeaders):
+        result = result !& hashGcHeader(cast[ppointer](dest)[])
+      else:
+        for i in 0..cast[pgenericseq](dst).len-1:
+          result = result !& genericHashAux(
+            cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
+            mt.Base, shallow, result)
   of tyObject, tyTuple:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
     result = genericHashAux(dest, mt.node, shallow, h)
@@ -630,13 +636,18 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
       result = result !& genericHashAux(cast[pointer](d +% i*% mt.base.size),
                                         mt.base, shallow, result)
   of tyRef:
-    if shallow:
-      result = h !& hash(dest, mt.size)
-    else:
-      result = h
+    when defined(trackGcHeaders):
       var s = cast[ppointer](dest)[]
       if s != nil:
-        result = result !& genericHashAux(s, mt.base, shallow, result)
+        result = result !& hashGcHeader(s)
+    else:
+      if shallow:
+        result = h !& hash(dest, mt.size)
+      else:
+        result = h
+        var s = cast[ppointer](dest)[]
+        if s != nil:
+          result = result !& genericHashAux(s, mt.base, shallow, result)
         # hash the object header:
         #const headerSize = sizeof(int)*2
         #result = result !& hash(cast[pointer](cast[int](s) -% headerSize),

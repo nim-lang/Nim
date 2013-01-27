@@ -635,6 +635,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         genericParams.addSon(newSymNode(s))
         result = typeClass
 
+proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
+  if n.kind == nkCurlyExpr:
+    result = semTypeNode(c, n.sons[0], nil)
+    constraint = semNodeKindConstraints(n)
+  else:
+    result = semTypeNode(c, n, nil)
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
                      prev: PType, kind: TSymKind): PType = 
   var
@@ -660,13 +667,14 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     checkMinSonsLen(a, 3)
     var
       typ: PType = nil
-      def: PNode = nil      
+      def: PNode = nil
+      constraint: PNode = nil
       length = sonsLen(a)
       hasType = a.sons[length-2].kind != nkEmpty
       hasDefault = a.sons[length-1].kind != nkEmpty
 
     if hasType:
-      typ = semTypeNode(c, a.sons[length-2], nil)
+      typ = semParamType(c, a.sons[length-2], constraint)
       
     if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
@@ -689,6 +697,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                                     arg.name.s, arg.info).skipIntLit
       arg.typ = finalType
       arg.position = counter
+      arg.constraint = constraint
       inc(counter)
       if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
       if ContainsOrIncl(check, arg.name.id): 
@@ -787,6 +796,12 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
   else:
     LocalError(n.info, errTypeExpected, n.renderTree)
 
+proc freshType(res, prev: PType): PType {.inline.} =
+  if prev.isNil:
+    result = copyType(res, res.owner, keepId=false)
+  else:
+    result = res
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -825,6 +840,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         checkSonsLen(n, 3)
         result = semTypeNode(c, n.sons[1], prev)
         if result.kind in NilableTypes and n.sons[2].kind == nkNilLit:
+          result = freshType(result, prev)
           result.flags.incl(tfNotNil)
         else:
           LocalError(n.info, errGenerated, "invalid type")
@@ -832,11 +848,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeExpr(c, n)
     else:
       result = semTypeExpr(c, n)
-  of nkCurlyExpr:
-    result = semTypeNode(c, n.sons[0], nil)
-    if result != nil:
-      result = copyType(result, getCurrOwner(), true)
-      result.constraint = semNodeKindConstraints(n)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
@@ -919,6 +930,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkSharedTy:
     checkSonsLen(n, 1)
     result = semTypeNode(c, n.sons[0], prev)
+    result = freshType(result, prev)
     result.flags.incl(tfShared)
   else:
     LocalError(n.info, errTypeExpected)

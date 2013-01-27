@@ -429,7 +429,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
                    [istr, makeYamlString($n.kind)])
     if maxRecDepth != 0: 
       case n.kind
-      of nkCharLit..nkInt64Lit: 
+      of nkCharLit..nkUInt64Lit:
         appf(result, ",$N$1\"intVal\": $2", [istr, toRope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit: 
         appf(result, ",$N$1\"floatVal\": $2", 
@@ -585,8 +585,9 @@ proc StrTableContains(t: TStrTable, n: PSym): bool =
 proc StrTableRawInsert(data: var TSymSeq, n: PSym) = 
   var h: THash = n.name.h and high(data)
   while data[h] != nil: 
-    if data[h] == n: 
-      InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+    if data[h] == n:
+      # allowed for 'export' feature:
+      #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
       return
     h = nextTry(h, high(data))
   assert(data[h] == nil)
@@ -617,23 +618,23 @@ proc StrTableAdd(t: var TStrTable, n: PSym) =
   StrTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc StrTableIncl*(t: var TStrTable, n: PSym): bool = 
+proc StrTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
   assert n.name != nil
   var h: THash = n.name.h and high(t.data)
-  while true: 
+  while true:
     var it = t.data[h]
-    if it == nil: break 
-    if it.name.id == n.name.id: 
+    if it == nil: break
+    if it.name.id == n.name.id:
       t.data[h] = n           # overwrite it with newer definition!
       return true             # found it
     h = nextTry(h, high(t.data))
-  if mustRehash(len(t.data), t.counter): 
+  if mustRehash(len(t.data), t.counter):
     StrTableEnlarge(t)
     StrTableRawInsert(t.data, n)
-  else: 
+  else:
     assert(t.data[h] == nil)
     t.data[h] = n
   inc(t.counter)

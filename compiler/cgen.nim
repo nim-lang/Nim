@@ -558,17 +558,6 @@ include "ccgexprs.nim", "ccgstmts.nim"
 # ----------------------------- dynamic library handling -----------------
 # We don't finalize dynamic libs as this does the OS for us.
 
-proc libCandidates(s: string, dest: var TStringSeq) = 
-  var le = strutils.find(s, '(')
-  var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le:
-    var prefix = substr(s, 0, le - 1)
-    var suffix = substr(s, ri + 1)
-    for middle in split(substr(s, le + 1, ri - 1), '|'):
-      libCandidates(prefix & middle & suffix, dest)
-  else: 
-    add(dest, s)
-
 proc isGetProcAddr(lib: PLib): bool =
   let n = lib.path
   result = n.kind in nkCallKinds and n.typ != nil and 
@@ -870,8 +859,6 @@ proc genVarPrototypeAux(m: BModule, sym: PSym) =
 
 proc genVarPrototype(m: BModule, sym: PSym) =
   genVarPrototypeAux(m, sym)
-  if sfExportc in sym.flags and generatedHeader != nil:
-    genVarPrototypeAux(generatedHeader, sym)
 
 proc addIntTypes(result: var PRope) {.inline.} =
   appf(result, "#define NIM_INTBITS $1", [
