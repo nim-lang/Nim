@@ -485,7 +485,8 @@ proc fileInfoIdx*(filename: string): int32 =
     result = filenameToIndexTbl[canon]
   else:
     result = fileInfos.len.int32
-    fileInfos.add(newFileInfo(canon, if pseudoPath: "" else: canon.shortenDir))
+    fileInfos.add(newFileInfo(canon, if pseudoPath: filename
+                                     else: canon.shortenDir))
     filenameToIndexTbl[canon] = result
 
 proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =

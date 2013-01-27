@@ -324,7 +324,7 @@ proc InteractivePasses =
 var stdinModule: PSym
 proc makeStdinModule: PSym =
   if stdinModule == nil:
-    stdinModule = newModule(gCmdLineInfo.fileIndex)
+    stdinModule = newModule(fileInfoIdx"stdin")
     stdinModule.id = getID()
   result = stdinModule
 
@@ -333,7 +333,7 @@ proc CommandInteractive =
   InteractivePasses()
   compileSystemModule()
   if commandArgs.len > 0:
-    discard CompileModule(gProjectMainIdx, {})
+    discard CompileModule(fileInfoIdx(gProjectFull), {})
   else:
     var m = makeStdinModule()
     incl(m.flags, sfMainModule)
