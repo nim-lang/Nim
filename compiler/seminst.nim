@@ -104,9 +104,9 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     popProcCon(c)
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
-  for i in countup(0, Len(c.generics.generics) - 1):
-    if c.generics.generics[i].genericSym.id == s.id:
-      var oldPrc = c.generics.generics[i].inst.sym
+  for i in countup(0, c.generics.len - 1):
+    if c.generics[i].genericSym.id == s.id:
+      var oldPrc = c.generics[i].inst.sym
       pushInfoContext(oldPrc.info)
       openScope(c.tab)
       var n = oldPrc.ast
@@ -166,7 +166,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
     fn.procInstCache.safeAdd(entry)
-    c.generics.generics.add(makeInstPair(fn, entry))
+    c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):

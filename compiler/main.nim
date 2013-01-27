@@ -282,7 +282,6 @@ proc CommandCompileToC =
       # rodread.gMods
       
       # !! ropes.cache
-      # !! semdata.gGenericsCache
       # semthreads.computed?
       #
       # suggest.usageSym
@@ -397,7 +396,6 @@ proc resetMemory =
   ResetAllModules()
   resetRopeCache()
   resetSysTypes()
-  gGenericsCache = nil
   gOwners = @[]
   rangeDestructorProc = nil
   for i in low(buckets)..high(buckets):
@@ -421,7 +419,6 @@ proc resetMemory =
   # rodread.gMods
   
   # !! ropes.cache
-  # !! semdata.gGenericsCache
   # semthreads.computed?
   #
   # suggest.usageSym

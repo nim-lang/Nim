@@ -42,6 +42,11 @@ proc searchInstTypes(key: PType): PType =
 
   for inst in genericTyp.sym.typeInstCache:
     if inst.id == key.id: return inst
+    if inst.sons.len < key.sons.len:
+      # XXX: This happens for prematurely cached
+      # types such as TChannel[empty]. Why?
+      # See the notes for PActor in handleGenericInvokation
+      return
     block MatchType:
       for j in 1 .. high(key.sons):
         # XXX sameType is not really correct for nested generics?
@@ -138,75 +143,51 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   var body = t.sons[0]
   if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
   var header: PType = nil
-  when true:
-    # search for some instantiation here:
-    result = searchInstTypes(t)
-    if result != nil: return
-    for i in countup(1, sonsLen(t) - 1):
-      var x = t.sons[i]
-      if x.kind == tyGenericParam: 
-        x = lookupTypeVar(cl, x)
-        if header == nil: header = copyType(t, t.owner, false)
-        header.sons[i] = x
-        #idTablePut(cl.typeMap, body.sons[i-1], x)
-    if header != nil:
-      # search again after first pass:
-      result = searchInstTypes(header)
-      if result != nil: return
-    else:
-      header = copyType(t, t.owner, false)
-    # ugh need another pass for deeply recursive generic types (e.g. PActor)
-    # we need to add the candidate here, before it's fully instantiated for
-    # recursive instantions:
-    result = newType(tyGenericInst, t.sons[0].owner)
-    result.rawAddSon(header.sons[0])
-    cacheTypeInst(result)
- 
-    for i in countup(1, sonsLen(t) - 1):
-      var x = replaceTypeVarsT(cl, t.sons[i])
-      assert x.kind != tyGenericInvokation
+  # search for some instantiation here:
+  result = searchInstTypes(t)
+  if result != nil: return
+  for i in countup(1, sonsLen(t) - 1):
+    var x = t.sons[i]
+    if x.kind == tyGenericParam: 
+      x = lookupTypeVar(cl, x)
+      if header == nil: header = copyType(t, t.owner, false)
       header.sons[i] = x
-      idTablePut(cl.typeMap, body.sons[i-1], x)
-    
-    for i in countup(1, sonsLen(t) - 1): 
-      # if one of the params is not concrete, we cannot do anything
-      # but we already raised an error!
-      rawAddSon(result, header.sons[i])
-    
-    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
-    newbody.flags = newbody.flags + t.flags + body.flags
-    result.flags = result.flags + newbody.flags
-    newbody.callConv = body.callConv
-    newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-    # This type may be a generic alias and we want to resolve it here.
-    # One step is enough, because the recursive nature of
-    # handleGenericInvokation will handle the alias-to-alias-to-alias case
-    if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
-    rawAddSon(result, newbody)
-    checkPartialConstructedType(cl.info, newbody)
+      #idTablePut(cl.typeMap, body.sons[i-1], x)
+  if header != nil:
+    # search again after first pass:
+    result = searchInstTypes(header)
+    if result != nil: return
   else:
-    for i in countup(1, sonsLen(t) - 1):
-      if PType(idTableGet(cl.typeMap, t.sons[i])) == nil: debug(t)
-      var x = replaceTypeVarsT(cl, t.sons[i])
-      if t.sons[i].kind == tyGenericParam: 
-        if header == nil: header = copyType(t, t.owner, false)
-        header.sons[i] = x
-      assert x.kind != tyGenericInvokation
-      idTablePut(cl.typeMap, body.sons[i-1], x)
-    if header == nil: header = t
-    result = searchInstTypes(cl.c.generics.InstTypes, header)
-    if result != nil: return 
-    result = newType(tyGenericInst, t.sons[0].owner)
-    for i in countup(0, sonsLen(t) - 1): 
-      # if one of the params is not concrete, we cannot do anything
-      # but we already raised an error!
-      addSon(result, header.sons[i])
-    idTablePut(cl.c.generics.InstTypes, header, result)
-    var newbody = ReplaceTypeVarsT(cl, lastSon(body))
-    newbody.flags = newbody.flags + t.flags + body.flags
-    newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-    addSon(result, newbody)
-    checkPartialConstructedType(cl.info, newbody)
+    header = copyType(t, t.owner, false)
+  # ugh need another pass for deeply recursive generic types (e.g. PActor)
+  # we need to add the candidate here, before it's fully instantiated for
+  # recursive instantions:
+  result = newType(tyGenericInst, t.sons[0].owner)
+  result.rawAddSon(header.sons[0])
+  cacheTypeInst(result)
+
+  for i in countup(1, sonsLen(t) - 1):
+    var x = replaceTypeVarsT(cl, t.sons[i])
+    assert x.kind != tyGenericInvokation
+    header.sons[i] = x
+    idTablePut(cl.typeMap, body.sons[i-1], x)
+  
+  for i in countup(1, sonsLen(t) - 1): 
+    # if one of the params is not concrete, we cannot do anything
+    # but we already raised an error!
+    rawAddSon(result, header.sons[i])
+  
+  var newbody = ReplaceTypeVarsT(cl, lastSon(body))
+  newbody.flags = newbody.flags + t.flags + body.flags
+  result.flags = result.flags + newbody.flags
+  newbody.callConv = body.callConv
+  newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
+  # This type may be a generic alias and we want to resolve it here.
+  # One step is enough, because the recursive nature of
+  # handleGenericInvokation will handle the alias-to-alias-to-alias case
+  if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
+  rawAddSon(result, newbody)
+  checkPartialConstructedType(cl.info, newbody)
   
 proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
   result = t

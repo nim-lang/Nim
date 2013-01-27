@@ -1359,7 +1359,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInUnrolledContext = c.InUnrolledContext
   let oldInGenericInst = c.InGenericInst
   let oldProcCon = c.p
-  c.generics = newGenericsCache()
+  c.generics = @[]
   try:
     result = semExpr(c, n, flags)
     if msgs.gErrorCounter != oldErrorCount: result = nil
