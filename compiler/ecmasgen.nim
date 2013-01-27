@@ -21,7 +21,6 @@ import
 
 type 
   TEcmasGen = object of TPassContext
-    filename: string
     module: PSym
 
   BModule = ref TEcmasGen
@@ -1608,7 +1607,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
 
     # write the file:
     var code = con(globals.typeInfo, globals.code)
-    var outfile = changeFileExt(completeCFilePath(m.filename), "js")
+    var outfile = changeFileExt(completeCFilePath(m.module.filename), "js")
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 
 proc myOpenCached(s: PSym, rd: PRodReader): PPassContext = 
