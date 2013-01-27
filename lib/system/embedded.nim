@@ -17,7 +17,7 @@ proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
 proc chckNil(p: pointer) {.inline, compilerproc.}
 
-proc pushFrame(s: PFrame) {.compilerRtl, inl.} = nil
+proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} = nil
 proc popFrame {.compilerRtl, inl.} = nil
 
 proc setFrame(s: PFrame) {.compilerRtl, inl.} = nil

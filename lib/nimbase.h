@@ -438,11 +438,11 @@ struct TFrame {
 
 #define nimfr(proc, file) \
   volatile TFrame F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; pushFrame(&F);
+  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; nimFrame(&F);
 
 #define nimfrs(proc, file, slots) \
   volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = slots; pushFrame((TFrame*)&F);
+  F.procname = proc; F.filename = file; F.line = 0; F.len = slots; nimFrame((TFrame*)&F);
 
 #define nimln(n, file) \
   F.line = n; F.filename = file;
