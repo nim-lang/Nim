@@ -231,8 +231,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     options.outFile = arg
   of "mainmodule", "m":
     expectArg(switch, arg, pass, info)
-    gProjectName = arg
-    gProjectFull = gProjectPath / gProjectName
+    optMainModule = arg
   of "define", "d": 
     expectArg(switch, arg, pass, info)
     DefineSymbol(arg)
