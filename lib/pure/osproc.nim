@@ -28,6 +28,7 @@ type
       id: THandle
     else:
       inputHandle, outputHandle, errorHandle: TFileHandle
+      inStream, outStream, errStream: PStream
       id: TPid
     exitCode: cint
 
@@ -112,13 +113,22 @@ proc peekExitCode*(p: PProcess): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
 
 proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## opens ``p``'s input stream for writing to
+  ## returns ``p``'s input stream for writing to
+  ##
+  ## **Warning**: The returned `PStream` should not be closed manually as it 
+  ## is closed when closing the PProcess ``p``.
 
 proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## opens ``p``'s output stream for reading from
+  ## returns ``p``'s output stream for reading from
+  ##
+  ## **Warning**: The returned `PStream` should not be closed manually as it 
+  ## is closed when closing the PProcess ``p``.
 
 proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## opens ``p``'s output stream for reading from
+  ## returns ``p``'s output stream for reading from
+  ##
+  ## **Warning**: The returned `PStream` should not be closed manually as it 
+  ## is closed when closing the PProcess ``p``.
 
 when defined(macosx) or defined(bsd):
   const
@@ -637,7 +647,20 @@ elif not defined(useNimRtl):
       discard close(p_stdin[readIdx])
       discard close(p_stdout[writeIdx])
 
+    proc createStream(stream: var PStream, handle: var TFileHandle,
+                      fileMode: TFileMode) =
+      var f: TFile
+      if not open(f, handle, fileMode): OSError()
+      stream = newFileStream(f)
+
+    createStream(result.inStream, result.inputHandle, fmWrite)
+    createStream(result.outStream, result.outputHandle, fmRead)
+    createStream(result.errStream, result.errorHandle, fmRead)
+
   proc close(p: PProcess) =
+    close(p.inStream)
+    close(p.outStream)
+    close(p.errStream)
     discard close(p.inputHandle)
     discard close(p.outputHandle)
     discard close(p.errorHandle)
@@ -679,19 +702,13 @@ elif not defined(useNimRtl):
     else: result = p.exitCode.int shr 8
 
   proc inputStream(p: PProcess): PStream =
-    var f: TFile
-    if not open(f, p.inputHandle, fmWrite): OSError()
-    result = newFileStream(f)
+    return p.inStream
 
   proc outputStream(p: PProcess): PStream =
-    var f: TFile
-    if not open(f, p.outputHandle, fmRead): OSError()
-    result = newFileStream(f)
+    return p.outStream
 
   proc errorStream(p: PProcess): PStream =
-    var f: TFile
-    if not open(f, p.errorHandle, fmRead): OSError()
-    result = newFileStream(f)
+    return p.errStream
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
 
