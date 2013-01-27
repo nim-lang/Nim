@@ -3,9 +3,8 @@ version 0.9.2
 
 - implement constructors + full 'not nil' checking
 - ``restrict`` pragma + backend support
-- fix marshal bug
 - fix: 'result' is not properly cleaned for NRVO
-
+- fix: exhaustive checking in case statements
 
 version 0.9.4
 =============
@@ -13,6 +12,8 @@ version 0.9.4
 - make 'bind' default for templates and introduce 'mixin'; 
   special rule for ``[]=``
 - implicit deref for parameter matching; overloading based on 'var T'
+- ``=`` should be overloadable; requires specialization for ``=``
+- optimize genericAssign in the code generator
 
 
 version 0.9.X
@@ -25,8 +26,6 @@ version 0.9.X
   * nested iterators
 - implement the missing features wrt inheritance
 - improve the compiler as a service
-- ``=`` should be overloadable; requires specialization for ``=``
-- optimize genericAssign in the code generator
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
 - result = result shr 8 for the "system()" wrapper
