@@ -311,11 +311,12 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = semIdentVis(c, kind, n, allowed)
   
-proc checkForOverlap(c: PContext, t, ex: PNode, branchIndex: int) = 
-  let ex = ex.skipConv
-  for i in countup(1, branchIndex - 1): 
+proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
+  let ex = t[branchIndex][currentEx].skipConv
+  for i in countup(1, branchIndex):
     for j in countup(0, sonsLen(t.sons[i]) - 2): 
-      if overlap(t.sons[i].sons[j].skipConv, ex): 
+      if i == branchIndex and j == currentEx: break
+      if overlap(t.sons[i].sons[j].skipConv, ex):
         LocalError(ex.info, errDuplicateCaseLabel)
   
 proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode =
@@ -373,8 +374,8 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
           # caution! last son of branch must be the actions to execute:
           var L = branch.len
           swap(branch.sons[L-2], branch.sons[L-1])
-    checkForOverlap(c, t, branch.sons[i], branchIndex)
-     
+    checkForOverlap(c, t, i, branchIndex)
+    
 proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
                       father: PNode, rectype: PSym)
 proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int, 
@@ -397,6 +398,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
   var chckCovered = true
   for i in countup(1, sonsLen(n) - 1): 
     var b = copyTree(n.sons[i])
+    addSon(a, b)
     case n.sons[i].kind
     of nkOfBranch: 
       checkMinSonsLen(b, 2)
@@ -407,7 +409,6 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     else: illFormedAst(n)
     delSon(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
-    addSon(a, b)
   if chckCovered and (covered != lengthOrd(a.sons[0].typ)): 
     localError(a.info, errNotAllCasesCovered)
   addSon(father, a)
