@@ -242,7 +242,6 @@ when not defined(useNimRtl):
         result.string.add(line.string)
         result.string.add("\n")
       elif not running(p): break
-    close(outp)
     close(p)
 
 
@@ -647,20 +646,10 @@ elif not defined(useNimRtl):
       discard close(p_stdin[readIdx])
       discard close(p_stdout[writeIdx])
 
-    proc createStream(stream: var PStream, handle: var TFileHandle,
-                      fileMode: TFileMode) =
-      var f: TFile
-      if not open(f, handle, fileMode): OSError()
-      stream = newFileStream(f)
-
-    createStream(result.inStream, result.inputHandle, fmWrite)
-    createStream(result.outStream, result.outputHandle, fmRead)
-    createStream(result.errStream, result.errorHandle, fmRead)
-
   proc close(p: PProcess) =
-    close(p.inStream)
-    close(p.outStream)
-    close(p.errStream)
+    if p.inStream != nil: close(p.inStream)
+    if p.outStream != nil: close(p.outStream)
+    if p.errStream != nil: close(p.errStream)
     discard close(p.inputHandle)
     discard close(p.outputHandle)
     discard close(p.errorHandle)
@@ -701,13 +690,25 @@ elif not defined(useNimRtl):
     if p.exitCode == -3: result = -1
     else: result = p.exitCode.int shr 8
 
+  proc createStream(stream: var PStream, handle: var TFileHandle,
+                    fileMode: TFileMode) =
+    var f: TFile
+    if not open(f, handle, fileMode): OSError()
+    stream = newFileStream(f)
+
   proc inputStream(p: PProcess): PStream =
+    if p.inStream == nil:
+      createStream(p.inStream, p.inputHandle, fmWrite)
     return p.inStream
 
   proc outputStream(p: PProcess): PStream =
+    if p.outStream == nil:
+      createStream(p.outStream, p.outputHandle, fmRead)
     return p.outStream
 
   proc errorStream(p: PProcess): PStream =
+    if p.errStream == nil:
+      createStream(p.errStream, p.errorHandle, fmRead)
     return p.errStream
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
@@ -766,9 +767,7 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break
-  close(outp)
   close(p)
-
 
 when isMainModule:
   var x = execProcess("gcc -v")
