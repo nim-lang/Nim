@@ -1103,8 +1103,16 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## The full path is created. If this fails, `EOS` is raised. It does **not**
   ## fail if the path already exists because for most usages this does not 
   ## indicate an error.
+
+  var omitNext = false
+  when defined(doslike):
+    omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
-    if dir[i] in {dirsep, altsep}: rawCreateDir(substr(dir, 0, i-1))
+    if dir[i] in {dirsep, altsep}:
+      if omitNext:
+        omitNext = false
+      else:
+        rawCreateDir(substr(dir, 0, i-1))
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1", 
