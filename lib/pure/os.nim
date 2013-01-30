@@ -1096,7 +1096,7 @@ proc rawCreateDir(dir: string) =
     if res == 0'i32 and GetLastError() != 183'i32:
       OSError()
 
-proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
+proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir,FReadDir].} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
@@ -1112,8 +1112,9 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
       if omitNext:
         omitNext = false
       else:
-        rawCreateDir(substr(dir, 0, i-1))
-  rawCreateDir(dir)
+        var partDir = substr(dir, 0, i-1)
+        if not(existsDir(partDir)): rawCreateDir(partDir)
+  if not(existsDir(dir)): rawCreateDir(dir)  
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FWriteIO, FReadIO].} =
