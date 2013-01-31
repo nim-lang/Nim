@@ -135,15 +135,16 @@ proc processCompile(filename: string) =
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
-proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool = 
+proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
-  of "gc": 
+  of "gc":
     case arg.normalize
-    of "boehm": result = contains(gGlobalOptions, optBoehmGC)
-    of "refc":  result = contains(gGlobalOptions, optRefcGC)
-    of "none":  result = gGlobalOptions * {optBoehmGC, optRefcGC} == {}
+    of "boehm": result = gSelectedGC == gcBoehm
+    of "refc":  result = gSelectedGC == gcRefc
+    of "v2":    result = gSelectedGC == gcV2
+    of "none":  result = gSelectedGC == gcNone
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of "opt": 
+  of "opt":
     case arg.normalize
     of "speed": result = contains(gOptions, optOptimizeSpeed)
     of "size": result = contains(gOptions, optOptimizeSize)
@@ -269,15 +270,14 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     case arg.normalize
     of "boehm": 
-      incl(gGlobalOptions, optBoehmGC)
-      excl(gGlobalOptions, optRefcGC)
+      gSelectedGC = gcBoehm
       DefineSymbol("boehmgc")
-    of "refc": 
-      excl(gGlobalOptions, optBoehmGC)
-      incl(gGlobalOptions, optRefcGC)
-    of "none": 
-      excl(gGlobalOptions, optRefcGC)
-      excl(gGlobalOptions, optBoehmGC)
+    of "refc":
+      gSelectedGC = gcRefc
+    of "v2":
+      gSelectedGC = gcV2
+    of "none":
+      gSelectedGC = gcNone
       defineSymbol("nogc")
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "warnings", "w": ProcessOnOffSwitch({optWarns}, arg, pass, info)

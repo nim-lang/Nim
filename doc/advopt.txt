@@ -64,7 +64,7 @@ Advanced options:
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
   --skipProjCfg             do not read the project's configuration file
-  --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
+  --gc:refc|v2|boehm|none   use Nimrod's native GC|V2|Boehm GC|no GC
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --babelPath:PATH          add a path for Babel support

@@ -938,7 +938,7 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
       genTupleInfo(m, fakeClosureType(t.owner), result)
   of tySequence, tyRef:
     genTypeInfoAux(m, t, result)
-    if optRefcGC in gGlobalOptions:
+    if usesNativeGC():
       let markerProc = genTraverseProc(m, t, tiNew)
       appf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, result)
