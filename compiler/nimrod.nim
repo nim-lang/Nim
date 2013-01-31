@@ -69,11 +69,12 @@ proc HandleCmdLine() =
             changeFileExt(gProjectFull, exeExt).prependCurDir)
           execExternalProgram(ex & ' ' & service.arguments)
 
-#GC_disableMarkAndSweep()
-
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
-GC_disableMarkAndSweep()
+
+when compileOption("gc", "v2"):
+  # the new correct mark&sweet collector is too slow :-/
+  GC_disableMarkAndSweep()
 condsyms.InitDefines()
 HandleCmdLine()
 quit(options.gExitcode)

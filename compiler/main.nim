@@ -427,14 +427,15 @@ proc resetMemory =
   # XXX: detect config reloading (implement as error/require restart)
   # XXX: options are appended (they will accumulate over time)
   # vis = visimpl
-  gcDebugging = true
-  echo "COLLECT 1"
-  GC_fullCollect()
-  echo "COLLECT 2"
-  GC_fullCollect()
-  echo "COLLECT 3"
-  GC_fullCollect()
-  echo GC_getStatistics()
+  when compileOption("gc", "v2"):
+    gcDebugging = true
+    echo "COLLECT 1"
+    GC_fullCollect()
+    echo "COLLECT 2"
+    GC_fullCollect()
+    echo "COLLECT 3"
+    GC_fullCollect()
+    echo GC_getStatistics()
 
 const
   SimiluateCaasMemReset = false
