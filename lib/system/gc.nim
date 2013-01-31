@@ -575,6 +575,7 @@ proc collectCycles(gch: var TGcHeap) =
           d.refcount = d.refcount +% rcIncrement
           if d in gch.cycleRoots and not containsOrIncl(marker, d):
             forAllChildren(d, waPush)
+  Deinit(marker)
   # remove cycles:
   for c in elements(gch.cycleRoots):
     if c.refcount <% rcIncrement:
