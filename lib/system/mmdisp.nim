@@ -307,10 +307,10 @@ else:
   include "system/cellsets"
   when not leakDetector:
     sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
-  when true:
-    include "system/gc"
+  when compileOption("gc", "v2"):
+    include "system/gc2"
   else:
-    include "system/oldgc"
+    include "system/gc"
   
 {.pop.}
 
