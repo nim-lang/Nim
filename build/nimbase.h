@@ -143,7 +143,7 @@ __clang__
 #define N_NOINLINE_PTR(rettype, name) rettype (*name)
 
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
-    defined(__POCC__) || defined(_MSC_VER)
+    defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
 #  define N_NIMCALL(rettype, name) rettype __fastcall name
 #  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
@@ -435,6 +435,17 @@ struct TFrame {
   NCSTRING filename;
   NI len;
 };
+
+#define nimfr(proc, file) \
+  volatile TFrame F; \
+  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; nimFrame(&F);
+
+#define nimfrs(proc, file, slots) \
+  volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
+  F.procname = proc; F.filename = file; F.line = 0; F.len = slots; nimFrame((TFrame*)&F);
+
+#define nimln(n, file) \
+  F.line = n; F.filename = file;
 
 #define NIM_POSIX_INIT  __attribute__((constructor)) 
 
