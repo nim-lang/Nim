@@ -126,6 +126,7 @@ proc runGcTests(r: var TResults, options: string) =
   test "gctest"
   test "gcleak3"
   test "weakrefs"
+  test "cycleleak"
 
 # ------------------------- threading tests -----------------------------------
 

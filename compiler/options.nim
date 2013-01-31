@@ -34,7 +34,7 @@ type                          # please make sure we have under 32 options
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
-    gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 
+    gloptNone, optForceFullMake, optDeadCodeElim, 
     optListCmd, optCompileOnly, optNoLinking, 
     optSafeCode,              # only allow safe code
     optCDebug,                # turn on debugging information
@@ -80,8 +80,10 @@ type                          # please make sure we have under 32 options
     cmdInteractive,           # start interactive session
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
+  TGCMode* = enum                   # the selected GC
+    gcNone, gcBoehm, gcRefc, gcV2   #
 
-const 
+const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck}
 
@@ -90,12 +92,13 @@ var
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
                          optHints, optStackTrace, optLineTrace,
                          optPatterns}
-  gGlobalOptions*: TGlobalOptions = {optRefcGC, optThreadAnalysis}
+  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
   gExitcode*: int8
+  gCmd*: TCommands = cmdNone  # the command
+  gSelectedGC* = gcRefc       # the selected GC
   searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
   headerFile*: string = ""
-  gCmd*: TCommands = cmdNone  # the command
   gVerbosity*: int            # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool # for 'doc2': output any dependency
@@ -104,6 +107,7 @@ var
   gListFullPaths*: bool
   
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
+proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 
 const 
   genSubDir* = "nimcache"

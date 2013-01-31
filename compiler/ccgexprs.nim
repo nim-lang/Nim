@@ -164,7 +164,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
   else: result = OnUnknown
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
-  if dest.s == OnStack or optRefcGC notin gGlobalOptions:
+  if dest.s == OnStack or not usesNativeGC():
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
   elif dest.s == OnHeap:
@@ -204,7 +204,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if needToCopy notin flags or 
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
-    if dest.s == OnStack or optRefcGC notin gGlobalOptions:
+    if dest.s == OnStack or not usesNativeGC():
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(dest), addrLoc(src), rdLoc(dest))
@@ -237,7 +237,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
     else:
-      if dest.s == OnStack or optRefcGC notin gGlobalOptions:
+      if dest.s == OnStack or not usesNativeGC():
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
         if needToKeepAlive in flags: keepAlive(p, dest)
       elif dest.s == OnHeap:
@@ -954,7 +954,7 @@ proc genNew(p: BProc, e: PNode) =
   let args = [getTypeDesc(p.module, reftype),
               genTypeInfo(p.module, refType),
               sizeExpr]
-  if a.s == OnHeap and optRefcGc in gGlobalOptions:
+  if a.s == OnHeap and usesNativeGC():
     # use newObjRC1 as an optimization; and we don't need 'keepAlive' either
     if canFormAcycle(a.t):
       linefmt(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
@@ -974,7 +974,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
               genTypeInfo(p.module, seqType), length]
   var call: TLoc
   initLoc(call, locExpr, dest.t, OnHeap)
-  if dest.s == OnHeap and optRefcGc in gGlobalOptions:
+  if dest.s == OnHeap and usesNativeGC():
     linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", dest.rdLoc)
     call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
     linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)

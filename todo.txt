@@ -46,6 +46,8 @@ Concurrency
   an ``injectLoop`` pragma
 - 'writes: []' effect; track reads/writes for shared types
 - use the effect system for static deadlock prevention and race detection
+- introduce 'noaddr' pragma to prevent taking the address of a location; this
+  is very handy to prevent aliasing of global data
 
 
 version 0.9.XX
