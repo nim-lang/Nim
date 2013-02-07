@@ -21,7 +21,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)
     linefmt(p.module.initProc, cpsStmts,
-      "#nimRegisterGlobalMarker((void*)$1);$n", prc)
+      "#nimRegisterGlobalMarker($1);$n", prc)
 
 proc genVarTuple(p: BProc, n: PNode) = 
   var tup, field: TLoc
