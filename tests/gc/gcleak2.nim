@@ -15,7 +15,9 @@ proc MakeObj(): TTestObj =
   result.s = @[1,2,3]
 
 proc inProc() = 
-  for i in 1 .. 100_000_000:
+  for i in 1 .. 1_000_000:
+    when defined(gcMarkAndSweep):
+      GC_fullcollect()
     var obj: TTestObj
     obj = MakeObj()
     if getOccupiedMem() > 300_000: quit("still a leak!")

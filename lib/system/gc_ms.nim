@@ -11,8 +11,9 @@
 {.push profiler:off.}
 
 const
-  CycleIncrease = 2 # is a multiplicative increase
-  InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
+  InitialThreshold = 4*1024*1024 # X MB because marking&sweeping is slow
+
+template mulThreshold(x): expr {.immediate.} = x * 2
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
@@ -31,12 +32,10 @@ type
   TGlobalMarkerProc = proc () {.nimcall.}
 
   TGcStat = object
-    stackScans: int          # number of performed stack scans (for statistics)
     collections: int         # number of performed full collections
     maxThreshold: int        # max threshold that has been set
     maxStackSize: int        # max stack size
-    maxStackCells: int       # max stack cells in ``decStack``
-    cycleTableSize: int      # max entries in cycle table  
+    freedObjects: int        # max entries in cycle table  
   
   TGcHeap = object           # this contains the zero count and
                              # non-zero count table
@@ -87,32 +86,23 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.inline.} =
   dest[] = src
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
-  result = int(usrToCell(p).refcount)
+  result = 0
 
 var
   globalMarkersLen: int
-  globalMarkers: array[0.. 10_000, TGlobalMarkerProc]
+  globalMarkers: array[0.. 7_000, TGlobalMarkerProc]
 
-proc nimRegisterGlobalMarker(markerProc: pointer) {.compilerProc.} =
-  globalMarkers[globalMarkersLen] = cast[TGlobalMarkerProc](markerProc)
-  inc globalMarkersLen
+proc nimRegisterGlobalMarker(markerProc: TGlobalMarkerProc) {.compilerProc.} =
+  if globalMarkersLen <= high(globalMarkers):
+    globalMarkers[globalMarkersLen] = markerProc
+    inc globalMarkersLen
+  else:
+    echo "[GC] cannot register global variable; too many global variables"
+    quit 1
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
-
-proc writeCell(msg: CString, c: PCell) =
-  var kind = -1
-  if c.typ != nil: kind = ord(c.typ.kind)
-  when leakDetector:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
-              msg, c, kind, c.refcount, c.filename, c.line)
-  else:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld\n",
-              msg, c, kind, c.refcount)
-
-template gcTrace(cell, state: expr): stmt {.immediate.} =
-  when traceGC: traceCell(cell, state)
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
@@ -133,20 +123,18 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
 
-proc nimGCref(p: pointer) {.compilerProc, inline.} = inc(usrToCell(p).refCount)
-proc nimGCunref(p: pointer) {.compilerProc, inline.} = dec(usrToCell(p).refCount)
+proc nimGCref(p: pointer) {.compilerProc, inline.} = 
+  # we keep it from being collected by pretending it's not even allocated:
+  excl(gch.allocated, usrToCell(p))
+proc nimGCunref(p: pointer) {.compilerProc, inline.} = 
+  incl(gch.allocated, usrToCell(p))
 
 proc initGC() =
   when not defined(useNimRtl):
-    when traceGC:
-      for i in low(TCellState)..high(TCellState): Init(states[i])
-    gch.cycleThreshold = InitialCycleThreshold
-    gch.stat.stackScans = 0
+    gch.cycleThreshold = InitialThreshold
     gch.stat.collections = 0
     gch.stat.maxThreshold = 0
     gch.stat.maxStackSize = 0
-    gch.stat.maxStackCells = 0
-    # init the rt
     init(gch.tempStack)
     Init(gch.allocated)
     init(gch.marked)
@@ -290,7 +278,11 @@ proc doOperation(p: pointer, op: TWalkOp) =
   gcAssert(c != nil, "doOperation: 1")
   case op
   of waMarkGlobal:
-    if isAllocatedPtr(gch.region, c):
+    when hasThreadSupport:
+      # could point to a cell which we don't own and don't want to touch/trace
+      if isAllocatedPtr(gch.region, c):
+        mark(gch, c)
+    else:
       mark(gch, c)
   of waMarkPrecise: add(gch.tempStack, c)
 
@@ -298,24 +290,17 @@ proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
 proc freeCyclicCell(gch: var TGcHeap, c: PCell) =
+  inc gch.stat.freedObjects
   prepareDealloc(c)
-  gcTrace(c, csCycFreed)
-  when logGC: writeCell("cycle collector dealloc cell", c)
   when reallyDealloc: rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(TCell))
 
 proc sweep(gch: var TGcHeap) =
-  when true:
-    for c in gch.allocated.elementsWithout(gch.marked):
-      gch.allocated.excl(c)
-      freeCyclicCell(gch, c)
-  else:
-    for c in gch.allocated.elements():
-      if not gch.marked.contains(c):
-        gch.allocated.excl(c)
-        freeCyclicCell(gch, c)
+  for c in gch.allocated.elementsExcept(gch.marked):
+    gch.allocated.excl(c)
+    freeCyclicCell(gch, c)
 
 proc markGlobals(gch: var TGcHeap) =
   for i in 0 .. < globalMarkersLen: globalMarkers[i]()
@@ -465,12 +450,10 @@ proc collectCTBody(gch: var TGcHeap) =
   markGlobals(gch)
   sweep(gch)
   
-  inc(gch.stat.stackScans)
   inc(gch.stat.collections)
   deinit(gch.marked)
   init(gch.marked)
-  gch.cycleThreshold = max(InitialCycleThreshold, getOccupiedMem() *
-                           cycleIncrease)
+  gch.cycleThreshold = max(InitialThreshold, getOccupiedMem().mulThreshold)
   gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   sysAssert(allocInv(gch.region), "collectCT: end")
   
@@ -494,7 +477,7 @@ when not defined(useNimRtl):
   proc GC_setStrategy(strategy: TGC_Strategy) = nil
 
   proc GC_enableMarkAndSweep() =
-    gch.cycleThreshold = InitialCycleThreshold
+    gch.cycleThreshold = InitialThreshold
 
   proc GC_disableMarkAndSweep() =
     gch.cycleThreshold = high(gch.cycleThreshold)-1
@@ -512,13 +495,10 @@ when not defined(useNimRtl):
     GC_disable()
     result = "[GC] total memory: " & $getTotalMem() & "\n" &
              "[GC] occupied memory: " & $getOccupiedMem() & "\n" &
-             "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
-             "[GC] stack cells: " & $gch.stat.maxStackCells & "\n" &
              "[GC] collections: " & $gch.stat.collections & "\n" &
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
+             "[GC] freed objects: " & $gch.stat.freedObjects & "\n" &
              "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
-    when traceGC: writeLeakage()
     GC_enable()
 
 {.pop.}
