@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -39,7 +39,7 @@ type
     len, cap: int
     d: PCellArray
 
-# ------------------- cell set handling ---------------------------------------
+# ------------------- cell seq handling ---------------------------------------
 
 proc contains(s: TCellSeq, c: PCell): bool {.inline.} =
   for i in 0 .. s.len-1:
@@ -67,6 +67,40 @@ proc deinit(s: var TCellSeq) =
   s.d = nil
   s.len = 0
   s.cap = 0
+
+# ------------------- cyclic cell temporary data structure --------------------
+
+type
+  TCycleCell = object
+    cell: PCell
+    oldRefcount, newRefcount: TRefCount
+  PCycleCellArray = ptr array[0..100_000_000, TCycleCell]
+  TCycleCellSeq {.final, pure.} = object
+    len, cap: int
+    d: PCycleCellArray
+
+proc reserveSlot(s: var TCycleCellSeq): int =
+  if s.len >= s.cap:
+    s.cap = s.cap * 3 div 2
+    var d = cast[PCycleCellArray](Alloc(s.cap * sizeof(TCycleCell)))
+    copyMem(d, s.d, s.len * sizeof(TCycleCell))
+    Dealloc(s.d)
+    s.d = d
+  result = s.len
+  inc(s.len)
+
+proc init(s: var TCycleCellSeq, cap: int = 1024) =
+  s.len = 0
+  s.cap = cap
+  s.d = cast[PCycleCellArray](Alloc(cap * sizeof(TCycleCell)))
+
+proc deinit(s: var TCycleCellSeq) = 
+  Dealloc(s.d)
+  s.d = nil
+  s.len = 0
+  s.cap = 0
+
+# ------------------- cell set handling ---------------------------------------
 
 const
   InitCellSetSize = 1024 # must be a power of two!
@@ -196,3 +230,21 @@ iterator elements(t: TCellSet): PCell {.inline.} =
       inc(i)
     r = r.next
 
+iterator elementsWithout(t, s: TCellSet): PCell {.inline.} =
+  var r = t.head
+  while r != nil:
+    let ss = CellSetGet(s, r.key)
+    var i = 0
+    while i <= high(r.bits):
+      var w = r.bits[i]
+      if ss != nil:
+        w = w and not ss.bits[i]
+      var j = 0
+      while w != 0:
+        if (w and 1) != 0:
+          yield cast[PCell]((r.key shl PageShift) or
+                              (i shl IntShift +% j) *% MemAlign)
+        inc(j)
+        w = w shr 1
+      inc(i)
+    r = r.next
