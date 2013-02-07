@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,6 +14,14 @@ const
                               # over 'RangeExpandLimit' elements
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
+
+proc registerGcRoot(p: BProc, v: PSym) =
+  if gSelectedGc == gcMarkAndSweep and containsGarbageCollectedRef(v.loc.t):
+    # we register a specialized marked proc here; this has the advantage
+    # that it works out of the box for thread local storage then :-)
+    let prc = genTraverseProcForGlobal(p.module, v)
+    linefmt(p.module.initProc, cpsStmts,
+      "#nimRegisterGlobalMarker((void*)$1);$n", prc)
 
 proc genVarTuple(p: BProc, n: PNode) = 
   var tup, field: TLoc
@@ -28,6 +36,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if sfGlobal in v.flags:
       assignGlobalVar(p, v)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
+      registerGcRoot(p, v)
     else:
       assignLocalVar(p, v)
       initLocalVar(p, v, immediateAsgn=true)
@@ -143,7 +152,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and generatedHeader != nil:
       genVarPrototypeAux(generatedHeader, v)
-
+    registerGcRoot(p, v)
   else:
     assignLocalVar(p, v)
     initLocalVar(p, v, immediateAsgn)

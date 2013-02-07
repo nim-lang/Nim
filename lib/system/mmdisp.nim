@@ -309,6 +309,9 @@ else:
     sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
+  elif defined(gcMarkAndSweep):
+    # XXX use 'compileOption' here
+    include "system/gc_ms"
   else:
     include "system/gc"
   

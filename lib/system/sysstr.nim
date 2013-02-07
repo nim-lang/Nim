@@ -202,7 +202,8 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                                GenericSeqSize))
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
-    when not defined(boehmGC) and not defined(nogc):
+    when not defined(boehmGC) and not defined(nogc) and 
+         not defined(gcMarkAndSweep):
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len

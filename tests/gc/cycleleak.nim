@@ -32,11 +32,11 @@ proc loop =
     gModuleCache = nil
     GC_fullCollect()
 
-  if getOccupiedMem() > 300_000:
-    echo "still a leak! ", getOccupiedMem()
-    quit(1)
-  else:
-    echo "no leak: ", getOccupiedMem()
+    if getOccupiedMem() > 900_000:
+      echo "still a leak! ", getOccupiedMem()
+      quit(1)
+  
+  echo "no leak: ", getOccupiedMem()
 
 loop()
 
