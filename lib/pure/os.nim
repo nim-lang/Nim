@@ -1113,8 +1113,8 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir,FReadDir].
         omitNext = false
       else:
         var partDir = substr(dir, 0, i-1)
-        if not(existsDir(partDir)): rawCreateDir(partDir)
-  if not(existsDir(dir)): rawCreateDir(dir)  
+        rawCreateDir(partDir)
+  rawCreateDir(dir)  
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FWriteIO, FReadIO].} =
