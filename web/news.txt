@@ -18,6 +18,8 @@ Library Additions
 - Added ``system.onRaise`` to support a condition system.
 - Added ``macros.quote`` for AST quasi-quoting.
 - Added ``system.unsafeNew`` to support hacky variable length objects.
+- There is a new experimental mark&sweep GC which can be faster than the
+  default GC. Enable with ``--gc:markAndSweep``.
 
 
 Changes affecting backwards compatibility
