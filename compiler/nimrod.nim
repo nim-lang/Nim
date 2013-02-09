@@ -77,4 +77,4 @@ when compileOption("gc", "v2"):
   GC_disableMarkAndSweep()
 condsyms.InitDefines()
 HandleCmdLine()
-quit(options.gExitcode)
+quit(int8(msgs.gErrorCounter > 0))
