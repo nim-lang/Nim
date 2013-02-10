@@ -911,7 +911,21 @@ Arrays are always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
 
-The current implementation does not support nested open arrays.
+
+Open arrays
+-----------
+
+Often fixed size arrays turn out to be too inflexible; procedures should
+be able to deal with arrays of different sizes. The `openarray`:idx: type
+allows this; it can only be used for parameters. Openarrays are always 
+indexed with an ``int`` starting at position 0. The ``len``, ``low`` 
+and ``high`` operations are available for open arrays too. Any array with 
+a compatible base type can be passed to an openarray parameter, the index 
+type does not matter. In addition to arrays sequences can also be passed 
+to an open array parameter.
+
+The openarray type cannot be nested: multidimensional openarrays are not
+supported because this is seldom needed and cannot be done efficiently.
 
 
 Varargs

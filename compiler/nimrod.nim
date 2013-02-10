@@ -72,7 +72,7 @@ proc HandleCmdLine() =
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
 
-when compileOption("gc", "v2"):
+when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 condsyms.InitDefines()

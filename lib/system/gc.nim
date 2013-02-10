@@ -18,6 +18,9 @@
 # for soft real time applications (like games).
 {.push profiler:off.}
 
+# XXX there is still a slight chance of leaking cycles as we don't add cycle
+# candidates in 'incRef'
+
 const
   CycleIncrease = 2 # is a multiplicative increase
   InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
@@ -33,7 +36,6 @@ when defined(memProfiler):
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  # NOTE: Most colors are currently unused
   rcBlack = 0b000  # cell is colored black; in use or free
   rcGray = 0b001   # possible member of a cycle
   rcWhite = 0b010  # member of a garbage cycle
