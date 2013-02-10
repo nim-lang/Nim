@@ -10,6 +10,12 @@ Version 0.9.2 has been released! Get it `here <download.html>`_.
 Bugfixes
 --------
 
+- The old GC never collected cycles correctly. Fixed but it can cause
+  performance regressions. However you can deactivate the cycle collector 
+  with ``GC_disableMarkAndSweep`` and run it explicitly at an appropriate time 
+  or not at all. There is also a new GC you can activate 
+  with ``--gc:markAndSweep`` which does not have this problem but is slower in
+  general.
 
 
 Library Additions
@@ -18,8 +24,8 @@ Library Additions
 - Added ``system.onRaise`` to support a condition system.
 - Added ``macros.quote`` for AST quasi-quoting.
 - Added ``system.unsafeNew`` to support hacky variable length objects.
-- There is a new experimental mark&sweep GC which can be faster than the
-  default GC. Enable with ``--gc:markAndSweep``.
+- There is a new experimental mark&sweep GC which can be faster (or much 
+  slower) than the default GC. Enable with ``--gc:markAndSweep``.
 
 
 Changes affecting backwards compatibility
