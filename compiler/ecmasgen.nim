@@ -140,6 +140,8 @@ proc mangleName(s: PSym): PRope =
     app(result, toRope(s.id))
     s.loc.r = result
 
+proc makeJSString(s: string): PRope = strutils.escape(s).toRope
+
 proc genTypeInfo(p: var TProc, typ: PType): PRope
 proc genObjectFields(p: var TProc, typ: PType, n: PNode): PRope = 
   var 
@@ -165,7 +167,7 @@ proc genObjectFields(p: var TProc, typ: PType, n: PNode): PRope =
     s = genTypeInfo(p, field.typ)
     result = ropef("{kind: 1, offset: \"$1\", len: 0, " &
         "typ: $2, name: $3, sons: null}", 
-                   [mangleName(field), s, makeCString(field.name.s)])
+                   [mangleName(field), s, makeJSString(field.name.s)])
   of nkRecCase: 
     length = sonsLen(n)
     if (n.sons[0].kind != nkSym): InternalError(n.info, "genObjectFields")
@@ -193,7 +195,7 @@ proc genObjectFields(p: var TProc, typ: PType, n: PNode): PRope =
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ropef("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}", [mangleName(field), s, 
-        toRope(lengthOrd(field.typ)), makeCString(field.name.s), result])
+        toRope(lengthOrd(field.typ)), makeJSString(field.name.s), result])
   else: internalError(n.info, "genObjectFields")
   
 proc genObjectInfo(p: var TProc, typ: PType, name: PRope) = 
@@ -234,7 +236,7 @@ proc genEnumInfo(p: var TProc, typ: PType, name: PRope) =
     if i > 0: app(s, ", " & tnl)
     let extName = if field.ast == nil: field.name.s else: field.ast.strVal
     appf(s, "{kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}", 
-         [toRope(field.position), name, makeCString(extName)])
+         [toRope(field.position), name, makeJSString(extName)])
   var n = ropef("var NNI$1 = {kind: 2, offset: 0, typ: null, " &
       "name: null, len: $2, sons: [$3]};$n", [toRope(typ.id), toRope(length), s])
   s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
@@ -588,7 +590,7 @@ proc genRaiseStmt(p: var TProc, n: PNode, r: var TCompRes) =
     typ = skipTypes(n.sons[0].typ, abstractPtrs)
     useMagic(p, "raiseException")
     appf(r.com, "raiseException($1, $2);$n", 
-         [a.res, makeCString(typ.sym.name.s)])
+         [a.res, makeJSString(typ.sym.name.s)])
   else: 
     useMagic(p, "reraiseException")
     app(r.com, "reraiseException();" & tnl)
@@ -626,7 +628,7 @@ proc genCaseStmt(p: var TProc, n: PNode, r: var TCompRes) =
           if stringSwitch: 
             case e.kind
             of nkStrLit..nkTripleStrLit: appf(r.com, "case $1: ", 
-                [makeCString(e.strVal)])
+                [makeJSString(e.strVal)])
             else: InternalError(e.info, "ecmasgen.genCaseStmt: 2")
           else: 
             appf(r.com, "case $1: ", [cond.res])
@@ -827,12 +829,12 @@ proc genFieldAddr(p: var TProc, n: PNode, r: var TCompRes) =
   var b = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, b.sons[0], a)
   if skipTypes(b.sons[0].typ, abstractVarRange).kind == tyTuple:
-    r.res = makeCString("Field" & $getFieldPosition(b.sons[1]))
+    r.res = makeJSString("Field" & $getFieldPosition(b.sons[1]))
   else:
     if b.sons[1].kind != nkSym: InternalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
-    r.res = makeCString(ropeToStr(f.loc.r))
+    r.res = makeJSString(ropeToStr(f.loc.r))
   r.com = mergeExpr(a)
 
 proc genFieldAccess(p: var TProc, n: PNode, r: var TCompRes) = 
@@ -903,7 +905,7 @@ proc genAddr(p: var TProc, n: PNode, r: var TCompRes) =
         # globals are always indirect accessible
         r.kind = etyBaseIndex
         r.com = toRope("Globals")
-        r.res = makeCString(ropeToStr(s.loc.r))
+        r.res = makeJSString(ropeToStr(s.loc.r))
       elif sfAddrTaken in s.flags: 
         r.kind = etyBaseIndex
         r.com = s.loc.r
@@ -1422,8 +1424,8 @@ proc genReturnStmt(p: var TProc, n: PNode, r: var TCompRes) =
 proc genProcBody(p: var TProc, prc: PSym, r: TCompRes): PRope = 
   if optStackTrace in prc.options: 
     result = ropef("var F={procname:$1,prev:framePtr,filename:$2,line:0};$n" &
-        "framePtr = F;$n", [makeCString(prc.owner.name.s & '.' & prc.name.s), 
-                            makeCString(toFilename(prc.info))])
+        "framePtr = F;$n", [makeJSString(prc.owner.name.s & '.' & prc.name.s), 
+                            makeJSString(toFilename(prc.info))])
   else: 
     result = nil
   if p.beforeRetNeeded: 
@@ -1540,9 +1542,9 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkStrLit..nkTripleStrLit: 
     if skipTypes(n.typ, abstractVarRange).kind == tyString: 
       useMagic(p, "cstrToNimstr")
-      r.res = ropef("cstrToNimstr($1)", [makeCString(n.strVal)])
+      r.res = ropef("cstrToNimstr($1)", [makeJSString(n.strVal)])
     else: 
-      r.res = makeCString(n.strVal)
+      r.res = makeJSString(n.strVal)
   of nkFloatLit..nkFloat64Lit: 
     f = n.floatVal
     if f != f: r.res = toRope"NaN"
@@ -1611,8 +1613,8 @@ proc genModule(p: var TProc, n: PNode, r: var TCompRes) =
   if optStackTrace in p.options: 
     r.com = ropef("var F = {procname:$1,prev:framePtr,filename:$2,line:0};$n" &
         "framePtr = F;$n" & "$3" & "framePtr = framePtr.prev;$n", [
-        makeCString("module " & p.module.module.name.s), 
-        makeCString(toFilename(p.module.module.info)), r.com])
+        makeJSString("module " & p.module.module.name.s), 
+        makeJSString(toFilename(p.module.module.info)), r.com])
 
 proc myProcess(b: PPassContext, n: PNode): PNode = 
   if passes.skipCodegen(n): return n

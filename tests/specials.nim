@@ -119,6 +119,10 @@ proc runGcTests(r: var TResults, options: string) =
     runSingleTest(r, "tests/gc" / filename, options & " -d:release")
     runSingleTest(r, "tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC")
+    runSingleTest(r, "tests/gc" / filename, options &
+                  " --gc:markAndSweep")
+    runSingleTest(r, "tests/gc" / filename, options &
+                  " -d:release --gc:markAndSweep")
   
   test "gcbench"
   test "gcleak"

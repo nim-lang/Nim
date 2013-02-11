@@ -298,8 +298,18 @@ type
     replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
     setAttribute*: proc (name, value: cstring) {.nimcall.}
     setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
+
+when defined(kwin):
+  proc rawEcho {.compilerproc, nostackframe.} =
+    asm """
+      var buf = "";
+      for (var i = 0; i < arguments.length; ++i) {
+        buf += `toEcmaStr`(arguments[i]);
+      }
+      print(buf);
+    """
     
-when defined(nodejs):
+elif defined(nodejs):
   proc ewriteln(x: cstring) = log(x)
   
   proc rawEcho {.compilerproc, nostackframe.} =
