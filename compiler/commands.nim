@@ -139,10 +139,11 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
   of "gc":
     case arg.normalize
-    of "boehm": result = gSelectedGC == gcBoehm
-    of "refc":  result = gSelectedGC == gcRefc
-    of "v2":    result = gSelectedGC == gcV2
-    of "none":  result = gSelectedGC == gcNone
+    of "boehm":        result = gSelectedGC == gcBoehm
+    of "refc":         result = gSelectedGC == gcRefc
+    of "v2":           result = gSelectedGC == gcV2
+    of "markandsweep": result = gSelectedGC == gcMarkAndSweep
+    of "none":         result = gSelectedGC == gcNone
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
     case arg.normalize
@@ -276,6 +277,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       gSelectedGC = gcRefc
     of "v2":
       gSelectedGC = gcV2
+    of "markandsweep":
+      gSelectedGC = gcMarkAndSweep
+      defineSymbol("gcmarkandsweep")
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")

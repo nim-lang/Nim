@@ -80,8 +80,8 @@ type                          # please make sure we have under 32 options
     cmdInteractive,           # start interactive session
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
-  TGCMode* = enum                   # the selected GC
-    gcNone, gcBoehm, gcRefc, gcV2   #
+  TGCMode* = enum             # the selected GC
+    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
@@ -269,7 +269,6 @@ proc binaryStrSearch*(x: openarray[string], y: string): int =
       return mid
   result = - 1
 
-# Can we keep this? I'm using it all the time
 template nimdbg*: expr = c.module.fileIdx == gProjectMainIdx
 template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
 template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx

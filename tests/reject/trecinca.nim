@@ -1,5 +1,5 @@
 discard """
-  file: "trecincb.nim"
+  file: "tests/reject/trecincb.nim"
   line: 9
   errormsg: "recursive dependency: 'trecincb.nim'"
 """

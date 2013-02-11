@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -938,7 +938,7 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
       genTupleInfo(m, fakeClosureType(t.owner), result)
   of tySequence, tyRef:
     genTypeInfoAux(m, t, result)
-    if usesNativeGC():
+    if gSelectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, t, tiNew)
       appf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, result)
