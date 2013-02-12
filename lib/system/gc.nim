@@ -18,9 +18,6 @@
 # for soft real time applications (like games).
 {.push profiler:off.}
 
-# XXX there is still a slight chance of leaking cycles as we don't add cycle
-# candidates in 'incRef'
-
 const
   CycleIncrease = 2 # is a multiplicative increase
   InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
@@ -201,10 +198,11 @@ proc decRef(c: PCell) {.inline.} =
 
 proc incRef(c: PCell) {.inline.} = 
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
-  c.refcount = c.refCount +% rcIncrement and not colorMask
+  c.refcount = c.refCount +% rcIncrement
+  # and not colorMask
   #writeCell("incRef", c)
-  #if canBeCycleRoot(c):
-  #  rtlAddCycleRoot(c)
+  if canBeCycleRoot(c):
+    rtlAddCycleRoot(c)
 
 proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
 proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
