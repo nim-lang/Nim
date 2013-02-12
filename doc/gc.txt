@@ -26,7 +26,12 @@ The cycle collector can be en-/disabled independently from the other parts of
 the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``. The
 compiler analyses the types for their possibility to build cycles, but often
 it is necessary to help this analysis with the ``acyclic`` pragma (see
-`acyclic <manual.html#acyclic-pragma>`_ for further information).
+`acyclic <manual.html#acyclic-pragma>`_ for further information). 
+
+You can also use the ``acyclic`` pragma for data that is cyclic in reality and 
+then break up the cycles explicitly with ``GC_addCycleRoot``. This can be a
+very good optimization; the Nimrod compiler itself relies on this optimization
+trick to improve performance.
 
 To force a full collection call ``GC_fullCollect``. Note that it is generally
 better to let the GC do its work and not enforce a full collection.
