@@ -207,6 +207,12 @@ proc incRef(c: PCell) {.inline.} =
 proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
 proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
 
+proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
+  ## adds 'p' to the cycle candidate set for the cycle collector. It is
+  ## necessary if you used the 'acyclic' pragma for optimization
+  ## purposes and need to break cycles manually.
+  rtlAddCycleRoot(usrToCell(cast[pointer](p)))
+
 proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
   var c = usrToCell(p)

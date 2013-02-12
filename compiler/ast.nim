@@ -520,7 +520,7 @@ type
   TNodeSeq* = seq[PNode]
   PType* = ref TType
   PSym* = ref TSym
-  TNode*{.final.} = object # on a 32bit machine, this takes 32 bytes
+  TNode*{.final, acyclic.} = object # on a 32bit machine, this takes 32 bytes
     typ*: PType
     comment*: string
     info*: TLineInfo
@@ -605,7 +605,7 @@ type
   PInstantiation* = ref TInstantiation
       
   PLib* = ref TLib
-  TSym* = object of TIdObj
+  TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of skType:
@@ -653,7 +653,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'
   
   TTypeSeq* = seq[PType]
-  TType* = object of TIdObj   # types are identical iff they have the
+  TType* {.acyclic.} = object of TIdObj # \
+                              # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
     kind*: TTypeKind          # kind of type
