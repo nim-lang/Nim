@@ -20,22 +20,22 @@ import
 # implementation
 
 type 
-  TEcmasGen = object of TPassContext
+  TJSGen = object of TPassContext
     module: PSym
 
-  BModule = ref TEcmasGen
-  TEcmasTypeKind = enum       # necessary JS "types"
+  BModule = ref TJSGen
+  TJSTypeKind = enum       # necessary JS "types"
     etyNone,                  # no type
     etyNull,                  # null type
     etyProc,                  # proc type
     etyBool,                  # bool type
-    etyInt,                   # Ecmascript's int
-    etyFloat,                 # Ecmascript's float
-    etyString,                # Ecmascript's string
-    etyObject,                # Ecmascript's reference to an object
+    etyInt,                   # JavaScript's int
+    etyFloat,                 # JavaScript's float
+    etyString,                # JavaScript's string
+    etyObject,                # JavaScript's reference to an object
     etyBaseIndex              # base + index needed
   TCompRes{.final.} = object 
-    kind: TEcmasTypeKind
+    kind: TJSTypeKind
     com: PRope               # computation part
                              # address if this is a (address, index)-tuple
     res: PRope               # result part; index if this is an
@@ -91,7 +91,7 @@ const
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, 
     tySet, tyVar, tyRef, tyPtr, tyBigNum, tyVarargs}
 
-proc mapType(typ: PType): TEcmasTypeKind = 
+proc mapType(typ: PType): TJSTypeKind = 
   var t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr: 
@@ -605,8 +605,8 @@ proc genCaseStmt(p: var TProc, n: PNode, r: var TCompRes) =
   if cond.com != nil: appf(r.com, "$1;$n", [cond.com])
   stringSwitch = skipTypes(n.sons[0].typ, abstractVar).kind == tyString
   if stringSwitch: 
-    useMagic(p, "toEcmaStr")
-    appf(r.com, "switch (toEcmaStr($1)) {$n", [cond.res])
+    useMagic(p, "toJSStr")
+    appf(r.com, "switch (toJSStr($1)) {$n", [cond.res])
   else: 
     appf(r.com, "switch ($1) {$n", [cond.res])
   for i in countup(1, sonsLen(n) - 1): 
@@ -619,17 +619,17 @@ proc genCaseStmt(p: var TProc, n: PNode, r: var TCompRes) =
           v = copyNode(e.sons[0])
           while (v.intVal <= e.sons[1].intVal): 
             gen(p, v, cond)
-            if cond.com != nil: internalError(v.info, "ecmasgen.genCaseStmt")
+            if cond.com != nil: internalError(v.info, "jsgen.genCaseStmt")
             appf(r.com, "case $1: ", [cond.res])
             Inc(v.intVal)
         else: 
           gen(p, e, cond)
-          if cond.com != nil: internalError(e.info, "ecmasgen.genCaseStmt")
+          if cond.com != nil: internalError(e.info, "jsgen.genCaseStmt")
           if stringSwitch: 
             case e.kind
             of nkStrLit..nkTripleStrLit: appf(r.com, "case $1: ", 
                 [makeJSString(e.strVal)])
-            else: InternalError(e.info, "ecmasgen.genCaseStmt: 2")
+            else: InternalError(e.info, "jsgen.genCaseStmt: 2")
           else: 
             appf(r.com, "case $1: ", [cond.res])
       genStmt(p, lastSon(it), stmt)
@@ -637,7 +637,7 @@ proc genCaseStmt(p: var TProc, n: PNode, r: var TCompRes) =
     of nkElse: 
       genStmt(p, it.sons[0], stmt)
       appf(r.com, "default: $n$1break;$n", [mergeStmt(stmt)])
-    else: internalError(it.info, "ecmasgen.genCaseStmt")
+    else: internalError(it.info, "jsgen.genCaseStmt")
   appf(r.com, "}$n", [])
 
 proc genStmtListExpr(p: var TProc, n: PNode, r: var TCompRes)
@@ -692,7 +692,7 @@ proc genAsmStmt(p: var TProc, n: PNode, r: var TCompRes) =
     case n.sons[i].Kind
     of nkStrLit..nkTripleStrLit: app(r.com, n.sons[i].strVal)
     of nkSym: app(r.com, mangleName(n.sons[i].sym))
-    else: InternalError(n.sons[i].info, "ecmasgen: genAsmStmt()")
+    else: InternalError(n.sons[i].info, "jsgen: genAsmStmt()")
   
 proc genIfStmt(p: var TProc, n: PNode, r: var TCompRes) = 
   var 
@@ -1276,7 +1276,7 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
         binaryStmt(p, n, r, "", "$1 += $2")
     else:
       binaryStmt(p, n, r, "", "$1 = ($1.slice(0,-1)).concat($2)")
-    # XXX: make a copy of $2, because of ECMAScript's sucking semantics
+    # XXX: make a copy of $2, because of Javascript's sucking semantics
   of mAppendSeqElem: binaryStmt(p, n, r, "", "$1.push($2)")
   of mConStrStr: genConStrStr(p, n, r)
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
@@ -1395,8 +1395,8 @@ proc convStrToCStr(p: var TProc, n: PNode, r: var TCompRes) =
   else: 
     gen(p, n.sons[0], r)
     if r.res == nil: InternalError(n.info, "convStrToCStr")
-    useMagic(p, "toEcmaStr")
-    r.res = ropef("toEcmaStr($1)", [r.res])
+    useMagic(p, "toJSStr")
+    r.res = ropef("toJSStr($1)", [r.res])
 
 proc convCStrToStr(p: var TProc, n: PNode, r: var TCompRes) = 
   # we do an optimization here as this is likely to slow down
@@ -1660,10 +1660,10 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 
 proc myOpenCached(s: PSym, rd: PRodReader): PPassContext = 
-  InternalError("symbol files are not possible with the Ecmas code generator")
+  InternalError("symbol files are not possible with the JS code generator")
   result = nil
 
 proc myOpen(s: PSym): PPassContext = 
   result = newModule(s)
 
-const ecmasgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const JSgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

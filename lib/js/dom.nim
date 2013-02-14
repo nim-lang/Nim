@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## Declaration of the Document Object Model for the ECMAScript backend.
+## Declaration of the Document Object Model for the JavaScript backend.
 
-when not defined(ecmascript) and not defined(Nimdoc):
-  {.error: "This module only works on the ECMAScript platform".}
+when not defined(js) and not defined(Nimdoc):
+  {.error: "This module only works on the JavaScript platform".}
 
 type
   TEventHandlers* {.importc.} = object of TObject

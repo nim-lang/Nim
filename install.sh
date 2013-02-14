@@ -69,7 +69,7 @@ if [ $# -eq 1 ] ; then
   mkdir -p $libdir/wrappers/zip
   mkdir -p $libdir/windows
   mkdir -p $libdir/posix
-  mkdir -p $libdir/ecmas
+  mkdir -p $libdir/js
 
   cp bin/nimrod $bindir/nimrod
   chmod 755 $bindir/nimrod
@@ -711,8 +711,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/debugger.nim
   cp lib/system/dyncalls.nim $libdir/system/dyncalls.nim
   chmod 644 $libdir/system/dyncalls.nim
-  cp lib/system/ecmasys.nim $libdir/system/ecmasys.nim
-  chmod 644 $libdir/system/ecmasys.nim
+  cp lib/system/jssys.nim $libdir/system/jssys.nim
+  chmod 644 $libdir/system/jssys.nim
   cp lib/system/embedded.nim $libdir/system/embedded.nim
   chmod 644 $libdir/system/embedded.nim
   cp lib/system/excpt.nim $libdir/system/excpt.nim
@@ -1101,8 +1101,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/posix/inotify.nim
   cp lib/posix/posix.nim $libdir/posix/posix.nim
   chmod 644 $libdir/posix/posix.nim
-  cp lib/ecmas/dom.nim $libdir/ecmas/dom.nim
-  chmod 644 $libdir/ecmas/dom.nim
+  cp lib/js/dom.nim $libdir/js/dom.nim
+  chmod 644 $libdir/js/dom.nim
   
   echo "installation successful"
 else
