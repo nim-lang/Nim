@@ -71,20 +71,23 @@ type
     nkDotCall,            # used to temporarily flag a nkCall node; 
                           # this is used
                           # for transforming ``s.len`` to ``len(s)``
+
     nkCommand,            # a call like ``p 2, 4`` without parenthesis
     nkCall,               # a call like p(x, y) or an operation like +(a, b)
     nkCallStrLit,         # a call with a string literal 
                           # x"abc" has two sons: nkIdent, nkRStrLit
                           # x"""abc""" has two sons: nkIdent, nkTripleStrLit
+    nkInfix,              # a call like (a + b)
+    nkPrefix,             # a call like !a
+    nkPostfix,            # something like a! (also used for visibility)
+    nkHiddenCallConv,     # an implicit type conversion via a type converter
+
     nkExprEqExpr,         # a named parameter with equals: ''expr = expr''
     nkExprColonExpr,      # a named parameter with colon: ''expr: expr''
     nkIdentDefs,          # a definition like `a, b: typeDesc = expr`
                           # either typeDesc or expr may be nil; used in
                           # formal parameters, var statements, etc.
     nkVarTuple,           # a ``var (a, b) = expr`` construct
-    nkInfix,              # a call like (a + b)
-    nkPrefix,             # a call like !a
-    nkPostfix,            # something like a! (also used for visibility)
     nkPar,                # syntactic (); may be a tuple constructor
     nkCurly,              # syntactic {}
     nkCurlyExpr,          # an expression like a{i}
@@ -109,7 +112,6 @@ type
     nkHiddenStdConv,      # an implicit standard type conversion
     nkHiddenSubConv,      # an implicit type conversion from a subtype
                           # to a supertype
-    nkHiddenCallConv,     # an implicit type conversion via a type converter
     nkConv,               # a type conversion
     nkCast,               # a type cast
     nkStaticExpr,         # a static expr

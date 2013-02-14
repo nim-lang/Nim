@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,9 +21,10 @@ type
     nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit,
     nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
     nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
-    nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr,
-    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix,
-    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, nnkCurlyExpr,
+    nnkCommand, nnkCall, nnkCallStrLit, nnkInfix,
+    nnkPrefix, nnkPostfix, nnkHiddenCallConv, 
+    nnkExprEqExpr,
+    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkPar, nnkCurly, nnkCurlyExpr,
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange,
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr,
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted,
@@ -31,7 +32,7 @@ type
     nnkClosedSymChoice,
     nnkOpenSymChoice,
     nnkHiddenStdConv,
-    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, nnkStaticExpr,
+    nnkHiddenSubConv, nnkConv, nnkCast, nnkStaticExpr,
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv,
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange,
     nnkStringToCString, nnkCStringToString, nnkAsgn,

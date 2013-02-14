@@ -444,29 +444,35 @@ proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       stackTrace(c, n, errIndexOutOfBounds)
   else: stackTrace(c, n, errNilAccess)
   
-proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
+proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   # a real field access; proc calls have already been transformed
   # XXX: field checks!
   result = evalAux(c, n.sons[0], flags)
-  if isSpecial(result): return 
+  if isSpecial(result): return
   var x = result
   if x.kind != nkPar: return raiseCannotEval(c, n.info)
+  # this is performance critical:
   var field = n.sons[1].sym
-  for i in countup(0, sonsLen(x) - 1): 
-    var it = x.sons[i]
-    if it.kind != nkExprColonExpr:
-      # lookup per index:
-      result = x.sons[field.position]
-      if result.kind == nkExprColonExpr: result = result.sons[1]
-      if not aliasNeeded(result, flags): result = copyTree(result)
-      return
-      #InternalError(it.info, "evalFieldAccess")
-    if it.sons[0].sym.name.id == field.name.id: 
-      result = x.sons[i].sons[1]
-      if not aliasNeeded(result, flags): result = copyTree(result)
-      return
-  stackTrace(c, n, errFieldXNotFound, field.name.s)
-  result = emptyNode
+  result = x.sons[field.position]
+  if result.kind == nkExprColonExpr: result = result.sons[1]
+  if not aliasNeeded(result, flags): result = copyTree(result)
+  when false:
+    var field = n.sons[1].sym
+    for i in countup(0, sonsLen(x) - 1): 
+      var it = x.sons[i]
+      if it.kind != nkExprColonExpr:
+        # lookup per index:
+        result = x.sons[field.position]
+        if result.kind == nkExprColonExpr: result = result.sons[1]
+        if not aliasNeeded(result, flags): result = copyTree(result)
+        return
+        #InternalError(it.info, "evalFieldAccess")
+      if it.sons[0].sym.name.id == field.name.id: 
+        result = x.sons[i].sons[1]
+        if not aliasNeeded(result, flags): result = copyTree(result)
+        return
+    stackTrace(c, n, errFieldXNotFound, field.name.s)
+    result = emptyNode
 
 proc evalAsgn(c: PEvalContext, n: PNode): PNode = 
   var a = n.sons[0]
@@ -1341,14 +1347,23 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   result = emptyNode
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
-  case n.kind                 # atoms:
-  of nkEmpty: result = n
+  case n.kind
   of nkSym: result = evalSym(c, n, flags)
-  of nkType..nkNilLit: result = copyNode(n) # end of atoms
-  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit, nkInfix,
-     nkPrefix, nkPostfix: 
+  of nkType..nkNilLit:
+    # XXX nkStrLit is VERY common in the traces, so we should avoid
+    # the 'copyNode' here. However, for now we cannot do this for unknown
+    # reasons.
+    result = n.copyNode
+  of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
+  of nkCommand..nkHiddenCallConv:
     result = evalMagicOrCall(c, n)
-  of nkCurly, nkBracket, nkRange: 
+  of nkDotExpr: result = evalFieldAccess(c, n, flags)
+  of nkBracketExpr:
+    result = evalArrayAccess(c, n, flags)
+  of nkDerefExpr, nkHiddenDeref: result = evalDeref(c, n, flags)
+  of nkAddr, nkHiddenAddr: result = evalAddr(c, n, flags)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: result = evalConv(c, n)
+  of nkCurly, nkBracket, nkRange:
     # flags need to be passed here for mNAddMultiple :-(
     # XXX this is not correct in every case!
     var a = copyNode(n)
@@ -1370,12 +1385,6 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
         if isSpecial(result): return 
         a.sons[i] = result
     result = a
-  of nkBracketExpr: result = evalArrayAccess(c, n, flags)
-  of nkDotExpr: result = evalFieldAccess(c, n, flags)
-  of nkDerefExpr, nkHiddenDeref: result = evalDeref(c, n, flags)
-  of nkAddr, nkHiddenAddr: result = evalAddr(c, n, flags)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: result = evalConv(c, n)
-  of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
   of nkWhenStmt, nkIfStmt, nkIfExpr: result = evalIf(c, n)
   of nkWhileStmt: result = evalWhile(c, n)
   of nkCaseStmt: result = evalCase(c, n)
@@ -1414,6 +1423,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     result = raiseCannotEval(c, n.info)
   of nkRefTy:
     result = evalAux(c, n.sons[0], flags)
+  of nkEmpty: 
+    # nkEmpty occurs once in each trace that I looked at
+    result = n
   else: InternalError(n.info, "evalAux: " & $n.kind)
   if result == nil:
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
