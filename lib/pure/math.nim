@@ -10,7 +10,7 @@
 ##   Constructive mathematics is naturally typed. -- Simon Thompson
 ## 
 ## Basic math routines for Nimrod.
-## This module is available for the ECMAScript target.
+## This module is available for the JavaScript target.
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
@@ -50,7 +50,7 @@ proc classify*(x: float): TFloatClass =
   ## classifies a floating point value. Returns `x`'s class as specified by
   ## `TFloatClass`.
     
-  # ECMAScript and most C compilers have no classify:
+  # JavaScript and most C compilers have no classify:
   if x == 0.0:
     if 1.0/x == Inf:
       return fcZero
@@ -138,15 +138,15 @@ when not defined(windows):
 
 proc randomize*()
   ## initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. Note: Does nothing for the ECMAScript target,
-  ## as ECMAScript does not support this.
+  ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
+  ## as JavaScript does not support this.
   
 proc randomize*(seed: int)
   ## initializes the random number generator with a specific seed.
-  ## Note: Does nothing for the ECMAScript target,
-  ## as ECMAScript does not support this.
+  ## Note: Does nothing for the JavaScript target,
+  ## as JavaScript does not support this.
 
-when not defined(ECMAScript):
+when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
   
@@ -310,7 +310,7 @@ proc standardDeviation*(s: TRunningStat): float =
 {.pop.}
 {.pop.}
 
-when isMainModule and not defined(ECMAScript):
+when isMainModule and not defined(JS):
   # Verifies random seed initialization.
   let seed = gettime(nil)
   randomize(seed)
