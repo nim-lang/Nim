@@ -81,7 +81,7 @@
 --file:r"compiler/nimcache/ccgutils.c"
 --file:r"compiler/nimcache/cgendata.c"
 --file:r"compiler/nimcache/ccgmerge.c"
---file:r"compiler/nimcache/ecmasgen.c"
+--file:r"compiler/nimcache/jsgen.c"
 --file:r"compiler/nimcache/passaux.c"
 --file:r"compiler/nimcache/depends.c"
 --file:r"compiler/nimcache/docgen2.c"

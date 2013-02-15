@@ -21,7 +21,7 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris, 
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osAix, osPalmos, osQnx, osAmiga, 
-    osAtari, osNetware, osMacos, osMacosx, osHaiku, osEcmaScript, osNimrodVM, 
+    osAtari, osNetware, osMacos, osMacosx, osHaiku, osJS, osNimrodVM, 
     osStandalone
 
 type 
@@ -136,7 +136,7 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/", 
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}), 
-     (name: "EcmaScript", parDir: "..", 
+     (name: "JS", parDir: "..", 
       dllFrmt: "lib$1.so", altDirSep: "/", 
       objExt: ".o", newLine: "\x0A", 
       pathSep: ":", dirSep: "/", 
@@ -155,7 +155,7 @@ type
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuArm, 
-    cpuEcmaScript, cpuNimrodVM, cpuAVR
+    cpuJS, cpuNimrodVM, cpuAVR
 
 type 
   TEndian* = enum 
@@ -177,7 +177,7 @@ const
     (name: "amd64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
-    (name: "ecmascript", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32), 
+    (name: "js", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32), 
     (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16)]
 

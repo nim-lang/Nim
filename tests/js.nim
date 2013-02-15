@@ -2,7 +2,7 @@ discard """
   cmd: "nimrod js --hints:on $# $#"
 """
 
-# This file tests the ECMAScript generator
+# This file tests the JavaScript generator
 
 import
   dom, strutils
