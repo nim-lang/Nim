@@ -322,7 +322,7 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   
   # we cannot generate a proper thunk here for GC-safety reasons (see internal
   # documentation):
-  if gCmd == cmdCompileToEcmaScript: return prc
+  if gCmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
   conv.add(emptyNode)
@@ -543,7 +543,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       if x != nil: n.sons[i] = x
 
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
-  if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
+  if body.kind == nkEmpty or gCmd == cmdCompileToJS:
     # ignore forward declaration:
     result = body
   else:
@@ -566,7 +566,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     result = ex
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
-  if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
+  if body.kind == nkEmpty or gCmd == cmdCompileToJS:
     result = body
   else:
     var o = newOuterContext(module)
