@@ -3,7 +3,7 @@ discard """
   output: "1261129"
 """
 
-# This file tests the ECMAScript generator
+# This file tests the JavaScript generator
 
 import
   dom, strutils

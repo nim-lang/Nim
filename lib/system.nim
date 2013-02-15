@@ -184,7 +184,7 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 when not defined(niminheritable):
   {.pragma: inheritable.}
 
-when not defined(EcmaScript) and not defined(NimrodVM):
+when not defined(JS) and not defined(NimrodVM):
   type
     TGenericSeq* {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -900,7 +900,7 @@ template sysAssert(cond: bool, msg: string) =
 
 include "system/inclrtl"
 
-when not defined(ecmascript) and not defined(nimrodVm) and hostOS != "standalone":
+when not defined(JS) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1170,7 +1170,7 @@ proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
-  when not defined(ECMAScript):
+  when not defined(JS):
     proc `$` *(x: uint64): string {.noSideEffect.}
       ## The stingify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
@@ -1422,7 +1422,7 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   result[y.len] = x
 
 when not defined(NimrodVM):
-  when not defined(ECMAScript):
+  when not defined(JS):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
@@ -1698,7 +1698,7 @@ type
     filename: CString
     len: int  # length of slots (when not debugging always zero)
 
-when not defined(ECMAScript):
+when not defined(JS):
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) {.noStackFrame.} =
     var i = 0
@@ -1724,7 +1724,7 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO].}
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
   ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
-  ## available for the ECMAScript target too.
+  ## available for the JavaScript target too.
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience.
 
@@ -1747,7 +1747,7 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
 
-when not defined(EcmaScript): #and not defined(NimrodVM):
+when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
   when not defined(NimrodVM):
@@ -2166,7 +2166,7 @@ when not defined(EcmaScript): #and not defined(NimrodVM):
       `result` = *((NI*) `x`.ClEnv) < 0;
       """.}
 
-elif defined(ecmaScript):
+elif defined(JS):
   # Stubs:
   proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
 
@@ -2192,8 +2192,8 @@ elif defined(ecmaScript):
   proc deallocShared(p: pointer) = nil
   proc reallocShared(p: pointer, newsize: int): pointer = nil
 
-  when defined(ecmaScript):
-    include "system/ecmasys"
+  when defined(JS):
+    include "system/jssys"
     include "system/reprjs"
   elif defined(NimrodVM):
     proc cmp(x, y: string): int =
@@ -2437,7 +2437,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
-  when not defined(EcmaScript) and not defined(NimrodVM):
+  when not defined(JS) and not defined(NimrodVM):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -2445,7 +2445,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
-  when not defined(EcmaScript) and not defined(NimrodVM):
+  when not defined(JS) and not defined(NimrodVM):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 

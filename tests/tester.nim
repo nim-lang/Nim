@@ -392,7 +392,7 @@ proc main() =
   of "compile":
     compile(r, "tests/compile/t*.nim", p.cmdLineRest.string)
     compile(r, "tests/ccg/t*.nim", p.cmdLineRest.string)
-    compile(r, "tests/ecmas.nim", p.cmdLineRest.string)
+    compile(r, "tests/js.nim", p.cmdLineRest.string)
     compileExample(r, "lib/pure/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/gtk/*.nim", p.cmdLineRest.string)

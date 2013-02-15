@@ -151,7 +151,7 @@ proc cstrToNimstr(c: cstring): string {.noStackFrame, compilerproc.} =
     return result;
   """
 
-proc toEcmaStr(s: string): cstring {.noStackFrame, compilerproc.} =
+proc toJSStr(s: string): cstring {.noStackFrame, compilerproc.} =
   asm """
     var len = `s`.length-1;
     var result = new Array(len);
@@ -304,7 +304,7 @@ when defined(kwin):
     asm """
       var buf = "";
       for (var i = 0; i < arguments.length; ++i) {
-        buf += `toEcmaStr`(arguments[i]);
+        buf += `toJSStr`(arguments[i]);
       }
       print(buf);
     """
@@ -316,7 +316,7 @@ elif defined(nodejs):
     asm """
       var buf = "";
       for (var i = 0; i < arguments.length; ++i) {
-        buf += `toEcmaStr`(arguments[i]);
+        buf += `toJSStr`(arguments[i]);
       }
       console.log(buf);
     """
@@ -338,7 +338,7 @@ else:
     if node == nil: raise newException(EIO, "<body> element does not exist yet!")
     asm """
       for (var i = 0; i < arguments.length; ++i) {
-        var x = `toEcmaStr`(arguments[i]);
+        var x = `toJSStr`(arguments[i]);
         `node`.appendChild(document.createTextNode(x))
       }
     """
