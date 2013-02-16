@@ -754,7 +754,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     else:
       add result, substr(s, i, j)
       i = j + 1
-    # copy the rest:
+  # copy the rest:
   add result, substr(s, i)
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,

@@ -143,6 +143,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "refc":         result = gSelectedGC == gcRefc
     of "v2":           result = gSelectedGC == gcV2
     of "markandsweep": result = gSelectedGC == gcMarkAndSweep
+    of "generational": result = gSelectedGC == gcGenerational
     of "none":         result = gSelectedGC == gcNone
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
@@ -280,6 +281,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     of "markandsweep":
       gSelectedGC = gcMarkAndSweep
       defineSymbol("gcmarkandsweep")
+    of "generational":
+      gSelectedGC = gcGenerational
+      defineSymbol("gcgenerational")
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")
