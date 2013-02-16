@@ -42,7 +42,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result = newString(1)
   result[0] = x
 
-proc getCurrentExceptionMsg(): string =
+proc getCurrentExceptionMsg*(): string =
   if excHandler != nil: return $excHandler.exc.msg
   return ""
 
