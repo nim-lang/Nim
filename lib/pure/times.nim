@@ -428,7 +428,7 @@ when not defined(JS):
     proc cpuTime(): float = 
       result = toFloat(int(clock())) / toFloat(clocksPerSec)
     
-else:
+elif defined(JS):
   proc newDate(): TTime {.importc: "new Date", nodecl.}
   proc getTime(): TTime = return newDate()
 
