@@ -17,7 +17,13 @@
 ## It is loosely based on C++'s boost.test and Haskell's QuickTest
 
 import
-  macros, terminal, os
+  macros
+
+when defined(stdout):
+  import os
+
+when not defined(ECMAScript):
+  import terminal
 
 type
   TTestStatus* = enum OK, FAILED
@@ -52,12 +58,15 @@ proc testDone(name: string, s: TTestStatus) =
     program_result += 1
 
   if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
-    var color = (if s == OK: fgGreen else: fgRed)
-    
-    if ColorOutput:
-      styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+    template rawPrint() = echo("[", $s, "] ", name, "\n")
+    when not defined(ECMAScript):
+      if ColorOutput and not defined(ECMAScript):
+        var color = (if s == OK: fgGreen else: fgRed)
+        styledEcho styleBright, color, "[", $s, "] ", fgWhite, name, "\n"
+      else:
+        rawPrint()
     else:
-      echo "[", $s, "] ", name, "\n"
+      rawPrint()
   
 template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   bind shouldRun, checkpoints, testDone
@@ -87,7 +96,8 @@ template fail* =
   for msg in items(checkpoints):
     echo msg
 
-  if AbortOnError: quit(1)
+  when not defined(ECMAScript):
+    if AbortOnError: quit(1)
   
   TestStatusIMPL = FAILED
   checkpoints = @[]
@@ -171,14 +181,19 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
 
 
-## Reading settings
-var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
+when defined(stdout):
+  ## Reading settings
+  var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
+
+  AbortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+  ColorOutput  = not existsEnv("NIMTEST_NO_COLOR")
+
+else:
+  var envOutLvl = "" # TODO
+  ColorOutput  = false
 
 if envOutLvl.len > 0:
   for opt in countup(low(TOutputLevel), high(TOutputLevel)):
     if $opt == envOutLvl:
       OutputLevel = opt
       break
-
-AbortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
-ColorOutput  = not existsEnv("NIMTEST_NO_COLOR")
