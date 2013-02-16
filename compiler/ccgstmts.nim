@@ -16,7 +16,8 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if gSelectedGc == gcMarkAndSweep and containsGarbageCollectedRef(v.loc.t):
+  if gSelectedGc in {gcMarkAndSweep, gcGenerational} and
+      containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)

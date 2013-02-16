@@ -81,7 +81,7 @@ type                          # please make sure we have under 32 options
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2
+    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
@@ -101,7 +101,7 @@ var
   headerFile*: string = ""
   gVerbosity*: int            # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
-  gWholeProject*: bool # for 'doc2': output any dependency
+  gWholeProject*: bool        # for 'doc2': output any dependency
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
