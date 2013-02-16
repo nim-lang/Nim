@@ -78,6 +78,7 @@ elif defined(JS):
       getUTCMinutes: proc (): int
       getUTCMonth: proc (): int
       getUTCSeconds: proc (): int
+      getUTCDay: proc (): int
       getYear: proc (): int
       parse: proc (s: cstring): TTime
       setDate: proc (x: int)
@@ -452,7 +453,7 @@ else:
     result.monthday = t.getUTCDate()
     result.month = TMonth(t.getUTCMonth())
     result.year = t.getUTCFullYear()
-    result.weekday = weekDays[t.getDay()]
+    result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
   
   proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =
