@@ -9,7 +9,7 @@
 
 
 ## This module contains routines and types for dealing with time.
-## This module is available for the ECMAScript target.
+## This module is available for the JavaScript target.
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
@@ -58,7 +58,7 @@ elif defined(windows):
   type
     TTime* = distinct TTimeImpl
 
-elif defined(ECMAScript):
+elif defined(JS):
   type
     TTime* {.final, importc.} = object
       getDay: proc (): int
@@ -78,6 +78,7 @@ elif defined(ECMAScript):
       getUTCMinutes: proc (): int
       getUTCMonth: proc (): int
       getUTCSeconds: proc (): int
+      getUTCDay: proc (): int
       getYear: proc (): int
       parse: proc (s: cstring): TTime
       setDate: proc (x: int)
@@ -115,7 +116,7 @@ type
     weekday*: TWeekDay        ## The current day of the week.
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
-                              ## Always 0 if the target is ECMAScript.
+                              ## Always 0 if the target is JS.
     isDST*: bool              ## Determines whether DST is in effect. Always
                               ## ``False`` if time is UTC.
     tzname*: string           ## The timezone this time is in. E.g. GMT
@@ -246,7 +247,7 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   else:
     result = getLocalTime(TTime(float(t) - secs))
 
-when not defined(ECMAScript):  
+when not defined(JS):  
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
     ## because sub-second resolution is likely to be supported (depending 
@@ -265,7 +266,7 @@ when not defined(ECMAScript):
     ##   doWork()
     ##   echo "CPU time [s] ", cpuTime() - t0
 
-when not defined(ECMAScript):
+when not defined(JS):
   
   # C wrapper:
   type
@@ -427,7 +428,7 @@ when not defined(ECMAScript):
     proc cpuTime(): float = 
       result = toFloat(int(clock())) / toFloat(clocksPerSec)
     
-else:
+elif defined(JS):
   proc newDate(): TTime {.importc: "new Date", nodecl.}
   proc getTime(): TTime = return newDate()
 
@@ -452,7 +453,7 @@ else:
     result.monthday = t.getUTCDate()
     result.month = TMonth(t.getUTCMonth())
     result.year = t.getUTCFullYear()
-    result.weekday = weekDays[t.getDay()]
+    result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
   
   proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =

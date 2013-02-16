@@ -14,7 +14,7 @@ import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
   os, lists, condsyms, rodread, rodwrite, ropes, trees, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, ecmasgen, cgendata,
+  cgen, jsgen, cgendata,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
   tables, docgen2, service, magicsys, parser, crc, ccgutils
 
@@ -301,14 +301,15 @@ when has_LLVM_Backend:
     #registerPass(cleanupPass())
     compileProject()
 
-proc CommandCompileToEcmaScript =
+proc CommandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
-  setTarget(osEcmaScript, cpuEcmaScript)
+  setTarget(osJS, cpuJS)
   #initDefines()
   DefineSymbol("nimrod") # 'nimrod' is always defined
-  DefineSymbol("ecmascript")
+  DefineSymbol("ecmascript") # For backward compatibility
+  DefineSymbol("js")
   semanticPasses()
-  registerPass(ecmasgenPass)
+  registerPass(jsgenPass)
   compileProject()
 
 proc InteractivePasses =
@@ -481,10 +482,10 @@ proc MainCommand =
       CommandCompileToC()
     else: 
       rawMessage(errInvalidCommandX, command)
-  of "js", "compiletoecmascript": 
-    gCmd = cmdCompileToEcmaScript
+  of "js", "compiletojs": 
+    gCmd = cmdCompileToJS
     wantMainModule()
-    CommandCompileToEcmaScript()
+    CommandCompileToJS()
   of "compiletollvm": 
     gCmd = cmdCompileToLLVM
     wantMainModule()
