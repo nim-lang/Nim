@@ -4720,7 +4720,7 @@ Foreign function interface
 ==========================
 
 Nimrod's `FFI`:idx: (foreign function interface) is extensive and only the
-parts that scale to other future backends (like the LLVM/EcmaScript backends)
+parts that scale to other future backends (like the LLVM/JavaScript backends)
 are documented here.
 
 

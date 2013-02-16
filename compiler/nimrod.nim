@@ -60,7 +60,7 @@ proc HandleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run()
       if optRun in gGlobalOptions:
-        if gCmd == cmdCompileToEcmaScript:
+        if gCmd == cmdCompileToJS:
           var ex = quoteIfContainsWhite(
             completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram("node " & ex & ' ' & service.arguments)

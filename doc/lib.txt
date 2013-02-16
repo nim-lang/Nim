@@ -328,7 +328,7 @@ Modules for JS backend
 ---------------------------
 
 * `dom <dom.html>`_
-  Declaration of the Document Object Model for the ECMAScript backend.
+  Declaration of the Document Object Model for the JS backend.
 
 
 Impure libraries
