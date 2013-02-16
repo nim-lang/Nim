@@ -58,7 +58,7 @@ proc testDone(name: string, s: TTestStatus) =
     program_result += 1
 
   if OutputLevel != PRINT_NONE and (OutputLevel == PRINT_ALL or s == FAILED):
-    proc rawPrint() = echo("[", $s, "] ", name, "\n")
+    template rawPrint() = echo("[", $s, "] ", name, "\n")
     when not defined(ECMAScript):
       if ColorOutput and not defined(ECMAScript):
         var color = (if s == OK: fgGreen else: fgRed)
