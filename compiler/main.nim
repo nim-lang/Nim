@@ -313,7 +313,7 @@ proc CommandCompileToJS =
   compileProject()
 
 proc InteractivePasses =
-  incl(gGlobalOptions, optSafeCode)
+  #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   DefineSymbol("nimrodvm")
