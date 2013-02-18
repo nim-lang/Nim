@@ -938,7 +938,8 @@ proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
       of tyTypeClass:
         match = matchTypeClass(bindings, req, t)
       else: nil
-    elif t.kind in {tyObject}:
+    elif t.kind in {tyObject} and req.len != 0:
+      # empty 'object' is fine as constraint in a type class
       match = sameType(t, req)
 
     if tfAny in typeClass.flags:
