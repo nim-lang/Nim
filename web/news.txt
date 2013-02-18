@@ -27,7 +27,7 @@ Library Additions
 - There is a new experimental mark&sweep GC which can be faster (or much 
   slower) than the default GC. Enable with ``--gc:markAndSweep``.
 - ``system.fields`` and ``system.fieldPairs`` support ``object`` too; they
-  used to only suppor tuples.
+  used to only support tuples.
 
 
 Changes affecting backwards compatibility
