@@ -393,26 +393,36 @@ proc rangeToStr(n: PNode): string =
   assert(n.kind == nkRange)
   result = ValueToString(n.sons[0]) & ".." & ValueToString(n.sons[1])
 
+const 
+  typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty", 
+    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc", 
+    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam", 
+    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple", 
+    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc", 
+    "pointer", "OpenArray[$1]", "string", "CString", "Forward",
+    "int", "int8", "int16", "int32", "int64",
+    "float", "float32", "float64", "float128",
+    "uint", "uint8", "uint16", "uint32", "uint64",
+    "bignum", "const ",
+    "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass"]
+
 proc constraintsToStr(t: PType): string =
-  let sep = if tfAny in t.flags: " or " else: " and "
-  result = ""
-  for i in countup(0, t.sons.len - 1):
-    if i > 0: result.add(sep)
-    result.add(t.sons[i].typeToString)
+  proc consToStr(t: PType): string =
+    if t.len > 0: result = t.typeToString
+    else: result = typeToStr[t.kind].strip
+
+  # better error messages are nice:
+  case t.len
+  of 0: result = "constraint[]"
+  of 1: result = "constraint[" & consToStr(t.sons[0]) & "]"
+  else:
+    let sep = if tfAny in t.flags: " or " else: " and "
+    result = ""
+    for i in countup(0, t.len - 1):
+      if i > 0: result.add(sep)
+      result.add(t.sons[i].consToStr)
 
 proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string = 
-  const 
-    typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty", 
-      "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc", 
-      "GenericInvokation", "GenericBody", "GenericInst", "GenericParam", 
-      "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple", 
-      "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc", 
-      "pointer", "OpenArray[$1]", "string", "CString", "Forward",
-      "int", "int8", "int16", "int32", "int64",
-      "float", "float32", "float64", "float128",
-      "uint", "uint8", "uint16", "uint32", "uint64",
-      "bignum", "const ",
-      "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass"]
   var t = typ
   result = ""
   if t == nil: return 
@@ -433,12 +443,12 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     add(result, ']')
   of tyTypeDesc:
-    if t.sons == nil or t.sons.len == 0: result = "typedesc"
+    if t.len == 0: result = "typedesc"
     else: result = "typedesc[" & constraintsToStr(t) & "]"
   of tyTypeClass:
     result = constraintsToStr(t)
   of tyExpr:
-    if t.sons.len == 0: result = "expr"
+    if t.len == 0: result = "expr"
     else: result = "expr[" & constraintsToStr(t) & "]"
   of tyArray: 
     if t.sons[0].kind == tyRange: 
