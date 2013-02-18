@@ -1655,7 +1655,7 @@ proc semCaseExpr(c: PContext, caseStmt: PNode): PNode =
 proc fixImmediateParams(n: PNode): PNode =
   # XXX: Temporary work-around until we carry out
   # the planned overload resolution reforms
-  for i in 1 .. <n.len:
+  for i in 1 .. <safeLen(n):
     if n[i].kind == nkDo: n.sons[i] = n[i][bodyPos]
   
   result = n
