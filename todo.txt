@@ -1,29 +1,36 @@
 version 0.9.2
 =============
 
+- FFI:
+  * test libffi on windows  --> fowl
+  * test: times.format with the FFI
+- GC: variation of m&s GC
+- GC: implement simple generational GC
+  * first version: mark black in write barrier
+  * second version: introduce fake roots instead of marking black
+  * third version: find some clever heuristic which is preferable
 - acyclic vs prunable; introduce GC hints
 - implement constructors + full 'not nil' checking
-- ``restrict`` pragma + backend support
-- fix: 'result' is not properly cleaned for NRVO
+- CGEN: ``restrict`` pragma + backend support; computed goto support
+- fix:
+  - 'result' is not properly cleaned for NRVO
+  - optimize genericAssign in the code generator
 - document NimMain and check whether it works for threading
 
 
 version 0.9.4
 =============
 
-- make 'bind' default for templates and introduce 'mixin'; 
+- make 'bind' default for templates and introduce 'mixin';
   special rule for ``[]=``
 - implicit deref for parameter matching; overloading based on 'var T'
-- ``=`` should be overloadable; requires specialization for ``=``
-- optimize genericAssign in the code generator
+- ``=`` should be overloadable; requires specialization for ``=``; general
+  lift mechanism in the compiler is already implemented for 'fields'
 
 
 version 0.9.X
 =============
 
-- FFI:
-  * test libffi on windows
-  * test: times.format with the FFI
 - test&finish first class iterators:
   * nested iterators
 - implement the missing features wrt inheritance
@@ -72,6 +79,7 @@ Not essential for 1.0.0
 
 - 'const' objects including case objects
 - mocking support with ``tyProxy`` that does: fallback for ``.`` operator
+  - overloading of ``.``? Special case ``.=``?
 - allow implicit forward declarations of procs via a pragma (so that the
   wrappers can deactivate it)
 - implement the "snoopResult" pragma; no, make a strutils with string append
