@@ -180,9 +180,7 @@ proc readLine*(s: PStream): TaintedString =
     if c == '\c': 
       c = readChar(s)
       break
-    if c == '\b':
-      result.string.setLen(result.len - 1)
-    elif c == '\L' or c == '\0':
+    if c == '\L' or c == '\0':
       break
     else:
       result.string.add(c)

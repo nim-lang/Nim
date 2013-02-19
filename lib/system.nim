@@ -186,9 +186,9 @@ when not defined(niminheritable):
 
 when not defined(JS) and not defined(NimrodVM):
   type
-    TGenericSeq* {.compilerproc, pure, inheritable.} = object
+    TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
-    PGenericSeq* {.exportc.} = ptr TGenericSeq
+    PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: array[0..100_000_000, char]
