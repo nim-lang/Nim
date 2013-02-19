@@ -319,7 +319,8 @@ iterator allObjects(m: TMemRegion): pointer {.inline.} =
         
         let size = c.size
         var a = cast[TAddress](addr(c.data))
-        while a <% c.acc:
+        let limit = a + c.acc
+        while a <% limit:
           yield cast[pointer](a)
           a = a +% size
       else:

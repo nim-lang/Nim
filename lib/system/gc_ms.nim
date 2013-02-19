@@ -13,7 +13,9 @@
 
 const
   InitialThreshold = 4*1024*1024 # X MB because marking&sweeping is slow
-  withBitvectors = defined(gcUseBitvectors)
+  withBitvectors = defined(gcUseBitvectors) 
+  # bitvectors are significantly faster for GC-bench, but slower for
+  # bootstrapping and use more memory
   rcWhite = 0
   rcGrey = 1   # unused
   rcBlack = 2
