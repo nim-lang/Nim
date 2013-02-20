@@ -336,6 +336,9 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
           result.add(newSymNode(c.field, n.info))
         break
   else:
+    if n.kind == nkContinueStmt:
+      localError(n.info, errGenerated,
+                 "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
     for i in countup(0, sonsLen(n)-1):
