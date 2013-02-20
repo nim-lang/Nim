@@ -406,21 +406,16 @@ const
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass"]
 
-proc constraintsToStr(t: PType): string =
-  proc consToStr(t: PType): string =
-    if t.len > 0: result = t.typeToString
-    else: result = typeToStr[t.kind].strip
+proc consToStr(t: PType): string =
+  if t.len > 0: result = t.typeToString
+  else: result = typeToStr[t.kind].strip
 
-  # better error messages are nice:
-  case t.len
-  of 0: result = "constraint[]"
-  of 1: result = "constraint[" & consToStr(t.sons[0]) & "]"
-  else:
-    let sep = if tfAny in t.flags: " or " else: " and "
-    result = ""
-    for i in countup(0, t.len - 1):
-      if i > 0: result.add(sep)
-      result.add(t.sons[i].consToStr)
+proc constraintsToStr(t: PType): string =
+  let sep = if tfAny in t.flags: " or " else: " and "
+  result = ""
+  for i in countup(0, t.len - 1):
+    if i > 0: result.add(sep)
+    result.add(t.sons[i].consToStr)
 
 proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string = 
   var t = typ
@@ -446,7 +441,10 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if t.len == 0: result = "typedesc"
     else: result = "typedesc[" & constraintsToStr(t) & "]"
   of tyTypeClass:
-    result = constraintsToStr(t)
+    case t.len
+    of 0: result = "typeclass[]"
+    of 1: result = "typeclass[" & consToStr(t.sons[0]) & "]"
+    else: result = constraintsToStr(t)
   of tyExpr:
     if t.len == 0: result = "expr"
     else: result = "expr[" & constraintsToStr(t) & "]"
