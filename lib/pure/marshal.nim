@@ -147,7 +147,8 @@ proc loadAny(p: var TJsonParser, a: TAny, t: var TTable[biggestInt, pointer]) =
         raiseParseErr(p, "string expected for a field name")
       var fieldName = p.str
       next(p)
-      loadAny(p, a[fieldName], t)
+      try: loadAny(p, a[fieldName], t)
+      except EInvalidValue: nil
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
   of akSet:
@@ -266,7 +267,15 @@ when isMainModule:
         help: string
       else:
         nil
-        
+
+    HolderObj = object
+      name: string
+      value: TestObj
+
+    HolderObjv2 = object
+      age: int
+      value: TestObj
+
     PNode = ref TNode
     TNode = object
       next, prev: PNode
@@ -287,7 +296,21 @@ when isMainModule:
   var test3: TestObj
   test3.test = 42
   test3.test2 = blah
+  test3.help = "hey"
   testit(test3)
+  # Now we change the type and it won't serialize the help attribute.
+  test3.test2 = blah2
+  testit(test3)
+
+  # Object composition works too.
+  var compos1: HolderObj
+  compos1.name = "Brakalar"
+  compos1.value = test3
+  testit(compos1)
+
+  # Even versioning should work with missing/new fields.
+  var compos2 = to[HolderObjv2]($$compos1)
+  testit(compos2)
 
   var test4: ref tuple[a, b: string]
   new(test4)
