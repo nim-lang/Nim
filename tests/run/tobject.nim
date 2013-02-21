@@ -13,7 +13,8 @@ proc initObject(x: int): Obj =
 suite "object basic methods":
   test "it should convert an objcet to a string":
     var obj = makeObj(1)
-    discard $obj
+    # Should be "obj: (foo: 1)" or similar.
+    check($obj == "(foo: 1)")
   test "it should test equality based on fields":
     check(initObj(1) == initObj(1))
   test "it should test equality based on fields for refs too":
