@@ -1557,8 +1557,6 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
-proc `$`*[T: ref](x: T): string = $x[]
-
 proc `$`*[T: tuple|object](x: T): string = 
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
