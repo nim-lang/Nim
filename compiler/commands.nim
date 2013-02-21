@@ -65,8 +65,13 @@ proc writeCommandLineUsage() =
     MsgWriteln(getCommandLineDesc())
     helpWritten = true
 
+proc addPrefix(switch: string): string =
+  if len(switch) == 1: result = "-" & switch
+  else: result = "--" & switch
+
 proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
-  LocalError(info, errInvalidCmdLineOption, switch)
+  if switch == " ": LocalError(info, errInvalidCmdLineOption, "-")
+  else: LocalError(info, errInvalidCmdLineOption, addPrefix(switch))
 
 proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
                  info: TLineInfo) = 
@@ -98,10 +103,10 @@ proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass,
   else: LocalError(info, errOnOrOffExpectedButXFound, arg)
   
 proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg == "": LocalError(info, errCmdLineArgExpected, switch)
+  if arg == "": LocalError(info, errCmdLineArgExpected, addPrefix(switch))
   
 proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg != "": LocalError(info, errCmdLineNoArgExpected, switch)
+  if arg != "": LocalError(info, errCmdLineNoArgExpected, addPrefix(switch))
   
 proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 
