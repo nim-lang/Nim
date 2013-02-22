@@ -16,6 +16,7 @@ compiler/c2nim/nimcache
 compiler/pas2nim/nimcache
 misc
 doc/*.html
+doc/*.pdf
 doc/*.idx
 /web/upload
 koch
