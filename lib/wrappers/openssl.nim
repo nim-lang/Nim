@@ -233,6 +233,7 @@ proc SSL_read*(ssl: PSSL, buf: pointer, num: int): cint{.cdecl, dynlib: DLLSSLNa
 proc SSL_write*(ssl: PSSL, buf: cstring, num: int): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_error*(s: PSSL, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_accept*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_pending*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc BIO_new_ssl_connect*(ctx: PSSL_CTX): PBIO{.cdecl,
     dynlib: DLLSSLName, importc.}
@@ -323,7 +324,6 @@ else:
       dynlib: DLLSSLName, importc.}
   proc SslWrite*(ssl: PSSL, buf: SslPtr, num: cInt): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
-  proc SslPending*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslGetVersion*(ssl: PSSL): cstring{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslGetPeerCertificate*(ssl: PSSL): PX509{.cdecl, dynlib: DLLSSLName, 
       importc.}
