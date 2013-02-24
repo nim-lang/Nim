@@ -195,6 +195,46 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
             addrLoc(dest), rdLoc(src))
     if needToKeepAlive in flags: keepAlive(p, dest)
 
+proc asgnComplexity(n: PNode): int =
+  if n != nil:
+    case n.kind
+    of nkSym: result = 1
+    of nkRecCase:
+      # 'case objects' are too difficult to inline their assignment operation:
+      result = 100
+    of nkRecList:
+      for t in items(n):
+        result += asgnComplexity(t)
+    else: nil
+
+proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+
+proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
+  result.k = locField
+  result.s = a.s
+  result.t = t
+  result.r = rdLoc(a).con(".").con(field)
+  result.heapRoot = a.heapRoot
+
+proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
+  for i in 0 .. <dest.t.len:
+    let t = dest.t.sons[i]
+    let field = ropef("Field$1", i.toRope)
+    genAssignment(p, optAsgnLoc(dest, t, field), 
+                     optAsgnLoc(src, t, field), flags)
+
+proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
+                      t: PNode) =
+  if t == nil: return
+  case t.kind
+  of nkSym:
+    let field = t.sym
+    genAssignment(p, optAsgnLoc(dest, field.typ, field.loc.r), 
+                     optAsgnLoc(src, field.typ, field.loc.r), flags)
+  of nkRecList:
+    for child in items(t): genOptAsgnObject(p, dest, src, flags, child)
+  else: nil
+
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # Consider: 
   # type TMyFastString {.shallow.} = string
@@ -251,10 +291,29 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
                addrLoc(dest), rdLoc(src))
         if needToKeepAlive in flags: keepAlive(p, dest)
-  of tyTuple, tyObject, tyProc:
+  of tyProc:
+    if needsComplexAssignment(dest.t):
+      # optimize closure assignment:
+      let a = optAsgnLoc(dest, dest.t, "ClEnv".toRope)
+      let b = optAsgnLoc(src, dest.t, "ClEnv".toRope)
+      genRefAssign(p, a, b, flags)
+      linefmt(p, cpsStmts, "$1.ClPrc = $2.ClPrc;$n", rdLoc(dest), rdLoc(src))
+    else:
+      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+  of tyTuple:
+    if needsComplexAssignment(dest.t):
+      if dest.t.len <= 4: genOptAsgnTuple(p, dest, src, flags)
+      else: genGenericAsgn(p, dest, src, flags)
+    else:
+      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+  of tyObject:
     # XXX: check for subtyping?
     if needsComplexAssignment(dest.t):
-      genGenericAsgn(p, dest, src, flags)
+      if asgnComplexity(dest.t.n) <= 4:
+        discard getTypeDesc(p.module, dest.t)
+        genOptAsgnObject(p, dest, src, flags, dest.t.n)
+      else:
+        genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyArray, tyArrayConstr:
