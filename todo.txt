@@ -4,16 +4,11 @@ version 0.9.2
 - FFI:
   * test libffi on windows
   * test: times.format with the FFI
-- GC: implement simple generational GC
-  * first version: mark black in write barrier
-  * second version: introduce fake roots instead of marking black
-  * third version: find some clever heuristic which is preferable
 - acyclic vs prunable; introduce GC hints
 - implement constructors + full 'not nil' checking
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - fix:
   - 'result' is not properly cleaned for NRVO
-  - optimize genericAssign in the code generator
 - document NimMain and check whether it works for threading
 
 
@@ -94,6 +89,10 @@ Not essential for 1.0.0
 - implement marker procs for message passing
 - activate more thread tests
 - implement closures that support nesting of *procs* > 1
+- GC: implement simple generational GC
+  * first version: mark black in write barrier
+  * second version: introduce fake roots instead of marking black
+  * third version: find some clever heuristic which is preferable
 
 
 GC

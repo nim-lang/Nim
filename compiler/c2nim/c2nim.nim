@@ -1,7 +1,7 @@
 #
 #
 #      c2nim - C to Nimrod source converter
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,7 +15,7 @@ const
   Version = NimrodVersion
   Usage = """
 c2nim - C to Nimrod source converter
-  (c) 2012 Andreas Rumpf
+  (c) 2013 Andreas Rumpf
 Usage: c2nim [options] inputfile [options]
 Options:
   -o, --out:FILE         set output filename
