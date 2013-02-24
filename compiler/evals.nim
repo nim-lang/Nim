@@ -1495,7 +1495,13 @@ proc myOpen(module: PSym): PPassContext =
   pushStackFrame(c, newStackFrame())
   result = c
 
-proc myProcess(c: PPassContext, n: PNode): PNode = 
+var oldErrorCount: int
+
+proc myProcess(c: PPassContext, n: PNode): PNode =
+  # don't eval errornous code:
+  if oldErrorCount != msgs.gErrorCounter:
+    oldErrorCount = msgs.gErrorCounter
+    return n
   result = eval(PEvalContext(c), n)
 
 const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
