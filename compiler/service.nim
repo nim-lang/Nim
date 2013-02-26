@@ -90,4 +90,3 @@ proc serve*(action: proc (){.nimcall.}) =
   else:
     echo "Invalid server.type:", typ
     quit 1
-
