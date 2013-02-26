@@ -523,8 +523,8 @@ proc SuggestWriteln*(s: string) =
       stdoutSocket.send(s & "\c\L")
     
 proc SuggestQuit*() =
-  if isNil(stdoutSocket): quit(0)
-  else: 
+  if not isServing: quit(0)
+  elif not isNil(stdoutSocket):
     stdoutSocket.send("\c\L")
     raise newException(ESuggestDone, "suggest done")
   

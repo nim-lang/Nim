@@ -559,6 +559,7 @@ proc MainCommand =
       wantMainModule()
       CommandSuggest()
   of "serve":
+    isServing = true
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error     
     serve(MainCommand)
