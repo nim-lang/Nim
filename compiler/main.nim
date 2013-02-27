@@ -462,9 +462,10 @@ proc MainCommand =
     gCmd = cmdCompileToC
     wantMainModule()
     CommandCompileToC()
-  of "cpp", "compiletocpp": 
+  of "cpp", "compiletocpp":
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
+    if cCompiler == ccGcc: setCC("gpp")
     wantMainModule()
     DefineSymbol("cpp")
     CommandCompileToC()
