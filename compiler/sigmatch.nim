@@ -97,6 +97,45 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.baseTypeMatch = b.baseTypeMatch
   copyIdTable(a.bindings, b.bindings)
 
+proc sumGeneric(t: PType): int =
+  var t = t
+  while true:
+    case t.kind
+    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyArrayConstr,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody:
+      t = t.lastSon
+      inc result
+    of tyVar:
+      # but do not make 'var T' more specific than 'T'!
+      t = t.sons[0]
+    of tyGenericInvokation, tyTuple:
+      result = ord(t.kind == tyGenericInvokation)
+      for i in 0 .. <t.len: result += t.sons[i].sumGeneric
+      break
+    of tyGenericParam, tyExpr, tyStmt, tyTypeDesc, tyTypeClass: break
+    else: return 0
+
+proc complexDisambiguation(a, b: PType): int =
+  var x, y: int
+  for i in 1 .. <a.len: x += a.sons[i].sumGeneric
+  for i in 1 .. <b.len: y += b.sons[i].sumGeneric
+  result = x - y
+  when false:
+    proc betterThan(a, b: PType): bool {.inline.} = a.sumGeneric > b.sumGeneric
+
+    if a.len > 1 and b.len > 1:
+      let aa = a.sons[1].sumGeneric
+      let bb = b.sons[1].sumGeneric
+      var a = a
+      var b = b
+      
+      if aa < bb: swap(a, b)
+      # all must be better
+      for i in 2 .. <min(a.len, b.len):
+        if not a.sons[i].betterThan(b.sons[i]): return 0
+      # a must be longer or of the same length as b:
+      result = a.len - b.len
+
 proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
@@ -110,9 +149,12 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if result != 0: return
   if (a.calleeScope != -1) and (b.calleeScope != -1):
     result = a.calleeScope - b.calleeScope
-  if result != 0: return
+    if result != 0: return
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
+  if result != 0: return
+  # prefer more specialized generic over more general generic:
+  result = complexDisambiguation(a.callee, b.callee)
 
 proc writeMatches*(c: TCandidate) = 
   Writeln(stdout, "exact matches: " & $c.exactMatches)

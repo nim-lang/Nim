@@ -1532,7 +1532,7 @@ iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
 
-proc `==`*[T: tuple](x, y: T): bool = 
+proc `==`*[T: tuple|object](x, y: T): bool = 
   ## generic ``==`` operator for tuples that is lifted from the components
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -1557,7 +1557,7 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
-proc `$`*[T: tuple](x: T): string = 
+proc `$`*[T: tuple|object](x: T): string = 
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
