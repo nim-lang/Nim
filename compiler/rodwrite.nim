@@ -230,9 +230,6 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.align != 2: 
     add(result, '=')
     encodeVInt(t.align, result)
-  if t.containerID != 0: 
-    add(result, '@')
-    encodeVInt(t.containerID, result)
   encodeLoc(w, t.loc, result)
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i] == nil: 
