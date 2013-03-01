@@ -327,9 +327,6 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     result.align = decodeVInt(r.s, r.pos)
   else: 
     result.align = 2
-  if r.s[r.pos] == '@': 
-    inc(r.pos)
-    result.containerID = decodeVInt(r.s, r.pos)
   decodeLoc(r, result.loc, info)
   while r.s[r.pos] == '^': 
     inc(r.pos)

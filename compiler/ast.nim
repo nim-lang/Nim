@@ -675,7 +675,6 @@ type
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
-    containerID*: int         # used for type checking of generics
     loc*: TLoc
 
   TPair*{.final.} = object 
@@ -1012,7 +1011,6 @@ proc assignType(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.containerID = src.containerID
   dest.destructor = src.destructor
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:

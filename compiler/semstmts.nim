@@ -532,9 +532,6 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       openScope(c.tab)
       pushOwner(s)
       if s.magic == mNone: s.typ.kind = tyGenericBody
-      if s.typ.containerID != 0: 
-        InternalError(a.info, "semTypeSection: containerID")
-      s.typ.containerID = s.typ.id
       # XXX for generic type aliases this is not correct! We need the
       # underlying Id really: 
       #
