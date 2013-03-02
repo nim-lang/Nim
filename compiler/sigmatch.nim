@@ -799,6 +799,28 @@ proc setSon(father: PNode, at: int, son: PNode) =
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
   father.sons[at] = son
 
+# we are allowed to modify the calling node in the 'prepare*' procs:
+proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
+  if formal.kind == tyExpr and formal.len != 1:
+    # {tyTypeDesc, tyExpr, tyStmt, tyProxy}:
+    # a.typ == nil is valid
+    result = a
+  elif a.typ.isNil:
+    result = c.semExprWithType(c, a, {efDetermineType})
+  else:
+    result = a
+
+proc prepareOperand(c: PContext; a: PNode): PNode =
+  if a.typ.isNil:
+    result = c.semExprWithType(c, a, {efDetermineType})
+  else:
+    result = a
+
+proc prepareNamedParam(a: PNode) =
+  if a.sons[0].kind != nkIdent:
+    var info = a.sons[0].info
+    a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
+
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var TIntSet) = 
   template checkConstraint(n: expr) {.immediate, dirty.} =
@@ -823,6 +845,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
+      prepareNamedParam(n.sons[a])
       if n.sons[a].sons[0].kind != nkIdent: 
         LocalError(n.sons[a].info, errNamedParamHasToBeIdent)
         m.state = csNoMatch
@@ -838,9 +861,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return 
       m.baseTypeMatch = false
+      n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
+      n.sons[a].typ = n.sons[a].sons[1].typ
       var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                 n.sons[a].sons[1], nOrig.sons[a].sons[1])
-      if arg == nil: 
+      if arg == nil:
         m.state = csNoMatch
         return
       checkConstraint(n.sons[a].sons[1])
@@ -852,30 +877,33 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         if f != formalLen - 1: container = nil
       else: 
         setSon(m.call, formal.position + 1, arg)
-    else: 
+    else:
       # unnamed param
-      if f >= formalLen: 
+      if f >= formalLen:
         # too many arguments?
-        if tfVarArgs in m.callee.flags: 
+        if tfVarArgs in m.callee.flags:
           # is ok... but don't increment any counters...
-          if skipTypes(n.sons[a].typ, abstractVar).kind == tyString: 
-            addSon(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString), 
+          # we have no formal here to snoop at:
+          n.sons[a] = prepareOperand(c, n.sons[a])
+          if skipTypes(n.sons[a].typ, abstractVar).kind == tyString:
+            addSon(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString),
                                         copyTree(n.sons[a]), m, c))
-          else: 
+          else:
             addSon(m.call, copyTree(n.sons[a]))
         elif formal != nil:
           m.baseTypeMatch = false
+          n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
-          if (arg != nil) and m.baseTypeMatch and (container != nil): 
+          if (arg != nil) and m.baseTypeMatch and (container != nil):
             addSon(container, arg)
-          else: 
+          else:
             m.state = csNoMatch
-            return 
-        else: 
+            return
+        else:
           m.state = csNoMatch
-          return 
-      else: 
+          return
+      else:
         if m.callee.n.sons[f].kind != nkSym: 
           InternalError(n.sons[a].info, "matches")
           return
@@ -886,6 +914,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.state = csNoMatch
           return 
         m.baseTypeMatch = false
+        n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
         var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
         if arg == nil:
@@ -898,11 +927,17 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           setSon(m.call, formal.position + 1, 
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
           if f != formalLen - 1: container = nil
-        else: 
+        else:
           setSon(m.call, formal.position + 1, arg)
       checkConstraint(n.sons[a])
     inc(a)
     inc(f)
+
+proc semFinishOperands*(c: PContext, n: PNode) =
+  # this needs to be called to ensure that after overloading resolution every
+  # argument has been sem'checked:
+  for i in 1 .. <n.len:
+    n.sons[i] = prepareOperand(c, n.sons[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
