@@ -31,10 +31,6 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode =
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
-proc newDeref(n: PNode): PNode {.inline.} =  
-  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
-  addSon(result, n)
-
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
@@ -319,7 +315,7 @@ proc semIs(c: PContext, n: PNode): PNode =
   
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
-  for i in countup(1, n.sonsLen- 1):
+  for i in countup(1, n.sonsLen-1):
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2: 
       var info = a.sons[0].info
@@ -328,7 +324,7 @@ proc semOpAux(c: PContext, n: PNode) =
       a.typ = a.sons[1].typ
     else:
       n.sons[i] = semExprWithType(c, a, flags)
-    
+
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
   var par = getIdent("()")
@@ -694,7 +690,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
-  semOpAux(c, n)
+  #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result == nil:
     result = overloadedCallOpr(c, n)
@@ -706,6 +702,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   of skMacro: result = semMacroExpr(c, result, nOrig, callee)
   of skTemplate: result = semTemplateExpr(c, result, callee)
   else:
+    semFinishOperands(c, n)
     activate(c, n)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -845,16 +842,17 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return semSym(c, n, s, flags)
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags)
-  restoreOldStyleType(n.sons[0])
+  #restoreOldStyleType(n.sons[0])
   var i = considerAcc(n.sons[1])
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
-  if isTypeExpr(n.sons[0]):
+  if isTypeExpr(n.sons[0]) or ty.kind == tyTypeDesc and ty.len == 1:
+    if ty.kind == tyTypeDesc: ty = ty.sons[0]
     case ty.kind
-    of tyEnum: 
+    of tyEnum:
       # look up if the identifier belongs to the enum:
-      while ty != nil: 
+      while ty != nil:
         f = getSymFromList(ty.n, i)
         if f != nil: break 
         ty = ty.sons[0]         # enum inheritance
@@ -881,7 +879,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].Typ
-      
+    
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
   if ty.kind == tyObject: 

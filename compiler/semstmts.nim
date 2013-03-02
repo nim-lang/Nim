@@ -484,10 +484,17 @@ proc semForVars(c: PContext, n: PNode): PNode =
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
 
+proc newDeref(n: PNode): PNode {.inline.} =  
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
+  addSon(result, n)
+
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(it.getIdent, arg.info))
-  result.add(arg)
+  if arg.typ != nil and arg.typ.kind == tyVar: 
+    result.add newDeref(arg)
+  else:
+    result.add arg
   result = semExprNoDeref(c, result, {efWantIterator})
 
 proc semFor(c: PContext, n: PNode): PNode = 
@@ -776,8 +783,7 @@ proc activate(c: PContext, n: PNode) =
   # XXX: This proc is part of my plan for getting rid of
   # forward declarations. stay tuned.
   when false:
-    # well for now it breaks code ... I added the test case in main.nim of the
-    # compiler itself to break bootstrapping :P
+    # well for now it breaks code ...
     case n.kind
     of nkLambdaKinds:
       discard semLambda(c, n, {})
@@ -1142,8 +1148,8 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
   else:
     return false
 
-proc insertDestructors(c: PContext, varSection: PNode):
-  tuple[outer: PNode, inner: PNode] =
+proc insertDestructors(c: PContext,
+                       varSection: PNode): tuple[outer, inner: PNode] =
   # Accepts a var or let section.
   #
   # When a var section has variables with destructors
