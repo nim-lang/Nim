@@ -1054,7 +1054,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   # generate call to newSeq before adding the elements per hand:
   genNewSeqAux(p, d, intLiteral(sonsLen(t)))
   for i in countup(0, sonsLen(t) - 1):
-    initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
+    initLoc(arr, locExpr, elemType(skipTypes(t.typ, typedescInst)), OnHeap)
     arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     arr.s = OnHeap            # we know that sequences are on the heap
     expr(p, t.sons[i], arr)

@@ -587,16 +587,18 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           LocalError(a.info, errCannotEvalXBecauseIncompletelyDefined, 
                      "sizeof")
           result = nil
-        elif skipTypes(a.typ, abstractInst).kind in {tyArray,tyObject,tyTuple}:
+        elif skipTypes(a.typ, typedescInst).kind in
+             IntegralTypes+NilableTypes+{tySet}:
+          #{tyArray,tyObject,tyTuple}:
+          result = newIntNodeT(getSize(a.typ), n)
+        else:
           result = nil
           # XXX: size computation for complex types is still wrong
-        else:
-          result = newIntNodeT(getSize(a.typ), n)
       of mLow: 
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh: 
         if  skipTypes(n.sons[1].typ, abstractVar).kind notin
-            {tyOpenArray, tyVarargs, tySequence, tyString}: 
+            {tyOpenArray, tyVarargs, tySequence, tyString}:
           result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
         else:
           var a = getArrayConstr(m, n.sons[1])

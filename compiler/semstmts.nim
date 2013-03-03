@@ -119,11 +119,11 @@ proc semWhile(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
 
 proc toCover(t: PType): biggestInt = 
-  var t2 = skipTypes(t, abstractVarRange)
+  var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2): 
     result = sonsLen(t2.n)
   else:
-    result = lengthOrd(skipTypes(t, abstractVar))
+    result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
 proc semCase(c: PContext, n: PNode): PNode = 
   # check selector:
@@ -133,7 +133,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
   var covered: biggestint = 0
-  case skipTypes(n.sons[0].Typ, abstractVarRange).Kind
+  case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
   of tyInt..tyInt64, tyChar, tyEnum: 
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError: 
@@ -411,12 +411,12 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     LocalError(n.info, errWrongNumberOfVariables)
     return result
   
-  var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar)
+  var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar-{tyTypeDesc})
   if tupleTypeA.kind notin {tyTuple, tyObject}:
     localError(n.info, errGenerated, "no object or tuple type")
     return result
   for i in 1..call.len-1:
-    var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar)
+    var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar-{tyTypeDesc})
     if not SameType(tupleTypeA, tupleTypeB):
       typeMismatch(call.sons[i], tupleTypeA, tupleTypeB)
   

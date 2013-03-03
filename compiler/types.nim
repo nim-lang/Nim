@@ -49,16 +49,18 @@ proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
 const 
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyConst, tyMutable}
+                   tyConst, tyMutable, tyTypeDesc}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
-                  tyConst, tyMutable}
+                  tyConst, tyMutable, tyTypeDesc}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal,
-                    tyConst, tyMutable}
+                    tyConst, tyMutable, tyTypeDesc}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyConst, tyMutable}
-  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable, tyOrdinal}
+                       tyConst, tyMutable, tyTypeDesc}
+  abstractInst* = {tyGenericInst, tyDistinct, tyConst, tyMutable, tyOrdinal,
+                   tyTypeDesc}
 
-  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable}
+  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable, 
+               tyTypeDesc}
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
@@ -327,7 +329,7 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
   result = false
   if typ == nil: return 
   if tfAcyclic in typ.flags: return 
-  var t = skipTypes(typ, abstractInst)
+  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   if tfAcyclic in t.flags: return 
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr, tyOpenArray,
@@ -542,7 +544,7 @@ proc firstOrd(t: PType): biggestInt =
     else: 
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyConst, tyMutable:
+  of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc:
     result = firstOrd(lastSon(t))
   else: 
     InternalError("invalid kind for first(" & $t.kind & ')')
@@ -575,7 +577,7 @@ proc lastOrd(t: PType): biggestInt =
   of tyEnum: 
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyConst, tyMutable: 
+  of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc: 
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   else: 
@@ -841,7 +843,8 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyGenericInst:
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
-    if TypeDescExactMatch in c.flags:
+    if c.cmp == dcEqIgnoreDistinct: result = false
+    elif TypeDescExactMatch in c.flags:
       CycleCheck()
       result = sameChildrenAux(x, y, c) and sameFlags(a, b)
     else:
@@ -971,11 +974,11 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   result = true
   if typ == nil: return
   if ContainsOrIncl(marker, typ.id): return 
-  var t = skipTypes(typ, abstractInst)
+  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar:
     if kind == skConst: return false
-    var t2 = skipTypes(t.sons[0], abstractInst)
+    var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar: 
       result = false          # ``var var`` is always an invalid type:
@@ -989,8 +992,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
       if not result: break 
     if result and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult)
-  of tyExpr, tyStmt, tyTypeDesc: 
+  of tyExpr, tyStmt, tyTypeDesc:
     result = true
+    # XXX er ... no? these should not be allowed!
   of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, 
       tyTypeClass:
     result = false
@@ -1003,7 +1007,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyGenericInst, tyDistinct: 
     result = typeAllowedAux(marker, lastSon(t), kind)
   of tyRange: 
-    result = skipTypes(t.sons[0], abstractInst).kind in
+    result = skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind in
         {tyChar, tyEnum, tyInt..tyFloat128}
   of tyOpenArray, tyVarargs: 
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
@@ -1171,6 +1175,8 @@ proc computeSizeAux(typ: PType, a: var biggestInt): biggestInt =
     result = align(result, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
     result = computeSizeAux(lastSon(typ), a)
+  of tyTypeDesc:
+    result = (if typ.len == 1: computeSizeAux(typ.sons[0], a) else: -1)
   of tyProxy: result = 1
   else:
     #internalError("computeSizeAux()")

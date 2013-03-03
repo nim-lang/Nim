@@ -80,7 +80,7 @@ proc GetUniqueType*(key: PType): PType =
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``.
     result = key
-  of  tyEmpty, tyNil, tyExpr, tyStmt, tyTypeDesc, tyPointer, tyString, 
+  of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString, 
       tyCString, tyNone, tyBigNum:
     result = gCanonicalTypes[k]
     if result == nil:
@@ -88,7 +88,8 @@ proc GetUniqueType*(key: PType): PType =
       result = key
   of tyGenericParam, tyTypeClass:
     InternalError("GetUniqueType")
-  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
+  of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter, 
+      tyTypeDesc:
     result = GetUniqueType(lastSon(key))
   of tyArrayConstr, tyGenericInvokation, tyGenericBody,
      tyOpenArray, tyArray, tySet, tyRange, tyTuple,

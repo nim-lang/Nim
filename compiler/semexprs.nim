@@ -11,7 +11,7 @@
 # included from sem.nim
 
 proc restoreOldStyleType(n: PNode) =
-  # XXX: semExprWithType used to return the same type
+  # semExprWithType used to return the same type
   # for nodes such as (100) or (int). 
   # This is inappropriate. The type of the first expression
   # should be "int", while the type of the second one should 
@@ -75,7 +75,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   case s.kind
   of skConst:
     markUsed(n, s)
-    case skipTypes(s.typ, abstractInst).kind
+    case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
         tyTuple, tySet, tyUInt..tyUInt64:
       result = inlineConst(n, s)
@@ -145,7 +145,7 @@ proc checkConvertible(castDest, src: PType): TConvStatus =
       result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
-  var s = skipTypes(src, abstractVar)
+  var s = skipTypes(src, abstractVar-{tyTypeDesc})
   while (d != nil) and (d.Kind in {tyPtr, tyRef}) and (d.Kind == s.Kind):
     d = base(d)
     s = base(s)
@@ -154,7 +154,7 @@ proc checkConvertible(castDest, src: PType): TConvStatus =
   elif d.Kind == tyObject and s.Kind == tyObject:
     result = checkConversionBetweenObjects(d, s)
   elif (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes) and
-      (skipTypes(src, abstractVarRange).Kind in IntegralTypes):
+      (skipTypes(src, abstractVarRange-{tyTypeDesc}).Kind in IntegralTypes):
     # accept conversion between integral types
   else:
     # we use d, s here to speed up that operation a bit:
@@ -181,7 +181,7 @@ proc isCastable(dst, src: PType): bool =
   else: 
     result = (ds >= ss) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
-        (skipTypes(src, abstractInst).kind in IntegralTypes)
+        (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
   
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
@@ -195,7 +195,7 @@ proc semConv(c: PContext, n: PNode, s: PSym): PNode =
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   var op = result.sons[1]
-     
+  
   if not isSymChoice(op):
     let status = checkConvertible(result.typ, op.typ)
     case status
@@ -234,24 +234,24 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     LocalError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else: 
     n.sons[1] = semExprWithType(c, n.sons[1])
-    restoreOldStyleType(n.sons[1])
     var typ = skipTypes(n.sons[1].typ, abstractVarRange)
     case typ.Kind
     of tySequence, tyString, tyOpenArray, tyVarargs: 
       n.typ = getSysType(tyInt)
     of tyArrayConstr, tyArray: 
-      n.typ = n.sons[1].typ.sons[0] # indextype
+      n.typ = typ.sons[0] # indextype
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32: 
-      n.typ = n.sons[1].typ
+      # do not skip the range!
+      n.typ = n.sons[1].typ.skipTypes(abstractVar)
     else: LocalError(n.info, errInvalidArgForX, opToStr[m])
   result = n
 
-proc semSizeof(c: PContext, n: PNode): PNode = 
+proc semSizeof(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     LocalError(n.info, errXExpectsTypeOrValue, "sizeof")
-  else: 
+  else:
     n.sons[1] = semExprWithType(c, n.sons[1])
-    restoreOldStyleType(n.sons[1])
+    #restoreOldStyleType(n.sons[1])
   n.typ = getSysType(tyInt)
   result = n
 
@@ -261,10 +261,10 @@ proc semOf(c: PContext, n: PNode): PNode =
     n.sons[2] = semExprWithType(c, n.sons[2])
     #restoreOldStyleType(n.sons[1])
     #restoreOldStyleType(n.sons[2])
-    let a = skipTypes(n.sons[1].typ, typedescPtrs)
-    let b = skipTypes(n.sons[2].typ, typedescPtrs)
-    let x = skipTypes(n.sons[1].typ, abstractPtrs)
-    let y = skipTypes(n.sons[2].typ, abstractPtrs)
+    let a = skipTypes(n.sons[1].typ, abstractPtrs)
+    let b = skipTypes(n.sons[2].typ, abstractPtrs)
+    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
+    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
 
     if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
       LocalError(n.info, errXExpectsObjectTypes, "of")
@@ -481,7 +481,8 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   case n.kind
   of nkSym: 
     # n.sym.typ can be nil in 'check' mode ...
-    if n.sym.typ != nil and skipTypes(n.sym.typ, abstractInst).kind != tyVar: 
+    if n.sym.typ != nil and
+        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind != tyVar: 
       incl(n.sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkDotExpr: 
@@ -489,12 +490,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     if n.sons[1].kind != nkSym: 
       internalError(n.info, "analyseIfAddressTaken")
       return
-    if skipTypes(n.sons[1].sym.typ, abstractInst).kind != tyVar: 
+    if skipTypes(n.sons[1].sym.typ, abstractInst-{tyTypeDesc}).kind != tyVar: 
       incl(n.sons[1].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkBracketExpr: 
     checkMinSonsLen(n, 1)
-    if skipTypes(n.sons[0].typ, abstractInst).kind != tyVar: 
+    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind != tyVar: 
       if n.sons[0].kind == nkSym: incl(n.sons[0].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   else: 
@@ -515,13 +516,13 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     for i in countup(1, sonsLen(n) - 1): 
       if i < sonsLen(t) and t.sons[i] != nil and
-          skipTypes(t.sons[i], abstractInst).kind == tyVar: 
+          skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar: 
         if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}: 
           LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
   for i in countup(1, sonsLen(n) - 1): 
     if i < sonsLen(t) and
-        skipTypes(t.sons[i], abstractInst).kind == tyVar:
+        skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
       n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
 include semmagic
@@ -711,7 +712,8 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = evalAtCompileTime(c, result)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
-  if arg.typ != nil and skipTypes(arg.typ, abstractInst).kind == tyString:
+  if arg.typ != nil and 
+      skipTypes(arg.typ, abstractInst-{tyTypeDesc}).kind == tyString:
     result = arg
   else:
     result = newNodeI(nkCall, arg.info)
