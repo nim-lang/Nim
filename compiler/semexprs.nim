@@ -10,18 +10,6 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-proc restoreOldStyleType(n: PNode) =
-  # semExprWithType used to return the same type
-  # for nodes such as (100) or (int). 
-  # This is inappropriate. The type of the first expression
-  # should be "int", while the type of the second one should 
-  # be typedesc(int).
-  #
-  # This is strictly for backward compatibility until 
-  # the transition to types as first-class values is complete.
-  if n.typ.kind == tyTypeDesc and n.typ.sonsLen == 1:
-    n.typ = n.typ.sons[0]
-
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
