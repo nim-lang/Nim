@@ -171,12 +171,19 @@ proc NotFoundError*(c: PContext, n: PNode) =
     # fail fast:
     GlobalError(n.info, errTypeMismatch, "")
   var result = msgKindToString(errTypeMismatch)
-  for i in countup(1, sonsLen(n) - 1): 
-    #debug(n.sons[i].typ)
+  for i in countup(1, sonsLen(n) - 1):
+    var nt = n.sons[i].typ
     if n.sons[i].kind == nkExprEqExpr: 
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
-    let nt = n.sons[i].typ
+      if nt.isNil:
+        n.sons[i].sons[1] = c.semExprWithType(c, n.sons[i].sons[1])
+        nt = n.sons[i].sons[1].typ
+        n.sons[i].typ = nt
+    else:
+      if nt.isNil:
+        n.sons[i] = c.semExprWithType(c, n.sons[i])
+        nt = n.sons[i].typ
     if nt.kind == tyError: return
     add(result, typeToString(nt))
     if i != sonsLen(n) - 1: add(result, ", ")
@@ -188,7 +195,6 @@ proc NotFoundError*(c: PContext, n: PNode) =
     if sym.kind in RoutineKinds:
       add(candidates, getProcHeader(sym))
       add(candidates, "\n")
-      #debug(sym.typ)
     sym = nextOverloadIter(o, c, n.sons[0])
   if candidates != "": 
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
@@ -712,7 +718,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
       result = copyTree(arg)
       result.typ = getInstantiatedType(c, arg, m, f) 
       # BUG: f may not be the right key!
-      if skipTypes(result.typ, abstractVar).kind in {tyTuple}:
+      if skipTypes(result.typ, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
         result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c) 
         # BUGFIX: use ``result.typ`` and not `f` here
   of isFromIntLit:
@@ -723,7 +729,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isEqual: 
     inc(m.exactMatches)
     result = copyTree(arg)
-    if skipTypes(f, abstractVar).kind in {tyTuple}: 
+    if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
       result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
@@ -885,7 +891,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # is ok... but don't increment any counters...
           # we have no formal here to snoop at:
           n.sons[a] = prepareOperand(c, n.sons[a])
-          if skipTypes(n.sons[a].typ, abstractVar).kind == tyString:
+          if skipTypes(n.sons[a].typ, abstractVar-{tyTypeDesc}).kind==tyString:
             addSon(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString),
                                         copyTree(n.sons[a]), m, c))
           else:

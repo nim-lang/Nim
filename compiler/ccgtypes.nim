@@ -193,8 +193,8 @@ proc mapType(typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
-  of tyPtr, tyVar, tyRef: 
-    var base = skipTypes(typ.sons[0], abstractInst)
+  of tyPtr, tyVar, tyRef:
+    var base = skipTypes(typ.sons[0], typedescInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
     else: result = ctPtr
@@ -208,7 +208,7 @@ proc mapType(typ: PType): TCTypeKind =
   else: InternalError("mapType")
   
 proc mapReturnType(typ: PType): TCTypeKind = 
-  if skipTypes(typ, abstractInst).kind == tyArray: result = ctPtr
+  if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
   else: result = mapType(typ)
   
 proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope
@@ -224,10 +224,10 @@ proc isInvalidReturnType(rettype: PType): bool =
   else: 
     case mapType(rettype)
     of ctArray: 
-      result = not (skipTypes(rettype, abstractInst).kind in
+      result = not (skipTypes(rettype, typedescInst).kind in
           {tyVar, tyRef, tyPtr})
     of ctStruct: 
-      result = needsComplexAssignment(skipTypes(rettype, abstractInst))
+      result = needsComplexAssignment(skipTypes(rettype, typedescInst))
     else: result = false
   
 const 
@@ -253,7 +253,7 @@ proc getGlobalTempName(): PRope =
   result = rfmt(nil, "TMP$1", toRope(backendId()))
 
 proc ccgIntroducedPtr(s: PSym): bool = 
-  var pt = skipTypes(s.typ, abstractInst)
+  var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
@@ -280,13 +280,13 @@ proc fillResult(param: PSym) =
 proc getParamTypeDesc(m: BModule, t: PType, check: var TIntSet): PRope =
   when false:
     if t.Kind in {tyRef, tyPtr, tyVar}:
-      var b = skipTypes(t.sons[0], abstractInst)
+      var b = skipTypes(t.sons[0], typedescInst)
       if b.kind == tySet and mapSetType(b) == ctArray:
         return getTypeDescAux(m, b, check)
   result = getTypeDescAux(m, t, check)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar}).kind notin {tyArray, tyOpenArray}:
+  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray}:
     result = OnStack
   else:
     result = OnUnknown
@@ -572,7 +572,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     assert(CacheGetType(m.typeCache, t) == nil)
     IdTablePut(m.typeCache, t, con(result, "*"))
     if not isImportedType(t): 
-      if skipTypes(t.sons[0], abstractInst).kind != tyEmpty: 
+      if skipTypes(t.sons[0], typedescInst).kind != tyEmpty: 
         const
           cppSeq = "struct $2 : #TGenericSeq {$n"
           cSeq = "struct $2 {$n" &
@@ -915,7 +915,7 @@ include ccgtrav
 proc genTypeInfo(m: BModule, typ: PType): PRope = 
   var t = getUniqueType(typ)
   result = ropef("NTI$1", [toRope(t.id)])
-  let owner = typ.skipTypes(abstractPtrs).owner.getModule
+  let owner = typ.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
     discard genTypeInfo(owner.bmod, typ)

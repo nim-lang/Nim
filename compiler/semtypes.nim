@@ -45,7 +45,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = newSymS(skEnumField, n.sons[i].sons[0], c)
       var v = semConstExpr(c, n.sons[i].sons[1])
       var strVal: PNode = nil
-      case skipTypes(v.typ, abstractInst).kind 
+      case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind 
       of tyTuple: 
         if sonsLen(v) == 2:
           strVal = v.sons[1] # second tuple part is the string value
@@ -388,7 +388,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: biggestInt = 0
-  var typ = skipTypes(a.sons[0].Typ, abstractVar)
+  var typ = skipTypes(a.sons[0].Typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ): 
     LocalError(n.info, errSelectorMustBeOrdinal)
   elif firstOrd(typ) < 0: 

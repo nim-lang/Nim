@@ -204,7 +204,7 @@ proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
-    let t = skipTypes(param.typ, abstractVar)
+    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
     call.add(newNodeIT(nkEmpty, fn.info, t.baseOfDistinct))
   var resolved = semOverloadedCall(c, call, call, {fn.kind})
   if resolved != nil:
