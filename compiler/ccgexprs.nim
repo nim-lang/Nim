@@ -1526,8 +1526,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNewFinalize: genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)
   of mSizeOf:
+    let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e.typ, ropef("((NI)sizeof($1))",
-                                   [getTypeDesc(p.module, e.sons[1].typ)]))
+                                   [getTypeDesc(p.module, t)]))
   of mChr: genCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
