@@ -22,6 +22,7 @@ version 0.9.4
 =============
 
 - provide tool/API to track leaks/object counts
+- hybrid GC
 - use big blocks in the allocator
 - make 'bind' default for templates and introduce 'mixin';
   special rule for ``[]=``
