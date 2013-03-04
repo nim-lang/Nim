@@ -249,7 +249,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
   else: InternalError(result.info, "getNullValueAux")
   
 proc getNullValue(typ: PType, info: TLineInfo): PNode = 
-  var t = skipTypes(typ, abstractRange)
+  var t = skipTypes(typ, abstractRange-{tyTypeDesc})
   result = emptyNode
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64: 
@@ -902,13 +902,13 @@ proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
   if sonsLen(ast) != 1:
     GlobalError(code.info, errExprExpected, "multiple statements")
   result = ast.sons[0]
-  result.typ = newType(tyExpr, c.module)
+  #result.typ = newType(tyExpr, c.module)
 
 proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   result = parseString(code.getStrValue, code.info.toFilename,
                        code.stringStartingLine)
-  result.typ = newType(tyStmt, c.module)
+  #result.typ = newType(tyStmt, c.module)
  
 proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   ## XXX: This should be pretty much guaranteed to be true
