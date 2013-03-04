@@ -57,6 +57,8 @@ case $uos in
     ;;
   *darwin* ) 
     myos="macosx"
+    CC="clang"
+    LINKER="clang"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     if [ "$HOSTTYPE" = "x86_64" ] ; then
       ucpu="amd64"
