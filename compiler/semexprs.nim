@@ -620,8 +620,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   semOpAux(c, n)
   var t: PType = nil
-  if (n.sons[0].typ != nil): t = skipTypes(n.sons[0].typ, abstractInst)
-  if (t != nil) and (t.kind == tyProc):
+  if n.sons[0].typ != nil:
+    t = skipTypes(n.sons[0].typ, abstractInst-{tyTypedesc})
+  if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     var m: TCandidate
     initCandidate(m, t)
@@ -653,7 +654,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # we assume that a procedure that calls something indirectly 
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
-  elif (t != nil) and t.kind == tyTypeDesc:
+  elif t != nil and t.kind == tyTypeDesc:
     let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
     result = semConv(c, n, symFromType(destType, n.info))
     return 
