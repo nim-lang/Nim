@@ -3,7 +3,7 @@ version 0.9.2
 
 - lazy overloading resolution:
   * get rid of ``expr[typ]``, use perhaps ``static[typ]`` instead
-  * typedesc[T] needs to be documented in ast.nim
+  * special case ``tyStmt``
 - FFI:
   * test libffi on windows
   * test: times.format with the FFI
@@ -131,3 +131,4 @@ Bugs
 - the better scoping for locals is the wrong default for endb
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
+- case statement exhaustiveness checking is still wrong
