@@ -740,7 +740,7 @@ proc discardCheck(result: PNode) =
       # XXX too much work and fixing would break bootstrapping:
       #Message(n.info, warnNilStatement)
       result.typ = nil
-    elif not ImplicitelyDiscardable(result) and result.typ.kind != tyError and
+    elif not ImplicitlyDiscardable(result) and result.typ.kind != tyError and
         gCmd != cmdInteractive:
       localError(result.info, errDiscardValue)
 
@@ -1117,7 +1117,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     # ``result``:
     if result.kind == nkSym and result.sym == c.p.resultSym:
       nil
-    elif result.kind == nkNilLit or ImplicitelyDiscardable(result):
+    elif result.kind == nkNilLit or ImplicitlyDiscardable(result):
       # intended semantic: if it's 'discardable' and the context allows for it,
       # discard it. This is bad for chaining but nicer for C wrappers. 
       # ambiguous :-(

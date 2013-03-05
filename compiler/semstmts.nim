@@ -1071,7 +1071,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
     result = nil
  
 proc generateDestructor(c: PContext, t: PType): PNode =
-  ## generate a destructor for a user-defined object ot tuple type
+  ## generate a destructor for a user-defined object or tuple type
   ## returns nil if the destructor turns out to be trivial
   
   template addLine(e: expr): stmt =
@@ -1106,7 +1106,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
   
   if t.destructor != nil:
     # XXX: This is not entirely correct for recursive types, but we need
-    # it temporarily to hide the "destroy is alrady defined" problem
+    # it temporarily to hide the "destroy is already defined" problem
     return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
   
   case t.kind
@@ -1205,7 +1205,7 @@ proc insertDestructors(c: PContext,
 
       return
 
-proc ImplicitelyDiscardable(n: PNode): bool =
+proc ImplicitlyDiscardable(n: PNode): bool =
   result = isCallExpr(n) and n.sons[0].kind == nkSym and 
            sfDiscardable in n.sons[0].sym.flags
 
@@ -1256,7 +1256,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
   # a statement list (s; e) has the type 'e':
   if result.kind == nkStmtList and result.len > 0:
     var lastStmt = lastSon(result)
-    if lastStmt.kind != nkNilLit and not ImplicitelyDiscardable(lastStmt):
+    if lastStmt.kind != nkNilLit and not ImplicitlyDiscardable(lastStmt):
       result.typ = lastStmt.typ
       #localError(lastStmt.info, errGenerated,
       #  "Last expression must be explicitly returned if it " &
