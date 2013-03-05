@@ -15,7 +15,7 @@ type
   barProc[T] = proc (o: var T)
 
   # an untyped table to store the proc pointers
-  # it's also possible to use a strontly typed tuple here
+  # it's also possible to use a strongly typed tuple here
   VTable = array[0..1, pointer]
   
   TBase = object {.inheritable.}
