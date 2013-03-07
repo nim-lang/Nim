@@ -516,13 +516,13 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
       LocalError(n.info, errIndexOutOfBounds)
   else: nil
   
-proc foldFieldAccess(m: PSym, n: PNode): PNode = 
+proc foldFieldAccess(m: PSym, n: PNode): PNode =
   # a real field access; proc calls have already been transformed
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.kind != nkPar: return
+  if x == nil or x.kind notin {nkObjConstr, nkPar}: return
 
   var field = n.sons[1].sym
-  for i in countup(0, sonsLen(x) - 1): 
+  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
     var it = x.sons[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -649,7 +649,14 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
-  of nkPar: 
+  of nkObjConstr:
+    result = copyTree(n)
+    for i in countup(1, sonsLen(n) - 1):
+      var a = getConstExpr(m, n.sons[i].sons[1])
+      if a == nil: return nil
+      result.sons[i].sons[1] = a
+    incl(result.flags, nfAllConst)
+  of nkPar:
     # tuple constructor
     result = copyTree(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr): 

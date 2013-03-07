@@ -1551,6 +1551,36 @@ proc semTuplePositionsConstr(c: PContext, n: PNode): PNode =
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
+proc semObjConstr(c: PContext, n: PNode): PNode =
+  var t = semTypeNode(c, n.sons[0], nil)
+  result = n
+  result.typ = t
+  t = skipTypes(t, abstractInst)
+  if t.kind == tyRef: t = skipTypes(t.sons[0], abstractInst)
+  if t.kind != tyObject:
+    localError(n.info, errGenerated, "object constructor needs an object type")
+    return
+  var ids = initIntSet()
+  for i in 1.. <n.len:
+    let it = n.sons[i]
+    if it.kind != nkExprColonExpr or it.sons[0].kind notin {nkSym, nkIdent}:
+      localError(n.info, errNamedExprExpected)
+      break
+    var id: PIdent
+    if it.sons[0].kind == nkIdent: id = it.sons[0].ident
+    else: id = it.sons[0].sym.name
+    if ContainsOrIncl(ids, id.id):
+      localError(it.info, errFieldInitTwice, id.s)
+    var e = semExprWithType(c, it.sons[1])
+    let field = lookupInRecord(t.n, id)
+    if field.isNil:
+      localError(it.info, errUndeclaredFieldX, id.s)
+    else:
+      it.sons[0] = newSymNode(field)
+      e = fitNode(c, field.typ, e)
+    it.sons[1] = e
+    # XXX object field name check for 'case objects' if the kind is static?
+
 proc semStmtListExpr(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 1)
@@ -1801,6 +1831,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n)
+  of nkObjConstr: result = semObjConstr(c, n)
   of nkLambdaKinds: result = semLambda(c, n, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr: 

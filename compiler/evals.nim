@@ -273,9 +273,10 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1): 
       addSon(result, getNullValue(elemType(t), info))
-  of tyTuple: 
+  of tyTuple:
+    # XXX nkExprColonExpr is out of fashion ...
     result = newNodeIT(nkPar, info, t)
-    for i in countup(0, sonsLen(t) - 1): 
+    for i in countup(0, sonsLen(t) - 1):
       var p = newNodeIT(nkExprColonExpr, info, t.sons[i])
       var field = if t.n != nil: t.n.sons[i].sym else: newSym(
         skField, getIdent(":tmp" & $i), t.owner, info)
@@ -999,10 +1000,10 @@ proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
 
   case expandedSym.kind
   of skTemplate:
-    let genSymOwner = if c.tos != nil and c.tos.prc != nil: 
-        c.tos.prc 
-      else:
-        c.module
+    let genSymOwner = if c.tos != nil and c.tos.prc != nil:
+                        c.tos.prc 
+                      else:
+                        c.module
     result = evalTemplate(macroCall, expandedSym, genSymOwner)
   of skMacro:
     # At this point macroCall.sons[0] is nkSym node.
@@ -1342,7 +1343,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
         cc = result
     if isEmpty(a) or isEmpty(b) or isEmpty(cc): result = emptyNode
     else: result = evalOp(m, n, a, b, cc)
-    
+
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = emptyNode
   dec(gNestedEvals)
@@ -1385,6 +1386,23 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
         if isSpecial(result): return 
         a.sons[i] = result
     result = a
+  of nkObjConstr:
+    let t = skipTypes(n.typ, abstractInst)
+    var a: PNode
+    if t.kind == tyRef:
+      result = newNodeIT(nkRefTy, n.info, t)
+      a = getNullValue(t.sons[0], n.info)
+      addSon(result, a)
+    else:
+      a = getNullValue(t, n.info)
+      result = a
+    for i in countup(1, sonsLen(n) - 1):
+      let it = n.sons[i]
+      if it.kind == nkExprColonExpr:
+        let value = evalAux(c, it.sons[1], flags)
+        if isSpecial(value): return value
+        a.sons[it.sons[0].sym.position] = value
+      else: return raiseCannotEval(c, n.info)
   of nkWhenStmt, nkIfStmt, nkIfExpr: result = evalIf(c, n)
   of nkWhileStmt: result = evalWhile(c, n)
   of nkCaseStmt: result = evalCase(c, n)

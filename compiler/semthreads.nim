@@ -311,6 +311,12 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     # container construction:
     result = toNil # nothing until later
     for i in 0..n.len-1: aggregateOwner(result, analyse(c, n[i]))
+  of nkObjConstr:
+    if n.typ != nil and containsGarbageCollectedRef(n.typ):
+      result = toMine
+    else:
+      result = toNil # nothing until later
+    for i in 1..n.len-1: aggregateOwner(result, analyse(c, n[i]))
   of nkAddr, nkHiddenAddr:
     var a = lvalueSym(n)
     if a.kind == nkSym:
