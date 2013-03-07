@@ -633,6 +633,28 @@ proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc): PType =
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
   result = a.t
 
+proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
+  var
+    a: TLoc
+    i: int
+  initLocExpr(p, e.sons[0], a)
+  d.inheritLocation(a)
+  discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
+  var ty = a.t
+  var r = rdLoc(a)
+  case e.sons[1].kind
+  of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
+  else: internalError(e.info, "genTupleElem")
+  when false:
+    if ty.n != nil:
+      var field = ty.n.sons[i].sym
+      if field == nil: InternalError(e.info, "genTupleElem")
+      if field.loc.r == nil: InternalError(e.info, "genTupleElem")
+      appf(r, ".$1", [field.loc.r])
+  else:
+    appf(r, ".Field$1", [toRope(i)])
+  putIntoDest(p, d, ty.sons[i], r)
+
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   var ty = genRecordFieldAux(p, e, d, a)
@@ -656,28 +678,6 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field.loc.r == nil: InternalError(e.info, "genRecordField 3")
     appf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r)
-
-proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
-  var
-    a: TLoc
-    i: int
-  initLocExpr(p, e.sons[0], a)
-  d.inheritLocation(a)
-  discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
-  var ty = a.t
-  var r = rdLoc(a)
-  case e.sons[1].kind
-  of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
-  else: internalError(e.info, "genTupleElem")
-  when false:
-    if ty.n != nil:
-      var field = ty.n.sons[i].sym
-      if field == nil: InternalError(e.info, "genTupleElem")
-      if field.loc.r == nil: InternalError(e.info, "genTupleElem")
-      appf(r, ".$1", [field.loc.r])
-  else:
-    appf(r, ".Field$1", [toRope(i)])
-  putIntoDest(p, d, ty.sons[i], r)
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
@@ -730,6 +730,9 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, field.typ, r)
   else:
     genRecordField(p, e.sons[0], d)
+
+proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
+  internalError(e.info, "too implement")
 
 proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1815,6 +1818,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
       exprComplexConst(p, e, d)
     else:
       genTupleConstr(p, e, d)
+  of nkObjConstr: genObjConstr(p, e, d)
   of nkCast: genCast(p, e, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, e, d)
   of nkHiddenAddr, nkAddr: genAddr(p, e, d)

@@ -501,7 +501,7 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprColonEqExprListAux(p, tkParRi, result)
-      if result.len > 1 and result.sons[0].kind == nkExprColonExpr:
+      if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
         result.kind = nkObjConstr
       else:
         parseDoBlocks(p, result)

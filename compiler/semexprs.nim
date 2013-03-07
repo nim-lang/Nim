@@ -602,6 +602,7 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                  flags: TExprFlags): PNode =
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
 
+proc semObjConstr(c: PContext, n: PNode): PNode
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = nil
   checkMinSonsLen(n, 1)
@@ -655,9 +656,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
+    if n.len == 1: return semObjConstr(c, n)
     let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
     result = semConv(c, n, symFromType(destType, n.info))
-    return 
+    return
   else:
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -1572,12 +1574,24 @@ proc semObjConstr(c: PContext, n: PNode): PNode =
     if ContainsOrIncl(ids, id.id):
       localError(it.info, errFieldInitTwice, id.s)
     var e = semExprWithType(c, it.sons[1])
-    let field = lookupInRecord(t.n, id)
-    if field.isNil:
-      localError(it.info, errUndeclaredFieldX, id.s)
+
+    var
+      check: PNode = nil
+      f: PSym
+    while true:
+      check = nil
+      f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
+      if f != nil: break
+      if t.sons[0] == nil: break
+      t = skipTypes(t.sons[0], {tyGenericInst})
+    if f != nil and fieldVisible(c, f):
+      it.sons[0] = newSymNode(f)
+      e = fitNode(c, f.typ, e)
+      # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
+      # 3 childen the last being the field check
+      if check != nil: it.add(check)
     else:
-      it.sons[0] = newSymNode(field)
-      e = fitNode(c, field.typ, e)
+      localError(it.info, errUndeclaredFieldX, id.s)
     it.sons[1] = e
     # XXX object field name check for 'case objects' if the kind is static?
 
@@ -1788,6 +1802,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n, s)
+        elif n.len == 1:
+          result = semObjConstr(c, n)
         elif Contains(c.AmbiguousSymbols, s.id): 
           LocalError(n.info, errUseQualifier, s.name.s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
