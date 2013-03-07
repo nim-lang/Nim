@@ -732,7 +732,38 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     genRecordField(p, e.sons[0], d)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  internalError(e.info, "too implement")
+  var tmp: TLoc
+  var t = e.typ.skipTypes(abstractInst)
+  getTemp(p, t, tmp)
+  let isRef = t.kind == tyRef
+  var r = rdLoc(tmp)
+  if isRef:
+    t = t.sons[0].skipTypes(abstractInst)
+    r = ropef("(*$1)", r)
+    # XXX generate 'new' call here
+    
+  discard getTypeDesc(p.module, t)
+  for i in 1 .. <e.len:
+    let it = e.sons[i]
+    # XXX field check here
+    var field: PSym = nil
+    var ty = t
+    while ty != nil:
+      field = lookupInRecord(ty.n, it.sons[0].sym.name)
+      if field != nil: break
+      if gCmd != cmdCompileToCpp: app(r, ".Sup")
+      ty = GetUniqueType(ty.sons[0])
+    if field == nil or field.loc.r == nil: InternalError(e.info, "genObjConstr")
+    app(r, ".")
+    app(r, field.loc.r)
+    var tmp2: TLoc
+    tmp2.r = r
+    tmp2.k = locTemp
+    tmp2.t = field.loc.t
+    tmp2.s = onHeap
+    tmp2.heapRoot = tmp.r
+    expr(p, it.sons[1], tmp2)
+  genAssignment(p, d, tmp, {})
 
 proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc

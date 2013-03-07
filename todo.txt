@@ -41,6 +41,7 @@ version 0.9.X
 - test&finish first class iterators:
   * nested iterators
 - implement the missing features wrt inheritance
+- better support for *hard* realtime systems
 - improve the compiler as a service
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
