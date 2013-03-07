@@ -758,7 +758,7 @@ proc generateHeader(p: var TProc, typ: PType): PRope =
 
 const 
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, 
-    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString, 
+    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkObjConstr, nkStringToCString, 
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix, 
     nkCommand, nkHiddenCallConv, nkCallStrLit}
 
@@ -1367,6 +1367,21 @@ proc genTupleConstr(p: var TProc, n: PNode, r: var TCompRes) =
     appf(r.res, "Field$1: $2", [i.toRope, a.res])
   r.res.app("}")
 
+proc genObjConstr(p: var TProc, n: PNode, r: var TCompRes) =
+  # XXX inheritance?
+  var a: TCompRes
+  r.res = toRope("{")
+  for i in countup(0, sonsLen(n) - 1):
+    if i > 0: app(r.res, ", ")
+    var it = n.sons[i]
+    InternalAssert it.kind == nkExprColonExpr
+    gen(p, it.sons[1], a)
+    r.com = mergeExpr(r.com, a.com)
+    var f = it.sons[0].sym
+    if f.loc.r == nil: f.loc.r = mangleName(f)
+    appf(r.res, "$1: $2", [f.loc.r, a.res])
+  r.res.app("}")
+
 proc genConv(p: var TProc, n: PNode, r: var TCompRes) = 
   var dest = skipTypes(n.typ, abstractVarRange)
   var src = skipTypes(n.sons[1].typ, abstractVarRange)
@@ -1566,6 +1581,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar: genTupleConstr(p, n, r)
+  of nkObjConstr: genObjConstr(p, n, r)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, r)
   of nkAddr, nkHiddenAddr: genAddr(p, n, r)
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, r)

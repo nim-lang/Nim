@@ -115,7 +115,7 @@ proc isDeepConstExpr*(n: PNode): bool =
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
-  of nkCurly, nkBracket, nkPar, nkClosure:
+  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
     for i in 0 .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
     result = true

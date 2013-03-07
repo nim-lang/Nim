@@ -254,15 +254,21 @@ proc indexExprList(p: var TParser, first: PNode, k: TNodeKind,
   optPar(p)
   eat(p, endToken)
 
-proc exprColonEqExpr(p: var TParser, kind: TNodeKind, tok: TTokType): PNode = 
+proc exprColonEqExpr(p: var TParser): PNode =
   var a = parseExpr(p)
-  if p.tok.tokType == tok: 
-    result = newNodeP(kind, p)
+  if p.tok.tokType == tkColon:
+    result = newNodeP(nkExprColonExpr, p)
     getTok(p)
     #optInd(p, result)
     addSon(result, a)
     addSon(result, parseExpr(p))
-  else: 
+  elif p.tok.tokType == tkEquals:
+    result = newNodeP(nkExprEqExpr, p)
+    getTok(p)
+    #optInd(p, result)
+    addSon(result, a)
+    addSon(result, parseExpr(p))
+  else:
     result = a
 
 proc exprList(p: var TParser, endTok: TTokType, result: PNode) = 
@@ -309,14 +315,13 @@ proc qualifiedIdentListAux(p: var TParser, endTok: TTokType, result: PNode) =
     optInd(p, a)
   eat(p, endTok)
 
-proc exprColonEqExprListAux(p: var TParser, elemKind: TNodeKind, 
-                            endTok, sepTok: TTokType, result: PNode) = 
+proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) = 
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
   optInd(p, result)
   while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof) and
       (p.tok.tokType != tkSad) and (p.tok.tokType != tkInd): 
-    var a = exprColonEqExpr(p, elemKind, sepTok)
+    var a = exprColonEqExpr(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -324,10 +329,10 @@ proc exprColonEqExprListAux(p: var TParser, elemKind: TNodeKind,
   optPar(p)
   eat(p, endTok)
 
-proc exprColonEqExprList(p: var TParser, kind, elemKind: TNodeKind, 
-                         endTok, sepTok: TTokType): PNode = 
+proc exprColonEqExprList(p: var TParser, kind: TNodeKind, 
+                         endTok: TTokType): PNode = 
   result = newNodeP(kind, p)
-  exprColonEqExprListAux(p, elemKind, endTok, sepTok, result)
+  exprColonEqExprListAux(p, endTok, result)
 
 proc setOrTableConstr(p: var TParser): PNode =
   result = newNodeP(nkCurly, p)
@@ -338,7 +343,7 @@ proc setOrTableConstr(p: var TParser): PNode =
     result.kind = nkTableConstr
   else:
     while p.tok.tokType notin {tkCurlyRi, tkEof, tkSad, tkInd}: 
-      var a = exprColonEqExpr(p, nkExprColonExpr, tkColon)
+      var a = exprColonEqExpr(p)
       if a.kind == nkExprColonExpr: result.kind = nkTableConstr
       addSon(result, a)
       if p.tok.tokType != tkComma: break 
@@ -471,16 +476,15 @@ proc identOrLiteral(p: var TParser): PNode =
   of tkNil: 
     result = newNodeP(nkNilLit, p)
     getTok(p)
-  of tkParLe: 
+  of tkParLe:
     # () constructor
-    result = exprColonEqExprList(p, nkPar, nkExprColonExpr, tkParRi, tkColon)
-  of tkCurlyLe: 
+    result = exprColonEqExprList(p, nkPar, tkParRi)
+  of tkCurlyLe:
     # {} constructor
     result = setOrTableConstr(p)
-  of tkBracketLe: 
+  of tkBracketLe:
     # [] constructor
-    result = exprColonEqExprList(p, nkBracket, nkExprColonExpr, tkBracketRi, 
-                                 tkColon)
+    result = exprColonEqExprList(p, nkBracket, tkBracketRi)
   of tkCast: 
     result = parseCast(p)
   else:
@@ -496,8 +500,11 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
       var a = result
       result = newNodeP(nkCall, p)
       addSon(result, a)
-      exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
-      parseDoBlocks(p, result)
+      exprColonEqExprListAux(p, tkParRi, result)
+      if result.len > 1 and result.sons[0].kind == nkExprColonExpr:
+        result.kind = nkObjConstr
+      else:
+        parseDoBlocks(p, result)
     of tkDo:
       var a = result
       result = newNodeP(nkCall, p)
@@ -564,7 +571,7 @@ proc parsePragma(p: var TParser): PNode =
   optInd(p, result)
   while (p.tok.tokType != tkCurlyDotRi) and (p.tok.tokType != tkCurlyRi) and
       (p.tok.tokType != tkEof) and (p.tok.tokType != tkSad): 
-    var a = exprColonEqExpr(p, nkExprColonExpr, tkColon)
+    var a = exprColonEqExpr(p)
     addSon(result, a)
     if p.tok.tokType == tkComma: 
       getTok(p)
