@@ -744,7 +744,7 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): PRope =
   if objType.sym == nil: 
     InternalError(d.info, "anonymous obj with discriminator")
   result = ropef("NimDT_$1_$2", [
-    toRope(objType.sym.name.s), toRope(d.name.s)])
+    toRope(objType.sym.name.s.mangle), toRope(d.name.s.mangle)])
 
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): PRope = 
   discard cgsym(m, "TNimNode")
