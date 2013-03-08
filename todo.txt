@@ -10,7 +10,6 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - implement constructors
   - more checks
-  - C codegen for them
   - document them
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - fix:
@@ -128,6 +127,7 @@ Optimizations
 Bugs
 ====
 
+- instantiated generics are listed in error messages
 - sneaking with qualifiedLookup() is really broken!
 - aporia.nim(968, 5) Error: ambiguous identifier: 'DELETE' -- 
   use a qualifier

@@ -1557,6 +1557,7 @@ proc semObjConstr(c: PContext, n: PNode): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = n
   result.typ = t
+  result.kind = nkObjConstr
   t = skipTypes(t, abstractInst)
   if t.kind == tyRef: t = skipTypes(t.sons[0], abstractInst)
   if t.kind != tyObject:

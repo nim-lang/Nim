@@ -680,14 +680,40 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, field.typ, r)
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
+
+proc genFieldCheck(p: BProc, e: PNode, obj: PRope, field: PSym) =
+  var test, u, v: TLoc
+  for i in countup(1, sonsLen(e) - 1):
+    var it = e.sons[i]
+    assert(it.kind in nkCallKinds)
+    assert(it.sons[0].kind == nkSym)
+    let op = it.sons[0].sym
+    if op.magic == mNot: it = it.sons[1]
+    assert(it.sons[2].kind == nkSym)
+    initLoc(test, locNone, it.typ, OnStack)
+    InitLocExpr(p, it.sons[1], u)
+    initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
+    v.r = ropef("$1.$2", [obj, it.sons[2].sym.loc.r])
+    genInExprAux(p, it, u, v, test)
+    let id = NodeTableTestOrSet(p.module.dataCache,
+                               newStrNode(nkStrLit, field.name.s), gBackendId)
+    let strLit = if id == gBackendId: getStrLit(p.module, field.name.s)
+                 else: con("TMP", toRope(id))
+    if op.magic == mNot:
+      linefmt(p, cpsStmts,
+              "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
+              rdLoc(test), strLit)
+    else:
+      linefmt(p, cpsStmts,
+              "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
+              rdLoc(test), strLit)
+
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   var
-    a, u, v, test: TLoc
-    f, field, op: PSym
+    a: TLoc
+    f, field: PSym
     ty: PType
-    r, strLit: PRope
-    id: int
-    it: PNode
+    r: PRope
   if optFieldCheck in p.options:
     ty = genRecordFieldAux(p, e.sons[0], d, a)
     r = rdLoc(a)
@@ -702,68 +728,36 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field == nil: InternalError(e.info, "genCheckedRecordField")
     if field.loc.r == nil:
       InternalError(e.info, "genCheckedRecordField") # generate the checks:
-    for i in countup(1, sonsLen(e) - 1):
-      it = e.sons[i]
-      assert(it.kind in nkCallKinds)
-      assert(it.sons[0].kind == nkSym)
-      op = it.sons[0].sym
-      if op.magic == mNot: it = it.sons[1]
-      assert(it.sons[2].kind == nkSym)
-      initLoc(test, locNone, it.typ, OnStack)
-      InitLocExpr(p, it.sons[1], u)
-      initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
-      v.r = ropef("$1.$2", [r, it.sons[2].sym.loc.r])
-      genInExprAux(p, it, u, v, test)
-      id = NodeTableTestOrSet(p.module.dataCache,
-                              newStrNode(nkStrLit, field.name.s), gBackendId)
-      if id == gBackendId: strLit = getStrLit(p.module, field.name.s)
-      else: strLit = con("TMP", toRope(id))
-      if op.magic == mNot:
-        linefmt(p, cpsStmts,
-                "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-                rdLoc(test), strLit)
-      else:
-        linefmt(p, cpsStmts,
-                "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-                rdLoc(test), strLit)
+    genFieldCheck(p, e, r, field)
+    when false:
+      for i in countup(1, sonsLen(e) - 1):
+        it = e.sons[i]
+        assert(it.kind in nkCallKinds)
+        assert(it.sons[0].kind == nkSym)
+        op = it.sons[0].sym
+        if op.magic == mNot: it = it.sons[1]
+        assert(it.sons[2].kind == nkSym)
+        initLoc(test, locNone, it.typ, OnStack)
+        InitLocExpr(p, it.sons[1], u)
+        initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
+        v.r = ropef("$1.$2", [r, it.sons[2].sym.loc.r])
+        genInExprAux(p, it, u, v, test)
+        id = NodeTableTestOrSet(p.module.dataCache,
+                                newStrNode(nkStrLit, field.name.s), gBackendId)
+        if id == gBackendId: strLit = getStrLit(p.module, field.name.s)
+        else: strLit = con("TMP", toRope(id))
+        if op.magic == mNot:
+          linefmt(p, cpsStmts,
+                  "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
+                  rdLoc(test), strLit)
+        else:
+          linefmt(p, cpsStmts,
+                  "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
+                  rdLoc(test), strLit)
     app(r, rfmt(nil, ".$1", field.loc.r))
     putIntoDest(p, d, field.typ, r)
   else:
     genRecordField(p, e.sons[0], d)
-
-proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  var tmp: TLoc
-  var t = e.typ.skipTypes(abstractInst)
-  getTemp(p, t, tmp)
-  let isRef = t.kind == tyRef
-  var r = rdLoc(tmp)
-  if isRef:
-    t = t.sons[0].skipTypes(abstractInst)
-    r = ropef("(*$1)", r)
-    # XXX generate 'new' call here
-    
-  discard getTypeDesc(p.module, t)
-  for i in 1 .. <e.len:
-    let it = e.sons[i]
-    # XXX field check here
-    var field: PSym = nil
-    var ty = t
-    while ty != nil:
-      field = lookupInRecord(ty.n, it.sons[0].sym.name)
-      if field != nil: break
-      if gCmd != cmdCompileToCpp: app(r, ".Sup")
-      ty = GetUniqueType(ty.sons[0])
-    if field == nil or field.loc.r == nil: InternalError(e.info, "genObjConstr")
-    app(r, ".")
-    app(r, field.loc.r)
-    var tmp2: TLoc
-    tmp2.r = r
-    tmp2.k = locTemp
-    tmp2.t = field.loc.t
-    tmp2.s = onHeap
-    tmp2.heapRoot = tmp.r
-    expr(p, it.sons[1], tmp2)
-  genAssignment(p, d, tmp, {})
 
 proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1006,10 +1000,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if gCmd != cmdCompileToCpp:
-      "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
-    else:
-      "$1 = ($2) #incrSeq($1, sizeof($3));$n"
-
+                           "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
+                         else:
+                           "$1 = ($2) #incrSeq($1, sizeof($3));$n"
   var a, b, dest: TLoc
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
@@ -1028,20 +1021,12 @@ proc genReset(p: BProc, n: PNode) =
   linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
           addrLoc(a), genTypeInfo(p.module, skipTypes(a.t, abstractVarRange)))
 
-proc genNew(p: BProc, e: PNode) =
-  var
-    a, b: TLoc
-    reftype, bt: PType
-    sizeExpr: PRope
-  refType = skipTypes(e.sons[1].typ, abstractVarRange)
-  InitLocExpr(p, e.sons[1], a)
+proc rawGenNew(p: BProc, a: TLoc, sizeExpr: PRope) =
+  var sizeExpr = sizeExpr
+  let refType = skipTypes(a.t, abstractVarRange)
+  var b: TLoc
   initLoc(b, locExpr, a.t, OnHeap)
-  # 'genNew' also handles 'unsafeNew':
-  if e.len == 3:
-    var se: TLoc
-    InitLocExpr(p, e.sons[2], se)
-    sizeExpr = se.rdLoc
-  else:
+  if sizeExpr.isNil:
     sizeExpr = ropef("sizeof($1)",
         getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange)))
   let args = [getTypeDesc(p.module, reftype),
@@ -1058,8 +1043,19 @@ proc genNew(p: BProc, e: PNode) =
   else:
     b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
     genAssignment(p, a, b, {needToKeepAlive})  # set the object type:
-  bt = skipTypes(refType.sons[0], abstractRange)
+  let bt = skipTypes(refType.sons[0], abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
+
+proc genNew(p: BProc, e: PNode) =
+  var a: TLoc
+  InitLocExpr(p, e.sons[1], a)
+  # 'genNew' also handles 'unsafeNew':
+  if e.len == 3:
+    var se: TLoc
+    InitLocExpr(p, e.sons[2], se)
+    rawGenNew(p, a, se.rdLoc)
+  else:
+    rawGenNew(p, a, nil)
 
 proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
   let seqtype = skipTypes(dest.t, abstractVarRange)
@@ -1068,7 +1064,10 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: PRope) =
   var call: TLoc
   initLoc(call, locExpr, dest.t, OnHeap)
   if dest.s == OnHeap and usesNativeGC():
-    linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", dest.rdLoc)
+    if canFormAcycle(dest.t):
+      linefmt(p, cpsStmts, "if ($1) #nimGCunref($1);$n", dest.rdLoc)
+    else:
+      linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", dest.rdLoc)
     call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
     linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
   else:
@@ -1080,6 +1079,41 @@ proc genNewSeq(p: BProc, e: PNode) =
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
   genNewSeqAux(p, a, b.rdLoc)
+  
+proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
+  var tmp: TLoc
+  var t = e.typ.skipTypes(abstractInst)
+  getTemp(p, t, tmp)
+  let isRef = t.kind == tyRef
+  var r = rdLoc(tmp)
+  if isRef:
+    rawGenNew(p, tmp, nil)
+    t = t.sons[0].skipTypes(abstractInst)
+    r = ropef("(*$1)", r)
+  # XXX object initialization? but not necessary for temps, is it?
+  discard getTypeDesc(p.module, t)
+  for i in 1 .. <e.len:
+    let it = e.sons[i]
+    var tmp2: TLoc
+    tmp2.r = r
+    var field: PSym = nil
+    var ty = t
+    while ty != nil:
+      field = lookupInRecord(ty.n, it.sons[0].sym.name)
+      if field != nil: break
+      if gCmd != cmdCompileToCpp: app(tmp2.r, ".Sup")
+      ty = GetUniqueType(ty.sons[0])
+    if field == nil or field.loc.r == nil: InternalError(e.info, "genObjConstr")
+    if it.len == 3 and optFieldCheck in p.options:
+      genFieldCheck(p, it.sons[2], r, field)
+    app(tmp2.r, ".")
+    app(tmp2.r, field.loc.r)
+    tmp2.k = locTemp
+    tmp2.t = field.loc.t
+    tmp2.s = onHeap
+    tmp2.heapRoot = tmp.r
+    expr(p, it.sons[1], tmp2)
+  genAssignment(p, d, tmp, {})
   
 proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   var arr: TLoc
