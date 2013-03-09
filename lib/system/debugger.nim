@@ -56,7 +56,7 @@ var
   dbgState: TDbgState   # state of debugger
   dbgBP: array[0..127, TDbgBreakpoint] # breakpoints
   dbgBPlen: int
-
+  dbgBPbloom: int64  # we use a bloom filter to speed up breakpoint checking
   dbgSkipToFrame: PFrame # frame to be skipped to
 
   dbgGlobalData: TExtendedFrame # this reserves much space, but
@@ -320,6 +320,7 @@ proc setBreakPoint(s: cstring, start: int) =
   i = scanNumber(s, dbgBP[x].high, i)
   if dbgBP[x].high == 0: # set to low:
     dbgBP[x].high = dbgBP[x].low
+  for line in dbgBP[x].low .. dbgBP[x].high: dbgBPbloom = dbgBPbloom or line
   i = scanFilename(s, dbgTemp, i)
   if dbgTemp.len != 0:
     debugOut("[Warning] explicit filename for breakpoint not supported")
@@ -506,8 +507,9 @@ proc endbStep() =
   dbgShowExecutionPoint()
   CommandPrompt()
 
-proc checkForBreakpoint() =
-  let i = dbgBreakpointReached(framePtr.line)
+proc checkForBreakpoint(line: int) =
+  if (dbgBPbloom and line) != line: return
+  let i = dbgBreakpointReached(line)
   if i >= 0:
     write(stdout, "*** endb| reached ")
     write(stdout, dbgBP[i].name)
@@ -533,6 +535,7 @@ proc dbgRegisterBreakpoint(line: int,
   dbgBP[x].filename = filename
   dbgBP[x].low = line
   dbgBP[x].high = line
+  dbgBPbloom = dbgBPbloom or line
 
 proc dbgRegisterGlobal(name: cstring, address: pointer,
                        typ: PNimType) {.compilerproc.} =
@@ -647,10 +650,6 @@ proc genericHashAux(dest: Pointer, mt: PNimType, shallow: bool,
         var s = cast[ppointer](dest)[]
         if s != nil:
           result = result !& genericHashAux(s, mt.base, shallow, result)
-        # hash the object header:
-        #const headerSize = sizeof(int)*2
-        #result = result !& hash(cast[pointer](cast[int](s) -% headerSize),
-        #                        headerSize)
   else:
     result = h !& hash(dest, mt.size) # hash raw bits
 
@@ -748,8 +747,6 @@ proc endb(line: int, file: cstring) {.compilerproc.} =
   # Check if we are at an enabled breakpoint or "in the mood"
   if framePtr == nil: return
   let oldState = dbgState
-  #dbgState = dbOff
-  #if oldState != dbOff: 
   checkWatchpoints()
   framePtr.line = line # this is done here for smaller code size!
   framePtr.filename = file
@@ -764,10 +761,10 @@ proc endb(line: int, file: cstring) {.compilerproc.} =
       dbgShowExecutionPoint()
       CommandPrompt()
     else: # breakpoints are wanted though (I guess)
-      checkForBreakpoint()
+      checkForBreakpoint(line)
   of dbBreakpoints:
     # debugger is only interested in breakpoints
-    checkForBreakpoint()
+    checkForBreakpoint(line)
   else: nil
 
 proc initDebugger {.inline.} =
