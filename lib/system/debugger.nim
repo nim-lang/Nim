@@ -207,9 +207,8 @@ proc fileMatches(c, bp: cstring): bool =
     return false
   var i = 0
   while i < blen:
-    var x, y: char
-    x = bp[i]
-    y = c[i+clen-blen]
+    var x = bp[i]
+    var y = c[i+clen-blen]
     when FileSystemCaseInsensitive:
       if x >= 'A' and x <= 'Z': x = chr(ord(x) - ord('A') + ord('a'))
       if y >= 'A' and y <= 'Z': y = chr(ord(y) - ord('A') + ord('a'))
@@ -742,7 +741,7 @@ proc checkWatchpoints =
         debugOut(Watchpoints[i].name)
       Watchpoints[i].oldValue = newHash
 
-proc endb(line: int) {.compilerproc.} =
+proc endb(line: int, file: cstring) {.compilerproc.} =
   # This proc is called before every Nimrod code line!
   # Thus, it must have as few parameters as possible to keep the
   # code size small!
@@ -753,6 +752,7 @@ proc endb(line: int) {.compilerproc.} =
   #if oldState != dbOff: 
   checkWatchpoints()
   framePtr.line = line # this is done here for smaller code size!
+  framePtr.filename = file
   if dbgLineHook != nil: dbgLineHook()
   case oldState
   of dbStepInto:
@@ -765,7 +765,8 @@ proc endb(line: int) {.compilerproc.} =
       CommandPrompt()
     else: # breakpoints are wanted though (I guess)
       checkForBreakpoint()
-  of dbBreakpoints: # debugger is only interested in breakpoints
+  of dbBreakpoints:
+    # debugger is only interested in breakpoints
     checkForBreakpoint()
   else: nil
 

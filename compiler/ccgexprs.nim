@@ -709,12 +709,12 @@ proc genFieldCheck(p: BProc, e: PNode, obj: PRope, field: PSym) =
               rdLoc(test), strLit)
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
-  var
-    a: TLoc
-    f, field: PSym
-    ty: PType
-    r: PRope
   if optFieldCheck in p.options:
+    var
+      a: TLoc
+      f, field: PSym
+      ty: PType
+      r: PRope
     ty = genRecordFieldAux(p, e.sons[0], d, a)
     r = rdLoc(a)
     f = e.sons[0].sons[1].sym
@@ -729,31 +729,6 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field.loc.r == nil:
       InternalError(e.info, "genCheckedRecordField") # generate the checks:
     genFieldCheck(p, e, r, field)
-    when false:
-      for i in countup(1, sonsLen(e) - 1):
-        it = e.sons[i]
-        assert(it.kind in nkCallKinds)
-        assert(it.sons[0].kind == nkSym)
-        op = it.sons[0].sym
-        if op.magic == mNot: it = it.sons[1]
-        assert(it.sons[2].kind == nkSym)
-        initLoc(test, locNone, it.typ, OnStack)
-        InitLocExpr(p, it.sons[1], u)
-        initLoc(v, locExpr, it.sons[2].typ, OnUnknown)
-        v.r = ropef("$1.$2", [r, it.sons[2].sym.loc.r])
-        genInExprAux(p, it, u, v, test)
-        id = NodeTableTestOrSet(p.module.dataCache,
-                                newStrNode(nkStrLit, field.name.s), gBackendId)
-        if id == gBackendId: strLit = getStrLit(p.module, field.name.s)
-        else: strLit = con("TMP", toRope(id))
-        if op.magic == mNot:
-          linefmt(p, cpsStmts,
-                  "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-                  rdLoc(test), strLit)
-        else:
-          linefmt(p, cpsStmts,
-                  "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-                  rdLoc(test), strLit)
     app(r, rfmt(nil, ".$1", field.loc.r))
     putIntoDest(p, d, field.typ, r)
   else:
