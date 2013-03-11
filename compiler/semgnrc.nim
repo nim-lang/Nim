@@ -31,11 +31,6 @@ proc getIdentNode(n: PNode): PNode =
     illFormedAst(n)
     result = n
   
-proc newSymNodeTypeDesc(s: PSym; info: TLineInfo): PNode =
-  result = newSymNode(s, info)
-  result.typ = newType(tyTypeDesc, s.owner)
-  result.typ.addSonSkipIntLit(s.typ)
-
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
                     ctx: var TIntSet): PNode
 proc semGenericStmtScope(c: PContext, n: PNode, 
