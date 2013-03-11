@@ -490,7 +490,7 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
   
 proc foldArrayAccess(m: PSym, n: PNode): PNode = 
   var x = getConstExpr(m, n.sons[0])
-  if x == nil: return
+  if x == nil or x.typ.skipTypes({tyGenericInst}).kind == tyTypeDesc: return
   
   var y = getConstExpr(m, n.sons[1])
   if y == nil: return
@@ -541,7 +541,12 @@ proc foldConStrStr(m: PSym, n: PNode): PNode =
     let a = getConstExpr(m, n.sons[i])
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
-  
+
+proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
+  result = newSymNode(s, info)
+  result.typ = newType(tyTypeDesc, s.owner)
+  result.typ.addSonSkipIntLit(s.typ)
+
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -569,6 +574,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         if sfFakeConst notin s.flags: result = copyTree(s.ast)
     elif s.kind in {skProc, skMethod}: # BUGFIX
       result = n
+    elif s.kind in {skType, skGenericParam}:
+      result = newSymNodeTypeDesc(s, n.info)
   of nkCharLit..nkNilLit: 
     result = copyNode(n)
   of nkIfExpr: 
