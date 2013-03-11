@@ -44,7 +44,6 @@ type
   TBlock{.final.} = object 
     id: int                  # the ID of the label; positive means that it
                              # has been used (i.e. the label should be emitted)
-    nestedTryStmts: int      # how many try statements is it nested into
     isLoop: bool             # whether it's a 'block' or 'while'
   
   TGlobals{.final.} = object 
@@ -62,7 +61,6 @@ type
     module: BModule
     g: PGlobals
     BeforeRetNeeded: bool
-    nestedTryStmts: int
     unique: int
     blocks: seq[TBlock]
 
@@ -485,10 +483,6 @@ proc genLineDir(p: var TProc, n: PNode, r: var TCompRes) =
       ((p.prc == nil) or not (sfPure in p.prc.flags)): 
     appf(r.com, "F.line = $1;$n", [toRope(line)])
   
-proc finishTryStmt(p: var TProc, r: var TCompRes, howMany: int) = 
-  for i in countup(1, howMany):
-    app(r.com, "excHandler = excHandler.prev;" & tnl)
-  
 proc genWhileStmt(p: var TProc, n: PNode, r: var TCompRes) = 
   var 
     cond, stmt: TCompRes
@@ -498,7 +492,6 @@ proc genWhileStmt(p: var TProc, n: PNode, r: var TCompRes) =
   length = len(p.blocks)
   setlen(p.blocks, length + 1)
   p.blocks[length].id = - p.unique
-  p.blocks[length].nestedTryStmts = p.nestedTryStmts
   p.blocks[length].isLoop = true
   labl = p.unique
   gen(p, n.sons[0], cond)
@@ -543,7 +536,6 @@ proc genTryStmt(p: var TProc, n: PNode, r: var TCompRes) =
   if optStackTrace in p.Options: app(r.com, "framePtr = F;" & tnl)
   app(r.com, "try {" & tnl)
   length = sonsLen(n)
-  inc(p.nestedTryStmts)
   genStmt(p, n.sons[0], a)
   app(r.com, mergeStmt(a))
   i = 1
@@ -571,8 +563,6 @@ proc genTryStmt(p: var TProc, n: PNode, r: var TCompRes) =
       appf(epart, "$1}$n", [mergeStmt(a)])
     inc(i)
   if epart != nil: appf(r.com, "} catch (EXC) {$n$1", [epart])
-  finishTryStmt(p, r, p.nestedTryStmts)
-  dec(p.nestedTryStmts)
   app(r.com, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
   if (i < length) and (n.sons[i].kind == nkFinally): 
     genStmt(p, n.sons[i].sons[0], a)
@@ -655,7 +645,6 @@ proc genBlock(p: var TProc, n: PNode, r: var TCompRes) =
     sym.loc.a = idx
   setlen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
-  p.blocks[idx].nestedTryStmts = p.nestedTryStmts
   labl = p.unique
   if n.kind == nkBlockExpr: genStmtListExpr(p, n.sons[1], r)
   else: genStmt(p, n.sons[1], r)
@@ -682,7 +671,6 @@ proc genBreakStmt(p: var TProc, n: PNode, r: var TCompRes) =
     if idx < 0 or not p.blocks[idx].isLoop:
       InternalError(n.info, "no loop to break")
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  finishTryStmt(p, r, p.nestedTryStmts - p.blocks[idx].nestedTryStmts)
   appf(r.com, "break L$1;$n", [toRope(p.blocks[idx].id)])
 
 proc genAsmStmt(p: var TProc, n: PNode, r: var TCompRes) = 
@@ -1433,7 +1421,6 @@ proc genReturnStmt(p: var TProc, n: PNode, r: var TCompRes) =
     if a.com != nil: appf(r.com, "$1;$n", mergeStmt(a))
   else: 
     genLineDir(p, n, r)
-  finishTryStmt(p, r, p.nestedTryStmts)
   app(r.com, "break BeforeRet;" & tnl)
 
 proc genProcBody(p: var TProc, prc: PSym, r: TCompRes): PRope = 
