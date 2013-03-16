@@ -1,8 +1,8 @@
 discard """
   file: "tfinally.nim"
-  output: "came
+  output: '''came
 here
-3"
+3'''
 """
 # Test return in try statement:
 
