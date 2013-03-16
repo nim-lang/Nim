@@ -102,6 +102,16 @@ proc newAny(value: pointer, rawType: PNimType): TAny =
   result.value = value
   result.rawType = rawType
 
+when defined(system.TVarSlot):
+  proc toAny*(x: TVarSlot): TAny {.inline.} =
+    ## constructs a ``TAny`` object from a variable slot ``x``. 
+    ## This captures `x`'s address, so `x` can be modified with its
+    ## ``TAny`` wrapper! The client needs to ensure that the wrapper
+    ## **does not** live longer than `x`!
+    ## This is provided for easier reflection capabilities of a debugger.
+    result.value = x.address
+    result.rawType = x.typ
+
 proc toAny*[T](x: var T): TAny {.inline.} =
   ## constructs a ``TAny`` object from `x`. This captures `x`'s address, so
   ## `x` can be modified with its ``TAny`` wrapper! The client needs to ensure
