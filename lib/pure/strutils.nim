@@ -415,7 +415,15 @@ proc parseEnum*[T: enum](s: string, default: T): T =
 proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
-  ## the character `c`.
+  ## the character `c`. You can use this proc to left align strings. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     width = 15
+  ##     text1 = "Hello user!"
+  ##     text2 = "This is a very long string"
+  ##   echo text1 & repeatChar(max(0, width - text1.len)) & "|"
+  ##   echo text2 & repeatChar(max(0, width - text2.len)) & "|"
   result = newString(count)
   for i in 0..count-1: result[i] = c
 
@@ -429,7 +437,8 @@ proc align*(s: string, count: int): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
   ## Aligns a string `s` with spaces, so that is of length `count`. Spaces are
   ## added before `s` resulting in right alignment. If ``s.len >= count``, no
-  ## spaces are added and `s` is returned unchanged.
+  ## spaces are added and `s` is returned unchanged. If you need to left align
+  ## a string use the repeatChar proc.
   if s.len < count:
     result = newString(count)
     var spaces = count - s.len
