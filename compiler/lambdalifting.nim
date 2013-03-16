@@ -391,7 +391,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       gatherVars(o, inner, body)
       # dummy closure param needed?
       if inner.closureParam == nil and n.sym.typ.callConv == ccClosure:
-        assert tfCapturesEnv notin n.sym.typ.flags
+        #assert tfCapturesEnv notin n.sym.typ.flags
         dummyClosureParam(o, inner)
       # only transform if it really needs a closure:
       if inner.closureParam != nil:
