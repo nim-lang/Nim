@@ -370,9 +370,34 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings : seq[string]
+  ##   newSeq(inputStrings, 3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
 
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings = newSeq[string](3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.

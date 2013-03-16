@@ -1,6 +1,9 @@
 discard """
   file: "tfinally2.nim"
-  output: "ABCD"
+  output: '''A
+B
+C
+D'''
 """
 # Test break in try statement:
 
@@ -11,15 +14,15 @@ proc main: int =
         try:
           break AB
         finally:
-          stdout.write("A")
-        stdout.write("skipped")
+          echo("A")
+        echo("skipped")
       finally: 
         block B:
-          stdout.write("B")
-      stdout.write("skipped")
-    stdout.write("C")
+          echo("B")
+      echo("skipped")
+    echo("C")
   finally:
-    stdout.writeln("D")
+    echo("D")
     
 discard main() #OUT ABCD
 
