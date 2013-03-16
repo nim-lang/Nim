@@ -955,15 +955,22 @@ proc enumSpecifier(p: var TParser): PNode =
     result = newNodeP(nkConstSection, p)
     getTok(p, result)
     var i = 0
+    var hasUnknown = false
     while true:
       var name = skipIdentExport(p)
       var val: PNode
       if p.tok.xkind == pxAsgn: 
         getTok(p, name)
         val = constantExpression(p)
-        if val.kind == nkIntLit: i = int(val.intVal)+1
-        else: parMessage(p, errXExpected, "int literal")
+        if val.kind == nkIntLit:  
+          i = int(val.intVal)+1
+          hasUnknown = false
+        else:
+          hasUnknown = true
       else:
+        if hasUnknown:
+          parMessage(p, warnUser, "computed const value may be wrong: " &
+            name.renderTree)
         val = newIntNodeP(nkIntLit, i, p)
         inc(i)
       var c = createConst(name, ast.emptyNode, val, p)
