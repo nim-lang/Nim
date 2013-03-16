@@ -2396,9 +2396,34 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
   magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information.
-  ## This is only useful for advanced meta programming. See the implementation
-  ## of `assert` for an example.
-  
+  ##
+  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## to retrieve information about the current filename and line number.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import strutils
+  ##
+  ##   template testException(exception, code: expr): stmt =
+  ##     try:
+  ##       let pos = instantiationInfo()
+  ##       discard(code)
+  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
+  ##         $pos.line, astToStr(code)]
+  ##       assert false, "A test expecting failure succeeded?"
+  ##     except exception:
+  ##       nil
+  ##
+  ##   proc tester(pos: int): int =
+  ##     let
+  ##       a = @[1, 2, 3]
+  ##     result = a[pos]
+  ##
+  ##   when isMainModule:
+  ##     testException(EInvalidIndex, tester(30))
+  ##     testException(EInvalidIndex, tester(1))
+  ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
 proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
 
