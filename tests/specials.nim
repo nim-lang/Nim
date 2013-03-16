@@ -176,14 +176,10 @@ proc runJsTests(r: var TResults, options: string) =
     runSingleTest(r, filename, options & " -d:nodejs", targetJS)
     runSingleTest(r, filename, options & " -d:nodejs -d:release", targetJS)
     
-  # texceptions, texcpt1, texcsub, tfinally, tfinally2,
-  # tfinally3
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
-  test "tests/run/tactiontable"
-  test "tests/run/tmultim1"
-  test "tests/run/tmultim3"
-  test "tests/run/tmultim4"
+  for testfile in ["texceptions", "texcpt1", "texcsub", "tfinally", "tfinally2", "tfinally3", "tactiontable", "tmultim1", "tmultim3", "tmultim4"]:
+    test "tests/run/" & testfile & ".nim"
 
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
