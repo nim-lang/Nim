@@ -1,9 +1,9 @@
 discard """
   file: "tfinally2.nim"
-  output: "A
+  output: '''A
 B
 C
-D"
+D'''
 """
 # Test break in try statement:
 
