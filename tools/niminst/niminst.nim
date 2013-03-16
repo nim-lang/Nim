@@ -32,6 +32,7 @@ type
     actionNone,   # action not yet known
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
+    actionScripts # action: create install and deinstall scripts
     actionZip,    # action: create zip file
     actionDeb     # action: prepare deb package
 
@@ -128,6 +129,7 @@ Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
   csource             build C source code for source based installations
+  scripts             build install and deinstall scripts
   zip                 build the ZIP file
   inno                build the Inno Setup installer
   deb                 create files for debhelper
@@ -153,6 +155,7 @@ proc parseCmdLine(c: var TConfigData) =
         for a in split(normalize(key.string), {';', ','}):
           case a
           of "csource": incl(c.actions, actionCSource)
+          of "scripts": incl(c.actions, actionScripts)
           of "zip": incl(c.actions, actionZip)
           of "inno": incl(c.actions, actionInno)
           of "deb": incl(c.actions, actionDeb)
@@ -382,6 +385,12 @@ proc removeDuplicateFiles(c: var TConfigData) =
                 RemoveFile(dup)
                 c.cfiles[osA][cpuA][i] = orig
 
+proc writeInstallScripts(c: var TConfigData) =
+  if c.installScript:
+    writeFile(installShFile, GenerateInstallScript(c), "\10")
+  if c.uninstallScript:
+    writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
+
 proc srcdist(c: var TConfigData) =
   for x in walkFiles(c.libpath / "lib/*.h"):
     CopyFile(dest="build" / extractFilename(x), source=x)
@@ -408,10 +417,7 @@ proc srcdist(c: var TConfigData) =
   writeFile(buildShFile, GenerateBuildShellScript(c), "\10")
   writeFile(buildBatFile32, GenerateBuildBatchScript(c, tWin32), "\13\10")
   writeFile(buildBatFile64, GenerateBuildBatchScript(c, tWin64), "\13\10")
-  if c.installScript:
-    writeFile(installShFile, GenerateInstallScript(c), "\10")
-  if c.uninstallScript:
-    writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
+  writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
@@ -514,6 +520,8 @@ if actionInno in c.actions:
   setupDist(c)
 if actionCSource in c.actions:
   srcdist(c)
+if actionScripts in c.actions:
+  writeInstallScripts(c)
 if actionZip in c.actions:
   when haveZipLib:
     zipdist(c)
