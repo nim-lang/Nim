@@ -1650,10 +1650,6 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc () {.nimcall.}
-    ## set this variable to provide a procedure that should be called before
-    ## each executed instruction. This should only be used by debuggers!
-    ## Only code compiled with the ``debugger:on`` switch calls this hook.
   globalRaiseHook*: proc (e: ref E_Base): bool {.nimcall.}
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -1691,13 +1687,14 @@ var
     ## continues and the program is terminated.
 
 type
-  PFrame = ptr TFrame
-  TFrame {.importc, nodecl, final.} = object
-    prev: PFrame
-    procname: CString
-    line: int # current line number
-    filename: CString
-    len: int  # length of slots (when not debugging always zero)
+  PFrame* = ptr TFrame  ## represents a runtime frame of the call stack;
+                        ## part of the debugger API.
+  TFrame* {.importc, nodecl, final.} = object ## the frame itself
+    prev*: PFrame       ## previous frame; used for chaining the call stack
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+    len*: int           ## length of the inspectable slots
 
 when not defined(JS):
   {.push stack_trace:off, profiler:off.}
