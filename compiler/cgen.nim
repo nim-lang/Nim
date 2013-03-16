@@ -892,6 +892,12 @@ proc getFileHeader(cfilenoext: string): PRope =
   result = getCopyright(cfilenoext)
   addIntTypes(result)
 
+proc genFilenames(m: BModule): PRope =
+  discard cgsym(m, "dbgRegisterFilename")
+  result = nil
+  for i in 0.. <fileInfos.len:
+    result.appf("dbgRegisterFilename($1);$n", fileInfos[i].projPath.makeCString)
+
 proc genMainProc(m: BModule) = 
   const 
     CommonMainBody =
@@ -950,6 +956,8 @@ proc genMainProc(m: BModule) =
     nimMain = PosixNimMain
     otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
+  if optEndb in gOptions:
+    gBreakpoints.app(m.genFilenames)
   
   let initStackBottomCall = if emulatedThreadVars() or
                               platform.targetOS == osStandalone: "".toRope

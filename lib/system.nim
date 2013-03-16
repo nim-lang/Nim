@@ -370,9 +370,34 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings : seq[string]
+  ##   newSeq(inputStrings, 3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
 
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings = newSeq[string](3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
@@ -1650,10 +1675,6 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc () {.nimcall.}
-    ## set this variable to provide a procedure that should be called before
-    ## each executed instruction. This should only be used by debuggers!
-    ## Only code compiled with the ``debugger:on`` switch calls this hook.
   globalRaiseHook*: proc (e: ref E_Base): bool {.nimcall.}
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -1691,13 +1712,14 @@ var
     ## continues and the program is terminated.
 
 type
-  PFrame = ptr TFrame
-  TFrame {.importc, nodecl, final.} = object
-    prev: PFrame
-    procname: CString
-    line: int # current line number
-    filename: CString
-    len: int  # length of slots (when not debugging always zero)
+  PFrame* = ptr TFrame  ## represents a runtime frame of the call stack;
+                        ## part of the debugger API.
+  TFrame* {.importc, nodecl, final.} = object ## the frame itself
+    prev*: PFrame       ## previous frame; used for chaining the call stack
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+    len*: int           ## length of the inspectable slots
 
 when not defined(JS):
   {.push stack_trace:off, profiler:off.}
@@ -2374,9 +2396,34 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
   magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information.
-  ## This is only useful for advanced meta programming. See the implementation
-  ## of `assert` for an example.
-  
+  ##
+  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## to retrieve information about the current filename and line number.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import strutils
+  ##
+  ##   template testException(exception, code: expr): stmt =
+  ##     try:
+  ##       let pos = instantiationInfo()
+  ##       discard(code)
+  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
+  ##         $pos.line, astToStr(code)]
+  ##       assert false, "A test expecting failure succeeded?"
+  ##     except exception:
+  ##       nil
+  ##
+  ##   proc tester(pos: int): int =
+  ##     let
+  ##       a = @[1, 2, 3]
+  ##     result = a[pos]
+  ##
+  ##   when isMainModule:
+  ##     testException(EInvalidIndex, tester(30))
+  ##     testException(EInvalidIndex, tester(1))
+  ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
 proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
 
