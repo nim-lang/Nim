@@ -491,6 +491,7 @@ proc toU32(a: int): int32 {.noStackFrame, compilerproc.} =
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
+type NimString = string # hack for hti.nim
 include "system/hti"
 
 proc isFatPointer(ti: PNimType): bool =
