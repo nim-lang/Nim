@@ -70,6 +70,7 @@ if [ $# -eq 1 ] ; then
   mkdir -p $libdir/windows
   mkdir -p $libdir/posix
   mkdir -p $libdir/js
+  mkdir -p $libdir/packages/docutils
 
   cp bin/nimrod $bindir/nimrod
   chmod 755 $bindir/nimrod
@@ -711,20 +712,26 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/debugger.nim
   cp lib/system/dyncalls.nim $libdir/system/dyncalls.nim
   chmod 644 $libdir/system/dyncalls.nim
-  cp lib/system/jssys.nim $libdir/system/jssys.nim
-  chmod 644 $libdir/system/jssys.nim
   cp lib/system/embedded.nim $libdir/system/embedded.nim
   chmod 644 $libdir/system/embedded.nim
+  cp lib/system/endb.nim $libdir/system/endb.nim
+  chmod 644 $libdir/system/endb.nim
   cp lib/system/excpt.nim $libdir/system/excpt.nim
   chmod 644 $libdir/system/excpt.nim
   cp lib/system/gc.nim $libdir/system/gc.nim
   chmod 644 $libdir/system/gc.nim
   cp lib/system/gc2.nim $libdir/system/gc2.nim
   chmod 644 $libdir/system/gc2.nim
+  cp lib/system/gc_genms.nim $libdir/system/gc_genms.nim
+  chmod 644 $libdir/system/gc_genms.nim
+  cp lib/system/gc_ms.nim $libdir/system/gc_ms.nim
+  chmod 644 $libdir/system/gc_ms.nim
   cp lib/system/hti.nim $libdir/system/hti.nim
   chmod 644 $libdir/system/hti.nim
   cp lib/system/inclrtl.nim $libdir/system/inclrtl.nim
   chmod 644 $libdir/system/inclrtl.nim
+  cp lib/system/jssys.nim $libdir/system/jssys.nim
+  chmod 644 $libdir/system/jssys.nim
   cp lib/system/mmdisp.nim $libdir/system/mmdisp.nim
   chmod 644 $libdir/system/mmdisp.nim
   cp lib/system/profiler.nim $libdir/system/profiler.nim
@@ -1103,6 +1110,14 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/posix/posix.nim
   cp lib/js/dom.nim $libdir/js/dom.nim
   chmod 644 $libdir/js/dom.nim
+  cp lib/packages/docutils/highlite.nim $libdir/packages/docutils/highlite.nim
+  chmod 644 $libdir/packages/docutils/highlite.nim
+  cp lib/packages/docutils/rst.nim $libdir/packages/docutils/rst.nim
+  chmod 644 $libdir/packages/docutils/rst.nim
+  cp lib/packages/docutils/rstast.nim $libdir/packages/docutils/rstast.nim
+  chmod 644 $libdir/packages/docutils/rstast.nim
+  cp lib/packages/docutils/rstgen.nim $libdir/packages/docutils/rstgen.nim
+  chmod 644 $libdir/packages/docutils/rstgen.nim
   
   echo "installation successful"
 else

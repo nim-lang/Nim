@@ -1,7 +1,7 @@
 /*
 
             Nimrod's Runtime Library
-        (c) Copyright 2012 Andreas Rumpf
+        (c) Copyright 2013 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -440,9 +440,9 @@ struct TFrame {
   volatile TFrame F; \
   F.procname = proc; F.filename = file; F.line = 0; F.len = 0; nimFrame(&F);
 
-#define nimfrs(proc, file, slots) \
+#define nimfrs(proc, file, slots, length) \
   volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = slots; nimFrame((TFrame*)&F);
+  F.procname = proc; F.filename = file; F.line = 0; F.len = length; nimFrame((TFrame*)&F);
 
 #define nimln(n, file) \
   F.line = n; F.filename = file;
