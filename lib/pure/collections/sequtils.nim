@@ -153,62 +153,61 @@ template toSeq*(iter: expr): expr {.immediate.} =
 
 when isMainModule:
   import strutils
-  proc toStr(x: int): string {.procvar.} = $x
-  # concat test
-  let
-    s1 = @[1, 2, 3]
-    s2 = @[4, 5]
-    s3 = @[6, 7]
-    total = concat(s1, s2, s3)
-  assert total == @[1, 2, 3, 4, 5, 6, 7]
+  block: # concat test
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5]
+      s3 = @[6, 7]
+      total = concat(s1, s2, s3)
+    assert total == @[1, 2, 3, 4, 5, 6, 7]
 
-  # duplicates test
-  let
-    dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
-    dup2 = @["a", "a", "c", "d", "d"]
-    unique1 = distnct(dup1)
-    unique2 = distnct(dup2)
-  assert unique1 == @[1, 3, 4, 2, 8]
-  assert unique2 == @["a", "c", "d"]
+  block: # duplicates test
+    let
+      dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
+      dup2 = @["a", "a", "c", "d", "d"]
+      unique1 = distnct(dup1)
+      unique2 = distnct(dup2)
+    assert unique1 == @[1, 3, 4, 2, 8]
+    assert unique2 == @["a", "c", "d"]
 
-  # zip test
-  let
-    short = @[1, 2, 3]
-    long = @[6, 5, 4, 3, 2, 1]
-    words = @["one", "two", "three"]
-    zip1 = zip(short, long)
-    zip2 = zip(short, words)
-  assert zip1 == @[(1, 6), (2, 5), (3, 4)]
-  assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
-  assert zip1[2].b == 4
-  assert zip2[2].b == "three"
+  block: # zip test
+    let
+      short = @[1, 2, 3]
+      long = @[6, 5, 4, 3, 2, 1]
+      words = @["one", "two", "three"]
+      zip1 = zip(short, long)
+      zip2 = zip(short, words)
+    assert zip1 == @[(1, 6), (2, 5), (3, 4)]
+    assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
+    assert zip1[2].b == 4
+    assert zip2[2].b == "three"
 
-  # filter proc test
-  let
-    colors = @["red", "yellow", "black"]
-    f1 = filter(colors, proc(x: string): bool = x.len < 6)
-    f2 = filter(colors) do (x: string) -> bool : x.len > 5
-  assert f1 == @["red", "black"]
-  assert f2 == @["yellow"]
+  block: # filter proc test
+    let
+      colors = @["red", "yellow", "black"]
+      f1 = filter(colors, proc(x: string): bool = x.len < 6)
+      f2 = filter(colors) do (x: string) -> bool : x.len > 5
+    assert f1 == @["red", "black"]
+    assert f2 == @["yellow"]
 
-  # filter iterator test
-  let numbers = @[1, 4, 5, 8, 9, 7, 4]
-  for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
-    echo($n)
-  # echoes 4, 8, 4 in separate lines
+  block: # filter iterator test
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
+      echo($n)
+    # echoes 4, 8, 4 in separate lines
 
-  # filterIt test
-  let
-    temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
-    acceptable = filterIt(temperatures, it < 50 and it > -10)
-  assert acceptable == @[-2.0, 24.5, 44.31]
+  block: # filterIt test
+    let
+      temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
+      acceptable = filterIt(temperatures, it < 50 and it > -10)
+    assert acceptable == @[-2.0, 24.5, 44.31]
 
-  # toSeq test
-  let
-    numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-      if x mod 2 == 1:
-        result = true)
-  assert odd_numbers == @[1, 3, 5, 7, 9]
+  block: # toSeq test
+    let
+      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+        if x mod 2 == 1:
+          result = true)
+    assert odd_numbers == @[1, 3, 5, 7, 9]
 
   echo "Finished doc tests"
