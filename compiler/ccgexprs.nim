@@ -1088,7 +1088,10 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     tmp2.s = onHeap
     tmp2.heapRoot = tmp.r
     expr(p, it.sons[1], tmp2)
-  genAssignment(p, d, tmp, {})
+  if d.k == locNone:
+    d = tmp
+  else:
+    genAssignment(p, d, tmp, {})
   
 proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   var arr: TLoc
