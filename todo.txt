@@ -18,6 +18,7 @@ version 0.9.2
 Bugs
 ====
 
+- even the easiest range checking is not performed anymore
 - 'result' is not properly cleaned for NRVO
 - instantiated generics are listed in error messages
 - sneaking with qualifiedLookup() is really broken!
