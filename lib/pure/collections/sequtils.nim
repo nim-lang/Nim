@@ -117,7 +117,7 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ##   assert f2 == @["yellow"]
   accumulateResult(filter(seq1, pred))
 
-template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
+template filterIt*(seq1, pred: expr): expr {.immediate.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -128,9 +128,12 @@ template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
   ##    let
   ##      temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
   ##      acceptable = filterIt(temperatures, it < 50 and it > -10)
+  ##      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
+  ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
   var result {.gensym.}: type(seq1) = @[]
-  for it in items(seq1):
+  for internalit in items(seq1):
+    let it {.inject.} = internalit
     if pred: result.add(it)
   result
 
@@ -151,64 +154,163 @@ template toSeq*(iter: expr): expr {.immediate.} =
   for x in iter: add(result, x)
   result
 
+template foldl*(sequence, operation: expr): expr =
+  ## Template to fold a sequence from left to right, returning the accumulation.
+  ##
+  ## The sequence is required to have at least a single element. Debug versions
+  ## of your program will assert in this situation but release versions will
+  ## happily go ahead. If the sequence has a single element it will be returned
+  ## without applying ``operation``.
+  ##
+  ## The ``operation`` parameter should be an expression which uses the
+  ## variables ``a`` and ``b`` for each step of the fold. Since this is a left
+  ## fold, for non associative binary operations like substraction think that
+  ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
+  ## 3).  Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     numbers = @[5, 9, 11]
+  ##     addition = foldl(numbers, a + b)
+  ##     substraction = foldl(numbers, a - b)
+  ##     multiplication = foldl(numbers, a * b)
+  ##     words = @["nim", "rod", "is", "cool"]
+  ##     concatenation = foldl(words, a & b)
+  ##   assert addition == 25, "Addition is (((5)+9)+11)"
+  ##   assert substraction == -15, "Substraction is (((5)-9)-11)"
+  ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
+  ##   assert concatenation == "nimrodiscool"
+  assert sequence.len > 0, "Can't fold empty sequences"
+  var result {.gensym.}: type(sequence[0])
+  result = sequence[0]
+  for i in countup(1, sequence.len - 1):
+    let
+      a {.inject.} = result
+      b {.inject.} = sequence[i]
+    result = operation
+  result
+
+template foldr*(sequence, operation: expr): expr =
+  ## Template to fold a sequence from right to left, returning the accumulation.
+  ##
+  ## The sequence is required to have at least a single element. Debug versions
+  ## of your program will assert in this situation but release versions will
+  ## happily go ahead. If the sequence has a single element it will be returned
+  ## without applying ``operation``.
+  ##
+  ## The ``operation`` parameter should be an expression which uses the
+  ## variables ``a`` and ``b`` for each step of the fold. Since this is a right
+  ## fold, for non associative binary operations like substraction think that
+  ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
+  ## (3))). Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let
+  ##     numbers = @[5, 9, 11]
+  ##     addition = foldr(numbers, a + b)
+  ##     substraction = foldr(numbers, a - b)
+  ##     multiplication = foldr(numbers, a * b)
+  ##     words = @["nim", "rod", "is", "cool"]
+  ##     concatenation = foldr(words, a & b)
+  ##   assert addition == 25, "Addition is (5+(9+(11)))"
+  ##   assert substraction == 7, "Substraction is (5-(9-(11)))"
+  ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
+  ##   assert concatenation == "nimrodiscool"
+  assert sequence.len > 0, "Can't fold empty sequences"
+  var result {.gensym.}: type(sequence[0])
+  result = sequence[sequence.len - 1]
+  for i in countdown(sequence.len - 2, 0):
+    let
+      a {.inject.} = sequence[i]
+      b {.inject.} = result
+    result = operation
+  result
+
 when isMainModule:
   import strutils
-  proc toStr(x: int): string {.procvar.} = $x
-  # concat test
-  let
-    s1 = @[1, 2, 3]
-    s2 = @[4, 5]
-    s3 = @[6, 7]
-    total = concat(s1, s2, s3)
-  assert total == @[1, 2, 3, 4, 5, 6, 7]
+  block: # concat test
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5]
+      s3 = @[6, 7]
+      total = concat(s1, s2, s3)
+    assert total == @[1, 2, 3, 4, 5, 6, 7]
 
-  # duplicates test
-  let
-    dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
-    dup2 = @["a", "a", "c", "d", "d"]
-    unique1 = distnct(dup1)
-    unique2 = distnct(dup2)
-  assert unique1 == @[1, 3, 4, 2, 8]
-  assert unique2 == @["a", "c", "d"]
+  block: # duplicates test
+    let
+      dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
+      dup2 = @["a", "a", "c", "d", "d"]
+      unique1 = distnct(dup1)
+      unique2 = distnct(dup2)
+    assert unique1 == @[1, 3, 4, 2, 8]
+    assert unique2 == @["a", "c", "d"]
 
-  # zip test
-  let
-    short = @[1, 2, 3]
-    long = @[6, 5, 4, 3, 2, 1]
-    words = @["one", "two", "three"]
-    zip1 = zip(short, long)
-    zip2 = zip(short, words)
-  assert zip1 == @[(1, 6), (2, 5), (3, 4)]
-  assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
-  assert zip1[2].b == 4
-  assert zip2[2].b == "three"
+  block: # zip test
+    let
+      short = @[1, 2, 3]
+      long = @[6, 5, 4, 3, 2, 1]
+      words = @["one", "two", "three"]
+      zip1 = zip(short, long)
+      zip2 = zip(short, words)
+    assert zip1 == @[(1, 6), (2, 5), (3, 4)]
+    assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
+    assert zip1[2].b == 4
+    assert zip2[2].b == "three"
 
-  # filter proc test
-  let
-    colors = @["red", "yellow", "black"]
-    f1 = filter(colors, proc(x: string): bool = x.len < 6)
-    f2 = filter(colors) do (x: string) -> bool : x.len > 5
-  assert f1 == @["red", "black"]
-  assert f2 == @["yellow"]
+  block: # filter proc test
+    let
+      colors = @["red", "yellow", "black"]
+      f1 = filter(colors, proc(x: string): bool = x.len < 6)
+      f2 = filter(colors) do (x: string) -> bool : x.len > 5
+    assert f1 == @["red", "black"]
+    assert f2 == @["yellow"]
 
-  # filter iterator test
-  let numbers = @[1, 4, 5, 8, 9, 7, 4]
-  for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
-    echo($n)
-  # echoes 4, 8, 4 in separate lines
+  block: # filter iterator test
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
+      echo($n)
+    # echoes 4, 8, 4 in separate lines
 
-  # filterIt test
-  let
-    temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
-    acceptable = filterIt(temperatures, it < 50 and it > -10)
-  assert acceptable == @[-2.0, 24.5, 44.31]
+  block: # filterIt test
+    let
+      temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
+      acceptable = filterIt(temperatures, it < 50 and it > -10)
+      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
+    assert acceptable == @[-2.0, 24.5, 44.31]
+    assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  # toSeq test
-  let
-    numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-      if x mod 2 == 1:
-        result = true)
-  assert odd_numbers == @[1, 3, 5, 7, 9]
+  block: # toSeq test
+    let
+      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+        if x mod 2 == 1:
+          result = true)
+    assert odd_numbers == @[1, 3, 5, 7, 9]
+
+  block: # foldl tests
+    let
+      numbers = @[5, 9, 11]
+      addition = foldl(numbers, a + b)
+      substraction = foldl(numbers, a - b)
+      multiplication = foldl(numbers, a * b)
+      words = @["nim", "rod", "is", "cool"]
+      concatenation = foldl(words, a & b)
+    assert addition == 25, "Addition is (((5)+9)+11)"
+    assert substraction == -15, "Substraction is (((5)-9)-11)"
+    assert multiplication == 495, "Multiplication is (((5)*9)*11)"
+    assert concatenation == "nimrodiscool"
+
+  block: # foldr tests
+    let
+      numbers = @[5, 9, 11]
+      addition = foldr(numbers, a + b)
+      substraction = foldr(numbers, a - b)
+      multiplication = foldr(numbers, a * b)
+      words = @["nim", "rod", "is", "cool"]
+      concatenation = foldr(words, a & b)
+    assert addition == 25, "Addition is (5+(9+(11)))"
+    assert substraction == 7, "Substraction is (5-(9-(11)))"
+    assert multiplication == 495, "Multiplication is (5*(9*(11)))"
+    assert concatenation == "nimrodiscool"
 
   echo "Finished doc tests"
