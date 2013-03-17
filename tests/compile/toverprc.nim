@@ -25,3 +25,11 @@ var x = stdin.readline.split.map(parseInt).max
 echo x, " is the maximum!"
 echo "another number: ", takeParseInt(parseInt)
 
+
+type
+  TFoo[a,b] = object
+    lorem: a
+    ipsum: b
+
+proc bar[a,b](f: TFoo[a,b], x: a) = echo(x, " ", f.lorem, f.ipsum)
+proc bar[a,b](f: TFoo[a,b], x: b) = echo(x, " ", f.lorem, f.ipsum)
