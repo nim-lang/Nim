@@ -487,7 +487,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
       if n.sons[0].kind == nkSym: incl(n.sons[0].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   else: 
-    result = newHiddenAddrTaken(c, n) # BUGFIX!
+    result = newHiddenAddrTaken(c, n)
   
 proc analyseIfAddressTakenInCall(c: PContext, n: PNode) = 
   checkMinSonsLen(n, 1)
@@ -502,16 +502,19 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
 
   if n.sons[0].kind == nkSym and n.sons[0].sym.magic in FakeVarParams: 
     # BUGFIX: check for L-Value still needs to be done for the arguments!
+    # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
     for i in countup(1, sonsLen(n) - 1): 
       if i < sonsLen(t) and t.sons[i] != nil and
           skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar: 
         if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}: 
-          LocalError(n.sons[i].info, errVarForOutParamNeeded)
+          if n.sons[i].kind != nkHiddenAddr:
+            LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
-  for i in countup(1, sonsLen(n) - 1): 
+  for i in countup(1, sonsLen(n) - 1):
     if i < sonsLen(t) and
         skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
-      n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
+      if n.sons[i].kind != nkHiddenAddr:
+        n.sons[i] = analyseIfAddressTaken(c, n.sons[i])
   
 include semmagic
 
