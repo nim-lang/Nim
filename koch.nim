@@ -36,6 +36,7 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
+  install [dir]            installs to given directory
   clean                    cleans Nimrod project; removes generated files
   web                      generates the website
   csource [options]        builds the C sources for installation
@@ -84,7 +85,9 @@ proc inno(args: string) =
        NimrodVersion)
 
 proc install(args: string) = 
-  exec("sh ./build.sh")
+  exec("nimrod cc -r tools/niminst/niminst --var:version=$# scripts compiler/nimrod.ini" %
+       NimrodVersion)
+  exec("sh ./install.sh $#" % args)  
 
 proc web(args: string) =
   exec(("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
