@@ -117,7 +117,7 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ##   assert f2 == @["yellow"]
   accumulateResult(filter(seq1, pred))
 
-template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
+template filterIt*(seq1, pred: expr): expr {.immediate.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -128,9 +128,12 @@ template filterIt*(seq1, pred: expr): expr {.immediate, dirty.} =
   ##    let
   ##      temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
   ##      acceptable = filterIt(temperatures, it < 50 and it > -10)
+  ##      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
+  ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
   var result {.gensym.}: type(seq1) = @[]
-  for it in items(seq1):
+  for internalit in items(seq1):
+    let it {.inject.} = internalit
     if pred: result.add(it)
   result
 
@@ -272,7 +275,9 @@ when isMainModule:
     let
       temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
       acceptable = filterIt(temperatures, it < 50 and it > -10)
+      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
     assert acceptable == @[-2.0, 24.5, 44.31]
+    assert notAcceptable == @[-272.15, 99.9, -113.44]
 
   block: # toSeq test
     let
