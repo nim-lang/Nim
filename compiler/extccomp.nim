@@ -391,33 +391,6 @@ proc resetCompilationLists* =
   initLinkedList(externalToCompile)
   initLinkedList(toLink)
 
-proc footprint(filename: string): TCrc32 =
-  result = crcFromFile(filename) >< 
-      platform.OS[targetOS].name ><
-      platform.CPU[targetCPU].name ><
-      extccomp.CC[extccomp.ccompiler].name
-
-proc externalFileChanged(filename: string): bool = 
-  var crcFile = toGeneratedFile(filename, "crc")
-  var currentCrc = int(footprint(filename))
-  var f: TFile
-  if open(f, crcFile, fmRead): 
-    var line = newStringOfCap(40)
-    if not f.readLine(line): line = "0"
-    close(f)
-    var oldCrc = parseInt(line)
-    result = oldCrc != currentCrc
-  else:
-    result = true
-  if result: 
-    if open(f, crcFile, fmWrite):
-      f.writeln($currentCrc)
-      close(f)
-
-proc addExternalFileToCompile*(filename: string) =
-  if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
-    appendStr(externalToCompile, filename)
-
 proc addFileToLink*(filename: string) =
   prependStr(toLink, filename) 
   # BUGFIX: was ``appendStr``
@@ -535,6 +508,34 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     "options", options, "include", includeCmd, 
     "nimrod", quoteIfContainsWhite(getPrefixDir()), 
     "lib", quoteIfContainsWhite(libpath)])
+
+proc footprint(filename: string): TCrc32 =
+  result = crcFromFile(filename) ><
+      platform.OS[targetOS].name ><
+      platform.CPU[targetCPU].name ><
+      extccomp.CC[extccomp.ccompiler].name ><
+      getCompileCFileCmd(filename, true)
+
+proc externalFileChanged(filename: string): bool = 
+  var crcFile = toGeneratedFile(filename, "crc")
+  var currentCrc = int(footprint(filename))
+  var f: TFile
+  if open(f, crcFile, fmRead): 
+    var line = newStringOfCap(40)
+    if not f.readLine(line): line = "0"
+    close(f)
+    var oldCrc = parseInt(line)
+    result = oldCrc != currentCrc
+  else:
+    result = true
+  if result: 
+    if open(f, crcFile, fmWrite):
+      f.writeln($currentCrc)
+      close(f)
+
+proc addExternalFileToCompile*(filename: string) =
+  if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
+    appendStr(externalToCompile, filename)
 
 proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq, 
                   isExternal: bool) = 
