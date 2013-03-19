@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -573,7 +573,12 @@ proc CallCCompiler*(projectfile: string) =
     else: 
       res = execProcesses(cmds, {poUseShell, poParentStreams}, 
                           gNumberOfProcessors)
-    if res != 0: rawMessage(errExecutionOfProgramFailed, [])
+    if res != 0:
+      if gNumberOfProcessors <= 1:
+        rawMessage(errExecutionOfProgramFailed, [])
+      else:
+        rawMessage(errGenerated, " execution of an external program failed; " &
+                   "rerun with --parallelBuild:1 to see the error message")
   if optNoLinking notin gGlobalOptions:
     # call the linker:
     var it = PStrEntry(toLink.head)
