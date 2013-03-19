@@ -13,6 +13,7 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - document NimMain and check whether it works for threading
+- implement ``system.locals`` magic iterator
 
 
 Bugs
@@ -31,6 +32,7 @@ Bugs
   in c++ mode)
 - bootstrapping does not work in C++ mode
 - case statement exhaustiveness checking is still wrong
+- the new m&s GC is still buggy
 
 
 version 0.9.4

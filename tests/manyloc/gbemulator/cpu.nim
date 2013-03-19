@@ -132,6 +132,7 @@ proc exec(cpu: PCPU) =
   let opcode = cpu.mem.readByte(cpu.r.pc)
   #echo("OPCODE: 0x", toHex(opcode, 2))
   cpu.r.pc.inc()
+  # PROBLEM: 0x7B is part of some range later but the compiler does not care!
   case opcode
   of 0x06:
     # LD B, n
