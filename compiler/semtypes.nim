@@ -323,8 +323,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode
   checkMinSonsLen(t, 1)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
-  let at = fitNode(c, t.sons[0].typ, ac)
-  let bt = fitNode(c, t.sons[0].typ, bc)
+  let at = fitNode(c, t.sons[0].typ, ac).skipConvTakeType
+  let bt = fitNode(c, t.sons[0].typ, bc).skipConvTakeType
   
   result = newNodeI(nkRange, a.info)
   result.add(at)
