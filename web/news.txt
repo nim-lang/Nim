@@ -24,6 +24,7 @@ Library Additions
 - There is a new experimental mark&sweep GC which can be faster (or much 
   slower) than the default GC. Enable with ``--gc:markAndSweep``.
 - Added ``system.onRaise`` to support a condition system.
+- Added ``system.locals`` that provides access to a proc's locals.
 - Added ``macros.quote`` for AST quasi-quoting.
 - Added ``system.unsafeNew`` to support hacky variable length objects.
 - ``system.fields`` and ``system.fieldPairs`` support ``object`` too; they

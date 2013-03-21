@@ -25,7 +25,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
-  if result.typ != nil: 
+  if result.typ != nil:
+    # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
   else:
     LocalError(n.info, errExprXHasNoType, 

@@ -2548,3 +2548,10 @@ proc safeAdd*(x: var string, y: string) =
   if x == nil: x = y
   else: x.add(y)
 
+proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
+  ## generates a tuple constructor expression listing all the local variables
+  ## in the current scope. This is quite fast as it does not rely
+  ## on any debug or runtime information. Note that in constrast to what
+  ## the official signature says, the return type is not ``TObject`` but a
+  ## tuple of a structure that depends on the current scope.
+  nil
