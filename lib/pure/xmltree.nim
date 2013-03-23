@@ -109,6 +109,7 @@ iterator items*(n: PXmlNode): PXmlNode {.inline.} =
 
 proc attrs*(n: PXmlNode): PXmlAttributes {.inline.} = 
   ## gets the attributes belonging to `n`.
+  ## Returns `nil` if attributes have not been initialised for this node.
   assert n.k == xnElement
   result = n.fAttr
   
@@ -282,5 +283,7 @@ proc child*(n: PXmlNode, name: string): PXmlNode =
 
 proc attr*(n: PXmlNode, name: string): string =
   ## Finds the first attribute of `n` with a name of `name`.
+  ## Returns "" on failure.
   assert n.kind == xnElement
+  if n.attrs == nil: return ""
   return n.attrs[name]
