@@ -121,6 +121,9 @@ type
   TRecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
 
+  TReadLineResult* = enum ## result for readLineAsync
+    ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
+
   ETimeout* = object of ESynch
 
 proc newTSocket(fd: int32, isBuff: bool): TSocket =
@@ -1180,7 +1183,7 @@ proc peekChar(socket: TSocket, c: var char): int {.tags: [FReadIO].} =
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
 proc recvLine*(socket: TSocket, line: var TaintedString, timeout = -1): bool {.
-  tags: [FReadIO, FTime].} =
+  tags: [FReadIO, FTime], deprecated.} =
   ## Receive a line of data from ``socket``.
   ##
   ## If a full line is received ``\r\L`` is not
@@ -1196,6 +1199,10 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout = -1): bool {.
   ##
   ## A timeout can be specified in miliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
+  ##
+  ## **Deprecated since version 0.9.2**: This function has been deprecated in
+  ## favour of readLine.
+  
   template addNLIfEmpty(): stmt =
     if line.len == 0:
       line.add("\c\L")
@@ -1222,8 +1229,49 @@ proc recvLine*(socket: TSocket, line: var TaintedString, timeout = -1): bool {.
       return true
     add(line.string, c)
 
+proc readLine*(socket: TSocket, line: var TaintedString, timeout = -1) {.
+  tags: [FReadIO, FTime].} =
+  ## Reads a line of data from ``socket``.
+  ##
+  ## If a full line is read ``\r\L`` is not
+  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
+  ## will be set to it.
+  ## 
+  ## If the socket is disconnected, ``line`` will be set to ``""``.
+  ##
+  ## An EOS exception will be raised in the case of a socket error.
+  ##
+  ## A timeout can be specified in miliseconds, if data is not received within
+  ## the specified time an ETimeout exception will be raised.
+  
+  template addNLIfEmpty(): stmt =
+    if line.len == 0:
+      line.add("\c\L")
+
+  var waited = 0.0
+
+  setLen(line.string, 0)
+  while true:
+    var c: char
+    discard waitFor(socket, waited, timeout, 1, "readLine")
+    var n = recv(socket, addr(c), 1)
+    if n < 0: OSError()
+    elif n == 0: return
+    if c == '\r':
+      discard waitFor(socket, waited, timeout, 1, "readLine")
+      n = peekChar(socket, c)
+      if n > 0 and c == '\L':
+        discard recv(socket, addr(c), 1)
+      elif n <= 0: OSError()
+      addNlIfEmpty()
+      return
+    elif c == '\L': 
+      addNlIfEmpty()
+      return
+    add(line.string, c)
+
 proc recvLineAsync*(socket: TSocket, 
-  line: var TaintedString): TRecvLineResult {.tags: [FReadIO].} =
+  line: var TaintedString): TRecvLineResult {.tags: [FReadIO], deprecated.} =
   ## Similar to ``recvLine`` but designed for non-blocking sockets.
   ##
   ## The values of the returned enum should be pretty self explanatory:
@@ -1232,6 +1280,10 @@ proc recvLineAsync*(socket: TSocket,
   ##   * If some data has been retrieved; ``RecvPartialLine`` is returned.
   ##   * If the socket has been disconnected; ``RecvDisconnected`` is returned.
   ##   * If call to ``recv`` failed; ``RecvFail`` is returned.
+  ##
+  ## **Deprecated since version 0.9.2**: This function has been deprecated in
+  ## favour of readLineAsync.
+
   setLen(line.string, 0)
   while true:
     var c: char
@@ -1248,6 +1300,40 @@ proc recvLineAsync*(socket: TSocket,
         return (if line.len == 0: RecvFail else: RecvPartialLine)
       return RecvFullLine
     elif c == '\L': return RecvFullLine
+    add(line.string, c)
+
+proc readLineAsync*(socket: TSocket, 
+  line: var TaintedString): TReadLineResult {.tags: [FReadIO].} =
+  ## Similar to ``recvLine`` but designed for non-blocking sockets.
+  ##
+  ## The values of the returned enum should be pretty self explanatory:
+  ##
+  ##   * If a full line has been retrieved; ``ReadFullLine`` is returned.
+  ##   * If some data has been retrieved; ``ReadPartialLine`` is returned.
+  ##   * If the socket has been disconnected; ``ReadDisconnected`` is returned.
+  ##   * If no data could be retrieved; ``ReadNone`` is returned.
+  ##   * If call to ``recv`` failed; **an EOS exception is raised.**
+  setLen(line.string, 0)
+  
+  template errorOrNone =
+    socket.SocketError(async = true)
+    return ReadNone
+  
+  while true:
+    var c: char
+    var n = recv(socket, addr(c), 1)
+    if n < 0:
+      if line.len == 0: errorOrNone else: return ReadPartialLine
+    elif n == 0: 
+      return (if line.len == 0: ReadDisconnected else: ReadPartialLine)
+    if c == '\r':
+      n = peekChar(socket, c)
+      if n > 0 and c == '\L':
+        discard recv(socket, addr(c), 1)
+      elif n <= 0: 
+        if line.len == 0: errorOrNone else: return ReadPartialLine
+      return ReadFullLine
+    elif c == '\L': return ReadFullLine
     add(line.string, c)
 
 proc recv*(socket: TSocket): TaintedString {.tags: [FReadIO], deprecated.} =
