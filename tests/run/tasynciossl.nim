@@ -26,7 +26,7 @@ proc swarmConnect(s: PAsyncSocket) =
 
 proc serverRead(s: PAsyncSocket) =
   var line = ""
-  assert s.recvLine(line)
+  assert s.readLine(line)
   if line != "":
     #echo(line)
     if line.startsWith("Message "):
