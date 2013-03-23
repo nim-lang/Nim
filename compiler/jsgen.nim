@@ -955,7 +955,8 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       var r2: TCompRes
       genProc(p, s, r2)
-      app(p.g.code, mergeStmt(r2))
+      #app(p.g.code, mergeStmt(r2))
+      app(r.com, mergeStmt(r2))
   else:
     if s.loc.r == nil:
       InternalError(n.info, "symbol has no generated name: " & s.name.s)
