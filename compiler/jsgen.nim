@@ -56,7 +56,7 @@ type
   TProc{.final.} = object 
     procDef: PNode
     prc: PSym
-    data: PRope
+    locals: PRope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -955,8 +955,8 @@ proc genSym(p: var TProc, n: PNode, r: var TCompRes) =
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       var r2: TCompRes
       genProc(p, s, r2)
-      #app(p.g.code, mergeStmt(r2))
-      app(r.com, mergeStmt(r2))
+      app(p.locals, mergeStmt(r2))
+      #app(r.com, mergeStmt(r2))
   else:
     if s.loc.r == nil:
       InternalError(n.info, "symbol has no generated name: " & s.name.s)
@@ -1454,16 +1454,17 @@ proc genProc(oldProc: var TProc, prc: PSym, r: var TCompRes) =
   resultAsgn = nil
   name = mangleName(prc)
   header = generateHeader(p, prc.typ)
-  if (prc.typ.sons[0] != nil) and sfPure notin prc.flags: 
+  if prc.typ.sons[0] != nil and sfPure notin prc.flags: 
     resultSym = prc.ast.sons[resultPos].sym
-    resultAsgn = ropef("var $1 = $2;$n", [mangleName(resultSym), 
+    resultAsgn = ropef("var $# = $#;$n", [mangleName(resultSym), 
         createVar(p, resultSym.typ, isIndirect(resultSym))])
     gen(p, prc.ast.sons[resultPos], a)
     if a.com != nil: appf(returnStmt, "$1;$n", [a.com])
-    returnStmt = ropef("return $1;$n", [a.res])
+    returnStmt = ropef("return $#;$n", [a.res])
   genStmt(p, prc.getBody, r)
-  r.com = ropef("function $1($2) {$n$3$4$5}$n", 
-                [name, header, resultAsgn, genProcBody(p, prc, r), returnStmt])
+  r.com = ropef("function $#($#) {$n$#$#$#$#}$n",
+                [name, header, p.locals, resultAsgn, 
+                 genProcBody(p, prc, r), returnStmt])
   r.res = nil  
   #if gVerbosity >= 3:
   #  echo "END   generated code for: " & prc.name.s
@@ -1515,9 +1516,10 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: nil
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
-    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}: 
-      var r2: TCompRes
-      genSym(p, n.sons[namePos], r2)
+    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
+      #var r2: TCompRes
+      genSym(p, n.sons[namePos], r)
+      r.res = nil
   of nkGotoState, nkState:
     internalError(n.info, "first class iterators not implemented")
   else:
@@ -1630,7 +1632,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.module == nil: InternalError(n.info, "myProcess")
   initProc(p, globals, m, nil, m.module.options)
   genModule(p, n, r)
-  app(p.g.code, p.data)
+  app(p.g.code, p.locals)
   app(p.g.code, mergeStmt(r))
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
