@@ -400,3 +400,9 @@ macro dumpLisp*(s: stmt): stmt = echo s.lispRepr
   ##
   ## See `dumpTree`.
 
+macro dumpTreeImm*(s: stmt): stmt {.immediate.} = echo s.treeRepr
+  ## The ``immediate`` version of `dumpTree`.
+
+macro dumpLispImm*(s: stmt): stmt {.immediate.} = echo s.lispRepr
+  ## The ``immediate`` version of `dumpLisp`.
+
