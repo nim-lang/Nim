@@ -19,7 +19,20 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode =
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
+proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+  var smoduleId = getModule(s).id
+  if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
+      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
+    LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
+
+proc semProcvarCheck(c: PContext, n: PNode) =
+  let n = n.skipConv
+  if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skIterator,
+                                        skConverter}:
+    performProcvarCheck(c, n, n.sym)
+
+proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
     # do not produce another redundant error message:
@@ -33,15 +46,32 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
 
-proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.kind == nkEmpty: 
+    # do not produce another redundant error message:
+    #raiseRecoverableError("")
+    result = errorNode(c, n)
+  if result.typ != nil:
+    # XXX tyGenericInst here?
+    semProcvarCheck(c, result)
+    if result.typ.kind == tyVar: result = newDeref(result)
+  else:
+    LocalError(n.info, errExprXHasNoType, 
+               renderTree(result, {renderNoComments}))
+    result.typ = errorType(c)
+
+proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  result = semExpr(c, n, flags)
+  if result.kind == nkEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
   if result.typ == nil:
     LocalError(n.info, errExprXHasNoType, 
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
+  else:
+    semProcvarCheck(c, result)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -50,15 +80,6 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.ast)
   result.typ = s.typ
   result.info = n.info
-
-proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
-  # XXX this not correct; it's valid to pass to templates and macros.
-  # We really need another post nkCallConv check for this. Or maybe do it
-  # in transform().
-  var smoduleId = getModule(s).id
-  if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
-      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
-    LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
   
 proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode = 
   case s.kind
@@ -468,7 +489,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode = 
   result = n
   case n.kind
-  of nkSym: 
+  of nkSym:
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
         skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind != tyVar: 
@@ -512,6 +533,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
             LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
   for i in countup(1, sonsLen(n) - 1):
+    semProcvarCheck(c, n.sons[i])
     if i < sonsLen(t) and
         skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
       if n.sons[i].kind != nkHiddenAddr:
@@ -1728,7 +1750,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
     if s.kind in {skProc, skMethod, skIterator, skConverter}:
-      performProcvarCheck(c, n, s)
+      #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
         markIndirect(c, result.sym)

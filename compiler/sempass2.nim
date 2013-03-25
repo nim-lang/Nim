@@ -14,9 +14,7 @@ import
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
 # 
-# * procvar checks
 # * effect+exception tracking
-# * closure analysis
 # * checks for invalid usages of compiletime magics (not implemented)
 # * checks for invalid usages of PNimNode (not implemented)
 # * later: will do an escape analysis for closures at least
