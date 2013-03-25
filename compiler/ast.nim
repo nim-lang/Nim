@@ -764,7 +764,7 @@ const
   dispatcherPos* = 8 # caution: if method has no 'result' it can be position 5!
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
-                  nkCommand, nkCallStrLit}
+                  nkCommand, nkCallStrLit, nkHiddenCallConv}
 
   nkLambdaKinds* = {nkLambda, nkDo}
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}

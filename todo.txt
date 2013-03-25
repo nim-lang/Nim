@@ -13,6 +13,7 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - document NimMain and check whether it works for threading
+- a project wide override option for 'dynlib'
 
 
 Bugs

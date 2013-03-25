@@ -177,12 +177,12 @@ proc NotFoundError*(c: PContext, n: PNode) =
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
       if nt.isNil:
-        n.sons[i].sons[1] = c.semExprWithType(c, n.sons[i].sons[1])
+        n.sons[i].sons[1] = c.semOperand(c, n.sons[i].sons[1])
         nt = n.sons[i].sons[1].typ
         n.sons[i].typ = nt
     else:
       if nt.isNil:
-        n.sons[i] = c.semExprWithType(c, n.sons[i])
+        n.sons[i] = c.semOperand(c, n.sons[i])
         nt = n.sons[i].typ
     if nt.kind == tyError: return
     add(result, typeToString(nt))
@@ -812,13 +812,13 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
-    result = c.semExprWithType(c, a, {efDetermineType})
+    result = c.semOperand(c, a, {efDetermineType})
   else:
     result = a
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
   if a.typ.isNil:
-    result = c.semExprWithType(c, a, {efDetermineType})
+    result = c.semOperand(c, a, {efDetermineType})
   else:
     result = a
 
