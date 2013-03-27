@@ -121,7 +121,7 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
     var buf = TaintedString""
     var dataAvail = false
     while dataAvail:
-      dataAvail = recvLine(client, buf)
+      dataAvail = recvLine(client, buf) # TODO: This is incorrect.
       var L = toLower(buf.string)
       if L.startsWith("content-length:"):
         var i = len("content-length:")
@@ -256,7 +256,7 @@ proc next*(s: var TServer) =
   s.headers = newStringTable(modeCaseInsensitive)
   #headers(s.client, "")
   var data = ""
-  while not s.client.recvLine(data): nil
+  s.client.readLine(data)
   if data == "":
     # Socket disconnected 
     s.client.close()
@@ -264,21 +264,21 @@ proc next*(s: var TServer) =
     return
   var header = ""
   while true:
-    if s.client.recvLine(header):
-      if header == "\c\L": break
-      if header != "":
-        var i = 0
-        var key = ""
-        var value = ""
-        i = header.parseUntil(key, ':')
-        inc(i) # skip :
-        i += header.skipWhiteSpace(i)
-        i += header.parseUntil(value, {'\c', '\L'}, i)
-        s.headers[key] = value
-      else:
-        s.client.close()
-        next(s)
-        return
+    s.client.readLine(header)
+    if header == "\c\L": break
+    if header != "":
+      var i = 0
+      var key = ""
+      var value = ""
+      i = header.parseUntil(key, ':')
+      inc(i) # skip :
+      i += header.skipWhiteSpace(i)
+      i += header.parseUntil(value, {'\c', '\L'}, i)
+      s.headers[key] = value
+    else:
+      s.client.close()
+      next(s)
+      return
   
   var i = skipWhitespace(data)
   if skipIgnoreCase(data, "GET") > 0: 
@@ -382,27 +382,27 @@ proc nextAsync(s: PAsyncHTTPServer) =
   s.headers = newStringTable(modeCaseInsensitive)
   #headers(s.client, "")
   var data = ""
-  while not s.client.recvLine(data): nil
+  s.client.readLine(data)
   if data == "":
     # Socket disconnected 
     s.client.close()
     return
   var header = ""
   while true:
-    if s.client.recvLine(header):
-      if header == "\c\L": break
-      if header != "":
-        var i = 0
-        var key = ""
-        var value = ""
-        i = header.parseUntil(key, ':')
-        inc(i) # skip :
-        i += header.skipWhiteSpace(i)
-        i += header.parseUntil(value, {'\c', '\L'}, i)
-        s.headers[key] = value
-      else:
-        s.client.close()
-        return
+    s.client.readLine(header) # TODO: Very inefficient here. Prone to DOS.
+    if header == "\c\L": break
+    if header != "":
+      var i = 0
+      var key = ""
+      var value = ""
+      i = header.parseUntil(key, ':')
+      inc(i) # skip :
+      i += header.skipWhiteSpace(i)
+      i += header.parseUntil(value, {'\c', '\L'}, i)
+      s.headers[key] = value
+    else:
+      s.client.close()
+      return
   
   var i = skipWhitespace(data)
   if skipIgnoreCase(data, "GET") > 0: 
