@@ -602,7 +602,8 @@ proc parsePostfix(p: var TRstParser, n: PRstNode): PRstNode =
 proc matchVerbatim(p: TRstParser, start: int, expr: string): int =
   result = start
   var j = 0
-  while j < expr.len and continuesWith(expr, p.tok[result].symbol, j):
+  while j < expr.len and result < p.tok.len and
+        continuesWith(expr, p.tok[result].symbol, j):
     inc j, p.tok[result].symbol.len
     inc result
   if j < expr.len: result = 0
