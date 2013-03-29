@@ -312,20 +312,22 @@ proc chunkUnused(c: PChunk): bool {.inline.} =
 
 iterator allObjects(m: TMemRegion): pointer {.inline.} =
   for s in elements(m.chunkStarts):
-    let c = cast[PChunk](s shl PageShift)
-    if not chunkUnused(c):
-      if isSmallChunk(c):
-        var c = cast[PSmallChunk](c)
-        
-        let size = c.size
-        var a = cast[TAddress](addr(c.data))
-        let limit = a + c.acc
-        while a <% limit:
-          yield cast[pointer](a)
-          a = a +% size
-      else:
-        let c = cast[PBigChunk](c)
-        yield addr(c.data)
+    # we need to check here again as it could have been modified:
+    if s in m.chunkStarts:
+      let c = cast[PChunk](s shl PageShift)
+      if not chunkUnused(c):
+        if isSmallChunk(c):
+          var c = cast[PSmallChunk](c)
+          
+          let size = c.size
+          var a = cast[TAddress](addr(c.data))
+          let limit = a + c.acc
+          while a <% limit:
+            yield cast[pointer](a)
+            a = a +% size
+        else:
+          let c = cast[PBigChunk](c)
+          yield addr(c.data)
 
 proc isCell(p: pointer): bool {.inline.} =
   result = cast[ptr TFreeCell](p).zeroField >% 1
