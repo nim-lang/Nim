@@ -346,11 +346,10 @@ proc canFormAcycleAux(marker: var TIntSet, typ: PType, startId: int): bool =
     #if t.kind == tyObject and tfFinal notin t.flags:
     #  # damn inheritance may introduce cycles:
     #  result = true
+  of tyProc: result = typ.callConv == ccClosure
   else: nil
 
-proc canFormAcycle(typ: PType): bool = 
-  # XXX as I expect cycles introduced by closures are very rare, we pretend 
-  # they can't happen here.
+proc canFormAcycle(typ: PType): bool =
   var marker = InitIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)
 
