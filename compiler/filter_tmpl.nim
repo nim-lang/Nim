@@ -98,7 +98,13 @@ proc parseLine(p: var TTmplParser) =
     of wElif, wOf, wElse, wExcept, wFinally: 
       LLStreamWrite(p.outp, repeatChar(p.indent - 2))
       LLStreamWrite(p.outp, substr(p.x, d))
-    else: 
+    of wLet, wVar, wConst, wType:
+      LLStreamWrite(p.outp, repeatChar(p.indent))
+      LLStreamWrite(p.outp, substr(p.x, d))
+      if not p.x.contains({':', '='}):
+        # no inline element --> treat as block:
+        inc(p.indent, 2)
+    else:
       LLStreamWrite(p.outp, repeatChar(p.indent))
       LLStreamWrite(p.outp, substr(p.x, d))
     p.state = psDirective
