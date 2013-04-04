@@ -83,7 +83,7 @@ proc serve*(action: proc (){.nimcall.}) =
     new(stdoutSocket)
     while true:
       accept(server, stdoutSocket)
-      discard stdoutSocket.recvLine(inp)
+      stdoutSocket.readLine(inp)
       execute inp.string
       stdoutSocket.send("\c\L")
       stdoutSocket.close()

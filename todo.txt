@@ -30,7 +30,6 @@ Bugs
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
 - bootstrapping does not work in C++ mode
-- the new m&s GC is still buggy
 
 
 version 0.9.4

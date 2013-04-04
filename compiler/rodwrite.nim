@@ -205,6 +205,9 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     return
   # we need no surrounding [] here because the type is in a line of its own
   if t.kind == tyForward: InternalError("encodeType: tyForward")
+  # for the new rodfile viewer we use a preceeding [ so that the data section
+  # can easily be disambiguated:
+  add(result, '[')
   encodeVInt(ord(t.kind), result)
   add(result, '+')
   encodeVInt(t.id, result)
