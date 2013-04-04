@@ -1597,6 +1597,18 @@ proc `$`*[T: tuple|object](x: T): string =
     result.add($value)
   result.add(")")
 
+proc `$`*[T: set](x: T): string = 
+  ## generic ``$`` operator for sets that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   ${23, 45} == "{23, 45}"
+  result = "{"
+  for value in items(x):
+    if result.len > 1: result.add(", ")
+    result.add($value)
+  result.add("}")
+
 when false:
   proc `$`*[T](a: openArray[T]): string = 
     ## generic ``$`` operator for open arrays that is lifted from the elements

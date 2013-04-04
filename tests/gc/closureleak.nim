@@ -30,4 +30,4 @@ for i in 0 .. <10:
     echo f.id
 
 gc_fullcollect()
-echo alive_foos.len <= 2
+echo alive_foos.len <= 3
