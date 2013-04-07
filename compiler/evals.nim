@@ -295,8 +295,9 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     # XXX var (x, y) = z support?
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.sons[2].kind != nkEmpty:
-      # XXX copyTree could be avoided in some cases
-      result = evalAux(c, a.sons[2], {}).copyTree
+      result = evalAux(c, a.sons[2], {})
+      if result.kind in {nkType..nkNilLit}: 
+        result = result.copyNode
       if isSpecial(result): return
     else:
       result = getNullValue(a.sons[0].typ, a.sons[0].info)

@@ -333,9 +333,11 @@ proc nestList*(theProc: TNimrodIdent,
   ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.
   var L = x.len
   result = newCall(theProc, x[L-2], x[L-1])
-  var a = result
   for i in countdown(L-3, 0):
-    a = newCall(theProc, x[i], copyNimTree(a))
+    # XXX the 'copyNimTree' here is necessary due to a bug in the evaluation
+    # engine that would otherwise create an endless loop here. :-(
+    # This could easily user code and so should be fixed in evals.nim somehow.
+    result = newCall(theProc, x[i], copyNimTree(result))
 
 proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable tree-like string.
