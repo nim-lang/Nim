@@ -294,10 +294,11 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     if a.kind != nkIdentDefs: return raiseCannotEval(c, n.info)
     # XXX var (x, y) = z support?
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
-    if a.sons[2].kind != nkEmpty: 
-      result = evalAux(c, a.sons[2], {})
-      if isSpecial(result): return 
-    else: 
+    if a.sons[2].kind != nkEmpty:
+      # XXX copyTree could be avoided in some cases
+      result = evalAux(c, a.sons[2], {}).copyTree
+      if isSpecial(result): return
+    else:
       result = getNullValue(a.sons[0].typ, a.sons[0].info)
     if a.sons[0].kind == nkSym:
       var v = a.sons[0].sym
@@ -1351,10 +1352,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   case n.kind
   of nkSym: result = evalSym(c, n, flags)
   of nkType..nkNilLit:
-    # XXX nkStrLit is VERY common in the traces, so we should avoid
-    # the 'copyNode' here. However, for now we cannot do this for unknown
-    # reasons.
-    result = n.copyNode
+    # nkStrLit is VERY common in the traces, so we should avoid
+    # the 'copyNode' here.
+    result = n #.copyNode
   of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
   of nkCommand..nkHiddenCallConv:
     result = evalMagicOrCall(c, n)
