@@ -443,10 +443,15 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
     for i in countup(0, sonsLen(n) - 1):
       searchForInnerProcs(o, n.sons[i])
 
-proc newAsgnStmt(le, ri: PNode): PNode = 
-  result = newNodeI(nkFastAsgn, ri.info)
-  result.add(le)
-  result.add(ri)
+proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode = 
+  # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
+  # mean to be able to capture string literals which have no GC header.
+  # However this can only happen if the capture happens through a parameter,
+  # which is however the only case when we generate an assignment in the first
+  # place.
+  result = newNodeI(nkAsgn, info, 2)
+  result.sons[0] = le
+  result.sons[1] = ri
 
 proc addVar*(father, v: PNode) = 
   var vpart = newNodeI(nkIdentDefs, v.info)
@@ -481,13 +486,13 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
     if local.kind == skParam:
       # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
-      result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
+      result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
     IdNodeTablePut(o.localsToAccess, local, fieldAccess)
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
     result.add(newAsgnStmt(indirectAccess(env, field, env.info),
-               newSymNode(getClosureVar(o, e))))
+               newSymNode(getClosureVar(o, e)), env.info))
 
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   if n == nil: return nil
