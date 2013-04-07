@@ -126,8 +126,8 @@ type
     s: cstring               # mmap'ed file contents
     options: TOptions
     reason: TReasonForRecompile
-    modDeps: TStringSeq
-    files: TStringSeq
+    modDeps: seq[int32]
+    files: seq[int32]
     dataIdx: int             # offset of start of data section
     convertersIdx: int       # offset of start of converters section
     initIdx, interfIdx, compilerProcsIdx, methodsIdx: int
@@ -586,9 +586,10 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while r.s[r.pos] != ')':
-        var relativePath = decodeStr(r.s, r.pos)
-        var resolvedPath = relativePath.findModule
-        r.files.add(if resolvedPath.len > 0: resolvedPath else: relativePath)
+        let relativePath = decodeStr(r.s, r.pos)
+        let resolvedPath = relativePath.findModule
+        let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
+        r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
         inc(r.line)
       if r.s[r.pos] == ')': inc(r.pos)
@@ -596,7 +597,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while r.s[r.pos] != ')': 
-        w = r.files[decodeVInt(r.s, r.pos)]
+        w = r.files[decodeVInt(r.s, r.pos)].toFullPath
         inc(r.pos)            # skip ' '
         inclCrc = decodeVInt(r.s, r.pos)
         if r.reason == rrNone: 
@@ -827,8 +828,8 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
       # this, since results are cached.
       var res = checkDep(SystemFileIdx)
       if res != rrNone: result = rrModDeps
-      for i in countup(0, high(r.modDeps)): 
-        res = checkDep(r.modDeps[i].fileInfoIdx)
+      for i in countup(0, high(r.modDeps)):
+        res = checkDep(r.modDeps[i])
         if res != rrNone:
           result = rrModDeps
           # we cannot break here, because of side-effects of `checkDep`
@@ -1062,11 +1063,11 @@ proc viewFile(rodfile: string) =
       while r.s[r.pos] != ')':
         let relativePath = decodeStr(r.s, r.pos)
         let resolvedPath = relativePath.findModule
-        let rr = if resolvedPath.len > 0: resolvedPath else: relativePath
-        r.files.add(rr)
+        let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
+        r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
         inc(r.line)
-        outf.writeln(rr)
+        outf.writeln finalPath
       if r.s[r.pos] == ')': inc(r.pos)
       outf.write(")\n")
     of "INCLUDES": 
