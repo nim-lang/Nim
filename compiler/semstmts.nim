@@ -203,11 +203,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
-    else: 
+    else:
       typ = nil
     var def: PNode
-    if a.sons[length-1].kind != nkEmpty: 
-      def = semExprWithType(c, a.sons[length-1])
+    if a.sons[length-1].kind != nkEmpty:
+      def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       # BUGFIX: ``fitNode`` is needed here!
       # check type compability between def.typ and typ:
       if typ != nil: def = fitNode(c, typ, def)

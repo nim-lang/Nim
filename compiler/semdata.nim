@@ -41,7 +41,8 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum 
-    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType
+    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
+    efAllowDestructor
   TExprFlags* = set[TExprFlag]
     
   PContext* = ref TContext

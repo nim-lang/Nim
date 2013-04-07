@@ -31,6 +31,12 @@ proc semProcvarCheck(c: PContext, n: PNode) =
                                         skConverter}:
     performProcvarCheck(c, n, n.sym)
 
+proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
+  if efAllowDestructor notin flags and n.kind in nkCallKinds+{nkObjConstr}:
+    if instantiateDestructor(c, n.typ):
+      LocalError(n.info, errGenerated,
+        "usage of a type with a destructor in a non destructible context")
+
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags)
@@ -56,6 +62,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
+    semDestructorCheck(c, result, flags)
   else:
     LocalError(n.info, errExprXHasNoType, 
                renderTree(result, {renderNoComments}))
@@ -72,6 +79,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
   else:
     semProcvarCheck(c, result)
+    semDestructorCheck(c, result, flags)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -390,13 +398,13 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
   result = typ
 
-proc semArrayConstr(c: PContext, n: PNode): PNode = 
+proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArrayConstr, c)
   rawAddSon(result.typ, nil)     # index type
   if sonsLen(n) == 0: 
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
-  else: 
+  else:
     var x = n.sons[0]
     var lastIndex: biggestInt = 0
     var indexType = getSysType(tyInt)
@@ -419,7 +427,7 @@ proc semArrayConstr(c: PContext, n: PNode): PNode =
           localError(x.info, errInvalidOrderInArrayConstructor)
         x = x.sons[1]
       
-      n.sons[i] = semExprWithType(c, x)
+      n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       addSon(result, fitNode(c, typ, n.sons[i]))
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
@@ -457,7 +465,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
         n.sons[i] = it.sons[1]
     of nkBracket: 
       # an implicitely constructed array (passed to an open array):
-      n.sons[i] = semArrayConstr(c, it)
+      n.sons[i] = semArrayConstr(c, it, {})
     else: 
       nil
       #if (it.typ == nil): 
@@ -628,7 +636,7 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                  flags: TExprFlags): PNode =
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
 
-proc semObjConstr(c: PContext, n: PNode): PNode
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = nil
   checkMinSonsLen(n, 1)
@@ -682,7 +690,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # has side-effects:
     if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
-    if n.len == 1: return semObjConstr(c, n)
+    if n.len == 1: return semObjConstr(c, n, flags)
     let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
     result = semConv(c, n, symFromType(destType, n.info))
     return
@@ -1099,11 +1107,13 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     localError(a.info, errXCannotBeAssignedTo, 
                renderTree(a, {renderNoComments}))
   else:
-    var 
-      rhs = semExprWithType(c, n.sons[1])
+    let
       lhs = n.sons[0]
-    if lhs.kind == nkSym and lhs.sym.kind == skResult and
-       lhs.sym.typ.kind == tyGenericParam:
+      lhsIsResult = lhs.kind == nkSym and lhs.sym.kind == skResult
+    var
+      rhs = semExprWithType(c, n.sons[1], 
+        if lhsIsResult: {efAllowDestructor} else: {})
+    if lhsIsResult and lhs.sym.typ.kind == tyGenericParam:
       if matchTypeClass(lhs.typ, rhs.typ):
         InternalAssert c.p.resultSym != nil
         lhs.typ = rhs.typ
@@ -1548,21 +1558,22 @@ proc checkPar(n: PNode): TParKind =
           LocalError(n.sons[i].info, errNamedExprNotAllowed)
           return paNone
 
-proc semTupleFieldsConstr(c: PContext, n: PNode): PNode = 
+proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkPar, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
-  for i in countup(0, sonsLen(n) - 1): 
+  for i in countup(0, sonsLen(n) - 1):
     if (n.sons[i].kind != nkExprColonExpr) or
-        not (n.sons[i].sons[0].kind in {nkSym, nkIdent}): 
+        not (n.sons[i].sons[0].kind in {nkSym, nkIdent}):
       illFormedAst(n.sons[i])
     var id: PIdent
     if n.sons[i].sons[0].kind == nkIdent: id = n.sons[i].sons[0].ident
     else: id = n.sons[i].sons[0].sym.name
     if ContainsOrIncl(ids, id.id): 
       localError(n.sons[i].info, errFieldInitTwice, id.s)
-    n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1])
+    n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1],
+                                        flags*{efAllowDestructor})
     var f = newSymS(skField, n.sons[i].sons[0], c)
     f.typ = skipIntLit(n.sons[i].sons[1].typ)
     rawAddSon(typ, f.typ)
@@ -1571,15 +1582,15 @@ proc semTupleFieldsConstr(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[i])
   result.typ = typ
 
-proc semTuplePositionsConstr(c: PContext, n: PNode): PNode = 
+proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   result = n                  # we don't modify n, but compute the type:
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in countup(0, sonsLen(n) - 1): 
-    n.sons[i] = semExprWithType(c, n.sons[i])
+    n.sons[i] = semExprWithType(c, n.sons[i], flags*{efAllowDestructor})
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
-proc semObjConstr(c: PContext, n: PNode): PNode =
+proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = n
   result.typ = t
@@ -1600,8 +1611,7 @@ proc semObjConstr(c: PContext, n: PNode): PNode =
     else: id = it.sons[0].sym.name
     if ContainsOrIncl(ids, id.id):
       localError(it.info, errFieldInitTwice, id.s)
-    var e = semExprWithType(c, it.sons[1])
-
+    var e = semExprWithType(c, it.sons[1], flags*{efAllowDestructor})
     var
       check: PNode = nil
       f: PSym
@@ -1830,7 +1840,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         if n.len == 2:
           result = semConv(c, n, s)
         elif n.len == 1:
-          result = semObjConstr(c, n)
+          result = semObjConstr(c, n, flags)
         elif Contains(c.AmbiguousSymbols, s.id): 
           LocalError(n.info, errUseQualifier, s.name.s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
@@ -1869,12 +1879,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkPar: 
     case checkPar(n)
     of paNone: result = errorNode(c, n)
-    of paTuplePositions: result = semTuplePositionsConstr(c, n)
-    of paTupleFields: result = semTupleFieldsConstr(c, n)
+    of paTuplePositions: result = semTuplePositionsConstr(c, n, flags)
+    of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
-  of nkBracket: result = semArrayConstr(c, n)
-  of nkObjConstr: result = semObjConstr(c, n)
+  of nkBracket: result = semArrayConstr(c, n, flags)
+  of nkObjConstr: result = semObjConstr(c, n, flags)
   of nkLambdaKinds: result = semLambda(c, n, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr: 
