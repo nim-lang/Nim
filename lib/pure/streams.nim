@@ -238,7 +238,10 @@ type
   TFileStream* = object of TStream
     f: TFile
 
-proc fsClose(s: PStream) = close(PFileStream(s).f)
+proc fsClose(s: PStream) =
+  if PFileStream(s).f != nil:
+    close(PFileStream(s).f)
+    PFileStream(s).f = nil
 proc fsFlush(s: PStream) = flushFile(PFileStream(s).f)
 proc fsAtEnd(s: PStream): bool = return EndOfFile(PFileStream(s).f)
 proc fsSetPosition(s: PStream, pos: int) = setFilePos(PFileStream(s).f, pos)
