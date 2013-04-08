@@ -996,7 +996,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 
-      n.sons[i] = semExprWithType(c, n.sons[i], flags)
+      n.sons[i] = semExprWithType(c, n.sons[i], 
+                                  flags*{efInTypeof, efDetermineType})
     var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(tyInt)
     var arg = IndexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
     if arg != nil:
