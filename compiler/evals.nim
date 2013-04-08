@@ -1495,11 +1495,13 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   c.callsite = nOrig
   var s = newStackFrame()
   s.call = n
-  setlen(s.params, n.len)
+  var L = n.safeLen
+  if L == 0: L = 1
+  setlen(s.params, L)
   # return value:
   s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1 .. < n.len: s.params[i] = setupMacroParam(n.sons[i])
+  for i in 1 .. < L: s.params[i] = setupMacroParam(n.sons[i])
   pushStackFrame(c, s)
   discard eval(c, sym.getBody)
   result = s.params[0]
