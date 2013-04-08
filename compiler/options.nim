@@ -110,6 +110,9 @@ var
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 
+template compilationCachePresent*: expr =
+  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+
 const 
   genSubDir* = "nimcache"
   NimExt* = "nim"

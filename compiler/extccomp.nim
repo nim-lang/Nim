@@ -392,7 +392,7 @@ proc resetCompilationLists* =
   initLinkedList(toLink)
 
 proc addFileToLink*(filename: string) =
-  prependStr(toLink, filename) 
+  prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
 proc execExternalProgram*(cmd: string) = 

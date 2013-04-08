@@ -252,8 +252,8 @@ proc CommandCompileToC =
 
   compileProject()
 
-  if optCaasEnabled in gGlobalOptions:
-    cgenCaasUpdate()
+  if compilationCachePresent:
+    updateCachedModules()
 
   if gCmd != cmdRun:
     extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))

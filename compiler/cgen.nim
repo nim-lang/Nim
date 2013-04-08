@@ -1254,7 +1254,7 @@ proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
   let cfilenoext = changeFileExt(cfile, "")
   
-  if mergeRequired(m):
+  if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1264,8 +1264,7 @@ proc updateCachedModule(m: BModule) =
 
   addFileToLink(cfilenoext)
 
-proc cgenCaasUpdate* =
-  # XXX(zah): clean-up the fromCache mess
+proc updateCachedModules* =
   for m in cgenModules():
     if m.fromCache: m.updateCachedModule
 
