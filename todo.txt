@@ -1,7 +1,6 @@
 version 0.9.2
 =============
 
-- a project wide override option for 'dynlib'
 - FFI:
   * test libffi on windows
   * test: times.format with the FFI
@@ -29,6 +28,7 @@ Bugs
 version 0.9.4
 =============
 
+- ``try`` as an expression
 - provide tool/API to track leaks/object counts
 - hybrid GC
 - use big blocks in the allocator
