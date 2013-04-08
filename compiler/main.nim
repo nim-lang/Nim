@@ -155,7 +155,8 @@ proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
     growCache gMemCacheData, fileIdx
     gMemCacheData[fileIdx].needsRecompile = Probing
     result = newModule(fileIdx)
-    var rd = handleSymbolFile(result)
+    #var rd = handleSymbolFile(result)
+    var rd: PRodReader
     result.flags = result.flags + flags
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
       rd = handleSymbolFile(result)
