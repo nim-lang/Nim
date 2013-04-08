@@ -1303,10 +1303,11 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
   ## The minimum value of two integers.
 
-proc min*[T](x: varargs[T]): T = 
-  ## The minimum value of `x`.
+proc min*[T](x: varargs[T]): T =
+  ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
-  for i in 1..high(x): result = min(result, x[i])
+  for i in 1..high(x):
+    if x[i] < result: result = x[i]
 
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
@@ -1315,10 +1316,11 @@ proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
   ## The maximum value of two integers.
 
-proc max*[T](x: varargs[T]): T = 
-  ## The maximum value of `x`.
+proc max*[T](x: varargs[T]): T =
+  ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
-  for i in 1..high(x): result = max(result, x[i])
+  for i in 1..high(x):
+    if result < x[i]: result = x[i]
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b] 
