@@ -1,7 +1,6 @@
 version 0.9.2
 =============
 
-- document destructors restrictions
 - a project wide override option for 'dynlib'
 - FFI:
   * test libffi on windows

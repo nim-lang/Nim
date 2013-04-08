@@ -4410,6 +4410,40 @@ generate a destructor for the record type. Nimrod will automatically insert
 calls to any base class destructors in both user-defined and generated
 destructors.
 
+A destructor is attached to the type it destructs; expressions of this type
+can then only be used in *destructible contexts*:
+
+.. code-block:: nimrod
+  type  
+    TMyObj = object
+      x, y: int
+      p: pointer
+      
+  proc destruct(o: var TMyObj) {.destructor.} =
+    if o.p != nil: dealloc o.p
+    
+  proc open: TMyObj =
+    result = TMyObj(x: 1, y: 2, p: alloc(3))
+ 
+  proc main() =
+    # destructor automatically invoked at the end of the scope:
+    var x = open()
+    
+    # Error: usage of a type with a destructor in a non destructible context
+    echo open()
+
+A destructible context is currently only the following:
+
+1. The ``expr`` in ``var x = expr``.
+2. The ``expr`` in ``let x = expr``.
+3. The ``expr`` in ``return expr``.
+4. The ``expr`` in ``result = expr`` where ``result`` is the special symbol
+   introduced by the compiler.
+
+These rules ensure that the construction is tied to a variable and can easily
+be destructed at its scope exit. Later versions of the language will improve
+the support of destructors.
+
 
 procvar pragma
 --------------
