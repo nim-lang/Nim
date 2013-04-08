@@ -140,6 +140,7 @@ type
     memfile: TMemFile    # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
+    inViewMode: bool
   
   PRodReader* = ref TRodReader
 
@@ -386,7 +387,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     if debugIds: registerID(result)
   elif result.id != id:
     InternalError(info, "decodeSym: wrong id")
-  elif result.kind != skStub:
+  elif result.kind != skStub and not r.inViewMode:
     # we already loaded the symbol
     return
   else:
@@ -1022,6 +1023,7 @@ proc viewFile(rodfile: string) =
     rawMessage(errGenerated, "cannot open file (or maybe wrong version):" &
        rodfile)
     return
+  r.inViewMode = true
   var outf = system.open(rodfile.changeFileExt(".rod.txt"), fmWrite)
   while r.s[r.pos] != '\0':
     let section = rdWord(r)
@@ -1154,7 +1156,7 @@ proc viewFile(rodfile: string) =
         #outf.write("\n")
         #r.pos = p
       if r.s[r.pos] == ')': inc r.pos
-      outf.write("\n")
+      outf.write("<not supported by viewer>)\n")
     else:
       InternalError("invalid section: '" & section &
                     "' at " & $r.line & " in " & r.filename)
