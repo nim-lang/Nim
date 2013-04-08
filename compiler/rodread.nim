@@ -729,8 +729,14 @@ proc findSomeWhere(id: int) =
         echo "found id ", id, " in ", gMods[i].filename
 
 proc getReader(moduleId: int): PRodReader =
-  InternalAssert moduleId >= 0 and moduleId < gMods.len
-  result = gMods[moduleId].rd
+  # we can't index 'gMods' here as it's indexed by a *file index* which is not
+  # the module ID! We could introduce a mapping ID->PRodReader but I'll leave
+  # this for later versions if benchmarking shows the linear search causes
+  # problems:
+  for i in 0 .. <gMods.len:
+    result = gMods[i].rd
+    if result != nil and result.moduleId == moduleId: return result
+  return nil
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym = 
   result = PSym(IdTableGet(r.syms, id))
