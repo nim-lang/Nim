@@ -1141,6 +1141,8 @@ proc genConstant(p: var TProc, c: PSym, r: var TCompRes) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
     genLineDir(p, c.ast, r)
     genVarInit(p, c, c.ast, r)
+    app(p.g.code, r.com)
+    r.com = nil
 
 when false:
   proc genConstStmt(p: var TProc, n: PNode, r: var TCompRes) =
