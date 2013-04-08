@@ -113,6 +113,12 @@ proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 template compilationCachePresent*: expr =
   {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
+template optPreserveOrigSource*: expr =
+  optEmbedOrigSrc in gGlobalOptions
+
+template optPrintSurroundingSrc*: expr =
+  gVerbosity >= 2
+
 const 
   genSubDir* = "nimcache"
   NimExt* = "nim"
