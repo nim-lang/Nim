@@ -594,6 +594,7 @@ type
   TLib* = object of lists.TListEntry # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
+    isOverriden*: bool
     name*: PRope
     path*: PNode              # can be a string literal!
   

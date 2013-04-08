@@ -202,6 +202,8 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   result = newLib(kind)
   result.path = path
   Append(c.libs, result)
+  if path.kind in {nkStrLit..nkTripleStrLit}:
+    result.isOverriden = options.isDynLibOverride(path.strVal)
 
 proc expectDynlibNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr:
@@ -225,8 +227,9 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
-      addToLib(lib, sym)
-      incl(sym.loc.flags, lfDynamicLib)
+      if not lib.isOverriden:
+        addToLib(lib, sym)
+        incl(sym.loc.flags, lfDynamicLib)
     else:
       incl(sym.loc.flags, lfExportLib)
     # since we'll be loading the dynlib symbols dynamically, we must use

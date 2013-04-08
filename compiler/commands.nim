@@ -212,6 +212,11 @@ proc track(arg: string, info: TLineInfo) =
     LocalError(info, errInvalidNumber, a[2])
   msgs.addCheckpoint(newLineInfo(a[0], line, column))
 
+proc dynlibOverride(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
+  if pass in {passCmd2, passPP}:
+    expectArg(switch, arg, pass, info)
+    options.inclDynlibOverride(arg)
+
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
     theOS: TSystemOS
@@ -480,6 +485,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "listfullpaths":
     expectNoArg(switch, arg, pass, info)
     gListFullPaths = true
+  of "dynliboverride":
+    dynlibOverride(switch, arg, pass, info)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)

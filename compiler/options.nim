@@ -124,6 +124,7 @@ const
 # additional configuration variables:
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
+  gDllOverrides = newStringtable(modeCaseInsensitive)
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
@@ -255,6 +256,20 @@ proc libCandidates*(s: string, dest: var seq[string]) =
       libCandidates(prefix & middle & suffix, dest)
   else: 
     add(dest, s)
+
+proc canonDynlibName(s: string): string =
+  let start = if s.startsWith("lib"): 3 else: 0
+  let ende = strutils.find(s, {'(', ')', '.'})
+  if ende >= 0:
+    result = s.substr(start, ende-1)
+  else:
+    result = s.substr(start)
+
+proc inclDynlibOverride*(lib: string) =
+  gDllOverrides[lib.canonDynlibName] = "true"
+
+proc isDynlibOverride*(lib: string): bool =
+  result = gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0
