@@ -222,10 +222,11 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           let bound = result.typ.sons[0].sym
           if bound != nil:
             return bound
-          else:
-            return result.typ.sym
-        else:
-          return result.typ.sym
+          return result
+        if result.typ.sym == nil:
+          LocalError(n.info, errTypeExpected)
+          return errorSym(c, n)
+        return result.typ.sym
       if result.kind != skType: 
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
@@ -876,6 +877,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if s.typ == nil: 
       if s.kind != skError: LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
+    elif s.kind == skParam and s.typ.kind == tyTypeDesc:
+      assert s.typ.len > 0
+      InternalAssert prev == nil
+      result = s.typ.sons[0]
     elif prev == nil:
       result = s.typ
     else: 
