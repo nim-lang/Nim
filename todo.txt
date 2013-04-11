@@ -28,6 +28,7 @@ Bugs
 version 0.9.4
 =============
 
+- macros as type pragmas
 - ``try`` as an expression
 - provide tool/API to track leaks/object counts
 - hybrid GC

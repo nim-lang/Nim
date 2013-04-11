@@ -746,7 +746,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
 proc isExprStart(p: TParser): bool = 
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, 
-     tkProc, tkIterator, tkBind, 
+     tkProc, tkIterator, tkBind, tkAddr,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, 
      tkTuple, tkObject, tkType, tkWhen, tkCase, tkShared:
     result = true
