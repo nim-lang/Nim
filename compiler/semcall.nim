@@ -174,7 +174,10 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # common case; check the only candidate has the right
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
-      return explicitGenericInstError(n)
+      let expected = safeLen(s.ast.sons[genericParamsPos])
+      LocalError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
+         "; got " & $(n.len-1) & " type(s) but expected " & $expected)
+      return n
     result = explicitGenericSym(c, n, s)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
