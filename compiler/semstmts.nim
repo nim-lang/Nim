@@ -166,10 +166,10 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
   result = fitNode(c, typ, n)
   if result.kind in {nkHiddenStdConv, nkHiddenSubConv}: 
-    changeType(result.sons[1], typ)
+    changeType(result.sons[1], typ, check=true)
     result = result.sons[1]
-  elif not sameType(result.typ, typ): 
-    changeType(result, typ)
+  elif not sameType(result.typ, typ):
+    changeType(result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
   for i in countdown(c.tab.tos - 2, ModuleTablePos+1):

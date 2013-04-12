@@ -485,8 +485,8 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyPtr, tyRef, tyVar, tyMutable, tyConst: 
     result = typeToStr[t.kind] & typeToString(t.sons[0])
-  of tyRange: 
-    result = "range " & rangeToStr(t.n)
+  of tyRange:
+    result = "range " & rangeToStr(t.n) & "(" & typeToString(t.sons[0]) & ")"
   of tyProc:
     result = if tfIterator in t.flags: "iterator (" else: "proc ("
     for i in countup(1, sonsLen(t) - 1): 
