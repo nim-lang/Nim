@@ -575,6 +575,8 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     if lib.path.kind in {nkStrLit..nkTripleStrLit}:
       var s: TStringSeq = @[]
       libCandidates(lib.path.strVal, s)
+      if gVerbosity >= 2:
+        MsgWriteln("Dependency: " & lib.path.strVal)
       var loadlib: PRope = nil
       for i in countup(0, high(s)): 
         inc(m.labels)
