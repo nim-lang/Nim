@@ -180,11 +180,11 @@ proc getIndentAux(L: var TLexer, start: int): int =
   L.bufpos = pos              # no need to set back buf
   
 proc getIndent(L: var TLexer, tok: var TToken) = 
-  inc(L.line)
-  tok.line = L.line
   tok.col = 0
   tok.kind = tkIndent         # skip the newline (but include it in the token!)
   tok.ival = getIndentAux(L, L.bufpos)
+  inc L.line
+  tok.line = L.line
   L.col = tok.ival
   tok.ival = max(tok.ival - L.baseIndent, 0)
   tok.symbol = "\n" & repeatChar(tok.ival)
@@ -220,21 +220,26 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       inc(L.col)
   tok.col = max(tok.col - L.baseIndent, 0)
 
-proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq) = 
+proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq): int = 
   var L: TLexer
   var length = len(tokens)
   L.buf = cstring(buffer)
-  L.line = 1                  # skip UTF-8 BOM
+  L.line = 0                  # skip UTF-8 BOM
   if (L.buf[0] == '\xEF') and (L.buf[1] == '\xBB') and (L.buf[2] == '\xBF'): 
     inc(L.bufpos, 3)
   L.skipPounds = skipPounds
   if skipPounds: 
-    if L.buf[L.bufpos] == '#': inc(L.bufpos)
-    if L.buf[L.bufpos] == '#': inc(L.bufpos)
+    if L.buf[L.bufpos] == '#': 
+      inc(L.bufpos)
+      inc(result)
+    if L.buf[L.bufpos] == '#': 
+      inc(L.bufpos)
+      inc(result)
     L.baseIndent = 0
     while L.buf[L.bufpos] == ' ': 
       inc(L.bufpos)
       inc(L.baseIndent)
+      inc(result)
   while true: 
     inc(length)
     setlen(tokens, length)
@@ -314,7 +319,7 @@ proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) =
                              p.col + p.tok[p.idx].col, msgKind, arg)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string, line, col: int) = 
-  p.s.msgHandler(p.filename, p.line + line, 
+  p.s.msgHandler(p.filename, p.line + line,
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind) = 
@@ -692,6 +697,7 @@ proc parseUntil(p: var TRstParser, father: PRstNode, postfix: string,
   let
     line = p.tok[p.idx].line
     col = p.tok[p.idx].col
+  inc p.idx
   while true: 
     case p.tok[p.idx].kind
     of tkPunct: 
@@ -710,7 +716,7 @@ proc parseUntil(p: var TRstParser, father: PRstNode, postfix: string,
       add(father, newRstNode(rnLeaf, " "))
       inc(p.idx)
       if p.tok[p.idx].kind == tkIndent: 
-        rstMessage(p, meExpected, postfix)
+        rstMessage(p, meExpected, postfix, line, col)
         break 
     of tkWhite: 
       add(father, newRstNode(rnLeaf, " "))
@@ -751,17 +757,14 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
   case p.tok[p.idx].kind
   of tkPunct: 
     if isInlineMarkupStart(p, "***"):
-      inc(p.idx)
       var n = newRstNode(rnTripleEmphasis)
       parseUntil(p, n, "***", true)
       add(father, n)
     elif isInlineMarkupStart(p, "**"): 
-      inc(p.idx)
       var n = newRstNode(rnStrongEmphasis)
       parseUntil(p, n, "**", true)
       add(father, n)
     elif isInlineMarkupStart(p, "*"): 
-      inc(p.idx)
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       add(father, n)
@@ -769,18 +772,15 @@ proc parseInline(p: var TRstParser, father: PRstNode) =
       inc(p.idx)
       add(father, parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
-      inc(p.idx)
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
       add(father, n)
     elif isInlineMarkupStart(p, "`"): 
-      inc(p.idx)
       var n = newRstNode(rnInterpretedText)
       parseUntil(p, n, "`", true)
       n = parsePostfix(p, n)
       add(father, n)
     elif isInlineMarkupStart(p, "|"): 
-      inc(p.idx)
       var n = newRstNode(rnSubstitutionReferences)
       parseUntil(p, n, "|", false)
       add(father, n)
@@ -873,7 +873,6 @@ proc parseSection(p: var TRstParser, result: PRstNode)
 proc parseField(p: var TRstParser): PRstNode = 
   result = newRstNode(rnField)
   var col = p.tok[p.idx].col
-  inc(p.idx)                  # skip :
   var fieldname = newRstNode(rnFieldname)
   parseUntil(p, fieldname, ":", false)
   var fieldbody = newRstNode(rnFieldbody)
@@ -1156,7 +1155,7 @@ proc parseSimpleTable(p: var TRstParser): PRstNode =
       q.col = cols[j]
       q.line = line - 1
       q.filename = p.filename
-      getTokens(row[j], false, q.tok)
+      q.col += getTokens(row[j], false, q.tok)
       b = newRstNode(rnTableDataCell)
       add(b, parseDoc(q))
       add(a, b)
@@ -1459,11 +1458,11 @@ proc dirInclude(p: var TRstParser): PRstNode =
     if getFieldValue(n, "literal") != "": 
       result = newRstNode(rnLiteralBlock)
       add(result, newRstNode(rnLeaf, readFile(path)))
-    else: 
+    else:
       var q: TRstParser
       initParser(q, p.s)
       q.filename = filename
-      getTokens(readFile(path), false, q.tok) 
+      q.col += getTokens(readFile(path), false, q.tok) 
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
@@ -1634,7 +1633,6 @@ proc rstParse*(text, filename: string,
   initParser(p, newSharedState(options, findFile, msgHandler))
   p.filename = filename
   p.line = line
-  p.col = column
-  getTokens(text, roSkipPounds in options, p.tok)
+  p.col = column + getTokens(text, roSkipPounds in options, p.tok)
   result = resolveSubs(p, parseDoc(p))
   hasToc = p.hasToc
