@@ -1207,9 +1207,9 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
     addSon(result, ast.emptyNode)
   indAndComment(p, result)    # XXX: document this in the grammar!
   
-proc newCommentStmt(p: var TParser): PNode = 
+proc newCommentStmt(p: var TParser): PNode =
   result = newNodeP(nkCommentStmt, p)
-  result.info.line = result.info.line - int16(1)
+  result.info.line = result.info.line - int16(1) - int16(p.tok.iNumber)
 
 type 
   TDefParser = proc (p: var TParser): PNode {.nimcall.}

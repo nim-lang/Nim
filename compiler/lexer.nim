@@ -675,6 +675,8 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   # a comment ends if the next line does not start with the # on the same
   # column after only whitespace
   tok.tokType = tkComment
+  # iNumber contains the number of '\n' in the token
+  tok.iNumber = 0
   var col = getColNumber(L, pos)
   while true:
     var lastBackslash = -1
@@ -699,6 +701,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     if buf[pos] == '#' and (col == indent or lastBackslash > 0):
       tok.literal.add "\n"
       col = indent
+      inc tok.iNumber
     else:
       if buf[pos] > ' ': 
         L.indentAhead = indent
