@@ -547,6 +547,10 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
             LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return
   for i in countup(1, sonsLen(n) - 1):
+    if n.sons[i].kind == nkHiddenCallConv:
+      # we need to recurse explicitly here as converters can create nested
+      # calls and then they wouldn't be analysed otherwise
+      analyseIfAddressTakenInCall(c, n.sons[i])
     semProcvarCheck(c, n.sons[i])
     if i < sonsLen(t) and
         skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
