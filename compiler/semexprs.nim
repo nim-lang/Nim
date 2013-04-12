@@ -354,11 +354,11 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): addSon(result, n.sons[i])
     result = semExpr(c, result)
 
-proc changeType(n: PNode, newType: PType) = 
+proc changeType(n: PNode, newType: PType, check: bool) = 
   case n.kind
   of nkCurly, nkBracket: 
     for i in countup(0, sonsLen(n) - 1): 
-      changeType(n.sons[i], elemType(newType))
+      changeType(n.sons[i], elemType(newType), check)
   of nkPar: 
     if newType.kind != tyTuple: 
       InternalError(n.info, "changeType: no tuple type for constructor")
@@ -373,15 +373,21 @@ proc changeType(n: PNode, newType: PType) =
         if f == nil: 
           internalError(m.info, "changeType(): invalid identifier")
           return
-        changeType(n.sons[i].sons[1], f.typ)
+        changeType(n.sons[i].sons[1], f.typ, check)
     else:
       for i in countup(0, sonsLen(n) - 1):
         var m = n.sons[i]
         var a = newNodeIT(nkExprColonExpr, m.info, newType.sons[i])
         addSon(a, newSymNode(newType.n.sons[i].sym))
         addSon(a, m)
-        changeType(m, newType.sons[i])
+        changeType(m, newType.sons[i], check)
         n.sons[i] = a
+  of nkCharLit..nkUInt64Lit:
+    if check:
+      let value = n.intVal
+      if value < firstOrd(newType) or value > lastOrd(newType):
+        LocalError(n.info, errGenerated, "cannot convert " & $value &
+                                         " to " & typeToString(newType))
   else: nil
   n.typ = newType
 
@@ -461,7 +467,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
       elif skipTypes(it.sons[1].typ, abstractVar).kind in
           {tyNil, tyArrayConstr, tyTuple, tySet}: 
         var s = skipTypes(it.typ, abstractVar)
-        changeType(it.sons[1], s)
+        changeType(it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
     of nkBracket: 
       # an implicitely constructed array (passed to an open array):
@@ -560,11 +566,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     call.add(n.sons[0])
     var allConst = true
     for i in 1 .. < n.len:
-      let a = getConstExpr(c.module, n.sons[i])
-      if a != nil: call.add(a)
-      else:
+      var a = getConstExpr(c.module, n.sons[i])
+      if a == nil:
         allConst = false
-        call.add(n.sons[i])
+        a = n.sons[i]
+        if a.kind == nkHiddenStdConv: a = a.sons[1]
+      call.add(a)
     if allConst:
       result = semfold.getConstExpr(c.module, call)
       if result.isNil: result = n

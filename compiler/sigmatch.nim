@@ -362,6 +362,22 @@ proc matchTypeClass(c: var TCandidate, f, a: PType): TTypeRelation =
   result = if matchTypeClass(c.bindings, f, a): isGeneric
            else: isNone
 
+proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
+  let
+    a0 = firstOrd(a)
+    a1 = lastOrd(a)
+    f0 = firstOrd(f)
+    f1 = lastOrd(f)
+  if a0 == f0 and a1 == f1:
+    result = isEqual
+  elif a0 >= f0 and a1 <= f1:
+    result = isConvertible
+  elif a0 <= f1 and f0 <= a1:
+    # X..Y and C..D overlap iff (X <= D and C <= Y)
+    result = isConvertible
+  else:
+    result = isNone
+
 proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation = 
   # is a subtype of f?
   result = isNone
@@ -386,6 +402,8 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = typeRel(c, base(f), base(a))
       # bugfix: accept integer conversions here
       #if result < isGeneric: result = isNone
+      if result notin {isNone, isGeneric}:
+        result = typeRangeRel(f, a)
     elif skipTypes(f, {tyRange}).kind == a.kind:
       result = isIntConv
     elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
@@ -704,7 +722,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    result = copyTree(arg)
+    #result = copyTree(arg)
+    result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
   of isGeneric:
     inc(m.genericMatches)
     if m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}:

@@ -458,21 +458,28 @@ proc getAppType(n: PNode): PNode =
   else:
     result = newStrNodeT("console", n)
 
-proc foldConv*(n, a: PNode): PNode = 
+proc rangeCheck(n: PNode, value: biggestInt) =
+  if value < firstOrd(n.typ) or value > lastOrd(n.typ):
+    LocalError(n.info, errGenerated, "cannot convert " & $value &
+                                     " to " & typeToString(n.typ))
+
+proc foldConv*(n, a: PNode; check = false): PNode = 
   # XXX range checks?
   case skipTypes(n.typ, abstractRange).kind
   of tyInt..tyInt64: 
     case skipTypes(a.typ, abstractRange).kind
-    of tyFloat..tyFloat64: result = newIntNodeT(system.toInt(getFloat(a)), n)
+    of tyFloat..tyFloat64:
+      result = newIntNodeT(system.toInt(getFloat(a)), n)
     of tyChar: result = newIntNodeT(getOrdValue(a), n)
     else: 
       result = a
       result.typ = n.typ
-  of tyFloat..tyFloat64: 
+    if check: rangeCheck(n, result.intVal)
+  of tyFloat..tyFloat64:
     case skipTypes(a.typ, abstractRange).kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar: 
       result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
-    else: 
+    else:
       result = a
       result.typ = n.typ
   of tyOpenArray, tyVarargs, tyProc: 
@@ -694,8 +701,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     result.typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
     var a = getConstExpr(m, n.sons[1])
-    if a == nil: return 
-    result = foldConv(n, a)
+    if a == nil: return
+    result = foldConv(n, a, check=n.kind == nkHiddenStdConv)
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
   else:

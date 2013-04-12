@@ -1331,8 +1331,14 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
   var a, b, x, y: TLoc
   if (e.sons[1].Kind == nkCurly) and fewCmps(e.sons[1]):
     # a set constructor but not a constant set:
-    # do not emit the set, but generate a bunch of comparisons
-    initLocExpr(p, e.sons[2], a)
+    # do not emit the set, but generate a bunch of comparisons; and if we do
+    # so, we skip the unnecessary range check: This is a semantical extension
+    # that code now relies on. :-/ XXX
+    let ea = if e.sons[2].kind in {nkChckRange, nkChckRange64}: 
+               e.sons[2].sons[0]
+             else:
+               e.sons[2]
+    initLocExpr(p, ea, a)
     initLoc(b, locExpr, e.typ, OnUnknown)
     b.r = toRope("(")
     var length = sonsLen(e.sons[1])

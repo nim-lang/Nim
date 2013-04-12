@@ -27,7 +27,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
-proc changeType(n: PNode, newType: PType)
+proc changeType(n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType

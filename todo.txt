@@ -13,7 +13,6 @@ Bugs
 ====
 
 - docgen: sometimes effects are listed twice
-- even the easiest range checking is not performed anymore
 - 'result' is not properly cleaned for NRVO
 - instantiated generics are listed in error messages
 - sneaking with qualifiedLookup() is really broken!
@@ -23,6 +22,7 @@ Bugs
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
 - bootstrapping does not work in C++ mode
+- result = result shr 8 for the "system()" wrapper
 
 
 version 0.9.4
@@ -54,7 +54,6 @@ version 0.9.X
 - improve the compiler as a service
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
-- result = result shr 8 for the "system()" wrapper
 - rethink the syntax/grammar:
   * parser is not strict enough with newlines
   * change comment handling in the AST

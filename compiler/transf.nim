@@ -323,10 +323,10 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
   of tyInt..tyInt64, tyEnum, tyChar, tyBool, tyUInt8..tyUInt32: 
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
-      # XXX int64 -> float conversion?
+      # float -> int conversions. ugh.
       result = transformSons(c, n)
-    elif firstOrd(dest) <= firstOrd(source) and
-        lastOrd(source) <= lastOrd(dest): 
+    elif firstOrd(n.typ) <= firstOrd(n.sons[1].typ) and
+        lastOrd(n.sons[1].typ) <= lastOrd(n.typ): 
       # BUGFIX: simply leave n as it is; we need a nkConv node,
       # but no range check:
       result = transformSons(c, n)
@@ -334,13 +334,14 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       # generate a range check:
       if dest.kind == tyInt64 or source.kind == tyInt64: 
         result = newTransNode(nkChckRange64, n, 3)
-      else: 
+      else:
         result = newTransNode(nkChckRange, n, 3)
       dest = skipTypes(n.typ, abstractVar)
       result[0] = transform(c, n.sons[1])
       result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), source).PTransNode
       result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), source).PTransNode
-  of tyFloat..tyFloat128: 
+  of tyFloat..tyFloat128:
+    # XXX int64 -> float conversion?
     if skipTypes(n.typ, abstractVar).kind == tyRange: 
       result = newTransNode(nkChckRangeF, n, 3)
       dest = skipTypes(n.typ, abstractVar)
