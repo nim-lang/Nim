@@ -36,3 +36,11 @@ for i in 1 .. count-1:
 echo(surface.WriteToPNG(outFile))
 surface.Destroy()
 
+type TFoo = object
+
+converter toPtr*(some: var TFoo): ptr TFoo = (addr some)
+
+
+proc zoot(x: ptr TFoo) = nil
+var x: Tfoo
+zoot(x)
