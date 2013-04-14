@@ -139,20 +139,20 @@ proc getTime*(): TTime {.tags: [FTime].}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: TTime): TTimeInfo
+proc getLocalTime*(t: TTime): TTimeInfo {.tags: [FTime].}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: TTime): TTimeInfo
+proc getGMTime*(t: TTime): TTimeInfo {.tags: [FTime].}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime
+proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
 
-proc fromSeconds*(since1970: float): TTime
+proc fromSeconds*(since1970: float): TTime {.tags: [].}
   ## Takes a float which contains the number of seconds since 1970 and
   ## returns a time object.
 
@@ -160,12 +160,12 @@ proc fromSeconds*(since1970: int|int64): TTime = fromSeconds(float(since1970))
   ## Takes an in which contains the number of seconds since 1970 and
   ## returns a time object.
 
-proc toSeconds*(time: TTime): float
+proc toSeconds*(time: TTime): float {.tags: [].}
   ## Returns the time in seconds since 1970.
 
-proc `$` *(timeInfo: TTimeInfo): string
+proc `$` *(timeInfo: TTimeInfo): string {.tags: [].}
   ## converts a `TTimeInfo` object to a string representation.
-proc `$` *(time: TTime): string
+proc `$` *(time: TTime): string {.tags: [].}
   ## converts a calendar time to a string representation.
 
 proc `-`*(a, b: TTime): int64 {.
@@ -294,7 +294,7 @@ when not defined(JS):
     ##   doWork()
     ##   echo "CPU time [s] ", cpuTime() - t0
 
-when not defined(JS) and defined(POSIX):
+when not defined(JS):
   # C wrapper:
   type
     structTM {.importc: "struct tm", final.} = object
@@ -314,17 +314,22 @@ when not defined(JS) and defined(POSIX):
     TClock {.importc: "clock_t".} = distinct int
   
   proc localtime(timer: PTime): PTimeInfo {.
-    importc: "localtime", header: "<time.h>".}
-  proc gmtime(timer: PTime): PTimeInfo {.importc: "gmtime", header: "<time.h>".}
-  proc timec(timer: PTime): TTime      {.importc: "time", header: "<time.h>".}
-  proc mktime(t: structTM): TTime      {.importc: "mktime", header: "<time.h>".}
+    importc: "localtime", header: "<time.h>", tags: [].}
+  proc gmtime(timer: PTime): PTimeInfo {.
+    importc: "gmtime", header: "<time.h>", tags: [].}
+  proc timec(timer: PTime): TTime {.
+    importc: "time", header: "<time.h>", tags: [].}
+  proc mktime(t: structTM): TTime {.
+    importc: "mktime", header: "<time.h>", tags: [].}
   proc asctime(tblock: structTM): CString {.
-    importc: "asctime", header: "<time.h>".}
-  proc ctime(time: PTime): CString     {.importc: "ctime", header: "<time.h>".}
+    importc: "asctime", header: "<time.h>", tags: [].}
+  proc ctime(time: PTime): CString {.
+    importc: "ctime", header: "<time.h>", tags: [].}
   #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
   #    importc: "strftime", header: "<time.h>".}
-  proc clock(): TClock {.importc: "clock", header: "<time.h>".}
-  proc difftime(a, b: TTime): float {.importc: "difftime", header: "<time.h>".}
+  proc clock(): TClock {.importc: "clock", header: "<time.h>", tags: [FTime].}
+  proc difftime(a, b: TTime): float {.importc: "difftime", header: "<time.h>", 
+    tags: [].}
   
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
