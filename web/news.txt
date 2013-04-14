@@ -35,6 +35,8 @@ Changes affecting backwards compatibility
 -----------------------------------------
 
 - ``shared`` is a keyword now.
+- Deprecated ``sockets.recvLine`` and ``asyncio.recvLine``, added
+  ``readLine`` instead.
 
 
 Compiler Additions

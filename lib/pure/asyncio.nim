@@ -126,7 +126,7 @@ type
 
     handleTask*: proc (s: PAsyncSocket) {.closure.}
 
-    lineBuffer: TaintedString ## Temporary storage for ``recvLine``
+    lineBuffer: TaintedString ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
     proto: TProtocol
@@ -635,7 +635,7 @@ when isMainModule:
   proc testRead(s: PAsyncSocket, no: int) =
     echo("Reading! " & $no)
     var data = ""
-    if not s.recvLine(data):
+    if not s.readLine(data):
       OSError()
     if data == "":
       echo("Closing connection. " & $no)

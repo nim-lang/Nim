@@ -100,27 +100,27 @@ proc parseChunks(s: TSocket, timeout: int): string =
   while true:
     var chunkSizeStr = ""
     var chunkSize = 0
-    if s.recvLine(chunkSizeStr, timeout):
-      var i = 0
-      if chunkSizeStr == "":
-        httpError("Server terminated connection prematurely")
-      while true:
-        case chunkSizeStr[i]
-        of '0'..'9':
-          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
-        of 'a'..'f':
-          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
-        of 'A'..'F':
-          chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
-        of '\0':
-          break
-        of ';':
-          # http://tools.ietf.org/html/rfc2616#section-3.6.1
-          # We don't care about chunk-extensions.
-          break
-        else:
-          httpError("Invalid chunk size: " & chunkSizeStr)
-        inc(i)
+    s.readLine(chunkSizeStr, timeout)
+    var i = 0
+    if chunkSizeStr == "":
+      httpError("Server terminated connection prematurely")
+    while true:
+      case chunkSizeStr[i]
+      of '0'..'9':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
+      of 'a'..'f':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
+      of 'A'..'F':
+        chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
+      of '\0':
+        break
+      of ';':
+        # http://tools.ietf.org/html/rfc2616#section-3.6.1
+        # We don't care about chunk-extensions.
+        break
+      else:
+        httpError("Invalid chunk size: " & chunkSizeStr)
+      inc(i)
     if chunkSize <= 0: break
     result.setLen(ri+chunkSize)
     var bytesRead = 0
@@ -175,39 +175,38 @@ proc parseResponse(s: TSocket, getBody: bool, timeout: int): TResponse =
   while True:
     line = ""
     linei = 0
-    if s.recvLine(line, timeout):
-      if line == "": break # We've been disconnected.
-      if line == "\c\L":
-        fullyRead = true
-        break
-      if not parsedStatus:
-        # Parse HTTP version info and status code.
-        var le = skipIgnoreCase(line, "HTTP/", linei)
-        if le <= 0: httpError("invalid http version")
-        inc(linei, le)
-        le = skipIgnoreCase(line, "1.1", linei)
-        if le > 0: result.version = "1.1"
-        else:
-          le = skipIgnoreCase(line, "1.0", linei)
-          if le <= 0: httpError("unsupported http version")
-          result.version = "1.0"
-        inc(linei, le)
-        # Status code
-        linei.inc skipWhitespace(line, linei)
-        result.status = line[linei .. -1]
-        parsedStatus = true
+    s.readLine(line, timeout)
+    if line == "": break # We've been disconnected.
+    if line == "\c\L":
+      fullyRead = true
+      break
+    if not parsedStatus:
+      # Parse HTTP version info and status code.
+      var le = skipIgnoreCase(line, "HTTP/", linei)
+      if le <= 0: httpError("invalid http version")
+      inc(linei, le)
+      le = skipIgnoreCase(line, "1.1", linei)
+      if le > 0: result.version = "1.1"
       else:
-        # Parse headers
-        var name = ""
-        var le = parseUntil(line, name, ':', linei)
-        if le <= 0: httpError("invalid headers")
-        inc(linei, le)
-        if line[linei] != ':': httpError("invalid headers")
-        inc(linei) # Skip :
-        linei += skipWhitespace(line, linei)
-        
-        result.headers[name] = line[linei.. -1]
-    else: SocketError(s)
+        le = skipIgnoreCase(line, "1.0", linei)
+        if le <= 0: httpError("unsupported http version")
+        result.version = "1.0"
+      inc(linei, le)
+      # Status code
+      linei.inc skipWhitespace(line, linei)
+      result.status = line[linei .. -1]
+      parsedStatus = true
+    else:
+      # Parse headers
+      var name = ""
+      var le = parseUntil(line, name, ':', linei)
+      if le <= 0: httpError("invalid headers")
+      inc(linei, le)
+      if line[linei] != ':': httpError("invalid headers")
+      inc(linei) # Skip :
+      linei += skipWhitespace(line, linei)
+      
+      result.headers[name] = line[linei.. -1]
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:

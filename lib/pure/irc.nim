@@ -345,10 +345,10 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
   var socks = @[irc.sock]
   var ret = socks.select(timeout)
   if socks.len() == 0 and ret != 0:
-    if irc.sock.recvLine(line):
-      ev = irc.processLine(line.string)
-      result = true
-  
+    irc.sock.readLine(line)
+    ev = irc.processLine(line.string)
+    result = true
+
   if processOther(irc, ev): result = true
 
 proc getLag*(irc: PIRC): float =
@@ -380,7 +380,7 @@ proc handleConnect(s: PAsyncSocket, irc: PAsyncIRC) =
 
 proc handleRead(s: PAsyncSocket, irc: PAsyncIRC) =
   var line = "".TaintedString
-  var ret = s.recvLine(line)
+  var ret = s.readLine(line)
   if ret:
     if line == "":
       var ev: TIRCEvent
