@@ -69,6 +69,24 @@ User                             Some user defined warning.
 ==========================       ============================================
 
 
+Verbosity levels
+----------------
+
+=====  ============================================
+Level  Description
+=====  ============================================
+0      Default verbosity level for the compiler.
+1      Displays compilation of all the compiled files, including those imported
+       by other modules or through the `compile pragma<#compile-pragma>`_.
+2      Displays compilation statistics, enumerates the dynamic
+       libraries that will be loaded by the final binary and dumps to
+       standard output the result of applying `a filter to the source code
+       <filters.html>`_ if any filter was used during compilation.
+3      In addition to the previous levels dumps a debug stack trace
+       for compiler developers.
+=====  ============================================
+
+
 Configuration files
 -------------------
 
