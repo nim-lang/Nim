@@ -1311,6 +1311,24 @@ integer.
   echo(person[0]) # "Peter"
   echo(person[1]) # 30
 
+  # You don't need to declare tuples in a separate type section.
+  var building: tuple[street: string, number: int]
+  building = ("Rue del Percebe", 13)
+  echo(building.street)
+  
+  # The following line does not compile, they are different tuples!
+  #person = building
+  # --> Error: type mismatch: got (tuple[street: string, number: int])
+  #     but expected 'TPerson'
+  
+  # The following works because the field names and types are the same.
+  var teacher: tuple[name: string, age: int] = ("Mark", 42)
+  person = teacher
+
+Even though you don't need to declare a type for a tuple to use it, tuples
+created with different field names will be considered different objects despite
+having the same field types.
+
 
 Reference and pointer types
 ---------------------------
