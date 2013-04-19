@@ -58,7 +58,7 @@ type
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
-    tkOpr, tkComment, tkAccent, tkInd,
+    tkOpr, tkComment, tkAccent,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
     
   TTokTypes* = set[TTokType]
@@ -90,7 +90,7 @@ const
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
     ":", "::", "=", ".", "..",
-    "tkOpr", "tkComment", "`", "[new indentation]",
+    "tkOpr", "tkComment", "`",
     "tkSpaces", "tkInfixOpr",
     "tkPrefixOpr", "tkPostfixOpr"]
 
@@ -154,7 +154,7 @@ proc tokToStr*(tok: TToken): string =
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
   of tkInvalid, tkStrLit..tkCharLit, tkComment: result = tok.literal
-  of tkParLe..tkColon, tkEof, tkInd, tkAccent: 
+  of tkParLe..tkColon, tkEof, tkAccent: 
     result = tokTypeToStr[tok.tokType]
   else:
     if tok.ident != nil:
@@ -411,9 +411,10 @@ proc GetNumber(L: var TLexer): TToken =
           result.tokType = tkInt64Lit
         elif result.tokType != tkInt64Lit: 
           lexMessage(L, errInvalidNumber, result.literal)
-  except EInvalidValue: lexMessage(L, errInvalidNumber, result.literal)
-  except EOverflow: lexMessage(L, errNumberOutOfRange, result.literal)
-  except EOutOfRange: lexMessage(L, errNumberOutOfRange, result.literal)
+  except EInvalidValue:
+    lexMessage(L, errInvalidNumber, result.literal)
+  except EOverflow, EOutOfRange:
+    lexMessage(L, errNumberOutOfRange, result.literal)
   L.bufpos = endpos
 
 proc handleHexChar(L: var TLexer, xi: var int) = 
@@ -628,10 +629,6 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     Inc(pos)
   endOperator(L, tok, pos, h)
 
-proc handleIndentation(tok: var TToken, indent: int) {.inline.} = 
-  tok.indent = indent
-  tok.tokType = tkInd
-
 proc scanComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf 
@@ -668,28 +665,28 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     else:
       if buf[pos] > ' ': 
         L.indentAhead = indent
-      break 
+      break
   L.bufpos = pos
 
-proc skip(L: var TLexer, tok: var TToken) = 
+proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  while true: 
+  while true:
     case buf[pos]
-    of ' ': 
+    of ' ':
       Inc(pos)
-    of Tabulator: 
+    of Tabulator:
       lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
-      inc(pos)                # BUGFIX
-    of CR, LF: 
+      inc(pos)
+    of CR, LF:
       pos = HandleCRLF(L, pos)
       buf = L.buf
       var indent = 0
-      while buf[pos] == ' ': 
+      while buf[pos] == ' ':
         Inc(pos)
         Inc(indent)
-      if (buf[pos] > ' '): 
-        handleIndentation(tok, indent)
+      if buf[pos] > ' ':
+        tok.indent = indent
         break
     else:
       break                   # EndOfFile also leaves the loop
@@ -698,18 +695,15 @@ proc skip(L: var TLexer, tok: var TToken) =
 proc rawGetTok(L: var TLexer, tok: var TToken) =
   fillToken(tok)
   if L.indentAhead >= 0:
-    handleIndentation(tok, L.indentAhead)
-    L.indentAhead = - 1
-    return
+    tok.indent = L.indentAhead
+    L.indentAhead = -1
+  else:
+    tok.indent = -1
   skip(L, tok)
-  # got an documentation comment or tkIndent, return that:
-  if tok.toktype != tkInvalid: return
   var c = L.buf[L.bufpos]
-  if c in SymStartChars - {'r', 'R', 'l'}: 
+  if c in SymStartChars - {'r', 'R', 'l'}:
     getSymbol(L, tok)
-  elif c in {'0'..'9'}: 
-    tok = getNumber(L)
-  else: 
+  else:
     case c
     of '#': 
       scanComment(L, tok)
@@ -727,10 +721,10 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     of 'l': 
       # if we parsed exactly one character and its a small L (l), this
       # is treated as a warning because it may be confused with the number 1
-      if not (L.buf[L.bufpos + 1] in (SymChars + {'_'})): 
+      if L.buf[L.bufpos+1] notin (SymChars + {'_'}):
         lexMessage(L, warnSmallLshouldNotBeUsed)
       getSymbol(L, tok)
-    of 'r', 'R': 
+    of 'r', 'R':
       if L.buf[L.bufPos + 1] == '\"': 
         Inc(L.bufPos)
         getString(L, tok, true)
@@ -738,7 +732,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
         getSymbol(L, tok)
     of '(': 
       Inc(L.bufpos)
-      if (L.buf[L.bufPos] == '.') and (L.buf[L.bufPos + 1] != '.'): 
+      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.': 
         tok.toktype = tkParDotLe
         Inc(L.bufpos)
       else: 
@@ -748,29 +742,29 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       Inc(L.bufpos)
     of '[': 
       Inc(L.bufpos)
-      if (L.buf[L.bufPos] == '.') and (L.buf[L.bufPos + 1] != '.'): 
+      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.':
         tok.toktype = tkBracketDotLe
         Inc(L.bufpos)
-      else: 
+      else:
         tok.toktype = tkBracketLe
-    of ']': 
+    of ']':
       tok.toktype = tkBracketRi
       Inc(L.bufpos)
-    of '.': 
-      if L.buf[L.bufPos + 1] == ']': 
+    of '.':
+      if L.buf[L.bufPos+1] == ']': 
         tok.tokType = tkBracketDotRi
         Inc(L.bufpos, 2)
-      elif L.buf[L.bufPos + 1] == '}': 
+      elif L.buf[L.bufPos+1] == '}': 
         tok.tokType = tkCurlyDotRi
         Inc(L.bufpos, 2)
-      elif L.buf[L.bufPos + 1] == ')': 
+      elif L.buf[L.bufPos+1] == ')': 
         tok.tokType = tkParDotRi
         Inc(L.bufpos, 2)
       else: 
         getOperator(L, tok)
     of '{': 
       Inc(L.bufpos)
-      if (L.buf[L.bufPos] == '.') and (L.buf[L.bufPos+1] != '.'): 
+      if L.buf[L.bufPos] == '.' and L.buf[L.bufPos+1] != '.':
         tok.toktype = tkCurlyDotLe
         Inc(L.bufpos)
       else: 
@@ -796,13 +790,15 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
       getCharacter(L, tok)
       tok.tokType = tkCharLit
+    of '0'..'9':
+      tok = getNumber(L)
     else:
       if c in OpChars: 
         getOperator(L, tok)
       elif c == lexbase.EndOfFile:
         tok.toktype = tkEof
       else:
-        tok.literal = c & ""
+        tok.literal = $c
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
         Inc(L.bufpos)
