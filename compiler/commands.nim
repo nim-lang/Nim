@@ -196,8 +196,10 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "patterns": result = contains(gOptions, optPatterns)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
-proc processPath(path: string): string = 
-  result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
+proc processPath(path: string, notRelativeToProj = false): string =
+  let p = if notRelativeToProj or os.isAbsolute(path) or '$' in path: path 
+          else: options.gProjectPath / path
+  result = UnixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
@@ -229,7 +231,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "babelpath":
     if pass in {passCmd2, passPP}:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg)
+      let path = processPath(arg, notRelativeToProj=true)
       babelpath(path, info)
   of "excludepath":
     expectArg(switch, arg, pass, info)
@@ -451,9 +453,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "genscript": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
-  of "lib": 
+  of "lib":
     expectArg(switch, arg, pass, info)
-    libpath = processPath(arg)
+    libpath = processPath(arg, notRelativeToProj=true)
   of "putenv": 
     expectArg(switch, arg, pass, info)
     splitSwitch(arg, key, val, pass, info)
