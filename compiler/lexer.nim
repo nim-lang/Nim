@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -58,8 +58,7 @@ type
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
-    tkOpr, tkComment, tkAccent, tkInd, tkSad, 
-    tkDed, # pseudo token types used by the source renderers:
+    tkOpr, tkComment, tkAccent, tkInd,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
     
   TTokTypes* = set[TTokType]
@@ -91,8 +90,8 @@ const
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
     ":", "::", "=", ".", "..",
-    "tkOpr", "tkComment", "`", "[new indentation]", 
-    "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
+    "tkOpr", "tkComment", "`", "[new indentation]",
+    "tkSpaces", "tkInfixOpr",
     "tkPrefixOpr", "tkPostfixOpr"]
 
 type 
@@ -102,7 +101,8 @@ type
     base2, base8, base16
   TToken* = object            # a Nimrod token
     tokType*: TTokType        # the type of the token
-    indent*: int              # the indentation; only valid if tokType = tkIndent
+    indent*: int              # the indentation; != -1 if the token has been
+                              # preceeded with indentation
     ident*: PIdent            # the parsed identifier
     iNumber*: BiggestInt      # the parsed integer literal
     fNumber*: BiggestFloat    # the parsed floating point literal
@@ -113,8 +113,6 @@ type
   
   TLexer* = object of TBaseLexer
     fileIdx*: int32
-    indentStack*: seq[int]    # the indentation stack
-    dedent*: int              # counter for DED token generation
     indentAhead*: int         # if > 0 an indendation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
@@ -122,9 +120,6 @@ type
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
-proc pushInd*(L: var TLexer, indent: int)
-
-proc popInd*(L: var TLexer)
 proc isKeyword*(kind: TTokType): bool
 proc openLexer*(lex: var TLexer, fileidx: int32, inputstream: PLLStream)
 proc rawGetTok*(L: var TLexer, tok: var TToken)
@@ -154,31 +149,14 @@ proc isNimrodIdentifier*(s: string): bool =
       inc(i)
     result = true
 
-proc pushInd(L: var TLexer, indent: int) = 
-  var length = len(L.indentStack)
-  setlen(L.indentStack, length + 1)
-  if (indent > L.indentStack[length - 1]): 
-    L.indentstack[length] = indent
-  else: 
-    InternalError("pushInd")
-  
-proc popInd(L: var TLexer) = 
-  var length = len(L.indentStack)
-  setlen(L.indentStack, length - 1)
-
-proc findIdent(L: TLexer, indent: int): bool = 
-  for i in countdown(len(L.indentStack) - 1, 0): 
-    if L.indentStack[i] == indent: 
-      return true
-
 proc tokToStr*(tok: TToken): string = 
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
   of tkInvalid, tkStrLit..tkCharLit, tkComment: result = tok.literal
-  of tkParLe..tkColon, tkEof, tkInd, tkSad, tkDed, tkAccent: 
+  of tkParLe..tkColon, tkEof, tkInd, tkAccent: 
     result = tokTypeToStr[tok.tokType]
-  else: 
+  else:
     if tok.ident != nil:
       result = tok.ident.s
     else: 
@@ -216,7 +194,6 @@ proc fillToken(L: var TToken) =
   
 proc openLexer(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
-  lex.indentStack = @[0]
   lex.fileIdx = fileIdx
   lex.indentAhead = - 1
   inc(lex.Linenumber, inputstream.lineOffset) 
@@ -651,23 +628,9 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     Inc(pos)
   endOperator(L, tok, pos, h)
 
-proc handleIndentation(L: var TLexer, tok: var TToken, indent: int) = 
+proc handleIndentation(tok: var TToken, indent: int) {.inline.} = 
   tok.indent = indent
-  var i = high(L.indentStack)
-  if indent > L.indentStack[i]: 
-    tok.tokType = tkInd
-  elif indent == L.indentStack[i]: 
-    tok.tokType = tkSad
-  else: 
-    # check we have the indentation somewhere in the stack:
-    while (i >= 0) and (indent != L.indentStack[i]): 
-      dec(i)
-      inc(L.dedent)
-    dec(L.dedent)
-    tok.tokType = tkDed
-    if i < 0: 
-      tok.tokType = tkSad     # for the parser it is better as SAD
-      lexMessage(L, errInvalidIndentation)
+  tok.tokType = tkInd
 
 proc scanComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
@@ -705,7 +668,6 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     else:
       if buf[pos] > ' ': 
         L.indentAhead = indent
-        inc(L.dedent)
       break 
   L.bufpos = pos
 
@@ -727,21 +689,17 @@ proc skip(L: var TLexer, tok: var TToken) =
         Inc(pos)
         Inc(indent)
       if (buf[pos] > ' '): 
-        handleIndentation(L, tok, indent)
-        break 
-    else: 
+        handleIndentation(tok, indent)
+        break
+    else:
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
 
-proc rawGetTok(L: var TLexer, tok: var TToken) = 
+proc rawGetTok(L: var TLexer, tok: var TToken) =
   fillToken(tok)
-  if L.dedent > 0:
-    dec(L.dedent)
-    if L.indentAhead >= 0: 
-      handleIndentation(L, tok, L.indentAhead)
-      L.indentAhead = - 1
-    else:
-      tok.tokType = tkDed
+  if L.indentAhead >= 0:
+    handleIndentation(tok, L.indentAhead)
+    L.indentAhead = - 1
     return
   skip(L, tok)
   # got an documentation comment or tkIndent, return that:
