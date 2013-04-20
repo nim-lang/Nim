@@ -25,7 +25,7 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, msgs
+  llstream, lexer, idents, strutils, ast, astalgo, msgs
 
 type
   TParser*{.final.} = object  # a TParser object represents a module that
@@ -933,21 +933,24 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     if mode != pmSkipSuffix:
       result = primarySuffix(p, result)
 
-proc parseTypeDesc(p: var TParser): PNode = 
+proc parseTypeDesc(p: var TParser): PNode =
+  #| typeDesc = lowestExpr
   result = lowestExpr(p, pmTypeDesc)
 
 proc parseTypeDefAux(p: var TParser): PNode = 
+  #| typeDefAux = lowestExpr
   result = lowestExpr(p, pmTypeDef)
 
 proc parseExprStmt(p: var TParser): PNode = 
-  #| exprStmt = lowestExpr (
-  #|           '=' optInd expr
-  #|          / doBlocks
-  #|          / ':' stmt? ( IND{=} 'of' exprList ':' stmt 
-  #|                      | IND{=} 'elif' expr ':' stmt
-  #|                      | IND{=} 'except' exprList ':' stmt
-  #|                      | IND{=} 'else' ':' stmt )*
-  #|          )
+  #| exprStmt = lowestExpr
+  #|          (( '=' optInd expr )
+  #|          / ( expr ^+ comma
+  #|              doBlocks
+  #|               / ':' stmt? ( IND{=} 'of' exprList ':' stmt 
+  #|                           | IND{=} 'elif' expr ':' stmt
+  #|                           | IND{=} 'except' exprList ':' stmt
+  #|                           | IND{=} 'else' ':' stmt )*
+  #|            ))?
   var a = lowestExpr(p)
   if p.tok.tokType == tkEquals: 
     getTok(p)
@@ -957,23 +960,20 @@ proc parseExprStmt(p: var TParser): PNode =
     addSon(result, a)
     addSon(result, b)
   else:
-    var call = if a.kind == nkCall: a
-               else: newNode(nkCommand, a.info, @[a])
-    # XXX this is clearly a bug: p(a, b) c should not parse as p(a, b, c)!
-    while true:
-      if not isExprStart(p): break 
-      var e = parseExpr(p)
-      addSon(call, e)
-      if p.tok.tokType != tkComma: break 
-      getTok(p)
-      optInd(p, a)
-    if p.tok.tokType == tkDo:
-      parseDoBlocks(p, call)
-      return
-    result = if call.sonsLen <= 1: a
-             else: call
+    if p.tok.indent < 0 and isExprStart(p):
+      result = newNode(nkCommand, a.info, @[a])
+      while true:
+        var e = parseExpr(p)
+        addSon(result, e)
+        if p.tok.tokType != tkComma: break 
+        getTok(p)
+        optInd(p, result)
+    else:
+      result = a
+    if p.tok.tokType == tkDo and p.tok.indent < 0:
+      parseDoBlocks(p, result)
+      return result
     if p.tok.tokType == tkColon:
-      result = call
       getTok(p)
       skipComment(p, result)
       if p.tok.TokType notin {tkOf, tkElif, tkElse, tkExcept}:
@@ -1326,6 +1326,7 @@ proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
   result.info.line = result.info.line - int16(1) - int16(p.tok.iNumber)
+  getTok(p)
 
 type
   TDefParser = proc (p: var TParser): PNode {.nimcall.}
@@ -1347,7 +1348,6 @@ proc parseSection(p: var TParser, kind: TNodeKind,
           addSon(result, a)
         of tkComment: 
           var a = newCommentStmt(p)
-          skipComment(p, a)
           addSon(result, a)
         else: 
           parMessage(p, errIdentifierExpected, p.tok)
@@ -1395,7 +1395,8 @@ proc parseEnum(p: var TParser): PNode =
       getTok(p)
       optInd(p, a)
     addSon(result, a)
-    if p.tok.indent > 0 and p.tok.indent <= p.currInd or p.tok.tokType == tkEof:
+    if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
+        p.tok.tokType == tkEof:
       break
   if result.len <= 1:
     lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
@@ -1610,7 +1611,7 @@ proc simpleStmt(p: var TParser): PNode =
   else:
     if isExprStart(p): result = parseExprStmt(p)
     else: result = ast.emptyNode
-  if result.kind != nkEmpty: skipComment(p, result)
+  if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
   
 proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
@@ -1685,8 +1686,6 @@ proc parseStmt(p: var TParser): PNode =
 proc parseAll(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)
   while p.tok.tokType != tkEof: 
-    if p.tok.indent != p.currInd:
-      parMessage(p, errInvalidIndentation)
     var a = complexOrSimpleStmt(p)
     if a.kind != nkEmpty: 
       addSon(result, a)    
@@ -1694,6 +1693,8 @@ proc parseAll(p: var TParser): PNode =
       parMessage(p, errExprExpected, p.tok)
       # bugfix: consume a token here to prevent an endless loop:
       getTok(p)
+    if p.tok.indent != 0:
+      parMessage(p, errInvalidIndentation)
 
 proc parseTopLevelStmt(p: var TParser): PNode =
   result = ast.emptyNode
