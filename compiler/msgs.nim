@@ -711,7 +711,7 @@ var
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
-  MsgWriteln(indent & info.sourceLine.data)
+  MsgWriteln(indent & info.sourceLine.ropeToStr)
   MsgWriteln(indent & repeatChar(info.col, ' ') & '^')
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
