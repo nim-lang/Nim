@@ -230,7 +230,7 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
 
-proc illFormedAst*(n: PNode) = 
+proc illFormedAst*(n: PNode) =
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int) = 

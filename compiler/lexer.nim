@@ -797,6 +797,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
         getOperator(L, tok)
       elif c == lexbase.EndOfFile:
         tok.toktype = tkEof
+        tok.indent = 0
       else:
         tok.literal = $c
         tok.tokType = tkInvalid
