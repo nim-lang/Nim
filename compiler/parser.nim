@@ -1720,7 +1720,7 @@ proc parseAll(p: var TParser): PNode =
 
 proc parseTopLevelStmt(p: var TParser): PNode =
   result = ast.emptyNode
-  while true: 
+  while true:
     if p.tok.indent != 0: 
       if p.firstTok and p.tok.indent < 0: nil
       else: parMessage(p, errInvalidIndentation)
