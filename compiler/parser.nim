@@ -30,7 +30,8 @@ import
 type
   TParser*{.final.} = object  # a TParser object represents a module that
                               # is being parsed
-    currInd: int              # current indentation (for skipInd)
+    currInd: int              # current indentation
+    firstTok: bool
     lex*: TLexer              # the lexer that is used for parsing
     tok*: TToken              # the current token
 
@@ -78,6 +79,7 @@ proc OpenParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream) =
   initToken(p.tok)
   OpenLexer(p.lex, fileIdx, inputstream)
   getTok(p)                   # read the first token
+  p.firstTok = true
 
 proc OpenParser*(p: var TParser, filename: string, inputStream: PLLStream) =
   openParser(p, filename.fileInfoIdx, inputStream)
@@ -128,11 +130,6 @@ proc optInd(p: var TParser, n: PNode) =
 proc getTokNoInd(p: var TParser) =
   getTok(p)
   if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
-
-when false:
-  proc ExpectNl(p: TParser) =
-    if p.tok.tokType notin {tkEof, tkInd, tkComment}:
-      lexMessage(p.lex, errNewlineExpected, prettyTok(p.tok))
 
 proc expectIdentOrKeyw(p: TParser) =
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType):
@@ -225,9 +222,9 @@ proc isOperator(tok: TToken): bool =
 
 #| module = stmt ^* (';' / IND{=})
 #|
-#| comma = ',' COMMENT? IND?
-#| semicolon = ';' COMMENT IND?
-#| colon = ':' COMMENT? IND?
+#| comma = ',' COMMENT?
+#| semicolon = ';' COMMENT?
+#| colon = ':' COMMENT?
 #| colcom = ':' COMMENT?
 #| 
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
@@ -237,10 +234,10 @@ proc isOperator(tok: TToken): bool =
 #| 
 #| prefixOperator = operator
 #| 
-#| optInd = COMMENT? IND?
-#| optPar = IND{>} | IND{=}
+#| optInd = COMMENT?
+#| optPar = (IND{>} | IND{=})?
 #| 
-#| lowestExpr = assignExpr (OP0 optInd assignExpr)*
+#| simpleExpr = assignExpr (OP0 optInd assignExpr)*
 #| assignExpr = orExpr (OP1 optInd orExpr)*
 #| orExpr = andExpr (OP2 optInd andExpr)*
 #| andExpr = cmpExpr (OP3 optInd cmpExpr)*
@@ -591,7 +588,7 @@ type
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
 
-proc lowestExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
+proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok)
@@ -604,15 +601,15 @@ proc lowestExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
     getTok(p)
     optInd(p, opNode)
     # read sub-expression with higher priority:
-    var b = lowestExprAux(p, opPrec + leftAssoc, modeB)
+    var b = simpleExprAux(p, opPrec + leftAssoc, modeB)
     addSon(a, opNode)
     addSon(a, result)
     addSon(a, b)
     result = a
     opPrec = getPrecedence(p.tok)
   
-proc lowestExpr(p: var TParser, mode = pmNormal): PNode =
-  result = lowestExprAux(p, -1, mode)
+proc simpleExpr(p: var TParser, mode = pmNormal): PNode =
+  result = simpleExprAux(p, -1, mode)
 
 proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode =
   #| condExpr = expr colcom expr optInd
@@ -844,12 +841,12 @@ proc parseExpr(p: var TParser): PNode =
   #| expr = (ifExpr
   #|       | whenExpr
   #|       | caseExpr)
-  #|       / lowestExpr
+  #|       / simpleExpr
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
-  else: result = lowestExpr(p)
+  else: result = simpleExpr(p)
   # XXX needs proper support:
   #of tkTry: result = parseTry(p)
 
@@ -934,12 +931,12 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result = primarySuffix(p, result)
 
 proc parseTypeDesc(p: var TParser): PNode =
-  #| typeDesc = lowestExpr
-  result = lowestExpr(p, pmTypeDesc)
+  #| typeDesc = simpleExpr
+  result = simpleExpr(p, pmTypeDesc)
 
 proc parseTypeDefAux(p: var TParser): PNode = 
-  #| typeDefAux = lowestExpr
-  result = lowestExpr(p, pmTypeDef)
+  #| typeDefAux = simpleExpr
+  result = simpleExpr(p, pmTypeDef)
 
 proc makeCall(n: PNode): PNode =
   if n.kind in nkCallKinds:
@@ -949,7 +946,7 @@ proc makeCall(n: PNode): PNode =
     result.add n
 
 proc parseExprStmt(p: var TParser): PNode = 
-  #| exprStmt = lowestExpr
+  #| exprStmt = simpleExpr
   #|          (( '=' optInd expr )
   #|          / ( expr ^+ comma
   #|              doBlocks
@@ -958,7 +955,7 @@ proc parseExprStmt(p: var TParser): PNode =
   #|                           | IND{=} 'except' exprList ':' stmt
   #|                           | IND{=} 'else' ':' stmt )*
   #|            ))?
-  var a = lowestExpr(p)
+  var a = simpleExpr(p)
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
@@ -1131,7 +1128,7 @@ proc parseCase(p: var TParser): PNode =
   #|                       (IND{=} 'elif' expr colcom stmt)*
   #|                       (IND{=} 'else' colcom stmt)?
   #| caseStmt = 'case' expr ':'? COMMENT?
-  #|             (IND{>} ofBranches
+  #|             (IND{>} ofBranches DED
   #|             | IND{=} ofBranches)
   var
     b: PNode
@@ -1447,7 +1444,7 @@ proc parseObjectCase(p: var TParser): PNode =
   #|                       (IND{=} 'elif' expr colcom objectPart)*
   #|                       (IND{=} 'else' colcom objectPart)?
   #| objectCase = 'case' identWithPragma ':' typeDesc ':'? COMMENT?
-  #|             (IND{>} objectBranches
+  #|             (IND{>} objectBranches DED
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
   getTokNoInd(p)
@@ -1724,7 +1721,10 @@ proc parseAll(p: var TParser): PNode =
 proc parseTopLevelStmt(p: var TParser): PNode =
   result = ast.emptyNode
   while true: 
-    if p.tok.indent > 0: parMessage(p, errInvalidIndentation)
+    if p.tok.indent != 0: 
+      if p.firstTok and p.tok.indent < 0: nil
+      else: parMessage(p, errInvalidIndentation)
+    p.firstTok = false
     case p.tok.tokType
     of tkSemicolon: getTok(p)
     of tkEof: break
