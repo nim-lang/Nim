@@ -7,17 +7,11 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - document NimMain and check whether it works for threading
-- parser/grammar: enforce 'simpleExpr' more often --> doesn't work; tkProc is
-    part of primary!
+- parser/grammar:
   * check that of branches can only receive even simpler expressions, don't
     allow 'of (var x = 23; nkIdent)'
-  * bugfix: 'import x var y = 0' compiles
-  * the typeDesc/expr unification is weird and only necessary because of
-    the ambiguous a[T] construct: It would be easy to support a[expr] for
-    generics but require a[.typeDesc] if that's required; this would also
-    allow [.ref T.](x) for a more general type conversion construct; for
-    templates that would work too: T([.ref int])
-
+  * allow (var x = 12; for i in ... ; x) construct
+  * try except as an expression
 
 Bugs
 ====
@@ -39,7 +33,6 @@ version 0.9.4
 =============
 
 - macros as type pragmas
-- ``try`` as an expression
 - provide tool/API to track leaks/object counts
 - hybrid GC
 - use big blocks in the allocator
@@ -65,6 +58,13 @@ version 0.9.X
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
 - perhaps: change comment handling in the AST
+- enforce 'simpleExpr' more often --> doesn't work; tkProc is
+  part of primary!
+- the typeDesc/expr unification is weird and only necessary because of
+  the ambiguous a[T] construct: It would be easy to support a[expr] for
+  generics but require a[.typeDesc] if that's required; this would also
+  allow [.ref T.](x) for a more general type conversion construct; for
+  templates that would work too: T([.ref int])
 
 
 Concurrency
