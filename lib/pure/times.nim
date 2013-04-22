@@ -153,15 +153,15 @@ proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime {.tags: [].}
   ## them from the other information in the broken-down time structure.
 
 proc fromSeconds*(since1970: float): TTime {.tags: [].}
-  ## Takes a float which contains the number of seconds since 1970 and
+  ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
 proc fromSeconds*(since1970: int|int64): TTime = fromSeconds(float(since1970))
-  ## Takes an in which contains the number of seconds since 1970 and
+  ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
 proc toSeconds*(time: TTime): float {.tags: [].}
-  ## Returns the time in seconds since 1970.
+  ## Returns the time in seconds since the unix epoch.
 
 proc `$` *(timeInfo: TTimeInfo): string {.tags: [].}
   ## converts a `TTimeInfo` object to a string representation.
@@ -226,14 +226,9 @@ proc getDaysInMonth(month: TMonth, year: int): int =
   of mApr, mJun, mSep, mNov: result = 30
   else: result = 31
 
-proc `-`*(interval: TTimeInterval): TTimeInterval =
-  for a, b in fields(result, interval):
-    a = -b
-
-proc toSeconds*(a: TTimeInfo, interval: TTimeInterval): float =
-  ## Returns the time the interval will be at that point in time. This
-  ## needs a time as well, because e.g. a month is not always the same
-  ## length.
+proc toSeconds(a: TTimeInfo, interval: TTimeInterval): float =
+  ## Calculates how many seconds the interval is worth by adding up
+  ## all the fields
 
   var anew = a
   var newinterv = interval
@@ -253,9 +248,6 @@ proc toSeconds*(a: TTimeInfo, interval: TTimeInterval): float =
   result += float(newinterv.seconds)
   result += newinterv.miliseconds / 1000
 
-proc toSeconds*(a: TTime, interval: TTimeInterval): float =
-  result = toSeconds(getGMTime(a), interval)
-
 proc `+`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ## adds ``interval`` time.
   ##
@@ -273,7 +265,12 @@ proc `-`*(a: TTimeInfo, interval: TTimeInterval): TTimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  result = a + -interval
+  let t = toSeconds(TimeInfoToTime(a))
+  let secs = toSeconds(a, interval)
+  if a.tzname == "UTC":
+    result = getGMTime(fromSeconds(t - secs))
+  else:
+    result = getLocalTime(fromSeconds(t - secs))
 
 when not defined(JS):  
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [FTime].}
@@ -742,4 +739,6 @@ when isMainModule:
   var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
   
-  
+  # Interval tests
+  assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
+  assert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
