@@ -711,7 +711,7 @@ var
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
-  MsgWriteln(indent & info.sourceLine.data)
+  MsgWriteln(indent & info.sourceLine.ropeToStr)
   MsgWriteln(indent & repeatChar(info.col, ' ') & '^')
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
@@ -786,8 +786,9 @@ proc sourceLine*(i: TLineInfo): PRope =
     for line in lines(i.toFullPath):
       addSourceLine i.fileIndex, line.string
 
-  InternalAssert i.fileIndex < fileInfos.len and
-                 i.line <= fileInfos[i.fileIndex].lines.len
+  InternalAssert i.fileIndex < fileInfos.len
+  # can happen if the error points to EOF:
+  if i.line > fileInfos[i.fileIndex].lines.len: return nil
 
   result = fileInfos[i.fileIndex].lines[i.line-1]
 

@@ -237,7 +237,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     of tkSymbol: 
       dispA(result, "<span class=\"Identifier\">$1</span>", 
             "\\spanIdentifier{$1}", [toRope(esc(d.target, literal))])
-    of tkInd, tkSad, tkDed, tkSpaces, tkInvalid: 
+    of tkSpaces, tkInvalid: 
       app(result, literal)
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi, 
        tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi, tkParDotLe, 

@@ -7,7 +7,17 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - document NimMain and check whether it works for threading
-
+- parser/grammar:
+  * check that of branches can only receive even simpler expressions, don't
+    allow 'of (var x = 23; nkIdent)'
+  * allow (var x = 12; for i in ... ; x) construct
+  * try except as an expression
+- make use of commonType relation in expressions
+- further expr/stmt unification:
+  - nkIfStmt vs nkIfExpr
+  - start with JS backend and support exprs everywhere
+  - then enhance C backend
+  - OR: do the temp stuff in transf
 
 Bugs
 ====
@@ -29,14 +39,13 @@ version 0.9.4
 =============
 
 - macros as type pragmas
-- ``try`` as an expression
 - provide tool/API to track leaks/object counts
 - hybrid GC
 - use big blocks in the allocator
 - implement full 'not nil' checking
 - make 'bind' default for templates and introduce 'mixin';
   special rule for ``[]=``
-- implicit deref for parameter matching; overloading based on 'var T'
+- implicit deref for parameter matching
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
 - lazy overloading resolution:
@@ -54,9 +63,14 @@ version 0.9.X
 - improve the compiler as a service
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
-- rethink the syntax/grammar:
-  * parser is not strict enough with newlines
-  * change comment handling in the AST
+- perhaps: change comment handling in the AST
+- enforce 'simpleExpr' more often --> doesn't work; tkProc is
+  part of primary!
+- the typeDesc/expr unification is weird and only necessary because of
+  the ambiguous a[T] construct: It would be easy to support a[expr] for
+  generics but require a[.typeDesc] if that's required; this would also
+  allow [.ref T.](x) for a more general type conversion construct; for
+  templates that would work too: T([.ref int])
 
 
 Concurrency
@@ -96,7 +110,8 @@ Not essential for 1.0.0
 - mocking support with ``tyProxy`` that does: fallback for ``.`` operator
   - overloading of ``.``? Special case ``.=``?
 - allow implicit forward declarations of procs via a pragma (so that the
-  wrappers can deactivate it)
+  wrappers can deactivate it): better solution: introduce the notion of a 
+  'proc section' that is similar to a type section.
 - implement the "snoopResult" pragma; no, make a strutils with string append
   semantics instead ...
 - implement "closure tuple consists of a single 'ref'" optimization

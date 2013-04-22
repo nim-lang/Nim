@@ -904,6 +904,26 @@ proc inheritanceDiff*(a, b: PType): int =
     inc(result)
   result = high(int)
 
+proc commonSuperclass*(a, b: PType): PType =
+  # quick check: are they the same?
+  if sameObjectTypes(a, b): return a
+
+  # simple algorithm: we store all ancestors of 'a' in a ID-set and walk 'b'
+  # up until the ID is found:
+  assert a.kind == tyObject
+  assert b.kind == tyObject
+  var x = a
+  var ancestors = initIntSet()
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    ancestors.incl(x.id)
+    x = x.sons[0]
+  var y = b
+  while y != nil:
+    y = skipTypes(y, skipPtrs)
+    if ancestors.contains(y.id): return y
+    y = y.sons[0]
+
 proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool
 proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool = 
   result = true
