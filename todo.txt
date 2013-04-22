@@ -12,6 +12,12 @@ version 0.9.2
     allow 'of (var x = 23; nkIdent)'
   * allow (var x = 12; for i in ... ; x) construct
   * try except as an expression
+- make use of commonType relation in expressions
+- further expr/stmt unification:
+  - nkIfStmt vs nkIfExpr
+  - start with JS backend and support exprs everywhere
+  - then enhance C backend
+  - OR: do the temp stuff in transf
 
 Bugs
 ====
