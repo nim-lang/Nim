@@ -19,7 +19,7 @@ import
 proc ppGetTok(L: var TLexer, tok: var TToken) = 
   # simple filter
   rawGetTok(L, tok)
-  while tok.tokType in {tkInd, tkSad, tkDed, tkComment}: rawGetTok(L, tok)
+  while tok.tokType in {tkComment}: rawGetTok(L, tok)
   
 proc parseExpr(L: var TLexer, tok: var TToken): bool
 proc parseAtom(L: var TLexer, tok: var TToken): bool = 
