@@ -1,6 +1,6 @@
 discard """
   line: 24
-  errormsg: "invalid indentation"
+  errormsg: "expression expected, but found 'keyword else'"
 """
 
 import macros

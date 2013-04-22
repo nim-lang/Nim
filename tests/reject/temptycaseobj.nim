@@ -1,6 +1,6 @@
 discard """
   line: 11
-  errormsg: "identifier expected, but found '[same indentation]'"
+  errormsg: "identifier expected, but found 'keyword of'"
 """
 
 type
