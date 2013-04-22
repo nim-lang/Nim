@@ -1687,6 +1687,10 @@ proc parseStmt(p: var TParser): PNode =
           if p.tok.indent > p.currInd:
             parMessage(p, errInvalidIndentation)
           break
+        if p.tok.toktype in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
+          # XXX this ensures tnamedparamanonproc still compiles;
+          # deprecate this syntax later
+          break
         var a = complexOrSimpleStmt(p)
         if a.kind != nkEmpty:
           addSon(result, a)
