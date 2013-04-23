@@ -1705,6 +1705,7 @@ proc parseStmt(p: var TParser): PNode =
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
     else:
+      if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
       result = simpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       while p.tok.tokType == tkSemicolon: getTok(p)
