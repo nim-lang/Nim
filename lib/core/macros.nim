@@ -130,12 +130,14 @@ proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
 proc len*(n: PNimrodNode): int {.magic: "NLen".}
   ## returns the number of children of `n`.
 
-proc add*(father, child: PNimrodNode) {.magic: "NAdd".}
-  ## adds the `child` to the `father` node
+proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable.}
+  ## Adds the `child` to the `father` node. Returns the
+  ## father node so that calls can be nested.
 
-proc add*(father: PNimrodNode, children: varargs[PNimrodNode]) {.
-  magic: "NAddMultiple".}
-  ## adds each child of `children` to the `father` node
+proc add*(father: PNimrodNode, children: varargs[PNimrodNode]): PNimrodNode {.
+  magic: "NAddMultiple", discardable.}
+  ## Adds each child of `children` to the `father` node.
+  ## Returns the `father` node so that calls can be nested.
 
 proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
   ## deletes `n` children of `father` starting at index `idx`.
