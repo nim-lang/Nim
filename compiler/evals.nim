@@ -1099,7 +1099,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
     addSon(a, result)
-    result = emptyNode
+    result = a
   of mNAddMultiple: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
@@ -1107,7 +1107,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
     for i in countup(0, sonsLen(result) - 1): addSon(a, result.sons[i])
-    result = emptyNode
+    result = a
   of mNDel: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
