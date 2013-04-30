@@ -7,8 +7,6 @@ version 0.9.2
 - acyclic vs prunable; introduce GC hints
 - CGEN: ``restrict`` pragma + backend support; computed goto support
 - document NimMain and check whether it works for threading
-- parser/grammar:
-  * document (var x = 12; for i in ... ; x) construct
 - make use of commonType relation in expressions
 - further expr/stmt unification:
   - rewrite nkCaseExpr handling
@@ -59,6 +57,7 @@ version 0.9.X
 - improve the compiler as a service
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
+- effect propagation for callbacks
 - perhaps: change comment handling in the AST
 - enforce 'simpleExpr' more often --> doesn't work; tkProc is
   part of primary!
