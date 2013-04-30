@@ -515,6 +515,13 @@ contain indentation at certain places for better readability:
 As a rule of thumb, indentation within expressions is allowed after operators,
 an open parenthesis and after commas.
 
+With parenthesis and semicolons ``(;)`` you can use statements where only 
+an expression is allowed:
+
+.. code-block:: nimrod
+  # computes fac(4) at compile time:
+  const fac4 = (var x = 1; for i in 1..4: x *= i; x)
+
 
 Procedures
 ==========

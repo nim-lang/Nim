@@ -214,12 +214,12 @@ proc genConstStmt(p: BProc, t: PNode) =
     
 proc genIfStmt(p: BProc, n: PNode) = 
   #
-  #  if (!expr1) goto L1;
-  #  { thenPart }
+  #  { if (!expr1) goto L1;
+  #   thenPart }
   #  goto LEnd
   #  L1:
-  #  if (!expr2) goto L2;
-  #  { thenPart2 }
+  #  { if (!expr2) goto L2;
+  #   thenPart2 }
   #  goto LEnd
   #  L2:
   #  { elsePart }
@@ -232,13 +232,15 @@ proc genIfStmt(p: BProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     if it.len == 2: 
+      startBlock(p)
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
       inc(p.labels)
       lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
             "br i1 $1, label %LOC$3, label %$2$n" & "LOC$3: $n",
             [rdLoc(a), Lelse, toRope(p.labels)])
-      genSimpleBlock(p, it.sons[1])
+      genStmts(p, it.sons[1])
+      endBlock(p)
       if sonsLen(n) > 1: 
         lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [Lend])
       fixLabel(p, Lelse)
