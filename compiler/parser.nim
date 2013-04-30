@@ -454,10 +454,6 @@ proc complexOrSimpleStmt(p: var TParser): PNode
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
-  if p.tok.tokType == tkSemicolon:
-    # '(;' enforces 'stmt' context:
-    getTok(p)
-    optInd(p, result)
   result.add(complexOrSimpleStmt(p))
   while p.tok.tokType == tkSemicolon:
     getTok(p)
@@ -468,7 +464,7 @@ proc semiStmtList(p: var TParser, result: PNode) =
 proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
-  #|         | 'when' | 'var' | 'bind' | 'mixin'
+  #|         | 'when' | 'var' | 'mixin'
   #| par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';' 
   #|                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
   #|                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
@@ -481,8 +477,15 @@ proc parsePar(p: var TParser): PNode =
   optInd(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase, 
                        tkTry, tkFinally, tkExcept, tkFor, tkBlock, 
-                       tkConst, tkLet, tkWhen, tkVar, tkBind, 
-                       tkMixin, tkSemicolon}:
+                       tkConst, tkLet, tkWhen, tkVar,
+                       tkMixin}:
+    # XXX 'bind' used to be an expression, so we exclude it here;
+    # tests/reject/tbind2 fails otherwise.
+    semiStmtList(p, result)
+  elif p.tok.tokType == tkSemicolon:
+    # '(;' enforces 'stmt' context:
+    getTok(p)
+    optInd(p, result)
     semiStmtList(p, result)
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
@@ -1778,7 +1781,7 @@ proc parseStmt(p: var TParser): PNode =
       if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
       result = simpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
-      while p.tok.tokType == tkSemicolon: getTok(p)
+      #while p.tok.tokType == tkSemicolon: getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)
