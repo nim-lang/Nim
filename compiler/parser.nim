@@ -315,9 +315,7 @@ proc indexExprList(p: var TParser, first: PNode, k: TNodeKind,
   optPar(p)
   eat(p, endToken)
 
-proc exprColonEqExpr(p: var TParser): PNode =
-  #| exprColonEqExpr = expr (':'|'=' expr)?
-  var a = parseExpr(p)
+proc colonOrEquals(p: var TParser, a: PNode): PNode =
   if p.tok.tokType == tkColon:
     result = newNodeP(nkExprColonExpr, p)
     getTok(p)
@@ -332,6 +330,11 @@ proc exprColonEqExpr(p: var TParser): PNode =
     addSon(result, parseExpr(p))
   else:
     result = a
+
+proc exprColonEqExpr(p: var TParser): PNode =
+  #| exprColonEqExpr = expr (':'|'=' expr)?
+  var a = parseExpr(p)
+  result = colonOrEquals(p, a)
 
 proc exprList(p: var TParser, endTok: TTokType, result: PNode) = 
   #| exprList = expr ^+ comma
@@ -443,9 +446,76 @@ proc parseGStrLit(p: var TParser, a: PNode): PNode =
     getTok(p)
   else:
     result = a
-  
-proc identOrLiteral(p: var TParser): PNode = 
-  #| generalizedLit ::= GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
+
+type
+  TPrimaryMode = enum pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix
+
+proc complexOrSimpleStmt(p: var TParser): PNode
+proc simpleExpr(p: var TParser, mode = pmNormal): PNode
+
+proc semiStmtList(p: var TParser, result: PNode) =
+  if p.tok.tokType == tkSemicolon:
+    # '(;' enforces 'stmt' context:
+    getTok(p)
+    optInd(p, result)
+  result.add(complexOrSimpleStmt(p))
+  while p.tok.tokType == tkSemicolon:
+    getTok(p)
+    optInd(p, result)
+    result.add(complexOrSimpleStmt(p))
+  result.kind = nkStmtListExpr
+
+proc parsePar(p: var TParser): PNode =
+  #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
+  #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
+  #|         | 'when' | 'var' | 'bind' | 'mixin'
+  #| par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';' 
+  #|                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
+  #|                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
+  #|         optPar ')'
+  #
+  # unfortunately it's ambiguous: (expr: expr) vs (exprStmt); however a 
+  # leading ';' could be used to enforce a 'stmt' context ...
+  result = newNodeP(nkPar, p)
+  getTok(p)
+  optInd(p, result)
+  if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase, 
+                       tkTry, tkFinally, tkExcept, tkFor, tkBlock, 
+                       tkConst, tkLet, tkWhen, tkVar, tkBind, 
+                       tkMixin, tkSemicolon}:
+    semiStmtList(p, result)
+  elif p.tok.tokType != tkParRi:
+    var a = simpleExpr(p)
+    if p.tok.tokType == tkEquals:
+      # special case: allow assignments
+      getTok(p)
+      optInd(p, result)
+      let b = parseExpr(p)
+      let asgn = newNodeI(nkAsgn, a.info, 2)
+      asgn.sons[0] = a
+      asgn.sons[1] = b
+      result.add(asgn)
+    elif p.tok.tokType == tkSemicolon:
+      # stmt context:
+      result.add(a)
+      semiStmtList(p, result)
+    else:
+      a = colonOrEquals(p, a)
+      result.add(a)
+      if p.tok.tokType == tkComma:
+        getTok(p)
+        skipComment(p, a)
+        while p.tok.tokType != tkParRi and p.tok.tokType != tkEof:
+          var a = exprColonEqExpr(p)
+          addSon(result, a)
+          if p.tok.tokType != tkComma: break 
+          getTok(p)
+          skipComment(p, a)
+  optPar(p)
+  eat(p, tkParRi)
+
+proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode = 
+  #| generalizedLit = GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
   #| identOrLiteral = generalizedLit | symbol 
   #|                | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
   #|                | UINT_LIT | UINT8_LIT | UINT16_LIT | UINT32_LIT | UINT64_LIT
@@ -453,7 +523,7 @@ proc identOrLiteral(p: var TParser): PNode =
   #|                | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
   #|                | CHAR_LIT
   #|                | NIL
-  #|                | tupleConstr | arrayConstr | setOrTableConstr
+  #|                | par | arrayConstr | setOrTableConstr
   #|                | castExpr
   #| tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
   #| arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
@@ -537,7 +607,10 @@ proc identOrLiteral(p: var TParser): PNode =
     getTok(p)
   of tkParLe:
     # () constructor
-    result = exprColonEqExprList(p, nkPar, tkParRi)
+    if mode in {pmTypeDesc, pmTypeDef}:
+      result = exprColonEqExprList(p, nkPar, tkParRi)
+    else:
+      result = parsePar(p)
   of tkCurlyLe:
     # {} constructor
     result = setOrTableConstr(p)
@@ -582,9 +655,6 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
     of tkCurlyLe:
       result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
     else: break
-
-type
-  TPrimaryMode = enum pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
 
@@ -926,7 +996,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, result)
     addSon(result, primary(p, pmNormal))
   else:
-    result = identOrLiteral(p)
+    result = identOrLiteral(p, mode)
     if mode != pmSkipSuffix:
       result = primarySuffix(p, result)
 

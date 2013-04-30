@@ -378,18 +378,17 @@ proc getConstIfExpr(c: PSym, n: PNode): PNode =
   result = nil
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
-    case it.kind
-    of nkElifExpr: 
+    if it.len == 2:
       var e = getConstExpr(c, it.sons[0])
       if e == nil: return nil
       if getOrdValue(e) != 0: 
         if result == nil: 
           result = getConstExpr(c, it.sons[1])
           if result == nil: return 
-    of nkElseExpr: 
+    elif it.len == 1:
       if result == nil: result = getConstExpr(c, it.sons[0])
     else: internalError(it.info, "getConstIfExpr()")
-  
+
 proc partialAndExpr(c: PSym, n: PNode): PNode = 
   # partial evaluation
   result = n

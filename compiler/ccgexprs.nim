@@ -861,15 +861,14 @@ proc genIfExpr(p: BProc, n: PNode, d: var TLoc) =
   Lend = getLabel(p)
   for i in countup(0, sonsLen(n) - 1):
     it = n.sons[i]
-    case it.kind
-    of nkElifExpr:
+    if it.len == 2:
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
       lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), Lelse])
       expr(p, it.sons[1], tmp)
       lineF(p, cpsStmts, "goto $1;$n", [Lend])
       fixLabel(p, Lelse)
-    of nkElseExpr:
+    elif it.len == 1:
       expr(p, it.sons[0], tmp)
     else: internalError(n.info, "genIfExpr()")
   fixLabel(p, Lend)
