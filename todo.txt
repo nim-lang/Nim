@@ -10,18 +10,16 @@ version 0.9.2
 - parser/grammar:
   * check that of branches can only receive even simpler expressions, don't
     allow 'of (var x = 23; nkIdent)'
-  * allow (var x = 12; for i in ... ; x) construct
-  * try except as an expression
+  * document (var x = 12; for i in ... ; x) construct
 - make use of commonType relation in expressions
 - further expr/stmt unification:
-  - nkIfStmt vs nkIfExpr
-  - start with JS backend and support exprs everywhere
-  - then enhance C backend
-  - OR: do the temp stuff in transf
+  - rewrite nkCaseExpr handling
+  - try except as an expression
 
 Bugs
 ====
 
+- new parser breaks docgen
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO
 - instantiated generics are listed in error messages

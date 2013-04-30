@@ -231,8 +231,7 @@ proc genIfStmt(p: BProc, n: PNode) =
   var Lend = getLabel(p)
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
-    case it.kind
-    of nkElifBranch: 
+    if it.len == 2: 
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
       inc(p.labels)
@@ -243,7 +242,7 @@ proc genIfStmt(p: BProc, n: PNode) =
       if sonsLen(n) > 1: 
         lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [Lend])
       fixLabel(p, Lelse)
-    of nkElse:
+    elif it.len == 1:
       genSimpleBlock(p, it.sons[0])
     else: internalError(n.info, "genIfStmt()")
   if sonsLen(n) > 1: fixLabel(p, Lend)

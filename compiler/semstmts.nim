@@ -12,52 +12,6 @@
 
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
-
-proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
-  # If semCheck is set to false, ``when`` will return the verbatim AST of
-  # the correct branch. Otherwise the AST will be passed through semStmt.
-  result = nil
-  
-  template setResult(e: expr) =
-    if semCheck: result = semStmt(c, e) # do not open a new scope!
-    else: result = e
-
-  for i in countup(0, sonsLen(n) - 1): 
-    var it = n.sons[i]
-    case it.kind
-    of nkElifBranch, nkElifExpr: 
-      checkSonsLen(it, 2)
-      var e = semConstExpr(c, it.sons[0])
-      if e.kind != nkIntLit: InternalError(n.info, "semWhen")
-      elif e.intVal != 0 and result == nil:
-        setResult(it.sons[1]) 
-    of nkElse, nkElseExpr:
-      checkSonsLen(it, 1)
-      if result == nil: 
-        setResult(it.sons[0])
-    else: illFormedAst(n)
-  if result == nil: 
-    result = newNodeI(nkNilLit, n.info) 
-  # The ``when`` statement implements the mechanism for platform dependent
-  # code. Thus we try to ensure here consistent ID allocation after the
-  # ``when`` statement.
-  IDsynchronizationPoint(200)
-
-proc semIf(c: PContext, n: PNode): PNode = 
-  result = n
-  for i in countup(0, sonsLen(n) - 1): 
-    var it = n.sons[i]
-    case it.kind
-    of nkElifBranch: 
-      checkSonsLen(it, 2)
-      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
-      openScope(c.tab)
-      it.sons[1] = semStmt(c, it.sons[1])
-      closeScope(c.tab)
-    of nkElse: 
-      if sonsLen(it) == 1: it.sons[0] = semStmtScope(c, it.sons[0])
-      else: illFormedAst(it)
-    else: illFormedAst(n)
   
 proc semDiscard(c: PContext, n: PNode): PNode = 
   result = n

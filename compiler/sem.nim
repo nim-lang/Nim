@@ -58,10 +58,13 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
     result = copyNode(arg)
     result.typ = formal
 
+var CommonTypeBegin = PType(kind: tyExpr)
+
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
   # if expressions, etc.:
-  if x == nil: return y
+  if x == nil: return x
+  if y == nil: return y
   var a = skipTypes(x, {tyGenericInst})
   var b = skipTypes(y, {tyGenericInst})
   result = x

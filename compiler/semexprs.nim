@@ -1458,26 +1458,73 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mQuoteAst: result = semQuoteAst(c, n)
   else: result = semDirectOp(c, n, flags)
 
-proc semIfExpr(c: PContext, n: PNode): PNode = 
-  result = n
-  checkMinSonsLen(n, 2)
-  var typ: PType = nil
+proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
+  # If semCheck is set to false, ``when`` will return the verbatim AST of
+  # the correct branch. Otherwise the AST will be passed through semStmt.
+  result = nil
+  
+  template setResult(e: expr) =
+    if semCheck: result = semStmt(c, e) # do not open a new scope!
+    else: result = e
+
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     case it.kind
-    of nkElifExpr: 
+    of nkElifBranch, nkElifExpr: 
       checkSonsLen(it, 2)
-      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
-      it.sons[1] = semExprWithType(c, it.sons[1])
-      if typ == nil: typ = it.sons[1].typ
-      else: it.sons[1] = fitNode(c, typ, it.sons[1])
-    of nkElseExpr: 
+      var e = semConstExpr(c, it.sons[0])
+      if e.kind != nkIntLit: InternalError(n.info, "semWhen")
+      elif e.intVal != 0 and result == nil:
+        setResult(it.sons[1]) 
+    of nkElse, nkElseExpr:
       checkSonsLen(it, 1)
-      it.sons[0] = semExprWithType(c, it.sons[0])
-      if typ != nil: it.sons[0] = fitNode(c, typ, it.sons[0])
-      else: InternalError(it.info, "semIfExpr")
+      if result == nil: 
+        setResult(it.sons[0])
     else: illFormedAst(n)
-  result.typ = typ
+  if result == nil: 
+    result = newNodeI(nkNilLit, n.info) 
+  # The ``when`` statement implements the mechanism for platform dependent
+  # code. Thus we try to ensure here consistent ID allocation after the
+  # ``when`` statement.
+  IDsynchronizationPoint(200)
+
+
+proc semExprBranch(c: PContext, n: PNode): PNode =
+  result = semExpr(c, n)
+  if result.typ != nil:
+    # XXX tyGenericInst here?
+    semProcvarCheck(c, result)
+    if result.typ.kind == tyVar: result = newDeref(result)
+    semDestructorCheck(c, result, {})
+
+proc semIf(c: PContext, n: PNode): PNode = 
+  result = n
+  var typ = CommonTypeBegin
+  var hasElse = false
+  for i in countup(0, sonsLen(n) - 1): 
+    var it = n.sons[i]
+    if it.len == 2:
+      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      openScope(c.tab)
+      it.sons[1] = semExprBranch(c, it.sons[1])
+      typ = commonType(typ, it.sons[1].typ)
+      closeScope(c.tab)
+    elif it.len == 1:
+      hasElse = true
+      openScope(c.tab)
+      it.sons[0] = semExprBranch(c, it.sons[0])
+      typ = commonType(typ, it.sons[0].typ)
+      closeScope(c.tab)
+    else: illFormedAst(it)
+  if isEmptyType(typ) or not hasElse:
+    for it in n: discardCheck(it.lastSon)
+    result.kind = nkIfStmt
+  else:
+    for it in n:
+      let j = it.len-1
+      it.sons[j] = fitNode(c, typ, it.sons[j])
+    result.kind = nkIfExpr
+    result.typ = typ
 
 proc semSetConstr(c: PContext, n: PNode): PNode = 
   result = newNodeI(nkCurly, n.info)
@@ -1739,7 +1786,6 @@ proc fixImmediateParams(n: PNode): PNode =
   # the planned overload resolution reforms
   for i in 1 .. <safeLen(n):
     if n[i].kind == nkDo: n.sons[i] = n[i][bodyPos]
-  
   result = n
 
 proc semExport(c: PContext, n: PNode): PNode =
@@ -1910,7 +1956,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkSonsLen(n, 1)
     n.sons[0] = semExpr(c, n.sons[0], flags)
   of nkCast: result = semCast(c, n)
-  of nkIfExpr: result = semIfExpr(c, n)
+  of nkIfExpr, nkIfStmt: result = semIf(c, n)
   of nkStmtListExpr: result = semStmtListExpr(c, n)
   of nkBlockExpr: result = semBlockExpr(c, n)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv: 
@@ -1936,7 +1982,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkLetSection: result = semVarOrLet(c, n, skLet)
   of nkConstSection: result = semConst(c, n)
   of nkTypeSection: result = SemTypeSection(c, n)
-  of nkIfStmt: result = SemIf(c, n)
   of nkDiscardStmt: result = semDiscard(c, n)
   of nkWhileStmt: result = semWhile(c, n)
   of nkTryStmt: result = semTry(c, n)
