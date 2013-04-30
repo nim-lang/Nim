@@ -161,7 +161,7 @@ proc makeJSString(s: string): PRope = strutils.escape(s).toRope
 include jstypes
   
 proc gen(p: PProc, n: PNode, r: var TCompRes)
-proc genStmt(p: PProc, n: PNode, r: var TCompRes)
+proc genStmt(p: PProc, n: PNode)
 proc genProc(oldProc: PProc, prc: PSym): PRope
 proc genConstant(p: PProc, c: PSym)
 
@@ -387,7 +387,7 @@ proc genLineDir(p: PProc, n: PNode) =
   
 proc genWhileStmt(p: PProc, n: PNode) =
   var
-    cond, stmt: TCompRes
+    cond: TCompRes
   internalAssert isEmptyType(n.typ)
   genLineDir(p, n)
   inc(p.unique)
@@ -400,15 +400,16 @@ proc genWhileStmt(p: PProc, n: PNode) =
   gen(p, n.sons[0], cond)
   appf(p.body, "if (!$1) break L$2;$n" | "if not $1 then goto ::L$2:: end;$n",
        [cond.res, labl])
-  genStmt(p, n.sons[1], stmt)
-  internalAssert stmt.res.isNil
+  genStmt(p, n.sons[1])
   appf(p.body, "}$n" | "end$n", [])
   setlen(p.blocks, length)
 
 proc moveInto(p: PProc, src: var TCompRes, dest: TCompRes) =
   if src.kind != resNone:
-    assert dest.kind != resNone
-    p.body.appf("$1 = $2;$n", dest.rdLoc, src.rdLoc)
+    if dest.kind != resNone:
+      p.body.appf("$1 = $2;$n", dest.rdLoc, src.rdLoc)
+    else:
+      p.body.appf("$1;$n", src.rdLoc)
     src.kind = resNone
     src.res = nil
 
@@ -442,11 +443,11 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   app(p.body, "try {" & tnl)
   var length = sonsLen(n)
   var a: TCompRes
-  genStmt(p, n.sons[0], a)
+  gen(p, n.sons[0], a)
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-    moveInto(p, a, r)
+  moveInto(p, a, r)
   var i = 1
   if length > 1 and n.sons[i].kind == nkExceptBranch:
     appf(p.body, "} catch (EXC) {$n")
@@ -455,7 +456,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     if blen == 1: 
       # general except section:
       if i > 1: app(p.body, "else {" & tnl)
-      genStmt(p, n.sons[i].sons[0], a)
+      gen(p, n.sons[i].sons[0], a)
       moveInto(p, a, r)
       if i > 1: app(p.body, '}' & tnl)
     else:
@@ -469,13 +470,13 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
              [safePoint, genTypeInfo(p, n.sons[i].sons[j].typ)])
       if i > 1: app(p.body, "else ")
       appf(p.body, "if ($1.exc && ($2)) {$n", [safePoint, orExpr])
-      genStmt(p, n.sons[i].sons[blen - 1], a)
+      gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       appf(p.body, "}$n")
     inc(i)
   app(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
-    genStmt(p, n.sons[i].sons[0], a)
+    gen(p, n.sons[i].sons[0], a)
     moveInto(p, a, r)
   app(p.body, '}' & tnl)
 
@@ -527,12 +528,12 @@ proc genCase(p: PProc, n: PNode, r: var TCompRes) =
           else: 
             gen(p, e, cond)
             appf(p.body, "case $1: ", [cond.rdLoc])
-      genStmt(p, lastSon(it), stmt)
+      gen(p, lastSon(it), stmt)
       moveInto(p, stmt, r)
       appf(p.body, "$nbreak;$n")
     of nkElse:
       appf(p.body, "default: $n")
-      genStmt(p, it.sons[0], stmt)
+      gen(p, it.sons[0], stmt)
       moveInto(p, stmt, r)
       appf(p.body, "break;$n")
     else: internalError(it.info, "jsgen.genCaseStmt")
@@ -554,7 +555,7 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
   labl = p.unique
   appf(p.body, "L$1: do {$n", toRope(labl))
-  genStmt(p, n.sons[1], r)
+  gen(p, n.sons[1], r)
   appf(p.body, "} while(false);$n")
   setlen(p.blocks, idx)
 
@@ -599,11 +600,11 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
         inc(toClose)
       gen(p, it.sons[0], cond)
       appf(p.body, "if ($1) {$n", cond.rdLoc)
-      genStmt(p, it.sons[1], stmt)
+      gen(p, it.sons[1], stmt)
     else:
       # else part:
       appf(p.body, "else {$n")
-      genStmt(p, it.sons[0], stmt)
+      gen(p, it.sons[0], stmt)
     moveInto(p, stmt, r)
     appf(p.body, "}$n")
   app(p.body, repeatChar(toClose, '}') & tnl)
@@ -1284,12 +1285,11 @@ proc convCStrToStr(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = resExpr
 
 proc genReturnStmt(p: PProc, n: PNode) = 
-  var a: TCompRes
   if p.procDef == nil: InternalError(n.info, "genReturnStmt")
   p.BeforeRetNeeded = true
   if (n.sons[0].kind != nkEmpty): 
-    genStmt(p, n.sons[0], a)
-  else: 
+    genStmt(p, n.sons[0])
+  else:
     genLineDir(p, n)
   app(p.body, "break BeforeRet;" & tnl)
 
@@ -1314,7 +1314,7 @@ proc genProc(oldProc: PProc, prc: PSym): PRope =
   var
     resultSym: PSym
     name, returnStmt, resultAsgn, header: PRope
-    a, r: TCompRes
+    a: TCompRes
   #if gVerbosity >= 3: 
   #  echo "BEGIN generating code for: " & prc.name.s
   var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
@@ -1330,16 +1330,17 @@ proc genProc(oldProc: PProc, prc: PSym): PRope =
         createVar(p, resultSym.typ, isIndirect(resultSym))])
     gen(p, prc.ast.sons[resultPos], a)
     returnStmt = ropef("return $#;$n", [a.res])
-  genStmt(p, prc.getBody, r)
-  if r.res != nil: app(p.body, r.res)
+  genStmt(p, prc.getBody)
   result = ropef("function $#($#) {$n$#$#$#$#}$n",
                 [name, header, p.locals, resultAsgn, 
                  genProcBody(p, prc), returnStmt])
   #if gVerbosity >= 3:
   #  echo "END   generated code for: " & prc.name.s
-  
-proc genStmt(p: PProc, n: PNode, r: var TCompRes) = 
+
+proc genStmt(p: PProc, n: PNode) =
+  var r: TCompRes
   gen(p, n, r)
+  if r.res != nil: appf(p.body, "$#;$n", r.res)
 
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
@@ -1415,15 +1416,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     # this shows the distinction is nice for backends and should be kept
     # in the frontend
     let isExpr = not isEmptyType(n.typ)
-    var a: TCompRes
     for i in countup(0, sonsLen(n) - 1 - isExpr.ord):
-      a.res = nil
-      genStmt(p, n.sons[i], a)
-      if a.res != nil:
-        app(p.body, a.res)
-        app(p.body, ";" & tnl)
+      genStmt(p, n.sons[i])
     if isExpr:
-      genStmt(p, lastSon(n), r)
+      gen(p, lastSon(n), r)
   of nkBlockStmt, nkBlockExpr: genBlock(p, n, r)
   of nkIfStmt, nkIfExpr: genIf(p, n, r)
   of nkWhileStmt: genWhileStmt(p, n)
@@ -1474,10 +1470,7 @@ proc genModule(p: PProc, n: PNode) =
                  "framePtr = F;$n", [
         makeJSString("module " & p.module.module.name.s), 
         makeJSString(toFilename(p.module.module.info))])
-  var r: TCompRes
-  genStmt(p, n, r)
-  if r.res != nil:
-    appf(p.body, "$#;$n", r.res)
+  genStmt(p, n)
   if optStackTrace in p.options:
     appf(p.body, "framePtr = framePtr.prev;$n")
 
