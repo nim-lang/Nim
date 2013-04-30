@@ -239,8 +239,9 @@ template `=~` *(s: string, pattern: TRegEx): expr =
   ##   else:
   ##     echo("syntax error")
   ##
+  bind maxSubPatterns
   when not definedInScope(matches):
-    var matches {.inject.}: array[0..re.maxSubPatterns-1, string]
+    var matches {.inject.}: array[0..maxSubPatterns-1, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
