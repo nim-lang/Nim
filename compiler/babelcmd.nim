@@ -83,7 +83,7 @@ proc addPathRec(dir: string, info: TLineInfo) =
     if k == pcDir and p[pos] != '.':
       addPackage(packages, p)
   for p in packages.chosen:
-    addPathWithNimFiles(p, info)
+    addBabelPath(p, info)
 
 proc babelPath*(path: string, info: TLineInfo) =
   addPathRec(path, info)
