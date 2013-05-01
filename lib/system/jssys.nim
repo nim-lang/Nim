@@ -620,4 +620,9 @@ proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
     x = x.base
   return true
 
+proc addChar(x: string, c: char) {.compilerproc, noStackFrame.} =
+  asm """
+    `x`[`x`.length-1] = `c`; `x`.push(0);
+  """
+
 {.pop.}

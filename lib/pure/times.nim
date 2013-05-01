@@ -463,6 +463,8 @@ when not defined(JS):
     
 elif defined(JS):
   proc newDate(): TTime {.importc: "new Date".}
+  proc internGetTime(): TTime {.importc: "new Date", tags: [].}
+  
   proc newDate(value: float): TTime {.importc: "new Date".}
   proc newDate(value: string): TTime {.importc: "new Date".}
   proc getTime(): TTime =
@@ -494,7 +496,7 @@ elif defined(JS):
     result.yearday = 0
   
   proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =
-    result = getTime()
+    result = internGetTime()
     result.setSeconds(timeInfo.second)
     result.setMinutes(timeInfo.minute)
     result.setHours(timeInfo.hour)

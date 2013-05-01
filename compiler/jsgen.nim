@@ -611,10 +611,11 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
 
 proc generateHeader(p: PProc, typ: PType): PRope =
   result = nil
-  for i in countup(1, sonsLen(typ.n) - 1): 
+  for i in countup(1, sonsLen(typ.n) - 1):
     if result != nil: app(result, ", ")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
+    if isCompileTimeOnly(param.typ): continue
     var name = mangleName(param)
     app(result, name)
     if mapType(param.typ) == etyBaseIndex: 
@@ -865,8 +866,10 @@ proc genArg(p: PProc, n: PNode, r: var TCompRes) =
 proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   app(r.res, "(")
   for i in countup(1, sonsLen(n) - 1): 
+    let it = n.sons[i]
+    if it.typ.isCompileTimeOnly: continue  
     if i > 1: app(r.res, ", ")
-    genArg(p, n.sons[i], r)
+    genArg(p, it, r)
   app(r.res, ")")
   r.kind = resExpr
 
@@ -1128,7 +1131,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")
     else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
-  of mAppendStrCh: binaryExpr(p, n, r, "addChar", "$1 = addChar($1, $2)")
+  of mAppendStrCh: binaryExpr(p, n, r, "addChar", "addChar($1, $2)")
   of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
         binaryExpr(p, n, r, "", "$1 += $2")

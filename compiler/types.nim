@@ -486,7 +486,9 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyPtr, tyRef, tyVar, tyMutable, tyConst: 
     result = typeToStr[t.kind] & typeToString(t.sons[0])
   of tyRange:
-    result = "range " & rangeToStr(t.n) & "(" & typeToString(t.sons[0]) & ")"
+    result = "range " & rangeToStr(t.n)
+    if prefer != preferExported:
+      result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
     result = if tfIterator in t.flags: "iterator (" else: "proc ("
     for i in countup(1, sonsLen(t) - 1): 
@@ -1281,3 +1283,14 @@ proc compatibleEffects*(formal, actual: PType): bool =
       result = compatibleEffectsAux(st, real.sons[tagEffects])
       if not result: return
   result = true
+
+proc isCompileTimeOnly*(t: PType): bool {.inline.} =
+  result = t.kind in {tyTypedesc, tyExpr}
+
+proc containsCompileTimeOnly*(t: PType): bool =
+  if isCompileTimeOnly(t): return true
+  if t.sons != nil:
+    for i in 0 .. <t.sonsLen:
+      if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
+        return true
+  return false
