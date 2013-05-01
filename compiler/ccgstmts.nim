@@ -232,13 +232,14 @@ proc genIfStmt(p: BProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     if it.len == 2: 
-      startBlock(p)
+      when newScopeForIf: startBlock(p)
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
       inc(p.labels)
       lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
             "br i1 $1, label %LOC$3, label %$2$n" & "LOC$3: $n",
             [rdLoc(a), Lelse, toRope(p.labels)])
+      when not newScopeForIf: startBlock(p)
       genStmts(p, it.sons[1])
       endBlock(p)
       if sonsLen(n) > 1: 

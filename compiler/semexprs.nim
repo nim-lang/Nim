@@ -1504,8 +1504,9 @@ proc semIf(c: PContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     if it.len == 2:
-      openScope(c.tab)
+      when newScopeForIf: openScope(c.tab)
       it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      when not newScopeForIf: openScope(c.tab)
       it.sons[1] = semExprBranch(c, it.sons[1])
       typ = commonType(typ, it.sons[1].typ)
       closeScope(c.tab)
