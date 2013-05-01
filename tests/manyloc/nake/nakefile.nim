@@ -76,7 +76,7 @@ task "testskel", "create skeleton test dir for testing":
 
 task "clean", "cleanup generated files":
   var dirs = @["nimcache", "server"/"nimcache"]
-  dirs.each(proc(x: var string) =
+  dirs.map(proc(x: var string) =
     if existsDir(x): removeDir(x))
 
 task "download", "download game assets":

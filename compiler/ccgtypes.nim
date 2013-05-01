@@ -137,17 +137,6 @@ proc mangleName(s: PSym): PRope =
       app(result, toRope(s.id))
     s.loc.r = result
 
-proc isCompileTimeOnly(t: PType): bool =
-  result = t.kind in {tyTypedesc, tyExpr}
-
-proc containsCompileTimeOnly(t: PType): bool =
-  if isCompileTimeOnly(t): return true
-  if t.sons != nil:
-    for i in 0 .. <t.sonsLen:
-      if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
-        return true
-  return false
-
 proc typeName(typ: PType): PRope =
   result = if typ.sym != nil: typ.sym.name.s.mangle.toRope
            else: ~"TY"
