@@ -603,7 +603,9 @@ proc CallCCompiler*(projectfile: string) =
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
       else: buildGui = ""
       var exefile: string
-      if optGenDynLib in gGlobalOptions:
+      if options.outFile.len > 0: 
+        exefile = options.outFile
+      elif optGenDynLib in gGlobalOptions:
         exefile = platform.os[targetOS].dllFrmt % splitFile(projectFile).name
         buildDll = cc[c].buildDll
       else:
