@@ -216,7 +216,8 @@ proc compileManyLoc(r: var TResults, options: string) =
   for kind, dir in os.walkDir("tests/manyloc"):
     if kind == pcDir:
       let mainfile = findMainFile(dir)
-      compileSingleTest(r, mainfile, options)
+      if mainfile != ".nim":
+        compileSingleTest(r, mainfile, options)
 
 proc compileSpecialTests(r: var TResults, options: string) =
   compileRodFiles(r, options)

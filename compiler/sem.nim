@@ -100,7 +100,7 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
-  if n.kind == nkSym: 
+  if n.kind == nkSym:
     result = n.sym
     InternalAssert sfGenSym in result.flags
     InternalAssert result.kind == kind

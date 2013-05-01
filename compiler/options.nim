@@ -7,13 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import 
+import
   os, lists, strutils, strtabs
   
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   hasFFI* = defined(useFFI)
+  newScopeForIf* = false      # XXX activate for 0.9.4
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
