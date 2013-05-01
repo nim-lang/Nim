@@ -60,7 +60,7 @@ iterator chosen(packages: PStringTable): string =
 
 proc addBabelPath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
-    Message(info, hintPath, p)
+    if gVerbosity >= 1: Message(info, hintPath, p)
     lists.PrependStr(options.lazyPaths, p)
 
 proc addPathWithNimFiles(p: string, info: TLineInfo) =

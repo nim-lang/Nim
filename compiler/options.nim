@@ -99,14 +99,14 @@ var
   searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
   headerFile*: string = ""
-  gVerbosity*: int            # how verbose the compiler is
+  gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool        # for 'doc2': output any dependency
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
   isServing*: bool = false
-  
+
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 

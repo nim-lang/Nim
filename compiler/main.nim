@@ -14,7 +14,7 @@ import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
   os, lists, condsyms, rodread, rodwrite, ropes, trees, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, jsgen, cgendata,
+  cgen, jsgen, cgendata, json, nversion,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
   tables, docgen2, service, magicsys, parser, crc, ccgutils
 
@@ -392,6 +392,15 @@ proc wantMainModule =
 
   gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
 
+proc requireMainModuleOption =
+  if optMainModule.len == 0:
+    Fatal(gCmdLineInfo, errMainModuleMustBeSpecified)
+  else:
+    gProjectName = optMainModule
+    gProjectFull = gProjectPath / gProjectName
+
+  gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
+
 proc resetMemory =
   resetCompilationLists()
   ccgutils.resetCaches()
@@ -529,9 +538,30 @@ proc MainCommand =
     wantMainModule()
     CommandGenDepend()
   of "dump":
-    gCmd = cmdDump
-    condsyms.ListSymbols()
-    for it in iterSearchPath(searchPaths): MsgWriteln(it)
+    gcmd = cmdDump
+    if getconfigvar("dump.format") == "json":
+      requireMainModuleOption()
+
+      var definedSymbols = newJArray()
+      for s in definedSymbolNames(): definedSymbols.elems.add(%s)
+
+      var libpaths = newJArray()
+      for dir in itersearchpath(searchpaths): libpaths.elems.add(%dir)
+
+      var dumpdata = % [
+        (key: "version", val: %VersionAsString),
+        (key: "project_path", val: %gProjectFull),
+        (key: "defined_symbols", val: definedSymbols),
+        (key: "lib_paths", val: libpaths)
+      ]
+
+      outWriteLn($dumpdata)
+    else:
+      outWriteLn("-- list of currently defined symbols --")
+      for s in definedSymbolNames(): outWriteLn(s)
+      outWriteLn("-- end of list --")
+
+      for it in iterSearchPath(searchpaths): msgWriteLn(it)
   of "check":
     gCmd = cmdCheck
     wantMainModule()
@@ -568,7 +598,7 @@ proc MainCommand =
   else:
     rawMessage(errInvalidCommandX, command)
   
-  if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun}:
+  if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun, cmdDump}:
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem())])
