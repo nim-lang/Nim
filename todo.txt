@@ -17,7 +17,6 @@ version 0.9.2
 Bugs
 ====
 
-- new parser breaks docgen
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO
 - instantiated generics are listed in error messages
