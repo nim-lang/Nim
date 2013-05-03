@@ -2407,8 +2407,8 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
   
-proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
-  magic: "InstantiationInfo", noSideEffect.}
+proc InstantiationInfo*(index = -1, fullPaths = false): tuple[
+  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information.
   ##
   ## This proc is mostly useful for meta programming (eg. ``assert`` template)
@@ -2437,6 +2437,9 @@ proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
   ##     testException(EInvalidIndex, tester(30))
   ##     testException(EInvalidIndex, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
+template CurrentSourcePath*: string = InstantiationInfo(-1, true).filename
+  ## returns the full file-system path of the current source
 
 proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
