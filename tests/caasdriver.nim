@@ -6,8 +6,8 @@ type
 
 proc dirname(path: string): string = path.splitPath()[0]
 
-const
-  TesterDir = CurrentSourcePath.dirname
+var
+  TesterDir = getAppDir()
   NimrodBin = TesterDir / "../bin/nimrod"
 
 proc startNimrodSession*(project: string): TNimrodSession =
@@ -26,6 +26,9 @@ proc doCommand*(session: var TNimrodSession, command: string): string =
     if session.nim.outputStream.readLine(line):
       if line.string == "": break
       result.add(line.string & "\n")
+    else:
+      result = "FAILED TO EXECUTE: " & command & "\n" & result
+      break
 
 proc close(session: var TNimrodSession) {.destructor.} =
   session.nim.close
