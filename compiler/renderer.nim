@@ -939,10 +939,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[0])
     put(g, tkDotDot, "..")
     gsub(g, n.sons[1])
-  of nkDerefExpr: 
+  of nkDerefExpr:
     gsub(g, n.sons[0])
-    putWithSpace(g, tkOpr, "^") 
-    # unfortunately this requires a space, because ^. would be only one opr
+    put(g, tkOpr, "[]")
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n.sons[0])

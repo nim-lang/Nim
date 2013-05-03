@@ -552,9 +552,21 @@ proc genVarPrototype(m: BModule, sym: PSym)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genProc(m: BModule, prc: PSym)
 proc genStmts(p: BProc, t: PNode)
+proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)
+proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
+proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+proc intLiteral(i: biggestInt): PRope
+proc genLiteral(p: BProc, n: PNode): PRope
 
-include "ccgexprs.nim", "ccgstmts.nim"
+proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
+  initLoc(result, locNone, e.typ, OnUnknown)
+  expr(p, e, result)
+
+proc lenField: PRope {.inline.} =
+  result = toRope(if gCmd != cmdCompileToCpp: "Sup.len" else: "len")
+
+include ccgcalls, "ccgstmts.nim", "ccgexprs.nim"
 
 # ----------------------------- dynamic library handling -----------------
 # We don't finalize dynamic libs as this does the OS for us.

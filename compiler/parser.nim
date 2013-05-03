@@ -913,15 +913,15 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
 proc parseExpr(p: var TParser): PNode = 
   #| expr = (ifExpr
   #|       | whenExpr
-  #|       | caseExpr)
+  #|       | caseExpr
+  #|       | tryStmt)
   #|       / simpleExpr
   case p.tok.tokType:
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
+  of tkTry: result = parseTry(p)
   else: result = simpleExpr(p)
-  # XXX needs proper support:
-  #of tkTry: result = parseTry(p)
 
 proc parseObject(p: var TParser): PNode
 proc parseDistinct(p: var TParser): PNode
