@@ -40,21 +40,6 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0): 
     localError(n.info, errInvalidControlFlowX, 
                renderTree(n, {renderNoComments}))
-  
-proc semBlock(c: PContext, n: PNode): PNode = 
-  result = n
-  Inc(c.p.nestedBlockCounter)
-  checkSonsLen(n, 2)
-  openScope(c.tab)            # BUGFIX: label is in the scope of block!
-  if n.sons[0].kind != nkEmpty:
-    var labl = newSymG(skLabel, n.sons[0], c)
-    if sfGenSym notin labl.flags:
-      addDecl(c, labl)
-      n.sons[0] = newSymNode(labl, n.sons[0].info)
-    suggestSym(n.sons[0], labl)
-  n.sons[1] = semStmt(c, n.sons[1])
-  closeScope(c.tab)
-  Dec(c.p.nestedBlockCounter)
 
 proc semAsm(con: PContext, n: PNode): PNode = 
   checkSonsLen(n, 2)
@@ -79,20 +64,113 @@ proc toCover(t: PType): biggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-proc semCase(c: PContext, n: PNode): PNode = 
-  # check selector:
+proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+  var smoduleId = getModule(s).id
+  if sfProcVar notin s.flags and s.typ.callConv == ccDefault and
+      smoduleId != c.module.id and smoduleId != c.friendModule.id: 
+    LocalError(n.info, errXCannotBePassedToProcVar, s.name.s)
+
+proc semProcvarCheck(c: PContext, n: PNode) =
+  let n = n.skipConv
+  if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skIterator,
+                                        skConverter}:
+    performProcvarCheck(c, n, n.sym)
+
+proc semProc(c: PContext, n: PNode): PNode
+
+include semdestruct
+
+proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
+  if efAllowDestructor notin flags and n.kind in nkCallKinds+{nkObjConstr}:
+    if instantiateDestructor(c, n.typ):
+      LocalError(n.info, errGenerated,
+        "usage of a type with a destructor in a non destructible context")
+
+proc newDeref(n: PNode): PNode {.inline.} =  
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
+  addSon(result, n)
+
+proc semExprBranch(c: PContext, n: PNode): PNode =
+  result = semExpr(c, n)
+  if result.typ != nil:
+    # XXX tyGenericInst here?
+    semProcvarCheck(c, result)
+    if result.typ.kind == tyVar: result = newDeref(result)
+    semDestructorCheck(c, result, {})
+
+proc semExprBranchScope(c: PContext, n: PNode): PNode =
+  openScope(c.tab)
+  result = semExprBranch(c, n)
+  closeScope(c.tab)
+
+proc ImplicitlyDiscardable(n: PNode): bool =
+  result = isCallExpr(n) and n.sons[0].kind == nkSym and 
+           sfDiscardable in n.sons[0].sym.flags
+
+proc fixNilType(n: PNode) =
+  if isAtom(n):
+    if n.kind != nkNilLit and n.typ != nil:
+      localError(n.info, errDiscardValue)
+  else:
+    for it in n: fixNilType(it)
+  n.typ = nil
+
+proc discardCheck(result: PNode) =
+  if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
+    if result.kind == nkNilLit:
+      # XXX too much work and fixing would break bootstrapping:
+      #Message(n.info, warnNilStatement)
+      result.typ = nil
+    elif not ImplicitlyDiscardable(result) and result.typ.kind != tyError and
+        gCmd != cmdInteractive:
+      if result.typ.kind == tyNil:
+        fixNilType(result)
+      else:
+        localError(result.info, errDiscardValue)
+
+proc semIf(c: PContext, n: PNode): PNode = 
+  result = n
+  var typ = CommonTypeBegin
+  var hasElse = false
+  for i in countup(0, sonsLen(n) - 1): 
+    var it = n.sons[i]
+    if it.len == 2:
+      when newScopeForIf: openScope(c.tab)
+      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+      when not newScopeForIf: openScope(c.tab)
+      it.sons[1] = semExprBranch(c, it.sons[1])
+      typ = commonType(typ, it.sons[1].typ)
+      closeScope(c.tab)
+    elif it.len == 1:
+      hasElse = true
+      it.sons[0] = semExprBranchScope(c, it.sons[0])
+      typ = commonType(typ, it.sons[0].typ)
+    else: illFormedAst(it)
+  if isEmptyType(typ) or not hasElse:
+    for it in n: discardCheck(it.lastSon)
+    result.kind = nkIfStmt
+  else:
+    for it in n:
+      let j = it.len-1
+      it.sons[j] = fitNode(c, typ, it.sons[j])
+    result.kind = nkIfExpr
+    result.typ = typ
+
+proc semCase(c: PContext, n: PNode): PNode =
   result = n
   checkMinSonsLen(n, 2)
   openScope(c.tab)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
   var covered: biggestint = 0
+  var typ = CommonTypeBegin
+  var hasElse = false
   case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
-  of tyInt..tyInt64, tyChar, tyEnum: 
+  of tyInt..tyInt64, tyChar, tyEnum:
     chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyError: 
+  of tyFloat..tyFloat128, tyString, tyError:
     nil
-  else: 
+  else:
     LocalError(n.info, errSelectorMustBeOfCertainTypes)
     return
   for i in countup(1, sonsLen(n) - 1): 
@@ -101,21 +179,81 @@ proc semCase(c: PContext, n: PNode): PNode =
     of nkOfBranch: 
       checkMinSonsLen(x, 2)
       semCaseBranch(c, n, x, i, covered)
-      var length = sonsLen(x)
-      x.sons[length - 1] = semStmtScope(c, x.sons[length - 1])
-    of nkElifBranch: 
+      var last = sonsLen(x)-1
+      x.sons[last] = semExprBranchScope(c, x.sons[last])
+      typ = commonType(typ, x.sons[last].typ)
+    of nkElifBranch:
       chckCovered = false
       checkSonsLen(x, 2)
+      when newScopeForIf: openScope(c.tab)
       x.sons[0] = forceBool(c, semExprWithType(c, x.sons[0]))
-      x.sons[1] = semStmtScope(c, x.sons[1])
-    of nkElse: 
+      when not newScopeForIf: openScope(c.tab)
+      x.sons[1] = semExprBranch(c, x.sons[1])
+      typ = commonType(typ, x.sons[1].typ)
+      closeScope(c.tab)
+    of nkElse:
       chckCovered = false
       checkSonsLen(x, 1)
-      x.sons[0] = semStmtScope(c, x.sons[0])
-    else: illFormedAst(x)
+      x.sons[0] = semExprBranchScope(c, x.sons[0])
+      typ = commonType(typ, x.sons[0].typ)
+      hasElse = true
+    else:
+      illFormedAst(x)
   if chckCovered and (covered != toCover(n.sons[0].typ)): 
     localError(n.info, errNotAllCasesCovered)
   closeScope(c.tab)
+  if isEmptyType(typ) or not hasElse:
+    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+  else:
+    for i in 1..n.len-1:
+      var it = n.sons[i]
+      let j = it.len-1
+      it.sons[j] = fitNode(c, typ, it.sons[j])
+    result.typ = typ
+
+proc semTry(c: PContext, n: PNode): PNode = 
+  result = n
+  inc c.p.inTryStmt
+  checkMinSonsLen(n, 2)
+  var typ = CommonTypeBegin
+  n.sons[0] = semExprBranchScope(c, n.sons[0])
+  typ = commonType(typ, n.sons[0].typ)
+  var check = initIntSet()
+  for i in countup(1, sonsLen(n) - 1): 
+    var a = n.sons[i]
+    checkMinSonsLen(a, 1)
+    var length = sonsLen(a)
+    if a.kind == nkExceptBranch:
+      # XXX what does this do? so that ``except [a, b, c]`` is supported?
+      if length == 2 and a.sons[0].kind == nkBracket:
+        a.sons[0..0] = a.sons[0].sons
+        length = a.sonsLen
+
+      for j in countup(0, length-2):
+        var typ = semTypeNode(c, a.sons[j], nil)
+        if typ.kind == tyRef: typ = typ.sons[0]
+        if typ.kind != tyObject:
+          LocalError(a.sons[j].info, errExprCannotBeRaised)
+        a.sons[j] = newNodeI(nkType, a.sons[j].info)
+        a.sons[j].typ = typ
+        if ContainsOrIncl(check, typ.id):
+          localError(a.sons[j].info, errExceptionAlreadyHandled)
+    elif a.kind != nkFinally: 
+      illFormedAst(n)
+    # last child of an nkExcept/nkFinally branch is a statement:
+    a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
+    typ = commonType(typ, a.sons[length-1].typ)
+  dec c.p.inTryStmt
+  if isEmptyType(typ):
+    discardCheck(n.sons[0])
+    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+  else:
+    n.sons[0] = fitNode(c, typ, n.sons[0])
+    for i in 1..n.len-1:
+      var it = n.sons[i]
+      let j = it.len-1
+      it.sons[j] = fitNode(c, typ, it.sons[j])
+    result.typ = typ
   
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
   result = fitNode(c, typ, n)
@@ -438,10 +576,6 @@ proc semForVars(c: PContext, n: PNode): PNode =
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
 
-proc newDeref(n: PNode): PNode {.inline.} =  
-  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
-  addSon(result, n)
-
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(it.getIdent, arg.info))
@@ -488,36 +622,6 @@ proc semRaise(c: PContext, n: PNode): PNode =
     var typ = n.sons[0].typ
     if typ.kind != tyRef or typ.sons[0].kind != tyObject: 
       localError(n.info, errExprCannotBeRaised)
-
-proc semTry(c: PContext, n: PNode): PNode = 
-  result = n
-  inc c.p.inTryStmt
-  checkMinSonsLen(n, 2)
-  n.sons[0] = semStmtScope(c, n.sons[0])
-  var check = initIntSet()
-  for i in countup(1, sonsLen(n) - 1): 
-    var a = n.sons[i]
-    checkMinSonsLen(a, 1)
-    var length = sonsLen(a)
-    if a.kind == nkExceptBranch:
-      if length == 2 and a.sons[0].kind == nkBracket:
-        a.sons[0..0] = a.sons[0].sons
-        length = a.sonsLen
-
-      for j in countup(0, length - 2):
-        var typ = semTypeNode(c, a.sons[j], nil)
-        if typ.kind == tyRef: typ = typ.sons[0]
-        if typ.kind != tyObject:
-          LocalError(a.sons[j].info, errExprCannotBeRaised)
-        a.sons[j] = newNodeI(nkType, a.sons[j].info)
-        a.sons[j].typ = typ
-        if ContainsOrIncl(check, typ.id):
-          localError(a.sons[j].info, errExceptionAlreadyHandled)
-    elif a.kind != nkFinally: 
-      illFormedAst(n) 
-    # last child of an nkExcept/nkFinally branch is a statement:
-    a.sons[length - 1] = semStmtScope(c, a.sons[length - 1])
-  dec c.p.inTryStmt
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)
@@ -746,22 +850,6 @@ proc activate(c: PContext, n: PNode) =
     else:
       nil
 
-proc instantiateDestructor*(c: PContext, typ: PType): bool
-
-proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
-  let t = s.typ.sons[1].skipTypes({tyVar})
-  t.destructor = s
-  # automatically insert calls to base classes' destructors
-  if n.sons[bodyPos].kind != nkEmpty:
-    for i in countup(0, t.sonsLen - 1):
-      # when inheriting directly from object
-      # there will be a single nil son
-      if t.sons[i] == nil: continue
-      if instantiateDestructor(c, t.sons[i]):
-        n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
-            useSym(t.sons[i].destructor),
-            n.sons[paramsPos][1][0]]))
-
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.typ.sons[0] != nil and
       (s.kind != skIterator or s.typ.callConv == ccClosure):
@@ -972,196 +1060,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
     result = newNodeI(nkDiscardStmt, n.info, 1)
     result.sons[0] = emptyNode
 
-# special marker values that indicates that we are
-# 1) AnalyzingDestructor: currently analyzing the type for destructor 
-# generation (needed for recursive types)
-# 2) DestructorIsTrivial: completed the analysis before and determined
-# that the type has a trivial destructor
-var AnalyzingDestructor, DestructorIsTrivial: PSym
-new(AnalyzingDestructor)
-new(DestructorIsTrivial)
-
-var
-  destructorName = getIdent"destroy_"
-  destructorParam = getIdent"this_"
-  destructorPragma = newIdentNode(getIdent"destructor", UnknownLineInfo())
-  rangeDestructorProc*: PSym
-
-proc destroyField(c: PContext, field: PSym, holder: PNode): PNode =
-  if instantiateDestructor(c, field.typ):
-    result = newNode(nkCall, field.info, @[
-      useSym(field.typ.destructor),
-      newNode(nkDotExpr, field.info, @[holder, useSym(field)])])
-
-proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
-  var nonTrivialFields = 0
-  result = newNode(nkCaseStmt, n.info, @[])
-  # case x.kind
-  result.addSon(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
-  for i in countup(1, n.len - 1):
-    # of A, B:
-    var caseBranch = newNode(n[i].kind, n[i].info, n[i].sons[0 .. -2])
-    let recList = n[i].lastSon
-    var destroyRecList = newNode(nkStmtList, n[i].info, @[])
-    template addField(f: expr): stmt =
-      let stmt = destroyField(c, f, holder)
-      if stmt != nil:
-        destroyRecList.addSon(stmt)
-        inc nonTrivialFields
-        
-    case recList.kind
-    of nkSym:
-      addField(recList.sym)
-    of nkRecList:
-      for j in countup(0, recList.len - 1):
-        addField(recList[j].sym)
-    else:
-      internalAssert false
-      
-    caseBranch.addSon(destroyRecList)
-    result.addSon(caseBranch)
-  # maybe no fields were destroyed?
-  if nonTrivialFields == 0:
-    result = nil
- 
-proc generateDestructor(c: PContext, t: PType): PNode =
-  ## generate a destructor for a user-defined object or tuple type
-  ## returns nil if the destructor turns out to be trivial
-  
-  template addLine(e: expr): stmt =
-    if result == nil: result = newNode(nkStmtList)
-    result.addSon(e)
-
-  # XXX: This may be true for some C-imported types such as
-  # Tposix_spawnattr
-  if t.n == nil or t.n.sons == nil: return
-  internalAssert t.n.kind == nkRecList
-  let destructedObj = newIdentNode(destructorParam, UnknownLineInfo())
-  # call the destructods of all fields
-  for s in countup(0, t.n.sons.len - 1):
-    case t.n.sons[s].kind
-    of nkRecCase:
-      let stmt = destroyCase(c, t.n.sons[s], destructedObj)
-      if stmt != nil: addLine(stmt)
-    of nkSym:
-      let stmt = destroyField(c, t.n.sons[s].sym, destructedObj)
-      if stmt != nil: addLine(stmt)
-    else:
-      internalAssert false
-
-  # base classes' destructors will be automatically called by
-  # semProcAux for both auto-generated and user-defined destructors
-
-proc instantiateDestructor*(c: PContext, typ: PType): bool =
-  # returns true if the type already had a user-defined
-  # destructor or if the compiler generated a default
-  # member-wise one
-  var t = skipTypes(typ, {tyConst, tyMutable})
-  
-  if t.destructor != nil:
-    # XXX: This is not entirely correct for recursive types, but we need
-    # it temporarily to hide the "destroy is already defined" problem
-    return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
-  
-  case t.kind
-  of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
-    if instantiateDestructor(c, t.sons[0]):
-      if rangeDestructorProc == nil:
-        rangeDestructorProc = SymtabGet(c.tab, getIdent"nimDestroyRange")
-      t.destructor = rangeDestructorProc
-      return true
-    else:
-      return false
-  of tyTuple, tyObject:
-    t.destructor = AnalyzingDestructor
-    let generated = generateDestructor(c, t)
-    if generated != nil:
-      internalAssert t.sym != nil
-      var i = t.sym.info
-      let fullDef = newNode(nkProcDef, i, @[
-        newIdentNode(destructorName, i),
-        emptyNode,
-        emptyNode,
-        newNode(nkFormalParams, i, @[
-          emptyNode,
-          newNode(nkIdentDefs, i, @[
-            newIdentNode(destructorParam, i),
-            useSym(t.sym),
-            emptyNode]),
-          ]),
-        newNode(nkPragma, i, @[destructorPragma]),
-        emptyNode,
-        generated
-        ])
-      discard semProc(c, fullDef)
-      internalAssert t.destructor != nil
-      return true
-    else:
-      t.destructor = DestructorIsTrivial
-      return false
-  else:
-    return false
-
-proc insertDestructors(c: PContext,
-                       varSection: PNode): tuple[outer, inner: PNode] =
-  # Accepts a var or let section.
-  #
-  # When a var section has variables with destructors
-  # the var section is split up and finally blocks are inserted
-  # immediately after all "destructable" vars
-  #
-  # In case there were no destrucable variables, the proc returns
-  # (nil, nil) and the enclosing stmt-list requires no modifications.
-  #
-  # Otherwise, after the try blocks are created, the rest of the enclosing
-  # stmt-list should be inserted in the most `inner` such block (corresponding
-  # to the last variable).
-  #
-  # `outer` is a statement list that should replace the original var section.
-  # It will include the new truncated var section followed by the outermost
-  # try block.
-  let totalVars = varSection.sonsLen
-  for j in countup(0, totalVars - 1):
-    let
-      varId = varSection[j][0]
-      varTyp = varId.sym.typ
-      info = varId.info
-
-    if varTyp != nil and instantiateDestructor(c, varTyp) and 
-        sfGlobal notin varId.sym.flags:
-      var tryStmt = newNodeI(nkTryStmt, info)
-
-      if j < totalVars - 1:
-        var remainingVars = newNodeI(varSection.kind, info)
-        remainingVars.sons = varSection.sons[(j+1)..(-1)]
-        let (outer, inner) = insertDestructors(c, remainingVars)
-        if outer != nil:
-          tryStmt.addSon(outer)
-          result.inner = inner
-        else:
-          result.inner = newNodeI(nkStmtList, info)
-          result.inner.addSon(remainingVars)
-          tryStmt.addSon(result.inner)
-      else:
-        result.inner = newNodeI(nkStmtList, info)
-        tryStmt.addSon(result.inner)
-
-      tryStmt.addSon(
-        newNode(nkFinally, info, @[
-          semStmt(c, newNode(nkCall, info, @[
-            useSym(varTyp.destructor),
-            useSym(varId.sym)]))]))
-
-      result.outer = newNodeI(nkStmtList, info)
-      varSection.sons.setLen(j+1)
-      result.outer.addSon(varSection)
-      result.outer.addSon(tryStmt)
-
-      return
-
-proc ImplicitlyDiscardable(n: PNode): bool =
-  result = isCallExpr(n) and n.sons[0].kind == nkSym and 
-           sfDiscardable in n.sons[0].sym.flags
+var EnforceVoidContext = PType(kind: tyStmt)
 
 proc semStmtList(c: PContext, n: PNode): PNode =
   # these must be last statements in a block:
@@ -1169,6 +1068,11 @@ proc semStmtList(c: PContext, n: PNode): PNode =
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
   var length = sonsLen(n)
+  var voidContext = false
+  var last = length-1
+  while last > 0 and n.sons[last].kind in {nkPragma, nkCommentStmt,
+                                           nkNilLit, nkEmpty}:
+    dec last
   for i in countup(0, length - 1):
     case n.sons[i].kind
     of nkFinally, nkExceptBranch:
@@ -1190,7 +1094,16 @@ proc semStmtList(c: PContext, n: PNode): PNode =
       n.sons.setLen(i+1)
       return
     else:
-      n.sons[i] = semStmt(c, n.sons[i])
+      n.sons[i] = semExpr(c, n.sons[i])
+      if n.sons[i].typ == EnforceVoidContext:
+        voidContext = true
+        n.typ = EnforceVoidContext
+      elif i != last or voidContext:
+        discardCheck(n.sons[i])
+      else:
+        n.typ = n.sons[i].typ
+        if not isEmptyType(n.typ):
+          n.kind = nkStmtListExpr
       case n.sons[i].kind
       of nkVarSection, nkLetSection:
         let (outer, inner) = insertDestructors(c, n.sons[i])
@@ -1206,15 +1119,17 @@ proc semStmtList(c: PContext, n: PNode): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: nil
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: nil
-  
-  # a statement list (s; e) has the type 'e':
-  if result.kind == nkStmtList and result.len > 0:
-    var lastStmt = lastSon(result)
-    if lastStmt.kind != nkNilLit and not ImplicitlyDiscardable(lastStmt):
-      result.typ = lastStmt.typ
-      #localError(lastStmt.info, errGenerated,
-      #  "Last expression must be explicitly returned if it " &
-      #  "is discardable or discarded")
+  if result.len == 1:
+    result = result.sons[0]
+  when false:
+    # a statement list (s; e) has the type 'e':
+    if result.kind == nkStmtList and result.len > 0:
+      var lastStmt = lastSon(result)
+      if lastStmt.kind != nkNilLit and not ImplicitlyDiscardable(lastStmt):
+        result.typ = lastStmt.typ
+        #localError(lastStmt.info, errGenerated,
+        #  "Last expression must be explicitly returned if it " &
+        #  "is discardable or discarded")
 
 proc SemStmt(c: PContext, n: PNode): PNode = 
   # now: simply an alias:

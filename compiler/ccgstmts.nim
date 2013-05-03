@@ -102,6 +102,11 @@ proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
   genStmts(p, stmts)
   endBlock(p)
 
+proc exprBlock(p: BProc, n: PNode, d: var TLoc) =
+  startBlock(p)
+  expr(p, n, d)
+  endBlock(p)
+
 template preserveBreakIdx(body: stmt): stmt {.immediate.} =
   var oldBreakIdx = p.breakIdx
   body
@@ -212,7 +217,7 @@ proc genConstStmt(p: BProc, t: PNode) =
           appf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n", 
                [getTypeDesc(p.module, c.typ), c.loc.r, genConstExpr(p, c.ast)])
     
-proc genIfStmt(p: BProc, n: PNode) = 
+proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #
   #  { if (!expr1) goto L1;
   #   thenPart }
@@ -224,32 +229,36 @@ proc genIfStmt(p: BProc, n: PNode) =
   #  L2:
   #  { elsePart }
   #  Lend:
-  var 
+  var
     a: TLoc
     Lelse: TLabel
+  if not isEmptyType(n.typ) and d.k == locNone:
+    getTemp(p, n.typ, d)
   genLineDir(p, n)
-  var Lend = getLabel(p)
+  let Lend = getLabel(p)
   for i in countup(0, sonsLen(n) - 1): 
-    var it = n.sons[i]
+    let it = n.sons[i]
     if it.len == 2: 
       when newScopeForIf: startBlock(p)
       initLocExpr(p, it.sons[0], a)
       Lelse = getLabel(p)
       inc(p.labels)
       lineFF(p, cpsStmts, "if (!$1) goto $2;$n",
-            "br i1 $1, label %LOC$3, label %$2$n" & "LOC$3: $n",
+            "br i1 $1, label %LOC$3, label %$2$nLOC$3: $n",
             [rdLoc(a), Lelse, toRope(p.labels)])
       when not newScopeForIf: startBlock(p)
-      genStmts(p, it.sons[1])
+      expr(p, it.sons[1], d)
       endBlock(p)
-      if sonsLen(n) > 1: 
+      if sonsLen(n) > 1:
         lineFF(p, cpsStmts, "goto $1;$n", "br label %$1$n", [Lend])
       fixLabel(p, Lelse)
     elif it.len == 1:
-      genSimpleBlock(p, it.sons[0])
-    else: internalError(n.info, "genIfStmt()")
+      startBlock(p)
+      expr(p, it.sons[0], d)
+      endBlock(p)
+    else: internalError(n.info, "genIf()")
   if sonsLen(n) > 1: fixLabel(p, Lend)
-  
+
 proc blockLeaveActions(p: BProc, howMany: int) = 
   var L = p.nestedTryStmts.len
   # danger of endless recursion! we workaround this here by a temp stack
@@ -312,16 +321,15 @@ proc genWhileStmt(p: BProc, t: PNode) =
 proc genBlock(p: BProc, t: PNode, d: var TLoc) =
   preserveBreakIdx:
     p.breakIdx = startBlock(p)
-    if t.sons[0].kind != nkEmpty: 
+    if t.sons[0].kind != nkEmpty:
       # named block?
       assert(t.sons[0].kind == nkSym)
       var sym = t.sons[0].sym
       sym.loc.k = locOther
       sym.loc.a = p.breakIdx
-    if t.kind == nkBlockExpr: genStmtListExpr(p, t.sons[1], d)
-    else: genStmts(p, t.sons[1])
+    expr(p, t.sons[1], d)
     endBlock(p)
-  
+
 proc genParForStmt(p: BProc, t: PNode) =
   assert(sonsLen(t) == 3)
   inc(p.withinLoop)
@@ -411,42 +419,45 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
       initLocExpr(p, b.sons[i], x)
       lineCg(p, cpsStmts, eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
 
-proc genCaseSecondPass(p: BProc, t: PNode, labId, until: int): TLabel = 
+proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc, 
+                       labId, until: int): TLabel = 
   var Lend = getLabel(p)
-  for i in 1..until: 
+  for i in 1..until:
     lineF(p, cpsStmts, "LA$1: ;$n", [toRope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
-      genSimpleBlock(p, t.sons[i].sons[length - 1])
+      exprBlock(p, t.sons[i].sons[length - 1], d)
       lineF(p, cpsStmts, "goto $1;$n", [Lend])
-    else: 
-      genSimpleBlock(p, t.sons[i].sons[0])
+    else:
+      exprBlock(p, t.sons[i].sons[0], d)
   result = Lend
 
-proc genIfForCaseUntil(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr,
-                       until: int, a: TLoc): TLabel = 
+proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
+                       rangeFormat, eqFormat: TFormatStr,
+                       until: int, a: TLoc): TLabel =
   # generate a C-if statement for a Nimrod case statement
   var labId = p.labels
-  for i in 1..until: 
+  for i in 1..until:
     inc(p.labels)
     if t.sons[i].kind == nkOfBranch: # else statement
-      genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat, 
+      genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat,
                            con("LA", toRope(p.labels)))
-    else: 
+    else:
       lineF(p, cpsStmts, "goto LA$1;$n", [toRope(p.labels)])
-  if until < t.len-1: 
+  if until < t.len-1:
     inc(p.labels)
     var gotoTarget = p.labels
     lineF(p, cpsStmts, "goto LA$1;$n", [toRope(gotoTarget)])
-    result = genCaseSecondPass(p, t, labId, until)
+    result = genCaseSecondPass(p, t, d, labId, until)
     lineF(p, cpsStmts, "LA$1: ;$n", [toRope(gotoTarget)])
   else:
-    result = genCaseSecondPass(p, t, labId, until)
+    result = genCaseSecondPass(p, t, d, labId, until)
 
-proc genCaseGeneric(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr) = 
+proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc, 
+                    rangeFormat, eqFormat: TFormatStr) = 
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var Lend = genIfForCaseUntil(p, t, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  var Lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
   fixLabel(p, Lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel, 
@@ -461,12 +472,12 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
     appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n", 
          [rdLoc(e), rdLoc(x), labl])
 
-proc genStringCase(p: BProc, t: PNode) = 
+proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
-  for i in countup(1, sonsLen(t) - 1): 
+  for i in countup(1, sonsLen(t) - 1):
     if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
-  if strings > stringCaseThreshold: 
+  if strings > stringCaseThreshold:
     var bitMask = math.nextPowerOfTwo(strings) - 1
     var branches: seq[PRope]
     newSeq(branches, bitMask + 1)
@@ -484,23 +495,17 @@ proc genStringCase(p: BProc, t: PNode) =
     linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n", 
             rdLoc(a), toRope(bitMask))
     for j in countup(0, high(branches)):
-      when false:
-        let interior = cast[int](interiorAllocatedPtr(addr(branches[0])))+
-                                 2*sizeof(pointer)
-        let brn = cast[int](cast[pointer](branches))
-        if interior != brn:
-          echo "BUG! ", interior, "-", brn
       if branches[j] != nil:
         lineF(p, cpsStmts, "case $1: $n$2break;$n", 
              [intLiteral(j), branches[j]])
     lineF(p, cpsStmts, "}$n") # else statement:
-    if t.sons[sonsLen(t) - 1].kind != nkOfBranch: 
+    if t.sons[sonsLen(t)-1].kind != nkOfBranch: 
       lineF(p, cpsStmts, "goto LA$1;$n", [toRope(p.labels)]) 
     # third pass: generate statements
-    var Lend = genCaseSecondPass(p, t, labId, sonsLen(t)-1)
+    var Lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
     fixLabel(p, Lend)
-  else: 
-    genCaseGeneric(p, t, "", "if (#eqStrings($1, $2)) goto $3;$n")
+  else:
+    genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
   
 proc branchHasTooBigRange(b: PNode): bool = 
   for i in countup(0, sonsLen(b)-2): 
@@ -535,14 +540,14 @@ proc genCaseRange(p: BProc, branch: PNode) =
     else:
       lineF(p, cpsStmts, "case $1:$n", [genLiteral(p, branch[j])])
 
-proc genOrdinalCase(p: BProc, n: PNode) = 
+proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   # analyse 'case' statement:
   var splitPoint = IfSwitchSplitPoint(p, n)
   
   # generate if part (might be empty):
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  var Lend = if splitPoint > 0: genIfForCaseUntil(p, n, 
+  var Lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
                     rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                     eqFormat = "if ($1 == $2) goto $3;$n", 
                     splitPoint, a) else: nil
@@ -555,28 +560,29 @@ proc genOrdinalCase(p: BProc, n: PNode) =
       var branch = n[i]
       if branch.kind == nkOfBranch: 
         genCaseRange(p, branch)
-        genSimpleBlock(p, branch.lastSon)
       else: 
         # else part of case statement:
         lineF(p, cpsStmts, "default:$n")
-        genSimpleBlock(p, branch[0])
         hasDefault = true
+      exprBlock(p, branch.lastSon, d)
       lineF(p, cpsStmts, "break;$n")
     if (hasAssume in CC[ccompiler].props) and not hasDefault: 
       lineF(p, cpsStmts, "default: __assume(0);$n")
     lineF(p, cpsStmts, "}$n")
   if Lend != nil: fixLabel(p, Lend)
   
-proc genCaseStmt(p: BProc, t: PNode) = 
+proc genCase(p: BProc, t: PNode, d: var TLoc) = 
   genLineDir(p, t)
+  if not isEmptyType(t.typ) and d.k == locNone:
+    getTemp(p, t.typ, d)
   case skipTypes(t.sons[0].typ, abstractVarRange).kind
-  of tyString: 
-    genStringCase(p, t)
+  of tyString:
+    genStringCase(p, t, d)
   of tyFloat..tyFloat128: 
-    genCaseGeneric(p, t, "if ($1 >= $2 && $1 <= $3) goto $4;$n", 
-                   "if ($1 == $2) goto $3;$n") 
-  else: 
-    genOrdinalCase(p, t)
+    genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n", 
+                            "if ($1 == $2) goto $3;$n")
+  else:
+    genOrdinalCase(p, t, d)
   
 proc hasGeneralExceptSection(t: PNode): bool = 
   var length = sonsLen(t)
@@ -588,7 +594,7 @@ proc hasGeneralExceptSection(t: PNode): bool =
     inc(i)
   result = false
 
-proc genTryStmtCpp(p: BProc, t: PNode) =
+proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
   #
   # XXX: There should be a standard dispatch algorithm
@@ -609,6 +615,8 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   #      }
   #  }
   #  finallyPart();
+  if not isEmptyType(t.typ) and d.k == locNone:
+    getTemp(p, t.typ, d)
   var
     exc: PRope
     i, length, blen: int
@@ -617,7 +625,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   discard cgsym(p.module, "E_Base")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
-  genStmts(p, t.sons[0])
+  expr(p, t.sons[0], d)
   length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.Options:
@@ -631,7 +639,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     if blen == 1:
       # general except section:
       catchAllPresent = true
-      genSimpleBlock(p, t.sons[i].sons[0])
+      exprBlock(p, t.sons[i].sons[0], d)
     else:
       var orExpr: PRope = nil
       for j in countup(0, blen - 2):
@@ -641,7 +649,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
               "#isObj($1.exp->m_type, $2)",
               [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
-      genSimpleBlock(p, t.sons[i].sons[blen-1])
+      exprBlock(p, t.sons[i].sons[blen-1], d)
     inc(i)
   
   # reraise the exception if there was no catch all
@@ -651,7 +659,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     startBlock(p)
     var finallyBlock = t.lastSon
     if finallyBlock.kind == nkFinally:
-      genStmts(p, finallyBlock.sons[0])
+      expr(p, finallyBlock.sons[0], d)
     line(p, cpsStmts, ~"throw;$n")
     endBlock(p)
   
@@ -660,9 +668,9 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   
   discard pop(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally):
-    genSimpleBlock(p, t.sons[i].sons[0])
+    exprBlock(p, t.sons[i].sons[0], d)
   
-proc genTryStmt(p: BProc, t: PNode) = 
+proc genTry(p: BProc, t: PNode, d: var TLoc) = 
   # code to generate:
   #
   # XXX: There should be a standard dispatch algorithm
@@ -691,6 +699,8 @@ proc genTryStmt(p: BProc, t: PNode) =
   #  if (exception not cleared)
   #    propagateCurrentException();
   #
+  if not isEmptyType(t.typ) and d.k == locNone:
+    getTemp(p, t.typ, d)
   genLineDir(p, t)
   var safePoint = getTempName()
   discard cgsym(p.module, "E_Base")
@@ -700,7 +710,7 @@ proc genTryStmt(p: BProc, t: PNode) =
   startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   add(p.nestedTryStmts, t)
-  genStmts(p, t.sons[0])
+  expr(p, t.sons[0], d)
   linefmt(p, cpsStmts, "#popSafePoint();$n")
   endBlock(p)
   startBlock(p, "else {$n")
@@ -716,7 +726,7 @@ proc genTryStmt(p: BProc, t: PNode) =
       if i > 1: lineF(p, cpsStmts, "else")
       startBlock(p)
       linefmt(p, cpsStmts, "$1.status = 0;$n", safePoint)
-      genStmts(p, t.sons[i].sons[0])
+      expr(p, t.sons[i].sons[0], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n")
       endBlock(p)
     else:
@@ -730,7 +740,7 @@ proc genTryStmt(p: BProc, t: PNode) =
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       linefmt(p, cpsStmts, "$1.status = 0;$n", safePoint)
-      genStmts(p, t.sons[i].sons[blen-1])
+      expr(p, t.sons[i].sons[blen-1], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n")
       endBlock(p)
     inc(i)
@@ -738,7 +748,7 @@ proc genTryStmt(p: BProc, t: PNode) =
   discard pop(p.nestedTryStmts)
   endBlock(p) # end of else block
   if i < length and t.sons[i].kind == nkFinally:
-    genSimpleBlock(p, t.sons[i].sons[0])
+    exprBlock(p, t.sons[i].sons[0], d)
   linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", safePoint)
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode): PRope = 
@@ -862,61 +872,5 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 
 proc genStmts(p: BProc, t: PNode) = 
   var a: TLoc
-  case t.kind
-  of nkEmpty: 
-    nil
-  of nkStmtList: 
-    for i in countup(0, sonsLen(t) - 1): genStmts(p, t.sons[i])
-  of nkBlockStmt: genBlock(p, t, a)
-  of nkIfStmt: genIfStmt(p, t)
-  of nkWhileStmt: genWhileStmt(p, t)
-  of nkVarSection, nkLetSection: genVarStmt(p, t)
-  of nkConstSection: genConstStmt(p, t)
-  of nkForStmt: internalError(t.info, "for statement not eliminated")
-  of nkCaseStmt: genCaseStmt(p, t)
-  of nkReturnStmt: genReturnStmt(p, t)
-  of nkBreakStmt: genBreakStmt(p, t)
-  of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand, 
-     nkCallStrLit, nkClosure: 
-    genLineDir(p, t)
-    initLocExpr(p, t, a)
-  of nkAsgn: genAsgn(p, t, fastAsgn=false)
-  of nkFastAsgn: 
-    # transf is overly aggressive with 'nkFastAsgn', so we work around here.
-    # See tests/run/tcnstseq3 for an example that would fail otherwise.
-    genAsgn(p, t, fastAsgn=p.prc != nil)
-  of nkDiscardStmt:
-    if t.sons[0].kind != nkEmpty:
-      genLineDir(p, t)
-      initLocExpr(p, t.sons[0], a)
-  of nkAsmStmt: genAsmStmt(p, t)
-  of nkTryStmt: 
-    if gCmd == cmdCompileToCpp: genTryStmtCpp(p, t)
-    else: genTryStmt(p, t)
-  of nkRaiseStmt: genRaiseStmt(p, t)
-  of nkTypeSection: 
-    # we have to emit the type information for object types here to support
-    # separate compilation:
-    genTypeSection(p.module, t)
-  of nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, 
-     nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
-     nkFromStmt, nkTemplateDef, nkMacroDef: 
-    nil
-  of nkPragma: genPragma(p, t)
-  of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (t.sons[genericParamsPos].kind == nkEmpty): 
-      var prc = t.sons[namePos].sym
-      if (optDeadCodeElim notin gGlobalOptions and
-          sfDeadCodeElim notin getModule(prc).flags) or
-          ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
-          (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
-          (prc.kind == skMethod): 
-        # we have not only the header: 
-        if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
-          genProc(p.module, prc)
-  of nkParForStmt: genParForStmt(p, t)
-  of nkState: genState(p, t)
-  of nkGotoState: genGotoState(p, t)
-  of nkBreakState: genBreakState(p, t)
-  else: internalError(t.info, "genStmts(" & $t.kind & ')')
-  
+  expr(p, t, a)
+  InternalAssert a.k notin {locNone, locTemp}

@@ -9,9 +9,6 @@
 
 # included from cgen.nim
 
-proc lenField: PRope {.inline.} = 
-  result = toRope(if gCmd != cmdCompileToCpp: "Sup.len" else: "len")
-
 # -------------------------- constant expressions ------------------------
 
 proc intLiteral(i: biggestInt): PRope =
@@ -207,8 +204,6 @@ proc asgnComplexity(n: PNode): int =
         result += asgnComplexity(t)
     else: nil
 
-proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
-
 proc optAsgnLoc(a: TLoc, t: PType, field: PRope): TLoc =
   result.k = locField
   result.s = a.s
@@ -345,11 +340,6 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: InternalError("genAssignment(" & $ty.kind & ')')
 
-proc expr(p: BProc, e: PNode, d: var TLoc)
-proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e.typ, OnUnknown)
-  expr(p, e, result)
-
 proc getDestLoc(p: BProc, d: var TLoc, typ: PType) =
   if d.k == locNone: getTemp(p, typ, d)
 
@@ -377,15 +367,15 @@ proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: PRope) =
     d.a = -1
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
-  var b: TLoc
+  var a, b: TLoc
   if d.k != locNone: InternalError(e.info, "binaryStmt")
-  InitLocExpr(p, e.sons[1], d)
+  InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, rdLoc(d), rdLoc(b))
+  lineCg(p, cpsStmts, frmt, rdLoc(a), rdLoc(b))
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
-  if (d.k != locNone): InternalError(e.info, "unaryStmt")
+  if d.k != locNone: InternalError(e.info, "unaryStmt")
   InitLocExpr(p, e.sons[1], a)
   lineCg(p, cpsStmts, frmt, [rdLoc(a)])
 
@@ -840,43 +830,6 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     genAssignment(p, d, tmp, {}) # no need for deep copying
 
-proc genIfExpr(p: BProc, n: PNode, d: var TLoc) =
-  #
-  #  if (!expr1) goto L1;
-  #  thenPart
-  #  goto LEnd
-  #  L1:
-  #  if (!expr2) goto L2;
-  #  thenPart2
-  #  goto LEnd
-  #  L2:
-  #  elsePart
-  #  Lend:
-  #
-  var
-    it: PNode
-    a, tmp: TLoc
-    Lend, Lelse: TLabel
-  getTemp(p, n.typ, tmp)      # force it into a temp!
-  Lend = getLabel(p)
-  for i in countup(0, sonsLen(n) - 1):
-    it = n.sons[i]
-    if it.len == 2:
-      initLocExpr(p, it.sons[0], a)
-      Lelse = getLabel(p)
-      lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), Lelse])
-      expr(p, it.sons[1], tmp)
-      lineF(p, cpsStmts, "goto $1;$n", [Lend])
-      fixLabel(p, Lelse)
-    elif it.len == 1:
-      expr(p, it.sons[0], tmp)
-    else: internalError(n.info, "genIfExpr()")
-  fixLabel(p, Lend)
-  if d.k == locNone:
-    d = tmp
-  else:
-    genAssignment(p, d, tmp, {}) # no need for deep copying
-
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
@@ -887,8 +840,6 @@ proc genEcho(p: BProc, n: PNode) =
     appf(args, ", ($1)->data", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeatStr(n.len-1, "%s") & tnl), args)
-
-include ccgcalls
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nimrod code>
@@ -1790,11 +1741,10 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   else:
     putIntoDest(p, d, t, tmp)
 
-proc genBlock(p: BProc, t: PNode, d: var TLoc)
-proc expr(p: BProc, e: PNode, d: var TLoc) =
-  case e.kind
+proc expr(p: BProc, n: PNode, d: var TLoc) =
+  case n.kind
   of nkSym:
-    var sym = e.sym
+    var sym = n.sym
     case sym.Kind
     of skMethod:
       if sym.getBody.kind == nkEmpty or sfDispatcher in sym.flags:
@@ -1807,22 +1757,22 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     of skProc, skConverter, skIterator:
       genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
-        InternalError(e.info, "expr: proc not init " & sym.name.s)
+        InternalError(n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if sfFakeConst in sym.flags:
         if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
         putLocIntoDest(p, d, sym.loc)
       elif isSimpleConst(sym.typ):
-        putIntoDest(p, d, e.typ, genLiteral(p, sym.ast, sym.typ))
+        putIntoDest(p, d, n.typ, genLiteral(p, sym.ast, sym.typ))
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
-      putIntoDest(p, d, e.typ, toRope(sym.position))
+      putIntoDest(p, d, n.typ, toRope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
-        InternalError(e.info, "expr: var not init " & sym.name.s)
+        InternalError(n.info, "expr: var not init " & sym.name.s)
       if sfThread in sym.flags:
         AccessThreadLocalVar(p, sym)
         if emulatedThreadVars(): 
@@ -1833,75 +1783,129 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
       if sym.loc.r == nil or sym.loc.t == nil:
-        InternalError(e.info, "expr: temp not init " & sym.name.s)
+        InternalError(n.info, "expr: temp not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        InternalError(e.info, "expr: param not init " & sym.name.s)
+        InternalError(n.info, "expr: param not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
-    else: InternalError(e.info, "expr(" & $sym.kind & "); unknown symbol")
+    else: InternalError(n.info, "expr(" & $sym.kind & "); unknown symbol")
+  of nkNilLit:
+    if not isEmptyType(n.typ):
+      putIntoDest(p, d, n.typ, genLiteral(p, n))
   of nkStrLit..nkTripleStrLit, nkIntLit..nkUInt64Lit,
-     nkFloatLit..nkFloat128Lit, nkNilLit, nkCharLit:
-    putIntoDest(p, d, e.typ, genLiteral(p, e))
+     nkFloatLit..nkFloat128Lit, nkCharLit:
+    putIntoDest(p, d, n.typ, genLiteral(p, n))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:
-    if e.sons[0].kind == nkSym and e.sons[0].sym.magic != mNone:
-      genMagicExpr(p, e, d, e.sons[0].sym.magic)
+    genLineDir(p, n)
+    if n.sons[0].kind == nkSym and n.sons[0].sym.magic != mNone:
+      genMagicExpr(p, n, d, n.sons[0].sym.magic)
     else:
-      genCall(p, e, d)
+      genCall(p, n, d)
   of nkCurly:
-    if isDeepConstExpr(e) and e.len != 0:
-      putIntoDest(p, d, e.typ, genSetNode(p, e))
+    if isDeepConstExpr(n) and n.len != 0:
+      putIntoDest(p, d, n.typ, genSetNode(p, n))
     else:
-      genSetConstr(p, e, d)
+      genSetConstr(p, n, d)
   of nkBracket:
-    if isDeepConstExpr(e) and e.len != 0:
-      exprComplexConst(p, e, d)
-    elif skipTypes(e.typ, abstractVarRange).kind == tySequence:
-      genSeqConstr(p, e, d)
+    if isDeepConstExpr(n) and n.len != 0:
+      exprComplexConst(p, n, d)
+    elif skipTypes(n.typ, abstractVarRange).kind == tySequence:
+      genSeqConstr(p, n, d)
     else:
-      genArrayConstr(p, e, d)
+      genArrayConstr(p, n, d)
   of nkPar:
-    if isDeepConstExpr(e) and e.len != 0:
-      exprComplexConst(p, e, d)
+    if isDeepConstExpr(n) and n.len != 0:
+      exprComplexConst(p, n, d)
     else:
-      genTupleConstr(p, e, d)
-  of nkObjConstr: genObjConstr(p, e, d)
-  of nkCast: genCast(p, e, d)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, e, d)
-  of nkHiddenAddr, nkAddr: genAddr(p, e, d)
+      genTupleConstr(p, n, d)
+  of nkObjConstr: genObjConstr(p, n, d)
+  of nkCast: genCast(p, n, d)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
+  of nkHiddenAddr, nkAddr: genAddr(p, n, d)
   of nkBracketExpr:
-    var ty = skipTypes(e.sons[0].typ, abstractVarRange)
+    var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.sons[0], abstractVarRange)
     case ty.kind
-    of tyArray, tyArrayConstr: genArrayElem(p, e, d)
-    of tyOpenArray, tyVarargs: genOpenArrayElem(p, e, d)
-    of tySequence, tyString: genSeqElem(p, e, d)
-    of tyCString: genCStringElem(p, e, d)
-    of tyTuple: genTupleElem(p, e, d)
-    else: InternalError(e.info, "expr(nkBracketExpr, " & $ty.kind & ')')
-  of nkDerefExpr, nkHiddenDeref: genDeref(p, e, d)
-  of nkDotExpr: genRecordField(p, e, d)
-  of nkCheckedFieldExpr: genCheckedRecordField(p, e, d)
-  of nkBlockExpr: genBlock(p, e, d)
-  of nkStmtListExpr: genStmtListExpr(p, e, d)
-  of nkIfExpr: genIfExpr(p, e, d)
-  of nkObjDownConv: downConv(p, e, d)
-  of nkObjUpConv: upConv(p, e, d)
-  of nkChckRangeF: genRangeChck(p, e, d, "chckRangeF")
-  of nkChckRange64: genRangeChck(p, e, d, "chckRange64")
-  of nkChckRange: genRangeChck(p, e, d, "chckRange")
-  of nkStringToCString: convStrToCStr(p, e, d)
-  of nkCStringToString: convCStrToStr(p, e, d)
+    of tyArray, tyArrayConstr: genArrayElem(p, n, d)
+    of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, d)
+    of tySequence, tyString: genSeqElem(p, n, d)
+    of tyCString: genCStringElem(p, n, d)
+    of tyTuple: genTupleElem(p, n, d)
+    else: InternalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
+  of nkDerefExpr, nkHiddenDeref: genDeref(p, n, d)
+  of nkDotExpr: genRecordField(p, n, d)
+  of nkCheckedFieldExpr: genCheckedRecordField(p, n, d)
+  of nkBlockExpr, nkBlockStmt: genBlock(p, n, d)
+  of nkStmtListExpr: genStmtListExpr(p, n, d)
+  of nkStmtList:
+    for i in countup(0, sonsLen(n) - 1): genStmts(p, n.sons[i])
+  of nkIfExpr, nkIfStmt: genIf(p, n, d)
+  of nkObjDownConv: downConv(p, n, d)
+  of nkObjUpConv: upConv(p, n, d)
+  of nkChckRangeF: genRangeChck(p, n, d, "chckRangeF")
+  of nkChckRange64: genRangeChck(p, n, d, "chckRange64")
+  of nkChckRange: genRangeChck(p, n, d, "chckRange")
+  of nkStringToCString: convStrToCStr(p, n, d)
+  of nkCStringToString: convCStrToStr(p, n, d)
   of nkLambdaKinds:
-    var sym = e.sons[namePos].sym
+    var sym = n.sons[namePos].sym
     genProc(p.module, sym)
     if sym.loc.r == nil or sym.loc.t == nil:
-      InternalError(e.info, "expr: proc not init " & sym.name.s)
+      InternalError(n.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
-  of nkClosure: genClosure(p, e, d)
-  of nkMetaNode: expr(p, e.sons[0], d)
-  else: InternalError(e.info, "expr(" & $e.kind & "); unknown node kind")
+  of nkClosure: genClosure(p, n, d)
+  of nkMetaNode: expr(p, n.sons[0], d)
+
+  of nkEmpty:  nil
+  of nkWhileStmt: genWhileStmt(p, n)
+  of nkVarSection, nkLetSection: genVarStmt(p, n)
+  of nkConstSection: genConstStmt(p, n)
+  of nkForStmt: internalError(n.info, "for statement not eliminated")
+  of nkCaseStmt: genCase(p, n, d)
+  of nkReturnStmt: genReturnStmt(p, n)
+  of nkBreakStmt: genBreakStmt(p, n)
+  of nkAsgn: genAsgn(p, n, fastAsgn=false)
+  of nkFastAsgn:
+    # transf is overly aggressive with 'nkFastAsgn', so we work around here.
+    # See tests/run/tcnstseq3 for an example that would fail otherwise.
+    genAsgn(p, n, fastAsgn=p.prc != nil)
+  of nkDiscardStmt:
+    if n.sons[0].kind != nkEmpty:
+      var a: TLoc
+      genLineDir(p, n)
+      initLocExpr(p, n.sons[0], a)
+  of nkAsmStmt: genAsmStmt(p, n)
+  of nkTryStmt:
+    if gCmd == cmdCompileToCpp: genTryCpp(p, n, d)
+    else: genTry(p, n, d)
+  of nkRaiseStmt: genRaiseStmt(p, n)
+  of nkTypeSection:
+    # we have to emit the type information for object types here to support
+    # separate compilation:
+    genTypeSection(p.module, n)
+  of nkCommentStmt, nkIteratorDef, nkIncludeStmt, 
+     nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt, 
+     nkFromStmt, nkTemplateDef, nkMacroDef: 
+    nil
+  of nkPragma: genPragma(p, n)
+  of nkProcDef, nkMethodDef, nkConverterDef: 
+    if (n.sons[genericParamsPos].kind == nkEmpty): 
+      var prc = n.sons[namePos].sym
+      if (optDeadCodeElim notin gGlobalOptions and
+          sfDeadCodeElim notin getModule(prc).flags) or
+          ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
+          (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
+          (prc.kind == skMethod): 
+        # we have not only the header: 
+        if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
+          genProc(p.module, prc)
+  of nkParForStmt: genParForStmt(p, n)
+  of nkState: genState(p, n)
+  of nkGotoState: genGotoState(p, n)
+  of nkBreakState: genBreakState(p, n)
+  else: InternalError(n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): PRope =
   if n.kind == nkExprColonExpr: result = genConstExpr(p, n.sons[1])
