@@ -1,0 +1,7 @@
+main.nim
+> c
+SuccessX
+> c
+! Processing
+SuccessX
+
