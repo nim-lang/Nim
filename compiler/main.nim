@@ -214,6 +214,9 @@ proc rodPass =
   if optSymbolFiles in gGlobalOptions:
     registerPass(rodwritePass)
 
+proc codegenPass =
+  registerPass cgenPass
+
 proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
@@ -381,6 +384,13 @@ proc CommandSuggest =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   rodPass()
+  if isServing:
+    # XXX: hacky work-around ahead
+    # Currently, it's possible to issue a idetools command, before
+    # issuing the first compile command. This will leave the compiler
+    # cache in a state where "no recompilation is necessary", but the
+    # cgen pass was never executed at all.
+    codegenPass()
   compileProject()
   if isServing:
     if optDef in gGlobalOptions:
