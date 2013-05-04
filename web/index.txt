@@ -100,12 +100,7 @@ Nimrod plays nice with others
 Roadmap to 1.0
 ==============
 
-Version 0.9.2
-  * better interaction between macros, templates and overloading
-  * the symbol binding rules for generics and templates may change again
-
 Version 0.9.x
-  * message passing performance will be greatly improved
-  * the syntactic distinction between statements and expressions will be
-    removed
+  * the symbol binding rules for templates will change
+  * a shared memory garbage collected heap will be provided
   * the need for forward declarations may be removed

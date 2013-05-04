@@ -28,6 +28,7 @@ version 0.9.4
 =============
 
 - macros as type pragmas
+- effect propagation for callbacks
 - provide tool/API to track leaks/object counts
 - hybrid GC
 - use big blocks in the allocator
@@ -52,7 +53,6 @@ version 0.9.X
 - improve the compiler as a service
 - better support for macros that rewrite procs
 - macros need access to types and symbols (partially implemented)
-- effect propagation for callbacks
 - perhaps: change comment handling in the AST
 - enforce 'simpleExpr' more often --> doesn't work; tkProc is
   part of primary!

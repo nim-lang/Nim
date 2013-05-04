@@ -1146,10 +1146,9 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     # ``result``:
     if result.kind == nkSym and result.sym == c.p.resultSym:
       nil
-    elif result.kind == nkNilLit or ImplicitlyDiscardable(result):
-      # intended semantic: if it's 'discardable' and the context allows for it,
-      # discard it. This is bad for chaining but nicer for C wrappers. 
-      # ambiguous :-(
+    elif result.kind == nkNilLit:
+      # or ImplicitlyDiscardable(result):
+      # new semantic: 'result = x' triggers the void context
       result.typ = nil
     elif result.kind == nkStmtListExpr and result.typ.kind == tyNil:
       # to keep backwards compatibility bodies like:
