@@ -120,7 +120,7 @@ proc fixNilType(n: PNode) =
   if isAtom(n):
     if n.kind != nkNilLit and n.typ != nil:
       localError(n.info, errDiscardValue)
-  else:
+  elif n.kind in {nkStmtList, nkStmtListExpr}:
     for it in n: fixNilType(it)
   n.typ = nil
 
@@ -165,7 +165,8 @@ proc semIf(c: PContext, n: PNode): PNode =
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
     result.kind = nkIfExpr
-    result.typ = typ
+  # propagate any enforced VoidContext:
+  result.typ = typ
 
 proc semCase(c: PContext, n: PNode): PNode =
   result = n
@@ -220,7 +221,8 @@ proc semCase(c: PContext, n: PNode): PNode =
       var it = n.sons[i]
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
-    result.typ = typ
+  # propagate any enforced VoidContext:
+  result.typ = typ
 
 proc semTry(c: PContext, n: PNode): PNode = 
   result = n
@@ -264,7 +266,8 @@ proc semTry(c: PContext, n: PNode): PNode =
       var it = n.sons[i]
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
-    result.typ = typ
+  # propagate any enforced VoidContext:
+  result.typ = typ
   
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
   result = fitNode(c, typ, n)
@@ -623,6 +626,8 @@ proc semFor(c: PContext, n: PNode): PNode =
       result = semForFields(c, n, call.sons[0].sym.magic)
   else:
     result = semForVars(c, n)
+  # propagate any enforced VoidContext:
+  result.typ = n.sons[length-1].typ
   closeScope(c.tab)
 
 proc semRaise(c: PContext, n: PNode): PNode = 
@@ -1079,9 +1084,13 @@ proc semStmtList(c: PContext, n: PNode): PNode =
   var length = sonsLen(n)
   var voidContext = false
   var last = length-1
-  while last > 0 and n.sons[last].kind in {nkPragma, nkCommentStmt,
-                                           nkNilLit, nkEmpty}:
-    dec last
+  # by not allowing for nkCommentStmt etc. we ensure nkStmtListExpr actually
+  # really *ends* in the expression that produces the type: The compiler now
+  # relies on this fact and it's too much effort to change that. And arguably
+  #  'R(); #comment' shouldn't produce R's type anyway.
+  #while last > 0 and n.sons[last].kind in {nkPragma, nkCommentStmt,
+  #                                         nkNilLit, nkEmpty}:
+  #  dec last
   for i in countup(0, length - 1):
     case n.sons[i].kind
     of nkFinally, nkExceptBranch:
