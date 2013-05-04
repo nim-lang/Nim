@@ -402,10 +402,10 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       indexType = idx.typ
       x = x.sons[1]
     
-    addSon(result, semExprWithType(c, x))
-    var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
-    # turn any concrete typedesc into the absract typedesc type
-    if typ.kind == tyTypeDesc: typ.sons = nil
+    let yy = semExprWithType(c, x)
+    var typ = yy.typ
+    addSon(result, yy)
+    #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     for i in countup(1, sonsLen(n) - 1): 
       x = n.sons[i]
       if x.kind == nkExprColonExpr and sonsLen(x) == 2: 
@@ -415,10 +415,15 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
           localError(x.info, errInvalidOrderInArrayConstructor)
         x = x.sons[1]
       
-      n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
-      addSon(result, fitNode(c, typ, n.sons[i]))
+      let xx = semExprWithType(c, x, flags*{efAllowDestructor})
+      result.add xx
+      typ = commonType(typ, xx.typ)
+      #n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
+      #addSon(result, fitNode(c, typ, n.sons[i]))
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
+    for i in 0 .. <result.len:
+      result.sons[i] = fitNode(c, typ, result.sons[i])
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) = 
