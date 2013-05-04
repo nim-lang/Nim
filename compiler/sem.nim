@@ -72,6 +72,10 @@ proc commonType*(x, y: PType): PType =
   elif b.kind in {tyExpr, tyNil}: result = x
   elif a.kind == tyStmt: result = a
   elif b.kind == tyStmt: result = b
+  elif a.kind == tyTypeDesc:
+    # turn any concrete typedesc into the abstract typedesc type
+    if a.sons == nil: result = a
+    else: result = newType(tyTypeDesc, a.owner)
   elif b.kind in {tyArray, tyArrayConstr, tySet, tySequence} and 
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
