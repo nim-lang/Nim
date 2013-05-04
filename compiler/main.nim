@@ -16,7 +16,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, cgendata, json, nversion,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
-  tables, docgen2, service, magicsys, parser, crc, ccgutils
+  tables, docgen2, service, magicsys, parser, crc, ccgutils, sigmatch
 
 const
   has_LLVM_Backend = false
@@ -64,7 +64,7 @@ proc crcChanged(fileIdx: int32): bool =
     gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
                                        else: crcNotChanged
     # echo "TESTING CRC: ", fileIdx.toFilename, " ", result
-    
+  
   case gMemCacheData[fileIdx].crcStatus:
   of crcHasChanged:
     result = true
@@ -90,18 +90,19 @@ proc addDep(x: Psym, dep: int32) =
   gMemCacheData[x.position].deps.safeAdd(dep)
 
 proc ResetModule(fileIdx: int32) =
-  echo "HARD RESETTING ", fileIdx.toFilename
+  writeStackTrace()
+  # echo "HARD RESETTING ", fileIdx.toFilename
   gMemCacheData[fileIdx].needsRecompile = Yes
   gCompiledModules[fileIdx] = nil
   cgendata.gModules[fileIdx] = nil
+  resetSourceMap(fileIdx)
 
 proc ResetAllModules =
   for i in 0..gCompiledModules.high:
     if gCompiledModules[i] != nil:
       ResetModule(i.int32)
 
-  for m in cgenModules():
-    echo "CGEN MODULE FOUND"
+  # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc checkDepMem(fileIdx: int32): TNeedRecompile  =
   template markDirty =
@@ -112,15 +113,15 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile  =
     return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or
-     curCaasCmd != lastCaasCmd or
-     crcChanged(fileIdx): markDirty
+     crcChanged(fileIdx):
+       markDirty
   
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
     for dep in gMemCacheData[fileIdx].deps:
       let d = checkDepMem(dep)
       if d in { Yes, Recompiled }:
-        echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
+        # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
         markDirty
   
   gMemCacheData[fileIdx].needsRecompile = No
@@ -381,6 +382,9 @@ proc CommandSuggest =
   semanticPasses()
   rodPass()
   compileProject()
+  if isServing:
+    if optDef in gGlobalOptions:
+      defFromSourceMap(optTrackPos)
 
 proc wantMainModule =
   if gProjectFull.len == 0:
