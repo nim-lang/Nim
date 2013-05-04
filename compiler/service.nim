@@ -73,6 +73,9 @@ proc serve*(action: proc (){.nimcall.}) =
       var line = stdin.readLine.string
       if line == "quit": quit()
       execute line
+      echo ""
+      FlushFile(stdout)
+
   of "tcp", "":
     var server = Socket()
     let p = getConfigVar("server.port")

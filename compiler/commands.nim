@@ -197,8 +197,11 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
 proc processPath(path: string, notRelativeToProj = false): string =
-  let p = if notRelativeToProj or os.isAbsolute(path) or '$' in path: path 
-          else: options.gProjectPath / path
+  let p = if notRelativeToProj or os.isAbsolute(path) or
+              '$' in path or path[0] == '.': 
+            path 
+          else:
+            options.gProjectPath / path
   result = UnixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
     "projectname", options.gProjectName,
