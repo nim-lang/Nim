@@ -10,7 +10,7 @@
 # This module handles the conditional symbols.
 
 import 
-  ast, astalgo, msgs, hashes, platform, strutils, idents
+  ast, astalgo, hashes, platform, strutils, idents
 
 var gSymbols*: TStrTable
 
@@ -35,14 +35,12 @@ proc isDefined*(symbol: PIdent): bool =
 proc isDefined*(symbol: string): bool = 
   result = isDefined(getIdent(symbol))
 
-proc ListSymbols*() = 
+iterator definedSymbolNames*: string =
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)
-  OutWriteln("-- List of currently defined symbols --")
-  while s != nil: 
-    if s.position == 1: OutWriteln(s.name.s)
+  while s != nil:
+    if s.position == 1: yield s.name.s
     s = nextIter(it, gSymbols)
-  OutWriteln("-- End of list --")
 
 proc countDefinedSymbols*(): int = 
   var it: TTabIter

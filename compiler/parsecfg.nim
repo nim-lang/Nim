@@ -12,7 +12,7 @@
 # standard library.
 
 import 
-  llstream, nhashes, strutils, lexbase
+  llstream, nhashes, strutils, nimlexbase
 
 type 
   TCfgEventKind* = enum 

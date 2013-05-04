@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
-  marshal, cgi, parseopt
+  marshal, cgi, parseopt, caasdriver
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
@@ -38,6 +38,7 @@ type
     reExeNotFound,
     reIgnored,          # test is ignored
     reSuccess           # test was successful
+
   TTarget = enum
     targetC, targetCpp, targetObjC, targetJS
 
@@ -363,6 +364,10 @@ proc outputJSON(reject, compile, run: TResults) =
   var s = pretty(doc)
   writeFile(jsonFile, s)
 
+proc runCaasTests(r: var TResults) =
+  for test, output, status in caasTestsRunner():
+    r.addResult(test, "", output, if status: reSuccess else: reOutputsDiffer)
+
 proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
@@ -404,6 +409,7 @@ proc main() =
     writeResults(runJson, r)
   of "special":
     runSpecialTests(r, p.cmdLineRest.string)
+    runCaasTests(r)
     writeResults(runJson, r)
   of "rodfiles":
     runRodFiles(r, p.cmdLineRest.string)

@@ -29,6 +29,8 @@ Library Additions
 - Added ``system.unsafeNew`` to support hacky variable length objects.
 - ``system.fields`` and ``system.fieldPairs`` support ``object`` too; they
   used to only support tuples.
+- Added ``system.CurrentSourcePath`` returning the full file-system path of
+  the current source file
 
 
 Changes affecting backwards compatibility
