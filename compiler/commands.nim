@@ -215,7 +215,8 @@ proc track(arg: string, info: TLineInfo) =
     LocalError(info, errInvalidNumber, a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
     LocalError(info, errInvalidNumber, a[2])
-  msgs.addCheckpoint(newLineInfo(a[0], line, column))
+  optTrackPos = newLineInfo(a[0], line, column)
+  msgs.addCheckpoint(optTrackPos)
 
 proc dynlibOverride(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:

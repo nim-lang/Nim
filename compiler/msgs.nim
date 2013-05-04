@@ -606,6 +606,7 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   result = filename in info.toFilename
 
 var checkPoints*: seq[TLineInfo] = @[]
+var optTrackPos*: TLineInfo
 
 proc addCheckpoint*(info: TLineInfo) = 
   checkPoints.add(info)
