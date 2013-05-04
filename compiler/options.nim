@@ -68,7 +68,7 @@ type                          # please make sure we have under 32 options
   TCommands* = enum           # Nimrod's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
-    cmdCompileToEcmaScript, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
+    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
     cmdGenDepend, cmdDump, 
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
@@ -81,7 +81,7 @@ type                          # please make sure we have under 32 options
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2
+    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
@@ -99,15 +99,25 @@ var
   searchPaths*, lazyPaths*: TLinkedList
   outFile*: string = ""
   headerFile*: string = ""
-  gVerbosity*: int            # how verbose the compiler is
+  gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
-  gWholeProject*: bool # for 'doc2': output any dependency
+  gWholeProject*: bool        # for 'doc2': output any dependency
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
-  
+  isServing*: bool = false
+
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
+
+template compilationCachePresent*: expr =
+  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+
+template optPreserveOrigSource*: expr =
+  optEmbedOrigSrc in gGlobalOptions
+
+template optPrintSurroundingSrc*: expr =
+  gVerbosity >= 2
 
 const 
   genSubDir* = "nimcache"
@@ -123,6 +133,7 @@ const
 # additional configuration variables:
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
+  gDllOverrides = newStringtable(modeCaseInsensitive)
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
@@ -254,6 +265,20 @@ proc libCandidates*(s: string, dest: var seq[string]) =
       libCandidates(prefix & middle & suffix, dest)
   else: 
     add(dest, s)
+
+proc canonDynlibName(s: string): string =
+  let start = if s.startsWith("lib"): 3 else: 0
+  let ende = strutils.find(s, {'(', ')', '.'})
+  if ende >= 0:
+    result = s.substr(start, ende-1)
+  else:
+    result = s.substr(start)
+
+proc inclDynlibOverride*(lib: string) =
+  gDllOverrides[lib.canonDynlibName] = "true"
+
+proc isDynlibOverride*(lib: string): bool =
+  result = gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openarray[string], y: string): int = 
   var a = 0

@@ -42,7 +42,7 @@ $ bin/nimrod c koch
 $ ./koch boot -d:release
 ```
 
-The install script (``install.sh``) may then be used to install Nimrod, or you
+``koch install [dir]`` may then be used to install Nimrod, or you
 can simply add it to your PATH.
 
 The above steps can be performed on Windows in a similar fashion, the

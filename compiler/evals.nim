@@ -249,7 +249,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
   else: InternalError(result.info, "getNullValueAux")
   
 proc getNullValue(typ: PType, info: TLineInfo): PNode = 
-  var t = skipTypes(typ, abstractRange)
+  var t = skipTypes(typ, abstractRange-{tyTypeDesc})
   result = emptyNode
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64: 
@@ -273,9 +273,10 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1): 
       addSon(result, getNullValue(elemType(t), info))
-  of tyTuple: 
+  of tyTuple:
+    # XXX nkExprColonExpr is out of fashion ...
     result = newNodeIT(nkPar, info, t)
-    for i in countup(0, sonsLen(t) - 1): 
+    for i in countup(0, sonsLen(t) - 1):
       var p = newNodeIT(nkExprColonExpr, info, t.sons[i])
       var field = if t.n != nil: t.n.sons[i].sym else: newSym(
         skField, getIdent(":tmp" & $i), t.owner, info)
@@ -293,10 +294,12 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     if a.kind != nkIdentDefs: return raiseCannotEval(c, n.info)
     # XXX var (x, y) = z support?
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
-    if a.sons[2].kind != nkEmpty: 
+    if a.sons[2].kind != nkEmpty:
       result = evalAux(c, a.sons[2], {})
-      if isSpecial(result): return 
-    else: 
+      if result.kind in {nkType..nkNilLit}: 
+        result = result.copyNode
+      if isSpecial(result): return
+    else:
       result = getNullValue(a.sons[0].typ, a.sons[0].info)
     if a.sons[0].kind == nkSym:
       var v = a.sons[0].sym
@@ -444,29 +447,35 @@ proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       stackTrace(c, n, errIndexOutOfBounds)
   else: stackTrace(c, n, errNilAccess)
   
-proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
+proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   # a real field access; proc calls have already been transformed
   # XXX: field checks!
   result = evalAux(c, n.sons[0], flags)
-  if isSpecial(result): return 
+  if isSpecial(result): return
   var x = result
   if x.kind != nkPar: return raiseCannotEval(c, n.info)
+  # this is performance critical:
   var field = n.sons[1].sym
-  for i in countup(0, sonsLen(x) - 1): 
-    var it = x.sons[i]
-    if it.kind != nkExprColonExpr:
-      # lookup per index:
-      result = x.sons[field.position]
-      if result.kind == nkExprColonExpr: result = result.sons[1]
-      if not aliasNeeded(result, flags): result = copyTree(result)
-      return
-      #InternalError(it.info, "evalFieldAccess")
-    if it.sons[0].sym.name.id == field.name.id: 
-      result = x.sons[i].sons[1]
-      if not aliasNeeded(result, flags): result = copyTree(result)
-      return
-  stackTrace(c, n, errFieldXNotFound, field.name.s)
-  result = emptyNode
+  result = x.sons[field.position]
+  if result.kind == nkExprColonExpr: result = result.sons[1]
+  if not aliasNeeded(result, flags): result = copyTree(result)
+  when false:
+    var field = n.sons[1].sym
+    for i in countup(0, sonsLen(x) - 1): 
+      var it = x.sons[i]
+      if it.kind != nkExprColonExpr:
+        # lookup per index:
+        result = x.sons[field.position]
+        if result.kind == nkExprColonExpr: result = result.sons[1]
+        if not aliasNeeded(result, flags): result = copyTree(result)
+        return
+        #InternalError(it.info, "evalFieldAccess")
+      if it.sons[0].sym.name.id == field.name.id: 
+        result = x.sons[i].sons[1]
+        if not aliasNeeded(result, flags): result = copyTree(result)
+        return
+    stackTrace(c, n, errFieldXNotFound, field.name.s)
+    result = emptyNode
 
 proc evalAsgn(c: PEvalContext, n: PNode): PNode = 
   var a = n.sons[0]
@@ -896,13 +905,13 @@ proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
   if sonsLen(ast) != 1:
     GlobalError(code.info, errExprExpected, "multiple statements")
   result = ast.sons[0]
-  result.typ = newType(tyExpr, c.module)
+  #result.typ = newType(tyExpr, c.module)
 
 proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   result = parseString(code.getStrValue, code.info.toFilename,
                        code.stringStartingLine)
-  result.typ = newType(tyStmt, c.module)
+  #result.typ = newType(tyStmt, c.module)
  
 proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   ## XXX: This should be pretty much guaranteed to be true
@@ -993,10 +1002,10 @@ proc evalExpandToAst(c: PEvalContext, original: PNode): PNode =
 
   case expandedSym.kind
   of skTemplate:
-    let genSymOwner = if c.tos != nil and c.tos.prc != nil: 
-        c.tos.prc 
-      else:
-        c.module
+    let genSymOwner = if c.tos != nil and c.tos.prc != nil:
+                        c.tos.prc 
+                      else:
+                        c.module
     result = evalTemplate(macroCall, expandedSym, genSymOwner)
   of skMacro:
     # At this point macroCall.sons[0] is nkSym node.
@@ -1090,7 +1099,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
     addSon(a, result)
-    result = emptyNode
+    result = a
   of mNAddMultiple: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
@@ -1098,7 +1107,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[2], {efLValue})
     if isSpecial(result): return 
     for i in countup(0, sonsLen(result) - 1): addSon(a, result.sons[i])
-    result = emptyNode
+    result = a
   of mNDel: 
     result = evalAux(c, n.sons[1], {efLValue})
     if isSpecial(result): return 
@@ -1336,19 +1345,27 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
         cc = result
     if isEmpty(a) or isEmpty(b) or isEmpty(cc): result = emptyNode
     else: result = evalOp(m, n, a, b, cc)
-    
+
 proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = emptyNode
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
-  case n.kind                 # atoms:
-  of nkEmpty: result = n
+  case n.kind
   of nkSym: result = evalSym(c, n, flags)
-  of nkType..nkNilLit: result = copyNode(n) # end of atoms
-  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit, nkInfix,
-     nkPrefix, nkPostfix: 
+  of nkType..nkNilLit:
+    # nkStrLit is VERY common in the traces, so we should avoid
+    # the 'copyNode' here.
+    result = n #.copyNode
+  of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
+  of nkCommand..nkHiddenCallConv:
     result = evalMagicOrCall(c, n)
-  of nkCurly, nkBracket, nkRange: 
+  of nkDotExpr: result = evalFieldAccess(c, n, flags)
+  of nkBracketExpr:
+    result = evalArrayAccess(c, n, flags)
+  of nkDerefExpr, nkHiddenDeref: result = evalDeref(c, n, flags)
+  of nkAddr, nkHiddenAddr: result = evalAddr(c, n, flags)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: result = evalConv(c, n)
+  of nkCurly, nkBracket, nkRange:
     # flags need to be passed here for mNAddMultiple :-(
     # XXX this is not correct in every case!
     var a = copyNode(n)
@@ -1370,12 +1387,23 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
         if isSpecial(result): return 
         a.sons[i] = result
     result = a
-  of nkBracketExpr: result = evalArrayAccess(c, n, flags)
-  of nkDotExpr: result = evalFieldAccess(c, n, flags)
-  of nkDerefExpr, nkHiddenDeref: result = evalDeref(c, n, flags)
-  of nkAddr, nkHiddenAddr: result = evalAddr(c, n, flags)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: result = evalConv(c, n)
-  of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
+  of nkObjConstr:
+    let t = skipTypes(n.typ, abstractInst)
+    var a: PNode
+    if t.kind == tyRef:
+      result = newNodeIT(nkRefTy, n.info, t)
+      a = getNullValue(t.sons[0], n.info)
+      addSon(result, a)
+    else:
+      a = getNullValue(t, n.info)
+      result = a
+    for i in countup(1, sonsLen(n) - 1):
+      let it = n.sons[i]
+      if it.kind == nkExprColonExpr:
+        let value = evalAux(c, it.sons[1], flags)
+        if isSpecial(value): return value
+        a.sons[it.sons[0].sym.position] = value
+      else: return raiseCannotEval(c, n.info)
   of nkWhenStmt, nkIfStmt, nkIfExpr: result = evalIf(c, n)
   of nkWhileStmt: result = evalWhile(c, n)
   of nkCaseStmt: result = evalCase(c, n)
@@ -1414,6 +1442,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     result = raiseCannotEval(c, n.info)
   of nkRefTy:
     result = evalAux(c, n.sons[0], flags)
+  of nkEmpty: 
+    # nkEmpty occurs once in each trace that I looked at
+    result = n
   else: InternalError(n.info, "evalAux: " & $n.kind)
   if result == nil:
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
@@ -1464,11 +1495,13 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   c.callsite = nOrig
   var s = newStackFrame()
   s.call = n
-  setlen(s.params, n.len)
+  var L = n.safeLen
+  if L == 0: L = 1
+  setlen(s.params, L)
   # return value:
   s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1 .. < n.len: s.params[i] = setupMacroParam(n.sons[i])
+  for i in 1 .. < L: s.params[i] = setupMacroParam(n.sons[i])
   pushStackFrame(c, s)
   discard eval(c, sym.getBody)
   result = s.params[0]
@@ -1483,7 +1516,13 @@ proc myOpen(module: PSym): PPassContext =
   pushStackFrame(c, newStackFrame())
   result = c
 
-proc myProcess(c: PPassContext, n: PNode): PNode = 
+var oldErrorCount: int
+
+proc myProcess(c: PPassContext, n: PNode): PNode =
+  # don't eval errornous code:
+  if oldErrorCount != msgs.gErrorCounter:
+    oldErrorCount = msgs.gErrorCounter
+    return n
   result = eval(PEvalContext(c), n)
 
 const evalPass* = makePass(myOpen, nil, myProcess, myProcess)

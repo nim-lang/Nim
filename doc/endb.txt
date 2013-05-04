@@ -61,8 +61,8 @@ Executing Commands
 Breakpoint Commands
 ===================
 
-``b``, ``setbreak`` <identifier> [fromline [toline]] [file]
-    Set a new breakpoint named 'identifier' for the given file
+``b``, ``setbreak`` [fromline [toline]] [file]
+    Set a new breakpoint for the given file
     and line numbers. If no file is given, the current execution point's
     filename is used. If the filename has no extension, ``.nim`` is
     appended for your convenience.
@@ -71,16 +71,16 @@ Breakpoint Commands
     breakpoint contains a line number range. Some examples if it is still
     unclear:
 
-    * ``b br1 12 15 thallo`` creates a breakpoint named ``br1`` that
+    * ``b 12 15 thallo`` creates a breakpoint that
       will be triggered if the instruction pointer reaches one of the
       lines 12-15 in the file ``thallo.nim``.
-    * ``b br1 12 thallo`` creates a breakpoint named ``br1`` that
+    * ``b 12 thallo`` creates a breakpoint that
       will be triggered if the instruction pointer reaches the
       line 12 in the file ``thallo.nim``.
-    * ``b br1 12`` creates a breakpoint named ``br1`` that
+    * ``b 12`` creates a breakpoint that
       will be triggered if the instruction pointer reaches the
       line 12 in the current file.
-    * ``b br1`` creates a breakpoint named ``br1`` that
+    * ``b`` creates a breakpoint that
       will be triggered if the instruction pointer reaches the
       current line in the current file again.
 

@@ -8,4 +8,8 @@ proc foo(models: seq[TX]): seq[int] =
   for model in models.items:
     result.add model["foobar"]
 
-
+type
+  obj = object
+    field: TTable[string, string]
+var t: Obj
+discard initTable[type(t.field), string]()

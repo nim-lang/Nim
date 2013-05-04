@@ -45,7 +45,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = newSymS(skEnumField, n.sons[i].sons[0], c)
       var v = semConstExpr(c, n.sons[i].sons[1])
       var strVal: PNode = nil
-      case skipTypes(v.typ, abstractInst).kind 
+      case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind 
       of tyTuple: 
         if sonsLen(v) == 2:
           strVal = v.sons[1] # second tuple part is the string value
@@ -222,10 +222,11 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           let bound = result.typ.sons[0].sym
           if bound != nil:
             return bound
-          else:
-            return result.typ.sym
-        else:
-          return result.typ.sym
+          return result
+        if result.typ.sym == nil:
+          LocalError(n.info, errTypeExpected)
+          return errorSym(c, n)
+        return result.typ.sym
       if result.kind != skType: 
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
@@ -323,8 +324,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var biggestInt): PNode
   checkMinSonsLen(t, 1)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
-  let at = fitNode(c, t.sons[0].typ, ac)
-  let bt = fitNode(c, t.sons[0].typ, bc)
+  let at = fitNode(c, t.sons[0].typ, ac).skipConvTakeType
+  let bt = fitNode(c, t.sons[0].typ, bc).skipConvTakeType
   
   result = newNodeI(nkRange, a.info)
   result.add(at)
@@ -388,7 +389,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var TIntSet, pos: var int,
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: biggestInt = 0
-  var typ = skipTypes(a.sons[0].Typ, abstractVar)
+  var typ = skipTypes(a.sons[0].Typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ): 
     LocalError(n.info, errSelectorMustBeOrdinal)
   elif firstOrd(typ) < 0: 
@@ -873,6 +874,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if s.typ == nil: 
       if s.kind != skError: LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
+    elif s.kind == skParam and s.typ.kind == tyTypeDesc:
+      assert s.typ.len > 0
+      InternalAssert prev == nil
+      result = s.typ.sons[0]
     elif prev == nil:
       result = s.typ
     else: 

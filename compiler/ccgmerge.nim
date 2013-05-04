@@ -11,7 +11,7 @@
 ## is needed for incremental compilation.
 
 import
-  ast, astalgo, ropes, options, strutils, lexbase, msgs, cgendata, rodutils,
+  ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
   intsets, platform, llstream
 
 # Careful! Section marks need to contain a tabulator so that they cannot
@@ -45,11 +45,8 @@ const
   ]
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
-template mergeSectionsEnabled: expr =
-  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
-
 proc genSectionStart*(fs: TCFileSection): PRope =
-  if mergeSectionsEnabled:
+  if compilationCachePresent:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CFileSectionNames[fs])
@@ -57,11 +54,11 @@ proc genSectionStart*(fs: TCFileSection): PRope =
     app(result, tnl)
 
 proc genSectionEnd*(fs: TCFileSection): PRope =
-  if mergeSectionsEnabled:
+  if compilationCachePresent:
     result = toRope(NimMergeEndMark & tnl)
 
 proc genSectionStart*(ps: TCProcSection): PRope =
-  if mergeSectionsEnabled:
+  if compilationCachePresent:
     result = toRope(tnl)
     app(result, "/*\t")
     app(result, CProcSectionNames[ps])
@@ -69,7 +66,7 @@ proc genSectionStart*(ps: TCProcSection): PRope =
     app(result, tnl)
 
 proc genSectionEnd*(ps: TCProcSection): PRope =
-  if mergeSectionsEnabled:
+  if compilationCachePresent:
     result = toRope(NimMergeEndMark & tnl)
 
 proc writeTypeCache(a: TIdTable, s: var string) =
@@ -122,8 +119,8 @@ proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = lexbase.HandleCR(L, pos)
-    of LF: pos = lexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.HandleCR(L, pos)
+    of LF: pos = nimlexbase.HandleLF(L, pos)
     of ' ': inc pos
     else: break
   L.bufpos = pos
@@ -132,8 +129,8 @@ proc skipUntilCmd(L: var TBaseLexer) =
   var pos = L.bufpos
   while true:
     case ^pos
-    of CR: pos = lexbase.HandleCR(L, pos)
-    of LF: pos = lexbase.HandleLF(L, pos)
+    of CR: pos = nimlexbase.HandleCR(L, pos)
+    of LF: pos = nimlexbase.HandleLF(L, pos)
     of '\0': break
     of '/': 
       if ^(pos+1) == '*' and ^(pos+2) == '\t':
@@ -156,11 +153,11 @@ when false:
     while true:
       case buf[pos]
       of CR:
-        pos = lexbase.HandleCR(L, pos)
+        pos = nimlexbase.HandleCR(L, pos)
         buf = L.buf
         result.data.add(tnl)
       of LF:
-        pos = lexbase.HandleLF(L, pos)
+        pos = nimlexbase.HandleLF(L, pos)
         buf = L.buf
         result.data.add(tnl)
       of '\0':
@@ -182,11 +179,11 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
   while true:
     case buf[pos]
     of CR:
-      pos = lexbase.HandleCR(L, pos)
+      pos = nimlexbase.HandleCR(L, pos)
       buf = L.buf
       r.add(tnl)
     of LF:
-      pos = lexbase.HandleLF(L, pos)
+      pos = nimlexbase.HandleLF(L, pos)
       buf = L.buf
       r.add(tnl)
     of '\0':

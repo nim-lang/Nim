@@ -156,6 +156,10 @@ proc skipConv*(n: PNode): PNode =
     result = n.sons[1]
   else: result = n
 
+proc skipConvTakeType*(n: PNode): PNode =
+  result = n.skipConv
+  result.typ = n.typ
+
 proc SameValue*(a, b: PNode): bool = 
   result = false
   case a.kind

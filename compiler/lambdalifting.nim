@@ -322,7 +322,7 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   
   # we cannot generate a proper thunk here for GC-safety reasons (see internal
   # documentation):
-  if gCmd == cmdCompileToEcmaScript: return prc
+  if gCmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
   conv.add(emptyNode)
@@ -391,7 +391,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
       gatherVars(o, inner, body)
       # dummy closure param needed?
       if inner.closureParam == nil and n.sym.typ.callConv == ccClosure:
-        assert tfCapturesEnv notin n.sym.typ.flags
+        #assert tfCapturesEnv notin n.sym.typ.flags
         dummyClosureParam(o, inner)
       # only transform if it really needs a closure:
       if inner.closureParam != nil:
@@ -443,10 +443,15 @@ proc searchForInnerProcs(o: POuterContext, n: PNode) =
     for i in countup(0, sonsLen(n) - 1):
       searchForInnerProcs(o, n.sons[i])
 
-proc newAsgnStmt(le, ri: PNode): PNode = 
-  result = newNodeI(nkFastAsgn, ri.info)
-  result.add(le)
-  result.add(ri)
+proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode = 
+  # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
+  # mean to be able to capture string literals which have no GC header.
+  # However this can only happen if the capture happens through a parameter,
+  # which is however the only case when we generate an assignment in the first
+  # place.
+  result = newNodeI(nkAsgn, info, 2)
+  result.sons[0] = le
+  result.sons[1] = ri
 
 proc addVar*(father, v: PNode) = 
   var vpart = newNodeI(nkIdentDefs, v.info)
@@ -481,13 +486,13 @@ proc generateClosureCreation(o: POuterContext, scope: PEnv): PNode =
     if local.kind == skParam:
       # maybe later: (sfByCopy in local.flags)
       # add ``env.param = param``
-      result.add(newAsgnStmt(fieldAccess, newSymNode(local)))
+      result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
     IdNodeTablePut(o.localsToAccess, local, fieldAccess)
   # add support for 'up' references:
   for e, field in items(scope.deps):
     # add ``env.up = env2``
     result.add(newAsgnStmt(indirectAccess(env, field, env.info),
-               newSymNode(getClosureVar(o, e))))
+               newSymNode(getClosureVar(o, e)), env.info))
 
 proc transformOuterProc(o: POuterContext, n: PNode): PNode =
   if n == nil: return nil
@@ -543,7 +548,7 @@ proc transformOuterProc(o: POuterContext, n: PNode): PNode =
       if x != nil: n.sons[i] = x
 
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
-  if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
+  if body.kind == nkEmpty or gCmd == cmdCompileToJS:
     # ignore forward declaration:
     result = body
   else:
@@ -566,7 +571,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     result = ex
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
-  if body.kind == nkEmpty or gCmd == cmdCompileToEcmaScript:
+  if body.kind == nkEmpty or gCmd == cmdCompileToJS:
     result = body
   else:
     var o = newOuterContext(module)

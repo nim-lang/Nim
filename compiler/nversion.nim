@@ -18,5 +18,5 @@ const
   VersionPatch* = 1
   VersionAsString* = $VersionMajor & "." & $VersionMinor & "." & $VersionPatch
 
-  RodFileVersion* = "1210"       # modify this if the rod-format changes!
+  RodFileVersion* = "1212"       # modify this if the rod-format changes!
 

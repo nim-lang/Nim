@@ -30,7 +30,7 @@ proc getIdentNode(n: PNode): PNode =
   else:
     illFormedAst(n)
     result = n
-
+  
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
                     ctx: var TIntSet): PNode
 proc semGenericStmtScope(c: PContext, n: PNode, 
@@ -63,12 +63,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
     else:
       result = symChoice(c, n, s, scOpen)
   of skGenericParam: 
-    result = newSymNode(s, n.info)
+    result = newSymNodeTypeDesc(s, n.info)
   of skParam: 
     result = n
   of skType: 
     if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
-      result = newSymNode(s, n.info)
+      result = newSymNodeTypeDesc(s, n.info)
     else: 
       result = n
   else: result = newSymNode(s, n.info)
@@ -156,13 +156,13 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skProc, skMethod, skIterator, skConverter: 
         result.sons[0] = symChoice(c, n.sons[0], s, scOption)
         first = 1
-      of skGenericParam: 
-        result.sons[0] = newSymNode(s, n.sons[0].info)
+      of skGenericParam:
+        result.sons[0] = newSymNodeTypeDesc(s, n.sons[0].info)
         first = 1
       of skType: 
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
-          result.sons[0] = newSymNode(s, n.sons[0].info)
+          result.sons[0] = newSymNodeTypeDesc(s, n.sons[0].info)
           first = 1
       else:
         result.sons[0] = newSymNode(s, n.sons[0].info)

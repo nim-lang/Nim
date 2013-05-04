@@ -34,7 +34,10 @@ const
 proc getIdent(e: PNimrodNode): string {.compileTime.} = 
   case e.kind
   of nnkIdent: result = normalize($e.ident)
-  of nnkAccQuoted: result = getIdent(e[0])
+  of nnkAccQuoted: 
+    result = getIdent(e[0])
+    for i in 1 .. e.len-1:
+      result.add getIdent(e[i])
   else: error("cannot extract identifier from node: " & toStrLit(e).strVal)
 
 proc delete[T](s: var seq[T], attr: T): bool = 
@@ -478,4 +481,5 @@ macro `var`*(e: expr): expr {.immediate.} =
 when isMainModule:
   var nim = "Nimrod"
   echo h1(a(href="http://nimrod-code.org", nim))
+  echo form(action="test", `accept-charset` = "Content-Type")
 

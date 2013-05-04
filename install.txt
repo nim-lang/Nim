@@ -103,4 +103,5 @@ On UNIX
 * ``bin/nimrod c koch``
 * ``./koch boot -d:release``
 
+Installation on UNIX can then be done with ``koch install [dir]``.
 

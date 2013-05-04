@@ -19,19 +19,15 @@ import
 
 # implementation
 
-type 
-  TExprFlag = enum 
-    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType
-  TExprFlags = set[TExprFlag]
-
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.procvar.}
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.
+  procvar.}
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
-proc changeType(n: PNode, newType: PType)
+proc changeType(n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
@@ -200,14 +196,12 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
-proc semExprNoFlags(c: PContext, n: PNode): PNode {.procvar.} = 
-  result = semExpr(c, n, {})
-
 proc myOpen(module: PSym): PPassContext =
   var c = newContext(module)
   if c.p != nil: InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
-  c.semExpr = semExprNoFlags
+  c.semExpr = semExpr
+  c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
   c.semTypeNode = semTypeNode

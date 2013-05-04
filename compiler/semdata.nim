@@ -39,6 +39,11 @@ type
   TInstantiationPair* = object
     genericSym*: PSym
     inst*: PInstantiation
+
+  TExprFlag* = enum 
+    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
+    efAllowDestructor
+  TExprFlags* = set[TExprFlag]
     
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
@@ -64,7 +69,8 @@ type
                                # to some new symbol in a generic instantiation
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
-    semExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}      # for the pragmas
+    semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
+    semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds): PNode {.nimcall.}

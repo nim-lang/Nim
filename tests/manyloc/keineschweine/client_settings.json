@@ -1,0 +1,10 @@
+{
+ "resolution": [800,600,32],
+ "default-file": "alphazone.json",
+ "alias": "foo",
+ "directory-server":{
+  "host":"localhost",
+  "port":8024
+ },
+ "website":"https://github.com/fowlmouth/keineSchweine"
+}

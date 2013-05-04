@@ -324,15 +324,15 @@ proc drawRect*(sur: PSurface, r: TRect, color: TColor) =
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
   if (r.x >= 0 and r.x <= sur.s.w) and (r.y >= 0 and r.y <= sur.s.h):
-    var minW = min(sur.s.w - r.x, r.width - 1)
-    var minH = min(sur.s.h - r.y, r.height - 1)
+    var minW = min(sur.s.w - r.x, r.width)
+    var minH = min(sur.s.h - r.y, r.height)
     
     # Draw Top
     for i in 0 .. minW - 1:
       setPix(video, pitch, r.x + i, r.y, color)
       setPix(video, pitch, r.x + i, r.y + minH - 1, color) # Draw bottom
       
-    # Draw left side    
+    # Draw left side
     for i in 0 .. minH - 1:
       setPix(video, pitch, r.x, r.y + i, color)
       setPix(video, pitch, r.x + minW - 1, r.y + i, color) # Draw right side
@@ -520,6 +520,11 @@ when isMainModule:
   surf.drawCircle((600, 500), 60, colRed)
   
   surf.fillRect((50, 50, 100, 100), colFuchsia)
+  surf.fillRect((150, 50, 100, 100), colGreen)
+  surf.drawRect((50, 150, 100, 100), colGreen)
+  surf.drawRect((150, 150, 100, 100), colAqua)
+  surf.drawRect((250, 150, 100, 100), colBlue)
+  surf.drawHorLine(250, 150, 100, colRed)
 
   surf.drawLineAA((592, 160), (592, 280), colPurple)
   

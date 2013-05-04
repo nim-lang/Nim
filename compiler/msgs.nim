@@ -83,7 +83,9 @@ type
     errInvalidCommandX, errXOnlyAtModuleScope, 
     errXNeedsParamObjectType,
     errTemplateInstantiationTooNested, errInstantiationFrom, 
-    errInvalidIndexValueForTuple, errCommandExpectsFilename, errXExpected, 
+    errInvalidIndexValueForTuple, errCommandExpectsFilename,
+    errMainModuleMustBeSpecified,
+    errXExpected, 
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
@@ -301,6 +303,7 @@ const
     errInstantiationFrom: "instantiation from here", 
     errInvalidIndexValueForTuple: "invalid index value for tuple subscript", 
     errCommandExpectsFilename: "command expects a filename argument",
+    errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
     errXExpected: "\'$1\' expected", 
     errInvalidSectionStart: "invalid section start",
     errGridTableNotImplemented: "grid table is not implemented", 
@@ -506,6 +509,8 @@ var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
+proc sourceLine*(i: TLineInfo): PRope
+
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent}
   gErrorCounter*: int = 0     # counts the number of errors
@@ -523,8 +528,8 @@ proc SuggestWriteln*(s: string) =
       stdoutSocket.send(s & "\c\L")
     
 proc SuggestQuit*() =
-  if isNil(stdoutSocket): quit(0)
-  else: 
+  if not isServing: quit(0)
+  elif not isNil(stdoutSocket):
     stdoutSocket.send("\c\L")
     raise newException(ESuggestDone, "suggest done")
   
@@ -707,6 +712,11 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 var
   lastError = UnknownLineInfo()
 
+proc writeSurroundingSrc(info: TLineInfo) =
+  const indent = "  "
+  MsgWriteln(indent & info.sourceLine.data)
+  MsgWriteln(indent & repeatChar(info.col, ' ') & '^')
+
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) =
   var frmt: string
@@ -732,6 +742,8 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                   coordToStr(info.col), getMessageStr(msg, arg)]
   if not ignoreMsg:
     MsgWriteln(s)
+    if optPrintSurroundingSrc and msg in errMin..errMax:
+      info.writeSurroundingSrc
   handleError(msg, eh, s)
   
 proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
@@ -771,6 +783,12 @@ proc addSourceLine*(fileIdx: int32, line: string) =
 
 proc sourceLine*(i: TLineInfo): PRope =
   if i.fileIndex < 0: return nil
+  
+  if not optPreserveOrigSource and
+         fileInfos[i.fileIndex].lines.len == 0:
+    for line in lines(i.toFullPath):
+      addSourceLine i.fileIndex, line.string
+
   InternalAssert i.fileIndex < fileInfos.len and
                  i.line <= fileInfos[i.fileIndex].lines.len
 

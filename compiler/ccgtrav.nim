@@ -59,7 +59,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: PRope, typ: PType) =
   if typ == nil: return
   var p = c.p
   case typ.kind
-  of tyGenericInst, tyGenericBody:
+  of tyGenericInst, tyGenericBody, tyTypeDesc:
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArrayConstr, tyArray:
     let arraySize = lengthOrd(typ.sons[0])
@@ -111,10 +111,11 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   lineF(p, cpsInit, "a = ($1)p;$n", t)
   
   c.p = p
+  assert typ.kind != tyTypedesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".toRope, typ)
   else:
-    if skipTypes(typ.sons[0], abstractInst).kind in {tyArrayConstr, tyArray}:
+    if skipTypes(typ.sons[0], typedescInst).kind in {tyArrayConstr, tyArray}:
       # C's arrays are broken beyond repair:
       genTraverseProc(c, "a".toRope, typ.sons[0])
     else:

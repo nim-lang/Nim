@@ -108,8 +108,8 @@ proc methodDef*(s: PSym, fromCache: bool) =
 
 proc relevantCol(methods: TSymSeq, col: int): bool =
   # returns true iff the position is relevant
-  var t = methods[0].typ.sons[col]
-  if skipTypes(t, skipPtrs).kind == tyObject:
+  var t = methods[0].typ.sons[col].skipTypes(skipPtrs)
+  if t.kind == tyObject:
     for i in countup(1, high(methods)):
       let t2 = skipTypes(methods[i].typ.sons[col], skipPtrs)
       if not SameType(t2, t):

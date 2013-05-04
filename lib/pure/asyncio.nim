@@ -8,7 +8,8 @@
 
 import sockets, os
 
-## This module implements an asynchronous event loop for sockets. 
+## This module implements an asynchronous event loop together with asynchronous sockets
+## which use this event loop.
 ## It is akin to Python's asyncore module. Many modules that use sockets
 ## have an implementation for this module, those modules should all have a 
 ## ``register`` function which you should use to add the desired objects to a 
@@ -125,7 +126,7 @@ type
 
     handleTask*: proc (s: PAsyncSocket) {.closure.}
 
-    lineBuffer: TaintedString ## Temporary storage for ``recvLine``
+    lineBuffer: TaintedString ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
     proto: TProtocol
@@ -435,7 +436,8 @@ proc delHandleWrite*(s: PAsyncSocket) =
   ## Removes the ``handleWrite`` event handler on ``s``.
   s.handleWrite = nil
 
-proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
+{.push warning[deprecated]: off.}
+proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool {.deprecated.} =
   ## Behaves similar to ``sockets.recvLine``, however it handles non-blocking
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
@@ -443,6 +445,9 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   ##
   ## Unlike ``sockets.recvLine`` this function will raise an EOS or ESSL
   ## exception if an error occurs.
+  ##
+  ## **Deprecated since version 0.9.2**: This function has been deprecated in
+  ## favour of readLine.
   setLen(line.string, 0)
   var dataReceived = "".TaintedString
   var ret = s.socket.recvLineAsync(dataReceived)
@@ -463,6 +468,37 @@ proc recvLine*(s: PAsyncSocket, line: var TaintedString): bool =
   of RecvFail:
     s.SocketError(async = true)
     result = false
+{.pop.}
+
+proc readLine*(s: PAsyncSocket, line: var TaintedString): bool =
+  ## Behaves similar to ``sockets.readLine``, however it handles non-blocking
+  ## sockets properly. This function guarantees that ``line`` is a full line,
+  ## if this function can only retrieve some data; it will save this data and
+  ## add it to the result when a full line is retrieved, when this happens
+  ## False will be returned. True will only be returned if a full line has been
+  ## retrieved or the socket has been disconnected in which case ``line`` will
+  ## be set to "".
+  ##
+  ## This function will raise an EOS exception when a socket error occurs.
+  setLen(line.string, 0)
+  var dataReceived = "".TaintedString
+  var ret = s.socket.readLineAsync(dataReceived)
+  case ret
+  of ReadFullLine:
+    if s.lineBuffer.len > 0:
+      string(line).add(s.lineBuffer.string)
+      setLen(s.lineBuffer.string, 0)
+    string(line).add(dataReceived.string)
+    if string(line) == "":
+      line = "\c\L".TaintedString
+    result = true
+  of ReadPartialLine:
+    string(s.lineBuffer).add(dataReceived.string)
+    result = false
+  of ReadNone:
+    result = false
+  of ReadDisconnected:
+    result = true
 
 proc send*(sock: PAsyncSocket, data: string) =
   ## Sends ``data`` to socket ``sock``. This is basically a nicer implementation
@@ -599,7 +635,7 @@ when isMainModule:
   proc testRead(s: PAsyncSocket, no: int) =
     echo("Reading! " & $no)
     var data = ""
-    if not s.recvLine(data):
+    if not s.readLine(data):
       OSError()
     if data == "":
       echo("Closing connection. " & $no)

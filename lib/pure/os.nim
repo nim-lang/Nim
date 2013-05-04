@@ -794,8 +794,11 @@ when not defined(ENOENT):
   var ENOENT {.importc, header: "<errno.h>".}: cint
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
-  ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
-  ## if the file never existed in the first place.
+  ## Removes the `file`.
+  ##
+  ## If this fails, `EOS` is raised. This does not fail if the file never
+  ## existed in the first place. Despite the name of this proc you can also
+  ## call it on directories, but they will only be removed if they are empty.
   if cremove(file) != 0'i32 and errno != ENOENT: OSError()
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1", 
@@ -1076,8 +1079,12 @@ proc rawRemoveDir(dir: string) =
 proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   FWriteDir, FReadDir].} =
   ## Removes the directory `dir` including all subdirectories and files
-  ## in `dir` (recursively). If this fails, `EOS` is raised. This does not fail
-  ## if the directory never existed in the first place.
+  ## in `dir` (recursively).
+  ##
+  ## If this fails, `EOS` is raised. This does not fail if the directory never
+  ## existed in the first place. If you need non recursive directory removal
+  ## which fails when the directory contains files use the `removeFile` proc
+  ## instead.
   for kind, path in walkDir(dir): 
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
@@ -1103,8 +1110,15 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## The full path is created. If this fails, `EOS` is raised. It does **not**
   ## fail if the path already exists because for most usages this does not 
   ## indicate an error.
+  var omitNext = false
+  when defined(doslike):
+    omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
-    if dir[i] in {dirsep, altsep}: rawCreateDir(substr(dir, 0, i-1))
+    if dir[i] in {dirsep, altsep}:
+      if omitNext:
+        omitNext = false
+      else:
+        rawCreateDir(substr(dir, 0, i-1))
   rawCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1", 

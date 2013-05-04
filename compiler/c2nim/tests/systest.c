@@ -9,6 +9,20 @@ extern "C" {
 #  endif
 #endif
 
+enum
+{
+/* 8bit, color or not */
+    CV_LOAD_IMAGE_UNCHANGED  =-1,
+/* 8bit, gray */
+    CV_LOAD_IMAGE_GRAYSCALE  =0,
+/* ?, color */
+    CV_LOAD_IMAGE_COLOR      =1,
+/* any depth, ? */
+    CV_LOAD_IMAGE_ANYDEPTH   =2,
+/* ?, any color */
+    CV_LOAD_IMAGE_ANYCOLOR   =4
+};
+
 typedef void (*callback_t) (int rc);
 typedef const char* (*callback2)(int rc, long L, const char* buffer);
 

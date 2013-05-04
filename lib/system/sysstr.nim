@@ -73,12 +73,13 @@ proc cstrToNimstr(str: CString): NimString {.compilerRtl.} =
   result = toNimstr(str, c_strlen(str))
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
-  if (src.reserved and seqShallowFlag) != 0:
-    result = src
-  elif src != nil:
-    result = rawNewString(src.space)
-    result.len = src.len
-    c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
+  if src != nil:
+    if (src.reserved and seqShallowFlag) != 0:
+      result = src
+    else:
+      result = rawNewString(src.space)
+      result.len = src.len
+      c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
