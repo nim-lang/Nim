@@ -1146,6 +1146,12 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       # discard it. This is bad for chaining but nicer for C wrappers. 
       # ambiguous :-(
       result.typ = nil
+    elif result.kind == nkStmtListExpr and result.typ.kind == tyNil:
+      # to keep backwards compatibility bodies like:
+      #   nil
+      #   # comment
+      # are not expressions:
+      fixNilType(result)
     else:
       var a = newNodeI(nkAsgn, n.info, 2)
       a.sons[0] = newSymNode(c.p.resultSym)

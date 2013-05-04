@@ -264,10 +264,10 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   if r.scheme == "https":
     when defined(ssl):
       sslContext.wrapSocket(s)
+      port = TPort(443)
     else:
       raise newException(EHttpRequestErr,
                 "SSL support is not available. Cannot connect over SSL.")
-    port = TPort(443)
   if r.port != "":
     port = TPort(r.port.parseInt)
   

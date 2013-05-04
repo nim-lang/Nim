@@ -103,7 +103,16 @@ proc semExprBranchScope(c: PContext, n: PNode): PNode =
   result = semExprBranch(c, n)
   closeScope(c.tab)
 
+proc meaningfulStmt(n: PNode): PNode =
+  assert n.kind == nkStmtListExpr
+  var last = n.len-1
+  while last > 0 and n.sons[last].kind in {nkPragma, nkCommentStmt, nkEmpty}:
+    dec last
+  result = n.sons[last]
+
 proc ImplicitlyDiscardable(n: PNode): bool =
+  var n = n
+  while n.kind == nkStmtListExpr: n = meaningfulStmt(n)
   result = isCallExpr(n) and n.sons[0].kind == nkSym and 
            sfDiscardable in n.sons[0].sym.flags
 
@@ -114,6 +123,8 @@ proc fixNilType(n: PNode) =
   else:
     for it in n: fixNilType(it)
   n.typ = nil
+
+var EnforceVoidContext = PType(kind: tyStmt)
 
 proc discardCheck(result: PNode) =
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
@@ -1059,8 +1070,6 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   elif result.kind == nkEmpty:
     result = newNodeI(nkDiscardStmt, n.info, 1)
     result.sons[0] = emptyNode
-
-var EnforceVoidContext = PType(kind: tyStmt)
 
 proc semStmtList(c: PContext, n: PNode): PNode =
   # these must be last statements in a block:
