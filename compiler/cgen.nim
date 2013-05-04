@@ -600,6 +600,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
             [loadlib, getStrLit(m, lib.path.strVal)]) 
     else:
       var p = newProc(nil, m)
+      p.options = p.options - {optStackTrace, optEndb}
       var dest: TLoc
       initLocExpr(p, lib.path, dest)
       app(m.s[cfsVars], p.s(cpsLocals))
