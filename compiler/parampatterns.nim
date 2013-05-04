@@ -187,21 +187,24 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
       else:
         result = arLValue
   of nkDotExpr: 
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
+    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in 
+        {tyVar, tyPtr, tyRef}: 
       result = arLValue
-    else: 
+    else:
       result = isAssignable(owner, n.sons[0])
     if result != arNone and sfDiscriminant in n.sons[1].sym.flags: 
       result = arDiscriminant
   of nkBracketExpr: 
-    if skipTypes(n.sons[0].typ, abstractInst).kind in {tyVar, tyPtr, tyRef}: 
+    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
+        {tyVar, tyPtr, tyRef}: 
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     # Object and tuple conversions are still addressable, so we skip them
     # XXX why is 'tyOpenArray' allowed here?
-    if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
+    if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
+        {tyOpenArray, tyTuple, tyObject}:
       result = isAssignable(owner, n.sons[1])
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:

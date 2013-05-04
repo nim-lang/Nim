@@ -69,6 +69,25 @@ User                             Some user defined warning.
 ==========================       ============================================
 
 
+Verbosity levels
+----------------
+
+=====  ============================================
+Level  Description
+=====  ============================================
+0      Minimal output level for the compiler.
+1      Displays compilation of all the compiled files, including those imported
+       by other modules or through the `compile pragma<#compile-pragma>`_.
+       This is the default level.
+2      Displays compilation statistics, enumerates the dynamic
+       libraries that will be loaded by the final binary and dumps to
+       standard output the result of applying `a filter to the source code
+       <filters.html>`_ if any filter was used during compilation.
+3      In addition to the previous levels dumps a debug stack trace
+       for compiler developers.
+=====  ============================================
+
+
 Configuration files
 -------------------
 
@@ -190,7 +209,7 @@ Define               Effect
 ``useRealtimeGC``    Enables support of Nimrod's GC for *soft* realtime 
                      systems. See the documentation of the `gc <gc.html>`_ 
                      for further information.
-``nodejs``           The EcmaScript target is actually ``node.js``.
+``nodejs``           The JS target is actually ``node.js``.
 ``ssl``              Enables OpenSSL support for the sockets module.
 ``memProfiler``      Enables memory profiling for the native GC.
 ==================   =========================================================
@@ -549,17 +568,17 @@ efficient:
   else: quit(errorStr(p, "unknown variable: " & k.key))
 
 
-The ECMAScript target
+The JavaScript target
 =====================
 
-Nimrod can also generate `ECMAScript`:idx: (also known as `JavaScript`:idx:)
-code. However, the ECMAScript code generator is experimental!
+Nimrod can also generate `JavaScript`:idx: code. However, the
+JavaScript code generator is experimental!
 
-Nimrod targets ECMAScript 1.5 which is supported by any widely used browser.
-Since ECMAScript does not have a portable means to include another module,
+Nimrod targets JavaScript 1.5 which is supported by any widely used browser.
+Since JavaScript does not have a portable means to include another module,
 Nimrod just generates a long ``.js`` file.
 
-Features or modules that the ECMAScript platform does not support are not
+Features or modules that the JavaScript platform does not support are not
 available. This includes:
 
 * manual memory management (``alloc``, etc.)
@@ -571,7 +590,7 @@ available. This includes:
 
 However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
 available! To access the DOM, use the `dom`:idx: module that is only
-available for the ECMAScript platform.
+available for the JavaScript platform.
 
 To compile a Nimrod module into a ``.js`` file use the ``js`` command; the
 default is a  ``.js`` file that is supposed to be referenced in an ``.html``

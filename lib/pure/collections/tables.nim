@@ -159,8 +159,11 @@ proc del*[A, B](t: var TTable[A, B], key: A) =
     dec(t.counter)
 
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
-  ## creates a new hash table that is empty. `initialSize` needs to be
-  ## a power of two.
+  ## creates a new hash table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
@@ -290,8 +293,11 @@ proc add*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
   AddImpl()
 
 proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
-  ## creates a new ordered hash table that is empty. `initialSize` needs to be
-  ## a power of two.
+  ## creates a new ordered hash table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   result.first = -1
@@ -437,8 +443,11 @@ proc `[]=`*[A](t: var TCountTable[A], key: A, val: int) =
   PutImpl()
 
 proc initCountTable*[A](initialSize=64): TCountTable[A] =
-  ## creates a new count table that is empty. `initialSize` needs to be
-  ## a power of two.
+  ## creates a new count table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)

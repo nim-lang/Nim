@@ -119,11 +119,11 @@ proc semWhile(c: PContext, n: PNode): PNode =
   closeScope(c.tab)
 
 proc toCover(t: PType): biggestInt = 
-  var t2 = skipTypes(t, abstractVarRange)
+  var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2): 
     result = sonsLen(t2.n)
   else:
-    result = lengthOrd(skipTypes(t, abstractVar))
+    result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
 proc semCase(c: PContext, n: PNode): PNode = 
   # check selector:
@@ -133,7 +133,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
   var covered: biggestint = 0
-  case skipTypes(n.sons[0].Typ, abstractVarRange).Kind
+  case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
   of tyInt..tyInt64, tyChar, tyEnum: 
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError: 
@@ -166,10 +166,10 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
   result = fitNode(c, typ, n)
   if result.kind in {nkHiddenStdConv, nkHiddenSubConv}: 
-    changeType(result.sons[1], typ)
+    changeType(result.sons[1], typ, check=true)
     result = result.sons[1]
-  elif not sameType(result.typ, typ): 
-    changeType(result, typ)
+  elif not sameType(result.typ, typ):
+    changeType(result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
   for i in countdown(c.tab.tos - 2, ModuleTablePos+1):
@@ -203,11 +203,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
-    else: 
+    else:
       typ = nil
     var def: PNode
-    if a.sons[length-1].kind != nkEmpty: 
-      def = semExprWithType(c, a.sons[length-1])
+    if a.sons[length-1].kind != nkEmpty:
+      def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       # BUGFIX: ``fitNode`` is needed here!
       # check type compability between def.typ and typ:
       if typ != nil: def = fitNode(c, typ, def)
@@ -301,52 +301,109 @@ proc semConst(c: PContext, n: PNode): PNode =
     addSon(b, copyTree(def))
     addSon(result, b)
 
-proc transfFieldLoopBody(n: PNode, forLoop: PNode,
-                         tupleType: PType,
-                         tupleIndex, first: int): PNode = 
+type
+  TFieldInstCtx = object  # either 'tup[i]' or 'field' is valid
+    tupleType: PType      # if != nil we're traversing a tuple
+    tupleIndex: int
+    field: PSym
+    replaceByFieldName: bool
+
+proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkIdent)..nkNilLit: result = n
   of nkIdent:
     result = n
     var L = sonsLen(forLoop)
-    # field name:
-    if first > 0:
+    if c.replaceByFieldName:
       if n.ident.id == forLoop[0].ident.id:
-        if tupleType.n == nil: 
-          # ugh, there are no field names:
-          result = newStrNode(nkStrLit, "")
-        else:
-          result = newStrNode(nkStrLit, tupleType.n.sons[tupleIndex].sym.name.s)
+        let fieldName = if c.tupleType.isNil: c.field.name.s
+                        elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
+                        else: c.tupleType.n.sons[c.tupleIndex].sym.name.s
+        result = newStrNode(nkStrLit, fieldName)
         return
     # other fields:
-    for i in first..L-3:
+    for i in ord(c.replaceByFieldName)..L-3:
       if n.ident.id == forLoop[i].ident.id:
         var call = forLoop.sons[L-2]
-        var tupl = call.sons[i+1-first]
-        result = newNodeI(nkBracketExpr, n.info)
-        result.add(tupl)
-        result.add(newIntNode(nkIntLit, tupleIndex))
+        var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
+        if c.field.isNil:
+          result = newNodeI(nkBracketExpr, n.info)
+          result.add(tupl)
+          result.add(newIntNode(nkIntLit, c.tupleIndex))
+        else:
+          result = newNodeI(nkDotExpr, n.info)
+          result.add(tupl)
+          result.add(newSymNode(c.field, n.info))
         break
   else:
+    if n.kind == nkContinueStmt:
+      localError(n.info, errGenerated,
+                 "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
     for i in countup(0, sonsLen(n)-1):
-      result.sons[i] = transfFieldLoopBody(n.sons[i], forLoop,
-                                           tupleType, tupleIndex, first)
+      result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
-proc semForFields(c: PContext, n: PNode, m: TMagic): PNode = 
-  # so that 'break' etc. work as expected, we produce 
+type
+  TFieldsCtx = object
+    c: PContext
+    m: TMagic
+
+proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
+  case typ.kind
+  of nkSym:
+    var fc: TFieldInstCtx  # either 'tup[i]' or 'field' is valid
+    fc.field = typ.sym
+    fc.replaceByFieldName = c.m == mFieldPairs
+    openScope(c.c.tab)
+    inc c.c.InUnrolledContext
+    let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    father.add(SemStmt(c.c, body))
+    dec c.c.InUnrolledContext
+    closeScope(c.c.tab)
+  of nkNilLit: nil
+  of nkRecCase:
+    let L = forLoop.len
+    let call = forLoop.sons[L-2]
+    if call.len > 2:
+      LocalError(forLoop.info, errGenerated, 
+                 "parallel 'fields' iterator does not work for 'case' objects")
+      return
+    # iterate over the selector:
+    semForObjectFields(c, typ[0], forLoop, father)
+    # we need to generate a case statement:
+    var caseStmt = newNodeI(nkCaseStmt, forLoop.info)
+    # generate selector:
+    var access = newNodeI(nkDotExpr, forLoop.info, 2)
+    access.sons[0] = call.sons[1]
+    access.sons[1] = newSymNode(typ.sons[0].sym, forLoop.info)
+    caseStmt.add(semExprWithType(c.c, access))
+    # copy the branches over, but replace the fields with the for loop body:
+    for i in 1 .. <typ.len:
+      var branch = copyTree(typ[i])
+      let L = branch.len
+      branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)
+      semForObjectFields(c, typ[i].lastSon, forLoop, branch[L-1])
+      caseStmt.add(branch)
+    father.add(caseStmt)
+  of nkRecList:
+    for t in items(typ): semForObjectFields(c, t, forLoop, father)
+  else:
+    illFormedAst(typ)
+
+proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
+  # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
-  result = newNodeI(nkWhileStmt, n.info)
+  result = newNodeI(nkWhileStmt, n.info, 2)
   var trueSymbol = StrTableGet(magicsys.systemModule.Tab, getIdent"true")
   if trueSymbol == nil: 
     LocalError(n.info, errSystemNeeds, "true")
     trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
     trueSymbol.typ = getSysType(tyBool)
 
-  result.add(newSymNode(trueSymbol, n.info))
+  result.sons[0] = newSymNode(trueSymbol, n.info)
   var stmts = newNodeI(nkStmtList, n.info)
-  result.add(stmts)
+  result.sons[1] = stmts
   
   var length = sonsLen(n)
   var call = n.sons[length-2]
@@ -354,23 +411,34 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     LocalError(n.info, errWrongNumberOfVariables)
     return result
   
-  var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar)
-  if tupleTypeA.kind != tyTuple: InternalError(n.info, "no tuple type!")
+  var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar-{tyTypeDesc})
+  if tupleTypeA.kind notin {tyTuple, tyObject}:
+    localError(n.info, errGenerated, "no object or tuple type")
+    return result
   for i in 1..call.len-1:
-    var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar)
+    var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar-{tyTypeDesc})
     if not SameType(tupleTypeA, tupleTypeB):
       typeMismatch(call.sons[i], tupleTypeA, tupleTypeB)
   
   Inc(c.p.nestedLoopCounter)
-  var loopBody = n.sons[length-1]
-  for i in 0..sonsLen(tupleTypeA)-1:
-    openScope(c.tab)
-    var body = transfFieldLoopBody(loopBody, n, tupleTypeA, i,
-                                   ord(m==mFieldPairs))
-    inc c.InUnrolledContext
-    stmts.add(SemStmt(c, body))
-    dec c.InUnrolledContext
-    closeScope(c.tab)
+  if tupleTypeA.kind == tyTuple:
+    var loopBody = n.sons[length-1]
+    for i in 0..sonsLen(tupleTypeA)-1:
+      openScope(c.tab)
+      var fc: TFieldInstCtx
+      fc.tupleType = tupleTypeA
+      fc.tupleIndex = i
+      fc.replaceByFieldName = m == mFieldPairs
+      var body = instFieldLoopBody(fc, loopBody, n)
+      inc c.InUnrolledContext
+      stmts.add(SemStmt(c, body))
+      dec c.InUnrolledContext
+      closeScope(c.tab)
+  else:
+    var fc: TFieldsCtx
+    fc.m = m
+    fc.c = c
+    semForObjectFields(fc, tupleTypeA.n, n, stmts)
   Dec(c.p.nestedLoopCounter)
   var b = newNodeI(nkBreakStmt, n.info)
   b.add(ast.emptyNode)
@@ -416,10 +484,17 @@ proc semForVars(c: PContext, n: PNode): PNode =
   n.sons[length-1] = SemStmt(c, n.sons[length-1])
   Dec(c.p.nestedLoopCounter)
 
+proc newDeref(n: PNode): PNode {.inline.} =  
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
+  addSon(result, n)
+
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(it.getIdent, arg.info))
-  result.add(arg)
+  if arg.typ != nil and arg.typ.kind == tyVar: 
+    result.add newDeref(arg)
+  else:
+    result.add arg
   result = semExprNoDeref(c, result, {efWantIterator})
 
 proc semFor(c: PContext, n: PNode): PNode = 
@@ -705,8 +780,7 @@ proc activate(c: PContext, n: PNode) =
   # XXX: This proc is part of my plan for getting rid of
   # forward declarations. stay tuned.
   when false:
-    # well for now it breaks code ... I added the test case in main.nim of the
-    # compiler itself to break bootstrapping :P
+    # well for now it breaks code ...
     case n.kind
     of nkLambdaKinds:
       discard semLambda(c, n, {})
@@ -994,7 +1068,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
     result = nil
  
 proc generateDestructor(c: PContext, t: PType): PNode =
-  ## generate a destructor for a user-defined object ot tuple type
+  ## generate a destructor for a user-defined object or tuple type
   ## returns nil if the destructor turns out to be trivial
   
   template addLine(e: expr): stmt =
@@ -1029,7 +1103,7 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
   
   if t.destructor != nil:
     # XXX: This is not entirely correct for recursive types, but we need
-    # it temporarily to hide the "destroy is alrady defined" problem
+    # it temporarily to hide the "destroy is already defined" problem
     return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
   
   case t.kind
@@ -1071,8 +1145,8 @@ proc instantiateDestructor*(c: PContext, typ: PType): bool =
   else:
     return false
 
-proc insertDestructors(c: PContext, varSection: PNode):
-  tuple[outer: PNode, inner: PNode] =
+proc insertDestructors(c: PContext,
+                       varSection: PNode): tuple[outer, inner: PNode] =
   # Accepts a var or let section.
   #
   # When a var section has variables with destructors
@@ -1128,7 +1202,7 @@ proc insertDestructors(c: PContext, varSection: PNode):
 
       return
 
-proc ImplicitelyDiscardable(n: PNode): bool =
+proc ImplicitlyDiscardable(n: PNode): bool =
   result = isCallExpr(n) and n.sons[0].kind == nkSym and 
            sfDiscardable in n.sons[0].sym.flags
 
@@ -1179,7 +1253,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
   # a statement list (s; e) has the type 'e':
   if result.kind == nkStmtList and result.len > 0:
     var lastStmt = lastSon(result)
-    if lastStmt.kind != nkNilLit and not ImplicitelyDiscardable(lastStmt):
+    if lastStmt.kind != nkNilLit and not ImplicitlyDiscardable(lastStmt):
       result.typ = lastStmt.typ
       #localError(lastStmt.info, errGenerated,
       #  "Last expression must be explicitly returned if it " &

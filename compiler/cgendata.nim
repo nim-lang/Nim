@@ -54,9 +54,10 @@ type
     id*: int                  # the ID of the label; positive means that it
     label*: PRope             # generated text for the label
                               # nil if label is not used
-    nestedTryStmts*: int      # how many try statements is it nested into
     sections*: TCProcSections # the code beloging
     isLoop*: bool             # whether block is a loop
+    nestedTryStmts*: int16    # how many try statements is it nested into
+    frameLen*: int16
   
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nimrod proc that this C proc belongs to
@@ -74,9 +75,7 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
-    frameLen*: int            # current length of frame descriptor
-    sendClosure*: PType       # closure record type that we pass
-    receiveClosure*: PType    # closure record type that we get
+    maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     gcFrameId*: natural       # for the GC stack marking

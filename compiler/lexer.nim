@@ -16,7 +16,7 @@
 # DOS or Macintosh text files, even when it is not the native format.
 
 import 
-  hashes, options, msgs, strutils, platform, idents, lexbase, llstream, 
+  hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
   wordrecg
 
 const 
@@ -530,10 +530,10 @@ proc HandleCRLF(L: var TLexer, pos: int): int =
   case L.buf[pos]
   of CR:
     registerLine()
-    result = lexbase.HandleCR(L, pos)
+    result = nimlexbase.HandleCR(L, pos)
   of LF:
     registerLine()
-    result = lexbase.HandleLF(L, pos)
+    result = nimlexbase.HandleLF(L, pos)
   else: result = pos
   
 proc getString(L: var TLexer, tok: var TToken, rawMode: bool) = 
@@ -559,7 +559,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         pos = HandleCRLF(L, pos)
         buf = L.buf
         add(tok.literal, tnl)
-      of lexbase.EndOfFile: 
+      of nimlexbase.EndOfFile: 
         var line2 = L.linenumber
         L.LineNumber = line
         lexMessagePos(L, errClosingTripleQuoteExpected, L.lineStart)
@@ -581,7 +581,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         else:
           inc(pos) # skip '"'
           break
-      elif c in {CR, LF, lexbase.EndOfFile}: 
+      elif c in {CR, LF, nimlexbase.EndOfFile}: 
         lexMessage(L, errClosingQuoteExpected)
         break 
       elif (c == '\\') and not rawMode: 
@@ -675,10 +675,12 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   # a comment ends if the next line does not start with the # on the same
   # column after only whitespace
   tok.tokType = tkComment
+  # iNumber contains the number of '\n' in the token
+  tok.iNumber = 0
   var col = getColNumber(L, pos)
   while true:
     var lastBackslash = -1
-    while buf[pos] notin {CR, LF, lexbase.EndOfFile}:
+    while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
       if buf[pos] == '\\': lastBackslash = pos+1
       add(tok.literal, buf[pos])
       inc(pos)
@@ -686,7 +688,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       # a backslash is a continuation character if only followed by spaces
       # plus a newline:
       while buf[lastBackslash] == ' ': inc(lastBackslash)
-      if buf[lastBackslash] notin {CR, LF, lexbase.EndOfFile}:
+      if buf[lastBackslash] notin {CR, LF, nimlexbase.EndOfFile}:
         # false positive:
         lastBackslash = -1
 
@@ -699,6 +701,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     if buf[pos] == '#' and (col == indent or lastBackslash > 0):
       tok.literal.add "\n"
       col = indent
+      inc tok.iNumber
     else:
       if buf[pos] > ' ': 
         L.indentAhead = indent
@@ -838,7 +841,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     else:
       if c in OpChars: 
         getOperator(L, tok)
-      elif c == lexbase.EndOfFile:
+      elif c == nimlexbase.EndOfFile:
         tok.toktype = tkEof
       else:
         tok.literal = c & ""

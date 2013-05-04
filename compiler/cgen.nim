@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -269,18 +269,18 @@ proc genCLineDir(r: var PRope, filename: string, line: int) =
 proc genCLineDir(r: var PRope, info: TLineInfo) = 
   genCLineDir(r, info.toFullPath, info.safeLineNm)
 
-proc genLineDir(p: BProc, t: PNode) = 
+proc genLineDir(p: BProc, t: PNode) =
   var line = t.info.safeLineNm
   if optEmbedOrigSrc in gGlobalOptions:
     app(p.s(cpsStmts), con(~"//", t.info.sourceLine, rnl))
   genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
-      (p.prc == nil or sfPure notin p.prc.flags): 
-    linefmt(p, cpsStmts, "#endb($1);$n", toRope(line))
+      (p.prc == nil or sfPure notin p.prc.flags):
+    linefmt(p, cpsStmts, "#endb($1, $2);$n",
+            line.toRope, makeCString(toFilename(t.info)))
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags):
-   
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
             line.toRope, t.info.quotedFilename)
 
@@ -470,12 +470,13 @@ proc localDebugInfo(p: BProc, s: PSym) =
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = con("&", s.loc.r)
-  if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
+  if s.kind == skParam and ccgIntroducedPtr(s): a = s.loc.r
   lineF(p, cpsInit,
        "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
-       [toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
+       [p.maxFrameLen.toRope, makeCString(normalize(s.name.s)), a,
         genTypeInfo(p.module, s.loc.t)])
-  inc(p.frameLen)
+  inc(p.maxFrameLen)
+  inc p.blocks[p.blocks.len-1].frameLen
 
 proc assignLocalVar(p: BProc, s: PSym) = 
   #assert(s.loc.k == locNone) // not yet assigned
@@ -488,7 +489,7 @@ proc assignLocalVar(p: BProc, s: PSym) =
   if sfRegister in s.flags: app(decl, " register")
   #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
   #  app(decl, " GC_GUARD")
-  if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
+  if sfVolatile in s.flags or p.nestedTryStmts.len > 0: 
     app(decl, " volatile")
   appf(decl, " $1;$n", [s.loc.r])
   line(p, cpsLocals, decl)
@@ -574,6 +575,8 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     if lib.path.kind in {nkStrLit..nkTripleStrLit}:
       var s: TStringSeq = @[]
       libCandidates(lib.path.strVal, s)
+      if gVerbosity >= 2:
+        MsgWriteln("Dependency: " & lib.path.strVal)
       var loadlib: PRope = nil
       for i in countup(0, high(s)): 
         inc(m.labels)
@@ -693,10 +696,11 @@ proc retIsNotVoid(s: PSym): bool =
 
 proc initFrame(p: BProc, procname, filename: PRope): PRope =
   discard cgsym(p.module, "pushFrame")
-  if p.frameLen > 0:
+  if p.maxFrameLen > 0:
     discard cgsym(p.module, "TVarSlot")
-    result = rfmt(nil, "\tnimfrs($1, $2, $3)$N",
-                  procname, filename, p.frameLen.toRope)
+    result = rfmt(nil, "\tnimfrs($1, $2, $3, $4)$N",
+                  procname, filename, p.maxFrameLen.toRope,
+                  p.blocks[0].frameLen.toRope)
   else:
     result = rfmt(nil, "\tnimfr($1, $2)$N", procname, filename)
 
@@ -890,6 +894,12 @@ proc getFileHeader(cfilenoext: string): PRope =
   result = getCopyright(cfilenoext)
   addIntTypes(result)
 
+proc genFilenames(m: BModule): PRope =
+  discard cgsym(m, "dbgRegisterFilename")
+  result = nil
+  for i in 0.. <fileInfos.len:
+    result.appf("dbgRegisterFilename($1);$n", fileInfos[i].projPath.makeCString)
+
 proc genMainProc(m: BModule) = 
   const 
     CommonMainBody =
@@ -948,6 +958,8 @@ proc genMainProc(m: BModule) =
     nimMain = PosixNimMain
     otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
+  if optEndb in gOptions:
+    gBreakpoints.app(m.genFilenames)
   
   let initStackBottomCall = if emulatedThreadVars() or
                               platform.targetOS == osStandalone: "".toRope
@@ -1244,7 +1256,7 @@ proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
   let cfilenoext = changeFileExt(cfile, "")
   
-  if mergeRequired(m):
+  if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1254,8 +1266,7 @@ proc updateCachedModule(m: BModule) =
 
   addFileToLink(cfilenoext)
 
-proc cgenCaasUpdate* =
-  # XXX(zah): clean-up the fromCache mess
+proc updateCachedModules* =
   for m in cgenModules():
     if m.fromCache: m.updateCachedModule
 

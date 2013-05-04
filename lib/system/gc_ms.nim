@@ -7,11 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-# A simple mark&sweep garbage collector for Nimrod.
+# A simple mark&sweep garbage collector for Nimrod. Define the 
+# symbol ``gcUseBitvectors`` to generate a variant of this GC.
 {.push profiler:off.}
 
 const
   InitialThreshold = 4*1024*1024 # X MB because marking&sweeping is slow
+  withBitvectors = defined(gcUseBitvectors) 
+  # bitvectors are significantly faster for GC-bench, but slower for
+  # bootstrapping and use more memory
+  rcWhite = 0
+  rcGrey = 1   # unused
+  rcBlack = 2
 
 template mulThreshold(x): expr {.immediate.} = x * 2
 
@@ -41,7 +48,8 @@ type
                              # non-zero count table
     stackBottom: pointer
     cycleThreshold: int
-    allocated, marked: TCellSet
+    when withBitvectors:
+      allocated, marked: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
     recGcLock: int           # prevent recursion via finalizers; no thread lock
     region: TMemRegion       # garbage collected region
@@ -125,9 +133,11 @@ proc prepareDealloc(cell: PCell) =
 
 proc nimGCref(p: pointer) {.compilerProc, inline.} = 
   # we keep it from being collected by pretending it's not even allocated:
-  excl(gch.allocated, usrToCell(p))
+  when withBitvectors: excl(gch.allocated, usrToCell(p))
+  else: usrToCell(p).refcount = rcBlack
 proc nimGCunref(p: pointer) {.compilerProc, inline.} = 
-  incl(gch.allocated, usrToCell(p))
+  when withBitvectors: incl(gch.allocated, usrToCell(p))
+  else: usrToCell(p).refcount = rcWhite
 
 proc initGC() =
   when not defined(useNimRtl):
@@ -136,8 +146,9 @@ proc initGC() =
     gch.stat.maxThreshold = 0
     gch.stat.maxStackSize = 0
     init(gch.tempStack)
-    Init(gch.allocated)
-    init(gch.marked)
+    when withBitvectors:
+      Init(gch.allocated)
+      init(gch.marked)
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
@@ -200,7 +211,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
       res.line = framePtr.prev.line
   res.refcount = 0
   release(gch)
-  incl(gch.allocated, res)
+  when withBitvectors: incl(gch.allocated, res)
   result = cellToUsr(res)
 
 {.pop.}
@@ -246,11 +257,11 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
   zeroMem(cast[pointer](cast[TAddress](res)+% oldsize +% sizeof(TCell)),
           newsize-oldsize)
   sysAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  excl(gch.allocated, ol)
+  when withBitvectors: excl(gch.allocated, ol)
   when reallyDealloc: rawDealloc(gch.region, ol)
   else:
     zeroMem(ol, sizeof(TCell))
-  incl(gch.allocated, res)
+  when withBitvectors: incl(gch.allocated, res)
   release(gch)
   result = cellToUsr(res)
   when defined(memProfiler): nimProfile(newsize-oldsize)
@@ -263,14 +274,25 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
 # ----------------- collector -----------------------------------------------
 
 proc mark(gch: var TGcHeap, c: PCell) =
-  incl(gch.marked, c)
-  gcAssert gch.tempStack.len == 0, "stack not empty!"
-  forAllChildren(c, waMarkPrecise)
-  while gch.tempStack.len > 0:
-    dec gch.tempStack.len
-    var d = gch.tempStack.d[gch.tempStack.len]
-    if not containsOrIncl(gch.marked, d):
-      forAllChildren(d, waMarkPrecise)
+  when withBitvectors:
+    incl(gch.marked, c)
+    gcAssert gch.tempStack.len == 0, "stack not empty!"
+    forAllChildren(c, waMarkPrecise)
+    while gch.tempStack.len > 0:
+      dec gch.tempStack.len
+      var d = gch.tempStack.d[gch.tempStack.len]
+      if not containsOrIncl(gch.marked, d):
+        forAllChildren(d, waMarkPrecise)
+  else:
+    c.refCount = rcBlack
+    gcAssert gch.tempStack.len == 0, "stack not empty!"
+    forAllChildren(c, waMarkPrecise)
+    while gch.tempStack.len > 0:
+      dec gch.tempStack.len
+      var d = gch.tempStack.d[gch.tempStack.len]
+      if d.refcount == rcWhite:
+        d.refCount = rcBlack
+        forAllChildren(d, waMarkPrecise)
 
 proc doOperation(p: pointer, op: TWalkOp) =
   if p == nil: return
@@ -298,9 +320,17 @@ proc freeCyclicCell(gch: var TGcHeap, c: PCell) =
     zeroMem(c, sizeof(TCell))
 
 proc sweep(gch: var TGcHeap) =
-  for c in gch.allocated.elementsExcept(gch.marked):
-    gch.allocated.excl(c)
-    freeCyclicCell(gch, c)
+  when withBitvectors:
+    for c in gch.allocated.elementsExcept(gch.marked):
+      gch.allocated.excl(c)
+      freeCyclicCell(gch, c)
+  else:
+    for x in allObjects(gch.region):
+      if isCell(x):
+        # cast to PCell is correct here:
+        var c = cast[PCell](x)
+        if c.refcount == rcBlack: c.refcount = rcWhite
+        else: freeCyclicCell(gch, c)
 
 proc markGlobals(gch: var TGcHeap) =
   for i in 0 .. < globalMarkersLen: globalMarkers[i]()
@@ -451,8 +481,9 @@ proc collectCTBody(gch: var TGcHeap) =
   sweep(gch)
   
   inc(gch.stat.collections)
-  deinit(gch.marked)
-  init(gch.marked)
+  when withBitvectors:
+    deinit(gch.marked)
+    init(gch.marked)
   gch.cycleThreshold = max(InitialThreshold, getOccupiedMem().mulThreshold)
   gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   sysAssert(allocInv(gch.region), "collectCT: end")

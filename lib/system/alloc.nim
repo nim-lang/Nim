@@ -303,7 +303,35 @@ iterator elements(t: TIntSet): int {.inline.} =
           w = w shr 1
         inc(i)
       r = r.next
-   
+  
+proc isSmallChunk(c: PChunk): bool {.inline.} = 
+  return c.size <= SmallChunkSize-smallChunkOverhead()
+  
+proc chunkUnused(c: PChunk): bool {.inline.} = 
+  result = not c.used
+
+iterator allObjects(m: TMemRegion): pointer {.inline.} =
+  for s in elements(m.chunkStarts):
+    # we need to check here again as it could have been modified:
+    if s in m.chunkStarts:
+      let c = cast[PChunk](s shl PageShift)
+      if not chunkUnused(c):
+        if isSmallChunk(c):
+          var c = cast[PSmallChunk](c)
+          
+          let size = c.size
+          var a = cast[TAddress](addr(c.data))
+          let limit = a + c.acc
+          while a <% limit:
+            yield cast[pointer](a)
+            a = a +% size
+        else:
+          let c = cast[PBigChunk](c)
+          yield addr(c.data)
+
+proc isCell(p: pointer): bool {.inline.} =
+  result = cast[ptr TFreeCell](p).zeroField >% 1
+
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} = 
   result = cast[TAddress](c) shr PageShift
@@ -397,12 +425,6 @@ proc ListRemove[T](head: var T, c: T) {.inline.} =
     if c.next != nil: c.next.prev = c.prev
   c.next = nil
   c.prev = nil
-  
-proc isSmallChunk(c: PChunk): bool {.inline.} = 
-  return c.size <= SmallChunkSize-smallChunkOverhead()
-  
-proc chunkUnused(c: PChunk): bool {.inline.} = 
-  result = not c.used
   
 proc updatePrevSize(a: var TMemRegion, c: PBigChunk, 
                     prevSize: int) {.inline.} = 

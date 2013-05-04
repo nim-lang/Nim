@@ -28,9 +28,6 @@
 ## For SSL support this module relies on OpenSSL. If you want to 
 ## enable SSL, compile with ``-d:ssl``.
 
-when not defined(ssl):
-  {.error: "The SMTP module should be compiled with SSL support. Compile with -d:ssl."}
-
 import sockets, strutils, strtabs, base64, os
 
 type
@@ -54,16 +51,11 @@ proc debugSend(smtp: TSMTP, cmd: string) =
 
 proc debugRecv(smtp: var TSMTP): TaintedString =
   var line = TaintedString""
-  var ret = False
-  ret = smtp.sock.recvLine(line)
+  smtp.sock.readLine(line)
 
-  if ret:
-    if smtp.debug:
-      echo("S:" & line.string)
-    return line
-  else:
-    OSError()
-    return TaintedString""
+  if smtp.debug:
+    echo("S:" & line.string)
+  return line
 
 proc quitExcpt(smtp: TSMTP, msg: string) =
   smtp.debugSend("QUIT")

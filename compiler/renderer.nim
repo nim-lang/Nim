@@ -367,7 +367,7 @@ proc lsub(n: PNode): int =
     else: result = len(atom(n))
   of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit: 
     result = len(atom(n))
-  of nkCall, nkBracketExpr, nkCurlyExpr, nkConv, nkPattern:
+  of nkCall, nkBracketExpr, nkCurlyExpr, nkConv, nkPattern, nkObjConstr:
     result = lsub(n.sons[0]) + lcomma(n, 1) + 2
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: result = lsub(n[1])
   of nkCast: result = lsub(n.sons[0]) + lsub(n.sons[1]) + len("cast[]()")
@@ -779,7 +779,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkRStrLit: put(g, tkRStrLit, atom(n))
   of nkCharLit: put(g, tkCharLit, atom(n))
   of nkNilLit: put(g, tkNil, atom(n))    # complex expressions
-  of nkCall, nkConv, nkDotCall, nkPattern:
+  of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
     if sonsLen(n) >= 1: gsub(g, n.sons[0])
     put(g, tkParLe, "(")
     gcomma(g, n, 1)

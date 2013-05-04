@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,9 +21,11 @@ type
     nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit,
     nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
     nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
-    nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr,
-    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix,
-    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, nnkCurlyExpr,
+    nnkCommand, nnkCall, nnkCallStrLit, nnkInfix,
+    nnkPrefix, nnkPostfix, nnkHiddenCallConv, 
+    nnkExprEqExpr,
+    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, 
+    nnkPar, nnkObjConstr, nnkCurly, nnkCurlyExpr,
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange,
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr,
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkAccQuoted,
@@ -31,7 +33,7 @@ type
     nnkClosedSymChoice,
     nnkOpenSymChoice,
     nnkHiddenStdConv,
-    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, nnkStaticExpr,
+    nnkHiddenSubConv, nnkConv, nnkCast, nnkStaticExpr,
     nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv,
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange,
     nnkStringToCString, nnkCStringToString, nnkAsgn,
@@ -128,12 +130,14 @@ proc `==`*(a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
 proc len*(n: PNimrodNode): int {.magic: "NLen".}
   ## returns the number of children of `n`.
 
-proc add*(father, child: PNimrodNode) {.magic: "NAdd".}
-  ## adds the `child` to the `father` node
+proc add*(father, child: PNimrodNode): PNimrodNode {.magic: "NAdd", discardable.}
+  ## Adds the `child` to the `father` node. Returns the
+  ## father node so that calls can be nested.
 
-proc add*(father: PNimrodNode, children: varargs[PNimrodNode]) {.
-  magic: "NAddMultiple".}
-  ## adds each child of `children` to the `father` node
+proc add*(father: PNimrodNode, children: varargs[PNimrodNode]): PNimrodNode {.
+  magic: "NAddMultiple", discardable.}
+  ## Adds each child of `children` to the `father` node.
+  ## Returns the `father` node so that calls can be nested.
 
 proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
   ## deletes `n` children of `father` starting at index `idx`.
@@ -331,9 +335,11 @@ proc nestList*(theProc: TNimrodIdent,
   ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.
   var L = x.len
   result = newCall(theProc, x[L-2], x[L-1])
-  var a = result
   for i in countdown(L-3, 0):
-    a = newCall(theProc, x[i], copyNimTree(a))
+    # XXX the 'copyNimTree' here is necessary due to a bug in the evaluation
+    # engine that would otherwise create an endless loop here. :-(
+    # This could easily user code and so should be fixed in evals.nim somehow.
+    result = newCall(theProc, x[i], copyNimTree(result))
 
 proc treeRepr*(n: PNimrodNode): string {.compileTime.} =
   ## Convert the AST `n` to a human-readable tree-like string.
@@ -397,4 +403,10 @@ macro dumpLisp*(s: stmt): stmt = echo s.lispRepr
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
+
+macro dumpTreeImm*(s: stmt): stmt {.immediate.} = echo s.treeRepr
+  ## The ``immediate`` version of `dumpTree`.
+
+macro dumpLispImm*(s: stmt): stmt {.immediate.} = echo s.lispRepr
+  ## The ``immediate`` version of `dumpLisp`.
 

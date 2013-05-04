@@ -36,7 +36,9 @@ proc ftell(f: TFile): int {.importc: "ftell", noDecl, tags: [].}
 proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
   importc, nodecl, tags: [].}
 
+{.push stackTrace:off, profiler:off.}
 proc write(f: TFile, c: cstring) = fputs(c, f)
+{.pop.}
 
 var
   IOFBF {.importc: "_IOFBF", nodecl.}: cint

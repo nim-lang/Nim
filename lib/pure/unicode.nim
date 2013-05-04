@@ -132,6 +132,11 @@ proc toUTF8*(c: TRune): string {.rtl, extern: "nuc$1".} =
     result = newString(1)
     result[0] = chr(i)
 
+proc `$`*(runes: seq[TRune]): string =
+  ## converts a sequence of runes to a string
+  result = ""
+  for rune in runes: result.add(rune.toUTF8)
+
 const
   alphaRanges = [
     0x00d8,  0x00f6,  #  - 
@@ -1208,3 +1213,10 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
     result = irune(toLower(ar)) - irune(toLower(br))
     if result != 0: return
   result = a.len - b.len
+
+when isMainModule:
+  let
+    someString = "öÑ"
+    someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
+    compared = (someString == $someRunes)
+  assert compared == true

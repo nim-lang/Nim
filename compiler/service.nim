@@ -73,6 +73,9 @@ proc serve*(action: proc (){.nimcall.}) =
       var line = stdin.readLine.string
       if line == "quit": quit()
       execute line
+      echo ""
+      FlushFile(stdout)
+
   of "tcp", "":
     var server = Socket()
     let p = getConfigVar("server.port")
@@ -83,11 +86,10 @@ proc serve*(action: proc (){.nimcall.}) =
     new(stdoutSocket)
     while true:
       accept(server, stdoutSocket)
-      discard stdoutSocket.recvLine(inp)
+      stdoutSocket.readLine(inp)
       execute inp.string
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
   else:
     echo "Invalid server.type:", typ
     quit 1
-

@@ -984,7 +984,7 @@ in future versions of the compiler.
 .. code-block:: nimrod
 
   type
-    TPerson = tuple[name: string, age: int] # type representing a person
+    TPerson = tuple[name: string, age: int] # type representing a person:
                                             # a person consists of a name
                                             # and an age
   var
@@ -1000,7 +1000,6 @@ For consistency  with ``object`` declarations, tuples in a ``type`` section
 can also be defined with indentation instead of ``[]``:
 
 .. code-block:: nimrod
-
   type
     TPerson = tuple   # type representing a person
       name: string    # a person consists of a name
@@ -1011,7 +1010,6 @@ and information hiding. Objects have access to their type at runtime, so that
 the ``of`` operator can be used to determine the object's type.
 
 .. code-block:: nimrod
-
   type
     TPerson {.inheritable.} = object
       name*: string   # the * means that `name` is accessible from other modules
@@ -1030,6 +1028,19 @@ be marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*. Objects that have no ancestor are implicitly ``final``
 and thus have no hidden type field. One can use the ``inheritable`` pragma to
 introduce new object roots apart from ``system.TObject``.
+
+
+Object construction
+-------------------
+
+Objects can also be created with an `object construction expression`:idx: that
+has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is 
+an ``object`` type or a ``ref object`` type:
+
+.. code-block:: nimrod
+  var student = TStudent(name: "Anton", age: 5, id: 3)
+
+For a ``ref object`` type ``new`` is invoked implicitly.
 
 
 Object variants
@@ -1061,15 +1072,22 @@ An example:
       of nkIf:
         condition, thenPart, elsePart: PNode
 
-  var
-    n: PNode
-  new(n)  # creates a new node
-  n.kind = nkFloat
-  n.floatVal = 0.0 # valid, because ``n.kind==nkFloat``, so that it fits
+  # create a new case object:
+  var n = PNode(kind: nkIf, condition: nil)
+  # accessing n.thenPart is valid because the ``nkIf`` branch is active:
+  n.thenPart = PNode(kind: nkFloat, floatVal: 2.0)
 
   # the following statement raises an `EInvalidField` exception, because
-  # n.kind's value does not fit:
+  # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
+  
+  # invalid: would change the active object branch:
+  n.kind = nkInt
+  
+  var x = PNode(kind: nkAdd, leftOp: PNode(kind: nkInt, intVal: 4),
+                             rightOp: PNode(kind: nkInt, intVal: 2))
+  # valid: does not change the active object branch:
+  x.kind = nkSub
 
 As can been seen from the example, an advantage to an object hierarchy is that
 no casting between different object types is needed. Yet, access to invalid
@@ -1077,6 +1095,11 @@ object fields raises an exception.
 
 The syntax of ``case`` in an object declaration follows closely the syntax of
 the ``case`` statement: The branches in a ``case`` section may be indented too.
+
+In the example the ``kind`` field is called the `discriminator`:idx:\: For
+safety its address cannot be taken and assignments to it are restricted: The
+new value must not lead to a change of the active object branch. For an object
+branch switch ``system.reset`` has to be used.
 
 
 Set type
@@ -2387,6 +2410,7 @@ the proc's name.
 Procs as expressions can appear both as nested procs and inside top level 
 executable code.
 
+
 Do notation
 -----------
 
@@ -2410,7 +2434,7 @@ Again, let's see the equivalent of the previous example:
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
 
-Finally, more than one ``do`` blocks can appear in a single call:
+Finally, more than one ``do`` block can appear in a single call:
 
 .. code-block:: nimrod
   proc performWithUndo(task: proc(), undo: proc()) = ...
@@ -2425,6 +2449,7 @@ For compatibility with ``stmt`` templates and macros, the ``do`` keyword can be
 omitted if the supplied proc doesn't have any parameters and return value. 
 The compatibility works in the other direction too as the ``do`` syntax can be
 used with macros and templates expecting ``stmt`` blocks.
+
 
 Nonoverloadable builtins
 ------------------------
@@ -2987,8 +3012,7 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
    raise ``system.E_Base`` unless ``q`` has an explicit ``raises`` list.
 3. Every call to a method ``m`` is assumed to 
    raise ``system.E_Base`` unless ``m`` has an explicit ``raises`` list.
-4. For every other call the analysis can determine an 
-   exact ``raises`` list.
+4. For every other call the analysis can determine an exact ``raises`` list.
 5. For determining a ``raises`` list, the ``raise`` and ``try`` statements 
    of ``p`` are taken into consideration.
 
@@ -3259,7 +3283,7 @@ Symbol lookup in generics
 
 The symbol binding rules in generics are slightly subtle: There are "open" and
 "closed" symbols. A "closed" symbol cannot be re-bound in the instantiation
-context, an "open" symbol can be. Per default overloaded symbols are open
+context, an "open" symbol can. Per default overloaded symbols are open
 and every other symbol is closed.
 
 Open symbols are looked up in two different contexts: Both the context
@@ -4106,8 +4130,8 @@ implemented with term rewriting:
   proc p(x, y: int; cond: bool): int =
     result = if cond: x + y else: x - y
 
-  template optP{p(x, y, true)}(x, y: expr): expr = x + y
-  template optP{p(x, y, false)}(x, y: expr): expr = x - y
+  template optP1{p(x, y, true)}(x, y: expr): expr = x + y
+  template optP2{p(x, y, false)}(x, y: expr): expr = x - y
 
 
 Example: hoisting
@@ -4385,6 +4409,40 @@ the user have not provided explicit implementation, Nimrod will automatically
 generate a destructor for the record type. Nimrod will automatically insert
 calls to any base class destructors in both user-defined and generated
 destructors.
+
+A destructor is attached to the type it destructs; expressions of this type
+can then only be used in *destructible contexts*:
+
+.. code-block:: nimrod
+  type  
+    TMyObj = object
+      x, y: int
+      p: pointer
+      
+  proc destruct(o: var TMyObj) {.destructor.} =
+    if o.p != nil: dealloc o.p
+    
+  proc open: TMyObj =
+    result = TMyObj(x: 1, y: 2, p: alloc(3))
+ 
+  proc main() =
+    # destructor automatically invoked at the end of the scope:
+    var x = open()
+    
+    # Error: usage of a type with a destructor in a non destructible context
+    echo open()
+
+A destructible context is currently only the following:
+
+1. The ``expr`` in ``var x = expr``.
+2. The ``expr`` in ``let x = expr``.
+3. The ``expr`` in ``return expr``.
+4. The ``expr`` in ``result = expr`` where ``result`` is the special symbol
+   introduced by the compiler.
+
+These rules ensure that the construction is tied to a variable and can easily
+be destructed at its scope exit. Later versions of the language will improve
+the support of destructors.
 
 
 procvar pragma
@@ -4720,7 +4778,7 @@ Foreign function interface
 ==========================
 
 Nimrod's `FFI`:idx: (foreign function interface) is extensive and only the
-parts that scale to other future backends (like the LLVM/EcmaScript backends)
+parts that scale to other future backends (like the LLVM/JavaScript backends)
 are documented here.
 
 

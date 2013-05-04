@@ -1,0 +1,7 @@
+{
+ "network":"lamenet",
+ "port":2049,
+ "zones":[
+  {"name":"alphazone","key":"skittles"} 
+ ]
+}

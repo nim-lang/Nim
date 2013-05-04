@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,9 +23,10 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkPar, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
+  let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
   var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
-  filename.strVal = ToFilename(info)
+  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.ToFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
   line.intVal = ToLinenumber(info)
   result.add(filename)
@@ -73,6 +74,33 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   else:
     LocalError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
 
+proc semLocals(c: PContext, n: PNode): PNode =
+  var counter = 0
+  var tupleType = newTypeS(tyTuple, c)
+  result = newNodeIT(nkPar, n.info, tupleType)
+  tupleType.n = newNodeI(nkRecList, n.info)
+  # for now we skip openarrays ...
+  for i in countdown(c.tab.tos-1, ModuleTablePos+1):
+    for it in items(c.tab.stack[i]):
+      # XXX parameters' owners are wrong for generics; this caused some pain
+      # for closures too; we should finally fix it.
+      #if it.owner != c.p.owner: return result
+      if it.kind in skLocalVars and
+          it.typ.skipTypes({tyGenericInst, tyVar}).kind notin
+              {tyVarargs, tyOpenArray, tyTypeDesc, tyExpr, tyStmt, tyEmpty}:
+
+        var field = newSym(skField, it.name, getCurrOwner(), n.info)
+        field.typ = it.typ.skipTypes({tyGenericInst, tyVar})
+        field.position = counter
+        inc(counter)
+
+        addSon(tupleType.n, newSymNode(field))
+        addSonSkipIntLit(tupleType, field.typ)
+        
+        var a = newSymNode(it, result.info)
+        if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
+        result.add(a)
+
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc magicsAfterOverloadResolution(c: PContext, n: PNode, 
                                    flags: TExprFlags): PNode =
@@ -86,5 +114,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mOrd: result = semOrd(c, n)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)
+  of mLocals: result = semLocals(c, n)
   else: result = n
 

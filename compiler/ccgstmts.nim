@@ -16,7 +16,8 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if gSelectedGc == gcMarkAndSweep and containsGarbageCollectedRef(v.loc.t):
+  if gSelectedGc in {gcMarkAndSweep, gcGenerational} and
+      containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)
@@ -44,7 +45,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if t.kind == tyTuple: 
       field.r = ropef("$1.Field$2", [rdLoc(tup), toRope(i)])
     else: 
-      if (t.n.sons[i].kind != nkSym): InternalError(n.info, "genVarTuple")
+      if t.n.sons[i].kind != nkSym: InternalError(n.info, "genVarTuple")
       field.r = ropef("$1.$2", 
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
@@ -63,19 +64,23 @@ proc startBlock(p: BProc, start: TFormatStr = "{$n",
   result = len(p.blocks)
   setlen(p.blocks, result + 1)
   p.blocks[result].id = p.labels
-  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len
+  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
 
 proc assignLabel(b: var TBlock): PRope {.inline.} =
   b.label = con("LA", b.id.toRope)
   result = b.label
 
-proc blockBody(b: var TBlock): PRope {.inline.} =
-  return b.sections[cpsLocals].con(b.sections[cpsInit]).con(b.sections[cpsStmts])
+proc blockBody(b: var TBlock): PRope =
+  result = b.sections[cpsLocals]
+  if b.frameLen > 0:
+    result.appf("F.len+=$1;$n", b.frameLen.toRope)
+  result.app(b.sections[cpsInit])
+  result.app(b.sections[cpsStmts])
 
 proc endBlock(p: BProc, blockEnd: PRope) =
-  let topBlock = p.blocks.len - 1
+  let topBlock = p.blocks.len-1
   # the block is merged into the parent block
-  app(p.blocks[topBlock - 1].sections[cpsStmts], p.blocks[topBlock].blockBody)
+  app(p.blocks[topBlock-1].sections[cpsStmts], p.blocks[topBlock].blockBody)
   setlen(p.blocks, topBlock)
   # this is done after the block is popped so $n is
   # properly indented when pretty printing is enabled
@@ -83,10 +88,13 @@ proc endBlock(p: BProc, blockEnd: PRope) =
 
 proc endBlock(p: BProc) =
   let topBlock = p.blocks.len - 1  
-  let blockEnd = if p.blocks[topBlock].label != nil:
+  var blockEnd = if p.blocks[topBlock].label != nil:
       rfmt(nil, "} $1: ;$n", p.blocks[topBlock].label)
     else:
       ~"}$n"
+  let frameLen = p.blocks[topBlock].frameLen
+  if frameLen > 0:
+    blockEnd.appf("F.len-=$1;$n", frameLen.toRope)
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
@@ -773,7 +781,7 @@ var
 
 proc genBreakPoint(p: BProc, t: PNode) = 
   var name: string
-  if optEndb in p.Options: 
+  if optEndb in p.Options:
     if t.kind == nkExprColonExpr: 
       assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
       name = normalize(t.sons[1].strVal)
@@ -783,7 +791,7 @@ proc genBreakPoint(p: BProc, t: PNode) =
     genLineDir(p, t)          # BUGFIX
     appcg(p.module, gBreakpoints, 
          "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
-        toRope(toLinenumber(t.info)), makeCString(toFilename(t.info)), 
+        toRope(toLinenumber(t.info)), makeCString(toFilename(t.info)),
         makeCString(name)])
 
 proc genWatchpoint(p: BProc, n: PNode) =
@@ -795,16 +803,13 @@ proc genWatchpoint(p: BProc, n: PNode) =
         [a.addrLoc, makeCString(renderTree(n.sons[1])),
         genTypeInfo(p.module, typ)])
 
-proc genPragma(p: BProc, n: PNode) = 
-  for i in countup(0, sonsLen(n) - 1): 
+proc genPragma(p: BProc, n: PNode) =
+  for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     case whichPragma(it)
-    of wEmit:
-      genEmit(p, it)
-    of wBreakpoint: 
-      genBreakPoint(p, it)
-    of wWatchpoint:
-      genWatchpoint(p, it)
+    of wEmit: genEmit(p, it)
+    of wBreakpoint: genBreakPoint(p, it)
+    of wWatchpoint: genWatchpoint(p, it)
     else: nil
 
 proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 

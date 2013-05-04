@@ -44,9 +44,9 @@ proc inSet(s: PNode, elem: PNode): bool =
         return true
   result = false
 
-proc overlap(a, b: PNode): bool = 
-  if a.kind == nkRange: 
-    if b.kind == nkRange: 
+proc overlap(a, b: PNode): bool =
+  if a.kind == nkRange:
+    if b.kind == nkRange:
       # X..Y and C..D overlap iff (X <= D and C <= Y)
       result = leValue(a.sons[0], b.sons[1]) and
                leValue(b.sons[0], a.sons[1])
@@ -98,13 +98,13 @@ proc ToTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
   result.typ = settype
   result.info = info
   e = 0
-  while e < high(s) * elemSize: 
+  while e < len(s) * elemSize: 
     if bitSetIn(s, e): 
       a = e
       b = e
       while true: 
         Inc(b)
-        if (b > high(s) * elemSize) or not bitSetIn(s, b): break 
+        if (b >= len(s) * elemSize) or not bitSetIn(s, b): break 
       Dec(b)
       if a == b: 
         addSon(result, newIntTypeNode(nkIntLit, a + first, elemType))

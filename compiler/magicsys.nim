@@ -38,7 +38,10 @@ proc newSysType(kind: TTypeKind, size: int): PType =
 
 proc getSysSym(name: string): PSym = 
   result = StrTableGet(systemModule.tab, getIdent(name))
-  if result == nil: rawMessage(errSystemNeeds, name)
+  if result == nil: 
+    rawMessage(errSystemNeeds, name)
+    result = newSym(skError, getIdent(name), systemModule, systemModule.info)
+    result.typ = newType(tyError, systemModule)
   if result.kind == skStub: loadStub(result)
   
 proc sysTypeFromName*(name: string): PType = 

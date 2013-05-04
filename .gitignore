@@ -16,6 +16,7 @@ compiler/c2nim/nimcache
 compiler/pas2nim/nimcache
 misc
 doc/*.html
+doc/*.pdf
 doc/*.idx
 /web/upload
 koch
@@ -28,6 +29,8 @@ examples/cross_todo/nimrod_backend/backend
 examples/cross_todo/nimrod_backend/testbackend
 examples/cross_todo/nimrod_backend/todo.sqlite3
 examples/cross_todo/nimrod_commandline/nimtodo
+install.sh
+deinstall.sh
 
 # iOS specific wildcards.
 *.mode1v3

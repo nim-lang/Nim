@@ -124,7 +124,7 @@ template blockingOperation(sock: TSocket, body: stmt) {.immediate.} =
 proc expectReply(ftp: PFTPClient): TaintedString =
   result = TaintedString""
   blockingOperation(ftp.getCSock()):
-    if not ftp.getCSock().recvLine(result): setLen(result.string, 0)
+    ftp.getCSock().readLine(result)
 
 proc send*(ftp: PFTPClient, m: string): TaintedString =
   ## Send a message to the server, and wait for a primary reply.
@@ -280,19 +280,18 @@ proc getLines(ftp: PFTPClient, async: bool = false): bool =
   if ftp.dsockConnected:
     var r = TaintedString""
     if ftp.isAsync:
-      if ftp.asyncDSock.recvLine(r):
+      if ftp.asyncDSock.readLine(r):
         if r.string == "":
           ftp.dsockConnected = false
         else:
           ftp.job.lines.add(r.string & "\n")
     else:
       assert(not async)
-      if ftp.dsock.recvLine(r):
-        if r.string == "":
-          ftp.dsockConnected = false
-        else:
-          ftp.job.lines.add(r.string & "\n")
-      else: OSError()
+      ftp.dsock.readLine(r)
+      if r.string == "":
+        ftp.dsockConnected = false
+      else:
+        ftp.job.lines.add(r.string & "\n")
   
   if not async:
     var readSocks: seq[TSocket] = @[ftp.getCSock()]

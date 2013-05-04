@@ -131,6 +131,7 @@ proc runGcTests(r: var TResults, options: string) =
   test "gcleak3"
   test "weakrefs"
   test "cycleleak"
+  test "closureleak"
 
 # ------------------------- threading tests -----------------------------------
 
@@ -176,14 +177,12 @@ proc runJsTests(r: var TResults, options: string) =
     runSingleTest(r, filename, options & " -d:nodejs", targetJS)
     runSingleTest(r, filename, options & " -d:nodejs -d:release", targetJS)
     
-  # texceptions, texcpt1, texcsub, tfinally, tfinally2,
-  # tfinally3
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
-  test "tests/run/tactiontable"
-  test "tests/run/tmultim1"
-  test "tests/run/tmultim3"
-  test "tests/run/tmultim4"
+  for testfile in ["texceptions", "texcpt1", "texcsub", "tfinally",
+                   "tfinally2", "tfinally3", "tactiontable", "tmultim1",
+                   "tmultim3", "tmultim4"]:
+    test "tests/run/" & testfile & ".nim"
 
 # ------------------------- register special tests here -----------------------
 proc runSpecialTests(r: var TResults, options: string) =
@@ -199,6 +198,26 @@ proc runSpecialTests(r: var TResults, options: string) =
 proc rejectSpecialTests(r: var TResults, options: string) =
   rejectThreadTests(r, options)
 
+proc findMainFile(dir: string): string =
+  # finds the file belonging to ".nimrod.cfg"; if there is no such file
+  # it returns the some ".nim" file if there is only one: 
+  const cfgExt = ".nimrod.cfg"
+  result = ""
+  var nimFiles = 0
+  for kind, file in os.walkDir(dir):
+    if kind == pcFile:
+      if file.endsWith(cfgExt): return file[.. -(cfgExt.len+1)] & ".nim"
+      elif file.endsWith(".nim"):
+        if result.len == 0: result = file
+        inc nimFiles
+  if nimFiles != 1: result.setlen(0)
+
+proc compileManyLoc(r: var TResults, options: string) =
+  for kind, dir in os.walkDir("tests/manyloc"):
+    if kind == pcDir:
+      let mainfile = findMainFile(dir)
+      compileSingleTest(r, mainfile, options)
+
 proc compileSpecialTests(r: var TResults, options: string) =
   compileRodFiles(r, options)
 
@@ -207,6 +226,8 @@ proc compileSpecialTests(r: var TResults, options: string) =
 
   compileDLLTests(r, options)
   compileDebuggerTests(r, options)
+  
+  compileManyLoc(r, options)
 
   #var given = callCompiler("nimrod i", "nimrod i", options)
   #r.addResult("nimrod i", given.msg, if given.err: reFailure else: reSuccess)

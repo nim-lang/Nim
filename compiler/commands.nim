@@ -65,8 +65,13 @@ proc writeCommandLineUsage() =
     MsgWriteln(getCommandLineDesc())
     helpWritten = true
 
+proc addPrefix(switch: string): string =
+  if len(switch) == 1: result = "-" & switch
+  else: result = "--" & switch
+
 proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
-  LocalError(info, errInvalidCmdLineOption, switch)
+  if switch == " ": LocalError(info, errInvalidCmdLineOption, "-")
+  else: LocalError(info, errInvalidCmdLineOption, addPrefix(switch))
 
 proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
                  info: TLineInfo) = 
@@ -98,10 +103,10 @@ proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass,
   else: LocalError(info, errOnOrOffExpectedButXFound, arg)
   
 proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg == "": LocalError(info, errCmdLineArgExpected, switch)
+  if arg == "": LocalError(info, errCmdLineArgExpected, addPrefix(switch))
   
 proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg != "": LocalError(info, errCmdLineNoArgExpected, switch)
+  if arg != "": LocalError(info, errCmdLineNoArgExpected, addPrefix(switch))
   
 proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 
@@ -143,6 +148,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "refc":         result = gSelectedGC == gcRefc
     of "v2":           result = gSelectedGC == gcV2
     of "markandsweep": result = gSelectedGC == gcMarkAndSweep
+    of "generational": result = gSelectedGC == gcGenerational
     of "none":         result = gSelectedGC == gcNone
     else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
@@ -190,8 +196,13 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "patterns": result = contains(gOptions, optPatterns)
   else: InvalidCmdLineOption(passCmd1, switch, info)
   
-proc processPath(path: string): string = 
-  result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
+proc processPath(path: string, notRelativeToProj = false): string =
+  let p = if notRelativeToProj or os.isAbsolute(path) or
+              '$' in path or path[0] == '.': 
+            path 
+          else:
+            options.gProjectPath / path
+  result = UnixToNativePath(p % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
@@ -206,6 +217,11 @@ proc track(arg: string, info: TLineInfo) =
     LocalError(info, errInvalidNumber, a[2])
   msgs.addCheckpoint(newLineInfo(a[0], line, column))
 
+proc dynlibOverride(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
+  if pass in {passCmd2, passPP}:
+    expectArg(switch, arg, pass, info)
+    options.inclDynlibOverride(arg)
+
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
     theOS: TSystemOS
@@ -218,7 +234,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "babelpath":
     if pass in {passCmd2, passPP}:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg)
+      let path = processPath(arg, notRelativeToProj=true)
       babelpath(path, info)
   of "excludepath":
     expectArg(switch, arg, pass, info)
@@ -280,6 +296,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     of "markandsweep":
       gSelectedGC = gcMarkAndSweep
       defineSymbol("gcmarkandsweep")
+    of "generational":
+      gSelectedGC = gcGenerational
+      defineSymbol("gcgenerational")
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")
@@ -437,9 +456,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "genscript": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
-  of "lib": 
+  of "lib":
     expectArg(switch, arg, pass, info)
-    libpath = processPath(arg)
+    libpath = processPath(arg, notRelativeToProj=true)
   of "putenv": 
     expectArg(switch, arg, pass, info)
     splitSwitch(arg, key, val, pass, info)
@@ -471,6 +490,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "listfullpaths":
     expectNoArg(switch, arg, pass, info)
     gListFullPaths = true
+  of "dynliboverride":
+    dynlibOverride(switch, arg, pass, info)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)

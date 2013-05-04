@@ -14,7 +14,7 @@ import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
   os, lists, condsyms, rodread, rodwrite, ropes, trees, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, ecmasgen, cgendata,
+  cgen, jsgen, cgendata, json, nversion,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
   tables, docgen2, service, magicsys, parser, crc, ccgutils
 
@@ -155,7 +155,8 @@ proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
     growCache gMemCacheData, fileIdx
     gMemCacheData[fileIdx].needsRecompile = Probing
     result = newModule(fileIdx)
-    var rd = handleSymbolFile(result)
+    #var rd = handleSymbolFile(result)
+    var rd: PRodReader
     result.flags = result.flags + flags
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
       rd = handleSymbolFile(result)
@@ -251,8 +252,8 @@ proc CommandCompileToC =
 
   compileProject()
 
-  if optCaasEnabled in gGlobalOptions:
-    cgenCaasUpdate()
+  if compilationCachePresent:
+    updateCachedModules()
 
   if gCmd != cmdRun:
     extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
@@ -301,18 +302,19 @@ when has_LLVM_Backend:
     #registerPass(cleanupPass())
     compileProject()
 
-proc CommandCompileToEcmaScript =
+proc CommandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
-  setTarget(osEcmaScript, cpuEcmaScript)
+  setTarget(osJS, cpuJS)
   #initDefines()
   DefineSymbol("nimrod") # 'nimrod' is always defined
-  DefineSymbol("ecmascript")
+  DefineSymbol("ecmascript") # For backward compatibility
+  DefineSymbol("js")
   semanticPasses()
-  registerPass(ecmasgenPass)
+  registerPass(jsgenPass)
   compileProject()
 
 proc InteractivePasses =
-  incl(gGlobalOptions, optSafeCode)
+  #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
   DefineSymbol("nimrodvm")
@@ -390,6 +392,15 @@ proc wantMainModule =
 
   gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
 
+proc requireMainModuleOption =
+  if optMainModule.len == 0:
+    Fatal(gCmdLineInfo, errMainModuleMustBeSpecified)
+  else:
+    gProjectName = optMainModule
+    gProjectFull = gProjectPath / gProjectName
+
+  gProjectMainIdx = addFileExt(gProjectFull, nimExt).fileInfoIdx
+
 proc resetMemory =
   resetCompilationLists()
   ccgutils.resetCaches()
@@ -461,9 +472,10 @@ proc MainCommand =
     gCmd = cmdCompileToC
     wantMainModule()
     CommandCompileToC()
-  of "cpp", "compiletocpp": 
+  of "cpp", "compiletocpp":
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
+    if cCompiler == ccGcc: setCC("gpp")
     wantMainModule()
     DefineSymbol("cpp")
     CommandCompileToC()
@@ -481,10 +493,10 @@ proc MainCommand =
       CommandCompileToC()
     else: 
       rawMessage(errInvalidCommandX, command)
-  of "js", "compiletoecmascript": 
-    gCmd = cmdCompileToEcmaScript
+  of "js", "compiletojs": 
+    gCmd = cmdCompileToJS
     wantMainModule()
-    CommandCompileToEcmaScript()
+    CommandCompileToJS()
   of "compiletollvm": 
     gCmd = cmdCompileToLLVM
     wantMainModule()
@@ -526,9 +538,30 @@ proc MainCommand =
     wantMainModule()
     CommandGenDepend()
   of "dump":
-    gCmd = cmdDump
-    condsyms.ListSymbols()
-    for it in iterSearchPath(searchPaths): MsgWriteln(it)
+    gcmd = cmdDump
+    if getconfigvar("dump.format") == "json":
+      requireMainModuleOption()
+
+      var definedSymbols = newJArray()
+      for s in definedSymbolNames(): definedSymbols.elems.add(%s)
+
+      var libpaths = newJArray()
+      for dir in itersearchpath(searchpaths): libpaths.elems.add(%dir)
+
+      var dumpdata = % [
+        (key: "version", val: %VersionAsString),
+        (key: "project_path", val: %gProjectFull),
+        (key: "defined_symbols", val: definedSymbols),
+        (key: "lib_paths", val: libpaths)
+      ]
+
+      outWriteLn($dumpdata)
+    else:
+      outWriteLn("-- list of currently defined symbols --")
+      for s in definedSymbolNames(): outWriteLn(s)
+      outWriteLn("-- end of list --")
+
+      for it in iterSearchPath(searchpaths): msgWriteLn(it)
   of "check":
     gCmd = cmdCheck
     wantMainModule()
@@ -558,13 +591,14 @@ proc MainCommand =
       wantMainModule()
       CommandSuggest()
   of "serve":
+    isServing = true
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error     
     serve(MainCommand)
   else:
     rawMessage(errInvalidCommandX, command)
   
-  if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun}:
+  if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun, cmdDump}:
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem())])

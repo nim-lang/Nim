@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,28 +10,24 @@
 # This module implements the searching for procs and iterators.
 # This is needed for proper handling of forward declarations.
 
-import 
+import
   ast, astalgo, msgs, semdata, types, trees
 
-proc equalGenericParams(procA, procB: PNode): bool = 
-  var a, b: PSym
-  result = procA == procB
-  if result: return 
-  if (procA == nil) or (procB == nil): return 
-  if sonsLen(procA) != sonsLen(procB): return 
-  for i in countup(0, sonsLen(procA) - 1): 
-    if procA.sons[i].kind != nkSym: 
+proc equalGenericParams(procA, procB: PNode): bool =
+  if sonsLen(procA) != sonsLen(procB): return
+  for i in countup(0, sonsLen(procA) - 1):
+    if procA.sons[i].kind != nkSym:
       InternalError(procA.info, "equalGenericParams")
       return
-    if procB.sons[i].kind != nkSym: 
+    if procB.sons[i].kind != nkSym:
       InternalError(procB.info, "equalGenericParams")
       return
-    a = procA.sons[i].sym
-    b = procB.sons[i].sym
-    if (a.name.id != b.name.id) or 
+    let a = procA.sons[i].sym
+    let b = procB.sons[i].sym
+    if a.name.id != b.name.id or
         not sameTypeOrNil(a.typ, b.typ, {TypeDescExactMatch}): return
-    if (a.ast != nil) and (b.ast != nil): 
-      if not ExprStructuralEquivalent(a.ast, b.ast): return 
+    if a.ast != nil and b.ast != nil:
+      if not ExprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
 proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym = 
@@ -39,19 +35,32 @@ proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym =
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
   result = initIdentIter(it, c.tab.stack[tos], fn.Name)
-  while result != nil: 
-    if (result.Kind == fn.kind): 
-      if equalGenericParams(result.ast.sons[genericParamsPos], 
-                            fn.ast.sons[genericParamsPos]): 
+  if isGenericRoutine(fn):
+    # we simply check the AST; this is imprecise but nearly the best what
+    # can be done; this doesn't work either though as type constraints are
+    # not kept in the AST ..
+    while result != nil:
+      if result.Kind == fn.kind and isGenericRoutine(result):
+        let genR = result.ast.sons[genericParamsPos]
+        let genF = fn.ast.sons[genericParamsPos]
+        if ExprStructuralEquivalent(genR, genF) and
+           ExprStructuralEquivalent(result.ast.sons[paramsPos],
+                                    fn.ast.sons[paramsPos]) and
+           equalGenericParams(genR, genF):
+            return
+      result = NextIdentIter(it, c.tab.stack[tos])
+  else:
+    while result != nil:
+      if result.Kind == fn.kind and not isGenericRoutine(result):
         case equalParams(result.typ.n, fn.typ.n)
         of paramsEqual:
-          return 
-        of paramsIncompatible: 
+          return
+        of paramsIncompatible:
           LocalError(fn.info, errNotOverloadable, fn.name.s)
-          return 
-        of paramsNotEqual: 
+          return
+        of paramsNotEqual:
           nil
-    result = NextIdentIter(it, c.tab.stack[tos])
+      result = NextIdentIter(it, c.tab.stack[tos])
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool = 

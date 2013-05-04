@@ -184,11 +184,11 @@ proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
 when not defined(niminheritable):
   {.pragma: inheritable.}
 
-when not defined(EcmaScript) and not defined(NimrodVM):
+when not defined(JS) and not defined(NimrodVM):
   type
-    TGenericSeq* {.compilerproc, pure, inheritable.} = object
+    TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
-    PGenericSeq* {.exportc.} = ptr TGenericSeq
+    PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: array[0..100_000_000, char]
@@ -370,9 +370,34 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings : seq[string]
+  ##   newSeq(inputStrings, 3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
 
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
+  ##
+  ## Note that the sequence will be filled with uninitialized entries, which
+  ## can be a problem for sequences containing strings. After the creation of
+  ## the sequence you should assign entries to the sequence instead of adding
+  ## them. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var inputStrings = newSeq[string](3)
+  ##   inputStrings[0] = "The fourth"
+  ##   inputStrings[1] = "assignment"
+  ##   inputStrings[2] = "would crash"
+  ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
@@ -900,7 +925,7 @@ template sysAssert(cond: bool, msg: string) =
 
 include "system/inclrtl"
 
-when not defined(ecmascript) and not defined(nimrodVm) and hostOS != "standalone":
+when not defined(JS) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1170,7 +1195,7 @@ proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
-  when not defined(ECMAScript):
+  when not defined(JS):
     proc `$` *(x: uint64): string {.noSideEffect.}
       ## The stingify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
@@ -1278,10 +1303,11 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
   ## The minimum value of two integers.
 
-proc min*[T](x: varargs[T]): T = 
-  ## The minimum value of `x`.
+proc min*[T](x: varargs[T]): T =
+  ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
-  for i in 1..high(x): result = min(result, x[i])
+  for i in 1..high(x):
+    if x[i] < result: result = x[i]
 
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
@@ -1290,10 +1316,11 @@ proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
   ## The maximum value of two integers.
 
-proc max*[T](x: varargs[T]): T = 
-  ## The maximum value of `x`.
+proc max*[T](x: varargs[T]): T =
+  ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
-  for i in 1..high(x): result = max(result, x[i])
+  for i in 1..high(x):
+    if result < x[i]: result = x[i]
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b] 
@@ -1422,7 +1449,7 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   result[y.len] = x
 
 when not defined(NimrodVM):
-  when not defined(ECMAScript):
+  when not defined(JS):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
@@ -1508,30 +1535,31 @@ proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
   ##   # --> ["142", "242", "342", "442"]
   for i in 0..data.len-1: op(data[i])
 
-iterator fields*[T: tuple](x: T): TObject {.
+iterator fields*[T: tuple|object](x: T): TObject {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
+iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
-iterator fieldPairs*[T: tuple](x: T): TObject {.
+iterator fieldPairs*[T: tuple|object](x: T): TObject {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fieldPairs*[S: tuple, T: tuple](x: S, y: T): tuple[a, b: expr] {.
+iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
+  a, b: expr] {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
 
-proc `==`*[T: tuple](x, y: T): bool = 
+proc `==`*[T: tuple|object](x, y: T): bool = 
   ## generic ``==`` operator for tuples that is lifted from the components
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -1556,7 +1584,7 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
-proc `$`*[T: tuple](x: T): string = 
+proc `$`*[T: tuple|object](x: T): string = 
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
@@ -1570,6 +1598,18 @@ proc `$`*[T: tuple](x: T): string =
     result.add(": ")
     result.add($value)
   result.add(")")
+
+proc `$`*[T: set](x: T): string = 
+  ## generic ``$`` operator for sets that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   ${23, 45} == "{23, 45}"
+  result = "{"
+  for value in items(x):
+    if result.len > 1: result.add(", ")
+    result.add($value)
+  result.add("}")
 
 when false:
   proc `$`*[T](a: openArray[T]): string = 
@@ -1649,10 +1689,6 @@ const nimrodStackTrace = compileOption("stacktrace")
 # of the code
 
 var
-  dbgLineHook*: proc () {.nimcall.}
-    ## set this variable to provide a procedure that should be called before
-    ## each executed instruction. This should only be used by debuggers!
-    ## Only code compiled with the ``debugger:on`` switch calls this hook.
   globalRaiseHook*: proc (e: ref E_Base): bool {.nimcall.}
     ## with this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -1690,15 +1726,16 @@ var
     ## continues and the program is terminated.
 
 type
-  PFrame = ptr TFrame
-  TFrame {.importc, nodecl, final.} = object
-    prev: PFrame
-    procname: CString
-    line: int # current line number
-    filename: CString
-    len: int  # length of slots (when not debugging always zero)
+  PFrame* = ptr TFrame  ## represents a runtime frame of the call stack;
+                        ## part of the debugger API.
+  TFrame* {.importc, nodecl, final.} = object ## the frame itself
+    prev*: PFrame       ## previous frame; used for chaining the call stack
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+    len*: int           ## length of the inspectable slots
 
-when not defined(ECMAScript):
+when not defined(JS):
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) {.noStackFrame.} =
     var i = 0
@@ -1724,7 +1761,7 @@ proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO].}
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
   ## It is roughly equivalent to ``writeln(stdout, x); flush(stdout)``, but
-  ## available for the ECMAScript target too.
+  ## available for the JavaScript target too.
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience.
 
@@ -1747,7 +1784,7 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
 
-when not defined(EcmaScript): #and not defined(NimrodVM):
+when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
   when not defined(NimrodVM):
@@ -2166,7 +2203,7 @@ when not defined(EcmaScript): #and not defined(NimrodVM):
       `result` = *((NI*) `x`.ClEnv) < 0;
       """.}
 
-elif defined(ecmaScript):
+elif defined(JS):
   # Stubs:
   proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = nil
 
@@ -2192,8 +2229,8 @@ elif defined(ecmaScript):
   proc deallocShared(p: pointer) = nil
   proc reallocShared(p: pointer, newsize: int): pointer = nil
 
-  when defined(ecmaScript):
-    include "system/ecmasys"
+  when defined(JS):
+    include "system/jssys"
     include "system/reprjs"
   elif defined(NimrodVM):
     proc cmp(x, y: string): int =
@@ -2370,12 +2407,40 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
   
-proc InstantiationInfo*(index = -1): tuple[filename: string, line: int] {.
-  magic: "InstantiationInfo", noSideEffect.}
+proc InstantiationInfo*(index = -1, fullPaths = false): tuple[
+  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information.
-  ## This is only useful for advanced meta programming. See the implementation
-  ## of `assert` for an example.
-  
+  ##
+  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## to retrieve information about the current filename and line number.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import strutils
+  ##
+  ##   template testException(exception, code: expr): stmt =
+  ##     try:
+  ##       let pos = instantiationInfo()
+  ##       discard(code)
+  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
+  ##         $pos.line, astToStr(code)]
+  ##       assert false, "A test expecting failure succeeded?"
+  ##     except exception:
+  ##       nil
+  ##
+  ##   proc tester(pos: int): int =
+  ##     let
+  ##       a = @[1, 2, 3]
+  ##     result = a[pos]
+  ##
+  ##   when isMainModule:
+  ##     testException(EInvalidIndex, tester(30))
+  ##     testException(EInvalidIndex, tester(1))
+  ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
+template CurrentSourcePath*: string = InstantiationInfo(-1, true).filename
+  ## returns the full file-system path of the current source
+
 proc raiseAssert*(msg: string) {.noinline.} =
   raise newException(EAssertionFailed, msg)
 
@@ -2437,7 +2502,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
-  when not defined(EcmaScript) and not defined(NimrodVM):
+  when not defined(JS) and not defined(NimrodVM):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -2445,7 +2510,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization 
   ## purposes.
-  when not defined(EcmaScript) and not defined(NimrodVM):
+  when not defined(JS) and not defined(NimrodVM):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -2500,3 +2565,10 @@ proc safeAdd*(x: var string, y: string) =
   if x == nil: x = y
   else: x.add(y)
 
+proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
+  ## generates a tuple constructor expression listing all the local variables
+  ## in the current scope. This is quite fast as it does not rely
+  ## on any debug or runtime information. Note that in constrast to what
+  ## the official signature says, the return type is not ``TObject`` but a
+  ## tuple of a structure that depends on the current scope.
+  nil

@@ -35,7 +35,7 @@ proc `!$`*(h: THash): THash {.inline.} =
 proc hashData*(Data: Pointer, Size: int): THash = 
   ## hashes an array of bytes of size `size`
   var h: THash = 0
-  when defined(ecmascript):
+  when defined(js):
     var p: cstring
     asm """`p` = `Data`;"""
   else:
@@ -48,12 +48,12 @@ proc hashData*(Data: Pointer, Size: int): THash =
     Dec(s)
   result = !$h
 
-when defined(ecmascript):
+when defined(js):
   var objectID = 0
 
 proc hash*(x: Pointer): THash {.inline.} = 
   ## efficient hashing of pointers
-  when defined(ecmascript):
+  when defined(js):
     asm """
       if (typeof `x` == "object") {
         if ("_NimID" in `x`)

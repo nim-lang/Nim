@@ -458,21 +458,28 @@ proc getAppType(n: PNode): PNode =
   else:
     result = newStrNodeT("console", n)
 
-proc foldConv*(n, a: PNode): PNode = 
+proc rangeCheck(n: PNode, value: biggestInt) =
+  if value < firstOrd(n.typ) or value > lastOrd(n.typ):
+    LocalError(n.info, errGenerated, "cannot convert " & $value &
+                                     " to " & typeToString(n.typ))
+
+proc foldConv*(n, a: PNode; check = false): PNode = 
   # XXX range checks?
   case skipTypes(n.typ, abstractRange).kind
   of tyInt..tyInt64: 
     case skipTypes(a.typ, abstractRange).kind
-    of tyFloat..tyFloat64: result = newIntNodeT(system.toInt(getFloat(a)), n)
+    of tyFloat..tyFloat64:
+      result = newIntNodeT(system.toInt(getFloat(a)), n)
     of tyChar: result = newIntNodeT(getOrdValue(a), n)
     else: 
       result = a
       result.typ = n.typ
-  of tyFloat..tyFloat64: 
+    if check: rangeCheck(n, result.intVal)
+  of tyFloat..tyFloat64:
     case skipTypes(a.typ, abstractRange).kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar: 
       result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
-    else: 
+    else:
       result = a
       result.typ = n.typ
   of tyOpenArray, tyVarargs, tyProc: 
@@ -490,7 +497,7 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
   
 proc foldArrayAccess(m: PSym, n: PNode): PNode = 
   var x = getConstExpr(m, n.sons[0])
-  if x == nil: return
+  if x == nil or x.typ.skipTypes({tyGenericInst}).kind == tyTypeDesc: return
   
   var y = getConstExpr(m, n.sons[1])
   if y == nil: return
@@ -516,13 +523,13 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
       LocalError(n.info, errIndexOutOfBounds)
   else: nil
   
-proc foldFieldAccess(m: PSym, n: PNode): PNode = 
+proc foldFieldAccess(m: PSym, n: PNode): PNode =
   # a real field access; proc calls have already been transformed
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.kind != nkPar: return
+  if x == nil or x.kind notin {nkObjConstr, nkPar}: return
 
   var field = n.sons[1].sym
-  for i in countup(0, sonsLen(x) - 1): 
+  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
     var it = x.sons[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -541,7 +548,12 @@ proc foldConStrStr(m: PSym, n: PNode): PNode =
     let a = getConstExpr(m, n.sons[i])
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
-  
+
+proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
+  result = newSymNode(s, info)
+  result.typ = newType(tyTypeDesc, s.owner)
+  result.typ.addSonSkipIntLit(s.typ)
+
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -569,6 +581,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         if sfFakeConst notin s.flags: result = copyTree(s.ast)
     elif s.kind in {skProc, skMethod}: # BUGFIX
       result = n
+    elif s.kind in {skType, skGenericParam}:
+      result = newSymNodeTypeDesc(s, n.info)
   of nkCharLit..nkNilLit: 
     result = copyNode(n)
   of nkIfExpr: 
@@ -587,16 +601,18 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           LocalError(a.info, errCannotEvalXBecauseIncompletelyDefined, 
                      "sizeof")
           result = nil
-        elif skipTypes(a.typ, abstractInst).kind in {tyArray,tyObject,tyTuple}:
+        elif skipTypes(a.typ, typedescInst).kind in
+             IntegralTypes+NilableTypes+{tySet}:
+          #{tyArray,tyObject,tyTuple}:
+          result = newIntNodeT(getSize(a.typ), n)
+        else:
           result = nil
           # XXX: size computation for complex types is still wrong
-        else:
-          result = newIntNodeT(getSize(a.typ), n)
       of mLow: 
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh: 
         if  skipTypes(n.sons[1].typ, abstractVar).kind notin
-            {tyOpenArray, tyVarargs, tySequence, tyString}: 
+            {tyOpenArray, tyVarargs, tySequence, tyString}:
           result = newIntNodeT(lastOrd(skipTypes(n[1].typ, abstractVar)), n)
         else:
           var a = getArrayConstr(m, n.sons[1])
@@ -647,7 +663,14 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
-  of nkPar: 
+  of nkObjConstr:
+    result = copyTree(n)
+    for i in countup(1, sonsLen(n) - 1):
+      var a = getConstExpr(m, n.sons[i].sons[1])
+      if a == nil: return nil
+      result.sons[i].sons[1] = a
+    incl(result.flags, nfAllConst)
+  of nkPar:
     # tuple constructor
     result = copyTree(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr): 
@@ -678,8 +701,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     result.typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
     var a = getConstExpr(m, n.sons[1])
-    if a == nil: return 
-    result = foldConv(n, a)
+    if a == nil: return
+    result = foldConv(n, a, check=n.kind == nkHiddenStdConv)
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
   else:

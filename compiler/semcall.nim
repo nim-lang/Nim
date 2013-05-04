@@ -85,7 +85,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
-      GlobalError(n.Info, errAmbiguousCallXYZ, "")
+      GlobalError(n.Info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
@@ -174,7 +174,10 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # common case; check the only candidate has the right
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
-      return explicitGenericInstError(n)
+      let expected = safeLen(s.ast.sons[genericParamsPos])
+      LocalError(n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
+         "; got " & $(n.len-1) & " type(s) but expected " & $expected)
+      return n
     result = explicitGenericSym(c, n, s)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
@@ -204,7 +207,7 @@ proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
-    let t = skipTypes(param.typ, abstractVar)
+    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
     call.add(newNodeIT(nkEmpty, fn.info, t.baseOfDistinct))
   var resolved = semOverloadedCall(c, call, call, {fn.kind})
   if resolved != nil:
