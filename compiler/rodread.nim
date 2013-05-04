@@ -1009,9 +1009,6 @@ proc writeType(f: TFile; t: PType) =
   if t.align != 2:
     f.write('=')
     f.write($t.align)
-  if t.containerID != 0: 
-    f.write('@')
-    f.write($t.containerID)
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i] == nil: 
       f.write("^()")
