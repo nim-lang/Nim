@@ -106,9 +106,15 @@ var
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
   isServing*: bool = false
+  gDirtyBufferIdx* = 0'i32    # indicates the fileIdx of the dirty version of
+                              # the tracked source X, saved by the CAAS client.
+  gDirtyOriginalIdx* = 0'i32  # the original source file of the dirtified buffer.
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
+
+template isWorkingWithDirtyBuffer*: expr =
+  gDirtyBufferIdx != 0
 
 template compilationCachePresent*: expr =
   {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
