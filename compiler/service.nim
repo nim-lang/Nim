@@ -67,7 +67,8 @@ proc serve*(action: proc (){.nimcall.}) =
     action()
     gDirtyBufferIdx = 0
     gDirtyOriginalIdx = 0
-    
+    gErrorCounter = 0
+
   let typ = getConfigVar("server.type")
   case typ
   of "stdin":

@@ -1266,10 +1266,6 @@ proc updateCachedModule(m: BModule) =
 
   addFileToLink(cfilenoext)
 
-proc updateCachedModules* =
-  for m in cgenModules():
-    if m.fromCache: m.updateCachedModule
-
 proc myClose(b: PPassContext, n: PNode): PNode = 
   result = n
   if b == nil or passes.skipCodegen(n): return 
@@ -1279,24 +1275,28 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     genStmts(m.initProc, n)
   # cached modules need to registered too: 
   registerModuleToMain(m.module)
-  
+
   if sfMainModule in m.module.flags: 
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
-    genMainProc(m) 
-    # we need to process the transitive closure because recursive module
-    # deps are allowed (and the system module is processed in the wrong
-    # order anyway)
-    if generatedHeader != nil: finishModule(generatedHeader)
-    while gForwardedProcsCounter > 0:
-      for m in cgenModules():
-        if not m.fromCache:
-          finishModule(m)
+    genMainProc(m)
+
+proc cgenWriteModules* =
+  # we need to process the transitive closure because recursive module
+  # deps are allowed (and the system module is processed in the wrong
+  # order anyway)
+  if generatedHeader != nil: finishModule(generatedHeader)
+  while gForwardedProcsCounter > 0:
     for m in cgenModules():
       if not m.fromCache:
-        writeModule(m, pending=true)
-    writeMapping(gMapping)
-    if generatedHeader != nil: writeHeader(generatedHeader)
+        finishModule(m)
+  for m in cgenModules():
+    if m.fromCache:
+      m.updateCachedModule
+    else:
+      m.writeModule(pending=true)
+  writeMapping(gMapping)
+  if generatedHeader != nil: writeHeader(generatedHeader)
 
 const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
 
