@@ -150,7 +150,12 @@ proc newModule(fileIdx: int32): PSym =
   initStrTable(result.tab)
   StrTableAdd(result.tab, result) # a module knows itself
 
-proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
+proc compileModule(fileIdxArg: int32, flagsArg: TSymFlags): PSym =
+  let (fileIdx, flags) = if fileIdxArg == gDirtyOriginalIdx:
+                           (gDirtyBufferIdx, flagsArg + {sfDirty})
+                         else:
+                           (fileIdxArg, flagsArg)
+  
   result = getModule(fileIdx)
   if result == nil:
     growCache gMemCacheData, fileIdx

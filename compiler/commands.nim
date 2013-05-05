@@ -207,6 +207,22 @@ proc processPath(path: string, notRelativeToProj = false): string =
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
 
+proc trackDirty(arg: string, info: TLineInfo) =
+  var a = arg.split(',')
+  if a.len != 4: LocalError(info, errTokenExpected,
+                            "DIRTY_BUFFER,ORIGINAL_FILE,LINE,COLUMN")
+  var line, column: int
+  if parseUtils.parseInt(a[2], line) <= 0:
+    LocalError(info, errInvalidNumber, a[1])
+  if parseUtils.parseInt(a[3], column) <= 0:
+    LocalError(info, errInvalidNumber, a[2])
+  
+  gDirtyBufferIdx = a[0].fileInfoIdx
+  gDirtyOriginalIdx = a[1].fileInfoIdx
+ 
+  optTrackPos = newLineInfo(gDirtyBufferIdx, line, column)
+  msgs.addCheckpoint(optTrackPos)
+
 proc track(arg: string, info: TLineInfo) = 
   var a = arg.split(',')
   if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLUMN")
@@ -470,6 +486,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of "track":
     expectArg(switch, arg, pass, info)
     track(arg, info)
+  of "trackdirty":
+    expectArg(switch, arg, pass, info)
+    trackDirty(arg, info)
   of "suggest": 
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSuggest)
