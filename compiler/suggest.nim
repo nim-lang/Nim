@@ -272,6 +272,7 @@ proc addToSourceMap(sym: Psym, info: TLineInfo) =
   gSourceMaps[info.fileIndex].lines[info.line].entries.add(TEntry(pos: info.col, sym: sym))
 
 proc defFromLine(entries: var seq[TEntry], col: int32) =
+  if entries == nil: return
   # The sorting is done lazily here on purpose.
   # No need to pay the price for it unless the user requests
   # "goto definition" on a particular line
@@ -288,8 +289,10 @@ proc defFromLine(entries: var seq[TEntry], col: int32) =
       return
 
 proc defFromSourceMap*(i: TLineInfo) =
-  InternalAssert i.fileIndex < gSourceMaps.len and 
-                 i.line < gSourceMaps[i.fileIndex].lines.len
+  if not ((i.fileIndex < gSourceMaps.len) and
+          (gSourceMaps[i.fileIndex].lines != nil) and
+          (i.line < gSourceMaps[i.fileIndex].lines.len)): return
+  
   defFromLine(gSourceMaps[i.fileIndex].lines[i.line].entries, i.col)
 
 proc suggestSym*(n: PNode, s: PSym) {.inline.} =
