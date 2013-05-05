@@ -89,24 +89,23 @@ proc addDep(x: Psym, dep: int32) =
   growCache gMemCacheData, dep
   gMemCacheData[x.position].deps.safeAdd(dep)
 
-proc ResetModule(fileIdx: int32) =
-  writeStackTrace()
+proc resetModule(fileIdx: int32) =
   # echo "HARD RESETTING ", fileIdx.toFilename
   gMemCacheData[fileIdx].needsRecompile = Yes
   gCompiledModules[fileIdx] = nil
   cgendata.gModules[fileIdx] = nil
   resetSourceMap(fileIdx)
 
-proc ResetAllModules =
+proc resetAllModules =
   for i in 0..gCompiledModules.high:
     if gCompiledModules[i] != nil:
-      ResetModule(i.int32)
+      resetModule(i.int32)
 
   # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc checkDepMem(fileIdx: int32): TNeedRecompile  =
   template markDirty =
-    ResetModule(fileIdx)
+    resetModule(fileIdx)
     return Yes
 
   if gMemCacheData[fileIdx].needsRecompile != Maybe:
@@ -150,12 +149,7 @@ proc newModule(fileIdx: int32): PSym =
   initStrTable(result.tab)
   StrTableAdd(result.tab, result) # a module knows itself
 
-proc compileModule(fileIdxArg: int32, flagsArg: TSymFlags): PSym =
-  let (fileIdx, flags) = if fileIdxArg == gDirtyOriginalIdx:
-                           (gDirtyBufferIdx, flagsArg + {sfDirty})
-                         else:
-                           (fileIdxArg, flagsArg)
-  
+proc compileModule(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
   if result == nil:
     growCache gMemCacheData, fileIdx
@@ -260,14 +254,11 @@ proc CommandCompileToC =
     # echo "CHECK DEP COMPLETE"
 
   compileProject()
-
-  if compilationCachePresent:
-    updateCachedModules()
-
+  cgenWriteModules()
   if gCmd != cmdRun:
     extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
 
-  if optCaasEnabled in gGlobalOptions:
+  if isServing:
     # caas will keep track only of the compilation commands
     lastCaasCmd = curCaasCmd
     resetCgenModules()
@@ -386,20 +377,23 @@ proc CommandScan =
     rawMessage(errCannotOpenFile, f)
   
 proc CommandSuggest =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  rodPass()
   if isServing:
     # XXX: hacky work-around ahead
     # Currently, it's possible to issue a idetools command, before
     # issuing the first compile command. This will leave the compiler
     # cache in a state where "no recompilation is necessary", but the
     # cgen pass was never executed at all.
-    codegenPass()
-  compileProject()
-  if isServing:
+    CommandCompileToC()
+    if gDirtyBufferIdx != 0:
+      discard compileModule(gDirtyBufferIdx, {sfDirty})
+      resetModule(gDirtyBufferIdx)
     if optDef in gGlobalOptions:
       defFromSourceMap(optTrackPos)
+  else:
+    msgs.gErrorMax = high(int)  # do not stop after first error
+    semanticPasses()
+    rodPass()
+    compileProject()
 
 proc wantMainModule =
   if gProjectFull.len == 0:
@@ -423,7 +417,7 @@ proc requireMainModuleOption =
 proc resetMemory =
   resetCompilationLists()
   ccgutils.resetCaches()
-  ResetAllModules()
+  resetAllModules()
   resetRopeCache()
   resetSysTypes()
   gOwners = @[]
