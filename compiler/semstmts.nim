@@ -10,6 +10,8 @@
 ## this module does the semantic checking of statements
 #  included from sem.nim
 
+var EnforceVoidContext = PType(kind: tyStmt)
+
 proc semCommand(c: PContext, n: PNode): PNode =
   result = semExprNoType(c, n)
   
@@ -56,6 +58,8 @@ proc semWhile(c: PContext, n: PNode): PNode =
   n.sons[1] = semStmt(c, n.sons[1])
   dec(c.p.nestedLoopCounter)
   closeScope(c.tab)
+  if n.sons[1].typ == EnforceVoidContext:
+    result.typ = EnforceVoidContext
 
 proc toCover(t: PType): biggestInt = 
   var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
@@ -121,19 +125,21 @@ proc fixNilType(n: PNode) =
     if n.kind != nkNilLit and n.typ != nil:
       localError(n.info, errDiscardValue)
   elif n.kind in {nkStmtList, nkStmtListExpr}:
+    n.kind = nkStmtList
     for it in n: fixNilType(it)
   n.typ = nil
-
-var EnforceVoidContext = PType(kind: tyStmt)
 
 proc discardCheck(result: PNode) =
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
-      # XXX too much work and fixing would break bootstrapping:
-      #Message(n.info, warnNilStatement)
       result.typ = nil
-    elif not ImplicitlyDiscardable(result) and result.typ.kind != tyError and
-        gCmd != cmdInteractive:
+    elif ImplicitlyDiscardable(result):
+      var n = result
+      result.typ = nil
+      while n.kind == nkStmtListExpr:
+        n = n.lastSon
+        n.typ = nil
+    elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
       else:
@@ -157,16 +163,17 @@ proc semIf(c: PContext, n: PNode): PNode =
       it.sons[0] = semExprBranchScope(c, it.sons[0])
       typ = commonType(typ, it.sons[0].typ)
     else: illFormedAst(it)
-  if isEmptyType(typ) or not hasElse:
+  if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
     for it in n: discardCheck(it.lastSon)
     result.kind = nkIfStmt
+    # propagate any enforced VoidContext:
+    if typ == EnforceVoidContext: result.typ = EnforceVoidContext
   else:
     for it in n:
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
     result.kind = nkIfExpr
-  # propagate any enforced VoidContext:
-  result.typ = typ
+    result.typ = typ
 
 proc semCase(c: PContext, n: PNode): PNode =
   result = n
@@ -211,20 +218,25 @@ proc semCase(c: PContext, n: PNode): PNode =
       hasElse = true
     else:
       illFormedAst(x)
-  if chckCovered and (covered != toCover(n.sons[0].typ)): 
-    localError(n.info, errNotAllCasesCovered)
+  if chckCovered:
+    if covered == toCover(n.sons[0].typ):
+      hasElse = true
+    else:
+      localError(n.info, errNotAllCasesCovered)
   closeScope(c.tab)
-  if isEmptyType(typ) or not hasElse:
+  if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
     for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    # propagate any enforced VoidContext:
+    if typ == EnforceVoidContext:
+      result.typ = EnforceVoidContext
   else:
     for i in 1..n.len-1:
       var it = n.sons[i]
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
-  # propagate any enforced VoidContext:
-  result.typ = typ
+    result.typ = typ
 
-proc semTry(c: PContext, n: PNode): PNode = 
+proc semTry(c: PContext, n: PNode): PNode =
   result = n
   inc c.p.inTryStmt
   checkMinSonsLen(n, 2)
@@ -257,17 +269,18 @@ proc semTry(c: PContext, n: PNode): PNode =
     a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
     typ = commonType(typ, a.sons[length-1].typ)
   dec c.p.inTryStmt
-  if isEmptyType(typ):
+  if isEmptyType(typ) or typ.kind == tyNil:
     discardCheck(n.sons[0])
     for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    if typ == EnforceVoidContext:
+      result.typ = EnforceVoidContext
   else:
     n.sons[0] = fitNode(c, typ, n.sons[0])
     for i in 1..n.len-1:
       var it = n.sons[i]
       let j = it.len-1
       it.sons[j] = fitNode(c, typ, it.sons[j])
-  # propagate any enforced VoidContext:
-  result.typ = typ
+    result.typ = typ
   
 proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode = 
   result = fitNode(c, typ, n)
@@ -627,7 +640,8 @@ proc semFor(c: PContext, n: PNode): PNode =
   else:
     result = semForVars(c, n)
   # propagate any enforced VoidContext:
-  result.typ = n.sons[length-1].typ
+  if n.sons[length-1].typ == EnforceVoidContext:
+    result.typ = EnforceVoidContext
   closeScope(c.tab)
 
 proc semRaise(c: PContext, n: PNode): PNode = 
@@ -1076,11 +1090,24 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
     result = newNodeI(nkDiscardStmt, n.info, 1)
     result.sons[0] = emptyNode
 
+proc usesResult(n: PNode): bool =
+  # nkStmtList(expr) properly propagates the void context,
+  # so we don't need to process that all over again:
+  if n.kind notin {nkStmtList, nkStmtListExpr}:
+    if isAtom(n):
+      result = n.kind == nkSym and n.sym.kind == skResult
+    elif n.kind == nkReturnStmt:
+      result = true
+    else:
+      for c in n:
+        if usesResult(c): return true
+
 proc semStmtList(c: PContext, n: PNode): PNode =
   # these must be last statements in a block:
   const
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
+  result.kind = nkStmtList
   var length = sonsLen(n)
   var voidContext = false
   var last = length-1
@@ -1113,7 +1140,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
       return
     else:
       n.sons[i] = semExpr(c, n.sons[i])
-      if n.sons[i].typ == EnforceVoidContext:
+      if n.sons[i].typ == EnforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = EnforceVoidContext
       elif i != last or voidContext:

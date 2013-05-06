@@ -1799,10 +1799,20 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:
     genLineDir(p, n)
-    if n.sons[0].kind == nkSym and n.sons[0].sym.magic != mNone:
-      genMagicExpr(p, n, d, n.sons[0].sym.magic)
+    let op = n.sons[0]
+    if n.typ.isNil:
+      # discard the value:
+      var a: TLoc
+      if op.kind == nkSym and op.sym.magic != mNone:
+        genMagicExpr(p, n, a, op.sym.magic)
+      else:
+        genCall(p, n, a)
     else:
-      genCall(p, n, d)
+      # load it into 'd':
+      if op.kind == nkSym and op.sym.magic != mNone:
+        genMagicExpr(p, n, d, op.sym.magic)
+      else:
+        genCall(p, n, d)
   of nkCurly:
     if isDeepConstExpr(n) and n.len != 0:
       putIntoDest(p, d, n.typ, genSetNode(p, n))
