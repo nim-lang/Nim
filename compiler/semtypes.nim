@@ -770,9 +770,6 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return newOrPrevType(tyError, prev, c)
   elif s.typ.kind != tyGenericBody:
     isConcrete = false
-  elif s.typ.containerID == 0: 
-    InternalError(n.info, "semtypes.semGeneric")
-    return newOrPrevType(tyError, prev, c)
   elif sonsLen(n) != sonsLen(s.typ): 
     LocalError(n.info, errWrongNumberOfArguments)
     return newOrPrevType(tyError, prev, c)

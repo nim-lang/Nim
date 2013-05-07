@@ -328,9 +328,6 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     result.align = decodeVInt(r.s, r.pos)
   else: 
     result.align = 2
-  if r.s[r.pos] == '@': 
-    inc(r.pos)
-    result.containerID = decodeVInt(r.s, r.pos)
   decodeLoc(r, result.loc, info)
   while r.s[r.pos] == '^': 
     inc(r.pos)
@@ -1012,9 +1009,6 @@ proc writeType(f: TFile; t: PType) =
   if t.align != 2:
     f.write('=')
     f.write($t.align)
-  if t.containerID != 0: 
-    f.write('@')
-    f.write($t.containerID)
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i] == nil: 
       f.write("^()")

@@ -16,7 +16,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, cgendata, json, nversion,
   platform, nimconf, importer, passaux, depends, evals, types, idgen,
-  tables, docgen2, service, magicsys, parser, crc, ccgutils
+  tables, docgen2, service, magicsys, parser, crc, ccgutils, sigmatch
 
 const
   has_LLVM_Backend = false
@@ -64,7 +64,7 @@ proc crcChanged(fileIdx: int32): bool =
     gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
                                        else: crcNotChanged
     # echo "TESTING CRC: ", fileIdx.toFilename, " ", result
-    
+  
   case gMemCacheData[fileIdx].crcStatus:
   of crcHasChanged:
     result = true
@@ -89,38 +89,38 @@ proc addDep(x: Psym, dep: int32) =
   growCache gMemCacheData, dep
   gMemCacheData[x.position].deps.safeAdd(dep)
 
-proc ResetModule(fileIdx: int32) =
-  echo "HARD RESETTING ", fileIdx.toFilename
+proc resetModule(fileIdx: int32) =
+  # echo "HARD RESETTING ", fileIdx.toFilename
   gMemCacheData[fileIdx].needsRecompile = Yes
   gCompiledModules[fileIdx] = nil
   cgendata.gModules[fileIdx] = nil
+  resetSourceMap(fileIdx)
 
-proc ResetAllModules =
+proc resetAllModules =
   for i in 0..gCompiledModules.high:
     if gCompiledModules[i] != nil:
-      ResetModule(i.int32)
+      resetModule(i.int32)
 
-  for m in cgenModules():
-    echo "CGEN MODULE FOUND"
+  # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc checkDepMem(fileIdx: int32): TNeedRecompile  =
   template markDirty =
-    ResetModule(fileIdx)
+    resetModule(fileIdx)
     return Yes
 
   if gMemCacheData[fileIdx].needsRecompile != Maybe:
     return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or
-     curCaasCmd != lastCaasCmd or
-     crcChanged(fileIdx): markDirty
+     crcChanged(fileIdx):
+       markDirty
   
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
     for dep in gMemCacheData[fileIdx].deps:
       let d = checkDepMem(dep)
       if d in { Yes, Recompiled }:
-        echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
+        # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
         markDirty
   
   gMemCacheData[fileIdx].needsRecompile = No
@@ -213,6 +213,9 @@ proc rodPass =
   if optSymbolFiles in gGlobalOptions:
     registerPass(rodwritePass)
 
+proc codegenPass =
+  registerPass cgenPass
+
 proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
@@ -251,14 +254,11 @@ proc CommandCompileToC =
     # echo "CHECK DEP COMPLETE"
 
   compileProject()
-
-  if compilationCachePresent:
-    updateCachedModules()
-
+  cgenWriteModules()
   if gCmd != cmdRun:
     extccomp.CallCCompiler(changeFileExt(gProjectFull, ""))
 
-  if optCaasEnabled in gGlobalOptions:
+  if isServing:
     # caas will keep track only of the compilation commands
     lastCaasCmd = curCaasCmd
     resetCgenModules()
@@ -377,10 +377,23 @@ proc CommandScan =
     rawMessage(errCannotOpenFile, f)
   
 proc CommandSuggest =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  rodPass()
-  compileProject()
+  if isServing:
+    # XXX: hacky work-around ahead
+    # Currently, it's possible to issue a idetools command, before
+    # issuing the first compile command. This will leave the compiler
+    # cache in a state where "no recompilation is necessary", but the
+    # cgen pass was never executed at all.
+    CommandCompileToC()
+    if gDirtyBufferIdx != 0:
+      discard compileModule(gDirtyBufferIdx, {sfDirty})
+      resetModule(gDirtyBufferIdx)
+    if optDef in gGlobalOptions:
+      defFromSourceMap(optTrackPos)
+  else:
+    msgs.gErrorMax = high(int)  # do not stop after first error
+    semanticPasses()
+    rodPass()
+    compileProject()
 
 proc wantMainModule =
   if gProjectFull.len == 0:
@@ -404,7 +417,7 @@ proc requireMainModuleOption =
 proc resetMemory =
   resetCompilationLists()
   ccgutils.resetCaches()
-  ResetAllModules()
+  resetAllModules()
   resetRopeCache()
   resetSysTypes()
   gOwners = @[]
