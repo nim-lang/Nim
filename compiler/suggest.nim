@@ -9,7 +9,9 @@
 
 ## This file implements features required for IDE support.
 
-# imported from sigmatch.nim
+# included from sigmatch.nim
+
+import algorithm
 
 const
   sep = '\t'
@@ -238,12 +240,69 @@ proc findDefinition(node: PNode, s: PSym) =
     SuggestWriteln(SymToStr(s, isLocal=false, sectionDef))
     SuggestQuit()
 
+type
+  TSourceMap = object
+    lines: seq[TLineMap]
+  
+  TEntry = object
+    pos: int
+    sym: PSym
+
+  TLineMap = object
+    entries: seq[TEntry]
+
+var
+  gSourceMaps: seq[TSourceMap] = @[]
+
+proc ensureIdx[T](x: var T, y: int) =
+  if x.len <= y: x.setLen(y+1)
+
+proc ensureSeq[T](x: var seq[T]) =
+  if x == nil: newSeq(x, 0)
+
+proc resetSourceMap*(fileIdx: int32) =
+  ensureIdx(gSourceMaps, fileIdx)
+  gSourceMaps[fileIdx].lines = @[]
+
+proc addToSourceMap(sym: Psym, info: TLineInfo) =
+  ensureIdx(gSourceMaps, info.fileIndex)
+  ensureSeq(gSourceMaps[info.fileIndex].lines)
+  ensureIdx(gSourceMaps[info.fileIndex].lines, info.line)
+  ensureSeq(gSourceMaps[info.fileIndex].lines[info.line].entries)
+  gSourceMaps[info.fileIndex].lines[info.line].entries.add(TEntry(pos: info.col, sym: sym))
+
+proc defFromLine(entries: var seq[TEntry], col: int32) =
+  if entries == nil: return
+  # The sorting is done lazily here on purpose.
+  # No need to pay the price for it unless the user requests
+  # "goto definition" on a particular line
+  sort(entries) do (a,b: TEntry) -> int:
+    return cmp(a.pos, b.pos)
+  
+  for e in entries:
+    # currently, the line-infos for most expressions point to
+    # one position past the end of the expression. This means
+    # that the first expr that ends after the cursor column is
+    # the one we are looking for.
+    if e.pos >= col:
+      SuggestWriteln(SymToStr(e.sym, isLocal=false, sectionDef))
+      return
+
+proc defFromSourceMap*(i: TLineInfo) =
+  if not ((i.fileIndex < gSourceMaps.len) and
+          (gSourceMaps[i.fileIndex].lines != nil) and
+          (i.line < gSourceMaps[i.fileIndex].lines.len)): return
+  
+  defFromLine(gSourceMaps[i.fileIndex].lines[i.line].entries, i.col)
+
 proc suggestSym*(n: PNode, s: PSym) {.inline.} =
   ## misnamed: should be 'symDeclared'
   if optUsages in gGlobalOptions:
     findUsages(n, s)
   if optDef in gGlobalOptions:
     findDefinition(n, s)
+  if isServing:
+    addToSourceMap(s, n.info)
 
 proc markUsed(n: PNode, s: PSym) =
   incl(s.flags, sfUsed)

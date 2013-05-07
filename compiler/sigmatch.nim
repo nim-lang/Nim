@@ -559,11 +559,10 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       # simply no match for now:
       nil
     elif x.kind == tyGenericInst and 
-          (f.sons[0].containerID == x.sons[0].containerID) and
-          (sonsLen(x) - 1 == sonsLen(f)): 
-      assert(x.sons[0].kind == tyGenericBody)
-      for i in countup(1, sonsLen(f) - 1): 
-        if x.sons[i].kind == tyGenericParam: 
+          (f.sons[0] == x.sons[0]) and
+          (sonsLen(x) - 1 == sonsLen(f)):
+      for i in countup(1, sonsLen(f) - 1):
+        if x.sons[i].kind == tyGenericParam:
           InternalError("wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return 
       result = isGeneric

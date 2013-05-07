@@ -526,13 +526,17 @@ proc SuggestWriteln*(s: string) =
     else: 
       Writeln(stdout, s)
       stdoutSocket.send(s & "\c\L")
-    
+
 proc SuggestQuit*() =
-  if not isServing: quit(0)
-  elif not isNil(stdoutSocket):
-    stdoutSocket.send("\c\L")
+  if not isServing:
+    quit(0)
+  elif isWorkingWithDirtyBuffer:
+    # No need to compile the rest if we are working with a
+    # throw-away buffer. Incomplete dot expressions frequently
+    # found in dirty buffers will result in errors few steps
+    # from now anyway.
     raise newException(ESuggestDone, "suggest done")
-  
+
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
@@ -606,6 +610,7 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   result = filename in info.toFilename
 
 var checkPoints*: seq[TLineInfo] = @[]
+var optTrackPos*: TLineInfo
 
 proc addCheckpoint*(info: TLineInfo) = 
   checkPoints.add(info)
