@@ -1094,7 +1094,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,
   # so we don't need to process that all over again:
-  if n.kind notin {nkStmtList, nkStmtListExpr}:
+  if n.kind notin {nkStmtList, nkStmtListExpr} + procDefs:
     if isAtom(n):
       result = n.kind == nkSym and n.sym.kind == skResult
     elif n.kind == nkReturnStmt:

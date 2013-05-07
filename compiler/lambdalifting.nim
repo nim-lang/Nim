@@ -104,8 +104,6 @@ discard """
 """
 
 const
-  declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
-  procDefs* = nkLambdaKinds + declarativeDefs
   upName* = ":up" # field name for the 'up' reference
   paramName* = ":env"
   envName* = ":env"
