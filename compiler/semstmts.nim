@@ -107,16 +107,14 @@ proc semExprBranchScope(c: PContext, n: PNode): PNode =
   result = semExprBranch(c, n)
   closeScope(c.tab)
 
-proc meaningfulStmt(n: PNode): PNode =
-  assert n.kind == nkStmtListExpr
-  var last = n.len-1
-  while last > 0 and n.sons[last].kind in {nkPragma, nkCommentStmt, nkEmpty}:
-    dec last
-  result = n.sons[last]
+const
+  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
+    nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
+    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr}
 
 proc ImplicitlyDiscardable(n: PNode): bool =
   var n = n
-  while n.kind == nkStmtListExpr: n = meaningfulStmt(n)
+  while n.kind in skipForDiscardable: n = n.lastSon
   result = isCallExpr(n) and n.sons[0].kind == nkSym and 
            sfDiscardable in n.sons[0].sym.flags
 
@@ -136,7 +134,7 @@ proc discardCheck(result: PNode) =
     elif ImplicitlyDiscardable(result):
       var n = result
       result.typ = nil
-      while n.kind == nkStmtListExpr:
+      while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
