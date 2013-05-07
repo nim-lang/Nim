@@ -13,7 +13,7 @@
 
 
 import 
-  options, msgs, strutils, platform, lexbase, llstream
+  options, msgs, strutils, platform, nimlexbase, llstream
 
 const 
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -338,8 +338,8 @@ proc getNumber(L: var TLexer, tok: var TToken) =
   
 proc HandleCRLF(L: var TLexer, pos: int): int = 
   case L.buf[pos]
-  of CR: result = lexbase.HandleCR(L, pos)
-  of LF: result = lexbase.HandleLF(L, pos)
+  of CR: result = nimlexbase.HandleCR(L, pos)
+  of LF: result = nimlexbase.HandleLF(L, pos)
   else: result = pos
   
 proc escape(L: var TLexer, tok: var TToken, allowEmpty=false) = 
@@ -405,10 +405,10 @@ proc getString(L: var TLexer, tok: var TToken) =
       Inc(pos)
       break
     of CR: 
-      pos = lexbase.HandleCR(L, pos)
+      pos = nimlexbase.HandleCR(L, pos)
       buf = L.buf
     of LF: 
-      pos = lexbase.HandleLF(L, pos)
+      pos = nimlexbase.HandleLF(L, pos)
       buf = L.buf
     of lexbase.EndOfFile: 
       var line2 = L.linenumber
@@ -449,7 +449,7 @@ proc scanLineComment(L: var TLexer, tok: var TToken) =
   while true: 
     inc(pos, 2)               # skip //
     add(tok.s, '#')
-    while not (buf[pos] in {CR, LF, lexbase.EndOfFile}): 
+    while not (buf[pos] in {CR, LF, nimlexbase.EndOfFile}): 
       add(tok.s, buf[pos])
       inc(pos)
     pos = handleCRLF(L, pos)
@@ -490,7 +490,7 @@ proc scanStarComment(L: var TLexer, tok: var TToken) =
         break 
       else: 
         add(tok.s, '*')
-    of lexbase.EndOfFile: 
+    of nimlexbase.EndOfFile: 
       lexMessage(L, errTokenExpected, "*/")
     else: 
       add(tok.s, buf[pos])
@@ -743,7 +743,7 @@ proc getTok(L: var TLexer, tok: var TToken) =
         getDirective(L, tok)
     of '"': getString(L, tok)
     of '\'': getCharLit(L, tok)
-    of lexbase.EndOfFile: 
+    of nimlexbase.EndOfFile: 
       tok.xkind = pxEof
     else: 
       tok.s = $c

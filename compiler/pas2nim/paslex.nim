@@ -11,7 +11,7 @@
 # the scanner module.
 
 import
-  hashes, options, msgs, strutils, platform, idents, lexbase, llstream
+  hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -273,8 +273,8 @@ proc getNumber10(L: var TLexer, tok: var TToken) =
 
 proc HandleCRLF(L: var TLexer, pos: int): int =
   case L.buf[pos]
-  of CR: result = lexbase.HandleCR(L, pos)
-  of LF: result = lexbase.HandleLF(L, pos)
+  of CR: result = nimlexbase.HandleCR(L, pos)
+  of LF: result = nimlexbase.HandleLF(L, pos)
   else: result = pos
 
 proc getString(L: var TLexer, tok: var TToken) =
@@ -286,7 +286,7 @@ proc getString(L: var TLexer, tok: var TToken) =
       inc(pos)
       while true:
         case buf[pos]
-        of CR, LF, lexbase.EndOfFile:
+        of CR, LF, nimlexbase.EndOfFile:
           lexMessage(L, errClosingQuoteExpected)
           break
         of '\'':
@@ -362,7 +362,7 @@ proc scanLineComment(L: var TLexer, tok: var TToken) =
   while true:
     inc(pos, 2)               # skip //
     add(tok.literal, '#')
-    while not (buf[pos] in {CR, LF, lexbase.EndOfFile}):
+    while not (buf[pos] in {CR, LF, nimlexbase.EndOfFile}):
       add(tok.literal, buf[pos])
       inc(pos)
     pos = handleCRLF(L, pos)
@@ -391,7 +391,7 @@ proc scanCurlyComment(L: var TLexer, tok: var TToken) =
     of '}':
       inc(pos)
       break
-    of lexbase.EndOfFile: lexMessage(L, errTokenExpected, "}")
+    of nimlexbase.EndOfFile: lexMessage(L, errTokenExpected, "}")
     else:
       add(tok.literal, buf[pos])
       inc(pos)
@@ -415,7 +415,7 @@ proc scanStarComment(L: var TLexer, tok: var TToken) =
         break
       else:
         add(tok.literal, '*')
-    of lexbase.EndOfFile:
+    of nimlexbase.EndOfFile:
       lexMessage(L, errTokenExpected, "*)")
     else:
       add(tok.literal, buf[pos])
@@ -561,7 +561,7 @@ proc getTok(L: var TLexer, tok: var TToken) =
       getNumber16(L, tok)
     of '%':
       getNumber2(L, tok)
-    of lexbase.EndOfFile:
+    of nimlexbase.EndOfFile:
       tok.xkind = pxEof
     else:
       tok.literal = c & ""
