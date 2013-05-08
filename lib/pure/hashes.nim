@@ -126,3 +126,6 @@ proc hash*(x: float): THash {.inline.} =
   var y = x + 1.0
   result = cast[ptr THash](addr(y))[]
 
+proc hash*[A](x: openarray[A]): THash =
+  for it in items(x): result = result !& hash(it)
+  result = !$result
