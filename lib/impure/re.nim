@@ -242,6 +242,7 @@ template `=~` *(s: string, pattern: TRegEx): expr =
   bind maxSubPatterns
   when not definedInScope(matches):
     var matches {.inject.}: array[0..maxSubPatterns-1, string]
+    {.warning: "injected 'matches' might be affected by new scoping rules in 0.9.4".}
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

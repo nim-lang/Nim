@@ -30,7 +30,7 @@ Library Additions
 - ``system.fields`` and ``system.fieldPairs`` support ``object`` too; they
   used to only support tuples.
 - Added ``system.CurrentSourcePath`` returning the full file-system path of
-  the current source file
+  the current source file.
 
 
 Changes affecting backwards compatibility
@@ -39,6 +39,12 @@ Changes affecting backwards compatibility
 - ``shared`` is a keyword now.
 - Deprecated ``sockets.recvLine`` and ``asyncio.recvLine``, added
   ``readLine`` instead.
+- The way indentation is handled in the parser changed significantly. However,
+  this affects very little (if any) real world code.
+- The expression/statement unification has been implemented. Again this
+  only affects edge cases and no known real world code.
+- The scope rules of ``if`` statements will change in 0.9.4. This affects the 
+  ``=~`` pegs/re templates.
 
 
 Compiler Additions
@@ -74,6 +80,8 @@ Language Additions
 - Overloading based on ASTs has been implemented.
 - Generics are now supported for multi methods.
 - Objects can be initialized via an *object constructor expression*.
+- There is a new syntactic construct ``(;)`` unifying expressions and 
+  statements.
 
 
 2012-09-23 Version 0.9.0 released
