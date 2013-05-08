@@ -735,12 +735,10 @@ However, this cannot be done for mutually recursive procedures:
   proc even(n: int): bool
 
   proc odd(n: int): bool =
-    if n == 1: return true
-    else: return even(n-1)
+    n == 1 or even(n-1)
 
   proc even(n: int): bool =
-    if n == 0: return true
-    else: return odd(n-1)
+    n == 0 or odd(n-1)
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
@@ -749,6 +747,9 @@ procedure's body.
 
 Later versions of the language may get rid of the need for forward
 declarations.
+
+The example also shows that a proc's body can consist of a single expression
+whose value is then returned implicitly.
 
 
 Iterators
@@ -848,7 +849,7 @@ procedure; the length never counts the terminating zero. Accessing the
 terminating zero is no error and often leads to simpler code:
 
 .. code-block:: nimrod
-  if s[i] == 'a' and s[i+1] == 'b' and s[i+2] == '\0':
+  if s[i] == 'a' and s[i+1] == 'b':
     # no need to check whether ``i < len(s)``!
     ...
 
@@ -1168,7 +1169,7 @@ subdivided in height levels accessed through their integer index:
   echo len(tower)     # --> 10
   echo len(tower[1])  # --> 4
   echo repr(tower)    # --> [[slowBlink, mediumBlink, ...more output..
-  # The following lines don't compile due to type mistmatch errors
+  # The following lines don't compile due to type mismatch errors
   #tower[north][east] = on
   #tower[0][1] = on
 
