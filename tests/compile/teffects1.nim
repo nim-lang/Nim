@@ -15,3 +15,17 @@ createMenuItem(s, "Go to definition...",
           echo("blah")
 )
 
+
+proc noRaise(x: proc()) {.raises: [].} =
+  # unknown call that might raise anything, but valid:
+  x()
+  
+proc doRaise() {.raises: [EIO].} =
+  raise newException(EIO, "IO")
+
+proc use*() =
+  noRaise(doRaise)
+  # Here the compiler inferes that EIO can be raised.
+
+
+use()

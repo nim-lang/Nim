@@ -2909,14 +2909,36 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
 1. Every indirect call via some proc type ``T`` is assumed to
    raise ``system.E_Base`` (the base type of the exception hierarchy) and
    thus any exception unless ``T`` has an explicit ``raises`` list.
-2. Every call to a proc ``q`` which has an unknown body (due to a forward 
+   However if the call is of the form ``f(...)`` where ``f`` is a parameter
+   is ignored. Rule 2 compensates for this case.
+2. Every expression of some proc type wihtin a call that is not a call 
+   itself (and not nil) is assumed to be called indirectly somehow and thus 
+   its raises list is added to ``p``'s raises list.
+3. Every call to a proc ``q`` which has an unknown body (due to a forward 
    declaration or an ``importc`` pragma) is assumed to 
    raise ``system.E_Base`` unless ``q`` has an explicit ``raises`` list.
-3. Every call to a method ``m`` is assumed to 
+4. Every call to a method ``m`` is assumed to 
    raise ``system.E_Base`` unless ``m`` has an explicit ``raises`` list.
-4. For every other call the analysis can determine an exact ``raises`` list.
-5. For determining a ``raises`` list, the ``raise`` and ``try`` statements 
+5. For every other call the analysis can determine an exact ``raises`` list.
+6. For determining a ``raises`` list, the ``raise`` and ``try`` statements 
    of ``p`` are taken into consideration.
+
+Rules 1-2 ensure the following works: 
+
+.. code-block:: nimrod
+  proc noRaise(x: proc()) {.raises: [].} =
+    # unknown call that might raise anything, but valid:
+    x()
+    
+  proc doRaise() {.raises: [EIO].} =
+    raise newException(EIO, "IO")
+  
+  proc use() =
+    noRaise(doRaise)
+    # Here the compiler inferes that EIO can be raised.
+
+So in many cases a callback does not cause the compiler to be overly
+conservative in its effect analysis.
 
 
 Tag tracking
