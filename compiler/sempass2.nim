@@ -174,7 +174,10 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   tracked.bottom = oldBottom
 
 proc isIndirectCall(n: PNode): bool =
-  result = n.kind != nkSym or n.sym.kind notin routineKinds
+  # we don't count f(...) as an indirect call if 'f' is an parameter.
+  # Instead we track expressions of type tyProc too. See the manual for
+  # details:
+  result = n.kind != nkSym or n.sym.kind notin (routineKinds+{skParam})
 
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
@@ -236,6 +239,24 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
 
+proc trackOperand(tracked: PEffects, n: PNode) =
+  let op = n.typ
+  if op != nil and op.kind == tyProc and n.kind != nkNilLit:
+    InternalAssert op.n.sons[0].kind == nkEffectList
+    var effectList = op.n.sons[0]
+    let s = n.skipConv
+    if s.kind == nkSym and s.sym.kind in routineKinds:
+      propagateEffects(tracked, n, s.sym)
+    elif effectList.len == 0:
+      if isForwardedProc(n):
+        propagateEffects(tracked, n, n.sym)
+      else:
+        addEffect(tracked, createRaise(n))
+        addTag(tracked, createTag(n))
+    else:
+      mergeEffects(tracked, effectList.sons[exceptionEffects], n)
+      mergeTags(tracked, effectList.sons[tagEffects], n)
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkRaiseStmt:
@@ -259,6 +280,7 @@ proc track(tracked: PEffects, n: PNode) =
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
+    for i in 1 .. <len(n): trackOperand(tracked, n.sons[i])
   of nkTryStmt:
     trackTryStmt(tracked, n)
     return

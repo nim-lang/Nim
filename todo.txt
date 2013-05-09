@@ -28,7 +28,6 @@ version 0.9.4
 =============
 
 - macros as type pragmas
-- effect propagation for callbacks
 - provide tool/API to track leaks/object counts
 - hybrid GC
 - use big blocks in the allocator
