@@ -166,27 +166,32 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     val = val div 8
 
 iterator split*(s: string, seps: set[char] = Whitespace): string =
-  ## Splits the string `s` into substrings.
+  ## Splits the string `s` into substrings using a group of separators.
   ##
-  ## Substrings are separated by a substring containing only `seps`.
-  ## Examples:
+  ## Substrings are separated by a substring containing only `seps`. Note
+  ## that whole sequences of characters found in ``seps`` will be counted as
+  ## a single split point and leading/trailing separators will be ignored.
+  ## The following example:
   ##
   ## .. code-block:: nimrod
   ##   for word in split("  this is an  example  "):
   ##     writeln(stdout, word)
   ##
-  ## Results in:
+  ## ...generates this output:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
   ##
+  ## And the following code:
+  ##
+  ## .. code-block:: nimrod
   ##   for word in split(";;this;is;an;;example;;;", {';'}):
   ##     writeln(stdout, word)
   ##
-  ## produces the same output. The code:
+  ## ...produces the same output as the first example. The code:
   ##
   ## .. code-block:: nimrod
   ##   let date = "2012-11-20T22:08:08.398990"
@@ -194,9 +199,9 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   for number in split(date, separators):
   ##     writeln(stdout, number)
   ##
-  ## Results in:
+  ## ...results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   "2012"
   ##   "11"
   ##   "20"
@@ -214,10 +219,12 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
       yield substr(s, first, last-1)
 
 iterator split*(s: string, sep: char): string =
-  ## Splits the string `s` into substrings.
+  ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
-  ## Example:
+  ## Unlike the version of the iterator which accepts a set of separator
+  ## characters, this proc will not coalesce groups of the
+  ## separator, returning a string for each found character. The code:
   ##
   ## .. code-block:: nimrod
   ##   for word in split(";;this;is;an;;example;;;", ';'):
@@ -225,7 +232,7 @@ iterator split*(s: string, sep: char): string =
   ##
   ## Results in:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block::
   ##   ""
   ##   ""
   ##   "this"
