@@ -1374,7 +1374,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   msgs.gErrorMax = high(int)
   
   # open a scope for temporary symbol inclusions:
-  let oldTos = c.tab.tos
+  let oldTos = c.scopeDepth
   openScope(c)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
@@ -1398,7 +1398,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
-  while c.tab.tos > oldTos: rawCloseScope(c)
+  while c.scopeDepth > oldTos: rawCloseScope(c)
   dec c.InCompilesContext
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount

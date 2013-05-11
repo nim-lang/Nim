@@ -65,7 +65,7 @@ when not defined(nimhygiene):
 
 template wholeSymTab(cond, section: expr) {.immediate.} =
   var isLocal = true
-  for scope in walkScopes(c):
+  for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     for item in items(scope.symbols):
       let it {.inject.} = item
@@ -126,7 +126,7 @@ proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
 proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   # do not produce too many symbols:
   var isLocal = true
-  for scope in walkScopes(c):
+  for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     for it in items(scope.symbols):
       if filterSym(it):

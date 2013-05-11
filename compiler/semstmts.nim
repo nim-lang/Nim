@@ -773,7 +773,7 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind) =
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) = 
   # search for the correct alias:
-  var b = SearchForBorrowProc(c, s, c.tab.tos - 2)
+  var b = SearchForBorrowProc(c, c.currentScope.parent, s)
   if b != nil: 
     # store the alias:
     n.sons[bodyPos] = newSymNode(b)
@@ -919,8 +919,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind == skIterator: s.typ.flags.incl(tfIterator)
   
-  var proto = SearchForProc(c, s, c.tab.tos-2) # -2 because we have a scope
-                                               # open for parameters
+  var proto = SearchForProc(c, outerScope, s)
   if proto == nil: 
     s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:

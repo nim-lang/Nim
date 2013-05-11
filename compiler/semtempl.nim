@@ -410,12 +410,11 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   if n.sons[bodyPos].kind == nkEmpty: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
-  let curScope = c.tab.tos - 1
-  var proto = SearchForProc(c, s, curScope)
+  var proto = SearchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   else:
-    SymTabReplace(c.tab.stack[curScope], proto, s)
+    SymTabReplace(c.currentScope.symbols, proto, s)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
 
