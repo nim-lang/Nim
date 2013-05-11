@@ -1080,6 +1080,9 @@ proc initStrTable(x: var TStrTable) =
   x.counter = 0
   newSeq(x.data, startSize)
 
+proc newStrTable*: TStrTable =
+  initStrTable(result)
+
 proc initTable(x: var TTable) = 
   x.counter = 0
   newSeq(x.data, startSize)

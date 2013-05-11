@@ -106,13 +106,13 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
       pushInfoContext(oldPrc.info)
-      openScope(c.tab)
+      openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
       if n.sons[paramsPos].kind != nkEmpty: 
         addParams(c, oldPrc.typ.n, oldPrc.kind)
       instantiateBody(c, n, oldPrc)
-      closeScope(c.tab)
+      closeScope(c)
       popInfoContext()
 
 proc sideEffectsCheck(c: PContext, s: PSym) = 
@@ -144,7 +144,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     result.owner = getCurrOwner().owner
   result.ast = n
   pushOwner(result)
-  openScope(c.tab)
+  openScope(c)
   if n.sons[genericParamsPos].kind == nkEmpty: 
     InternalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
@@ -177,7 +177,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   else:
     result = oldPrc
   popInfoContext()
-  closeScope(c.tab)           # close scope for parameters
+  closeScope(c)           # close scope for parameters
   popOwner()
   c.friendModule = oldFriend
   dec(c.InstCounter)

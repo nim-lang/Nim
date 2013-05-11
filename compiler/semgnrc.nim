@@ -36,9 +36,9 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags,
 proc semGenericStmtScope(c: PContext, n: PNode, 
                          flags: TSemGenericFlags,
                          ctx: var TIntSet): PNode = 
-  openScope(c.tab)
+  openScope(c)
   result = semGenericStmt(c, n, flags, ctx)
-  closeScope(c.tab)
+  closeScope(c)
 
 template macroToExpand(s: expr): expr =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
@@ -180,12 +180,12 @@ proc semGenericStmt(c: PContext, n: PNode,
     for i in countup(0, sonsLen(n)-1):
       n.sons[i] = semGenericStmt(c, n.sons[i], flags+{withinMixin}, ctx)
   of nkWhileStmt: 
-    openScope(c.tab)
+    openScope(c)
     for i in countup(0, sonsLen(n)-1): 
       n.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)
-    closeScope(c.tab)
+    closeScope(c)
   of nkCaseStmt: 
-    openScope(c.tab)
+    openScope(c)
     n.sons[0] = semGenericStmt(c, n.sons[0], flags, ctx)
     for i in countup(1, sonsLen(n)-1): 
       var a = n.sons[i]
@@ -194,22 +194,22 @@ proc semGenericStmt(c: PContext, n: PNode,
       for j in countup(0, L-2): 
         a.sons[j] = semGenericStmt(c, a.sons[j], flags, ctx)
       a.sons[L - 1] = semGenericStmtScope(c, a.sons[L-1], flags, ctx)
-    closeScope(c.tab)
+    closeScope(c)
   of nkForStmt, nkParForStmt: 
     var L = sonsLen(n)
-    openScope(c.tab)
+    openScope(c)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, ctx)
     for i in countup(0, L - 3):
       addPrelimDecl(c, newSymS(skUnknown, n.sons[i], c))
     n.sons[L - 1] = semGenericStmt(c, n.sons[L-1], flags, ctx)
-    closeScope(c.tab)
+    closeScope(c)
   of nkBlockStmt, nkBlockExpr, nkBlockType: 
     checkSonsLen(n, 2)
-    openScope(c.tab)
+    openScope(c)
     if n.sons[0].kind != nkEmpty: 
       addPrelimDecl(c, newSymS(skUnknown, n.sons[0], c))
     n.sons[1] = semGenericStmt(c, n.sons[1], flags, ctx)
-    closeScope(c.tab)
+    closeScope(c)
   of nkTryStmt: 
     checkMinSonsLen(n, 2)
     n.sons[0] = semGenericStmtScope(c, n.sons[0], flags, ctx)
@@ -265,10 +265,10 @@ proc semGenericStmt(c: PContext, n: PNode,
       if (a.kind != nkTypeDef): IllFormedAst(a)
       checkSonsLen(a, 3)
       if a.sons[1].kind != nkEmpty: 
-        openScope(c.tab)
+        openScope(c)
         a.sons[1] = semGenericStmt(c, a.sons[1], flags, ctx)
         a.sons[2] = semGenericStmt(c, a.sons[2], flags+{withinTypeDesc}, ctx)
-        closeScope(c.tab)
+        closeScope(c)
       else: 
         a.sons[2] = semGenericStmt(c, a.sons[2], flags+{withinTypeDesc}, ctx)
   of nkEnumTy: 
@@ -303,7 +303,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkSonsLen(n, bodyPos + 1)
     if n.kind notin nkLambdaKinds:
       addPrelimDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
-    openScope(c.tab)
+    openScope(c)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos], 
                                               flags, ctx)
     if n.sons[paramsPos].kind != nkEmpty: 
@@ -315,7 +315,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if n.sons[namePos].kind == nkSym: body = n.sons[namePos].sym.getBody
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
-    closeScope(c.tab)
+    closeScope(c)
   of nkPragma, nkPragmaExpr: nil
   of nkExprColonExpr:
     checkMinSonsLen(n, 2)

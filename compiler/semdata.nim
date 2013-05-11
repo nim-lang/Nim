@@ -48,6 +48,7 @@ type
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
+    currentScope*: PScope
     p*: PProcCon               # procedure context
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
@@ -110,6 +111,20 @@ proc PopOwner*()
 # implementation
 
 var gOwners*: seq[PSym] = @[]
+
+proc openScope*(c: PContext) =
+  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
+  c.tab.stack.add(c.currentScope)
+  inc c.tab.stack.tos
+
+proc rawCloseScope*(c: PContext) =
+  c.currentScope = c.currentScope.parent
+  c.tab.stack.setLen(c.tab.stack.len - 1)
+  dec c.tab.stack.tos
+
+proc closeScope*(c: PContext) =
+  ensureNoMissingOrUnusedSymbols(c.currentScope)
+  rawExitScope(c)
 
 proc getCurrOwner(): PSym = 
   # owner stack (used for initializing the

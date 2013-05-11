@@ -83,10 +83,16 @@ proc NextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
 # 3                nested statements
 # ...
 #
-type 
+type
+  TScope = object
+    symbols*: TStrTable
+    parent*: PScope
+
+  PScope = ref TScope
+    
   TSymTab*{.final.} = object 
     tos*: Natural             # top of stack
-    stack*: seq[TStrTable]
+    stack*: seq[PScope]
 
 
 proc InitSymTab*(tab: var TSymTab)
@@ -98,10 +104,6 @@ proc SymTabAdd*(tab: var TSymTab, e: PSym)
 proc SymTabAddAt*(tab: var TSymTab, e: PSym, at: Natural)
 proc SymTabAddUnique*(tab: var TSymTab, e: PSym): TResult
 proc SymTabAddUniqueAt*(tab: var TSymTab, e: PSym, at: Natural): TResult
-proc OpenScope*(tab: var TSymTab)
-proc RawCloseScope*(tab: var TSymTab)
-  # the real "closeScope" adds some
-  # checks in parsobj
 
 # these are for debugging only: They are not really deprecated, but I want
 # the warning so that release versions do not contain debugging statements:
@@ -745,14 +747,6 @@ proc SymTabAddUniqueAt(tab: var TSymTab, e: PSym, at: Natural): TResult =
 
 proc SymTabAddUnique(tab: var TSymTab, e: PSym): TResult = 
   result = SymTabAddUniqueAt(tab, e, tab.tos - 1)
-
-proc OpenScope(tab: var TSymTab) = 
-  if tab.tos >= len(tab.stack): setlen(tab.stack, tab.tos + 1)
-  initStrTable(tab.stack[tab.tos])
-  Inc(tab.tos)
-
-proc RawCloseScope(tab: var TSymTab) = 
-  Dec(tab.tos)
   
 iterator items*(tab: TStrTable): PSym = 
   var it: TTabIter

@@ -734,13 +734,13 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
 proc semBlockType(c: PContext, n: PNode, prev: PType): PType = 
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
-  openScope(c.tab)
+  openScope(c)
   if n.sons[0].kind notin {nkEmpty, nkSym}:
     addDecl(c, newSymS(skLabel, n.sons[0], c))
   result = semStmtListType(c, n.sons[1], prev)
   n.sons[1].typ = result
   n.typ = result
-  closeScope(c.tab)
+  closeScope(c)
   Dec(c.p.nestedBlockCounter)
 
 proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
@@ -910,7 +910,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = newConstraint(c, tyProc)
     else:
       checkSonsLen(n, 2)
-      openScope(c.tab)
+      openScope(c)
       result = semProcTypeNode(c, n.sons[0], nil, prev, skProc)
       # dummy symbol for `pragma`:
       var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
@@ -922,7 +922,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         pragma(c, s, n.sons[1], procTypePragmas)
         when useEffectSystem: SetEffectsForProcType(result, n.sons[1])
-      closeScope(c.tab)
+      closeScope(c)
     if n.kind == nkIteratorTy:
       result.flags.incl(tfIterator)
       result.callConv = ccClosure

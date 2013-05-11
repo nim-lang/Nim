@@ -247,7 +247,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)
   pushOwner(c.module)
-  openScope(c.tab)            # scope for imported symbols
+  openScope(c)                # scope for imported symbols
   SymTabAdd(c.tab, module)    # a module knows itself
   if sfSystemModule in module.flags: 
     magicsys.SystemModule = module # set global variable!
@@ -255,7 +255,7 @@ proc myOpen(module: PSym): PPassContext =
   else: 
     SymTabAdd(c.tab, magicsys.SystemModule) # import the "System" identifier
     importAllSymbols(c, magicsys.SystemModule)
-  openScope(c.tab)            # scope for the module's symbols  
+  closeScope(c)               # scope for the module's symbols  
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
@@ -310,8 +310,8 @@ proc checkThreads(c: PContext) =
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
-  closeScope(c.tab)         # close module's scope
-  rawCloseScope(c.tab)      # imported symbols; don't check for unused ones!
+  closeScope(c)         # close module's scope
+  rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)
   if n != nil:
     InternalError(n.info, "n is not nil") #result := n;

@@ -1139,7 +1139,7 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     LocalError(n.info, errXNotAllowedHere, "\'return\'")
 
 proc semProcBody(c: PContext, n: PNode): PNode =
-  openScope(c.tab)
+  openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
@@ -1163,7 +1163,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       result = semAsgn(c, a)
   else:
     discardCheck(result)
-  closeScope(c.tab)
+  closeScope(c)
 
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst})
@@ -1375,7 +1375,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   
   # open a scope for temporary symbol inclusions:
   let oldTos = c.tab.tos
-  openScope(c.tab)
+  openScope(c)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
   let oldContextLen = msgs.getInfoContextLen()
@@ -1398,7 +1398,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
-  while c.tab.tos > oldTos: rawCloseScope(c.tab)
+  while c.tab.tos > oldTos: rawCloseScope(c)
   dec c.InCompilesContext
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount
@@ -1641,7 +1641,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
   result = n
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
-  openScope(c.tab)            # BUGFIX: label is in the scope of block!
+  openScope(c) # BUGFIX: label is in the scope of block!
   if n.sons[0].kind != nkEmpty:
     var labl = newSymG(skLabel, n.sons[0], c)
     if sfGenSym notin labl.flags:
@@ -1652,7 +1652,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
   n.typ = n.sons[1].typ
   if isEmptyType(n.typ): n.kind = nkBlockStmt
   else: n.kind = nkBlockExpr
-  closeScope(c.tab)
+  closeScope(c)
   Dec(c.p.nestedBlockCounter)
 
 proc buildCall(n: PNode): PNode =
