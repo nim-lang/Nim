@@ -99,7 +99,7 @@ proc commonType*(x, y: PType): PType =
         result.addSonSkipIntLit(r)
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.tab.tos <= 2
+  result = c.scopeDepth <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
@@ -251,7 +251,6 @@ proc myOpen(module: PSym): PPassContext =
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags: 
     magicsys.SystemModule = module # set global variable!
-    InitSystem(c.tab)         # currently does nothing
   else: 
     c.importTable.addSym magicsys.SystemModule # import the "System" identifier
     importAllSymbols(c, magicsys.SystemModule)

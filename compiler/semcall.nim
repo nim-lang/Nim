@@ -198,7 +198,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
-proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
+proc SearchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # Searchs for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
