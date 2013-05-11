@@ -281,7 +281,7 @@ proc RecoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
   # faster than wrapping every stack operation in a 'try finally' block and 
   # requires far less code.
-  while c.tab.tos-1 > ModuleTablePos: rawCloseScope(c.tab)
+  c.currentScope = c.topLevelScope
   while getCurrOwner().kind != skModule: popOwner()
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 

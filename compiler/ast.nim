@@ -13,10 +13,6 @@ import
   msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
   intsets, idgen
 
-const
-  ImportTablePos* = 0         # imported symbols are at level 0
-  ModuleTablePos* = 1         # module's top level symbols are at level 1
-
 type 
   TCallingConvention* = enum 
     ccDefault,                # proc has no explicit calling convention

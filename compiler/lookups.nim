@@ -13,6 +13,8 @@ import
   intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread, 
   renderer, wordrecg, idgen
 
+proc ensureNoMissingOrUnusedSymbols(scope: PScope)
+
 proc considerAcc*(n: PNode): PIdent = 
   case n.kind
   of nkIdent: result = n.ident
@@ -33,6 +35,47 @@ proc considerAcc*(n: PNode): PIdent =
   else:
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
  
+template addSym*(scope: PScope, s: PSym) =
+  StrTableAdd(scope.symbols, s)
+
+proc addUniqueSym*(scope: PScope, s: PSym): TResult =
+  if StrTableIncl(scope.symbols, s):
+    result = Failure
+  else:
+    result = Success
+
+proc openScope*(c: PContext): PScope {.discardable.} =
+  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
+  result = c.currentScope
+
+proc rawCloseScope*(c: PContext) =
+  c.currentScope = c.currentScope.parent
+
+proc closeScope*(c: PContext) =
+  ensureNoMissingOrUnusedSymbols(c.currentScope)
+  rawCloseScope(c)
+
+iterator walkScopes*(scope: PScope): PScope =
+  var current = scope
+  while current != nil:
+    yield current
+    current = current.parent
+
+proc localSearchInScope*(c: PContext, s: PIdent): PSym =
+  result = StrTableGet(c.currentScope.symbols, s)
+
+proc searchInScopes*(c: PContext, s: PIdent): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil: return
+  result = nil
+
+proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil and result.kind in filter: return
+  result = nil
+
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
@@ -63,7 +106,7 @@ proc getSymRepr*(s: PSym): string =
   case s.kind
   of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
   else: result = s.name.s
- 
+
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   # check if all symbols have been used and defined:
   var it: TTabIter
@@ -85,19 +128,16 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
 proc WrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)
-
-proc AddSym*(t: var TStrTable, n: PSym) = 
-  if StrTableIncl(t, n): WrongRedefinition(n.info, n.name.s)
   
 proc addDecl*(c: PContext, sym: PSym) =
-  if c.currentScope.addUnique(sym) == Failure:
+  if c.currentScope.addUniqueSym(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard c.currentScope.addUnique(sym)
+  discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(scope: PScope, sym: PSym) =
-  if scope.addUnique(sym) == Failure:
+  if scope.addUniqueSym(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
@@ -183,7 +223,7 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         ident = considerAcc(n.sons[1])
       if ident != nil: 
         if m == c.module: 
-          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
+          result = StrTableGet(c.topLevelScope.symbols, ident)
         else: 
           result = StrTableGet(m.tab, ident)
         if result == nil and checkUndeclared in flags: 
@@ -222,7 +262,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if ident != nil: 
         if o.m == c.module: 
           # a module may access its private members:
-          result = InitIdentIter(o.it, c.tab.stack[ModuleTablePos], ident)
+          result = InitIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
         else: 
           result = InitIdentIter(o.it, o.m.tab, ident)
@@ -239,52 +279,11 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   else: nil
   if result != nil and result.kind == skStub: loadStub(result)
 
-proc openScope*(c: PContext): PScope {.discardable.} =
-  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
-  result = c.currentScope
-
-proc rawCloseScope*(c: PContext) =
-  c.currentScope = c.currentScope.parent
-
-proc closeScope*(c: PContext) =
-  ensureNoMissingOrUnusedSymbols(c.currentScope)
-  rawCloseScope(c)
-
-template addSym*(scope: PScope, s: PSym) =
-  StrTableAdd(scope.symbols, s)
-
-proc addUniqueSym*(scope: PScope, s: PSym): TResult =
-  if StrTableIncl(scope.symbols, s):
-    result = Failure
-  else:
-    result = Success
-
-iterator walkScopes*(scope: PScope): PScope =
-  var current = scope
-  while current != nil:
-    yield current
-    current = current.parent
-
-proc localSearchInScope*(c: PContext, s: PIdent): PSym =
-  result = StrTableGet(c.currentScope.symbols, s)
-
-proc searchInScopes*(c: PContext, s: PIdent): PSym =
-  for scope in walkScopes(c.currentScope):
-    result = StrTableGet(scope.symbols, s)
-    if result != nil: return
-  result = nil
-
-proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
-  for scope in walkScopes(c.currentScope):
-    result = StrTableGet(scope.symbols, s)
-    if result != nil and result.kind in filter: return
-  result = nil
-
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
   of oimNoQualifier: result = o.stackPtr
-  of oimSelfModule:  result = ModuleTablePos
-  of oimOtherModule: result = ImportTablePos
+  of oimSelfModule:  result = 1
+  of oimOtherModule: result = 0
   else: result = -1
   
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
@@ -302,7 +301,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     else: 
       result = nil
   of oimSelfModule: 
-    result = nextIdentIter(o.it, c.tab.stack[ModuleTablePos])
+    result = nextIdentIter(o.it, c.topLevelScope.symbols)
   of oimOtherModule: 
     result = nextIdentIter(o.it, o.m.tab)
   of oimSymChoice: 

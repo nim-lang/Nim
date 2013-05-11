@@ -80,8 +80,9 @@ proc semLocals(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkPar, n.info, tupleType)
   tupleType.n = newNodeI(nkRecList, n.info)
   # for now we skip openarrays ...
-  for i in countdown(c.tab.tos-1, ModuleTablePos+1):
-    for it in items(c.tab.stack[i]):
+  for scope in walkScopes(c.currentScope):
+    if scope == c.topLevelScope: break
+    for it in items(scope.symbols):
       # XXX parameters' owners are wrong for generics; this caused some pain
       # for closures too; we should finally fix it.
       #if it.owner != c.p.owner: return result
