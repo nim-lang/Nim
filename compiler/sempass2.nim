@@ -79,6 +79,7 @@ type
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
     bottom: int
+    owner: PSym
   
   PEffects = var TEffects
 
@@ -173,11 +174,16 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
     track(tracked, b.sons[blen-1])
   tracked.bottom = oldBottom
 
-proc isIndirectCall(n: PNode): bool =
+proc isIndirectCall(n: PNode, owner: PSym): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
-  result = n.kind != nkSym or n.sym.kind notin (routineKinds+{skParam})
+  if n.kind != nkSym: 
+    result = true
+  elif n.sym.kind == skParam:
+    result = owner != n.sym.owner or owner == nil
+  elif n.sym.kind notin routineKinds:
+    result = true
 
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
@@ -274,7 +280,7 @@ proc track(tracked: PEffects, n: PNode) =
       elif effectList.len == 0:
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
-        elif isIndirectCall(a):
+        elif isIndirectCall(a, tracked.owner):
           addEffect(tracked, createRaise(n))
           addTag(tracked, createTag(n))
       else:
@@ -355,6 +361,7 @@ proc trackProc*(s: PSym, body: PNode) =
   var t: TEffects
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
+  t.owner = s
   track(t, body)
   
   let p = s.ast.sons[pragmasPos]
