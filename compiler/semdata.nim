@@ -45,10 +45,18 @@ type
     efAllowDestructor
   TExprFlags* = set[TExprFlag]
     
+  TScope* = object
+    symbols*: TStrTable
+    parent*: PScope
+
+  PScope* = ref TScope
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
-    currentScope*: PScope
+    currentScope*: PScope      # current scope
+    importTable*: PScope       # scope for all imported symbols
+    topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
@@ -56,7 +64,6 @@ type
     InstCounter*: int          # to prevent endless instantiations
    
     threadEntries*: TSymSeq    # list of thread entries to check
-    tab*: TSymTab              # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     InGenericContext*: int     # > 0 if we are in a generic type
@@ -83,8 +90,7 @@ type
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack
-    
-
+   
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
   result.inst = inst
@@ -111,20 +117,6 @@ proc PopOwner*()
 # implementation
 
 var gOwners*: seq[PSym] = @[]
-
-proc openScope*(c: PContext) =
-  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
-  c.tab.stack.add(c.currentScope)
-  inc c.tab.stack.tos
-
-proc rawCloseScope*(c: PContext) =
-  c.currentScope = c.currentScope.parent
-  c.tab.stack.setLen(c.tab.stack.len - 1)
-  dec c.tab.stack.tos
-
-proc closeScope*(c: PContext) =
-  ensureNoMissingOrUnusedSymbols(c.currentScope)
-  rawExitScope(c)
 
 proc getCurrOwner(): PSym = 
   # owner stack (used for initializing the
@@ -166,7 +158,6 @@ proc newOptionEntry(): POptionEntry =
 
 proc newContext(module: PSym): PContext =
   new(result)
-  InitSymTab(result.tab)
   result.AmbiguousSymbols = initIntset()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)

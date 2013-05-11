@@ -409,7 +409,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "": 
-        var e = SymtabGet(con.tab, getIdent(sub))
+        var e = searchInScopes(con, getIdent(sub))
         if e != nil: 
           if e.kind == skStub: loadStub(e)
           addSon(result, newSymNode(e))

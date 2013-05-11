@@ -120,7 +120,7 @@ proc instantiateDestructor(c: PContext, typ: PType): bool =
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
     if instantiateDestructor(c, t.sons[0]):
       if rangeDestructorProc == nil:
-        rangeDestructorProc = SymtabGet(c.tab, getIdent"nimDestroyRange")
+        rangeDestructorProc = searchInScopes(c, getIdent"nimDestroyRange")
       t.destructor = rangeDestructorProc
       return true
     else:

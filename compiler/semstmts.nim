@@ -800,7 +800,7 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
     result = n.sym
     if result.kind notin {skMacro, skTemplate}: result = nil
   else:
-    result = SymtabGet(c.Tab, considerAcc(n), {skMacro, skTemplate})
+    result = searchInScopes(c, considerAcc(n), {skMacro, skTemplate})
 
 proc semProcAnnotation(c: PContext, prc: PNode): PNode =
   var n = prc.sons[pragmasPos]
@@ -894,6 +894,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   n.sons[namePos] = newSymNode(s)
   s.ast = n
   pushOwner(s)
+  var outerScope = c.currentScope
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty: 
@@ -922,12 +923,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if proto == nil: 
     s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
-    # -2 because we have a scope open for parameters
     if sfGenSym in s.flags: nil
     elif kind in OverloadableSyms: 
-      addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
+      addInterfaceOverloadableSymAt(c, outerScope, s)
     else: 
-      addInterfaceDeclAt(c, s, c.tab.tos - 2)
+      addInterfaceDeclAt(c, outerScope, s)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:

@@ -413,7 +413,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   let curScope = c.tab.tos - 1
   var proto = SearchForProc(c, s, curScope)
   if proto == nil:
-    addInterfaceOverloadableSymAt(c, s, curScope)
+    addInterfaceOverloadableSymAt(c, c.currentScope, s)
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
   if n.sons[patternPos].kind != nkEmpty:

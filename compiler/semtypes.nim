@@ -79,7 +79,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       incl(e.flags, sfExported)
       if not isPure: StrTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
-    if sfGenSym notin e.flags and not isPure: addDeclAt(c, e, c.tab.tos - 1)
+    if sfGenSym notin e.flags and not isPure: addDecl(c, e)
     inc(counter)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType = 
@@ -616,7 +616,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if genericParams == nil:
       # genericParams is nil when the proc is being instantiated
       # the resolved type will be in scope then
-      let s = SymtabGet(c.tab, paramTypId)
+      let s = searchInScopes(c, paramTypId)
       # tests/run/tinterf triggers this:
       if s != nil: result = s.typ
       else:
@@ -749,7 +749,7 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
   when false:
     if n.kind == nkSym:
       # for generics we need to lookup the type var again:
-      var s = SymtabGet(c.Tab, n.sym.name)
+      var s = searchInScopes(c, n.sym.name)
       if s != nil:
         if s.kind == skType and s.typ != nil:
           var t = n.sym.typ
