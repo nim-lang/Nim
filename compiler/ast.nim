@@ -284,6 +284,9 @@ const
       
   sfHoist* = sfVolatile ## proc return value can be hoisted
 
+  sfNoForward* = sfRegister
+    # forward declarations are not required (per module)
+
 const
   # getting ready for the future expr/stmt merge
   nkWhen* = nkWhenStmt
