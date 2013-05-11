@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -89,7 +89,12 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var TIntSet): PNode =
         for x in items(sc): toBind.incl(x.sym.id)
     else:
       illFormedAst(a)
-  result = newNodeI(nkNilLit, n.info)
+  result = newNodeI(nkEmpty, n.info)
+
+proc semMixinStmt(c: PContext, n: PNode, toMixin: var TIntSet): PNode =
+  for i in 0 .. < n.len:
+    toMixin.incl(considerAcc(n.sons[i]).id)
+  result = newNodeI(nkEmpty, n.info)
   
 proc replaceIdentBySym(n: var PNode, s: PNode) =
   case n.kind
@@ -101,7 +106,7 @@ proc replaceIdentBySym(n: var PNode, s: PNode) =
 type
   TemplCtx {.pure, final.} = object
     c: PContext
-    toBind: TIntSet
+    toBind, toMixin: TIntSet
     owner: PSym
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
@@ -192,6 +197,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semTemplBody(c, n.sons[0])
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
+  of nkMixinStmt:
+    result = semMixinStmt(c.c, n, c.toMixin)
   of nkEmpty, nkSym..nkNilLit:
     nil
   of nkIfStmt: 
@@ -395,6 +402,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
+  ctx.toMixin = initIntSet()
   ctx.c = c
   ctx.owner = s
   if sfDirty in s.flags:
@@ -416,6 +424,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addInterfaceOverloadableSymAt(c, s, curScope)
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
+    # XXX this seems wrong: We need to check for proto before and overwrite
+    # proto.ast ...
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
 
@@ -536,6 +546,7 @@ proc semPattern(c: PContext, n: PNode): PNode =
   openScope(c.tab)
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
+  ctx.toMixin = initIntSet()
   ctx.c = c
   ctx.owner = getCurrOwner()
   result = flattenStmts(semPatternBody(ctx, n))
