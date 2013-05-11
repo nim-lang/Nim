@@ -247,15 +247,15 @@ proc myOpen(module: PSym): PPassContext =
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)
   pushOwner(c.module)
-  openScope(c)                # scope for imported symbols
-  SymTabAdd(c.tab, module)    # a module knows itself
+  c.importTable = openScope(c)
+  c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags: 
     magicsys.SystemModule = module # set global variable!
     InitSystem(c.tab)         # currently does nothing
   else: 
-    SymTabAdd(c.tab, magicsys.SystemModule) # import the "System" identifier
+    c.importTable.addSym magicsys.SystemModule # import the "System" identifier
     importAllSymbols(c, magicsys.SystemModule)
-  closeScope(c)               # scope for the module's symbols  
+  c.topLevelScope = openScope(c)
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =

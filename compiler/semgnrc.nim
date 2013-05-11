@@ -82,7 +82,7 @@ proc Lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var TIntSet): PNode =
   result = n
   let ident = considerAcc(n)
-  var s = SymtabGet(c.Tab, ident)
+  var s = searchInScopes(c, ident)
   if s == nil:
     if ident.id notin ctx and withinMixin notin flags:
       localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -281,7 +281,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         of nkEnumFieldDef: a = n.sons[i].sons[0]
         of nkIdent: a = n.sons[i]
         else: illFormedAst(n)
-        addDeclAt(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c), c.tab.tos-1)
+        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c))
   of nkObjectTy, nkTupleTy: 
     nil
   of nkFormalParams: 

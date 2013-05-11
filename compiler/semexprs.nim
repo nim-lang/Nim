@@ -328,9 +328,9 @@ proc semOpAux(c: PContext, n: PNode) =
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
   var par = getIdent("()")
-  if SymtabGet(c.Tab, par) == nil: 
+  if searchInScopes(c, par) == nil:
     result = nil
-  else: 
+  else:
     result = newNodeI(nkCall, n.info)
     addSon(result, newIdentNode(par, n.info))
     for i in countup(0, sonsLen(n) - 1): addSon(result, n.sons[i])
@@ -937,7 +937,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       addSon(result, copyTree(n[0]))
     else:
       var i = considerAcc(n.sons[1])
-      var f = SymTabGet(c.tab, i)
+      var f = searchInScopes(c, i)
       # if f != nil and f.kind == skStub: loadStub(f)
       # ``loadStub`` is not correct here as we don't care for ``f`` really
       if f != nil: 
@@ -1205,9 +1205,9 @@ proc SemYield(c: PContext, n: PNode): PNode =
 
 proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
   if onlyCurrentScope: 
-    result = SymtabLocalGet(c.tab, i)
+    result = localSearchInScope(c, i)
   else: 
-    result = SymtabGet(c.Tab, i) # no need for stub loading
+    result = searchInScopes(c, i) # no need for stub loading
 
 proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
   case n.kind

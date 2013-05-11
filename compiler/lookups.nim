@@ -46,7 +46,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  SymTabAddAt(c.tab, result, ast.ImportTablePos)
+  c.importTable.addSym(result)
 
 type 
   TOverloadIterMode* = enum 
@@ -63,8 +63,8 @@ proc getSymRepr*(s: PSym): string =
   case s.kind
   of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
   else: result = s.name.s
-  
-proc ensureNoMissingOrUnusedSymbols*(scope: PScope) =
+ 
+proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   # check if all symbols have been used and defined:
   var it: TTabIter
   var s = InitTabIter(it, scope.symbols)
@@ -89,15 +89,15 @@ proc WrongRedefinition*(info: TLineInfo, s: string) =
 proc AddSym*(t: var TStrTable, n: PSym) = 
   if StrTableIncl(t, n): WrongRedefinition(n.info, n.name.s)
   
-proc addDecl*(c: PContext, sym: PSym) = 
-  if SymTabAddUnique(c.tab, sym) == Failure: 
+proc addDecl*(c: PContext, sym: PSym) =
+  if c.currentScope.addUnique(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard SymTabAddUnique(c.tab, sym)
+  discard c.currentScope.addUnique(sym)
 
-proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
-  if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
+proc addDeclAt*(scope: PScope, sym: PSym) =
+  if scope.addUnique(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
@@ -106,35 +106,35 @@ proc AddInterfaceDeclAux(c: PContext, sym: PSym) =
     if c.module != nil: StrTableAdd(c.module.tab, sym)
     else: InternalError(sym.info, "AddInterfaceDeclAux")
 
-proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) = 
-  addDeclAt(c, sym, at)
+proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
+  addDeclAt(scope, sym)
   AddInterfaceDeclAux(c, sym)
-  
-proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) = 
+
+proc addOverloadableSymAt*(scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms: 
     InternalError(fn.info, "addOverloadableSymAt")
     return
-  var check = StrTableGet(c.tab.stack[at], fn.name)
+  var check = StrTableGet(scope.symbols, fn.name)
   if check != nil and check.Kind notin OverloadableSyms: 
     WrongRedefinition(fn.info, fn.Name.s)
   else:
-    SymTabAddAt(c.tab, fn, at)
+    scope.addSym(fn)
   
 proc addInterfaceDecl*(c: PContext, sym: PSym) = 
   # it adds the symbol to the interface if appropriate
   addDecl(c, sym)
   AddInterfaceDeclAux(c, sym)
 
-proc addInterfaceOverloadableSymAt*(c: PContext, sym: PSym, at: int) = 
+proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   # it adds the symbol to the interface if appropriate
-  addOverloadableSymAt(c, sym, at)
+  addOverloadableSymAt(scope, sym)
   AddInterfaceDeclAux(c, sym)
 
 proc lookUp*(c: PContext, n: PNode): PSym = 
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
   of nkIdent:
-    result = SymtabGet(c.Tab, n.ident)
+    result = searchInScopes(c, n.ident)
     if result == nil: 
       LocalError(n.info, errUndeclaredIdentifier, n.ident.s)
       result = errorSym(c, n)
@@ -142,7 +142,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = n.sym
   of nkAccQuoted:
     var ident = considerAcc(n)
-    result = SymtabGet(c.Tab, ident)
+    result = searchInScopes(c, ident)
     if result == nil:
       LocalError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
@@ -161,7 +161,7 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerAcc(n)
-    result = SymtabGet(c.Tab, ident)
+    result = searchInScopes(c, ident)
     if result == nil and checkUndeclared in flags: 
       LocalError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
@@ -238,6 +238,47 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     Incl(o.inSymChoice, result.id)
   else: nil
   if result != nil and result.kind == skStub: loadStub(result)
+
+proc openScope*(c: PContext): PScope {.discardable.} =
+  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
+  result = c.currentScope
+
+proc rawCloseScope*(c: PContext) =
+  c.currentScope = c.currentScope.parent
+
+proc closeScope*(c: PContext) =
+  ensureNoMissingOrUnusedSymbols(c.currentScope)
+  rawCloseScope(c)
+
+template addSym*(scope: PScope, s: PSym) =
+  StrTableAdd(scope.symbols, s)
+
+proc addUniqueSym*(scope: PScope, s: PSym): TResult =
+  if StrTableIncl(scope.symbols, s):
+    result = Failure
+  else:
+    result = Success
+
+iterator walkScopes*(scope: PScope): PScope =
+  var current = scope
+  while current != nil:
+    yield current
+    current = current.parent
+
+proc localSearchInScope*(c: PContext, s: PIdent): PSym =
+  result = StrTableGet(c.currentScope.symbols, s)
+
+proc searchInScopes*(c: PContext, s: PIdent): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil: return
+  result = nil
+
+proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil and result.kind in filter: return
+  result = nil
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
