@@ -909,12 +909,17 @@ var programResult* {.exportc: "nim_program_result".}: int
 
 proc quit*(errorcode: int = QuitSuccess) {.
   magic: "Exit", importc: "exit", noDecl, noReturn.}
-  ## stops the program immediately; before stopping the program the
-  ## "quit procedures" are called in the opposite order they were added
-  ## with ``addQuitProc``. ``quit`` never returns and ignores any
-  ## exception that may have been raised by the quit procedures.
-  ## It does *not* call the garbage collector to free all the memory,
-  ## unless a quit procedure calls ``GC_collect``.
+  ## Stops the program immediately with an exit code.
+  ##
+  ## Before stopping the program the "quit procedures" are called in the
+  ## opposite order they were added with ``addQuitProc``. ``quit`` never
+  ## returns and ignores any exception that may have been raised by the quit
+  ## procedures.  It does *not* call the garbage collector to free all the
+  ## memory, unless a quit procedure calls ``GC_collect``.
+  ##
+  ## The proc ``quit(QuitSuccess)`` is called implicitly when your nimrod
+  ## program finishes without incident. A raised unhandled exception is
+  ## equivalent to calling ``quit(QuitFailure)``.
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
