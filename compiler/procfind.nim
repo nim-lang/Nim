@@ -31,7 +31,8 @@ proc equalGenericParams(procA, procB: PNode): bool =
   result = true
 
 proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym = 
-  # Searchs for the fn in the symbol table. If the parameter lists are exactly
+  # Searchs for a forward declaration or a "twin" symbol of fn
+  # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
   result = initIdentIter(it, c.tab.stack[tos], fn.Name)

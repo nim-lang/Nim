@@ -177,6 +177,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       s = stream
     while true: 
       openParsers(p, fileIdx, s)
+      var code = p.parseAll
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the 
@@ -186,10 +187,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
         processImplicits implicitImports, nkImportStmt, a
         processImplicits implicitIncludes, nkIncludeStmt, a
 
-      while true: 
-        var n = parseTopLevelStmt(p)
-        if n.kind == nkEmpty: break 
-        if not processTopLevelStmt(n, a): break
+      processTopLevelStmt(code, a)
 
       closeParsers(p)
       if s.kind != llsStdIn: break 

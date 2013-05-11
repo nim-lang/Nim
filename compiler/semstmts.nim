@@ -884,15 +884,37 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
-proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
-                validPragmas: TSpecialWords): PNode = 
+type
+  TProcActivationSteps = enum
+    stepRegisterSymbol,
+    stepDetermineType,
+    stepActivate
+
+proc isForwardDecl(s: PSym): bool =
+  InternalAssert s.kind == skProc
+  result = s.ast[bodyPos].kind != nkEmpty
+
+proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
+                validPragmas: TSpecialWords,
+                phase = stepRegisterSymbol): PNode =
   result = semProcAnnotation(c, n)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
-  var s = semIdentDef(c, n.sons[0], kind)
-  n.sons[namePos] = newSymNode(s)
-  s.ast = n
+  var s: PSym
+  var usesAutoForwarding = false
+  if n[namePos].kind != nkSym:
+    s = semIdentDef(c, n.sons[0], kind)
+    n.sons[namePos] = newSymNode(s)
+    s.ast = n
+
+    if sfNoForward in c.module.flags and
+       sfSystemModule notin c.module.flags:
+      addInterfaceOverloadableSymAt(c, s, c.tab.tos - 1)
+      return
+  else:
+    s = n[namePos].sym
+    usesAutoForwarding = s.typ == nil
   pushOwner(s)
   openScope(c.tab)
   var gp: PNode
@@ -924,10 +946,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # add it here, so that recursive procs are possible:
     # -2 because we have a scope open for parameters
     if sfGenSym in s.flags: nil
-    elif kind in OverloadableSyms: 
-      addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
-    else: 
-      addInterfaceDeclAt(c, s, c.tab.tos - 2)
+    elif kind in OverloadableSyms:
+      if not usesAutoForwarding:
+        addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
+    else:
+      if not usesAutoForwarding:
+        addInterfaceDeclAt(c, s, c.tab.tos - 2)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
@@ -992,7 +1016,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner()
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  
+
+proc determineType(c: PContext, s: PSym) =
+  if s.typ != nil: return
+  #if s.magic != mNone: return
+  discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
+
 proc semIterator(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skIterator, iteratorPragmas)
   var s = result.sons[namePos].sym
@@ -1055,7 +1084,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if n.sons[bodyPos].kind == nkEmpty:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
-proc evalInclude(c: PContext, n: PNode): PNode = 
+proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 
