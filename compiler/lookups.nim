@@ -64,13 +64,10 @@ proc getSymRepr*(s: PSym): string =
   of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
   else: result = s.name.s
   
-proc CloseScope*(tab: var TSymTab) = 
+proc ensureNoMissingOrUnusedSymbols*(scope: PScope) =
   # check if all symbols have been used and defined:
-  if tab.tos > len(tab.stack): 
-    InternalError("CloseScope")
-    return
   var it: TTabIter
-  var s = InitTabIter(it, tab.stack[tab.tos-1])
+  var s = InitTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
     if sfForward in s.flags:
@@ -83,9 +80,8 @@ proc CloseScope*(tab: var TSymTab) =
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
-    s = NextIter(it, tab.stack[tab.tos-1])
-  astalgo.rawCloseScope(tab)
-
+    s = NextIter(it, scope.symbols)
+  
 proc WrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)

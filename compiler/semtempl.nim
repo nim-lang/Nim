@@ -125,8 +125,8 @@ proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
-proc openScope(c: var TemplCtx) = openScope(c.c.tab)
-proc closeScope(c: var TemplCtx) = closeScope(c.c.tab)
+proc openScope(c: var TemplCtx) = openScope(c.c)
+proc closeScope(c: var TemplCtx) = closeScope(c.c)
 
 proc semTemplBodyScope(c: var TemplCtx, n: PNode): PNode = 
   openScope(c)
@@ -362,7 +362,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s = semIdentVis(c, skTemplate, n.sons[0], {})
   # check parameter list:
   pushOwner(s)
-  openScope(c.tab)
+  openScope(c)
   n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], templatePragmas)
@@ -404,7 +404,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
     n.sons[bodyPos] = transformToExpr(n.sons[bodyPos]) 
     # only parameters are resolved, no type checking is performed
-  closeScope(c.tab)
+  closeScope(c)
   popOwner()
   s.ast = n
   result = n
@@ -533,7 +533,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       result.sons[i] = semPatternBody(c, n.sons[i])
 
 proc semPattern(c: PContext, n: PNode): PNode =
-  openScope(c.tab)
+  openScope(c)
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.c = c
@@ -544,4 +544,4 @@ proc semPattern(c: PContext, n: PNode): PNode =
       result = result.sons[0]
     elif result.len == 0:
       LocalError(n.info, errInvalidExpression)
-  closeScope(c.tab)
+  closeScope(c)
