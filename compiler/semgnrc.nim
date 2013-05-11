@@ -72,11 +72,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
     else: 
       result = n
   else: result = newSymNode(s, n.info)
-  
-proc semMixinStmt(c: PContext, n: PNode, toMixin: var TIntSet): PNode =
-  for i in 0 .. < n.len:
-    toMixin.incl(considerAcc(n.sons[i]).id)
-  result = newNodeI(nkNilLit, n.info)
 
 proc Lookup(c: PContext, n: PNode, flags: TSemGenericFlags, 
             ctx: var TIntSet): PNode =
