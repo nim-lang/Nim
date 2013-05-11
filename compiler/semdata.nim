@@ -46,6 +46,7 @@ type
   TExprFlags* = set[TExprFlag]
     
   TScope* = object
+    depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
 
@@ -57,6 +58,7 @@ type
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
+    scopeDepth*: int           # number of open scopes
     p*: PProcCon               # procedure context
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations

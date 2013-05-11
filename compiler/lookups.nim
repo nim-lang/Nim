@@ -45,11 +45,15 @@ proc addUniqueSym*(scope: PScope, s: PSym): TResult =
     result = Success
 
 proc openScope*(c: PContext): PScope {.discardable.} =
-  c.currentScope = PScope(parent: c.currentScope, symbols: newStrTable())
-  result = c.currentScope
+  inc c.scopeDepth
+  result = PScope(parent: c.currentScope,
+                  symbols: newStrTable(),
+                  depthLevel: c.scopeDepth)
+  c.currentScope = result
 
 proc rawCloseScope*(c: PContext) =
   c.currentScope = c.currentScope.parent
+  dec c.scopeDepth
 
 proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c.currentScope)
@@ -96,10 +100,11 @@ type
     oimDone, oimNoQualifier, oimSelfModule, oimOtherModule, oimSymChoice,
     oimSymChoiceLocalLookup
   TOverloadIter*{.final.} = object 
-    stackPtr*: int
     it*: TIdentIter
     m*: PSym
     mode*: TOverloadIterMode
+    symChoiceIndex*: int
+    scope*: PScope
     inSymChoice: TIntSet
 
 proc getSymRepr*(s: PSym): string = 
@@ -241,12 +246,15 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerAcc(n)
-    o.stackPtr = c.tab.tos
+    o.scope = c.currentScope
     o.mode = oimNoQualifier
-    while result == nil:
-      dec(o.stackPtr)
-      if o.stackPtr < 0: break
-      result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], ident)
+    while true:
+      result = InitIdentIter(o.it, o.scope.symbols, ident)
+      if result != nil:
+        break
+      else:
+        o.scope = o.scope.parent
+        if o.scope == nil: break
   of nkSym:
     result = n.sym
     o.mode = oimDone
@@ -273,7 +281,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
     result = n.sons[0].sym
-    o.stackPtr = 1
+    o.symChoiceIndex = 1
     o.inSymChoice = initIntSet()
     Incl(o.inSymChoice, result.id)
   else: nil
@@ -281,7 +289,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
-  of oimNoQualifier: result = o.stackPtr
+  of oimNoQualifier: result = o.scope.depthLevel
   of oimSelfModule:  result = 1
   of oimOtherModule: result = 0
   else: result = -1
@@ -291,12 +299,12 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimDone: 
     result = nil
   of oimNoQualifier: 
-    if o.stackPtr >= 0: 
-      result = nextIdentIter(o.it, c.tab.stack[o.stackPtr])
-      while result == nil: 
-        dec(o.stackPtr)
-        if o.stackPtr < 0: break 
-        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name) 
+    if o.scope != nil:
+      result = nextIdentIter(o.it, o.scope.symbols)
+      while result == nil:
+        o.scope = o.scope.parent
+        if o.scope == nil: break
+        result = InitIdentIter(o.it, o.scope.symbols, o.it.name)
         # BUGFIX: o.it.name <-> n.ident
     else: 
       result = nil
@@ -305,27 +313,27 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimOtherModule: 
     result = nextIdentIter(o.it, o.m.tab)
   of oimSymChoice: 
-    if o.stackPtr < sonsLen(n): 
-      result = n.sons[o.stackPtr].sym
+    if o.symChoiceIndex < sonsLen(n):
+      result = n.sons[o.symChoiceIndex].sym
       Incl(o.inSymChoice, result.id)
-      inc(o.stackPtr)
+      inc o.symChoiceIndex
     elif n.kind == nkOpenSymChoice:
       # try 'local' symbols too for Koenig's lookup:
       o.mode = oimSymChoiceLocalLookup
-      o.stackPtr = c.tab.tos-1
-      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+      o.scope = c.currentScope
+      result = FirstIdentExcluding(o.it, o.scope.symbols,
                                    n.sons[0].sym.name, o.inSymChoice)
       while result == nil:
-        dec(o.stackPtr)
-        if o.stackPtr < 0: break 
-        result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+        o.scope = o.scope.parent
+        if o.scope == nil: break
+        result = FirstIdentExcluding(o.it, o.scope.symbols,
                                      n.sons[0].sym.name, o.inSymChoice)
   of oimSymChoiceLocalLookup:
-    result = nextIdentExcluding(o.it, c.tab.stack[o.stackPtr], o.inSymChoice)
+    result = nextIdentExcluding(o.it, o.scope.symbols, o.inSymChoice)
     while result == nil:
-      dec(o.stackPtr)
-      if o.stackPtr < 0: break 
-      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+      o.scope = o.scope.parent
+      if o.scope == nil: break
+      result = FirstIdentExcluding(o.it, o.scope.symbols,
                                    n.sons[0].sym.name, o.inSymChoice)
   
   if result != nil and result.kind == skStub: loadStub(result)
