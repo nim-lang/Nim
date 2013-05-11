@@ -289,8 +289,9 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
     changeType(result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
-  for i in countdown(c.tab.tos - 2, ModuleTablePos+1):
-    let shadowed = StrTableGet(c.tab.stack[i], v.name)
+  for scope in walkScopes(c.currentScope.parent):
+    if scope == c.topLevelScope: break
+    let shadowed = StrTableGet(scope.symbols, v.name)
     if shadowed != nil and shadowed.kind in skLocalVars:
       return shadowed
 

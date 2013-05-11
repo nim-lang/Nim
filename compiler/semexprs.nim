@@ -1222,7 +1222,7 @@ proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if (n.sons[1].kind == nkIdent): 
         var ident = n.sons[1].ident
         if m == c.module: 
-          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
+          result = StrTableGet(c.topLevelScope.symbols, ident)
         else: 
           result = StrTableGet(m.tab, ident)
       else: 

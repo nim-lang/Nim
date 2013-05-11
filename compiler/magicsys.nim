@@ -19,7 +19,6 @@ proc registerSysType*(t: PType)
 proc getSysType*(kind: TTypeKind): PType
 proc getCompilerProc*(name: string): PSym
 proc registerCompilerProc*(s: PSym)
-proc InitSystem*(tab: var TSymTab)
 proc FinishSystem*(tab: TStrTable)
 proc getSysSym*(name: string): PSym
 # implementation
@@ -154,7 +153,6 @@ proc getCompilerProc(name: string): PSym =
 proc registerCompilerProc(s: PSym) = 
   strTableAdd(compilerprocs, s)
 
-proc InitSystem(tab: var TSymTab) = nil
 proc FinishSystem(tab: TStrTable) = nil
   
 initStrTable(compilerprocs)
