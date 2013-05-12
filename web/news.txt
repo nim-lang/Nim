@@ -56,6 +56,8 @@ Compiler Additions
   to be turned on explicitly via ``--warning[ShadowIdent]:on``.
 - The compiler now supports almost every pragma in a ``push`` pragma.
 - Generic converters have been implemented.
+- Added a ``noforward`` pragma enabling a special compilation mode that largely
+  eliminates the need for forward declarations.
 
 
 Language Additions
