@@ -914,12 +914,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfNoForward in c.module.flags and
        sfSystemModule notin c.module.flags:
       addInterfaceOverloadableSymAt(c, c.currentScope, s)
+      s.flags.incl sfForward
       return
   else:
     s = n[namePos].sym
     typeIsDetermined = s.typ == nil
-    if typeIsDetermined: assert phase == stepCompileBody
-    else: assert phase == stepDetermineType
+    # if typeIsDetermined: assert phase == stepCompileBody
+    # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
