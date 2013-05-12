@@ -592,14 +592,20 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     else:
       result = typeRel(c, x, a) # check if it fits
   of tyTypeDesc:
-    if a.kind == tyTypeDesc:
-      if f.sonsLen == 0:
-        result = isGeneric
+    var prev = PType(idTableGet(c.bindings, f))
+    if prev == nil:
+      if a.kind == tyTypeDesc:
+        if f.sonsLen == 0:
+          result = isGeneric
+        else:
+          result = matchTypeClass(c, f, a.sons[0])
+        if result == isGeneric:
+          put(c.bindings, f, a)
       else:
-        result = matchTypeClass(c, f, a.sons[0])
-      if result == isGeneric: put(c.bindings, f, a)
+        result = isNone
     else:
-      result = isNone
+      InternalAssert prev.sonsLen == 1
+      result = typeRel(c, prev.sons[0], a)
   of tyExpr, tyStmt:
     result = isGeneric
   of tyProxy:
