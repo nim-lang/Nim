@@ -99,7 +99,7 @@ proc commonType*(x, y: PType): PType =
         result.addSonSkipIntLit(r)
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.scopeDepth <= 2
+  result = c.currentScope.depthLevel <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
@@ -281,7 +281,6 @@ proc RecoverContext(c: PContext) =
   # faster than wrapping every stack operation in a 'try finally' block and 
   # requires far less code.
   c.currentScope = c.topLevelScope
-  c.scopeDepth = 2 # importTable and top-level scope
   while getCurrOwner().kind != skModule: popOwner()
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 

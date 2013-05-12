@@ -885,17 +885,46 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
-proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
-                validPragmas: TSpecialWords): PNode = 
+type
+  TProcCompilationSteps = enum
+    stepRegisterSymbol,
+    stepDetermineType,
+    stepCompileBody
+
+proc isForwardDecl(s: PSym): bool =
+  InternalAssert s.kind == skProc
+  result = s.ast[bodyPos].kind != nkEmpty
+
+proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
+                validPragmas: TSpecialWords,
+                phase = stepRegisterSymbol): PNode =
   result = semProcAnnotation(c, n)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1)
-  var s = semIdentDef(c, n.sons[0], kind)
-  n.sons[namePos] = newSymNode(s)
-  s.ast = n
+  var s: PSym
+  var typeIsDetermined = false
+  if n[namePos].kind != nkSym:
+    assert phase == stepRegisterSymbol
+    s = semIdentDef(c, n.sons[0], kind)
+    n.sons[namePos] = newSymNode(s)
+    s.ast = n
+    s.scope = c.currentScope
+
+    if sfNoForward in c.module.flags and
+       sfSystemModule notin c.module.flags:
+      addInterfaceOverloadableSymAt(c, c.currentScope, s)
+      return
+  else:
+    s = n[namePos].sym
+    typeIsDetermined = s.typ == nil
+    if typeIsDetermined: assert phase == stepCompileBody
+    else: assert phase == stepDetermineType
+  # before compiling the proc body, set as current the scope
+  # where the proc was declared
+  let oldScope = c.currentScope
+  c.currentScope = s.scope
   pushOwner(s)
-  var outerScope = c.currentScope
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty: 
@@ -919,15 +948,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind == skIterator: s.typ.flags.incl(tfIterator)
   
-  var proto = SearchForProc(c, outerScope, s)
+  var proto = SearchForProc(c, s.scope, s)
   if proto == nil: 
     s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     if sfGenSym in s.flags: nil
-    elif kind in OverloadableSyms: 
-      addInterfaceOverloadableSymAt(c, outerScope, s)
-    else: 
-      addInterfaceDeclAt(c, outerScope, s)
+    elif kind in OverloadableSyms:
+      if not typeIsDetermined:
+        addInterfaceOverloadableSymAt(c, s.scope, s)
+    else:
+      if not typeIsDetermined:
+        addInterfaceDeclAt(c, s.scope, s)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
@@ -989,10 +1020,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
   closeScope(c)           # close scope for parameters
+  c.currentScope = oldScope
   popOwner()
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  
+
+proc determineType(c: PContext, s: PSym) =
+  if s.typ != nil: return
+  #if s.magic != mNone: return
+  discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
+
 proc semIterator(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skIterator, iteratorPragmas)
   var s = result.sons[namePos].sym
@@ -1055,7 +1092,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if n.sons[bodyPos].kind == nkEmpty:
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
-proc evalInclude(c: PContext, n: PNode): PNode = 
+proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1): 

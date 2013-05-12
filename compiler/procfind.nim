@@ -30,8 +30,9 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not ExprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc SearchForProc*(c: PContext, scope: PScope, fn: PSym): PSym = 
-  # Searchs for the fn in the symbol table. If the parameter lists are exactly
+proc SearchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+  # Searchs for a forward declaration or a "twin" symbol of fn
+  # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
   result = initIdentIter(it, scope.symbols, fn.Name)
