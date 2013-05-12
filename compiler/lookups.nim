@@ -45,15 +45,13 @@ proc addUniqueSym*(scope: PScope, s: PSym): TResult =
     result = Success
 
 proc openScope*(c: PContext): PScope {.discardable.} =
-  inc c.scopeDepth
   result = PScope(parent: c.currentScope,
                   symbols: newStrTable(),
-                  depthLevel: c.scopeDepth)
+                  depthLevel: c.scopeDepth + 1)
   c.currentScope = result
 
 proc rawCloseScope*(c: PContext) =
   c.currentScope = c.currentScope.parent
-  dec c.scopeDepth
 
 proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c.currentScope)

@@ -44,13 +44,6 @@ type
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
     efAllowDestructor
   TExprFlags* = set[TExprFlag]
-    
-  TScope* = object
-    depthLevel*: int
-    symbols*: TStrTable
-    parent*: PScope
-
-  PScope* = ref TScope
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
@@ -58,7 +51,6 @@ type
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
-    scopeDepth*: int           # number of open scopes
     p*: PProcCon               # procedure context
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
@@ -111,6 +103,10 @@ proc makePtrType*(c: PContext, baseType: PType): PType
 proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
+
+proc scopeDepth*(c: PContext): int {.inline.} =
+  result = if c.currentScope != nil: c.currentScope.depthLevel
+           else: 0
 
 # owner handling:
 proc getCurrOwner*(): PSym
