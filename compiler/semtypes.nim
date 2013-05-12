@@ -570,19 +570,17 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
   # if id is not nil, the generic param will bind just once (see below)
   case paramType.kind:
   of tyExpr:
-    if procKind notin {skTemplate, skMacro}:
-      if paramType.sonsLen == 0:
-        # proc(a, b: expr)
-        # no constraints, treat like generic param
-        result.typ = newTypeS(tyGenericParam, c)
-      else:
-        # proc(a: expr{string}, b: expr{nkLambda})
-        # overload on compile time values and AST trees
-        result.typ = newTypeS(tyExpr, c)
-        result.typ.sons = paramType.sons
+    if paramType.sonsLen == 0:
+      # proc(a, b: expr)
+      # no constraints, treat like generic param
+      result.typ = newTypeS(tyGenericParam, c)
+    else:
+      # proc(a: expr{string}, b: expr{nkLambda})
+      # overload on compile time values and AST trees
+      result.typ = newTypeS(tyExpr, c)
+      result.typ.sons = paramType.sons
   of tyTypeDesc:
-    if procKind notin {skTemplate, skMacro} and 
-       tfInstantiated notin paramType.flags:
+     if tfInstantiated notin paramType.flags:
       result.typ = newTypeS(tyTypeDesc, c)
       result.typ.sons = paramType.sons
   of tyDistinct:
@@ -604,11 +602,16 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo): PType =
+  result = paramType
+  if procKind in {skMacro, skTemplate}:
+    # generic param types in macros and templates affect overload
+    # resolution, but don't work as generic params when it comes
+    # to proc instantiation. We don't need to lift such params here.  
+    return
   ## Params having implicit generic types or pseudo types such as 'expr'
   ## need to be added to the generic params lists. 
   ## 'expr' is different from 'expr{string}' so we must first call 
   ## paramTypeClass to get the actual type we are going to use.
-  result = paramType
   var (typeClass, paramTypId) = paramTypeClass(c, paramType, procKind)
   let isAnon = paramTypId == nil
   if typeClass != nil:

@@ -1016,8 +1016,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
   of tyExpr, tyStmt, tyTypeDesc:
     result = true
     # XXX er ... no? these should not be allowed!
-  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation, 
-      tyTypeClass:
+  of tyTypeClass:
+    result = true
+  of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation:
     result = false
   of tyEmpty, tyNil:
     result = kind == skConst
