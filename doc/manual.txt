@@ -2910,7 +2910,8 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
    raise ``system.E_Base`` (the base type of the exception hierarchy) and
    thus any exception unless ``T`` has an explicit ``raises`` list.
    However if the call is of the form ``f(...)`` where ``f`` is a parameter
-   is ignored. Rule 2 compensates for this case.
+   of the currently analysed routine it is ignored. The call is optimistically 
+   assumed to have no effect. Rule 2 compensates for this case.
 2. Every expression of some proc type wihtin a call that is not a call 
    itself (and not nil) is assumed to be called indirectly somehow and thus 
    its raises list is added to ``p``'s raises list.
@@ -2933,9 +2934,9 @@ Rules 1-2 ensure the following works:
   proc doRaise() {.raises: [EIO].} =
     raise newException(EIO, "IO")
   
-  proc use() =
+  proc use() {.raises: [].} =
+    # doesn't compile! Can raise EIO!
     noRaise(doRaise)
-    # Here the compiler inferes that EIO can be raised.
 
 So in many cases a callback does not cause the compiler to be overly
 conservative in its effect analysis.
