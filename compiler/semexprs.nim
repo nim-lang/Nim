@@ -1671,11 +1671,17 @@ proc buildCall(n: PNode): PNode =
   else:
     result = n
 
+proc doBlockIsStmtList(n: PNode): bool =
+  result = n.kind == nkDo and
+           n[paramsPos].sonsLen == 1 and
+           n[paramsPos][0].kind == nkEmpty
+
 proc fixImmediateParams(n: PNode): PNode =
   # XXX: Temporary work-around until we carry out
   # the planned overload resolution reforms
   for i in 1 .. <safeLen(n):
-    if n[i].kind == nkDo: n.sons[i] = n[i][bodyPos]
+    if doBlockIsStmtList(n[i]):
+      n.sons[i] = n[i][bodyPos]
   result = n
 
 proc semExport(c: PContext, n: PNode): PNode =

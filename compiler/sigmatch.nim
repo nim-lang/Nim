@@ -683,11 +683,12 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
                         arg, argOrig: PNode): PNode =
   var r: TTypeRelation
-  if f.kind == tyExpr:
-    if f.sonsLen == 0:
+  let fMaybeExpr = f.skipTypes({tyDistinct})
+  if fMaybeExpr.kind == tyExpr:
+    if fMaybeExpr.sonsLen == 0:
       r = isGeneric
     else:
-      let match = matchTypeClass(m, f, a)
+      let match = matchTypeClass(m, fMaybeExpr, a)
       if match != isGeneric: r = isNone
       else:
         # XXX: Ideally, this should happen much earlier somewhere near 
