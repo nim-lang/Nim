@@ -30,11 +30,12 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not ExprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym = 
-  # Searchs for the fn in the symbol table. If the parameter lists are exactly
+proc SearchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+  # Searchs for a forward declaration or a "twin" symbol of fn
+  # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
-  result = initIdentIter(it, c.tab.stack[tos], fn.Name)
+  result = initIdentIter(it, scope.symbols, fn.Name)
   if isGenericRoutine(fn):
     # we simply check the AST; this is imprecise but nearly the best what
     # can be done; this doesn't work either though as type constraints are
@@ -48,7 +49,7 @@ proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym =
                                     fn.ast.sons[paramsPos]) and
            equalGenericParams(genR, genF):
             return
-      result = NextIdentIter(it, c.tab.stack[tos])
+      result = NextIdentIter(it, scope.symbols)
   else:
     while result != nil:
       if result.Kind == fn.kind and not isGenericRoutine(result):
@@ -60,7 +61,7 @@ proc SearchForProc*(c: PContext, fn: PSym, tos: int): PSym =
           return
         of paramsNotEqual:
           nil
-      result = NextIdentIter(it, c.tab.stack[tos])
+      result = NextIdentIter(it, scope.symbols)
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool = 
@@ -76,16 +77,16 @@ when false:
                           dcEqOrDistinctOf): return
       result = true
 
-  proc SearchForBorrowProc*(c: PContext, fn: PSym, tos: int): PSym = 
+  proc SearchForBorrowProc*(c: PContext, startScope: PScope, fn: PSym): PSym =
     # Searchs for the fn in the symbol table. If the parameter lists are suitable
     # for borrowing the sym in the symbol table is returned, else nil.
     var it: TIdentIter
-    for scope in countdown(tos, 0): 
-      result = initIdentIter(it, c.tab.stack[scope], fn.Name)
+    for scope in walkScopes(startScope):
+      result = initIdentIter(it, scope.symbols, fn.Name)
       while result != nil: 
         # watchout! result must not be the same as fn!
         if (result.Kind == fn.kind) and (result.id != fn.id): 
           if equalGenericParams(result.ast.sons[genericParamsPos], 
                                 fn.ast.sons[genericParamsPos]): 
             if paramsFitBorrow(fn.typ.n, result.typ.n): return 
-        result = NextIdentIter(it, c.tab.stack[scope])
+        result = NextIdentIter(it, scope.symbols)

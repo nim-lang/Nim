@@ -12,7 +12,7 @@
 import 
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer, 
   wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees,
-  rodread, types
+  rodread, types, lookups
 
 const 
   FirstCallConv* = wNimcall
@@ -42,7 +42,7 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
     wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects}
+    wLinearScanEnd, wPatterns, wEffects, wNoForward}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
@@ -182,7 +182,11 @@ proc onOff(c: PContext, n: PNode, op: TOptions) =
 proc pragmaDeadCodeElim(c: PContext, n: PNode) = 
   if IsTurnedOn(c, n): incl(c.module.flags, sfDeadCodeElim)
   else: excl(c.module.flags, sfDeadCodeElim)
-  
+
+proc pragmaNoForward(c: PContext, n: PNode) =
+  if IsTurnedOn(c, n): incl(c.module.flags, sfNoForward)
+  else: excl(c.module.flags, sfNoForward)
+
 proc processCallConv(c: PContext, n: PNode) = 
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
     var sw = whichKeyword(n.sons[1].ident)
@@ -409,7 +413,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "": 
-        var e = SymtabGet(con.tab, getIdent(sub))
+        var e = searchInScopes(con, getIdent(sub))
         if e != nil: 
           if e.kind == skStub: loadStub(e)
           addSon(result, newSymNode(e))
@@ -552,6 +556,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           incl(sym.flags, sfThread)
         of wDeadCodeElim: pragmaDeadCodeElim(c, it)
+        of wNoForward: pragmaNoForward(c, it)
         of wMagic: processMagic(c, it, sym)
         of wCompileTime: 
           noVal(it)

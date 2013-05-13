@@ -99,7 +99,7 @@ proc commonType*(x, y: PType): PType =
         result.addSonSkipIntLit(r)
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
-  result = c.tab.tos <= 2
+  result = c.currentScope.depthLevel <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner(), n.info)
@@ -247,15 +247,14 @@ proc myOpen(module: PSym): PPassContext =
   c.semTypeNode = semTypeNode
   pushProcCon(c, module)
   pushOwner(c.module)
-  openScope(c.tab)            # scope for imported symbols
-  SymTabAdd(c.tab, module)    # a module knows itself
+  c.importTable = openScope(c)
+  c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags: 
     magicsys.SystemModule = module # set global variable!
-    InitSystem(c.tab)         # currently does nothing
   else: 
-    SymTabAdd(c.tab, magicsys.SystemModule) # import the "System" identifier
+    c.importTable.addSym magicsys.SystemModule # import the "System" identifier
     importAllSymbols(c, magicsys.SystemModule)
-  openScope(c.tab)            # scope for the module's symbols  
+  c.topLevelScope = openScope(c)
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
@@ -281,7 +280,7 @@ proc RecoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
   # faster than wrapping every stack operation in a 'try finally' block and 
   # requires far less code.
-  while c.tab.tos-1 > ModuleTablePos: rawCloseScope(c.tab)
+  c.currentScope = c.topLevelScope
   while getCurrOwner().kind != skModule: popOwner()
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
@@ -310,8 +309,8 @@ proc checkThreads(c: PContext) =
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
-  closeScope(c.tab)         # close module's scope
-  rawCloseScope(c.tab)      # imported symbols; don't check for unused ones!
+  closeScope(c)         # close module's scope
+  rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)
   if n != nil:
     InternalError(n.info, "n is not nil") #result := n;

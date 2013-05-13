@@ -32,7 +32,7 @@
 --file:r"compiler/nimcache/wordrecg.c"
 --file:r"compiler/nimcache/babelcmd.c"
 --file:r"compiler/nimcache/lexer.c"
---file:r"compiler/nimcache/lexbase.c"
+--file:r"compiler/nimcache/nimlexbase.c"
 --file:r"compiler/nimcache/llstream.c"
 --file:r"compiler/nimcache/nimconf.c"
 --file:r"compiler/nimcache/main.c"
@@ -75,6 +75,7 @@
 --file:r"compiler/nimcache/rst.c"
 --file:r"compiler/nimcache/rstgen.c"
 --file:r"compiler/nimcache/highlite.c"
+--file:r"compiler/nimcache/algorithm.c"
 --file:r"compiler/nimcache/aliases.c"
 --file:r"compiler/nimcache/patterns.c"
 --file:r"compiler/nimcache/cgen.c"
@@ -82,6 +83,9 @@
 --file:r"compiler/nimcache/cgendata.c"
 --file:r"compiler/nimcache/ccgmerge.c"
 --file:r"compiler/nimcache/jsgen.c"
+--file:r"compiler/nimcache/json.c"
+--file:r"compiler/nimcache/lexbase.c"
+--file:r"compiler/nimcache/unicode.c"
 --file:r"compiler/nimcache/passaux.c"
 --file:r"compiler/nimcache/depends.c"
 --file:r"compiler/nimcache/docgen2.c"
@@ -93,5 +97,5 @@ Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
 Flags=" -lm"
 [Environment]
-libpath="/home/andreas/projects/nimrod/lib"
+libpath="/Users/zahary/Projects/nim/lib"
 [Symbols]

@@ -64,11 +64,13 @@ when not defined(nimhygiene):
   {.pragma: inject.}
 
 template wholeSymTab(cond, section: expr) {.immediate.} =
-  for i in countdown(c.tab.tos-1, 0):
-    for item in items(c.tab.stack[i]):
+  var isLocal = true
+  for scope in walkScopes(c.currentScope):
+    if scope == c.topLevelScope: isLocal = false
+    for item in items(scope.symbols):
       let it {.inject.} = item
       if cond:
-        SuggestWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
+        SuggestWriteln(SymToStr(it, isLocal = isLocal, section))
         inc outputs
 
 proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
@@ -123,11 +125,14 @@ proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
 
 proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   # do not produce too many symbols:
-  for i in countdown(c.tab.tos-1, 1):
-    for it in items(c.tab.stack[i]):
+  var isLocal = true
+  for scope in walkScopes(c.currentScope):
+    if scope == c.topLevelScope: isLocal = false
+    for it in items(scope.symbols):
       if filterSym(it):
-        SuggestWriteln(SymToStr(it, isLocal = i > ModuleTablePos, sectionSuggest))
+        SuggestWriteln(SymToStr(it, isLocal = isLocal, sectionSuggest))
         inc outputs
+    if scope == c.topLevelScope: break
 
 proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -138,7 +143,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
     if n.kind == nkSym and n.sym.kind == skModule: 
       if n.sym == c.module: 
         # all symbols accessible, because we are in the current module:
-        for it in items(c.tab.stack[ModuleTablePos]): 
+        for it in items(c.topLevelScope.symbols):
           if filterSym(it): 
             SuggestWriteln(SymToStr(it, isLocal=false, sectionSuggest))
             inc outputs
