@@ -817,7 +817,7 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
           if not sameInd(p): break
 
 proc parseParamList(p: var TParser, retColon = true): PNode =
-  #| paramList = '(' identColonEquals ^* (comma/semicolon) ')'
+  #| paramList = '(' declColonEquals ^* (comma/semicolon) ')'
   #| paramListArrow = paramList? ('->' optInd typeDesc)?
   #| paramListColon = paramList? (':' optInd typeDesc)?
   var a: PNode
@@ -829,7 +829,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     while true:
       case p.tok.tokType
       of tkSymbol, tkAccent: 
-        a = parseIdentColonEquals(p, {withBothOptional})
+        a = parseIdentColonEquals(p, {withBothOptional, withPragma})
       of tkParRi: 
         break 
       else: 
@@ -1278,15 +1278,15 @@ proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
   addSon(result, parseStmt(p))
 
 proc parseFor(p: var TParser): PNode =
-  #| forStmt = 'for' symbol (comma symbol)* 'in' expr colcom stmt
+  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
   result = newNodeP(nkForStmt, p)
   getTokNoInd(p)
-  var a = parseSymbol(p)
+  var a = identWithPragma(p)
   addSon(result, a)
   while p.tok.tokType == tkComma:
     getTok(p)
     optInd(p, a)
-    a = parseSymbol(p)
+    a = identWithPragma(p)
     addSon(result, a)
   eat(p, tkIn)
   addSon(result, parseExpr(p))

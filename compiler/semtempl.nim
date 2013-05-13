@@ -176,6 +176,18 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
     n.sons[i] = semTemplBody(c, n.sons[i])
   closeScope(c)
 
+proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
+  for i in countup(ord(symkind == skConditional), sonsLen(n) - 1):
+    var a = n.sons[i]
+    if a.kind == nkCommentStmt: continue
+    if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
+    checkMinSonsLen(a, 3)
+    var L = sonsLen(a)
+    a.sons[L-2] = semTemplBody(c, a.sons[L-2])
+    a.sons[L-1] = semTemplBody(c, a.sons[L-1])
+    for j in countup(0, L-3):
+      addLocalDecl(c, a.sons[j], symKind)
+
 proc semPattern(c: PContext, n: PNode): PNode
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode = 
   result = n
@@ -201,10 +213,18 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semMixinStmt(c.c, n, c.toMixin)
   of nkEmpty, nkSym..nkNilLit:
     nil
-  of nkIfStmt: 
-    for i in countup(0, sonsLen(n)-1): 
-      n.sons[i] = semTemplBodyScope(c, n.sons[i])
-  of nkWhileStmt: 
+  of nkIfStmt:
+    for i in countup(0, sonsLen(n)-1):
+      var it = n.sons[i]
+      if it.len == 2:
+        when newScopeForIf: openScope(c)
+        it.sons[0] = semTemplBody(c, it.sons[0])
+        when not newScopeForIf: openScope(c)
+        it.sons[1] = semTemplBody(c, it.sons[1])
+        closeScope(c)
+      else:
+        n.sons[i] = semTemplBodyScope(c, it)
+  of nkWhileStmt:
     openScope(c)
     for i in countup(0, sonsLen(n)-1): 
       n.sons[i] = semTemplBody(c, n.sons[i])
@@ -248,18 +268,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       for j in countup(0, L-2): 
         a.sons[j] = semTemplBody(c, a.sons[j])
       a.sons[L-1] = semTemplBodyScope(c, a.sons[L-1])
-  of nkVarSection, nkLetSection:
-    let symKind = if n.kind == nkLetSection: skLet else: skVar
-    for i in countup(0, sonsLen(n) - 1): 
-      var a = n.sons[i]
-      if a.kind == nkCommentStmt: continue 
-      if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
-      checkMinSonsLen(a, 3)
-      var L = sonsLen(a)
-      a.sons[L-2] = semTemplBody(c, a.sons[L-2])
-      a.sons[L-1] = semTemplBody(c, a.sons[L-1])
-      for j in countup(0, L-3):
-        addLocalDecl(c, a.sons[j], symKind)
+  of nkVarSection: semTemplSomeDecl(c, n, skVar)
+  of nkLetSection: semTemplSomeDecl(c, n, skLet)
   of nkConstSection:
     for i in countup(0, sonsLen(n) - 1): 
       var a = n.sons[i]
@@ -424,8 +434,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addInterfaceOverloadableSymAt(c, s, curScope)
   else:
     SymTabReplace(c.tab.stack[curScope], proto, s)
-    # XXX this seems wrong: We need to check for proto before and overwrite
-    # proto.ast ...
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
 

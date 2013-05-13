@@ -570,6 +570,10 @@ proc addForVarDecl(c: PContext, v: PSym) =
       Message(v.info, warnShadowIdent, v.name.s)
   addDecl(c, v)
 
+proc symForVar(c: PContext, n: PNode): PSym =
+  let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
+  result = newSymG(skForVar, m, c)
+
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
@@ -578,7 +582,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3: 
     if length == 3:
-      var v = newSymG(skForVar, n.sons[0], c)
+      var v = symForVar(c, n.sons[0])
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       # BUGFIX: don't use `iter` here as that would strip away
       # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
@@ -591,8 +595,8 @@ proc semForVars(c: PContext, n: PNode): PNode =
   elif length-2 != sonsLen(iter):
     LocalError(n.info, errWrongNumberOfVariables)
   else:
-    for i in countup(0, length - 3): 
-      var v = newSymG(skForVar, n.sons[i], c)
+    for i in countup(0, length - 3):
+      var v = symForVar(c, n.sons[i])
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)

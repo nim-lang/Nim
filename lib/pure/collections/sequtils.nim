@@ -132,8 +132,7 @@ template filterIt*(seq1, pred: expr): expr {.immediate.} =
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
   ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
   var result {.gensym.}: type(seq1) = @[]
-  for internalit in items(seq1):
-    let it {.inject.} = internalit
+  for it {.inject.} in items(seq1):
     if pred: result.add(it)
   result
 

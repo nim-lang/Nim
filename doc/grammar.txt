@@ -75,7 +75,7 @@ inlTupleDecl = 'tuple'
     [' optInd  (identColonEquals (comma/semicolon)?)*  optPar ']'
 extTupleDecl = 'tuple'
     COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
-paramList = '(' identColonEquals ^* (comma/semicolon) ')'
+paramList = '(' declColonEquals ^* (comma/semicolon) ')'
 paramListArrow = paramList? ('->' optInd typeDesc)?
 paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
@@ -132,7 +132,7 @@ tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
            (IND{=}? 'except' exprList colcom stmt)*
            (IND{=}? 'finally' colcom stmt)?
 exceptBlock = 'except' colcom stmt
-forStmt = 'for' symbol (comma symbol)* 'in' expr colcom stmt
+forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
 staticStmt = 'static' colcom stmt
 asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
