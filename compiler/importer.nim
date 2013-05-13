@@ -48,7 +48,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
-  var check = StrTableGet(c.tab.stack[importTablePos], s.name)
+  var check = StrTableGet(c.importTable.symbols, s.name)
   if check != nil and check.id != s.id:
     if s.kind notin OverloadableSyms:
       # s and check need to be qualified:
@@ -56,7 +56,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
       Incl(c.AmbiguousSymbols, check.id)
   # thanks to 'export' feature, it could be we import the same symbol from
   # multiple sources, so we need to call 'StrTableAdd' here:
-  StrTableAdd(c.tab.stack[importTablePos], s)
+  StrTableAdd(c.importTable.symbols, s)
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
@@ -68,12 +68,12 @@ proc rawImportSymbol(c: PContext, s: PSym) =
           # have been put into the symbol table
           # BUGFIX: but only iff they are the same symbols!
         var it: TIdentIter 
-        check = InitIdentIter(it, c.tab.stack[importTablePos], e.name)
+        check = InitIdentIter(it, c.importTable.symbols, e.name)
         while check != nil:
           if check.id == e.id:
             e = nil
             break
-          check = NextIdentIter(it, c.tab.stack[importTablePos])
+          check = NextIdentIter(it, c.importTable.symbols)
         if e != nil:
           rawImportSymbol(c, e)
   else:

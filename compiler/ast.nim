@@ -13,10 +13,6 @@ import
   msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists, 
   intsets, idgen
 
-const
-  ImportTablePos* = 0         # imported symbols are at level 0
-  ModuleTablePos* = 1         # module's top level symbols are at level 1
-
 type 
   TCallingConvention* = enum 
     ccDefault,                # proc has no explicit calling convention
@@ -283,6 +279,9 @@ const
     # in user messages.
       
   sfHoist* = sfVolatile ## proc return value can be hoisted
+
+  sfNoForward* = sfRegister
+    # forward declarations are not required (per module)
 
 const
   # getting ready for the future expr/stmt merge
@@ -608,7 +607,14 @@ type
                               # simple ref count here
   
   PInstantiation* = ref TInstantiation
-      
+ 
+  TScope* = object
+    depthLevel*: int
+    symbols*: TStrTable
+    parent*: PScope
+
+  PScope* = ref TScope
+
   PLib* = ref TLib
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
@@ -617,12 +623,14 @@ type
       typeInstCache*: seq[PType]
     of routineKinds:
       procInstCache*: seq[PInstantiation]
+      scope*: PScope          # the scope where the proc was defined
     of skModule:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count
       # of all previously used generics.
       usedGenerics*: seq[PInstantiation]
+      tab*: TStrTable         # interface table for modules
     else: nil
 
     magic*: TMagic
@@ -631,7 +639,6 @@ type
     info*: TLineInfo
     owner*: PSym
     flags*: TSymFlags
-    tab*: TStrTable           # interface table for modules
     ast*: PNode               # syntax tree of proc, iterator, etc.:
                               # the whole proc including header; this is used
                               # for easy generation of proper error messages
@@ -1053,7 +1060,8 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
     when debugIds: RegisterId(result)
   result.flags = s.flags
   result.magic = s.magic
-  copyStrTable(result.tab, s.tab)
+  if s.kind == skModule:
+    copyStrTable(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1079,6 +1087,9 @@ proc NewSym(symKind: TSymKind, Name: PIdent, owner: PSym,
 proc initStrTable(x: var TStrTable) = 
   x.counter = 0
   newSeq(x.data, startSize)
+
+proc newStrTable*: TStrTable =
+  initStrTable(result)
 
 proc initTable(x: var TTable) = 
   x.counter = 0

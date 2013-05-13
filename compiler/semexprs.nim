@@ -328,9 +328,9 @@ proc semOpAux(c: PContext, n: PNode) =
 proc overloadedCallOpr(c: PContext, n: PNode): PNode = 
   # quick check if there is *any* () operator overloaded:
   var par = getIdent("()")
-  if SymtabGet(c.Tab, par) == nil: 
+  if searchInScopes(c, par) == nil:
     result = nil
-  else: 
+  else:
     result = newNodeI(nkCall, n.info)
     addSon(result, newIdentNode(par, n.info))
     for i in countup(0, sonsLen(n) - 1): addSon(result, n.sons[i])
@@ -937,7 +937,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       addSon(result, copyTree(n[0]))
     else:
       var i = considerAcc(n.sons[1])
-      var f = SymTabGet(c.tab, i)
+      var f = searchInScopes(c, i)
       # if f != nil and f.kind == skStub: loadStub(f)
       # ``loadStub`` is not correct here as we don't care for ``f`` really
       if f != nil: 
@@ -1139,7 +1139,7 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     LocalError(n.info, errXNotAllowedHere, "\'return\'")
 
 proc semProcBody(c: PContext, n: PNode): PNode =
-  openScope(c.tab)
+  openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
@@ -1163,7 +1163,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       result = semAsgn(c, a)
   else:
     discardCheck(result)
-  closeScope(c.tab)
+  closeScope(c)
 
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst})
@@ -1205,9 +1205,9 @@ proc SemYield(c: PContext, n: PNode): PNode =
 
 proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
   if onlyCurrentScope: 
-    result = SymtabLocalGet(c.tab, i)
+    result = localSearchInScope(c, i)
   else: 
-    result = SymtabGet(c.Tab, i) # no need for stub loading
+    result = searchInScopes(c, i) # no need for stub loading
 
 proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 
   case n.kind
@@ -1222,7 +1222,7 @@ proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if (n.sons[1].kind == nkIdent): 
         var ident = n.sons[1].ident
         if m == c.module: 
-          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
+          result = StrTableGet(c.topLevelScope.symbols, ident)
         else: 
           result = StrTableGet(m.tab, ident)
       else: 
@@ -1374,8 +1374,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   msgs.gErrorMax = high(int)
   
   # open a scope for temporary symbol inclusions:
-  let oldTos = c.tab.tos
-  openScope(c.tab)
+  let oldScope = c.currentScope
+  openScope(c)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
   let oldContextLen = msgs.getInfoContextLen()
@@ -1398,7 +1398,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setlen(gOwners, oldOwnerLen)
-  while c.tab.tos > oldTos: rawCloseScope(c.tab)
+  c.currentScope = oldScope
   dec c.InCompilesContext
   dec msgs.gSilence
   msgs.gErrorCounter = oldErrorCount
@@ -1641,7 +1641,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
   result = n
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
-  openScope(c.tab)            # BUGFIX: label is in the scope of block!
+  openScope(c) # BUGFIX: label is in the scope of block!
   if n.sons[0].kind != nkEmpty:
     var labl = newSymG(skLabel, n.sons[0], c)
     if sfGenSym notin labl.flags:
@@ -1652,7 +1652,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
   n.typ = n.sons[1].typ
   if isEmptyType(n.typ): n.kind = nkBlockStmt
   else: n.kind = nkBlockExpr
-  closeScope(c.tab)
+  closeScope(c)
   Dec(c.p.nestedBlockCounter)
 
 proc buildCall(n: PNode): PNode =
@@ -1671,11 +1671,17 @@ proc buildCall(n: PNode): PNode =
   else:
     result = n
 
+proc doBlockIsStmtList(n: PNode): bool =
+  result = n.kind == nkDo and
+           n[paramsPos].sonsLen == 1 and
+           n[paramsPos][0].kind == nkEmpty
+
 proc fixImmediateParams(n: PNode): PNode =
   # XXX: Temporary work-around until we carry out
   # the planned overload resolution reforms
   for i in 1 .. <safeLen(n):
-    if n[i].kind == nkDo: n.sons[i] = n[i][bodyPos]
+    if doBlockIsStmtList(n[i]):
+      n.sons[i] = n[i][bodyPos]
   result = n
 
 proc semExport(c: PContext, n: PNode): PNode =

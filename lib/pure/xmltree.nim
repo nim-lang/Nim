@@ -78,7 +78,7 @@ proc innerText*(n: PXmlNode): string =
   result = ""
   assert n.k == xnElement
   for i in 0 .. n.s.len-1:
-    if n.s[i].k in {xnText, xnEntity}: result.add(n.fText)
+    if n.s[i].k in {xnText, xnEntity}: result.add(n.s[i].fText)
 
 proc tag*(n: PXmlNode): string {.inline.} = 
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.

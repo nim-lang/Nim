@@ -13,6 +13,8 @@ import
   intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread, 
   renderer, wordrecg, idgen
 
+proc ensureNoMissingOrUnusedSymbols(scope: PScope)
+
 proc considerAcc*(n: PNode): PIdent = 
   case n.kind
   of nkIdent: result = n.ident
@@ -33,6 +35,49 @@ proc considerAcc*(n: PNode): PIdent =
   else:
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
  
+template addSym*(scope: PScope, s: PSym) =
+  StrTableAdd(scope.symbols, s)
+
+proc addUniqueSym*(scope: PScope, s: PSym): TResult =
+  if StrTableIncl(scope.symbols, s):
+    result = Failure
+  else:
+    result = Success
+
+proc openScope*(c: PContext): PScope {.discardable.} =
+  result = PScope(parent: c.currentScope,
+                  symbols: newStrTable(),
+                  depthLevel: c.scopeDepth + 1)
+  c.currentScope = result
+
+proc rawCloseScope*(c: PContext) =
+  c.currentScope = c.currentScope.parent
+
+proc closeScope*(c: PContext) =
+  ensureNoMissingOrUnusedSymbols(c.currentScope)
+  rawCloseScope(c)
+
+iterator walkScopes*(scope: PScope): PScope =
+  var current = scope
+  while current != nil:
+    yield current
+    current = current.parent
+
+proc localSearchInScope*(c: PContext, s: PIdent): PSym =
+  result = StrTableGet(c.currentScope.symbols, s)
+
+proc searchInScopes*(c: PContext, s: PIdent): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil: return
+  result = nil
+
+proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
+  for scope in walkScopes(c.currentScope):
+    result = StrTableGet(scope.symbols, s)
+    if result != nil and result.kind in filter: return
+  result = nil
+
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
@@ -46,31 +91,29 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  SymTabAddAt(c.tab, result, ast.ImportTablePos)
+  c.importTable.addSym(result)
 
 type 
   TOverloadIterMode* = enum 
     oimDone, oimNoQualifier, oimSelfModule, oimOtherModule, oimSymChoice,
     oimSymChoiceLocalLookup
   TOverloadIter*{.final.} = object 
-    stackPtr*: int
     it*: TIdentIter
     m*: PSym
     mode*: TOverloadIterMode
+    symChoiceIndex*: int
+    scope*: PScope
     inSymChoice: TIntSet
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
   of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
   else: result = s.name.s
-  
-proc CloseScope*(tab: var TSymTab) = 
+
+proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   # check if all symbols have been used and defined:
-  if tab.tos > len(tab.stack): 
-    InternalError("CloseScope")
-    return
   var it: TTabIter
-  var s = InitTabIter(it, tab.stack[tab.tos-1])
+  var s = InitTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
     if sfForward in s.flags:
@@ -83,25 +126,21 @@ proc CloseScope*(tab: var TSymTab) =
       # BUGFIX: check options in s!
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
-    s = NextIter(it, tab.stack[tab.tos-1])
-  astalgo.rawCloseScope(tab)
-
+    s = NextIter(it, scope.symbols)
+  
 proc WrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)
-
-proc AddSym*(t: var TStrTable, n: PSym) = 
-  if StrTableIncl(t, n): WrongRedefinition(n.info, n.name.s)
   
-proc addDecl*(c: PContext, sym: PSym) = 
-  if SymTabAddUnique(c.tab, sym) == Failure: 
+proc addDecl*(c: PContext, sym: PSym) =
+  if c.currentScope.addUniqueSym(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard SymTabAddUnique(c.tab, sym)
+  discard c.currentScope.addUniqueSym(sym)
 
-proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
-  if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
+proc addDeclAt*(scope: PScope, sym: PSym) =
+  if scope.addUniqueSym(sym) == Failure:
     WrongRedefinition(sym.info, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
@@ -110,35 +149,35 @@ proc AddInterfaceDeclAux(c: PContext, sym: PSym) =
     if c.module != nil: StrTableAdd(c.module.tab, sym)
     else: InternalError(sym.info, "AddInterfaceDeclAux")
 
-proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) = 
-  addDeclAt(c, sym, at)
+proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
+  addDeclAt(scope, sym)
   AddInterfaceDeclAux(c, sym)
-  
-proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) = 
+
+proc addOverloadableSymAt*(scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms: 
     InternalError(fn.info, "addOverloadableSymAt")
     return
-  var check = StrTableGet(c.tab.stack[at], fn.name)
+  var check = StrTableGet(scope.symbols, fn.name)
   if check != nil and check.Kind notin OverloadableSyms: 
     WrongRedefinition(fn.info, fn.Name.s)
   else:
-    SymTabAddAt(c.tab, fn, at)
+    scope.addSym(fn)
   
 proc addInterfaceDecl*(c: PContext, sym: PSym) = 
   # it adds the symbol to the interface if appropriate
   addDecl(c, sym)
   AddInterfaceDeclAux(c, sym)
 
-proc addInterfaceOverloadableSymAt*(c: PContext, sym: PSym, at: int) = 
+proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   # it adds the symbol to the interface if appropriate
-  addOverloadableSymAt(c, sym, at)
+  addOverloadableSymAt(scope, sym)
   AddInterfaceDeclAux(c, sym)
 
 proc lookUp*(c: PContext, n: PNode): PSym = 
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
   of nkIdent:
-    result = SymtabGet(c.Tab, n.ident)
+    result = searchInScopes(c, n.ident)
     if result == nil: 
       LocalError(n.info, errUndeclaredIdentifier, n.ident.s)
       result = errorSym(c, n)
@@ -146,7 +185,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = n.sym
   of nkAccQuoted:
     var ident = considerAcc(n)
-    result = SymtabGet(c.Tab, ident)
+    result = searchInScopes(c, ident)
     if result == nil:
       LocalError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
@@ -165,7 +204,7 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerAcc(n)
-    result = SymtabGet(c.Tab, ident)
+    result = searchInScopes(c, ident)
     if result == nil and checkUndeclared in flags: 
       LocalError(n.info, errUndeclaredIdentifier, ident.s)
       result = errorSym(c, n)
@@ -187,7 +226,7 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         ident = considerAcc(n.sons[1])
       if ident != nil: 
         if m == c.module: 
-          result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
+          result = StrTableGet(c.topLevelScope.symbols, ident)
         else: 
           result = StrTableGet(m.tab, ident)
         if result == nil and checkUndeclared in flags: 
@@ -205,12 +244,15 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerAcc(n)
-    o.stackPtr = c.tab.tos
+    o.scope = c.currentScope
     o.mode = oimNoQualifier
-    while result == nil:
-      dec(o.stackPtr)
-      if o.stackPtr < 0: break
-      result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], ident)
+    while true:
+      result = InitIdentIter(o.it, o.scope.symbols, ident)
+      if result != nil:
+        break
+      else:
+        o.scope = o.scope.parent
+        if o.scope == nil: break
   of nkSym:
     result = n.sym
     o.mode = oimDone
@@ -226,7 +268,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if ident != nil: 
         if o.m == c.module: 
           # a module may access its private members:
-          result = InitIdentIter(o.it, c.tab.stack[ModuleTablePos], ident)
+          result = InitIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
         else: 
           result = InitIdentIter(o.it, o.m.tab, ident)
@@ -237,7 +279,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
     result = n.sons[0].sym
-    o.stackPtr = 1
+    o.symChoiceIndex = 1
     o.inSymChoice = initIntSet()
     Incl(o.inSymChoice, result.id)
   else: nil
@@ -245,9 +287,9 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
-  of oimNoQualifier: result = o.stackPtr
-  of oimSelfModule:  result = ModuleTablePos
-  of oimOtherModule: result = ImportTablePos
+  of oimNoQualifier: result = o.scope.depthLevel
+  of oimSelfModule:  result = 1
+  of oimOtherModule: result = 0
   else: result = -1
   
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
@@ -255,41 +297,41 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimDone: 
     result = nil
   of oimNoQualifier: 
-    if o.stackPtr >= 0: 
-      result = nextIdentIter(o.it, c.tab.stack[o.stackPtr])
-      while result == nil: 
-        dec(o.stackPtr)
-        if o.stackPtr < 0: break 
-        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name) 
+    if o.scope != nil:
+      result = nextIdentIter(o.it, o.scope.symbols)
+      while result == nil:
+        o.scope = o.scope.parent
+        if o.scope == nil: break
+        result = InitIdentIter(o.it, o.scope.symbols, o.it.name)
         # BUGFIX: o.it.name <-> n.ident
     else: 
       result = nil
   of oimSelfModule: 
-    result = nextIdentIter(o.it, c.tab.stack[ModuleTablePos])
+    result = nextIdentIter(o.it, c.topLevelScope.symbols)
   of oimOtherModule: 
     result = nextIdentIter(o.it, o.m.tab)
   of oimSymChoice: 
-    if o.stackPtr < sonsLen(n): 
-      result = n.sons[o.stackPtr].sym
+    if o.symChoiceIndex < sonsLen(n):
+      result = n.sons[o.symChoiceIndex].sym
       Incl(o.inSymChoice, result.id)
-      inc(o.stackPtr)
+      inc o.symChoiceIndex
     elif n.kind == nkOpenSymChoice:
       # try 'local' symbols too for Koenig's lookup:
       o.mode = oimSymChoiceLocalLookup
-      o.stackPtr = c.tab.tos-1
-      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+      o.scope = c.currentScope
+      result = FirstIdentExcluding(o.it, o.scope.symbols,
                                    n.sons[0].sym.name, o.inSymChoice)
       while result == nil:
-        dec(o.stackPtr)
-        if o.stackPtr < 0: break 
-        result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+        o.scope = o.scope.parent
+        if o.scope == nil: break
+        result = FirstIdentExcluding(o.it, o.scope.symbols,
                                      n.sons[0].sym.name, o.inSymChoice)
   of oimSymChoiceLocalLookup:
-    result = nextIdentExcluding(o.it, c.tab.stack[o.stackPtr], o.inSymChoice)
+    result = nextIdentExcluding(o.it, o.scope.symbols, o.inSymChoice)
     while result == nil:
-      dec(o.stackPtr)
-      if o.stackPtr < 0: break 
-      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+      o.scope = o.scope.parent
+      if o.scope == nil: break
+      result = FirstIdentExcluding(o.it, o.scope.symbols,
                                    n.sons[0].sym.name, o.inSymChoice)
   
   if result != nil and result.kind == skStub: loadStub(result)

@@ -72,37 +72,6 @@ type
 proc InitIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym
 proc NextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
 
-# -------------- symbol table ----------------------------------------------
-# Each TParser object (which represents a module being compiled) has its own
-# symbol table. A symbol table is organized as a stack of str tables. The
-# stack represents the different scopes.
-# Stack pointer:
-# 0                imported symbols from other modules
-# 1                module level
-# 2                proc level
-# 3                nested statements
-# ...
-#
-type 
-  TSymTab*{.final.} = object 
-    tos*: Natural             # top of stack
-    stack*: seq[TStrTable]
-
-
-proc InitSymTab*(tab: var TSymTab)
-proc DeinitSymTab*(tab: var TSymTab)
-proc SymTabGet*(tab: TSymTab, s: PIdent): PSym
-proc SymTabGet*(tab: TSymTab, s: PIdent, filter: TSymKinds): PSym
-proc SymTabLocalGet*(tab: TSymTab, s: PIdent): PSym
-proc SymTabAdd*(tab: var TSymTab, e: PSym)
-proc SymTabAddAt*(tab: var TSymTab, e: PSym, at: Natural)
-proc SymTabAddUnique*(tab: var TSymTab, e: PSym): TResult
-proc SymTabAddUniqueAt*(tab: var TSymTab, e: PSym, at: Natural): TResult
-proc OpenScope*(tab: var TSymTab)
-proc RawCloseScope*(tab: var TSymTab)
-  # the real "closeScope" adds some
-  # checks in parsobj
-
 # these are for debugging only: They are not really deprecated, but I want
 # the warning so that release versions do not contain debugging statements:
 proc debug*(n: PSym) {.deprecated.}
@@ -708,62 +677,13 @@ proc NextIter(ti: var TTabIter, tab: TStrTable): PSym =
     result = tab.data[ti.h]
     Inc(ti.h)                 # ... and increment by one always
     if result != nil: break 
-  
-proc InitSymTab(tab: var TSymTab) = 
-  tab.tos = 0
-  tab.stack = EmptySeq
 
-proc DeinitSymTab(tab: var TSymTab) = 
-  tab.stack = nil
-
-proc SymTabLocalGet(tab: TSymTab, s: PIdent): PSym = 
-  result = StrTableGet(tab.stack[tab.tos - 1], s)
-
-proc SymTabGet(tab: TSymTab, s: PIdent): PSym = 
-  for i in countdown(tab.tos - 1, 0): 
-    result = StrTableGet(tab.stack[i], s)
-    if result != nil: return 
-  result = nil
-
-proc SymTabGet*(tab: TSymTab, s: PIdent, filter: TSymKinds): PSym =
-  for i in countdown(tab.tos - 1, 0): 
-    result = StrTableGet(tab.stack[i], s)
-    if result != nil and result.kind in filter: return
-  result = nil
-
-proc SymTabAddAt(tab: var TSymTab, e: PSym, at: Natural) = 
-  StrTableAdd(tab.stack[at], e)
-
-proc SymTabAdd(tab: var TSymTab, e: PSym) = 
-  StrTableAdd(tab.stack[tab.tos - 1], e)
-
-proc SymTabAddUniqueAt(tab: var TSymTab, e: PSym, at: Natural): TResult = 
-  if StrTableIncl(tab.stack[at], e): 
-    result = Failure
-  else: 
-    result = Success
-
-proc SymTabAddUnique(tab: var TSymTab, e: PSym): TResult = 
-  result = SymTabAddUniqueAt(tab, e, tab.tos - 1)
-
-proc OpenScope(tab: var TSymTab) = 
-  if tab.tos >= len(tab.stack): setlen(tab.stack, tab.tos + 1)
-  initStrTable(tab.stack[tab.tos])
-  Inc(tab.tos)
-
-proc RawCloseScope(tab: var TSymTab) = 
-  Dec(tab.tos)
-  
 iterator items*(tab: TStrTable): PSym = 
   var it: TTabIter
   var s = InitTabIter(it, tab)
   while s != nil: 
     yield s
     s = NextIter(it, tab)
-
-iterator items*(tab: TSymTab): PSym = 
-  for i in countdown(tab.tos-1, 0): 
-    for it in items(tab.stack[i]): yield it
 
 proc hasEmptySlot(data: TIdPairSeq): bool = 
   for h in countup(0, high(data)): 

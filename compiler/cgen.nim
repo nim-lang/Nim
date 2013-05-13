@@ -842,8 +842,10 @@ proc requestConstImpl(p: BProc, sym: PSym) =
     if sfExportc in sym.flags and generatedHeader != nil:
       app(generatedHeader.s[cfsData], headerDecl)
 
+proc isActivated(prc: PSym): bool = prc.typ != nil
+
 proc genProc(m: BModule, prc: PSym) = 
-  if sfBorrow in prc.flags: return 
+  if sfBorrow in prc.flags or not isActivated(prc): return
   fillProcLoc(prc)
   if {sfForward, sfFromGeneric} * prc.flags != {}: addForwardedProc(m, prc)
   else: 

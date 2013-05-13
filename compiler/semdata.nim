@@ -44,10 +44,13 @@ type
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
     efAllowDestructor
   TExprFlags* = set[TExprFlag]
-    
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
+    currentScope*: PScope      # current scope
+    importTable*: PScope       # scope for all imported symbols
+    topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     friendModule*: PSym        # current friend module; may access private data;
                                # this is used so that generic instantiations
@@ -55,7 +58,6 @@ type
     InstCounter*: int          # to prevent endless instantiations
    
     threadEntries*: TSymSeq    # list of thread entries to check
-    tab*: TSymTab              # each module has its own symbol table
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     InGenericContext*: int     # > 0 if we are in a generic type
@@ -82,8 +84,7 @@ type
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack
-    
-
+   
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
   result.inst = inst
@@ -102,6 +103,10 @@ proc makePtrType*(c: PContext, baseType: PType): PType
 proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
+
+proc scopeDepth*(c: PContext): int {.inline.} =
+  result = if c.currentScope != nil: c.currentScope.depthLevel
+           else: 0
 
 # owner handling:
 proc getCurrOwner*(): PSym
@@ -151,7 +156,6 @@ proc newOptionEntry(): POptionEntry =
 
 proc newContext(module: PSym): PContext =
   new(result)
-  InitSymTab(result.tab)
   result.AmbiguousSymbols = initIntset()
   initLinkedList(result.optionStack)
   initLinkedList(result.libs)

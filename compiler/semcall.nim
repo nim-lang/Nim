@@ -32,6 +32,8 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
   
+proc determineType(c: PContext, s: PSym)
+
 proc resolveOverloads(c: PContext, n, orig: PNode, 
                       filter: TSymKinds): TCandidate =
   var initialBinding: PNode
@@ -58,6 +60,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   while sym != nil:
     if sym.kind in filter:
+      determineType(c, sym)
       initCandidate(z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
       matches(c, n, orig, z)
@@ -198,7 +201,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
-proc SearchForBorrowProc(c: PContext, fn: PSym, tos: int): PSym =
+proc SearchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # Searchs for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
