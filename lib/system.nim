@@ -194,7 +194,8 @@ when not defined(JS) and not defined(NimrodVM):
       data: array[0..100_000_000, char]
     NimString = ptr NimStringDesc
     
-  template space(s: PGenericSeq): int = s.reserved and not seqShallowFlag
+  template space(s: PGenericSeq): int {.dirty.} =
+    s.reserved and not seqShallowFlag
 
   include "system/hti"
 

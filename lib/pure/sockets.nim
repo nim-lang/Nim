@@ -1028,7 +1028,7 @@ proc readIntoBuf(socket: TSocket, flags: int32): int =
   socket.bufLen = result
   socket.currPos = 0
 
-template retRead(flags, readBytes: int) =
+template retRead(flags, readBytes: int) {.dirty.} =
   let res = socket.readIntoBuf(flags.int32)
   if res <= 0:
     if readBytes > 0:
