@@ -14,7 +14,7 @@ discard """
   
     template `||` (a, b: expr): expr =
       let aa = a
-      (if aa: aa else: b)
+      if aa: aa else: b
     
     var
       a, b: T
@@ -156,6 +156,37 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   else:
     n = semTemplBody(c, n)
 
+proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode = 
+  incl(s.flags, sfUsed)
+  case s.kind
+  of skUnknown: 
+    # Introduced in this pass! Leave it as an identifier.
+    result = n
+  of skProc, skMethod, skIterator, skConverter, skTemplate, skMacro:
+    result = symChoice(c, n, s, scOpen)
+  of skGenericParam: 
+    result = newSymNodeTypeDesc(s, n.info)
+  of skParam: 
+    result = n
+  of skType: 
+    if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
+      result = newSymNodeTypeDesc(s, n.info)
+    else: 
+      result = n
+  else: result = newSymNode(s, n.info)
+
+proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
+  result = n
+  if n.kind == nkIdent:
+    let s = QualifiedLookUp(c.c, n, {})
+    if s != nil:
+      if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
+        incl(s.flags, sfUsed)
+        result = newSymNode(s, n.info)
+  else:
+    for i in countup(0, safeLen(n) - 1):
+      result.sons[i] = semRoutineInTemplName(c, n.sons[i])
+
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
   checkSonsLen(n, bodyPos + 1)
@@ -170,14 +201,14 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
     else:
       n.sons[namePos] = ident
   else:
-    n.sons[namePos] = semTemplBody(c, n.sons[namePos])
+    n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
   openScope(c)
   for i in patternPos..bodyPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind) =
-  for i in countup(ord(symkind == skConditional), sonsLen(n) - 1):
+  for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
@@ -200,11 +231,15 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
       elif Contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
+      elif Contains(c.toMixin, s.name.id):
+        result = symChoice(c.c, n, s, scForceOpen)
       elif s.owner == c.owner and sfGenSym in s.flags:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
+      else:
+        result = semTemplSymbol(c.c, n, s)
   of nkBind:
     result = semTemplBody(c, n.sons[0])
   of nkBindStmt:
@@ -310,6 +345,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semRoutineInTemplBody(c, n, skMacro)
   of nkConverterDef:
     result = semRoutineInTemplBody(c, n, skConverter)
+  of nkPragmaExpr:
+    result.sons[0] = semTemplBody(c, n.sons[0])
+  of nkPragma:
+    discard
   else:
     # dotExpr is ambiguous: note that we explicitely allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
@@ -318,6 +357,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if s != nil:
         if Contains(c.toBind, s.id):
           return symChoice(c.c, n, s, scClosed)
+        elif Contains(c.toMixin, s.name.id):
+          return symChoice(c.c, n, s, scForceOpen)
     result = n
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBody(c, n.sons[i])
