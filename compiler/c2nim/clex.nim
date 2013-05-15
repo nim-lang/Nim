@@ -410,7 +410,7 @@ proc getString(L: var TLexer, tok: var TToken) =
     of LF: 
       pos = nimlexbase.HandleLF(L, pos)
       buf = L.buf
-    of lexbase.EndOfFile: 
+    of nimlexbase.EndOfFile: 
       var line2 = L.linenumber
       L.LineNumber = line
       lexMessagePos(L, errClosingQuoteExpected, L.lineStart)
