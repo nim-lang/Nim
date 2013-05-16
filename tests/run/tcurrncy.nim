@@ -10,7 +10,7 @@ template Additive(typ: typeDesc): stmt =
   proc `+` *(x: typ): typ {.borrow.}
   proc `-` *(x: typ): typ {.borrow.}
 
-template Multiplicative(typ, base: typeDesc): stmt =
+template Multiplicative(typ, base: typeDesc): stmt {.immediate.} =
   proc `*` *(x: typ, y: base): typ {.borrow.}
   proc `*` *(x: base, y: typ): typ {.borrow.}
   proc `div` *(x: typ, y: base): typ {.borrow.}
