@@ -40,15 +40,15 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
-  if result.typ != nil:
+  if isEmptyType(result.typ):
+    LocalError(n.info, errExprXHasNoType, 
+               renderTree(result, {renderNoComments}))
+    result.typ = errorType(c)
+  else:
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
     semDestructorCheck(c, result, flags)
-  else:
-    LocalError(n.info, errExprXHasNoType, 
-               renderTree(result, {renderNoComments}))
-    result.typ = errorType(c)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
@@ -233,7 +233,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   if sonsLen(n) != 2: 
     LocalError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else: 
-    n.sons[1] = semExprWithType(c, n.sons[1])
+    n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     var typ = skipTypes(n.sons[1].typ, abstractVarRange)
     case typ.Kind
     of tySequence, tyString, tyOpenArray, tyVarargs: 
@@ -250,7 +250,7 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     LocalError(n.info, errXExpectsTypeOrValue, "sizeof")
   else:
-    n.sons[1] = semExprWithType(c, n.sons[1])
+    n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     #restoreOldStyleType(n.sons[1])
   n.typ = getSysType(tyInt)
   result = n
@@ -258,7 +258,7 @@ proc semSizeof(c: PContext, n: PNode): PNode =
 proc semOf(c: PContext, n: PNode): PNode = 
   if sonsLen(n) == 3: 
     n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[2] = semExprWithType(c, n.sons[2])
+    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
     #restoreOldStyleType(n.sons[1])
     #restoreOldStyleType(n.sons[2])
     let a = skipTypes(n.sons[1].typ, abstractPtrs)
@@ -297,7 +297,7 @@ proc semIs(c: PContext, n: PNode): PNode =
   result = n
   n.typ = getSysType(tyBool)
   
-  n.sons[1] = semExprWithType(c, n[1])
+  n.sons[1] = semExprWithType(c, n[1], {efDetermineType})
   if n[1].typ.kind != tyTypeDesc:
     LocalError(n[0].info, errTypeExpected)
 
@@ -856,7 +856,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if s != nil:
     return semSym(c, n, s, flags)
 
-  n.sons[0] = semExprWithType(c, n.sons[0], flags)
+  n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
   var i = considerAcc(n.sons[1])
   var ty = n.sons[0].typ
@@ -1064,14 +1064,14 @@ proc semAsgn(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2)
   var a = n.sons[0]
   case a.kind
-  of nkDotExpr: 
+  of nkDotExpr:
     # r.f = x
     # --> `f=` (r, x)
     let nOrig = n.copyTree
     a = builtinFieldAccess(c, a, {efLValue})
-    if a == nil: 
+    if a == nil:
       return propertyWriteAccess(c, n, nOrig, n[0])
-  of nkBracketExpr: 
+  of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
     a = semSubscript(c, a, {efLValue})
@@ -1091,9 +1091,9 @@ proc semAsgn(c: PContext, n: PNode): PNode =
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
   if skipTypes(le, {tyGenericInst}).kind != tyVar and 
-      IsAssignable(c, a) == arNone: 
+      IsAssignable(c, a) == arNone:
     # Direct assignment to a discriminant is allowed!
-    localError(a.info, errXCannotBeAssignedTo, 
+    localError(a.info, errXCannotBeAssignedTo,
                renderTree(a, {renderNoComments}))
   else:
     let
