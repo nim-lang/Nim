@@ -89,6 +89,8 @@ proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
     if instantiateDestructor(c, n.typ):
       LocalError(n.info, errGenerated,
         "usage of a type with a destructor in a non destructible context")
+  if efDetermineType notin flags and n.typ.kind == tyTypeDesc:
+    localError(n.info, errGenerated, "value expected, but got a type")
 
 proc newDeref(n: PNode): PNode {.inline.} =  
   result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
