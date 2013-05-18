@@ -98,13 +98,43 @@ html, body {
         line-height:17px;
       }
       
+      #page span.pre {
+        background-color: #E6EDF2;
+        padding: 1pt 3pt;
+        border-radius: 2pt;
+        -moz-border-radius: 2pt;
+        -webkit-border-radius: 2pt;
+      }
+      
       #page pre > .Comment { color:#858686; font-style:italic; }
       #page pre > .Keyword { color:#1cb4ec; font-weight:bold; }
       #page pre > .Operator { color:#777; }
       #page pre > .StringLit, #page pre > .DecNumber { color:#ff7302; }
       
       #page li { margin-top:10px; }
+      
+      #page a:hover { text-decoration: underline; }
     
+      #page table.docutils {
+        background: none repeat scroll 0 0 #F3F6F8;
+        border-collapse: collapse;
+        font-size: 8pt;
+        text-align: left;
+        width: 480px;
+        border-spacing: 0;
+      }
+      
+      #page .docutils th {
+        border-bottom: 2px solid #1a1a1a;
+        font-size: 14px;
+        font-weight: normal;
+        padding: 8px 8px;
+      }
+      
+      #page .docutils td {
+        padding: 3px 8px;
+        color: #4d4d4d;
+      }
     
     #sidebar_wrap { float:right; width:260px; }
       #sidebar {
