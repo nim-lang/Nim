@@ -163,7 +163,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ~", ")
   
-  template genCallPattern =
+  template genCallPattern {.dirty.} =
     lineF(p, cpsStmts, CallPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
   let rawProc = getRawProcType(p, typ)
