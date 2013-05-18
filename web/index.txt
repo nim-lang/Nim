@@ -2,21 +2,15 @@
 Home
 ====
 
-  The most important thing in the programming language is the name. A language
-  will not succeed without a good name. I have recently invented a very good
-  name and now I am looking for a suitable language.
-  -- D. E. Knuth
-
-
-**Nimrod combines Lisp's power with Python's readability and C's performance.**
-
 Welcome to Nimrod
 -----------------
 
 **Nimrod** is a statically typed, imperative programming language that tries to
 give the programmer ultimate power without compromises on runtime efficiency. 
 This means it focuses on compile-time mechanisms in all their
-various forms. Beneath a nice infix/indentation based syntax with a 
+various forms.
+
+Beneath a nice infix/indentation based syntax with a 
 powerful (AST based, hygienic) macro system lies a semantic model that supports 
 a soft realtime GC on thread local heaps. Asynchronous message passing is used 
 between threads, so no "stop the world" mechanism is necessary. An unsafe 
@@ -24,16 +18,20 @@ shared memory heap is also provided for the increased efficiency that results
 from that model.
 
 
-.. container:: snippet
-  *Nimrod looks like this:*
-  
-  .. code-block:: nimrod
-    import strutils
-    
-    # Prints the maximum integer from a list of integers
-    # delimited by whitespace read from stdin.
-    let tokens = stdin.readLine.split
-    echo tokens.map(parseInt).max, " is the maximum."
+Nimrod looks like this:
+=======================
+
+.. code-block:: nimrod
+  # compute average line length
+  var count = 0
+  var sum = 0
+   
+  for line in stdin.lines:
+  count += 1
+  sum += line.len
+   
+  echo "Average line length: ",
+  if count > 0: sum / count else: 0
 
 
 Nimrod is efficient

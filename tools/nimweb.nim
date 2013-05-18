@@ -8,16 +8,17 @@
 #
 
 import
-  os, strutils, times, parseopt, parsecfg, streams, strtabs
+  os, strutils, times, parseopt, parsecfg, streams, strtabs, tables
 
 type
-  TKeyValPair = tuple[key, val: string]
+  TKeyValPair = tuple[key, id, val: string]
   TConfigData = object of TObject
     tabs, links: seq[TKeyValPair]
     doc, srcdoc, srcdoc2, webdoc, pdf: seq[string]
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
+    quotations: TTable[string, tuple[quote, author: string]]
 
 proc initConfigData(c: var TConfigData) =
   c.tabs = @[]
@@ -36,8 +37,9 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
+  c.quotations = initTable[string, tuple[quote, author: string]]()
 
-include "sunset.tmpl"
+include "website.tmpl"
 
 # ------------------------- configuration file -------------------------------
 
@@ -132,8 +134,10 @@ proc parseIniFile(c: var TConfigData) =
           of "authors": c.authors = v
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil
-        of "links": add(c.links, (k.key, v))
-        of "tabs": add(c.tabs, (k.key, v))
+        of "links":
+          let valID = v.split(';')
+          add(c.links, (k.key.replace('_', ' '), valID[1], valID[0]))
+        of "tabs": add(c.tabs, (k.key, "", v))
         of "ticker": c.ticker = v
         of "documentation":
           case normalize(k.key)
@@ -143,6 +147,10 @@ proc parseIniFile(c: var TConfigData) =
           of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
           of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
+        of "quotations":
+          let vSplit = v.split('-')
+          doAssert vSplit.len == 2
+          c.quotations[k.key.normalize] = (vSplit[0], vSplit[1])
         else: nil
 
       of cfgOption: quit(errorStr(p, "syntax error"))
@@ -203,13 +211,10 @@ proc main(c: var TConfigData) =
   const
     cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
   if c.ticker.len > 0:
-    Exec(cmd % [c.nimrodArgs, c.ticker])
-    var temp = "web" / changeFileExt(c.ticker, "temp")
     try:
-      c.ticker = readFile(temp)
+      c.ticker = readFile("web" / c.ticker)
     except EIO:
-      quit("[Error] cannot open: " & temp)
-    RemoveFile(temp)
+      quit("[Error] cannot open: " & c.ticker)
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
     Exec(cmd % [c.nimrodArgs, file])
@@ -221,13 +226,15 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot open: " & temp)
     var f: TFile
     var outfile = "web/upload/$#.html" % file
+    if not existsDir("web/upload"):
+      createDir("web/upload")
     if open(f, outfile, fmWrite):
       writeln(f, generateHTMLPage(c, file, content))
       close(f)
     else:
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
-
+  copyDir("web/assets", "web/upload/assets")
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDoc(c, "doc")
