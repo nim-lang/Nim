@@ -553,8 +553,7 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if ff != nil: result = typeRel(c, ff, a)
   of tyGenericInvokation:
     var x = a.skipGenericAlias
-    assert(f.sons[0].kind == tyGenericBody)
-    if x.kind == tyGenericInvokation:
+    if x.kind == tyGenericInvokation or f.sons[0].kind != tyGenericBody:
       #InternalError("typeRel: tyGenericInvokation -> tyGenericInvokation")
       # simply no match for now:
       nil
