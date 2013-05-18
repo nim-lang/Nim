@@ -2,8 +2,6 @@
 Home
 ====
 
-**Nimrod combines Lisp's power with Python's readability and C's performance.**
-
 Welcome to Nimrod
 -----------------
 
