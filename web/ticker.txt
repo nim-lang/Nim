@@ -1,16 +1,24 @@
-| `2012-09-23`:newsdate:
-| Nimrod version 0.9.0 has been released!
-  Get it `here <./download.html>`_.
+<a class="news" href="news.html#Z2012-09-23-version-0-9-0-released">
+  <h3>Sep 23, 2012</h3>
+  <p>Nimrod version 0.9.0 has been released!</p>
+</a>
 
-| `2012-02-09`:newsdate:
-| Nimrod version 0.8.14 has been released!
+<a class="news" href="news.html#Z2012-02-09-version-0-8-14-released">
+  <h3>Feb 9, 2012</h3>
+  <p>Nimrod version 0.8.14 has been released!</p>
+</a>
 
-| `2011-07-10`:newsdate:
-| Nimrod version 0.8.12 has been released!
+<a class="news" href="news.html#Z2011-07-10-version-0-8-12-released">
+  <h3>Jul 10, 2011</h3>
+  <p>Nimrod version 0.8.12 has been released!</p>
+</a>
 
-| `2010-10-20`:newsdate:
-| Nimrod version 0.8.10 has been released! 
+<a class="news" href="news.html#Z2010-10-20-version-0-8-10-released">
+  <h3>Oct 20, 2010</h3>
+  <p>Nimrod version 0.8.10 has been released!</p>
+</a>
 
-| `2010-03-14`:newsdate:
-| Nimrod version 0.8.8 has been released! 
-
+<a class="news" href="news.html#Z2010-03-14-version-0-8-8-released">
+  <h3>Mar 14, 2010</h3>
+  <p>Nimrod version 0.8.8 has been released!</p>
+</a>

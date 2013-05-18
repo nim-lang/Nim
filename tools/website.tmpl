@@ -1,0 +1,75 @@
+#! stdtmpl | standard
+#proc generateHTMLPage(c: var TConfigData, currentTab, content: string): string = 
+#  result = ""
+<!doctype html>
+<html>
+
+<head>
+  <title>$c.projectTitle</title>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" type="text/css" href="assets/style.css" />
+</head>
+
+<body>
+  <div id="site">
+    <!-- site_head -->
+    <div id="site_head">
+      <div id="logo"></div>
+    </div>
+
+    <!-- site_neck -->
+    <div id="site_neck">
+      #for i in 0.. c.tabs.len-1:
+      #  var name = c.tabs[i].key
+      #  var t = c.tabs[i].val
+        #if currentTab == t:
+          <a class="active" 
+        #else:
+          <a
+        #end if
+        href="${t}.html" title = "$c.projectName - $name">$name</a>
+      #end for
+    </div>
+
+    <!-- site_body -->
+    <div id="site_body">
+
+      <!-- sidebar_wrapper -->
+      <div id="sidebar_wrap">
+        <div id="sidebar">
+          <div id="sidebar_head"></div>
+          <h2>Latest News</h2>
+#  if len(c.ticker) > 0:
+          $c.ticker
+#  end if
+
+#  if len(c.links) > 0:
+          <h2>More Links</h2>
+#         for i in 0..c.links.len-1:
+          <a class="link" href="${c.links[i].val}" id="${c.links[i].id}">${c.links[i].key}</a>
+#         end for
+#  end if
+        </div>
+      </div>
+      <!-- page -->
+      <div id="page">
+        #if c.quotations.hasKey(currentTab):
+          <div class="quote-image"></div>
+          <p class="quote">
+            ${c.quotations[currentTab].quote}
+            <br>
+            <b style="float: right">-- ${c.quotations[currentTab].author}</b>
+          </p>
+          <br/>
+        #end if
+      
+        $content
+      </div>
+    </div>
+    <!-- site_foot -->
+    <div id="site_foot">
+       <div id="legal">Copyright &copy; 2013 - Andreas Rumpf &amp; Contributors - All rights reserved - <a href="http://reign-studios.com/philipwitte/">Design by Philip Witte</a></div>
+    </div>
+  </div>
+</body>
+</html>
