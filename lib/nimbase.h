@@ -481,6 +481,5 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD
 #endif
 
-typedef int assert_numbits[sizeof(NI) == sizeof(void*) &&
-                           NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
 #endif
