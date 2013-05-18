@@ -287,7 +287,7 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
-  of oimNoQualifier: result = o.scope.depthLevel
+  of oimNoQualifier: result = if o.scope.isNil: -1 else: o.scope.depthLevel
   of oimSelfModule:  result = 1
   of oimOtherModule: result = 0
   else: result = -1
