@@ -9,6 +9,8 @@ extern "C" {
 #  endif
 #endif
 
+#define interrupts() sei()
+
 enum
 {
 /* 8bit, color or not */
