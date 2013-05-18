@@ -85,11 +85,11 @@ proc mangleName(s: PSym): PRope =
       #
       # Even with all these inefficient checks, the bootstrap
       # time is actually improved. This is probably because so many
-      # rope concatenations and are now eliminated.
+      # rope concatenations are now eliminated.
       #
       # Future notes:
       # sfFromGeneric seems to be needed in order to avoid multiple
-      # definitions of certain varialbes generated in transf with
+      # definitions of certain variables generated in transf with
       # names such as:
       # `r`, `res`
       # I need to study where these come from.

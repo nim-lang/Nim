@@ -1078,6 +1078,11 @@ proc genModule(m: BModule, cfilenoext: string): PRope =
     app(result, genSectionEnd(i))
   app(result, m.s[cfsInitProc])
 
+proc newPreInitProc(m: BModule): BProc =
+  result = newProc(nil, m)
+  # little hack so that unique temporaries are generated:
+  result.labels = 100_000
+
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
   InitLinkedList(result.headerFiles)
@@ -1091,7 +1096,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.typeInfoMarker = initIntSet()
   result.initProc = newProc(nil, result)
   result.initProc.options = gOptions
-  result.preInitProc = newProc(nil, result)
+  result.preInitProc = newPreInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1111,7 +1116,7 @@ proc resetModule*(m: var BModule) =
   initIdTable(m.forwTypeCache)
   m.initProc = newProc(nil, m)
   m.initProc.options = gOptions
-  m.preInitProc = newProc(nil, m)
+  m.preInitProc = newPreInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]
