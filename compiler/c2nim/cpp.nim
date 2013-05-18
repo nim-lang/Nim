@@ -46,16 +46,17 @@ proc parseDefine(p: var TParser): PNode =
     eat(p, pxParLe)
     var params = newNodeP(nkFormalParams, p)
     # return type; not known yet:
-    addSon(params, ast.emptyNode)  
-    var identDefs = newNodeP(nkIdentDefs, p)
-    while p.tok.xkind != pxParRi: 
-      addSon(identDefs, skipIdent(p))
-      skipStarCom(p, nil)
-      if p.tok.xkind != pxComma: break
-      getTok(p)
-    addSon(identDefs, newIdentNodeP("expr", p))
-    addSon(identDefs, ast.emptyNode)
-    addSon(params, identDefs)
+    addSon(params, ast.emptyNode)
+    if p.tok.xkind != pxParRi:
+      var identDefs = newNodeP(nkIdentDefs, p)
+      while p.tok.xkind != pxParRi: 
+        addSon(identDefs, skipIdent(p))
+        skipStarCom(p, nil)
+        if p.tok.xkind != pxComma: break
+        getTok(p)
+      addSon(identDefs, newIdentNodeP("expr", p))
+      addSon(identDefs, ast.emptyNode)
+      addSon(params, identDefs)
     eat(p, pxParRi)
     
     addSon(result, ast.emptyNode) # no generic parameters
