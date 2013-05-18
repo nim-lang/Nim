@@ -1,6 +1,3 @@
-    There are two major products that come out of Berkeley: LSD and UNIX.
-    We don't believe this to be a coincidence. -- Jeremy S. Anderson.
-
 Here you can download the latest version of the Nimrod Compiler.
 Please choose your platform:
 * source-based installation: `<download/nimrod_0.9.0.zip>`_

@@ -1,6 +1,3 @@
-  Incorrect documentation is often worse than no documentation.
-  -- Bertrand Meyer
-
 The documentation consists of several documents:
 
 - | `Tutorial (part I) <tut1.html>`_
