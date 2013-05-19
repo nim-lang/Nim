@@ -1,5 +1,5 @@
 discard """
-  errormsg: 'type mismatch'
+  errormsg: "type mismatch"
   line: 7
 """
 

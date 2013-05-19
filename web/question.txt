@@ -50,8 +50,7 @@ memory heap.
 How is Nimrod licensed?
 -----------------------
 
-The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed
-with a special exception that allows for static linking.
+The Nimrod compiler and the library are MIT licensed.
 This means that you can use any license for your own programs developed with
 Nimrod.
 

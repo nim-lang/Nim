@@ -55,10 +55,10 @@ and you can also get help in the IRC channel
 on [Freenode](irc://irc.freenode.net/nimrod) in #nimrod.
 
 ## License
-The compiler is licensed under the GPLv2 license, the standard library is
-licensed under the LGPL license with a linking exception so that you can link
-to it statically. This means that you can use any license for your own programs 
-developed with Nimrod, allowing you to create commercial applications.
+The compiler and the standard library is licensed under the MIT license, 
+except for some modules where the documentation suggests otherwise. This means 
+that you can use any license for your own programs developed with Nimrod, 
+allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
