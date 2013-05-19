@@ -420,6 +420,9 @@ proc isListening*(s: PAsyncSocket): bool =
 proc isConnecting*(s: PAsyncSocket): bool =
   ## Determines whether ``s`` is connecting.  
   return s.info == SockConnecting
+proc isClosed*(s: PAsyncSocket): bool =
+  ## Determines whether ``s`` has been closed.
+  return s.info == SockClosed
 
 proc setHandleWrite*(s: PAsyncSocket,
     handleWrite: proc (s: PAsyncSocket) {.closure.}) =

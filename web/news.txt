@@ -19,7 +19,8 @@ Bugfixes
 - ``cast`` for floating point types now does the bitcast as specified in the 
   manual. This breaks code that erroneously uses ``cast`` to convert different
   floating point values.
-
+- SCGI module's performance has been improved greatly, it will no longer block
+  on many concurrent requests.
 
 Library Additions
 -----------------
@@ -46,9 +47,7 @@ Changes affecting backwards compatibility
   this affects very little (if any) real world code.
 - The expression/statement unification has been implemented. Again this
   only affects edge cases and no known real world code.
-- The scope rules of ``if`` statements will change in 0.9.4. This affects the 
-  ``=~`` pegs/re templates.
-
+- Changed the async interface of the ``scgi`` module.
 
 Compiler Additions
 ------------------
@@ -88,6 +87,14 @@ Language Additions
 - There is a new syntactic construct ``(;)`` unifying expressions and 
   statements.
 
+Notes for the future
+--------------------
+
+- The scope rules of ``if`` statements will change in 0.9.4. This affects the 
+  ``=~`` pegs/re templates.
+- The ``sockets`` module will become a low-level wrapper of OS-specific socket
+  functions. All the high-level features of the current ``sockets`` module
+  will be moved to a ``network`` module.
 
 2012-09-23 Version 0.9.0 released
 =================================

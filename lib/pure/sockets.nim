@@ -629,7 +629,8 @@ proc close*(socket: TSocket) =
     discard winlean.closeSocket(socket.fd)
   else:
     discard posix.close(socket.fd)
-
+  # TODO: These values should not be discarded. An EOS should be raised.
+  # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
   when defined(ssl):
     if socket.isSSL:
       discard SSLShutdown(socket.sslHandle)

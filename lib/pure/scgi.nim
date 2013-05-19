@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -67,10 +67,24 @@ type
     headers*: PStringTable ## the parsed headers
     input*: string  ## the input buffer
   
-  TAsyncScgiState* = object of TScgiState
-    handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
+  
+  # Async
+  
+  TClientMode = enum
+    ClientReadChar, ClientReadHeaders, ClientReadContent
+  
+  PAsyncClient = ref object
+    c: PAsyncSocket
+    mode: TClientMode
+    dataLen: int
+    headers: PStringTable ## the parsed headers
+    input: string  ## the input buffer
+  
+  TAsyncScgiState = object
+    handleRequest: proc (client: PAsyncSocket, 
                          input: string, headers: PStringTable) {.closure.}
     asyncServer: PAsyncSocket
+    disp: PDispatcher
   PAsyncScgiState* = ref TAsyncScgiState
     
 proc recvBuffer(s: var TScgiState, L: int) =
@@ -145,37 +159,88 @@ proc run*(handleRequest: proc (client: TSocket, input: string,
   s.close()
 
 # -- AsyncIO start
+
+proc recvBufferAsync(client: PAsyncClient, L: int): TReadLineResult =
+  result = ReadPartialLine
+  var data = ""
+  if L < 1:
+    scgiError("Cannot read negative or zero length: " & $L)
+  let ret = recvAsync(client.c, data, L)
+  if ret == 0 and data == "":
+    client.c.close()
+    return ReadDisconnected
+  if ret == -1:
+    return ReadNone # No more data available
+  client.input.add(data)
+  if ret == L:
+    return ReadFullLine
+
+proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
+  case client.mode
+  of ClientReadChar:
+    while true:
+      var d = ""
+      let ret = client.c.recvAsync(d, 1)
+      if d == "" and ret == 0:
+        # Disconnected
+        client.c.close()
+        return
+      if ret == -1:
+        return # No more data available
+      if d[0] notin strutils.digits:
+        if d[0] != ':': scgiError("':' after length expected")
+        break
+      client.dataLen = client.dataLen * 10 + ord(d[0]) - ord('0')
+    client.mode = ClientReadHeaders
+    handleClientRead(client, s) # Allow progression
+  of ClientReadHeaders:
+    let ret = recvBufferAsync(client, (client.dataLen+1)-client.input.len)
+    case ret
+    of ReadFullLine:
+      client.headers = parseHeaders(client.input, client.input.len-1)
+      if client.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
+      client.input = "" # For next part
+      
+      let contentLen = parseInt(client.headers["CONTENT_LENGTH"])
+      if contentLen > 0:
+        client.mode = ClientReadContent
+      else:
+        s.handleRequest(client.c, client.input, client.headers)
+        if not client.c.isClosed: client.c.close()
+    of ReadPartialLine, ReadDisconnected, ReadNone: return
+  of ClientReadContent:
+    let L = parseInt(client.headers["CONTENT_LENGTH"])-client.input.len
+    if L > 0:
+      let ret = recvBufferAsync(client, L)
+      case ret
+      of ReadFullLine:
+        s.handleRequest(client.c, client.input, client.headers)
+        if not client.c.isClosed: client.c.close()
+      of ReadPartialLine, ReadDisconnected, ReadNone: return
+    else:
+      s.handleRequest(client.c, client.input, client.headers)
+      if not client.c.isClosed: client.c.close()
+
 proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
-  new(s.client)
-  accept(getSocket(s.asyncServer), s.client)
-  var L = 0
-  while true:
-    var d = s.client.recvChar()
-    if d == '\0':
-      # Disconnected
-      s.client.close()
-      return
-    if d notin strutils.digits: 
-      if d != ':': scgiError("':' after length expected")
-      break
-    L = L * 10 + ord(d) - ord('0')  
-  recvBuffer(s[], L+1)
-  s.headers = parseHeaders(s.input, L)
-  if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
-  L = parseInt(s.headers["CONTENT_LENGTH"])
-  recvBuffer(s[], L)
+  var client: PAsyncSocket
+  new(client)
+  accept(s.asyncServer, client)
+  var asyncClient = PAsyncClient(c: client, mode: ClientReadChar, dataLen: 0,
+                                 headers: newStringTable(), input: "")
+  client.handleRead = 
+    proc (sock: PAsyncSocket) =
+      handleClientRead(asyncClient, s)
+  s.disp.register(client)
 
-  s.handleRequest(s[], s.client, s.input, s.headers)
-
-proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket, 
+proc open*(handleRequest: proc (client: PAsyncSocket, 
                                 input: string, headers: PStringTable) {.closure.},
            port = TPort(4000), address = "127.0.0.1"): PAsyncScgiState =
-  ## Alternative of ``open`` for asyncio compatible SCGI.
+  ## Creates an ``PAsyncScgiState`` object which serves as a SCGI server.
+  ##
+  ## After the execution of ``handleRequest`` the client socket will be closed
+  ## automatically unless it has already been closed.
   var cres: PAsyncScgiState
   new(cres)
-  cres.bufLen = 4000
-  cres.input = newString(cres.buflen) # will be reused
-
   cres.asyncServer = AsyncSocket()
   cres.asyncServer.handleAccept = proc (s: PAsyncSocket) = handleAccept(s, cres)
   bindAddr(cres.asyncServer, port, address)
@@ -186,6 +251,7 @@ proc open*(handleRequest: proc (server: var TAsyncScgiState, client: TSocket,
 proc register*(d: PDispatcher, s: PAsyncScgiState): PDelegate {.discardable.} =
   ## Registers ``s`` with dispatcher ``d``.
   result = d.register(s.asyncServer)
+  s.disp = d
 
 proc close*(s: PAsyncScgiState) =
   ## Closes the ``PAsyncScgiState``.
