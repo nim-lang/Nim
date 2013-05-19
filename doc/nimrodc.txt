@@ -598,9 +598,3 @@ file. However, you can also run the code with `nodejs`:idx:\:
 
   nimrod js -d:nodejs -r examples/hallo.nim
 
-
-Known bugs
-----------
-
-* exception handling does not work
-

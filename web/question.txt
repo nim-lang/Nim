@@ -62,11 +62,7 @@ How stable is Nimrod?
 The compiler is in development and some important features are still missing.
 However, the compiler is quite stable already: It is able to compile itself 
 and a substantial body of other code. Until version 1.0.0 is released,
-incompatibilities with older versions of the compiler will be introduced. The 
-semantic details of overloading, macros/templates/generics and iterators 
-and their interactions are subject to change. Changes to the syntax
-are also planned; gone will be the distinction between expressions and
-statements.
+minor incompatibilities with older versions of the compiler will be introduced.
 
 
 How fast is Nimrod?

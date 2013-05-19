@@ -1284,7 +1284,7 @@ proc getMagicSym(magic: TMagic): PSym =
 proc newAnonSym(kind: TSymKind, info: TLineInfo,
                 owner = getCurrOwner()): PSym =
   result = newSym(kind, idAnon, owner, info)
-  result.flags = { sfGenSym }
+  result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]
