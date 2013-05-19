@@ -40,7 +40,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
-  if isEmptyType(result.typ):
+  if result.typ == nil:
+    # we cannot check for 'void' in macros ...
     LocalError(n.info, errExprXHasNoType, 
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)

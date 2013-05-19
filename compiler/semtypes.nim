@@ -792,7 +792,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       result = instGenericContainer(c, n, result)
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
-  var n = semExprWithType(c, n)
+  var n = semExprWithType(c, n, {efDetermineType})
   if n.kind == nkSym and n.sym.kind == skType:
     result = n.sym.typ
   else:
