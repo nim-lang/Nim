@@ -1,5 +1,5 @@
 discard """
-  output: "direct\nopenarray\nvarargs"
+  output: "direct\ngeneric\ngeneric"
 """
 
 proc withDirectType(args: string) =
