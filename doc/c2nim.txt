@@ -10,6 +10,15 @@
 Introduction
 ============
 
+.. raw:: html
+  <blockquote><p>
+  "Ich bin der K&ouml;nig aller Blinden. 
+  Glaubt ihr wirklich ihr selbst k&ouml;nnt sehen?
+  Kniet euch alle nieder in den Dreck,
+  bis ich befehle aufzustehen."
+  </p></blockquote>
+
+
 c2nim is a tool to translate Ansi C code to Nimrod. The output is 
 human-readable Nimrod code that is meant to be tweaked by hand after the 
 translation process. c2nim is no real compiler!

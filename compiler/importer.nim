@@ -157,7 +157,9 @@ proc evalFrom(c: PContext, n: PNode): PNode =
     var m = gImportModule(c.module, f)
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
-    for i in countup(1, sonsLen(n) - 1): importSymbol(c, n.sons[i], m)
+    for i in countup(1, sonsLen(n) - 1): 
+      if n.sons[i].kind != nkNilLit:
+        importSymbol(c, n.sons[i], m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode = 
   result = n

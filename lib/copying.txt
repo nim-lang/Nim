@@ -1,29 +1,24 @@
-=======================================================
-                  The Nimrod Runtime Library
-             Copyright (C) 2004-2012  Andreas Rumpf
-=======================================================
+===============================================================================
+Nimrod -- a Compiler for Nimrod. http://nimrod-code.org/
+ 
+Copyright (C) 2004-2013 Andreas Rumpf. All rights reserved.
+ 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+ 
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+ 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
-This is the file copying.txt, it applies to the Nimrod Run-Time Library
-(lib) and base packages (base) distributed by members of the Nimrod
-Development Team.
-
-The source code of the Nimrod Runtime Libraries and packages are
-distributed under the Library GNU General Public License
-(see the file lgpl.txt) with the following modification:
-
-As a special exception, the copyright holders of this library give you
-permission to link this library with independent modules to produce an
-executable, regardless of the license terms of these independent modules,
-and to copy and distribute the resulting executable under terms of your choice,
-provided that you also meet, for each linked independent module, the terms
-and conditions of the license of that module. An independent module is a module
-which is not derived from or based on this library. If you modify this
-library, you may extend this exception to your version of the library, but
-you are not obligated to do so. If you do not wish to do so, delete this
-exception statement from your version.
-
-If you didn't receive a copy of the file lgpl.txt, contact:
-      Free Software Foundation
-      675 Mass Ave
-      Cambridge, MA  02139
-      USA
+[ MIT license: http://www.opensource.org/licenses/mit-license.php ]

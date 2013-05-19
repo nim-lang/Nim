@@ -27,11 +27,11 @@ Nimrod looks like this:
   var sum = 0
    
   for line in stdin.lines:
-  count += 1
-  sum += line.len
+    count += 1
+    sum += line.len
    
   echo "Average line length: ",
-  if count > 0: sum / count else: 0
+    if count > 0: sum / count else: 0
 
 
 Nimrod is efficient

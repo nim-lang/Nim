@@ -1,6 +1,7 @@
 discard """
   errormsg: "value expected, but got a type"
   line: 7
+  disabled: true
 """
 
 proc crashAndBurn() =
