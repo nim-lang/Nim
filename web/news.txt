@@ -16,6 +16,9 @@ Bugfixes
   or not at all. There is also a new GC you can activate 
   with ``--gc:markAndSweep`` which does not have this problem but is slower in
   general and has no realtime guarantees.
+- ``cast`` for floating point types now does the bitcast as specified in the 
+  manual. This breaks code that erroneously uses ``cast`` to convert different
+  floating point values.
 
 
 Library Additions

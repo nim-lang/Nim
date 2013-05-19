@@ -698,10 +698,17 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     if a == nil: return 
     result = a
     result.typ = n.typ
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return
     result = foldConv(n, a, check=n.kind == nkHiddenStdConv)
+  of nkCast:
+    var a = getConstExpr(m, n.sons[1])
+    if a == nil: return
+    if n.typ.kind in NilableTypes:
+      # we allow compile-time 'cast' for pointer types:
+      result = a
+      result.typ = n.typ
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
   else:
