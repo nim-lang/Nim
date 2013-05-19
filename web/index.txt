@@ -101,4 +101,3 @@ Roadmap to 1.0
 Version 0.9.x
   * the symbol binding rules for templates will change
   * a shared memory garbage collected heap will be provided
-  * the need for forward declarations may be removed
