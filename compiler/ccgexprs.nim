@@ -1378,7 +1378,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 proc genOrd(p: BProc, e: PNode, d: var TLoc) =
   unaryExprChar(p, e, d, "$1")
 
-proc genCast(p: BProc, e: PNode, d: var TLoc) =
+proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   const
     ValueTypes = {tyTuple, tyObject, tyArray, tyOpenArray, tyVarargs,
                   tyArrayConstr}
@@ -1396,6 +1396,31 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
   else:
     putIntoDest(p, d, e.typ, ropef("(($1) ($2))",
         [getTypeDesc(p.module, e.typ), rdCharLoc(a)]))
+
+proc genCast(p: BProc, e: PNode, d: var TLoc) =
+  const floatTypes = {tyFloat..tyFloat128}
+  let 
+    destt = skipTypes(e.typ, abstractRange)
+    srct = skipTypes(e.sons[1].typ, abstractRange)
+  if destt.kind in floatTypes or srct.kind in floatTypes:
+    # 'cast' and some float type involved? --> use a union.
+    inc(p.labels)
+    var lbl = p.labels.toRope
+    var tmp: TLoc
+    tmp.r = ropef("LOC$1.source", lbl)
+    linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
+      getTypeDesc(p.module, srct), getTypeDesc(p.module, destt), lbl)
+    tmp.k = locExpr
+    tmp.a = -1
+    tmp.t = srct
+    tmp.s = OnStack
+    tmp.flags = {}
+    expr(p, e.sons[1], tmp)
+    putIntoDest(p, d, e.typ, ropef("LOC$#.dest", lbl))
+  else:
+    # I prefer the shorter cast version for pointer types -> generate less
+    # C code; plus it's the right thing to do for closures:
+    genSomeCast(p, e, d)
 
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
@@ -1418,7 +1443,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
   if compareTypes(e.typ, e.sons[1].typ, dcEqIgnoreDistinct):
     expr(p, e.sons[1], d)
   else:
-    genCast(p, e, d)
+    genSomeCast(p, e, d)
 
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
@@ -1531,7 +1556,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e.typ, ropef("((NI)sizeof($1))",
                                    [getTypeDesc(p.module, t)]))
-  of mChr: genCast(p, e, d)
+  of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
