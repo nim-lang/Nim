@@ -11,7 +11,8 @@ the logo) as well as the HTML and CSS code for his template, and Dominik Picheta
 for integrating Philip's design with the ``nimweb`` utility. We're sure you will
 agree that Philip's design is beautiful.
 
-2013-XX-XX Version 0.9.2 released
+
+2013-05-20 Version 0.9.2 released
 =================================
 
 Version 0.9.2 has been released! Get it `here <download.html>`_. 
@@ -96,6 +97,9 @@ Language Additions
 - Objects can be initialized via an *object constructor expression*.
 - There is a new syntactic construct ``(;)`` unifying expressions and 
   statements.
+- You can now use ``from module import nil`` if you want to import the module
+  but want to enforce fully qualified access to every symbol in ``module``.
+  
 
 Notes for the future
 --------------------
@@ -105,6 +109,7 @@ Notes for the future
 - The ``sockets`` module will become a low-level wrapper of OS-specific socket
   functions. All the high-level features of the current ``sockets`` module
   will be moved to a ``network`` module.
+
 
 2012-09-23 Version 0.9.0 released
 =================================
@@ -493,7 +498,7 @@ Changes affecting backwards compatibility
 - The pointer dereference operation ``p^`` is deprecated and might become
   ``^p`` in later versions or be dropped entirely since it is rarely used. 
   Use the new notation ``p[]`` in the rare cases where you need to 
-  dereference a pointer explicitely.
+  dereference a pointer explicitly.
 - ``system.readFile`` does not return ``nil`` anymore but raises an ``EIO``
   exception instead.
 - Unsound co-/contravariance for procvars has been removed.

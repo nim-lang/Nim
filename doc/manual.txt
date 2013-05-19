@@ -4178,6 +4178,25 @@ module name followed by an ``except`` to prevent some symbols to be imported:
   echo "$1" % "abc"
 
 
+From import statement
+~~~~~~~~~~~~~~~~~~~~~
+
+After the `from`:idx: statement a module name follows followed by 
+an ``import`` to list the symbols one likes to use without explict
+full qualification:
+
+.. code-block:: nimrod
+  from strutils import `%`
+
+  echo "$1" % "abc"
+  # always possible: full qualification:
+  echo strutils.replace("abc", "a", "z")
+
+It's also possible to use ``from module import nil`` if one wants to import 
+the module but wants to enforce fully qualified access to every symbol 
+in ``module``.
+
+
 Export statement
 ~~~~~~~~~~~~~~~~
 
