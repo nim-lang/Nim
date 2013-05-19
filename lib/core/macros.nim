@@ -112,7 +112,7 @@ proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
 proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild".}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent".}
+proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent", deprecated.}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr".}
@@ -411,8 +411,6 @@ macro dumpLispImm*(s: stmt): stmt {.immediate.} = echo s.lispRepr
   ## The ``immediate`` version of `dumpLisp`.
 
 
-import strutils
-
 proc newEmptyNode*(): PNimrodNode {.compileTime, noSideEffect.} =
   ## Create a new empty node 
   result = newNimNode(nnkEmpty)
@@ -456,10 +454,17 @@ proc last*(node: PNimrodNode): PNimrodNode {.compileTime.} = node[node.high]
   ## Return the last item in nodes children. Same as `node[node.high()]` 
 
 
-template ProcLikeNodes*:Expr = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda}
-const NoSonsNodes = {nnkNone, nnkEmpty, nnkNilLit,
-  nnkCharLit .. nnkInt64Lit, nnkFLoatLit .. nnkFloat64Lit, 
-  nnkStrLit .. nnkTripleStrLit, nnkIdent, nnkSym }
+const
+  RoutineNodes* = {
+    nnkProcDef, nnkMethodDef, nnkDo, nnkLambda }
+  AtomicNodes* = {
+    nnkNone .. nnkNilLit }
+  CallNodes* = {
+    nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
+    nnkCallStrLit, nnkHiddenCallConv}
+
+
+from strutils import cmpIgnoreStyle, format
 
 proc ExpectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
@@ -467,7 +472,7 @@ proc ExpectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
 proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
-  assert procType in ProcLikeNodes
+  assert procType in RoutineNodes
   result = newNimNode(procType).add(
     name,
     newEmptyNode(),
@@ -482,39 +487,42 @@ proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
   for i in 0 .. < src.len:
     dest.add src[i].copyNimTree
 
+template expectRoutine(node: PNimrodNode): stmt =
+  expectKind(node, routineNodes)
+  
 proc name*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
-  someProc.expectKind ProcLikeNodes
+  someProc.expectRoutine
   result = someProc[0]
 proc `name=`*(someProc: PNimrodNode; val: PNimrodNode) {.compileTime.} =
-  someProc.expectKind ProcLikeNodes
+  someProc.expectRoutine
   someProc[0] = val
 
 proc params*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
-  someProc.expectKind procLikeNodes
+  someProc.expectRoutine
   result = someProc[3]
 proc `params=`* (someProc: PNimrodNode; params: PNimrodNode) {.compileTime.}=
-  someProc.expectKind procLikeNodes
+  someProc.expectRoutine
   assert params.kind == nnkFormalParams
   someProc[3] = params
 
 proc pragma*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   ## Get the pragma of a proc type
   ## These will be expanded
-  someProc.expectKind procLikeNodes
+  someProc.expectRoutine
   result = someProc[4]
 proc `pragma=`*(someProc: PNimrodNode; val: PNimrodNode){.compileTime.}=
   ## Set the pragma of a proc type
-  someProc.expectKind procLikeNodes
+  someProc.expectRoutine
   assert val.kind in {nnkEmpty, nnkPragma}
   someProc[4] = val
 
 
 template badnodekind(k; f): stmt{.immediate.} =
-  assert false, "Invalid node kind $# for macros.`$2`" % [$k, f]
+  assert false, "Invalid node kind $# for macros.`$2`".format(k, f)
 
 proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
   case someProc.kind:
-  of procLikeNodes:
+  of routineNodes:
     return someProc[6]
   of nnkBlockStmt, nnkWhileStmt:
     return someproc[1]
@@ -525,7 +533,7 @@ proc body*(someProc: PNimrodNode): PNimrodNode {.compileTime.} =
 
 proc `body=`*(someProc: PNimrodNode, val: PNimrodNode) {.compileTime.} =
   case someProc.kind 
-  of ProcLikeNodes:
+  of routineNodes:
     someProc[6] = val
   of nnkBlockStmt, nnkWhileStmt:
     someProc[1] = val
@@ -545,12 +553,8 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
   else: 
     badNodeKind node.kind, "$"
 
-proc `!`*(a: TNimrodIdent): PNimrodNode {.compileTime, inline.} = newIdentNode(a)
-  ## Create a new ident node from an identifier
-proc `!!`*(a: string): PNimrodNode {.compileTime, inline.} = newIdentNode(a)
+proc ident*(name: string): PNimrodNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
-  ## The same as !(!(string))
-
 
 iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=
   for i in 0 .. high(n):
@@ -590,19 +594,19 @@ proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.} =
   of nnkPostfix, nnkPrefix: return a[1]
   else: 
     quit "Do not know how to get basename of ("& treerepr(a) &")\n"& repr(a)
-proc `basename=`*(a: PNimrodNode; val: TNimrodIdent) {.compileTime.}=
+proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: a.ident = val
-  of nnkPostfix, nnkPrefix: a[1] = !val
+  of nnkIdent: macros.`ident=`(a,  !val)
+  of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
     quit "Do not know how to get basename of ("& treerepr(a)& ")\n"& repr(a)
 
 proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.
-  compileTime.} = newNimNode(nnkPostfix).add(!!op, node)
+  compileTime.} = newNimNode(nnkPostfix).add(ident(op), node)
 proc prefix*(node: PNimrodNode; op: string): PNimrodNode {.
-  compileTime.} = newNimNode(nnkPrefix).add(!!op, node)
+  compileTime.} = newNimNode(nnkPrefix).add(ident(op), node)
 proc infix*(a: PNimrodNode; op: string; b: PNimrodNode): PNimrodNode {.
-  compileTime.} = newNimNode(nnkInfix).add(!!op, a, b)
+  compileTime.} = newNimNode(nnkInfix).add(ident(op), a, b)
 
 proc unpackPostfix*(node: PNimrodNode): tuple[node: PNimrodNode; op: string] {.
   compileTime.} =
@@ -641,5 +645,5 @@ proc addIdentIfAbsent* (dest: PNimrodNode, ident: string) {.compiletime.} =
     of nnkExprColonExpr:
       if ident.eqIdent($ node[0]): return
     else: nil
-  dest.add(!!ident)
+  dest.add(ident(ident))
 
