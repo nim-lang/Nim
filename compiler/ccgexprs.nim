@@ -1552,7 +1552,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError:
     localError(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)
-  of mSlurp, mStaticExec:
+  of mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
