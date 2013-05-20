@@ -253,13 +253,12 @@ proc UnixToNativePath*(path: string): string {.
         inc(i)
 
 when defined(windows):
-  template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
-    var varname = winApiProc(newWideCString(arg))
-
-  template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
-    var varname = winApiProc(newWideCString(arg), arg2)
-
   when useWinUnicode:
+    template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
+      var varname = winApiProc(newWideCString(arg))
+
+    template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
+      var varname = winApiProc(newWideCString(arg), arg2)
     proc FindFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
       result = FindFirstFileW(newWideCString(a), b)
     template FindNextFile(a, b: expr): expr = FindNextFileW(a, b)
