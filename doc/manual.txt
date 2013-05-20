@@ -2868,9 +2868,9 @@ Effect system
 Exception tracking
 ------------------
 
-Nimrod supports `exception tracking`:idx:. The `raises`:idx: pragma can used to
-explicitly define which exceptions a proc/iterator/method/converter is allowed
-to raise. The compiler verifies this:
+Nimrod supports `exception tracking`:idx:. The `raises`:idx: pragma can be used
+to explicitly define which exceptions a proc/iterator/method/converter is 
+allowed to raise. The compiler verifies this:
 
 .. code-block:: nimrod
   proc p(what: bool) {.raises: [EIO, EOS].} =
@@ -2878,7 +2878,7 @@ to raise. The compiler verifies this:
     else: raise newException(EOS, "OS")
 
 An empty ``raises`` list (``raises: []``) means that no exception may be raised:
-  
+
 .. code-block:: nimrod
   proc p(): bool {.raises: [].} =
     try:

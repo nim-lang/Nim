@@ -184,7 +184,7 @@ proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
         if FormatMessageW(0x00000100 or 0x00001000 or 0x00000200,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
-          if msgbuf != nil: LocalFree(msgbuf)
+          if msgbuf != nil: LocalFree(cast[pointer](msgbuf))
       else:
         var msgbuf: cstring
         if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
@@ -254,20 +254,14 @@ proc UnixToNativePath*(path: string): string {.
 
 when defined(windows):
   template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
-    var tmp = allocWideCString(arg)
-    var varname = winApiProc(tmp)
-    dealloc tmp
+    var varname = winApiProc(newWideCString(arg))
 
   template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
-    var tmp2 = allocWideCString(arg)
-    var varname = winApiProc(tmp2, arg2)
-    dealloc tmp2
+    var varname = winApiProc(newWideCString(arg), arg2)
 
   when useWinUnicode:
     proc FindFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
-      var aa = allocWideCString(a)
-      result = FindFirstFileW(aa, b)
-      dealloc aa
+      result = FindFirstFileW(newWideCString(a), b)
     template FindNextFile(a, b: expr): expr = FindNextFileW(a, b)
     template getCommandLine(): expr = getCommandLineW()
 
@@ -363,11 +357,10 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   const bufsize = 512 # should be enough
   when defined(windows):
     when useWinUnicode:
-      var res = cast[wideCString](alloc0(bufsize+1))
+      var res = newWideCString("", bufsize)
       var L = GetCurrentDirectoryW(bufsize, res)
-      result = res$L
-      dealloc res
       if L == 0'i32: OSError()
+      result = res$L
     else:
       result = newString(bufsize)
       var L = GetCurrentDirectoryA(bufsize, result)
@@ -385,10 +378,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## `newDir` cannot been set.
   when defined(Windows):
     when useWinUnicode:
-      var x = allocWideCString(newDir)
-      let res = SetCurrentDirectoryW(x)
-      dealloc x
-      if res == 0'i32: OSError()
+      if SetCurrentDirectoryW(newWideCString(newDir)) == 0'i32: OSError()
     else:
       if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
   else:
@@ -579,15 +569,11 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     const bufsize = 3072'i32
     when useWinUnicode:
       var unused: widecstring
-      var res = cast[widecstring](alloc(bufsize*2+2))
-      var f = allocWideCString(filename)
-      var L = GetFullPathNameW(f, bufsize, res, unused)
-      dealloc f
+      var res = newWideCString("", bufsize div 2)
+      var L = GetFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L <= 0'i32 or L >= bufsize: 
-        dealloc res
         OSError()
       result = res$L
-      dealloc res
     else:
       var unused: cstring
       result = newString(bufsize)
@@ -673,8 +659,8 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
     var success = true
 
     when useWinUnicode:
-      var p1 = allocWideCString(path1)
-      var p2 = allocWideCString(path2)
+      var p1 = newWideCString(path1)
+      var p2 = newWideCString(path2)
       template OpenHandle(path: expr): expr =
         CreateFileW(path, 0'i32, FILE_SHARE_DELETE or FILE_SHARE_READ or
           FILE_SHARE_WRITE, nil, OPEN_EXISTING,
@@ -705,9 +691,6 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
     discard CloseHandle(f1)
     discard CloseHandle(f2)
-    when useWinUnicode:
-      dealloc p1
-      dealloc p2
 
     if not success: OSError()
   else:
@@ -754,12 +737,9 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## `EOS` is raised.
   when defined(Windows):
     when useWinUnicode:
-      var s = allocWideCString(source)
-      var d = allocWideCString(dest)
-      let res = CopyFileW(s, d, 0'i32)
-      dealloc s
-      dealloc d
-      if res == 0'i32: OSError()
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if CopyFileW(s, d, 0'i32) == 0'i32: OSError()
     else:
       if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
   else:
@@ -794,11 +774,8 @@ when not defined(ENOENT):
   var ENOENT {.importc, header: "<errno.h>".}: cint
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
-  ## Removes the `file`.
-  ##
-  ## If this fails, `EOS` is raised. This does not fail if the file never
-  ## existed in the first place. Despite the name of this proc you can also
-  ## call it on directories, but they will only be removed if they are empty.
+  ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
+  ## if the file never existed in the first place.
   if cremove(file) != 0'i32 and errno != ENOENT: OSError()
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1", 
@@ -934,12 +911,9 @@ proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
       OSError()
   else:
     when useWinUnicode:
-      var k = allocWideCString(key)
-      var v = allocWideCString(val)
-      let res = SetEnvironmentVariableW(k, v)
-      dealloc k
-      dealloc v
-      if res == 0'i32: OSError()
+      var k = newWideCString(key)
+      var v = newWideCString(val)
+      if SetEnvironmentVariableW(k, v) == 0'i32: OSError()
     else:
       if SetEnvironmentVariableA(key, val) == 0'i32: OSError()
 
@@ -1082,9 +1056,7 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## in `dir` (recursively).
   ##
   ## If this fails, `EOS` is raised. This does not fail if the directory never
-  ## existed in the first place. If you need non recursive directory removal
-  ## which fails when the directory contains files use the `removeFile` proc
-  ## instead.
+  ## existed in the first place.
   for kind, path in walkDir(dir): 
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)

@@ -31,8 +31,8 @@ Bugfixes
   floating point values.
 - SCGI module's performance has been improved greatly, it will no longer block
   on many concurrent requests.
-
 - In total fixed over 70 github issues and merged over 60 pull requests.
+
 
 Library Additions
 -----------------
@@ -60,6 +60,8 @@ Changes affecting backwards compatibility
 - The expression/statement unification has been implemented. Again this
   only affects edge cases and no known real world code.
 - Changed the async interface of the ``scgi`` module.
+- WideStrings are now garbage collected like other string types.
+
 
 Compiler Additions
 ------------------
