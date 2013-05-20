@@ -2,7 +2,7 @@
 News
 ====
 
-New website design!
+2013-05-20 New website design!
 ===================
 
 A brand new website is now live. All thanks go to Philip Witte and 
@@ -15,7 +15,22 @@ agree that Philip's design is beautiful.
 2013-05-20 Version 0.9.2 released
 =================================
 
-Version 0.9.2 has been released! Get it `here <download.html>`_. 
+We are pleased to announce that version 0.9.2 of the Nimrod compiler has been
+released. This release has attracted by far the most contributions in comparison
+to any other release.
+
+This release can be downloaded from `here <download.html>`_.
+
+This release brings with it many new features and bug fixes, a list of which
+can be seen later. One of the major new features is the effect system together
+with exception tracking which allows for checked exceptions and more, 
+for further details check out the `manual <manual.html#effect-system>`_.
+Another major new feature is the introduction of statement list expressions,
+more details on these can be found `here <manual.html#statement-list-expression>`_.
+The ability to exclude symbols from modules has also been
+implemented, this feature can be used like so: ``import module except symbol``.
+
+Thanks to all `contributors <https://github.com/Araq/Nimrod/contributors>`_!
 
 Bugfixes
 --------
