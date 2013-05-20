@@ -47,6 +47,8 @@ Library Additions
   used to only support tuples.
 - Added ``system.CurrentSourcePath`` returning the full file-system path of
   the current source file.
+- The ``macros`` module now contains lots of useful helpers for building up
+  abstract syntax trees.
 
 
 Changes affecting backwards compatibility
@@ -60,6 +62,7 @@ Changes affecting backwards compatibility
 - The expression/statement unification has been implemented. Again this
   only affects edge cases and no known real world code.
 - Changed the async interface of the ``scgi`` module.
+- ``macros.!`` has been deprecated. Use ``macros.ident`` instead.
 - WideStrings are now garbage collected like other string types.
 
 
