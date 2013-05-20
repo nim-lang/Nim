@@ -112,7 +112,7 @@ proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
 proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild".}
   ## set `n`'s `i`'th child to `child`.
 
-proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent", deprecated.}
+proc `!`*(s: string): TNimrodIdent {.magic: "StrToIdent".}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr".}
@@ -419,7 +419,7 @@ proc newStmtList*(stmts: varargs[PNimrodNode]): PNimrodNode {.compileTime.}=
   ## Create a new statement list
   result = newNimNode(nnkStmtList).add(stmts)
 
-proc newBlockStmt*(label: PNimrodNode; body: PNimrodNode): PNimrodNode {.compileTime.} =
+proc newBlockStmt*(label, body: PNimrodNode): PNimrodNode {.compileTime.} =
   ## Create a new block statement with label
   return newNimNode(nnkBlockStmt).add(label, body)
 proc newBlockStmt*(body: PNimrodNode): PNimrodNode {.compiletime.} =
@@ -431,22 +431,21 @@ proc newLetStmt*(name, value: PNimrodNode): PNimrodNode{.compiletime.} =
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
-proc newAssignment*(lhs, rhs: PNimrodNode): PNimrodNode {.compileTime, inline.} =
+proc newAssignment*(lhs, rhs: PNimrodNode): PNimrodNode {.compileTime.} =
   return newNimNode(nnkAsgn).add(lhs, rhs)
 
-proc newDotExpr* (a, b: PNimrodNode): PNimrodNode {.compileTime, inline.} = 
+proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} = 
   ## Create new dot expression
   ## a.dot(b) ->  `a.b`
   return newNimNode(nnkDotExpr).add(a, b)
 
-
-proc newIdentDefs*(name, kind: PNimrodNode; default = newEmptyNode()): PNimrodNode{.
-  compileTime.} = newNimNode(nnkIdentDefs).add(name, kind, default)
+proc newIdentDefs*(name, kind: PNimrodNode; 
+                   default = newEmptyNode()): PNimrodNode {.compileTime.} = 
+  newNimNode(nnkIdentDefs).add(name, kind, default)
 
 proc newNilLit*(): PNimrodNode {.compileTime.} =
   ## New nil literal shortcut
   result = newNimNode(nnkNilLit)
-
 
 proc high*(node: PNimrodNode): int {.compileTime.} = len(node) - 1
   ## Return the highest index available for a node
@@ -455,14 +454,10 @@ proc last*(node: PNimrodNode): PNimrodNode {.compileTime.} = node[node.high]
 
 
 const
-  RoutineNodes* = {
-    nnkProcDef, nnkMethodDef, nnkDo, nnkLambda }
-  AtomicNodes* = {
-    nnkNone .. nnkNilLit }
-  CallNodes* = {
-    nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
+  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda}
+  AtomicNodes* = {nnkNone..nnkNilLit}
+  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand, 
     nnkCallStrLit, nnkHiddenCallConv}
-
 
 from strutils import cmpIgnoreStyle, format
 
@@ -594,6 +589,7 @@ proc basename*(a: PNimrodNode): PNimrodNode {.compiletime.} =
   of nnkPostfix, nnkPrefix: return a[1]
   else: 
     quit "Do not know how to get basename of ("& treerepr(a) &")\n"& repr(a)
+    
 proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
@@ -601,43 +597,49 @@ proc `basename=`*(a: PNimrodNode; val: string) {.compileTime.}=
   else:
     quit "Do not know how to get basename of ("& treerepr(a)& ")\n"& repr(a)
 
-proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.
-  compileTime.} = newNimNode(nnkPostfix).add(ident(op), node)
-proc prefix*(node: PNimrodNode; op: string): PNimrodNode {.
-  compileTime.} = newNimNode(nnkPrefix).add(ident(op), node)
-proc infix*(a: PNimrodNode; op: string; b: PNimrodNode): PNimrodNode {.
-  compileTime.} = newNimNode(nnkInfix).add(ident(op), a, b)
+proc postfix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
+  newNimNode(nnkPostfix).add(ident(op), node)
+
+proc prefix*(node: PNimrodNode; op: string): PNimrodNode {.compileTime.} = 
+  newNimNode(nnkPrefix).add(ident(op), node)
+
+proc infix*(a: PNimrodNode; op: string; 
+            b: PNimrodNode): PNimrodNode {.compileTime.} = 
+  newNimNode(nnkInfix).add(ident(op), a, b)
 
 proc unpackPostfix*(node: PNimrodNode): tuple[node: PNimrodNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPostfix
   result = (node[0], $node[1])
+
 proc unpackPrefix*(node: PNimrodNode): tuple[node: PNimrodNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPrefix
   result = (node[0], $node[1])
-proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string; right: PNimrodNode] {.
-  compileTime.} =
+
+proc unpackInfix*(node: PNimrodNode): tuple[left: PNimrodNode; op: string; 
+                                        right: PNimrodNode] {.compileTime.} =
   assert node.kind == nnkInfix
   result = (node[0], $node[1], node[2])
 
 proc copy*(node: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## An alias for copyNimTree()
+  ## An alias for copyNimTree().
   return node.copyNimTree()
 
 proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
-  ## Check if two idents are identical
+  ## Check if two idents are identical.
 
 proc hasArgOfName* (params: PNimrodNode; name: string): bool {.compiletime.}=
-  ## Search nnkFormalParams for an argument 
+  ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
   for i in 1 .. <params.len: 
     template node: expr = params[i]
     if name.eqIdent( $ node[0]):
       return true
 
-proc addIdentIfAbsent* (dest: PNimrodNode, ident: string) {.compiletime.} =
-  ## Add ident to dest if it is not present. This is intended for use with pragmas
+proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
+  ## Add ident to dest if it is not present. This is intended for use
+  ## with pragmas.
   for node in dest.children:
     case node.kind
     of nnkIdent:
