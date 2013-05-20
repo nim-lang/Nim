@@ -3,6 +3,8 @@ Please choose your platform:
 * source-based installation: `<download/nimrod_0.9.2.zip>`_
 * installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_0.9.2.exe>`_
   (includes GCC and everything else you need)
+* minimal installer for Windows XP/Vista/7 (i386, 32bit): `<download/nimrod_gamera_0.9.2.exe>`_
+  ("Gamera edition": includes only a minimal GCC)
 
 The source-based installation has been tested on these systems:
 * Linux: i386, AMD64, PowerPC, ARM
