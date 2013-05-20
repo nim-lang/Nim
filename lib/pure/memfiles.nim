@@ -69,9 +69,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
         0)
 
     when useWinUnicode:
-      var f = allocWideCString(filename)
-      result.fHandle = callCreateFile(CreateFileW, f)
-      dealloc f
+      result.fHandle = callCreateFile(CreateFileW, newWideCString(filename))
     else:
       result.fHandle = callCreateFile(CreateFileA, filename)
 
