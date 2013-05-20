@@ -1,3 +1,8 @@
+<a class="news" href="news.html#new-website-design">
+  <h3>May 20, 2013</h3>
+  <p>New website design!</p>
+</a>
+
 <a class="news" href="news.html#Z2013-05-20-version-0-9-2-released">
   <h3>May 20, 2013</h3>
   <p>Nimrod version 0.9.2 has been released!</p>
