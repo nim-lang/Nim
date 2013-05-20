@@ -369,9 +369,8 @@ proc getFileSize*(file: string): biggestInt =
   var fileData: TWIN32_FIND_DATA
 
   when useWinUnicode:
-    var aa = allocWideCString(file)
+    var aa = newWideCString(file)
     var hFile = FindFirstFileW(aa, fileData)
-    dealloc aa
   else:
     var hFile = FindFirstFileA(file, fileData)
   
