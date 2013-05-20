@@ -604,7 +604,13 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, a.t.sons[0], ropef("(*$1)", [rdLoc(a)]))
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
-  if mapType(e.sons[0].typ) == ctArray:
+  # careful  'addr(myptrToArray)' needs to get the ampersand:
+  if e.sons[0].typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+    var a: TLoc
+    InitLocExpr(p, e.sons[0], a)
+    putIntoDest(p, d, e.typ, con("&", a.r))
+    #Message(e.info, warnUser, "HERE NEW &")
+  elif mapType(e.sons[0].typ) == ctArray:
     expr(p, e.sons[0], d)
   else:
     var a: TLoc
