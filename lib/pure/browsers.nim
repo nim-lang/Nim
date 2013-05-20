@@ -27,11 +27,9 @@ proc openDefaultBrowser*(url: string) =
   ## default browser to use.
   when defined(windows):
     when useWinUnicode:
-      var o = allocWideCString("open")
-      var u = allocWideCString(url)
+      var o = newWideCString("open")
+      var u = newWideCString(url)
       discard ShellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
-      dealloc o
-      dealloc u
     else:
       discard ShellExecuteA(0'i32, "open", url, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
