@@ -6,5 +6,47 @@ Wiki: http://github.com/Araq/Nimrod/wiki.
 
 Bug reports: http://github.com/Araq/Nimrod/issues.
 
-For quickest feedback, join our IRC channel: irc://freenode/nimrod
+For quickest feedback, join our IRC channel: irc://irc.freenode.net/nimrod
 
+How to help
+===========
+
+There are always many things to be done in the main
+`Nimrod repository <https://github.com/Araq/Nimrod>`_, check out the 
+`issues <https://github.com/Araq/Nimrod/issues>`_ for 
+things to do; pull requests are always welcome. You can
+also contribute to the many other projects hosted by the
+`nimrod-code <https://github.com/nimrod-code>`_ organisation on github. If you
+can't find anything you fancy doing, you can always ask for inspiration on IRC
+(irc.freenode.net #nimrod) or on the `Nimrod forums <http://forum.nimrod-code.org>`_.
+
+Donations
+---------
+
+If you love what we do and are feeling generous then you can always donate:
+
+Gittip
+``````
+
+  .. raw:: html
+
+    <iframe style="border: 0; margin: 0; padding: 0;"
+             src="https://www.gittip.com/Araq/widget.html"
+             width="48pt" height="22pt"></iframe>
+
+Paypal
+``````
+
+  .. raw:: html
+
+    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+    <input type="hidden" name="cmd" value="_s-xclick">
+    <input type="hidden" name="hosted_button_id" value="ZQC6CVEEYNTLN">
+    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+    <img alt="" border="0" src="https://www.paypalobjects.com/de_DE/i/scr/pixel.gif" width="1" height="1">
+    </form>
+
+Bitcoin
+```````
+
+  Bitcoin address: 1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
