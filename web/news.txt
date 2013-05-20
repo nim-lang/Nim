@@ -3,7 +3,7 @@ News
 ====
 
 2013-05-20 New website design!
-===================
+==============================
 
 A brand new website is now live. All thanks go to Philip Witte and 
 Dominik Picheta, Philip Witte for the design of the website (together with
@@ -77,7 +77,6 @@ Changes affecting backwards compatibility
 - The expression/statement unification has been implemented. Again this
   only affects edge cases and no known real world code.
 - Changed the async interface of the ``scgi`` module.
-- ``macros.!`` has been deprecated. Use ``macros.ident`` instead.
 - WideStrings are now garbage collected like other string types.
 
 
