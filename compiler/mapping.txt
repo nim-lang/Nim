@@ -97,5 +97,5 @@ Flags="-w -O3 -fno-strict-aliasing"
 [Linker]
 Flags=" -lm"
 [Environment]
-libpath="/Users/zahary/Projects/nim/lib"
+libpath="/home/andreas/projects/nimrod/lib"
 [Symbols]

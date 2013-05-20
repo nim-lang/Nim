@@ -3140,18 +3140,18 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/platform.c -o build/3_1/platform.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/platform.c -o build/3_1/platform.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/crc.c -o build/2_1/crc.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/crc.c -o build/2_1/crc.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/crc.c -o build/3_1/crc.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/crc.c -o build/3_1/crc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/condsyms.c -o build/2_1/condsyms.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/condsyms.c -o build/2_1/condsyms.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/condsyms.c -o build/3_1/condsyms.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/condsyms.c -o build/3_1/condsyms.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ast.c -o build/3_1/ast.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ast.c -o build/3_1/ast.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/intsets.c -o build/2_1/intsets.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/idents.c -o build/3_1/idents.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/idents.c -o build/3_1/idents.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/intsets.c -o build/3_1/intsets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/intsets.c -o build/3_1/intsets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -3164,8 +3164,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/osproc.c -o build/3_1/osproc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/streams.c -o build/3_1/streams.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/streams.c -o build/3_1/streams.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/wordrecg.c -o build/3_1/wordrecg.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/wordrecg.c -o build/3_1/wordrecg.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/babelcmd.c -o build/3_1/babelcmd.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/babelcmd.c -o build/3_1/babelcmd.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/lexer.c -o build/3_1/lexer.o"
@@ -3182,8 +3182,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parser.c -o build/3_1/parser.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/parser.c -o build/3_1/parser.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/renderer.c -o build/3_1/renderer.o"
@@ -3194,14 +3194,14 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/types.c -o build/3_1/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/trees.c -o build/2_1/trees.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/trees.c -o build/3_1/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/trees.c -o build/3_1/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/passes.c -o build/3_1/passes.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/passes.c -o build/3_1/passes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/magicsys.c -o build/3_1/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/nimsets.c -o build/3_1/nimsets.o"
@@ -3216,14 +3216,14 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/lookups.c -o build/3_1/lookups.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semdata.c -o build/3_1/semdata.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/semdata.c -o build/3_1/semdata.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/treetab.c -o build/2_1/treetab.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/treetab.c -o build/3_1/treetab.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/treetab.c -o build/3_1/treetab.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/evals.c -o build/3_1/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/evals.c -o build/3_1/evals.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semfold.c -o build/3_1/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/semfold.c -o build/3_1/semfold.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/saturate.c -o build/2_1/saturate.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/saturate.c -o build/2_1/saturate.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/saturate.c -o build/3_1/saturate.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/saturate.c -o build/3_1/saturate.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o"
@@ -3266,8 +3266,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgen.c -o build/3_1/cgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ccgutils.c -o build/3_1/ccgutils.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/cgendata.c -o build/2_1/cgendata.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/cgendata.c -o build/3_1/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/cgendata.c -o build/3_1/cgendata.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ccgmerge.c -o build/3_1/ccgmerge.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ccgmerge.c -o build/3_1/ccgmerge.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/jsgen.c -o build/3_1/jsgen.o"
@@ -3286,8 +3286,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/docgen2.c -o build/3_1/docgen2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/service.c -o build/3_1/service.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseopt.c -o build/3_1/parseopt.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseopt.c -o build/3_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nimrod.o \
 build/3_1/system.o \
@@ -3307,19 +3307,19 @@ build/2_1/math.o \
 build/3_1/sockets.o \
 build/3_1/ropes.o \
 build/3_1/platform.o \
-build/2_1/crc.o \
+build/3_1/crc.o \
 build/2_1/nversion.o \
-build/2_1/condsyms.o \
+build/3_1/condsyms.o \
 build/3_1/ast.o \
-build/2_1/idents.o \
-build/2_1/intsets.o \
+build/3_1/idents.o \
+build/3_1/intsets.o \
 build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
 build/3_1/extccomp.o \
 build/3_1/osproc.o \
 build/3_1/streams.o \
-build/2_1/wordrecg.o \
+build/3_1/wordrecg.o \
 build/3_1/babelcmd.o \
 build/3_1/lexer.o \
 build/3_1/nimlexbase.o \
@@ -3328,16 +3328,16 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/parser.o \
-build/2_1/pbraces.o \
+build/3_1/pbraces.o \
 build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
 build/3_1/types.o \
-build/2_1/trees.o \
+build/3_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
-build/2_1/passes.o \
+build/3_1/passes.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/3_1/bitsets.o \
@@ -3345,10 +3345,10 @@ build/3_1/semthreads.o \
 build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
-build/2_1/treetab.o \
+build/3_1/treetab.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
-build/2_1/saturate.o \
+build/3_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/sempass2.o \
@@ -3370,7 +3370,7 @@ build/3_1/aliases.o \
 build/3_1/patterns.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
-build/2_1/cgendata.o \
+build/3_1/cgendata.o \
 build/3_1/ccgmerge.o \
 build/3_1/jsgen.o \
 build/3_1/json.o \
@@ -3380,7 +3380,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
 build/3_1/service.o \
-build/2_1/parseopt.o"
+build/3_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nimrod.o \
 build/3_1/system.o \
@@ -3400,19 +3400,19 @@ build/2_1/math.o \
 build/3_1/sockets.o \
 build/3_1/ropes.o \
 build/3_1/platform.o \
-build/2_1/crc.o \
+build/3_1/crc.o \
 build/2_1/nversion.o \
-build/2_1/condsyms.o \
+build/3_1/condsyms.o \
 build/3_1/ast.o \
-build/2_1/idents.o \
-build/2_1/intsets.o \
+build/3_1/idents.o \
+build/3_1/intsets.o \
 build/3_1/idgen.o \
 build/3_1/astalgo.o \
 build/3_1/rodutils.o \
 build/3_1/extccomp.o \
 build/3_1/osproc.o \
 build/3_1/streams.o \
-build/2_1/wordrecg.o \
+build/3_1/wordrecg.o \
 build/3_1/babelcmd.o \
 build/3_1/lexer.o \
 build/3_1/nimlexbase.o \
@@ -3421,16 +3421,16 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/parser.o \
-build/2_1/pbraces.o \
+build/3_1/pbraces.o \
 build/3_1/filters.o \
 build/3_1/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_1/rodread.o \
 build/3_1/types.o \
-build/2_1/trees.o \
+build/3_1/trees.o \
 build/3_1/memfiles.o \
 build/3_1/rodwrite.o \
-build/2_1/passes.o \
+build/3_1/passes.o \
 build/3_1/magicsys.o \
 build/3_1/nimsets.o \
 build/3_1/bitsets.o \
@@ -3438,10 +3438,10 @@ build/3_1/semthreads.o \
 build/3_1/importer.o \
 build/3_1/lookups.o \
 build/3_1/semdata.o \
-build/2_1/treetab.o \
+build/3_1/treetab.o \
 build/3_1/evals.o \
 build/3_1/semfold.o \
-build/2_1/saturate.o \
+build/3_1/saturate.o \
 build/3_1/transf.o \
 build/3_1/cgmeth.o \
 build/3_1/sempass2.o \
@@ -3463,7 +3463,7 @@ build/3_1/aliases.o \
 build/3_1/patterns.o \
 build/3_1/cgen.o \
 build/3_1/ccgutils.o \
-build/2_1/cgendata.o \
+build/3_1/cgendata.o \
 build/3_1/ccgmerge.o \
 build/3_1/jsgen.o \
 build/3_1/json.o \
@@ -3473,7 +3473,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/docgen2.o \
 build/3_1/service.o \
-build/2_1/parseopt.o
+build/3_1/parseopt.o
     ;;
   amd64)
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/nimrod.c -o build/3_2/nimrod.o"
@@ -3512,18 +3512,18 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/platform.c -o build/3_2/platform.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/platform.c -o build/3_2/platform.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/crc.c -o build/2_2/crc.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/crc.c -o build/2_2/crc.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/crc.c -o build/3_2/crc.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/crc.c -o build/3_2/crc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/condsyms.c -o build/2_2/condsyms.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/condsyms.c -o build/3_2/condsyms.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ast.c -o build/3_2/ast.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ast.c -o build/3_2/ast.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/intsets.c -o build/2_2/intsets.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idents.c -o build/3_2/idents.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/idents.c -o build/3_2/idents.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/intsets.c -o build/3_2/intsets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/intsets.c -o build/3_2/intsets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -3536,8 +3536,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/osproc.c -o build/3_2/osproc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/streams.c -o build/3_2/streams.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/streams.c -o build/3_2/streams.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/wordrecg.c -o build/3_2/wordrecg.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/wordrecg.c -o build/3_2/wordrecg.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/babelcmd.c -o build/3_2/babelcmd.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/babelcmd.c -o build/3_2/babelcmd.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/lexer.c -o build/3_2/lexer.o"
@@ -3554,8 +3554,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/parser.c -o build/3_2/parser.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/renderer.c -o build/3_2/renderer.o"
@@ -3566,14 +3566,14 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/types.c -o build/3_2/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/trees.c -o build/2_2/trees.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/trees.c -o build/3_2/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/trees.c -o build/3_2/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passes.c -o build/3_2/passes.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/passes.c -o build/3_2/passes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/magicsys.c -o build/3_2/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/nimsets.c -o build/3_2/nimsets.o"
@@ -3588,14 +3588,14 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/lookups.c -o build/3_2/lookups.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semdata.c -o build/3_2/semdata.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semdata.c -o build/3_2/semdata.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/treetab.c -o build/2_2/treetab.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/treetab.c -o build/3_2/treetab.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/treetab.c -o build/3_2/treetab.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/evals.c -o build/3_2/evals.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/semfold.c -o build/3_2/semfold.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/saturate.c -o build/2_2/saturate.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/saturate.c -o build/2_2/saturate.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/saturate.c -o build/3_2/saturate.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/saturate.c -o build/3_2/saturate.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o"
@@ -3638,8 +3638,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgen.c -o build/3_2/cgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgutils.c -o build/3_2/ccgutils.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/cgendata.c -o build/2_2/cgendata.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/cgendata.c -o build/3_2/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/cgendata.c -o build/3_2/cgendata.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ccgmerge.c -o build/3_2/ccgmerge.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/jsgen.c -o build/3_2/jsgen.o"
@@ -3658,8 +3658,8 @@ build/2_1/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/docgen2.c -o build/3_2/docgen2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/service.c -o build/3_2/service.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseopt.c -o build/3_2/parseopt.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseopt.c -o build/3_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nimrod.o \
 build/3_2/system.o \
@@ -3679,19 +3679,19 @@ build/2_2/math.o \
 build/3_2/sockets.o \
 build/3_2/ropes.o \
 build/3_2/platform.o \
-build/2_2/crc.o \
+build/3_2/crc.o \
 build/2_2/nversion.o \
-build/2_2/condsyms.o \
+build/3_2/condsyms.o \
 build/3_2/ast.o \
-build/2_2/idents.o \
-build/2_2/intsets.o \
+build/3_2/idents.o \
+build/3_2/intsets.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
 build/3_2/osproc.o \
 build/3_2/streams.o \
-build/2_2/wordrecg.o \
+build/3_2/wordrecg.o \
 build/3_2/babelcmd.o \
 build/3_2/lexer.o \
 build/3_2/nimlexbase.o \
@@ -3700,16 +3700,16 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/parser.o \
-build/2_2/pbraces.o \
+build/3_2/pbraces.o \
 build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/types.o \
-build/2_2/trees.o \
+build/3_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
-build/2_2/passes.o \
+build/3_2/passes.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/3_2/bitsets.o \
@@ -3717,10 +3717,10 @@ build/3_2/semthreads.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
-build/2_2/treetab.o \
+build/3_2/treetab.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
-build/2_2/saturate.o \
+build/3_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/sempass2.o \
@@ -3742,7 +3742,7 @@ build/3_2/aliases.o \
 build/3_2/patterns.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/2_2/cgendata.o \
+build/3_2/cgendata.o \
 build/3_2/ccgmerge.o \
 build/3_2/jsgen.o \
 build/3_2/json.o \
@@ -3752,7 +3752,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
 build/3_2/service.o \
-build/2_2/parseopt.o"
+build/3_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nimrod.o \
 build/3_2/system.o \
@@ -3772,19 +3772,19 @@ build/2_2/math.o \
 build/3_2/sockets.o \
 build/3_2/ropes.o \
 build/3_2/platform.o \
-build/2_2/crc.o \
+build/3_2/crc.o \
 build/2_2/nversion.o \
-build/2_2/condsyms.o \
+build/3_2/condsyms.o \
 build/3_2/ast.o \
-build/2_2/idents.o \
-build/2_2/intsets.o \
+build/3_2/idents.o \
+build/3_2/intsets.o \
 build/3_2/idgen.o \
 build/3_2/astalgo.o \
 build/3_2/rodutils.o \
 build/3_2/extccomp.o \
 build/3_2/osproc.o \
 build/3_2/streams.o \
-build/2_2/wordrecg.o \
+build/3_2/wordrecg.o \
 build/3_2/babelcmd.o \
 build/3_2/lexer.o \
 build/3_2/nimlexbase.o \
@@ -3793,16 +3793,16 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/parser.o \
-build/2_2/pbraces.o \
+build/3_2/pbraces.o \
 build/3_2/filters.o \
 build/3_2/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_2/rodread.o \
 build/3_2/types.o \
-build/2_2/trees.o \
+build/3_2/trees.o \
 build/3_2/memfiles.o \
 build/3_2/rodwrite.o \
-build/2_2/passes.o \
+build/3_2/passes.o \
 build/3_2/magicsys.o \
 build/3_2/nimsets.o \
 build/3_2/bitsets.o \
@@ -3810,10 +3810,10 @@ build/3_2/semthreads.o \
 build/3_2/importer.o \
 build/3_2/lookups.o \
 build/3_2/semdata.o \
-build/2_2/treetab.o \
+build/3_2/treetab.o \
 build/3_2/evals.o \
 build/3_2/semfold.o \
-build/2_2/saturate.o \
+build/3_2/saturate.o \
 build/3_2/transf.o \
 build/3_2/cgmeth.o \
 build/3_2/sempass2.o \
@@ -3835,7 +3835,7 @@ build/3_2/aliases.o \
 build/3_2/patterns.o \
 build/3_2/cgen.o \
 build/3_2/ccgutils.o \
-build/2_2/cgendata.o \
+build/3_2/cgendata.o \
 build/3_2/ccgmerge.o \
 build/3_2/jsgen.o \
 build/3_2/json.o \
@@ -3845,7 +3845,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/docgen2.o \
 build/3_2/service.o \
-build/2_2/parseopt.o
+build/3_2/parseopt.o
     ;;
   powerpc64)
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/nimrod.c -o build/3_3/nimrod.o"
@@ -3884,18 +3884,18 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/ropes.c -o build/3_3/ropes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/platform.c -o build/3_3/platform.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/platform.c -o build/3_3/platform.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/crc.c -o build/2_2/crc.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/crc.c -o build/2_2/crc.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/crc.c -o build/3_2/crc.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/crc.c -o build/3_2/crc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/nversion.c -o build/2_2/nversion.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/condsyms.c -o build/2_3/condsyms.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/condsyms.c -o build/2_3/condsyms.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/condsyms.c -o build/3_3/condsyms.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/condsyms.c -o build/3_3/condsyms.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/ast.c -o build/3_3/ast.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/ast.c -o build/3_3/ast.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/idents.c -o build/2_3/idents.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/idents.c -o build/2_3/idents.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/intsets.c -o build/2_3/intsets.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/intsets.c -o build/2_3/intsets.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/idents.c -o build/3_3/idents.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/idents.c -o build/3_3/idents.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/intsets.c -o build/3_3/intsets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/intsets.c -o build/3_3/intsets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/idgen.c -o build/3_2/idgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/astalgo.c -o build/3_3/astalgo.o"
@@ -3908,8 +3908,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/osproc.c -o build/3_3/osproc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/streams.c -o build/3_3/streams.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/streams.c -o build/3_3/streams.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/wordrecg.c -o build/2_2/wordrecg.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/wordrecg.c -o build/3_2/wordrecg.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/wordrecg.c -o build/3_2/wordrecg.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/babelcmd.c -o build/3_2/babelcmd.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/babelcmd.c -o build/3_2/babelcmd.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/lexer.c -o build/3_3/lexer.o"
@@ -3926,8 +3926,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/parser.c -o build/3_3/parser.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/parser.c -o build/3_3/parser.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/renderer.c -o build/3_3/renderer.o"
@@ -3938,14 +3938,14 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/rodread.c -o build/3_3/rodread.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/types.c -o build/3_3/types.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/types.c -o build/3_3/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/trees.c -o build/2_3/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/trees.c -o build/2_3/trees.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/trees.c -o build/3_3/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/trees.c -o build/3_3/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/memfiles.c -o build/3_2/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/rodwrite.c -o build/3_3/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/rodwrite.c -o build/3_3/rodwrite.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/passes.c -o build/2_2/passes.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passes.c -o build/3_2/passes.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/passes.c -o build/3_2/passes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/magicsys.c -o build/3_3/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/magicsys.c -o build/3_3/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/nimsets.c -o build/3_3/nimsets.o"
@@ -3960,14 +3960,14 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/lookups.c -o build/3_3/lookups.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/semdata.c -o build/3_3/semdata.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/semdata.c -o build/3_3/semdata.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/treetab.c -o build/2_3/treetab.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/treetab.c -o build/2_3/treetab.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/treetab.c -o build/3_3/treetab.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/treetab.c -o build/3_3/treetab.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/evals.c -o build/3_3/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/evals.c -o build/3_3/evals.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/semfold.c -o build/3_3/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/semfold.c -o build/3_3/semfold.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/saturate.c -o build/2_2/saturate.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/saturate.c -o build/2_2/saturate.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/saturate.c -o build/3_2/saturate.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/saturate.c -o build/3_2/saturate.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/transf.c -o build/3_3/transf.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/transf.c -o build/3_3/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/cgmeth.c -o build/3_3/cgmeth.o"
@@ -4010,8 +4010,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/cgen.c -o build/3_3/cgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/ccgutils.c -o build/3_3/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/ccgutils.c -o build/3_3/ccgutils.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/cgendata.c -o build/2_3/cgendata.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_3/cgendata.c -o build/2_3/cgendata.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/cgendata.c -o build/3_3/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_3/cgendata.c -o build/3_3/cgendata.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/ccgmerge.c -o build/3_3/ccgmerge.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/ccgmerge.c -o build/3_3/ccgmerge.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/jsgen.c -o build/3_3/jsgen.o"
@@ -4030,8 +4030,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_3/docgen2.c -o build/3_3/docgen2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/service.c -o build/3_3/service.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/service.c -o build/3_3/service.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/parseopt.c -o build/2_2/parseopt.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseopt.c -o build/3_2/parseopt.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseopt.c -o build/3_2/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_3/nimrod.o \
 build/3_3/system.o \
@@ -4051,19 +4051,19 @@ build/2_2/math.o \
 build/3_3/sockets.o \
 build/3_3/ropes.o \
 build/3_3/platform.o \
-build/2_2/crc.o \
+build/3_2/crc.o \
 build/2_2/nversion.o \
-build/2_3/condsyms.o \
+build/3_3/condsyms.o \
 build/3_3/ast.o \
-build/2_3/idents.o \
-build/2_3/intsets.o \
+build/3_3/idents.o \
+build/3_3/intsets.o \
 build/3_2/idgen.o \
 build/3_3/astalgo.o \
 build/3_2/rodutils.o \
 build/3_3/extccomp.o \
 build/3_3/osproc.o \
 build/3_3/streams.o \
-build/2_2/wordrecg.o \
+build/3_2/wordrecg.o \
 build/3_2/babelcmd.o \
 build/3_3/lexer.o \
 build/3_2/nimlexbase.o \
@@ -4072,16 +4072,16 @@ build/3_3/nimconf.o \
 build/3_3/main.o \
 build/3_2/syntaxes.o \
 build/3_3/parser.o \
-build/2_2/pbraces.o \
+build/3_2/pbraces.o \
 build/3_2/filters.o \
 build/3_3/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_3/rodread.o \
 build/3_3/types.o \
-build/2_3/trees.o \
+build/3_3/trees.o \
 build/3_2/memfiles.o \
 build/3_3/rodwrite.o \
-build/2_2/passes.o \
+build/3_2/passes.o \
 build/3_3/magicsys.o \
 build/3_3/nimsets.o \
 build/3_2/bitsets.o \
@@ -4089,10 +4089,10 @@ build/3_3/semthreads.o \
 build/3_3/importer.o \
 build/3_3/lookups.o \
 build/3_3/semdata.o \
-build/2_3/treetab.o \
+build/3_3/treetab.o \
 build/3_3/evals.o \
 build/3_3/semfold.o \
-build/2_2/saturate.o \
+build/3_2/saturate.o \
 build/3_3/transf.o \
 build/3_3/cgmeth.o \
 build/3_3/sempass2.o \
@@ -4114,7 +4114,7 @@ build/3_2/aliases.o \
 build/3_3/patterns.o \
 build/3_3/cgen.o \
 build/3_3/ccgutils.o \
-build/2_3/cgendata.o \
+build/3_3/cgendata.o \
 build/3_3/ccgmerge.o \
 build/3_3/jsgen.o \
 build/3_3/json.o \
@@ -4124,7 +4124,7 @@ build/3_3/passaux.o \
 build/3_3/depends.o \
 build/3_3/docgen2.o \
 build/3_3/service.o \
-build/2_2/parseopt.o"
+build/3_2/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_3/nimrod.o \
 build/3_3/system.o \
@@ -4144,19 +4144,19 @@ build/2_2/math.o \
 build/3_3/sockets.o \
 build/3_3/ropes.o \
 build/3_3/platform.o \
-build/2_2/crc.o \
+build/3_2/crc.o \
 build/2_2/nversion.o \
-build/2_3/condsyms.o \
+build/3_3/condsyms.o \
 build/3_3/ast.o \
-build/2_3/idents.o \
-build/2_3/intsets.o \
+build/3_3/idents.o \
+build/3_3/intsets.o \
 build/3_2/idgen.o \
 build/3_3/astalgo.o \
 build/3_2/rodutils.o \
 build/3_3/extccomp.o \
 build/3_3/osproc.o \
 build/3_3/streams.o \
-build/2_2/wordrecg.o \
+build/3_2/wordrecg.o \
 build/3_2/babelcmd.o \
 build/3_3/lexer.o \
 build/3_2/nimlexbase.o \
@@ -4165,16 +4165,16 @@ build/3_3/nimconf.o \
 build/3_3/main.o \
 build/3_2/syntaxes.o \
 build/3_3/parser.o \
-build/2_2/pbraces.o \
+build/3_2/pbraces.o \
 build/3_2/filters.o \
 build/3_3/renderer.o \
 build/3_2/filter_tmpl.o \
 build/3_3/rodread.o \
 build/3_3/types.o \
-build/2_3/trees.o \
+build/3_3/trees.o \
 build/3_2/memfiles.o \
 build/3_3/rodwrite.o \
-build/2_2/passes.o \
+build/3_2/passes.o \
 build/3_3/magicsys.o \
 build/3_3/nimsets.o \
 build/3_2/bitsets.o \
@@ -4182,10 +4182,10 @@ build/3_3/semthreads.o \
 build/3_3/importer.o \
 build/3_3/lookups.o \
 build/3_3/semdata.o \
-build/2_3/treetab.o \
+build/3_3/treetab.o \
 build/3_3/evals.o \
 build/3_3/semfold.o \
-build/2_2/saturate.o \
+build/3_2/saturate.o \
 build/3_3/transf.o \
 build/3_3/cgmeth.o \
 build/3_3/sempass2.o \
@@ -4207,7 +4207,7 @@ build/3_2/aliases.o \
 build/3_3/patterns.o \
 build/3_3/cgen.o \
 build/3_3/ccgutils.o \
-build/2_3/cgendata.o \
+build/3_3/cgendata.o \
 build/3_3/ccgmerge.o \
 build/3_3/jsgen.o \
 build/3_3/json.o \
@@ -4217,7 +4217,7 @@ build/3_3/passaux.o \
 build/3_3/depends.o \
 build/3_3/docgen2.o \
 build/3_3/service.o \
-build/2_2/parseopt.o
+build/3_2/parseopt.o
     ;;
   arm)
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/nimrod.c -o build/3_4/nimrod.o"
@@ -4256,18 +4256,18 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/ropes.c -o build/3_4/ropes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/platform.c -o build/3_4/platform.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/platform.c -o build/3_4/platform.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/crc.c -o build/2_1/crc.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/crc.c -o build/2_1/crc.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/crc.c -o build/3_1/crc.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/crc.c -o build/3_1/crc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/nversion.c -o build/2_1/nversion.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/condsyms.c -o build/2_4/condsyms.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/condsyms.c -o build/2_4/condsyms.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/condsyms.c -o build/3_4/condsyms.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/condsyms.c -o build/3_4/condsyms.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/ast.c -o build/3_4/ast.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/ast.c -o build/3_4/ast.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/idents.c -o build/2_4/idents.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/idents.c -o build/2_4/idents.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/intsets.c -o build/2_4/intsets.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/intsets.c -o build/2_4/intsets.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/idents.c -o build/3_4/idents.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/idents.c -o build/3_4/idents.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/intsets.c -o build/3_4/intsets.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/intsets.c -o build/3_4/intsets.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/idgen.c -o build/3_1/idgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/astalgo.c -o build/3_4/astalgo.o"
@@ -4280,8 +4280,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/osproc.c -o build/3_4/osproc.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/streams.c -o build/3_4/streams.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/streams.c -o build/3_4/streams.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/wordrecg.c -o build/2_1/wordrecg.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/wordrecg.c -o build/3_1/wordrecg.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/wordrecg.c -o build/3_1/wordrecg.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/babelcmd.c -o build/3_1/babelcmd.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/babelcmd.c -o build/3_1/babelcmd.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/lexer.c -o build/3_4/lexer.o"
@@ -4298,8 +4298,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/parser.c -o build/3_4/parser.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/parser.c -o build/3_4/parser.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/renderer.c -o build/3_4/renderer.o"
@@ -4310,14 +4310,14 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/rodread.c -o build/3_4/rodread.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/types.c -o build/3_4/types.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/types.c -o build/3_4/types.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/trees.c -o build/2_4/trees.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/trees.c -o build/2_4/trees.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/trees.c -o build/3_4/trees.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/trees.c -o build/3_4/trees.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/memfiles.c -o build/3_1/memfiles.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/rodwrite.c -o build/3_4/rodwrite.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/rodwrite.c -o build/3_4/rodwrite.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/passes.c -o build/2_1/passes.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/passes.c -o build/3_1/passes.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/passes.c -o build/3_1/passes.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/magicsys.c -o build/3_4/magicsys.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/magicsys.c -o build/3_4/magicsys.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/nimsets.c -o build/3_4/nimsets.o"
@@ -4332,14 +4332,14 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/lookups.c -o build/3_4/lookups.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/semdata.c -o build/3_4/semdata.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/semdata.c -o build/3_4/semdata.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/treetab.c -o build/2_4/treetab.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/treetab.c -o build/2_4/treetab.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/treetab.c -o build/3_4/treetab.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/treetab.c -o build/3_4/treetab.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/evals.c -o build/3_4/evals.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/evals.c -o build/3_4/evals.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/semfold.c -o build/3_4/semfold.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/semfold.c -o build/3_4/semfold.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/saturate.c -o build/2_1/saturate.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/saturate.c -o build/2_1/saturate.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/saturate.c -o build/3_1/saturate.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/saturate.c -o build/3_1/saturate.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/transf.c -o build/3_4/transf.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/transf.c -o build/3_4/transf.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/cgmeth.c -o build/3_4/cgmeth.o"
@@ -4382,8 +4382,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/cgen.c -o build/3_4/cgen.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/ccgutils.c -o build/3_4/ccgutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/ccgutils.c -o build/3_4/ccgutils.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_4/cgendata.c -o build/2_4/cgendata.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_4/cgendata.c -o build/2_4/cgendata.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/cgendata.c -o build/3_4/cgendata.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_4/cgendata.c -o build/3_4/cgendata.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/ccgmerge.c -o build/3_4/ccgmerge.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/ccgmerge.c -o build/3_4/ccgmerge.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/jsgen.c -o build/3_4/jsgen.o"
@@ -4402,8 +4402,8 @@ build/2_2/parseopt.o
     $CC $COMP_FLAGS -Ibuild -c build/3_4/docgen2.c -o build/3_4/docgen2.o
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_4/service.c -o build/3_4/service.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_4/service.c -o build/3_4/service.o
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/parseopt.c -o build/2_1/parseopt.o
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseopt.c -o build/3_1/parseopt.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseopt.c -o build/3_1/parseopt.o
     echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_4/nimrod.o \
 build/3_4/system.o \
@@ -4423,19 +4423,19 @@ build/2_1/math.o \
 build/3_4/sockets.o \
 build/3_4/ropes.o \
 build/3_4/platform.o \
-build/2_1/crc.o \
+build/3_1/crc.o \
 build/2_1/nversion.o \
-build/2_4/condsyms.o \
+build/3_4/condsyms.o \
 build/3_4/ast.o \
-build/2_4/idents.o \
-build/2_4/intsets.o \
+build/3_4/idents.o \
+build/3_4/intsets.o \
 build/3_1/idgen.o \
 build/3_4/astalgo.o \
 build/3_1/rodutils.o \
 build/3_4/extccomp.o \
 build/3_4/osproc.o \
 build/3_4/streams.o \
-build/2_1/wordrecg.o \
+build/3_1/wordrecg.o \
 build/3_1/babelcmd.o \
 build/3_4/lexer.o \
 build/3_1/nimlexbase.o \
@@ -4444,16 +4444,16 @@ build/3_4/nimconf.o \
 build/3_4/main.o \
 build/3_1/syntaxes.o \
 build/3_4/parser.o \
-build/2_1/pbraces.o \
+build/3_1/pbraces.o \
 build/3_1/filters.o \
 build/3_4/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_4/rodread.o \
 build/3_4/types.o \
-build/2_4/trees.o \
+build/3_4/trees.o \
 build/3_1/memfiles.o \
 build/3_4/rodwrite.o \
-build/2_1/passes.o \
+build/3_1/passes.o \
 build/3_4/magicsys.o \
 build/3_4/nimsets.o \
 build/3_1/bitsets.o \
@@ -4461,10 +4461,10 @@ build/3_4/semthreads.o \
 build/3_4/importer.o \
 build/3_4/lookups.o \
 build/3_4/semdata.o \
-build/2_4/treetab.o \
+build/3_4/treetab.o \
 build/3_4/evals.o \
 build/3_4/semfold.o \
-build/2_1/saturate.o \
+build/3_1/saturate.o \
 build/3_4/transf.o \
 build/3_4/cgmeth.o \
 build/3_4/sempass2.o \
@@ -4486,7 +4486,7 @@ build/3_1/aliases.o \
 build/3_4/patterns.o \
 build/3_4/cgen.o \
 build/3_4/ccgutils.o \
-build/2_4/cgendata.o \
+build/3_4/cgendata.o \
 build/3_4/ccgmerge.o \
 build/3_4/jsgen.o \
 build/3_4/json.o \
@@ -4496,7 +4496,7 @@ build/3_4/passaux.o \
 build/3_4/depends.o \
 build/3_4/docgen2.o \
 build/3_4/service.o \
-build/2_1/parseopt.o"
+build/3_1/parseopt.o"
     $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_4/nimrod.o \
 build/3_4/system.o \
@@ -4516,19 +4516,19 @@ build/2_1/math.o \
 build/3_4/sockets.o \
 build/3_4/ropes.o \
 build/3_4/platform.o \
-build/2_1/crc.o \
+build/3_1/crc.o \
 build/2_1/nversion.o \
-build/2_4/condsyms.o \
+build/3_4/condsyms.o \
 build/3_4/ast.o \
-build/2_4/idents.o \
-build/2_4/intsets.o \
+build/3_4/idents.o \
+build/3_4/intsets.o \
 build/3_1/idgen.o \
 build/3_4/astalgo.o \
 build/3_1/rodutils.o \
 build/3_4/extccomp.o \
 build/3_4/osproc.o \
 build/3_4/streams.o \
-build/2_1/wordrecg.o \
+build/3_1/wordrecg.o \
 build/3_1/babelcmd.o \
 build/3_4/lexer.o \
 build/3_1/nimlexbase.o \
@@ -4537,16 +4537,16 @@ build/3_4/nimconf.o \
 build/3_4/main.o \
 build/3_1/syntaxes.o \
 build/3_4/parser.o \
-build/2_1/pbraces.o \
+build/3_1/pbraces.o \
 build/3_1/filters.o \
 build/3_4/renderer.o \
 build/3_1/filter_tmpl.o \
 build/3_4/rodread.o \
 build/3_4/types.o \
-build/2_4/trees.o \
+build/3_4/trees.o \
 build/3_1/memfiles.o \
 build/3_4/rodwrite.o \
-build/2_1/passes.o \
+build/3_1/passes.o \
 build/3_4/magicsys.o \
 build/3_4/nimsets.o \
 build/3_1/bitsets.o \
@@ -4554,10 +4554,10 @@ build/3_4/semthreads.o \
 build/3_4/importer.o \
 build/3_4/lookups.o \
 build/3_4/semdata.o \
-build/2_4/treetab.o \
+build/3_4/treetab.o \
 build/3_4/evals.o \
 build/3_4/semfold.o \
-build/2_1/saturate.o \
+build/3_1/saturate.o \
 build/3_4/transf.o \
 build/3_4/cgmeth.o \
 build/3_4/sempass2.o \
@@ -4579,7 +4579,7 @@ build/3_1/aliases.o \
 build/3_4/patterns.o \
 build/3_4/cgen.o \
 build/3_4/ccgutils.o \
-build/2_4/cgendata.o \
+build/3_4/cgendata.o \
 build/3_4/ccgmerge.o \
 build/3_4/jsgen.o \
 build/3_4/json.o \
@@ -4589,7 +4589,7 @@ build/3_4/passaux.o \
 build/3_4/depends.o \
 build/3_4/docgen2.o \
 build/3_4/service.o \
-build/2_1/parseopt.o
+build/3_1/parseopt.o
     ;;
   *)
     echo "Error: no C code generated for: [$myos: $mycpu]"
