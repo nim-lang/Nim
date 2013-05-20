@@ -168,18 +168,14 @@ when defined(windows) and not defined(useWinAnsi):
     importc: "_wfreopen", nodecl.}
 
   proc fopen(filename, mode: CString): pointer =
-    var f = allocWideCString(filename)
-    var m = allocWideCString(mode)
+    var f = newWideCString(filename)
+    var m = newWideCString(mode)
     result = wfopen(f, m)
-    dealloc m
-    dealloc f
 
   proc freopen(filename, mode: cstring, stream: TFile): TFile =
-    var f = allocWideCString(filename)
-    var m = allocWideCString(mode)
+    var f = newWideCString(filename)
+    var m = newWideCString(mode)
     result = wfreopen(f, m, stream)
-    dealloc m
-    dealloc f
 
 else:
   proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}

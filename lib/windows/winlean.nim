@@ -93,6 +93,8 @@ const
   
   SW_SHOWNORMAL* = 1'i32
   INVALID_HANDLE_VALUE* = THANDLE(-1)
+  
+  CREATE_UNICODE_ENVIRONMENT* = 1024'i32
 
 proc CloseHandle*(hObject: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -116,7 +118,7 @@ when useWinUnicode:
                      lpProcessAttributes: ptr TSECURITY_ATTRIBUTES,
                      lpThreadAttributes: ptr TSECURITY_ATTRIBUTES,
                      bInheritHandles: WINBOOL, dwCreationFlags: int32,
-                     lpEnvironment: pointer, lpCurrentDirectory: widecstring,
+                     lpEnvironment, lpCurrentDirectory: widecstring,
                      lpStartupInfo: var TSTARTUPINFO,
                      lpProcessInformation: var TPROCESS_INFORMATION): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreateProcessW".}

@@ -361,14 +361,12 @@ when defined(Windows) and not defined(useNimRtl):
     if env != nil: e = buildEnv(env)
     if poEchoCmd in options: echo($cmdl)
     when useWinUnicode:
-      var tmp = allocWideCString(cmdl)
-      var ee = allocWideCString(e)
-      var wwd = allocWideCString(wd)
+      var tmp = newWideCString(cmdl)
+      var ee = newWideCString(e)
+      var wwd = newWideCString(wd)
       success = winlean.CreateProcessW(nil,
-        tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS, ee, wwd, SI, ProcInfo)
-      if tmp != nil: dealloc tmp
-      if ee != nil: dealloc ee
-      if wwd != nil: dealloc wwd
+        tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT, 
+        ee, wwd, SI, ProcInfo)
     else:
       success = winlean.CreateProcessA(nil,
         cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
@@ -445,10 +443,9 @@ when defined(Windows) and not defined(useNimRtl):
     SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
     SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
     when useWinUnicode:
-      var c = allocWideCString(command)
+      var c = newWideCString(command)
       var res = winlean.CreateProcessW(nil, c, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
-      dealloc c
     else:
       var res = winlean.CreateProcessA(nil, command, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
