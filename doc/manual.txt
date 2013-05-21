@@ -4670,7 +4670,7 @@ Example:
 
 NoForward pragma
 ----------------
-The `noforward`:idx pragma can be used to turn on and off a special compilation
+The `noforward`:idx: pragma can be used to turn on and off a special compilation
 mode that to large extent eliminates the need for forward declarations. In this
 mode, the proc definitions may appear out of order and the compiler will postpone
 their semantic analysis and compilation until it actually needs to generate code
@@ -4702,9 +4702,9 @@ times, but if exhaustive compilation of all definitions is required, using
 
 Example:
 
-.. code-block: nimrod
- 
-  {. noforward: on .}
+.. code-block:: nimrod
+
+  {.noforward: on.}
 
   proc foo(x: int) =
     bar x

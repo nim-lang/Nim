@@ -12,13 +12,13 @@ proc walker(dir: string) =
     of pcFile:
       moveFile(dest=newName(path), source=path)
       # test if installation still works:
-      if execShellCmd(r"nimrod c --force_build tests\tlastmod") == 0:
+      if execShellCmd(r"nimrod c --force_build koch") == 0:
         echo "Optional: ", path
         removeFile(newName(path))
       else:
         echo "Required: ", path
         # copy back:
-        moveFile(path, newName(path))
+        moveFile(dest=path, sourc=newName(path))
     of pcDir:
       walker(path)
     else: nil
