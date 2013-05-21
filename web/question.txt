@@ -99,23 +99,6 @@ Which option to use for the smallest executable?
 For the standard configuration file, ``-d:quick --opt:size`` does the trick.
 
 
-Execution of GCC fails (Windows)
---------------------------------
-
-On Windows the configuration file ``config\nimrod.cfg`` assumes that GCC is in 
-``$nimrod\dist\mingw\bin``: This is where the Windows installer puts GCC.  
-If you delete the line ``gcc.path = r"$nimrod\dist\mingw\bin"``, Nimrod uses 
-the GCC from your ``PATH`` environment variable. 
-
-If you cannot modify ``$nimrod\config\nimrod.cfg``, copy 
-``$nimrod\config\nimrod.cfg`` to ``%APPDATA%\nimrod.cfg`` and modify 
-``%APPDATA%\nimrod.cfg`` instead. To determine what ``%APPDATA%`` means for 
-your Windows account, use the shell command::
-
-  echo %APPDATA%
-
-
-
 How do I use a different C compiler than the default one?
 ---------------------------------------------------------
 
