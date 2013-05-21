@@ -79,6 +79,10 @@ A JVM backend is almost impossible. The JVM is not expressive enough. It has
 never been designed as a general purpose VM anyway. A CLR backend is possible
 but would require much work. 
 
+What about vim/emacs/my editor?
+-------------------------------
+
+Check the github wiki: https://github.com/Araq/Nimrod/wiki/Editor-Support
 
 Compilation
 ===========
