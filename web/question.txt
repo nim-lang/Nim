@@ -79,10 +79,15 @@ A JVM backend is almost impossible. The JVM is not expressive enough. It has
 never been designed as a general purpose VM anyway. A CLR backend is possible
 but would require much work. 
 
-What about vim/emacs/my editor?
+What about editor support?
 -------------------------------
 
-Check the github wiki: https://github.com/Araq/Nimrod/wiki/Editor-Support
+- Nimrod IDE: https://github.com/nimrod-code/Aporia
+- Emacs: https://github.com/Tass/nimrod-mode
+- Vim: https://github.com/zah/nimrod.vim/
+- Scite: Included
+- Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
+- jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
 
 Compilation
 ===========
