@@ -79,6 +79,15 @@ A JVM backend is almost impossible. The JVM is not expressive enough. It has
 never been designed as a general purpose VM anyway. A CLR backend is possible
 but would require much work. 
 
+What about editor support?
+-------------------------------
+
+- Nimrod IDE: https://github.com/nimrod-code/Aporia
+- Emacs: https://github.com/Tass/nimrod-mode
+- Vim: https://github.com/zah/nimrod.vim/
+- Scite: Included
+- Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
+- jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
 
 Compilation
 ===========
@@ -93,23 +102,6 @@ Which option to use for the smallest executable?
 ------------------------------------------------
 
 For the standard configuration file, ``-d:quick --opt:size`` does the trick.
-
-
-Execution of GCC fails (Windows)
---------------------------------
-
-On Windows the configuration file ``config\nimrod.cfg`` assumes that GCC is in 
-``$nimrod\dist\mingw\bin``: This is where the Windows installer puts GCC.  
-If you delete the line ``gcc.path = r"$nimrod\dist\mingw\bin"``, Nimrod uses 
-the GCC from your ``PATH`` environment variable. 
-
-If you cannot modify ``$nimrod\config\nimrod.cfg``, copy 
-``$nimrod\config\nimrod.cfg`` to ``%APPDATA%\nimrod.cfg`` and modify 
-``%APPDATA%\nimrod.cfg`` instead. To determine what ``%APPDATA%`` means for 
-your Windows account, use the shell command::
-
-  echo %APPDATA%
-
 
 
 How do I use a different C compiler than the default one?

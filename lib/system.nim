@@ -837,7 +837,7 @@ const
   hostOS* {.magic: "HostOS"}: string = ""
     ## a string that describes the host operating system. Possible values:
     ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
-    ## "aix".
+    ## "aix", "standalone".
         
   hostCPU* {.magic: "HostCPU"}: string = ""
     ## a string that describes the host CPU. Possible values:
