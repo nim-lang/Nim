@@ -1,5 +1,5 @@
 #! stdtmpl | standard
-#proc generateHTMLPage(c: var TConfigData, currentTab, content: string): string = 
+#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string = 
 #  result = ""
 <!doctype html>
 <html>
@@ -8,6 +8,9 @@
   <title>$c.projectTitle</title>
   <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
   <link rel="stylesheet" type="text/css" href="assets/style.css" />
+  #if len(rss) > 0:
+  <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
+  #end fi
 </head>
 
 <body>

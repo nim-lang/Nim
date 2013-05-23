@@ -8,7 +8,8 @@
 #
 
 import
-  os, strutils, times, parseopt, parsecfg, streams, strtabs, tables
+  os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
+  re, htmlgen, macros, md5
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -19,6 +20,8 @@ type
     vars: PStringTable
     nimrodArgs: string
     quotations: TTable[string, tuple[quote, author: string]]
+  TRssItem = object
+    year, month, day, title: string
 
 proc initConfigData(c: var TConfigData) =
   c.tabs = @[]
@@ -58,6 +61,38 @@ Options:
 Compile_options:
   will be passed to the Nimrod compiler
 """
+
+  rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
+  rssUrl = "http://nimrod-code.org/news.xml"
+  rssNewsUrl = "http://nimrod-code.org/news.html"
+  validAnchorCharacters = Letters + Digits
+
+
+macro id(e: expr): expr {.immediate.} =
+  ## generates the rss xml ``id`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "id")
+
+macro updated(e: expr): expr {.immediate.} =
+  ## generates the rss xml ``updated`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "updated")
+
+proc updatedDate(year, month, day: string): string =
+  ## wrapper around the update macro with easy input.
+  result = updated("$1-$2-$3T00:00:00Z" % [year,
+    repeatStr(2 - len(month), "0") & month,
+    repeatStr(2 - len(day), "0") & day])
+
+macro entry(e: expr): expr {.immediate.} =
+  ## generates the rss xml ``entry`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "entry")
+
+macro content(e: expr): expr {.immediate.} =
+  ## generates the rss xml ``content`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "content", reqAttr = "type")
 
 proc parseCmdLine(c: var TConfigData) =
   var p = initOptParser()
@@ -207,6 +242,85 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
     Exec("nimrod doc $# -o:$# $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
 
+proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
+  # parses the file for titles and returns them as TRssItem blocks.
+  let reYearMonthDayTitle = re(rYearMonthDayTitle)
+  var
+    input: TFile
+    line = ""
+
+  result = @[]
+  if not open(input, inputFilename):
+    quit("Could not read $1 for rss generation" % [inputFilename])
+  finally: input.close()
+  while input.readline(line):
+    if line =~ reYearMonthDayTitle:
+      result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+        title: matches[3]))
+
+proc genUUID(text: string): string =
+  # Returns a valid RSS uuid, which is basically md5 with dashes and a prefix.
+  result = getMD5(text)
+  result.insert("-", 20)
+  result.insert("-", 16)
+  result.insert("-", 12)
+  result.insert("-", 8)
+  result.insert("urn:uuid:")
+
+proc genNewsLink(title: string): string =
+  # Mangles a title string into an expected news.html anchor.
+  result = title
+  result.insert("Z")
+  for i in 1..len(result)-1:
+    let letter = result[i].toLower()
+    if letter in validAnchorCharacters:
+      result[i] = letter
+    else:
+      result[i] = '-'
+  result.insert(rssNewsUrl & "#")
+
+proc generateRss(outputFilename: string, news: seq[TRssItem]) =
+  # Given a list of rss items generates an rss overwriting destination.
+  var
+    output: TFile
+
+  if not open(output, outputFilename, mode = fmWrite):
+    quit("Could not write to $1 for rss generation" % [outputFilename])
+  finally: output.close()
+
+  output.write("""<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+""")
+  output.write(title("Nimrod website news"))
+  output.write(link(href = rssUrl, rel = "self"))
+  output.write(link(href = rssNewsUrl))
+  output.write(id(rssNewsUrl))
+
+  let now = getGMTime(getTime())
+  output.write(updatedDate($now.year, $(int(now.month) + 1), $now.monthday))
+
+  for rss in news:
+    let joinedTitle = "$1-$2-$3 $4" % [rss.year, rss.month, rss.day, rss.title]
+    output.write(entry(
+        title(joinedTitle),
+        id(genUUID(joinedTitle)),
+        link(`type` = "text/html", rel = "alternate",
+          href = genNewsLink(joinedTitle)),
+        updatedDate(rss.year, rss.month, rss.day),
+        "<author><name>Nimrod</name></author>",
+        content(joinedTitle, `type` = "text"),
+      ))
+
+  output.write("""</feed>""")
+
+proc buildNewsRss(c: var TConfigData, destPath: string) =
+  # generates an xml feed from the web/news.txt file
+  let
+    srcFilename = "web" / "news.txt"
+    destFilename = destPath / changeFileExt(splitFile(srcFilename).name, "xml")
+
+  generateRss(destFilename, parseNewsTitles(srcFilename))
+
 proc main(c: var TConfigData) =
   const
     cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
@@ -217,6 +331,7 @@ proc main(c: var TConfigData) =
       quit("[Error] cannot open: " & c.ticker)
   for i in 0..c.tabs.len-1:
     var file = c.tabs[i].val
+    let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
     Exec(cmd % [c.nimrodArgs, file])
     var temp = "web" / changeFileExt(file, "temp")
     var content: string
@@ -229,12 +344,13 @@ proc main(c: var TConfigData) =
     if not existsDir("web/upload"):
       createDir("web/upload")
     if open(f, outfile, fmWrite):
-      writeln(f, generateHTMLPage(c, file, content))
+      writeln(f, generateHTMLPage(c, file, content, rss))
       close(f)
     else:
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
+  buildNewsRss(c, "web/upload")
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDoc(c, "doc")
