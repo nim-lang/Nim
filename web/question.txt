@@ -114,12 +114,8 @@ Change the value of the ``cc`` variable to one of the following:
 Abbreviation    C/C++ Compiler
 ==============  ============================================
 ``dmc``         Digital Mars C++
-``wcc``         Watcom C++ (now unsupported!)
-``bcc``         Borland C++ (now unsupported!)
 ``vcc``         Microsoft's Visual C++
 ``gcc``         Gnu C
-``pcc``         Pelles C (now unsupported!)
-``lcc``         Lcc-win32 (now unsupported!)
 ``tcc``         Tiny C
 ``llvm_gcc``    LLVM-GCC compiler
 ``icc``         Intel C++ compiler
