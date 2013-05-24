@@ -369,8 +369,11 @@ proc listen*(socket: TSocket, backlog = SOMAXCONN) {.tags: [FReadIO].} =
 proc invalidIp4(s: string) {.noreturn, noinline.} =
   raise newException(EInvalidValue, "invalid ip4 address: " & s)
 
-proc parseIp4*(s: string): int32 = 
+proc parseIp4*(s: string): biggestInt = 
   ## parses an IP version 4 in dotted decimal form like "a.b.c.d".
+  ##
+  ## This is equivalent to `inet_ntoa`:idx:.
+  ##
   ## Raises EInvalidValue in case of an error.
   var a, b, c, d: int
   var i = 0
@@ -393,7 +396,7 @@ proc parseIp4*(s: string): int32 =
   if j <= 0: invalidIp4(s)
   inc(i, j)
   if s[i] != '\0': invalidIp4(s)
-  result = int32(a shl 24 or b shl 16 or c shl 8 or d)
+  result = biggestInt(a shl 24 or b shl 16 or c shl 8 or d)
 
 template gaiNim(a, p, h, list: expr): stmt =
   block:
