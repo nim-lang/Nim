@@ -182,7 +182,16 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 3: 
     # 3 = length(array indx base)
     if isRange(n[1]): indx = semRangeAux(c, n[1], nil)
-    else: indx = semTypeNode(c, n.sons[1], nil)
+    else:
+      let e = semExprWithType(c, n.sons[1], {efDetermineType})
+      if e.kind in {nkIntLit..nkUInt64Lit}:
+        indx = newTypeS(tyRange, c)
+        indx.n = newNodeI(nkRange, n.info)
+        addSon(indx.n, newIntTypeNode(e.kind, 0, e.typ))
+        addSon(indx.n, newIntTypeNode(e.kind, e.intVal-1, e.typ))
+        addSonSkipIntLit(indx, e.typ)
+      else:
+        indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
     if indx.kind != tyGenericParam: 
