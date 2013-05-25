@@ -982,6 +982,8 @@ proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
   # if the loop finished without returning, either all constraints matched
   # or none of them matched.
   result = if tfAny in typeClass.flags: false else: true
+  if result == true:
+    IdTablePut(bindings, typeClass, t)
 
 proc matchTypeClass*(typeClass, typ: PType): bool =
   var bindings: TIdTable
