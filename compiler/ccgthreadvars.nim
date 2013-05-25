@@ -12,10 +12,10 @@
 
 # included from cgen.nim
 
-proc emulatedThreadVars(): bool {.inline.} =
+proc emulatedThreadVars(): bool =
   result = {optThreads, optTlsEmulation} <= gGlobalOptions
 
-proc AccessThreadLocalVar(p: BProc, s: PSym) =
+proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.ThreadVarAccessed:
     p.ThreadVarAccessed = true
     p.module.usesThreadVars = true
