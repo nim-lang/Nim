@@ -2,6 +2,32 @@
 News
 ====
 
+
+2013-XX-XX Version 0.9.4 released
+=================================
+
+
+Bugfixes
+--------
+
+
+Library Additions
+-----------------
+
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+
+Compiler Additions
+------------------
+
+
+Language Additions
+------------------
+
+
+
 2013-05-20 New website design!
 ==============================
 
