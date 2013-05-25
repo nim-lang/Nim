@@ -437,8 +437,9 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           app(result, genRecordFieldsAux(m, k, ae, rectype, check))
       else: internalError("genRecordFieldsAux(record case branch)")
     appf(result, "} $1;$n", [uname])
-  of nkSym: 
+  of nkSym:
     field = n.sym
+    if field.typ.kind == tyEmpty: return
     #assert(field.ast == nil)
     sname = mangleRecFieldName(field, rectype)
     if accessExpr != nil: ae = ropef("$1.$2", [accessExpr, sname])
