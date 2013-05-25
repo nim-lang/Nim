@@ -1934,14 +1934,18 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (n.sons[genericParamsPos].kind == nkEmpty): 
       var prc = n.sons[namePos].sym
-      if (optDeadCodeElim notin gGlobalOptions and
-          sfDeadCodeElim notin getModule(prc).flags) or
-          ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
-          (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
-          (prc.kind == skMethod): 
-        # we have not only the header: 
-        if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
-          genProc(p.module, prc)
+      # due to a bug/limitation in the lambda lifting, unused inner procs
+      # are not transformed correctly. We work around this issue (#411) here
+      # by ensuring it's no inner proc (owner is a module):
+      if prc.owner.kind == skModule:
+        if (optDeadCodeElim notin gGlobalOptions and
+            sfDeadCodeElim notin getModule(prc).flags) or
+            ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
+            (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
+            (prc.kind == skMethod): 
+          # we have not only the header: 
+          if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
+            genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState: genGotoState(p, n)
