@@ -15,7 +15,7 @@ const
   defaultAsmMarkerSymbol* = '!'
   VersionMajor* = 0
   VersionMinor* = 9
-  VersionPatch* = 2
+  VersionPatch* = 3
   VersionAsString* = $VersionMajor & "." & $VersionMinor & "." & $VersionPatch
 
   RodFileVersion* = "1212"       # modify this if the rod-format changes!
