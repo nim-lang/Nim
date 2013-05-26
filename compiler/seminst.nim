@@ -148,8 +148,8 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
   result = instGenericContainer(c, n.info, header)
 
-proc fixupProcTypeR(c: PContext, genericType: PType,
-                    inst: TInstantiation): PType =
+proc fixupProcType(c: PContext, genericType: PType,
+                   inst: TInstantiation): PType =
   result = genericType
   if result == nil: return
 
@@ -167,47 +167,52 @@ proc fixupProcTypeR(c: PContext, genericType: PType,
     if genericType.sons == nil: return
     var head = 0
     for i in 0 .. <genericType.sons.len:
-      let changed = fixupProcTypeR(c, genericType.sons[i], inst)
+      var changed = fixupProcType(c, genericType.sons[i], inst)
       if changed != genericType.sons[i]:
+        var changed = changed.skipIntLit
         if result == genericType:
           # the first detected change initializes the result
           result = copyType(genericType, genericType.owner, false)
           if genericType.n != nil:
             result.n = copyTree(genericType.n)
-        if changed.kind == tyEmpty:
-          result.sons[i..i] = []
-          if result.n != nil: result.n.sons[i..i] = []
-          continue
-        let changed = changed.skipIntLit
+
+        # XXX: doh, we have to treat seq and arrays as special case
+        # because sometimes the `@` magic will be applied to an empty
+        # sequence having the type tySequence(tyEmpty)
+        if changed.kind == tyEmpty and
+           genericType.kind notin {tyArray, tySequence}:
+          if genericType.kind == tyProc and i == 0:
+            # return types of procs are overwritten with nil
+            changed = nil
+          else:
+            # otherwise, `empty` is just erased from the signature
+            result.sons[i..i] = []
+            if result.n != nil: result.n.sons[i..i] = []
+            continue
+        
         result.sons[head] = changed
+        
         if result.n != nil:
           if result.n.kind == nkRecList:
             result.n.sons[head].typ = changed
           if result.n.kind == nkFormalParams:
-            if i == 0:
-              nil
-            else:
+            if i != 0:
               let origParam = result.n.sons[head].sym
               var param = copySym(origParam)
               param.typ = changed
               param.ast = origParam.ast
               result.n.sons[head] = newSymNode(param)
+
+      # won't be advanced on empty (void) nodes
       inc head
         
   of tyGenericInvokation:
     result = newTypeWithSons(c, tyGenericInvokation, genericType.sons)
     for i in 1 .. <genericType.sons.len:
-      result.sons[i] = fixupProcTypeR(c, result.sons[i], inst)
+      result.sons[i] = fixupProcType(c, result.sons[i], inst)
     result = instGenericContainer(c, getInfoContext(-1), result)
   else:
     nil
-
-proc fixupProcType(c: PContext, genericType: PType,
-                   inst: TInstantiation): PType =
-  result = copyType(genericType, genericType.owner, false)
-  result = fixupProcTypeR(c, result, inst)
-  for i in 0 .. <result.sons.len:
-    result.sons[i] = fixupProcTypeR(c, result.sons[i], inst)
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
@@ -238,7 +243,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var entry = TInstantiation.new
   entry.sym = result
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
-  result.typ = fixupProcTypeR(c, fn.typ, entry[])
+  result.typ = fixupProcType(c, fn.typ, entry[])
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
