@@ -125,8 +125,6 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      if n.sons[paramsPos].kind != nkEmpty: 
-        addParams(c, oldPrc.typ.n, oldPrc.kind)
       instantiateBody(c, n, oldPrc)
       closeScope(c)
       popInfoContext()
