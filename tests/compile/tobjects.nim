@@ -14,7 +14,7 @@ type
 
 type
   TMyObject = object of TObject
-    case disp: range[0..4]:
+    case disp: range[0..4]
       of 0: arg: char
       of 1: s: string
       else: wtf: bool
