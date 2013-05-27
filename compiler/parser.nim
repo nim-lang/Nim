@@ -627,13 +627,6 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     getTok(p)  # we must consume a token here to prevend endless loops!
     result = ast.emptyNode
 
-proc namedParams(p: var TParser, callee: PNode,
-                 kind: TNodeKind, endTok: TTokType): PNode =
-  let a = callee
-  result = newNodeP(kind, p)
-  addSon(result, a)
-  exprColonEqExprListAux(p, endTok, result)
-
 proc primarySuffix(p: var TParser, r: PNode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|               | doBlocks
@@ -643,8 +636,11 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
   result = r
   while p.tok.indent < 0:
     case p.tok.tokType
-    of tkParLe:
-      result = namedParams(p, result, nkCall, tkParRi)
+    of tkParLe: 
+      var a = result
+      result = newNodeP(nkCall, p)
+      addSon(result, a)
+      exprColonEqExprListAux(p, tkParRi, result)
       if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
         result.kind = nkObjConstr
       else:
@@ -657,10 +653,10 @@ proc primarySuffix(p: var TParser, r: PNode): PNode =
     of tkDot:
       result = dotExpr(p, result)
       result = parseGStrLit(p, result)
-    of tkBracketLe:
-      result = namedParams(p, result, nkBracketExpr, tkBracketRi)
+    of tkBracketLe: 
+      result = indexExprList(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
-      result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
+      result = indexExprList(p, result, nkCurlyExpr, tkCurlyRi)
     else: break
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
