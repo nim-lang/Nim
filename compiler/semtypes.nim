@@ -828,7 +828,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
     
     if m.state != csMatch:
-      LocalError(n.info, errWrongNumberOfArguments)
+      var err = "cannot instantiate " & typeToString(s.typ) & "\n" &
+                "got: (" & describeArgs(c, n) & ")\n" &
+                "but expected: (" & describeArgs(c, s.typ.n, 0) & ")"
+      LocalError(n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
