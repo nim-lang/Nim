@@ -236,11 +236,11 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       markUsed(n, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
-        # it's not bound when it's also used as return type for example
-        if result.typ.sonsLen > 0:
+        # it's not bound when it's used multiple times in the
+        # proc signature for example
+        if c.InGenericInst > 0:
           let bound = result.typ.sons[0].sym
-          if bound != nil:
-            return bound
+          if bound != nil: return bound
           return result
         if result.typ.sym == nil:
           LocalError(n.info, errTypeExpected)
