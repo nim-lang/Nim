@@ -27,17 +27,14 @@ proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
   result.add(sep)
   result.add($s.kind)
   result.add(sep)
-  if not isLocal:
-    var a: array [0..4, PSym]
-    var L = 0
-    var ow = s
-    while ow.kind != skModule and ow.owner != nil and L < len(a):
-      a[L] = ow
-      inc L
-      ow = ow.owner
-    for i in countdown(L-1, 0):
-      result.add(a[i].name.s)
+  if not isLocal and s.kind != skModule:
+    let ow = s.owner
+    if ow.kind != skModule and ow.owner != nil:
+      let ow2 = ow.owner
+      result.add(ow2.name.s)
       result.add('.')
+    result.add(ow.name.s)
+    result.add('.')
   result.add(s.name.s)
   result.add(sep)
   if s.typ != nil: 
