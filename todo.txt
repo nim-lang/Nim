@@ -9,6 +9,7 @@ version 0.9.4
   - overloading of ``.``? Special case ``.=``?
 - built-in 'getImpl'
 - macros.gensym still missing?
+- optimize 'genericReset'; 'newException' leads to code bloat
 
 
 Bugs

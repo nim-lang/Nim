@@ -346,6 +346,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
+    if optNilCheck in p.options:
+      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
     if loc.s != OnStack:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(loc), genTypeInfo(p.module, loc.t))

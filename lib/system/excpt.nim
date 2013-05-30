@@ -32,7 +32,7 @@ proc registerSignalHandler()
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
-proc chckNil(p: pointer) {.inline, compilerproc.}
+proc chckNil(p: pointer) {.noinline, compilerproc.}
 
 var
   framePtr {.rtlThreadVar.}: PFrame
@@ -359,7 +359,9 @@ proc chckRangeF(x, a, b: float): float =
     raise newException(EOutOfRange, "value " & $x & " out of range")
 
 proc chckNil(p: pointer) =
-  if p == nil: c_raise(SIGSEGV)
+  if p == nil:
+    raise newException(EInvalidValue, "attempt to write to a nil address")
+    #c_raise(SIGSEGV)
 
 proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   # checks if obj is of type subclass:
