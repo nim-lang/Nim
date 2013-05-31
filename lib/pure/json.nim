@@ -641,11 +641,13 @@ proc `[]`*(node: PJsonNode, index: Int): PJsonNode =
   assert(node.kind == JArray)
   return node.elems[index]
 
-proc existsKey*(node: PJsonNode, key: String): Bool =
+proc hasKey*(node: PJsonNode, key: String): Bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   for k, item in items(node.fields):
     if k == key: return True
+proc existsKey*(node: PJsonNode, key: String): Bool {.deprecated.} = node.hasKey(key)
+  ## Deprecated for `hasKey`
 
 proc add*(father, child: PJsonNode) = 
   ## Adds `child` to a JArray node `father`. 
