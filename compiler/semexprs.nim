@@ -920,7 +920,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
           result = check
   elif ty.kind == tyTuple and ty.n != nil: 
     f = getSymFromList(ty.n, i)
-    if f != nil: 
+    if f != nil:
       n.sons[0] = makeDeref(n.sons[0])
       n.sons[1] = newSymNode(f)
       n.typ = f.typ
@@ -1582,6 +1582,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
                                         flags*{efAllowDestructor})
     var f = newSymS(skField, n.sons[i].sons[0], c)
     f.typ = skipIntLit(n.sons[i].sons[1].typ)
+    f.position = i
     rawAddSon(typ, f.typ)
     addSon(typ.n, newSymNode(f))
     n.sons[i].sons[0] = newSymNode(f)

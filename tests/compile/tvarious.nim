@@ -1,5 +1,8 @@
 # Test various aspects
 
+var x = (x: 42, y: (a: 8, z: 10))
+echo x.y
+
 import
   mvarious
 
@@ -31,7 +34,7 @@ var
 r.b.a.x = 0
 global = global + 1
 exportme()
-write(stdout, "Hallo wie heiﬂt du? ")
+write(stdout, "Hallo wie hei√üt du? ")
 write(stdout, getPA().x)
 s = readLine(stdin)
 i = 0
@@ -39,5 +42,4 @@ while i < s.len:
   if s[i] == 'c': write(stdout, "'c' in deinem Namen gefunden\n")
   i = i + 1
 
-write(stdout, "Du heiﬂt " & s)
-
+write(stdout, "Du hei√üt " & s)
