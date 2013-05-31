@@ -1027,7 +1027,7 @@ proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
     let oldBody = p.body
     p.body = nil
-    genLineDir(p, c.ast)
+    #genLineDir(p, c.ast)
     genVarInit(p, c, c.ast)
     app(p.g.code, p.body)
     p.body = oldBody
