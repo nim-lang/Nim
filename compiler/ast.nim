@@ -920,7 +920,10 @@ proc discardSons(father: PNode) =
   father.sons = nil
 
 when defined(useNodeIds):
-  const nodeIdToDebug = 140600
+  const nodeIdToDebug = 612777 # 612794
+  #612840 # 612905 # 614635 # 614637 # 614641
+  # 423408
+  #429107 # 430443 # 441048 # 441090 # 441153
   var gNodeId: int
 
 proc newNode(kind: TNodeKind): PNode = 
@@ -933,6 +936,7 @@ proc newNode(kind: TNodeKind): PNode =
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
       writeStackTrace()
     inc gNodeId
 
@@ -973,6 +977,12 @@ proc newNodeI(kind: TNodeKind, info: TLineInfo): PNode =
   new(result)
   result.kind = kind
   result.info = info
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
+      writeStackTrace()
+    inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
   new(result)
@@ -980,6 +990,12 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
   result.info = info
   if children > 0:
     newSeq(result.sons, children)
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
+      writeStackTrace()
+    inc gNodeId
 
 proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
              typ: PType = nil): PNode =
@@ -989,6 +1005,12 @@ proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
   result.typ = typ
   # XXX use shallowCopy here for ownership transfer:
   result.sons = sons
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
+      writeStackTrace()
+    inc gNodeId
 
 proc newNodeIT(kind: TNodeKind, info: TLineInfo, typ: PType): PNode = 
   result = newNode(kind)
@@ -1178,6 +1200,9 @@ proc copyNode(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  when defined(useNodeIds):
+    if result.id == nodeIdToDebug:
+      echo "COMES FROM ", src.id
   case src.Kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
@@ -1193,6 +1218,9 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  when defined(useNodeIds):
+    if result.id == nodeIdToDebug:
+      echo "COMES FROM ", src.id
   case src.Kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
@@ -1209,6 +1237,9 @@ proc copyTree(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  when defined(useNodeIds):
+    if result.id == nodeIdToDebug:
+      echo "COMES FROM ", src.id
   case src.Kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
