@@ -851,6 +851,20 @@ proc prepareNamedParam(a: PNode) =
     var info = a.sons[0].info
     a.sons[0] = newIdentNode(considerAcc(a.sons[0]), info)
 
+proc arrayConstr(c: PContext, n: PNode): PType =
+  result = newTypeS(tyArrayConstr, c)
+  rawAddSon(result, makeRangeType(c, 0, 0, n.info))
+  addSonSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
+
+proc arrayConstr(c: PContext, info: TLineInfo): PType =
+  result = newTypeS(tyArrayConstr, c)
+  rawAddSon(result, makeRangeType(c, 0, -1, info))
+  rawAddSon(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
+
+proc incrIndexType(t: PType) =
+  assert t.kind == tyArrayConstr
+  inc t.sons[0].n.sons[1].intVal
+
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var TIntSet) = 
   template checkConstraint(n: expr) {.immediate, dirty.} =
@@ -901,7 +915,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch: 
         assert(container == nil)
-        container = newNodeI(nkBracket, n.sons[a].info)
+        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
         addSon(container, arg)
         setSon(m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
@@ -927,6 +941,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                     n.sons[a], nOrig.sons[a])
           if (arg != nil) and m.baseTypeMatch and (container != nil):
             addSon(container, arg)
+            incrIndexType(container.typ)
           else:
             m.state = csNoMatch
             return
@@ -952,7 +967,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return
         if m.baseTypeMatch:
           assert(container == nil)
-          container = newNodeI(nkBracket, n.sons[a].info)
+          container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
           addSon(container, arg)
           setSon(m.call, formal.position + 1, 
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
@@ -985,7 +1000,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     if not ContainsOrIncl(marker, formal.position): 
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
-          var container = newNodeI(nkBracket, n.info)
+          var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
           addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ,
                                       container, m, c))
         else:
