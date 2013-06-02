@@ -50,13 +50,20 @@ proc typeMismatch(n: PNode, formal, actual: PType) =
         typeToString(actual) & ") " &
         `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
-  result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil:
-    typeMismatch(arg, formal, arg.typ)
+proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
+  if arg.typ.isNil:
+    LocalError(arg.info, errExprXHasNoType,
+               renderTree(arg, {renderNoComments}))
     # error correction:
     result = copyNode(arg)
     result.typ = formal
+  else:
+    result = IndexTypesMatch(c, formal, arg.typ, arg)
+    if result == nil:
+      typeMismatch(arg, formal, arg.typ)
+      # error correction:
+      result = copyNode(arg)
+      result.typ = formal
 
 var CommonTypeBegin = PType(kind: tyExpr)
 

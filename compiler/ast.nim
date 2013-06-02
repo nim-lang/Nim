@@ -524,6 +524,8 @@ type
   PType* = ref TType
   PSym* = ref TSym
   TNode*{.final, acyclic.} = object # on a 32bit machine, this takes 32 bytes
+    when defined(useNodeIds):
+      id*: int
     typ*: PType
     comment*: string
     info*: TLineInfo
@@ -917,6 +919,10 @@ proc copyObjectSet(dest: var TObjectSet, src: TObjectSet) =
 proc discardSons(father: PNode) = 
   father.sons = nil
 
+when defined(useNodeIds):
+  const nodeIdToDebug = 140600
+  var gNodeId: int
+
 proc newNode(kind: TNodeKind): PNode = 
   new(result)
   result.kind = kind
@@ -924,6 +930,11 @@ proc newNode(kind: TNodeKind): PNode =
   result.info.fileIndex = int32(- 1)
   result.info.col = int16(- 1)
   result.info.line = int16(- 1)
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      writeStackTrace()
+    inc gNodeId
 
 proc newIntNode(kind: TNodeKind, intVal: BiggestInt): PNode = 
   result = newNode(kind)
