@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the EMCAScript (also known as JavaScript) code generator.
+# This is the JavaScript code generator.
 # Soon also a Luajit code generator. ;-)
 
 import
@@ -70,10 +70,10 @@ type
     blocks: seq[TBlock]
     up: PProc     # up the call chain; required for closure support
 
-template `|`(a, b: expr): expr {.immediate.} =
+template `|`(a, b: expr): expr {.immediate, dirty.} =
   (if p.target == targetJS: a else: b)
 
-proc newGlobals(): PGlobals = 
+proc newGlobals(): PGlobals =
   new(result)
   result.forwarded = @[]
   result.generatedSyms = initIntSet()
@@ -241,9 +241,10 @@ proc genOr(p: PProc, a, b: PNode, r: var TCompRes) =
 
 type
   TMagicFrmt = array[0..3, string]
+  TMagicOps = array[mAddi..mStrToStr, TMagicFrmt]
 
 const # magic checked op; magic unchecked op; checked op; unchecked op
-  ops: array[mAddi..mStrToStr, TMagicFrmt] = [
+  jsOps: TMagicOps = [
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # AddI
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # SubI
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
@@ -343,6 +344,106 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr($1)", "cstrToNimstr($1)"], 
     ["", "", "$1", "$1"]]
 
+  luaOps: TMagicOps = [
+    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # AddI
+    ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # SubI
+    ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
+    ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
+    ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
+    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
+    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
+    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
+    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
+    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
+    ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
+    ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
+    ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
+    ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
+    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI
+    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI
+    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI
+    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI
+    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
+    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
+    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
+    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI64
+    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI64
+    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
+    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
+    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
+    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
+    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
+    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
+    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
+    ["AddU", "AddU", "AddU($1, $2)", "AddU($1, $2)"], # AddU
+    ["SubU", "SubU", "SubU($1, $2)", "SubU($1, $2)"], # SubU
+    ["MulU", "MulU", "MulU($1, $2)", "MulU($1, $2)"], # MulU
+    ["DivU", "DivU", "DivU($1, $2)", "DivU($1, $2)"], # DivU
+    ["ModU", "ModU", "ModU($1, $2)", "ModU($1, $2)"], # ModU
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqI
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtI
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqI64
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI64
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtI64
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
+    ["LeU", "LeU", "LeU($1, $2)", "LeU($1, $2)"], # LeU
+    ["LtU", "LtU", "LtU($1, $2)", "LtU($1, $2)"], # LtU
+    ["LeU64", "LeU64", "LeU64($1, $2)", "LeU64($1, $2)"], # LeU64
+    ["LtU64", "LtU64", "LtU64($1, $2)", "LtU64($1, $2)"], # LtU64
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqEnum
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeEnum
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtEnum
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqCh
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeCh
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtCh
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqB
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeB
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtB
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqRef
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqUntracedRef
+    ["", "", "($1 <= $2)", "($1 <= $2)"], # LePtr
+    ["", "", "($1 < $2)", "($1 < $2)"], # LtPtr
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
+    ["", "", "($1 != $2)", "($1 != $2)"], # Xor
+    ["NegInt", "", "NegInt($1)", "-($1)"], # UnaryMinusI
+    ["NegInt64", "", "NegInt64($1)", "-($1)"], # UnaryMinusI64
+    ["AbsInt", "", "AbsInt($1)", "Math.abs($1)"], # AbsI
+    ["AbsInt64", "", "AbsInt64($1)", "Math.abs($1)"], # AbsI64
+    ["", "", "not ($1)", "not ($1)"], # Not
+    ["", "", "+($1)", "+($1)"], # UnaryPlusI
+    ["", "", "~($1)", "~($1)"], # BitnotI
+    ["", "", "+($1)", "+($1)"], # UnaryPlusI64
+    ["", "", "~($1)", "~($1)"], # BitnotI64
+    ["", "", "+($1)", "+($1)"], # UnaryPlusF64
+    ["", "", "-($1)", "-($1)"], # UnaryMinusF64
+    ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
+    ["Ze8ToI", "Ze8ToI", "Ze8ToI($1)", "Ze8ToI($1)"], # mZe8ToI
+    ["Ze8ToI64", "Ze8ToI64", "Ze8ToI64($1)", "Ze8ToI64($1)"], # mZe8ToI64
+    ["Ze16ToI", "Ze16ToI", "Ze16ToI($1)", "Ze16ToI($1)"], # mZe16ToI
+    ["Ze16ToI64", "Ze16ToI64", "Ze16ToI64($1)", "Ze16ToI64($1)"], # mZe16ToI64
+    ["Ze32ToI64", "Ze32ToI64", "Ze32ToI64($1)", "Ze32ToI64($1)"], # mZe32ToI64
+    ["ZeIToI64", "ZeIToI64", "ZeIToI64($1)", "ZeIToI64($1)"], # mZeIToI64
+    ["ToU8", "ToU8", "ToU8($1)", "ToU8($1)"], # ToU8
+    ["ToU16", "ToU16", "ToU16($1)", "ToU16($1)"], # ToU16
+    ["ToU32", "ToU32", "ToU32($1)", "ToU32($1)"], # ToU32
+    ["", "", "$1", "$1"],     # ToFloat
+    ["", "", "$1", "$1"],     # ToBiggestFloat
+    ["", "", "Math.floor($1)", "Math.floor($1)"], # ToInt
+    ["", "", "Math.floor($1)", "Math.floor($1)"], # ToBiggestInt
+    ["nimCharToStr", "nimCharToStr", "nimCharToStr($1)", "nimCharToStr($1)"], 
+    ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"], [
+      "cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", 
+      "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr", "cstrToNimstr", 
+                                   "cstrToNimstr(($1)+\"\")", 
+                                   "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr", 
+      "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"], 
+    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr($1)", "cstrToNimstr($1)"], 
+    ["", "", "$1", "$1"]]
+
 proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var x, y: TCompRes
   useMagic(p, magic)
@@ -357,7 +458,7 @@ proc unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = ropef(frmt, [r.rdLoc])
   r.kind = resExpr
 
-proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
+proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic, ops: TMagicOps) =
   var
     x, y: TCompRes
   let i = ord(optOverflowCheck notin p.options)
@@ -371,10 +472,13 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     r.res = ropef(ops[op][i + 2], [r.rdLoc])
   r.kind = resExpr
 
+proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
+  arithAux(p, n, r, op, jsOps | luaOps)
+
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if optLineDir in p.Options:
-    appf(p.body, "// line $2 \"$1\"$n",
+    appf(p.body, "// line $2 \"$1\"$n" | "-- line $2 \"$1\"$n",
          [toRope(toFilename(n.info)), toRope(line)])
   if {optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb} and
       ((p.prc == nil) or sfPure notin p.prc.flags):
@@ -393,7 +497,7 @@ proc genWhileStmt(p: PProc, n: PNode) =
   inc(p.unique)
   var length = len(p.blocks)
   setlen(p.blocks, length + 1)
-  p.blocks[length].id = - p.unique
+  p.blocks[length].id = -p.unique
   p.blocks[length].isLoop = true
   let labl = p.unique.toRope
   appf(p.body, "L$1: while (true) {$n" | "while true do$n", labl)
@@ -401,7 +505,7 @@ proc genWhileStmt(p: PProc, n: PNode) =
   appf(p.body, "if (!$1) break L$2;$n" | "if not $1 then goto ::L$2:: end;$n",
        [cond.res, labl])
   genStmt(p, n.sons[1])
-  appf(p.body, "}$n" | "end$n", [])
+  appf(p.body, "}$n" | "end ::L$#::$n", [labl])
   setlen(p.blocks, length)
 
 proc moveInto(p: PProc, src: var TCompRes, dest: TCompRes) =
@@ -434,51 +538,62 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #    excHandler = excHandler.prev;
   #  }
   genLineDir(p, n)
-  inc(p.unique)
-  var safePoint = ropef("Tmp$1", [toRope(p.unique)])
-  appf(p.body, 
-       "var $1 = {prev: excHandler, exc: null};$n" & "excHandler = $1;$n", 
-       [safePoint])
-  if optStackTrace in p.Options: app(p.body, "framePtr = F;" & tnl)
-  app(p.body, "try {" & tnl)
-  var length = sonsLen(n)
-  var a: TCompRes
-  gen(p, n.sons[0], a)
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
+  inc(p.unique)
+  var safePoint = ropef("Tmp$1", [toRope(p.unique)])
+  appf(p.body,
+       "var $1 = {prev: excHandler, exc: null};$nexcHandler = $1;$n" | 
+       "local $1 = pcall(", 
+       [safePoint])
+  if optStackTrace in p.Options: app(p.body, "framePtr = F;" & tnl)
+  appf(p.body, "try {$n" | "function()$n")
+  var length = sonsLen(n)
+  var a: TCompRes
+  gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var i = 1
-  if length > 1 and n.sons[i].kind == nkExceptBranch:
+  if p.target == targetJS and length > 1 and n.sons[i].kind == nkExceptBranch:
     appf(p.body, "} catch (EXC) {$n")
+  elif p.target == targetLua:
+    appf(p.body, "end)$n")
   while i < length and n.sons[i].kind == nkExceptBranch: 
     let blen = sonsLen(n.sons[i])
     if blen == 1: 
       # general except section:
-      if i > 1: app(p.body, "else {" & tnl)
+      if i > 1: appf(p.body, "else {$n" | "else$n")
       gen(p, n.sons[i].sons[0], a)
       moveInto(p, a, r)
-      if i > 1: app(p.body, '}' & tnl)
+      if i > 1: appf(p.body, "}$n" | "end$n")
     else:
       var orExpr: PRope = nil
       useMagic(p, "isObj")
       for j in countup(0, blen - 2): 
         if n.sons[i].sons[j].kind != nkType: 
           InternalError(n.info, "genTryStmt")
-        if orExpr != nil: app(orExpr, "||")
+        if orExpr != nil: app(orExpr, "||" | " or ")
         appf(orExpr, "isObj($1.exc.m_type, $2)", 
              [safePoint, genTypeInfo(p, n.sons[i].sons[j].typ)])
       if i > 1: app(p.body, "else ")
-      appf(p.body, "if ($1.exc && ($2)) {$n", [safePoint, orExpr])
+      appf(p.body, "if ($1.exc && ($2)) {$n" | "if $1.exc and ($2) then$n",
+        [safePoint, orExpr])
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
-      appf(p.body, "}$n")
+      appf(p.body, "}$n" | "end$n")
     inc(i)
-  app(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
+  if p.target == targetJS:
+    app(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
     gen(p, n.sons[i].sons[0], a)
     moveInto(p, a, r)
-  app(p.body, '}' & tnl)
+  if p.target == targetJS:
+    app(p.body, "}" & tnl)
+  if p.target == targetLua:
+    # we need to repeat the finally block for Lua ...
+    if i < length and n.sons[i].kind == nkFinally:
+      gen(p, n.sons[i].sons[0], a)
+      moveInto(p, a, r)
 
 proc genRaiseStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
@@ -493,7 +608,7 @@ proc genRaiseStmt(p: PProc, n: PNode) =
     useMagic(p, "reraiseException")
     app(p.body, "reraiseException();" & tnl)
 
-proc genCase(p: PProc, n: PNode, r: var TCompRes) = 
+proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) = 
   var
     cond, stmt: TCompRes
   genLineDir(p, n)
@@ -539,24 +654,67 @@ proc genCase(p: PProc, n: PNode, r: var TCompRes) =
     else: internalError(it.info, "jsgen.genCaseStmt")
   appf(p.body, "}$n")
 
-proc genBlock(p: PProc, n: PNode, r: var TCompRes) = 
-  var 
-    idx, labl: int
-    sym: PSym
+proc genCaseLua(p: PProc, n: PNode, r: var TCompRes) = 
+  var
+    cond, stmt: TCompRes
+  genLineDir(p, n)
+  gen(p, n.sons[0], cond)
+  let stringSwitch = skipTypes(n.sons[0].typ, abstractVar).kind == tyString
+  if stringSwitch:
+    useMagic(p, "eqStr")
+  let tmp = getTemp(p)
+  appf(p.body, "$1 = $2;$n", [tmp, cond.rdLoc])
+  if not isEmptyType(n.typ):
+    r.kind = resVal
+    r.res = getTemp(p)
+  for i in countup(1, sonsLen(n) - 1): 
+    let it = n.sons[i]
+    case it.kind
+    of nkOfBranch:
+      if i != 1: appf(p.body, "$nelsif ")
+      else: appf(p.body, "if ")
+      for j in countup(0, sonsLen(it) - 2): 
+        if j != 0: app(p.body, " or ")
+        let e = it.sons[j]
+        if e.kind == nkRange:
+          var ia, ib: TCompRes
+          gen(p, e.sons[0], ia)
+          gen(p, e.sons[1], ib)
+          appf(p.body, "$1 >= $2 and $1 <= $3", [tmp, ia.rdLoc, ib.rdLoc])
+        else:
+          if stringSwitch: 
+            case e.kind
+            of nkStrLit..nkTripleStrLit: appf(p.body, "eqStr($1, $2)",
+                [tmp, makeJSString(e.strVal)])
+            else: InternalError(e.info, "jsgen.genCaseStmt: 2")
+          else:
+            gen(p, e, cond)
+            appf(p.body, "$1 == $2", [tmp, cond.rdLoc])
+      appf(p.body, " then$n")
+      gen(p, lastSon(it), stmt)
+      moveInto(p, stmt, r)
+    of nkElse:
+      appf(p.body, "else$n")
+      gen(p, it.sons[0], stmt)
+      moveInto(p, stmt, r)
+    else: internalError(it.info, "jsgen.genCaseStmt")
+  appf(p.body, "$nend$n")
+  
+proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
   inc(p.unique)
-  idx = len(p.blocks)
+  let idx = len(p.blocks)
   if n.sons[0].kind != nkEmpty: 
     # named block?
     if (n.sons[0].kind != nkSym): InternalError(n.info, "genBlock")
-    sym = n.sons[0].sym
+    var sym = n.sons[0].sym
     sym.loc.k = locOther
     sym.loc.a = idx
   setlen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
-  labl = p.unique
-  appf(p.body, "L$1: do {$n", toRope(labl))
+  let labl = p.unique
+  appf(p.body, "L$1: do {$n" | "", labl.toRope)
   gen(p, n.sons[1], r)
-  appf(p.body, "} while(false);$n")
+  appf(p.body, "} while(false);$n" | "$n::L$#::$n", labl.toRope)
   setlen(p.blocks, idx)
 
 proc genBreakStmt(p: PProc, n: PNode) = 
@@ -575,7 +733,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
     if idx < 0 or not p.blocks[idx].isLoop:
       InternalError(n.info, "no loop to break")
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  appf(p.body, "break L$1;$n", [toRope(p.blocks[idx].id)])
+  appf(p.body, "break L$1;$n" | "goto ::L$1::;$n", [toRope(p.blocks[idx].id)])
 
 proc genAsmStmt(p: PProc, n: PNode) = 
   genLineDir(p, n)
@@ -596,18 +754,21 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
     let it = n.sons[i]
     if sonsLen(it) != 1: 
       if i > 0:
-        appf(p.body, "else {$n", [])
+        appf(p.body, "else {$n" | "else$n", [])
         inc(toClose)
       gen(p, it.sons[0], cond)
-      appf(p.body, "if ($1) {$n", cond.rdLoc)
+      appf(p.body, "if ($1) {$n" | "if $# then$n", cond.rdLoc)
       gen(p, it.sons[1], stmt)
     else:
       # else part:
-      appf(p.body, "else {$n")
+      appf(p.body, "else {$n" | "else$n")
       gen(p, it.sons[0], stmt)
     moveInto(p, stmt, r)
-    appf(p.body, "}$n")
-  app(p.body, repeatChar(toClose, '}') & tnl)
+    appf(p.body, "}$n" | "end$n")
+  if p.target == targetJS:
+    app(p.body, repeatChar(toClose, '}') & tnl)
+  else:
+    for i in 1..toClose: appf(p.body, "end$n")
 
 proc generateHeader(p: PProc, typ: PType): PRope =
   result = nil
@@ -957,24 +1118,27 @@ proc createVar(p: PProc, typ: PType, indirect: bool): PRope =
     result = toRope("{")
     for i in 0.. <t.sonslen:
       if i > 0: app(result, ", ")
-      appf(result, "Field$1: $2", i.toRope, createVar(p, t.sons[i], false))
+      appf(result, "Field$1: $2" | "Field$# = $#", i.toRope, 
+           createVar(p, t.sons[i], false))
     app(result, "}")
   of tyObject: 
     result = toRope("{")
     var c = 0
     if tfFinal notin t.flags or t.sons[0] != nil:
       inc(c)
-      appf(result, "m_type: $1", [genTypeInfo(p, t)])
+      appf(result, "m_type: $1" | "m_type = $#", [genTypeInfo(p, t)])
     while t != nil: 
       app(result, createRecordVarAux(p, t.n, c))
       t = t.sons[0]
     app(result, "}")
   of tyVar, tyPtr, tyRef: 
-    if mapType(t) == etyBaseIndex: result = putToSeq("[null, 0]", indirect)
-    else: result = putToSeq("null", indirect)
+    if mapType(t) == etyBaseIndex:
+      result = putToSeq("[null, 0]" | "{nil, 0}", indirect)
+    else:
+      result = putToSeq("null" | "nil", indirect)
   of tySequence, tyString, tyCString, tyPointer, tyProc: 
-    result = putToSeq("null", indirect)
-  else: 
+    result = putToSeq("null" | "nil", indirect)
+  else:
     internalError("createVar: " & $t.kind)
     result = nil
 
@@ -987,7 +1151,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     a: TCompRes
     s: PRope
   if n.kind == nkEmpty: 
-    appf(p.body, "var $1 = $2;$n", 
+    appf(p.body, "var $1 = $2;$n" | "local $1 = $2;$n", 
          [mangleName(v), createVar(p, v.typ, isIndirect(v))])
   else: 
     discard mangleName(v)
@@ -1002,15 +1166,19 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     of etyBaseIndex: 
       if (a.typ != etyBaseIndex): InternalError(n.info, "genVarInit")
       if {sfAddrTaken, sfGlobal} * v.flags != {}: 
-        appf(p.body, "var $1 = [$2, $3];$n", [v.loc.r, a.address, a.res])
-      else: 
-        appf(p.body, "var $1 = $2; var $1_Idx = $3;$n", [
+        appf(p.body, "var $1 = [$2, $3];$n" | "local $1 = {$2, $3};$n", 
+            [v.loc.r, a.address, a.res])
+      else:
+        appf(p.body, "var $1 = $2; var $1_Idx = $3;$n" | 
+                     "local $1 = $2; local $1_Idx = $3;$n", [
              v.loc.r, a.address, a.res])
       return
     else:
       s = a.res
-    if isIndirect(v): appf(p.body, "var $1 = [$2];$n", [v.loc.r, s])
-    else: appf(p.body, "var $1 = $2;$n", [v.loc.r, s])
+    if isIndirect(v): 
+      appf(p.body, "var $1 = [$2];$n" | "local $1 = {$2};$n", [v.loc.r, s])
+    else: 
+      appf(p.body, "var $1 = $2;$n" | "local $1 = $2;$n", [v.loc.r, s])
   
 proc genVarStmt(p: PProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
@@ -1049,7 +1217,7 @@ proc genNewSeq(p: PProc, n: PNode) =
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n.sons[1].typ, abstractVar).kind
   of tyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r)
-  of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
+  of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)" | "toBool($#)")
   else: InternalError(n.info, "genOrd")
   
 proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1215,7 +1383,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
     app(r.res, a.res)
   app(r.res, "]")
 
-proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) = 
+proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = toRope("{")
   r.kind = resExpr
@@ -1224,7 +1392,7 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
     var it = n.sons[i]
     if it.kind == nkExprColonExpr: it = it.sons[1]
     gen(p, it, a)
-    appf(r.res, "Field$1: $2", [i.toRope, a.res])
+    appf(r.res, "Field$#: $#" | "Field$# = $#", [i.toRope, a.res])
   r.res.app("}")
 
 proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1239,7 +1407,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
-    appf(r.res, "$1: $2", [f.loc.r, a.res])
+    appf(r.res, "$#: $#" | "$# = $#" , [f.loc.r, a.res])
   r.res.app("}")
 
 proc genConv(p: PProc, n: PNode, r: var TCompRes) = 
@@ -1247,7 +1415,7 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   var src = skipTypes(n.sons[1].typ, abstractVarRange)
   gen(p, n.sons[1], r)
   if (dest.kind != src.kind) and (src.kind == tyBool): 
-    r.res = ropef("(($1)? 1:0)", [r.res])
+    r.res = ropef("(($1)? 1:0)" | "toBool($#)", [r.res])
     r.kind = resExpr
   
 proc upConv(p: PProc, n: PNode, r: var TCompRes) = 
@@ -1294,20 +1462,23 @@ proc genReturnStmt(p: PProc, n: PNode) =
     genStmt(p, n.sons[0])
   else:
     genLineDir(p, n)
-  app(p.body, "break BeforeRet;" & tnl)
+  appf(p.body, "break BeforeRet;$n" | "goto ::BeforeRet::;$n")
 
-proc genProcBody(p: PProc, prc: PSym): PRope = 
+proc genProcBody(p: PProc, prc: PSym): PRope =
   if optStackTrace in prc.options:
-    result = ropef("var F={procname:$1,prev:framePtr,filename:$2,line:0};$n" &
-        "framePtr = F;$n", [makeJSString(prc.owner.name.s & '.' & prc.name.s), 
-                            makeJSString(toFilename(prc.info))])
+    result = ropef(("var F={procname:$1,prev:framePtr,filename:$2,line:0};$n" |
+                  "local F={procname=$#,prev=framePtr,filename=$#,line=0};$n") &
+                   "framePtr = F;$n", [
+                   makeJSString(prc.owner.name.s & '.' & prc.name.s),
+                   makeJSString(toFilename(prc.info))])
   else:
     result = nil
   if p.beforeRetNeeded:
-    appf(result, "BeforeRet: do {$n$1} while (false); $n", [p.body])
-  else: 
+    appf(result, "BeforeRet: do {$n$1} while (false); $n" | 
+                 "$#;::BeforeRet::$n", [p.body])
+  else:
     app(result, p.body)
-  if prc.typ.callConv == ccSysCall: 
+  if prc.typ.callConv == ccSysCall and p.target == targetJS: 
     result = ropef("try {$n$1} catch (e) {$n" &
         " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}", [result])
   if optStackTrace in prc.options: 
@@ -1329,12 +1500,14 @@ proc genProc(oldProc: PProc, prc: PSym): PRope =
   header = generateHeader(p, prc.typ)
   if prc.typ.sons[0] != nil and sfPure notin prc.flags: 
     resultSym = prc.ast.sons[resultPos].sym
-    resultAsgn = ropef("var $# = $#;$n", [mangleName(resultSym), 
+    resultAsgn = ropef("var $# = $#;$n" | "local $# = $#;$n", [
+        mangleName(resultSym), 
         createVar(p, resultSym.typ, isIndirect(resultSym))])
     gen(p, prc.ast.sons[resultPos], a)
     returnStmt = ropef("return $#;$n", [a.res])
   genStmt(p, prc.getBody)
-  result = ropef("function $#($#) {$n$#$#$#$#}$n",
+  result = ropef("function $#($#) {$n$#$#$#$#}$n" |
+                 "function $#($#) $n$#$#$#$#$nend$n",
                 [name, header, p.locals, resultAsgn, 
                  genProcBody(p, prc), returnStmt])
   #if gVerbosity >= 3:
@@ -1360,10 +1533,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       nil
     elif mapType(n.typ) == etyBaseIndex:
       r.typ = etyBaseIndex
-      r.address = toRope"null"
+      r.address = toRope"null" | toRope"nil"
       r.res = toRope"0"
     else:
-      r.res = toRope"null"
+      r.res = toRope"null" | toRope"nil"
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString: 
       useMagic(p, "cstrToNimstr")
@@ -1430,7 +1603,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkConstSection: nil
   of nkForStmt, nkParForStmt: 
     internalError(n.info, "for statement not eliminated")
-  of nkCaseStmt: genCase(p, n, r)
+  of nkCaseStmt: 
+    if p.target == targetJS: genCaseJS(p, n, r)
+    else: genCaseLua(p, n, r)
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
   of nkAsgn: genAsgn(p, n)
@@ -1461,10 +1636,12 @@ proc newModule(module: PSym): BModule =
   result.module = module
   if globals == nil: globals = newGlobals()
   
-proc genHeader(): PRope = 
+proc genHeader(): PRope =
   result = ropef("/* Generated by the Nimrod Compiler v$1 */$n" &
-      "/*   (c) 2013 Andreas Rumpf */$n$n" & "$nvar Globals = this;$n" &
-      "var framePtr = null;$n" & "var excHandler = null;$n", 
+                 "/*   (c) 2013 Andreas Rumpf */$n$n" & 
+                 "$nvar Globals = this;$n" &
+                 "var framePtr = null;$n" & 
+                 "var excHandler = null;$n", 
                  [toRope(versionAsString)])
 
 proc genModule(p: PProc, n: PNode) = 
