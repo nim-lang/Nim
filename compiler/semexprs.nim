@@ -1441,6 +1441,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   of mQuoteAst: result = semQuoteAst(c, n)
+  of mAstToStr:
+    checkSonsLen(n, 2)
+    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
+    result.typ = getSysType(tyString)
   else: result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =

@@ -396,8 +396,8 @@ proc PragmaWatchpoint(c: PContext, n: PNode) =
 
 proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n.sons[1].kind
-  of nkStrLit, nkRStrLit, nkTripleStrLit: 
-    result = copyNode(n)
+  of nkStrLit, nkRStrLit, nkTripleStrLit:
+    result = newNode(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
     var str = n.sons[1].strVal
     if str == "":
       LocalError(n.info, errEmptyAsm)
