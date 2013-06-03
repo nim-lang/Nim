@@ -129,8 +129,3 @@ Abbreviation    C/C++ Compiler
 If your C compiler is not in the above list, try using the
 *generic UNIX C compiler* (``ucc``). If the C compiler needs
 different command line arguments try the ``--passc`` and ``--passl`` switches.
-Unsupported compilers contain serious bugs that keep them from bootstrapping
-Nimrod.
-
-
-
