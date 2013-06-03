@@ -17,7 +17,6 @@ Bugs
 
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO
-- instantiated generics are listed in error messages
 - sneaking with qualifiedLookup() is really broken!
 - aporia.nim(968, 5) Error: ambiguous identifier: 'DELETE' -- 
   use a qualifier
