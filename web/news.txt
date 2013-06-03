@@ -18,6 +18,10 @@ Library Additions
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- The scoping rules for the ``if`` statement changed for better interaction 
+  with the new syntactic construct ``(;)``.
+
+
 
 Compiler Additions
 ------------------

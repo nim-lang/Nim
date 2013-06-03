@@ -1920,8 +1920,6 @@ the corresponding *then* block:
 
 In the example the scopes have been enclosed in ``{|  |}``. 
 
-**Note**: These scoping rules will be active in 0.9.4.
-
 
 Case statement
 --------------

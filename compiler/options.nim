@@ -14,7 +14,7 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   hasFFI* = defined(useFFI)
-  newScopeForIf* = false      # XXX activate for 0.9.4
+  newScopeForIf* = true
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)

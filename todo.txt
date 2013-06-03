@@ -2,7 +2,7 @@ version 0.9.4
 =============
 
 - make 'bind' default for templates and introduce 'mixin';
-  special rule for ``[]=``
+- special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
 - mocking support with ``tyProxy`` that does: fallback for ``.`` operator
