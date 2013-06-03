@@ -1748,7 +1748,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   
 proc parseStmt(p: var TParser): PNode =
   #| stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)
-  #|      / simpleStmt
+  #|      / simpleStmt ^+ ';'
   if p.tok.indent > p.currInd:
     result = newNodeP(nkStmtList, p)
     withInd(p):
@@ -1779,10 +1779,14 @@ proc parseStmt(p: var TParser): PNode =
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
     else:
-      if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
-      result = simpleStmt(p)
-      if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
-      #while p.tok.tokType == tkSemicolon: getTok(p)
+      result = newNodeP(nkStmtList, p)
+      while true:
+        if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)     
+        let a = simpleStmt(p)
+        if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
+        result.add(a)
+        if p.tok.tokType != tkSemicolon: break
+        getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)
