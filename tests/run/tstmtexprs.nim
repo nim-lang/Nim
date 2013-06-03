@@ -64,3 +64,8 @@ proc p2(a: int): int =
   q()
 
 echo p(), " ", p2(2)
+
+proc semiProblem() =
+  if false: echo "aye"; echo "indeed"
+
+semiProblem()
