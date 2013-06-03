@@ -145,7 +145,7 @@ proc lobbyInit*() =
   
   var pos = vec2f(10, 10)
   u_alias = gui.newTextEntry(
-    if s.existsKey("alias"): s["alias"].str else: "alias", 
+    if s.hasKey("alias"): s["alias"].str else: "alias", 
     pos)
   pos.y += 20
   u_passwd = gui.newTextEntry("buzz", pos)

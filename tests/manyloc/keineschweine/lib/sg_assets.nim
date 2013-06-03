@@ -227,12 +227,13 @@ template checkFile(path: expr): stmt {.dirty, immediate.} =
 
 cacheImpl newSprite, SpriteSheets, PSpriteSheet:
   result.file = filename
-  if not(filename =~ re"\S+_(\d+)x(\d+)\.\S\S\S"):
+  if filename =~ re"\S+_(\d+)x(\d+)\.\S\S\S":
+    result.framew = strutils.parseInt(matches[0])
+    result.frameh = strutils.parseInt(matches[1])
+    checkFile("data/gfx"/result.file)  
+  else:
     errors.add "Bad file: "&filename&" must be in format name_WxH.png"
     return
-  result.framew = strutils.parseInt(matches[0])
-  result.frameh = strutils.parseInt(matches[1])
-  checkFile("data/gfx"/result.file)
 
 cacheImpl newSound, SoundCache, PSoundRecord:
   result.file = filename
@@ -288,23 +289,23 @@ proc validateSettings*(settings: PJsonNode, errors: var seq[string]): bool =
   if settings.kind != JObject:
     addError("Settings root must be an object")
     return
-  if not settings.existsKey("vehicles"):
+  if not settings.hasKey("vehicles"):
     addError("Vehicles section missing")
-  if not settings.existsKey("objects"):
+  if not settings.hasKey("objects"):
     errors.add("Objects section is missing")
     result = false
-  if not settings.existsKey("level"):
+  if not settings.hasKey("level"):
     errors.add("Level settings section is missing")
     result = false
   else:
     let lvl = settings["level"]
-    if lvl.kind != JObject or not lvl.existsKey("size"):
+    if lvl.kind != JObject or not lvl.hasKey("size"):
       errors.add("Invalid level settings")
       result = false
-    elif not lvl.existsKey("size") or lvl["size"].kind != JArray or lvl["size"].len != 2:
+    elif not lvl.hasKey("size") or lvl["size"].kind != JArray or lvl["size"].len != 2:
       errors.add("Invalid/missing level size")
       result = false
-  if not settings.existsKey("items"):
+  if not settings.hasKey("items"):
     errors.add("Items section missing")
     result = false
   else:
@@ -363,7 +364,7 @@ proc loadSettings*(rawJson: string, errors: var seq[string]): bool =
     nameToVehID[veh.name] = veh.id
     inc vID
   vID = 0
-  if settings.existsKey("bullets"):
+  if settings.hasKey("bullets"):
     for blt in settings["bullets"].items:
       var bullet = importBullet(blt, errors)
       bullet.id = bID
@@ -408,21 +409,21 @@ proc fetchBullet(name: string): PBulletRecord =
   return cfg.bullets[nameToBulletID[name]]
 
 proc getField(node: PJsonNode, field: string, target: var float) =
-  if not node.existsKey(field):
+  if not node.hasKey(field):
     return
   if node[field].kind == JFloat:
     target = node[field].fnum
   elif node[field].kind == JInt:
     target = node[field].num.float
 proc getField(node: PJsonNode, field: string, target: var int) =
-  if not node.existsKey(field):
+  if not node.hasKey(field):
     return
   if node[field].kind == JInt:
     target = node[field].num.int
   elif node[field].kind == JFloat:
     target = node[field].fnum.int
 proc getField(node: PJsonNode; field: string; target: var bool) =
-  if not node.existsKey(field):
+  if not node.hasKey(field):
     return
   case node[field].kind
   of JBool:
@@ -434,7 +435,7 @@ proc getField(node: PJsonNode; field: string; target: var bool) =
   else: nil
 
 template checkKey(node: expr; key: string): stmt =
-  if not existsKey(node, key):
+  if not hasKey(node, key):
     return
 
 proc importTrail(data: PJsonNode; errors: var seq[string]): TTrailRecord =
@@ -450,17 +451,17 @@ proc importLevel(data: PJsonNode; errors: var seq[string]): PLevelSettings =
   
   checkKey(data, "level")
   var level = data["level"]
-  if level.existsKey("size") and level["size"].kind == JArray and level["size"].len == 2:
+  if level.hasKey("size") and level["size"].kind == JArray and level["size"].len == 2:
     result.size.x = level["size"][0].num.cint
     result.size.y = level["size"][1].num.cint
-  if level.existsKey("starfield"):
+  if level.hasKey("starfield"):
     for star in level["starfield"].items:
       result.starfield.add(newSprite(star.str, errors))
 proc importPhys(data: PJsonNode): TPhysicsRecord =
   result.radius = 20.0
   result.mass = 10.0
   
-  if data.existsKey("physics") and data["physics"].kind == JObject:
+  if data.hasKey("physics") and data["physics"].kind == JObject:
     let phys = data["physics"]
     phys.getField("radius", result.radius)
     phys.getField("mass", result.mass)
@@ -489,10 +490,10 @@ proc importAnim(data: PJsonNode, errors: var seq[string]): PAnimationRecord =
   result.delay = 1000.0
   result.spriteSheet = nil
   
-  if data.existsKey("anim"):
+  if data.hasKey("anim"):
     let anim = data["anim"]
     if anim.kind == JObject:
-      if anim.existsKey("file"):
+      if anim.hasKey("file"):
         result.spriteSheet = newSprite(anim["file"].str, errors)
       
       anim.getField "angle", result.angle

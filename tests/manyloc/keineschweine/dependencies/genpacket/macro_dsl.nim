@@ -33,17 +33,8 @@ proc emptyNode*(): PNimrodNode {.compileTime.} =
 
 proc dot*(left, right: PNimrodNode): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkDotExpr).und(left, right)
-proc postfix*(a: PNimrodNode, b: string): PNimrodNode {.compileTime.} =
-  result = newNimNode(nnkPostfix).und(newIdentNode(!b), a)
 proc prefix*(a: string, b: PNimrodNode): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkPrefix).und(newIdentNode(!a), b)
-
-proc infix*(a, b, c: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## 5.infix("+", 10)  ## => 5 + 10
-  result = newNimNode(nnkInfix).und(b, a, c)
-proc infix*(a: PNimrodNode; b: string; c: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## Infix operation: infix(5, "+", 10) ## => 
-  result = newNimNode(nnkInfix).und(newIdentNode(b), a, c)
 
 proc quoted2ident*(a: PNimrodNode): PNimrodNode {.compileTime.} = 
   if a.kind != nnkAccQuoted:
