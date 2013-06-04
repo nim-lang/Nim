@@ -15,6 +15,7 @@ import
 # way had some inherent problems. Performs:
 # 
 # * effect+exception tracking
+# * "usage before definition" checking
 # * checks for invalid usages of compiletime magics (not implemented)
 # * checks for invalid usages of PNimNode (not implemented)
 # * later: will do an escape analysis for closures at least
@@ -42,14 +43,6 @@ import
 # an array and filling it in parallel should be supported but is not easily
 # done: It essentially requires a built-in 'indexSplit' operation and dependent
 # typing.
-
-when false:
-  proc sem2call(c: PContext, n: PNode): PNode =
-    assert n.kind in nkCallKinds
-    
-  proc sem2sym(c: PContext, n: PNode): PNode =
-    assert n.kind == nkSym
-  
   
 # ------------------------ exception and tag tracking -------------------------
 
@@ -80,8 +73,43 @@ type
     tags: PNode # list of tags
     bottom: int
     owner: PSym
+    init: seq[int] # list of initialized variables
+                   # coming soon: "guard" tracking for 'let' variables
   
   PEffects = var TEffects
+
+proc isLocalVar(a: PEffects, s: PSym): bool =
+  s.kind in {skVar, skResult} and sfGlobal notin s.flags and s.owner == a.owner
+
+proc initVar(a: PEffects, n: PNode) =
+  if n.kind != nkSym: return
+  let s = n.sym
+  if isLocalVar(a, s):
+    for x in a.init:
+      if x == s.id: return
+    a.init.add s.id
+
+proc useVar(a: PEffects, n: PNode) =
+  let s = n.sym
+  if isLocalVar(a, s):
+    if s.id notin a.init:
+      if true:
+        Message(n.info, warnUninit, s.name.s)
+      else:
+        Message(n.info, errGenerated,
+          "read from potentially uninitialized variable: '$1'" % s.name.s)
+      # prevent superfluous warnings about the same variable:
+      a.init.add s.id
+
+type
+  TIntersection = seq[tuple[id, count: int]] # a simple count table
+
+proc addToIntersection(inter: var TIntersection, s: int) =
+  for j in 0.. <inter.len:
+    if s == inter[j].id:
+      inc inter[j].count
+      return
+  inter.add((id: s, count: 1))
 
 proc throws(tracked, n: PNode) =
   if n.typ == nil or n.typ.kind != tyError: tracked.add n
@@ -158,21 +186,43 @@ proc track(tracked: PEffects, n: PNode)
 proc trackTryStmt(tracked: PEffects, n: PNode) =
   let oldBottom = tracked.bottom
   tracked.bottom = tracked.exc.len
-  track(tracked, n.sons[0])
+
+  let oldState = tracked.init.len
+  var inter: TIntersection = @[]
+
+  track(tracked, n.sons[0])  
+  for i in oldState.. <tracked.init.len:
+    addToIntersection(inter, tracked.init[i])
+  
+  var branches = 1
+  var hasFinally = false
   for i in 1 .. < n.len:
     let b = n.sons[i]
     let blen = sonsLen(b)
     if b.kind == nkExceptBranch:
+      inc branches
       if blen == 1:
         catchesAll(tracked)
       else:
         for j in countup(0, blen - 2):
           assert(b.sons[j].kind == nkType)
           catches(tracked, b.sons[j].typ)
+
+      setLen(tracked.init, oldState)
+      track(tracked, b.sons[blen-1])
+      for i in oldState.. <tracked.init.len:
+        addToIntersection(inter, tracked.init[i])
     else:
       assert b.kind == nkFinally
-    track(tracked, b.sons[blen-1])
+      setLen(tracked.init, oldState)
+      track(tracked, b.sons[blen-1])
+      hasFinally = true
+      
   tracked.bottom = oldBottom
+  if not hasFinally:
+    setLen(tracked.init, oldState)
+  for id, count in items(inter):
+    if count == branches: tracked.init.add id
 
 proc isIndirectCall(n: PNode, owner: PSym): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
@@ -263,11 +313,79 @@ proc trackOperand(tracked: PEffects, n: PNode) =
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
 
+proc trackCase(tracked: PEffects, n: PNode) =
+  track(tracked, n.sons[0])
+  let oldState = tracked.init.len
+  var inter: TIntersection = @[]
+  for i in 1.. <n.len:
+    let branch = n.sons[i]
+    setLen(tracked.init, oldState)
+    for i in 0 .. <branch.len:
+      track(tracked, branch.sons[i])
+    for i in oldState.. <tracked.init.len:
+      addToIntersection(inter, tracked.init[i])
+  let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
+            of tyFloat..tyFloat128, tyString:
+              lastSon(n).kind == nkElse
+            else:
+              true
+  setLen(tracked.init, oldState)
+  if exh:
+    for id, count in items(inter):
+      if count == n.len-1: tracked.init.add id
+    # else we can't merge
+
+proc trackIf(tracked: PEffects, n: PNode) =
+  track(tracked, n.sons[0].sons[0])
+  let oldState = tracked.init.len
+
+  var inter: TIntersection = @[]
+  track(tracked, n.sons[0].sons[1])
+  for i in oldState.. <tracked.init.len:
+    addToIntersection(inter, tracked.init[i])
+
+  for i in 1.. <n.len:
+    let branch = n.sons[i]
+    setLen(tracked.init, oldState)
+    for i in 0 .. <branch.len:
+      track(tracked, branch.sons[i])
+    for i in oldState.. <tracked.init.len:
+      addToIntersection(inter, tracked.init[i])
+  setLen(tracked.init, oldState)
+  if lastSon(n).len == 1:
+    for id, count in items(inter):
+      if count == n.len: tracked.init.add id
+    # else we can't merge as it is not exhaustive
+  
+proc trackBlock(tracked: PEffects, n: PNode) =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    var oldState = -1
+    for i in 0.. <n.len:
+      if hasSubnodeWith(n.sons[i], nkBreakStmt):
+        # block:
+        #   x = def
+        #   if ...: ... break # some nested break
+        #   y = def
+        # --> 'y' not defined after block!
+        if oldState < 0: oldState = tracked.init.len
+      track(tracked, n.sons[i])
+    if oldState > 0: setLen(tracked.init, oldState)
+  else:
+    track(tracked, n)
+
+proc isTrue(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
+  of nkSym:
+    useVar(tracked, n)
   of nkRaiseStmt:
     n.sons[0].info = n.info
     throws(tracked.exc, n.sons[0])
+    for i in 0 .. <safeLen(n):
+      track(tracked, n.sons[i])
   of nkCallKinds:
     # p's effects are ours too:
     let a = n.sons[0]
@@ -287,16 +405,45 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i])
-  of nkTryStmt:
-    trackTryStmt(tracked, n)
-    return
-  of nkPragma:
-    trackPragmaStmt(tracked, n)
-    return
-  of nkMacroDef, nkTemplateDef: return
-  else: nil
-  for i in 0 .. <safeLen(n):
-    track(tracked, n.sons[i])
+    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, 
+                                           mNewSeq, mShallowCopy}:
+      # may not look like an assignment, but it is:
+      initVar(tracked, n.sons[1])
+    for i in 0 .. <safeLen(n):
+      track(tracked, n.sons[i])
+  of nkTryStmt: trackTryStmt(tracked, n)
+  of nkPragma: trackPragmaStmt(tracked, n)
+  of nkMacroDef, nkTemplateDef: discard
+  of nkAsgn, nkFastAsgn:
+    track(tracked, n.sons[1])
+    initVar(tracked, n.sons[0])
+    track(tracked, n.sons[0])
+  of nkVarSection:
+    for child in n:
+      if child.kind == nkIdentDefs and lastSon(child).kind != nkEmpty:
+        track(tracked, lastSon(child))
+        for i in 0 .. child.len-3: initVar(tracked, child.sons[i])
+  of nkCaseStmt: trackCase(tracked, n)
+  of nkIfStmt, nkIfExpr: trackIf(tracked, n)
+  of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n.sons[1])
+  of nkWhileStmt:
+    track(tracked, n.sons[0])
+    # 'while true' loop?
+    if isTrue(n.sons[0]):
+      trackBlock(tracked, n.sons[1])
+    else:
+      # loop may never execute:
+      let oldState = tracked.init.len
+      track(tracked, n.sons[1])
+      setLen(tracked.init, oldState)
+  of nkForStmt, nkParForStmt:
+    # we are very conservative here and assume the loop is never executed:
+    let oldState = tracked.init.len
+    for i in 0 .. <len(n):
+      track(tracked, n.sons[i])
+    setLen(tracked.init, oldState)
+  else:
+    for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 
 proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool) =
   # check that any real exception is listed in 'spec'; mark those as used;
@@ -362,6 +509,7 @@ proc trackProc*(s: PSym, body: PNode) =
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
+  t.init = @[]
   track(t, body)
   
   let p = s.ast.sons[pragmasPos]
