@@ -146,7 +146,9 @@ proc discardCheck(result: PNode) =
       if result.typ.kind == tyNil:
         fixNilType(result)
       else:
-        localError(result.info, errDiscardValue)
+        var n = result
+        while n.kind in skipForDiscardable: n = n.lastSon
+        localError(n.info, errDiscardValue)
 
 proc semIf(c: PContext, n: PNode): PNode = 
   result = n
