@@ -67,7 +67,8 @@ type
 # implementation
 
 const 
-  SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.'} 
+  SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.',
+                        '/', '\\'} 
   
 proc rawGetTok(c: var TCfgParser, tok: var TToken)
 
@@ -149,7 +150,7 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
   of 't', 'T': 
     add(tok.literal, '\t')
     Inc(c.bufpos)
-  of '\'', '\"': 
+  of '\'', '"': 
     add(tok.literal, c.buf[c.bufpos])
     Inc(c.bufpos)
   of '\\': 
@@ -178,7 +179,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
   var pos = c.bufPos + 1          # skip "
   var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
-  if (buf[pos] == '\"') and (buf[pos + 1] == '\"'): 
+  if (buf[pos] == '"') and (buf[pos + 1] == '"'): 
     # long string literal:
     inc(pos, 2)               # skip ""
                               # skip leading newline:
@@ -186,9 +187,9 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
     buf = c.buf
     while true: 
       case buf[pos]
-      of '\"': 
-        if (buf[pos + 1] == '\"') and (buf[pos + 2] == '\"'): break 
-        add(tok.literal, '\"')
+      of '"': 
+        if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break 
+        add(tok.literal, '"')
         Inc(pos)
       of '\c', '\L': 
         pos = HandleCRLF(c, pos)
@@ -205,7 +206,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
     # ordinary string literal
     while true: 
       var ch = buf[pos]
-      if ch == '\"': 
+      if ch == '"': 
         inc(pos)              # skip '"'
         break 
       if ch in {'\c', '\L', lexbase.EndOfFile}: 
@@ -278,7 +279,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     tok.kind = tkBracketRi
     Inc(c.bufpos)
     tok.literal = "]"
-  of '\"': 
+  of '"': 
     getString(c, tok, false)
   of lexbase.EndOfFile: 
     tok.kind = tkEof
@@ -351,7 +352,7 @@ proc next*(c: var TCfgParser): TCfgEvent {.rtl, extern: "npc$1".} =
       rawGetTok(c, c.tok)
     else: 
       result.kind = cfgError
-      result.msg = errorStr(c, "\']\' expected, but found: " & c.tok.literal)
+      result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
   of tkInvalid, tkEquals, tkColon, tkBracketRi: 
     result.kind = cfgError
     result.msg = errorStr(c, "invalid token: " & c.tok.literal)
