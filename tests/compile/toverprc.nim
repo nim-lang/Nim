@@ -10,6 +10,8 @@ proc parseInt(x: TFile): int {.noSideEffect.} = nil
 proc parseInt(x: char): int {.noSideEffect.} = nil
 proc parseInt(x: int16): int {.noSideEffect.} = nil
 
+proc parseInt[T](x: T): int = echo x; 34
+
 type
   TParseInt = proc (x: string): int {.noSideEffect.}
 
@@ -33,3 +35,5 @@ type
 
 proc bar[a,b](f: TFoo[a,b], x: a) = echo(x, " ", f.lorem, f.ipsum)
 proc bar[a,b](f: TFoo[a,b], x: b) = echo(x, " ", f.lorem, f.ipsum)
+
+discard parseInt[string]("yay")
