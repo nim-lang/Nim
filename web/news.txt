@@ -36,7 +36,7 @@ Language Additions
 
 - Arrays can now be declared with a single integer literal ``N`` instead of a
   range; the range is then ``0..N-1``.
-
+- macros.dumptree and macros.dumplisp have been made immediate, dumptree_imm and dumplisp_imm are now deprecated.
 
 
 2013-05-20 New website design!
