@@ -390,7 +390,7 @@ proc lispRepr*(n: PNimrodNode): string {.compileTime.} =
 
   add(result, ")")
 
-macro dumpTree*(s: stmt): stmt = echo s.treeRepr
+macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
@@ -398,16 +398,16 @@ macro dumpTree*(s: stmt): stmt = echo s.treeRepr
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
-macro dumpLisp*(s: stmt): stmt = echo s.lispRepr
+macro dumpLisp*(s: stmt): stmt {.immediate.} = echo s.lispRepr
   ## Accepts a block of nimrod code and prints the parsed abstract syntax
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
 
-macro dumpTreeImm*(s: stmt): stmt {.immediate.} = echo s.treeRepr
+macro dumpTreeImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.treeRepr
   ## The ``immediate`` version of `dumpTree`.
 
-macro dumpLispImm*(s: stmt): stmt {.immediate.} = echo s.lispRepr
+macro dumpLispImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.lispRepr
   ## The ``immediate`` version of `dumpLisp`.
 
 
