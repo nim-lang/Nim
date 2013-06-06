@@ -51,16 +51,16 @@ when defined(useLuajit):
 else:
   when defined(MACOSX):
     const
-      NAME* = "liblua(|5.2|5.1|5.0).dylib"
-      LIB_NAME* = "liblua(|5.2|5.1|5.0).dylib"
+      NAME* = "liblua(|5.1|5.0).dylib"
+      LIB_NAME* = "liblua(|5.1|5.0).dylib"
   elif defined(UNIX):
     const
-      NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
-      LIB_NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
+      NAME* = "liblua(|5.1|5.0).so(|.0)"
+      LIB_NAME* = "liblua(|5.1|5.0).so(|.0)"
   else:
     const 
-      NAME* = "lua(|5.2|5.1|5.0).dll"
-      LIB_NAME* = "lua(|5.2|5.1|5.0).dll"
+      NAME* = "lua(|5.1|5.0).dll"
+      LIB_NAME* = "lua(|5.1|5.0).dll"
 
 const 
   VERSION* = "Lua 5.1"
@@ -76,7 +76,7 @@ const
   ENVIRONINDEX* = - 10001
   GLOBALSINDEX* = - 10002
 
-proc upvalueindex*(I: int): int
+proc upvalueindex*(I: cint): cint
 const                         # thread status; 0 is OK 
   constYIELD* = 1
   ERRRUN* = 2
@@ -86,16 +86,16 @@ const                         # thread status; 0 is OK
 
 type 
   PState* = Pointer
-  CFunction* = proc (L: PState): int{.cdecl.}
+  CFunction* = proc (L: PState): cint{.cdecl.}
 
 #
 #** functions that read/write blocks when loading/dumping Lua chunks
 #
 
 type 
-  Reader* = proc (L: PState, ud: Pointer, sz: ptr int): cstring{.cdecl.}
-  Writer* = proc (L: PState, p: Pointer, sz: int, ud: Pointer): int{.cdecl.}
-  Alloc* = proc (ud, theptr: Pointer, osize, nsize: int){.cdecl.}
+  Reader* = proc (L: PState, ud: Pointer, sz: ptr cint): cstring{.cdecl.}
+  Writer* = proc (L: PState, p: Pointer, sz: cint, ud: Pointer): cint{.cdecl.}
+  Alloc* = proc (ud, theptr: Pointer, osize, nsize: cint){.cdecl.}
 
 const 
   TNONE* = - 1
@@ -112,130 +112,86 @@ const
 
 type                          # Type of Numbers in Lua 
   Number* = float
-  Integer* = int
+  Integer* = cint
 
-proc newstate*(f: Alloc, ud: Pointer): PState{.cdecl, dynlib: NAME, 
-    importc: "lua_newstate".}
-proc close*(L: PState){.cdecl, dynlib: NAME, importc: "lua_close".}
-proc newthread*(L: PState): PState{.cdecl, dynlib: NAME, 
-                                    importc: "lua_newthread".}
-proc atpanic*(L: PState, panicf: CFunction): CFunction{.cdecl, dynlib: NAME, 
-    importc: "lua_atpanic".}
-proc gettop*(L: PState): int{.cdecl, dynlib: NAME, importc: "lua_gettop".}
-proc settop*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_settop".}
-proc pushvalue*(L: PState, Idx: int){.cdecl, dynlib: NAME, 
-                                      importc: "lua_pushvalue".}
-proc remove*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_remove".}
-proc insert*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_insert".}
-proc replace*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_replace".}
-proc checkstack*(L: PState, sz: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_checkstack".}
-proc xmove*(`from`, `to`: PState, n: int){.cdecl, dynlib: NAME, 
-    importc: "lua_xmove".}
-proc isnumber*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_isnumber".}
-proc isstring*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_isstring".}
-proc iscfunction*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_iscfunction".}
-proc isuserdata*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_isuserdata".}
-proc luatype*(L: PState, idx: int): int{.cdecl, dynlib: NAME, importc: "lua_type".}
-proc typename*(L: PState, tp: int): cstring{.cdecl, dynlib: NAME, 
-    importc: "lua_typename".}
-proc equal*(L: PState, idx1, idx2: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_equal".}
-proc rawequal*(L: PState, idx1, idx2: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_rawequal".}
-proc lessthan*(L: PState, idx1, idx2: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_lessthan".}
-proc tonumber*(L: PState, idx: int): Number{.cdecl, dynlib: NAME, 
-    importc: "lua_tonumber".}
-proc tointeger*(L: PState, idx: int): Integer{.cdecl, dynlib: NAME, 
-    importc: "lua_tointeger".}
-proc toboolean*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
-    importc: "lua_toboolean".}
-proc tolstring*(L: PState, idx: int, length: ptr int): cstring{.cdecl, 
-    dynlib: NAME, importc: "lua_tolstring".}
-proc objlen*(L: PState, idx: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_objlen".}
-proc tocfunction*(L: PState, idx: int): CFunction{.cdecl, dynlib: NAME, 
-    importc: "lua_tocfunction".}
-proc touserdata*(L: PState, idx: int): Pointer{.cdecl, dynlib: NAME, 
-    importc: "lua_touserdata".}
-proc tothread*(L: PState, idx: int): PState{.cdecl, dynlib: NAME, 
-    importc: "lua_tothread".}
-proc topointer*(L: PState, idx: int): Pointer{.cdecl, dynlib: NAME, 
-    importc: "lua_topointer".}
-proc pushnil*(L: PState){.cdecl, dynlib: NAME, importc: "lua_pushnil".}
-proc pushnumber*(L: PState, n: Number){.cdecl, dynlib: NAME, 
-                                        importc: "lua_pushnumber".}
-proc pushinteger*(L: PState, n: Integer){.cdecl, dynlib: NAME, 
-    importc: "lua_pushinteger".}
-proc pushlstring*(L: PState, s: cstring, len: int){.cdecl, dynlib: NAME, 
-    importc: "lua_pushlstring".}
-proc pushstring*(L: PState, s: cstring){.cdecl, dynlib: NAME, 
-    importc: "lua_pushstring".}
-proc pushvfstring*(L: PState, fmt: cstring, argp: Pointer): cstring{.cdecl, 
-    dynlib: NAME, importc: "lua_pushvfstring".}
-proc pushfstring*(L: PState, fmt: cstring): cstring{.cdecl, varargs, 
-    dynlib: NAME, importc: "lua_pushfstring".}
-proc pushcclosure*(L: PState, fn: CFunction, n: int){.cdecl, dynlib: NAME, 
-    importc: "lua_pushcclosure".}
-proc pushboolean*(L: PState, b: cint){.cdecl, dynlib: NAME, 
-                                       importc: "lua_pushboolean".}
-proc pushlightuserdata*(L: PState, p: Pointer){.cdecl, dynlib: NAME, 
-    importc: "lua_pushlightuserdata".}
-proc pushthread*(L: PState){.cdecl, dynlib: NAME, importc: "lua_pushthread".}
-proc gettable*(L: PState, idx: int){.cdecl, dynlib: NAME, 
-                                     importc: "lua_gettable".}
-proc getfield*(L: Pstate, idx: int, k: cstring){.cdecl, dynlib: NAME, 
-    importc: "lua_getfield".}
-proc rawget*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_rawget".}
-proc rawgeti*(L: PState, idx, n: int){.cdecl, dynlib: NAME, 
-                                       importc: "lua_rawgeti".}
-proc createtable*(L: PState, narr, nrec: int){.cdecl, dynlib: NAME, 
-    importc: "lua_createtable".}
-proc newuserdata*(L: PState, sz: int): Pointer{.cdecl, dynlib: NAME, 
-    importc: "lua_newuserdata".}
-proc getmetatable*(L: PState, objindex: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_getmetatable".}
-proc getfenv*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_getfenv".}
-proc settable*(L: PState, idx: int){.cdecl, dynlib: NAME, 
-                                     importc: "lua_settable".}
-proc setfield*(L: PState, idx: int, k: cstring){.cdecl, dynlib: NAME, 
-    importc: "lua_setfield".}
-proc rawset*(L: PState, idx: int){.cdecl, dynlib: NAME, importc: "lua_rawset".}
-proc rawseti*(L: PState, idx, n: int){.cdecl, dynlib: NAME, 
-                                       importc: "lua_rawseti".}
-proc setmetatable*(L: PState, objindex: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_setmetatable".}
-proc setfenv*(L: PState, idx: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_setfenv".}
-proc call*(L: PState, nargs, nresults: int){.cdecl, dynlib: NAME, 
-    importc: "lua_call".}
-proc pcall*(L: PState, nargs, nresults, errf: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_pcall".}
-proc cpcall*(L: PState, func: CFunction, ud: Pointer): int{.cdecl, dynlib: NAME, 
-    importc: "lua_cpcall".}
-proc load*(L: PState, reader: Reader, dt: Pointer, chunkname: cstring): int{.
-    cdecl, dynlib: NAME, importc: "lua_load".}
-proc dump*(L: PState, writer: Writer, data: Pointer): int{.cdecl, dynlib: NAME, 
-    importc: "lua_dump".}
-proc luayield*(L: PState, nresults: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_yield".}
-proc resume*(L: PState, narg: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_resume".}
-proc status*(L: PState): int{.cdecl, dynlib: NAME, importc: "lua_status".}
-proc gc*(L: PState, what, data: int): int{.cdecl, dynlib: NAME, 
-    importc: "lua_gc".}
-proc error*(L: PState): int{.cdecl, dynlib: NAME, importc: "lua_error".}
-proc next*(L: PState, idx: int): int{.cdecl, dynlib: NAME, importc: "lua_next".}
-proc concat*(L: PState, n: int){.cdecl, dynlib: NAME, importc: "lua_concat".}
-proc getallocf*(L: PState, ud: ptr Pointer): Alloc{.cdecl, dynlib: NAME, 
-    importc: "lua_getallocf".}
-proc setallocf*(L: PState, f: Alloc, ud: Pointer){.cdecl, dynlib: NAME, 
-    importc: "lua_setallocf".}
+{.pragma: ilua, importc: "lua_$1".}
+
+{.push callConv: cdecl, dynlib: LibName.}
+#{.push importc: "lua_$1".}
+
+proc newstate*(f: Alloc, ud: Pointer): PState {.ilua.}
+
+proc close*(L: PState){.ilua.}
+proc newthread*(L: PState): PState{.ilua.}
+proc atpanic*(L: PState, panicf: CFunction): CFunction{.ilua.}
+
+proc gettop*(L: PState): cint{.ilua.}
+proc settop*(L: PState, idx: cint){.ilua.}
+proc pushvalue*(L: PState, Idx: cint){.ilua.}
+proc remove*(L: PState, idx: cint){.ilua.}
+proc insert*(L: PState, idx: cint){.ilua.}
+proc replace*(L: PState, idx: cint){.ilua.}
+proc checkstack*(L: PState, sz: cint): cint{.ilua.}
+proc xmove*(`from`, `to`: PState, n: cint){.ilua.}
+proc isnumber*(L: PState, idx: cint): cint{.ilua.}
+proc isstring*(L: PState, idx: cint): cint{.ilua.}
+proc iscfunction*(L: PState, idx: cint): cint{.ilua.}
+proc isuserdata*(L: PState, idx: cint): cint{.ilua.}
+proc luatype*(L: PState, idx: cint): cint{.importc: "lua_type".}
+proc typename*(L: PState, tp: cint): cstring{.ilua.}
+proc equal*(L: PState, idx1, idx2: cint): cint{.ilua.}
+proc rawequal*(L: PState, idx1, idx2: cint): cint{.ilua.}
+proc lessthan*(L: PState, idx1, idx2: cint): cint{.ilua.}
+proc tonumber*(L: PState, idx: cint): Number{.ilua.}
+proc tointeger*(L: PState, idx: cint): Integer{.ilua.}
+proc toboolean*(L: PState, idx: cint): cint{.ilua.}
+proc tolstring*(L: PState, idx: cint, length: ptr cint): cstring{.ilua.}
+proc objlen*(L: PState, idx: cint): cint{.ilua.}
+proc tocfunction*(L: PState, idx: cint): CFunction{.ilua.}
+proc touserdata*(L: PState, idx: cint): Pointer{.ilua.}
+proc tothread*(L: PState, idx: cint): PState{.ilua.}
+proc topointer*(L: PState, idx: cint): Pointer{.ilua.}
+proc pushnil*(L: PState){.ilua.}
+proc pushnumber*(L: PState, n: Number){.ilua.}
+proc pushinteger*(L: PState, n: Integer){.ilua.}
+proc pushlstring*(L: PState, s: cstring, len: cint){.ilua.}
+proc pushstring*(L: PState, s: cstring){.ilua.}
+proc pushvfstring*(L: PState, fmt: cstring, argp: Pointer): cstring{.ilua.}
+proc pushfstring*(L: PState, fmt: cstring): cstring{.varargs,ilua.}
+proc pushcclosure*(L: PState, fn: CFunction, n: cint){.ilua.}
+proc pushboolean*(L: PState, b: cint){.ilua.}
+proc pushlightuserdata*(L: PState, p: Pointer){.ilua.}
+proc pushthread*(L: PState){.ilua.}
+proc gettable*(L: PState, idx: cint){.ilua.}
+proc getfield*(L: Pstate, idx: cint, k: cstring){.ilua.}
+proc rawget*(L: PState, idx: cint){.ilua.}
+proc rawgeti*(L: PState, idx, n: cint){.ilua.}
+proc createtable*(L: PState, narr, nrec: cint){.ilua.}
+proc newuserdata*(L: PState, sz: cint): Pointer{.ilua.}
+proc getmetatable*(L: PState, objindex: cint): cint{.ilua.}
+proc getfenv*(L: PState, idx: cint){.ilua.}
+proc settable*(L: PState, idx: cint){.ilua.}
+proc setfield*(L: PState, idx: cint, k: cstring){.ilua.}
+proc rawset*(L: PState, idx: cint){.ilua.}
+proc rawseti*(L: PState, idx, n: cint){.ilua.}
+proc setmetatable*(L: PState, objindex: cint): cint{.ilua.}
+proc setfenv*(L: PState, idx: cint): cint{.ilua.}
+proc call*(L: PState, nargs, nresults: cint){.ilua.}
+proc pcall*(L: PState, nargs, nresults, errf: cint): cint{.ilua.}
+proc cpcall*(L: PState, func: CFunction, ud: Pointer): cint{.ilua.}
+proc load*(L: PState, reader: Reader, dt: Pointer, chunkname: cstring): cint{.ilua.}
+proc dump*(L: PState, writer: Writer, data: Pointer): cint{.ilua.}
+proc luayield*(L: PState, nresults: cint): cint{.importc: "lua_yield".}
+proc resume*(L: PState, narg: cint): cint{.ilua.}
+proc status*(L: PState): cint{.ilua.}
+proc gc*(L: PState, what, data: cint): cint{.ilua.}
+proc error*(L: PState): cint{.ilua.}
+proc next*(L: PState, idx: cint): cint{.ilua.}
+proc concat*(L: PState, n: cint){.ilua.}
+proc getallocf*(L: PState, ud: ptr Pointer): Alloc{.ilua.}
+proc setallocf*(L: PState, f: Alloc, ud: Pointer){.ilua.}
+{.pop.}
+
 #
 #** Garbage-collection functions and options
 #
@@ -256,29 +212,29 @@ const
 #** ===============================================================
 #
 
-proc pop*(L: PState, n: int)
+proc pop*(L: PState, n: cint)
 proc newtable*(L: Pstate)
 proc register*(L: PState, n: cstring, f: CFunction)
 proc pushcfunction*(L: PState, f: CFunction)
-proc strlen*(L: Pstate, i: int): int
-proc isfunction*(L: PState, n: int): bool
-proc istable*(L: PState, n: int): bool
-proc islightuserdata*(L: PState, n: int): bool
-proc isnil*(L: PState, n: int): bool
-proc isboolean*(L: PState, n: int): bool
-proc isthread*(L: PState, n: int): bool
-proc isnone*(L: PState, n: int): bool
-proc isnoneornil*(L: PState, n: int): bool
+proc strlen*(L: Pstate, i: cint): cint
+proc isfunction*(L: PState, n: cint): bool
+proc istable*(L: PState, n: cint): bool
+proc islightuserdata*(L: PState, n: cint): bool
+proc isnil*(L: PState, n: cint): bool
+proc isboolean*(L: PState, n: cint): bool
+proc isthread*(L: PState, n: cint): bool
+proc isnone*(L: PState, n: cint): bool
+proc isnoneornil*(L: PState, n: cint): bool
 proc pushliteral*(L: PState, s: cstring)
 proc setglobal*(L: PState, s: cstring)
 proc getglobal*(L: PState, s: cstring)
-proc tostring*(L: PState, i: int): cstring
+proc tostring*(L: PState, i: cint): cstring
 #
 #** compatibility macros and functions
 #
 
 proc getregistry*(L: PState)
-proc getgccount*(L: PState): int
+proc getgccount*(L: PState): cint
 type 
   Chunkreader* = Reader
   Chunkwriter* = Writer
@@ -307,18 +263,18 @@ const
 
 type 
   TDebug*{.final.} = object    # activation record 
-    event*: int
+    event*: cint
     name*: cstring            # (n) 
     namewhat*: cstring        # (n) `global', `local', `field', `method' 
     what*: cstring            # (S) `Lua', `C', `main', `tail'
     source*: cstring          # (S) 
-    currentline*: int         # (l) 
-    nups*: int                # (u) number of upvalues 
-    linedefined*: int         # (S) 
-    lastlinedefined*: int     # (S) 
-    short_src*: array[0..IDSIZE - 1, Char] # (S) 
-                                           # private part 
-    i_ci*: int                # active function 
+    currentline*: cint         # (l) 
+    nups*: cint                # (u) number of upvalues 
+    linedefined*: cint         # (S) 
+    lastlinedefined*: cint     # (S) 
+    short_src*: array[0.. <IDSIZE, Char] # (S) \ 
+                               # private part 
+    i_ci*: cint                # active function 
   
   PDebug* = ptr TDebug
   Hook* = proc (L: PState, ar: PDebug){.cdecl.}
@@ -329,31 +285,27 @@ type
 #** ======================================================================
 #
 
-proc getstack*(L: PState, level: int, ar: PDebug): int{.cdecl, dynlib: NAME, 
-    importc: "lua_getstack".}
-proc getinfo*(L: PState, what: cstring, ar: PDebug): int{.cdecl, dynlib: NAME, 
-    importc: "lua_getinfo".}
-proc getlocal*(L: PState, ar: PDebug, n: int): cstring{.cdecl, dynlib: NAME, 
-    importc: "lua_getlocal".}
-proc setlocal*(L: PState, ar: PDebug, n: int): cstring{.cdecl, dynlib: NAME, 
-    importc: "lua_setlocal".}
-proc getupvalue*(L: PState, funcindex: int, n: int): cstring{.cdecl, 
-    dynlib: NAME, importc: "lua_getupvalue".}
-proc setupvalue*(L: PState, funcindex: int, n: int): cstring{.cdecl, 
-    dynlib: NAME, importc: "lua_setupvalue".}
-proc sethook*(L: PState, func: Hook, mask: int, count: int): int{.cdecl, 
-    dynlib: NAME, importc: "lua_sethook".}
-proc gethook*(L: PState): Hook{.cdecl, dynlib: NAME, importc: "lua_gethook".}
-proc gethookmask*(L: PState): int{.cdecl, dynlib: NAME, 
-                                   importc: "lua_gethookmask".}
-proc gethookcount*(L: PState): int{.cdecl, dynlib: NAME, 
-                                    importc: "lua_gethookcount".}
+{.push callConv: cdecl, dynlib: lua.LIB_NAME.}
+
+proc getstack*(L: PState, level: cint, ar: PDebug): cint{.ilua.}
+proc getinfo*(L: PState, what: cstring, ar: PDebug): cint{.ilua.}
+proc getlocal*(L: PState, ar: PDebug, n: cint): cstring{.ilua.}
+proc setlocal*(L: PState, ar: PDebug, n: cint): cstring{.ilua.}
+proc getupvalue*(L: PState, funcindex: cint, n: cint): cstring{.ilua.}
+proc setupvalue*(L: PState, funcindex: cint, n: cint): cstring{.ilua.}
+proc sethook*(L: PState, func: Hook, mask: cint, count: cint): cint{.ilua.}
+proc gethook*(L: PState): Hook{.ilua.}
+proc gethookmask*(L: PState): cint{.ilua.}
+proc gethookcount*(L: PState): cint{.ilua.}
+
+{.pop.}
+
 # implementation
 
-proc upvalueindex(I: int): int = 
+proc upvalueindex(I: cint): cint = 
   Result = GLOBALSINDEX - i
 
-proc pop(L: PState, n: int) = 
+proc pop(L: PState, n: cint) = 
   settop(L, - n - 1)
 
 proc newtable(L: PState) = 
@@ -366,35 +318,35 @@ proc register(L: PState, n: cstring, f: CFunction) =
 proc pushcfunction(L: PState, f: CFunction) = 
   pushcclosure(L, f, 0)
 
-proc strlen(L: PState, i: int): int = 
+proc strlen(L: PState, i: cint): cint = 
   Result = objlen(L, i)
 
-proc isfunction(L: PState, n: int): bool = 
+proc isfunction(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TFUNCTION
 
-proc istable(L: PState, n: int): bool = 
+proc istable(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TTABLE
 
-proc islightuserdata(L: PState, n: int): bool = 
+proc islightuserdata(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TLIGHTUSERDATA
 
-proc isnil(L: PState, n: int): bool = 
+proc isnil(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TNIL
 
-proc isboolean(L: PState, n: int): bool = 
+proc isboolean(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TBOOLEAN
 
-proc isthread(L: PState, n: int): bool = 
+proc isthread(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TTHREAD
 
-proc isnone(L: PState, n: int): bool = 
+proc isnone(L: PState, n: cint): bool = 
   Result = luatype(L, n) == TNONE
 
-proc isnoneornil(L: PState, n: int): bool = 
+proc isnoneornil(L: PState, n: cint): bool = 
   Result = luatype(L, n) <= 0
 
 proc pushliteral(L: PState, s: cstring) = 
-  pushlstring(L, s, len(s))
+  pushlstring(L, s, s.len.cint)
 
 proc setglobal(L: PState, s: cstring) = 
   setfield(L, GLOBALSINDEX, s)
@@ -402,11 +354,11 @@ proc setglobal(L: PState, s: cstring) =
 proc getglobal(L: PState, s: cstring) = 
   getfield(L, GLOBALSINDEX, s)
 
-proc tostring(L: PState, i: int): cstring = 
+proc tostring(L: PState, i: cint): cstring = 
   Result = tolstring(L, i, nil)
 
 proc getregistry(L: PState) = 
   pushvalue(L, REGISTRYINDEX)
 
-proc getgccount(L: PState): int = 
+proc getgccount(L: PState): cint = 
   Result = gc(L, GCCOUNT, 0)

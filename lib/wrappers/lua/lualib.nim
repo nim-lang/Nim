@@ -32,35 +32,33 @@ const
   DBLIBNAME* = "debug"
   LOADLIBNAME* = "package"
 
-proc open_base*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                  importc: "luaopen_base".}
-proc open_table*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                   importc: "luaopen_table".}
-proc open_io*(L: PState): cint{.cdecl, dynlib: LIB_NAME, importc: "luaopen_io".}
-proc open_string*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                    importc: "luaopen_string".}
-proc open_math*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                  importc: "luaopen_math".}
-proc open_debug*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                   importc: "luaopen_debug".}
-proc open_package*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
-                                     importc: "luaopen_package".}
-proc openlibs*(L: PState){.cdecl, dynlib: LIB_NAME, importc: "luaL_openlibs".}
+{.pragma: ilua, importc: "lua$1".}
+
+{.push callConv: cdecl, dynlib: lua.LIB_NAME.}
+proc open_base*(L: PState): cint{.ilua.}
+proc open_table*(L: PState): cint{.ilua.}
+proc open_io*(L: PState): cint{.ilua.}
+proc open_string*(L: PState): cint{.ilua.}
+proc open_math*(L: PState): cint{.ilua.}
+proc open_debug*(L: PState): cint{.ilua.}
+proc open_package*(L: PState): cint{.ilua.}
+proc openlibs*(L: PState){.importc: "luaL_openlibs".}
+{.pop.}
 
 proc baselibopen*(L: PState): Bool = 
-  Result = open_base(L) != 0'i32
+  open_base(L) != 0'i32
 
 proc tablibopen*(L: PState): Bool = 
-  Result = open_table(L) != 0'i32
+  open_table(L) != 0'i32
 
 proc iolibopen*(L: PState): Bool = 
-  Result = open_io(L) != 0'i32
+  open_io(L) != 0'i32
 
 proc strlibopen*(L: PState): Bool = 
-  Result = open_string(L) != 0'i32
+  open_string(L) != 0'i32
 
 proc mathlibopen*(L: PState): Bool = 
-  Result = open_math(L) != 0'i32
+  open_math(L) != 0'i32
 
 proc dblibopen*(L: PState): Bool = 
-  Result = open_debug(L) != 0'i32
+  open_debug(L) != 0'i32
