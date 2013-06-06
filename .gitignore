@@ -167,4 +167,7 @@ examples/cross_calculator/android/tags
 /run.json
 /testresults.html
 /testresults.json
+/tests/manyloc/idetools_api/idetools_tester
+/tests/manyloc/idetools_api/issue_416
+/tests/manyloc/idetools_api/issue_452
 /tools/nimgrep
