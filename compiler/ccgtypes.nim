@@ -674,7 +674,7 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
 
 # ------------------ type info generation -------------------------------------
 
-proc genTypeInfo(m: BModule, typ: PType): PRope
+proc genTypeInfo(m: BModule, t: PType): PRope
 proc getNimNode(m: BModule): PRope = 
   result = ropef("$1[$2]", [m.typeNodesName, toRope(m.typeNodes)])
   inc(m.typeNodes)
@@ -692,7 +692,7 @@ proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
       (typ.sons[0] == nil) or isPureObject(typ))
 
-proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) = 
+proc genTypeInfoAuxBase(m: BModule, typ: PType, name, base: PRope) =
   var nimtypeKind: int
   #allocMemTI(m, typ, name)
   if isObjLackingTypeField(typ):
@@ -901,20 +901,20 @@ type
 
 include ccgtrav
 
-proc genTypeInfo(m: BModule, typ: PType): PRope = 
-  var t = getUniqueType(typ)
+proc genTypeInfo(m: BModule, t: PType): PRope = 
+  var t = getUniqueType(t)
   result = ropef("NTI$1", [toRope(t.id)])
-  let owner = typ.skipTypes(typedescPtrs).owner.getModule
+  if ContainsOrIncl(m.typeInfoMarker, t.id):
+    return con("(&".toRope, result, ")".toRope)
+  let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
-    discard genTypeInfo(owner.bmod, typ)
-    # refenrece the type info as extern here
+    discard genTypeInfo(owner.bmod, t)
+    # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     appf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n", 
          [result, toRope(typeToString(t))])
-    return con("(&".toRope, result, ")".toRope)
-  if ContainsOrIncl(m.typeInfoMarker, t.id):
     return con("(&".toRope, result, ")".toRope)
   case t.kind
   of tyEmpty: result = toRope"0"
