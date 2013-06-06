@@ -18,6 +18,7 @@ const
   COL_COLUM = 6
   COL_DOCSTRING = 7
   TESTFILE = "tests.nim"
+  I452 = "issue_452.nim"
 
 
 proc run_idetools(p: Texpected): string  =
@@ -42,7 +43,7 @@ proc parse_idetools(idetools_output: string): seq[string] =
   ## Returns nil on error.
   let cols = split(idetools_output, '\t')
   if cols.len < 7:
-    echo "Expected 7 columns of output, but got $1 in $2" %
+    echo "Expected 7 columns of output, but got $1 in '$2'" %
       [$cols.len, idetools_output]
     return
 
@@ -90,12 +91,18 @@ proc test_stuff(all_runs: seq[Texpected], verbose: bool): int =
     let output = run_idetools(params)
     if verbose: echo output
 
-    let cols = parse_idetools(output)
+    let
+      stored_result = result
+      cols = parse_idetools(output)
     if cols.isNil():
       result += 1
     else:
       if not validate_parsed_columns(cols, params):
         result += 1
+    # If the result increased, we failed, tell where.
+    if stored_result != result:
+      echo "...was looking at $1, line $2 column $3" % [params.input_file,
+        $params.line, $params.col]
 
 
 when isMainModule:
@@ -104,7 +111,8 @@ when isMainModule:
     if paramStr(i + 1) == "verbose":
       verbose = true
 
-  let all_runs : seq[Texpected] = @[
+  let all_runs : seq[Texpected] = @[ #\
+    # Normal verification of generic output.
     (TESTFILE, "def", "system.TFile", "TFile", skType, 4, 11),
     (TESTFILE, "def", "system.Open",
       "proc (var TFile, string, TFileMode, int): bool", skProc, 5, 7),
@@ -135,7 +143,12 @@ when isMainModule:
     (TESTFILE, "def", "tests.adder.result",
       "int", skResult, 23, 3),
     (TESTFILE, "def", "tests.TPerson.name",
-      "", skField, 19, 6),
+      "", skField, 19, 6), #\
+    # Test case for issue https://github.com/Araq/Nimrod/issues/452
+    (I452, "def", "issue_452.VERSION_STR1", "", skConst, 2, 2),
+    (I452, "def", "issue_452.VERSION_STR2", "", skConst, 3, 2),
+    (I452, "def", "issue_452.forward1", "", skProc, 7, 5),
+    (I452, "def", "issue_452.forward2", "", skProc, 8, 5),
     ]
 
   quit(test_stuff(all_runs, verbose))
