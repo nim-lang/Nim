@@ -18,6 +18,7 @@ const
   COL_COLUM = 6
   COL_DOCSTRING = 7
   TESTFILE = "tests.nim"
+  I416 = "issue_416.nim"
   I452 = "issue_452.nim"
 
 
@@ -148,7 +149,13 @@ when isMainModule:
     (I452, "def", "issue_452.VERSION_STR1", "", skConst, 2, 2),
     (I452, "def", "issue_452.VERSION_STR2", "", skConst, 3, 2),
     (I452, "def", "issue_452.forward1", "", skProc, 7, 5),
-    (I452, "def", "issue_452.forward2", "", skProc, 8, 5),
+    (I452, "def", "issue_452.forward2", "", skProc, 8, 5), #\
+    # Test case for issue https://github.com/Araq/Nimrod/issues/416
+    (I416, "def", "sequtils.toSeq", "proc (expr): expr", skTemplate, 12, 16),
+    (I416, "def", "unicode.runes", "iterator (string): TRune",
+      skIterator, 12, 22),
+    (I416, "def", "system.string", "string", skType, 12, 28),
+    (I416, "def", "issue_416.failtest.input", "TaintedString", skLet, 12, 35),
     ]
 
   quit(test_stuff(all_runs, verbose))
