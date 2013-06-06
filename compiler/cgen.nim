@@ -1031,7 +1031,7 @@ proc genInitCode(m: BModule) =
       var procname = CStringLit(m.initProc, prc, m.module.name.s)
       app(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
-      app(prc, ~"\tvolatile TFrame F; F.len = 0;$N")
+      app(prc, ~"\tTFrame F; F.len = 0;$N")
     
   app(prc, genSectionStart(cpsInit))
   app(prc, m.preInitProc.s(cpsInit))
