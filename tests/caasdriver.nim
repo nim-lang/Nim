@@ -26,15 +26,13 @@ type
   TNimrodSession* = object
     nim: PProcess
 
-proc dirname(path: string): string = path.splitPath()[0]
-
 var
   TesterDir = getAppDir()
   NimrodBin = TesterDir / "../bin/nimrod"
 
 proc startNimrodSession*(project: string): TNimrodSession =
   result.nim = startProcess(NimrodBin,
-    workingDir = project.dirname,
+    workingDir = project.parentDir,
     args = ["serve", "--server.type:stdin", project])
 
 proc doCommand*(session: var TNimrodSession, command: string): string =
@@ -63,7 +61,7 @@ proc doScenario(script: string, output: PStream): bool =
 
   if f.readLine(project):
     var
-      s = startNimrodSession(script.dirname / project.string)
+      s = startNimrodSession(script.parentDir / project.string)
       tline = TaintedString("")
       lastOutput = ""
       ln = 1
