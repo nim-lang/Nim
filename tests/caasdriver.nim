@@ -3,10 +3,23 @@ import osproc, streams, os, strutils, re
 ## Compiler as a service tester.
 ##
 ## This test cases uses the txt files in the caas/ subdirectory.
-## Each of the text files inside encodes a session with the compiler.
-## The first line indicates the main project file. Lines starting with '>'
-## indicate a command to be sent to the compiler and the lines following a
-## command include checks for expected or forbidden output (! for forbidden).
+##
+## Each of the text files inside encodes a session with the compiler:
+##
+## The first line indicates the main project file.
+##
+## Lines starting with '>' indicate a command to be sent to the compiler and
+## the lines following a command include checks for expected or forbidden
+## output (! for forbidden).
+##
+## If a line starts with '#' it will be ignored completely, so you can use that
+## for comments.
+##
+## All the tests are run both in ProcRun (each command creates a separate
+## process) and CaasRun (first command starts up a server and it is reused for
+## the rest) modes. Since some cases are specific to either ProcRun or CaasRun
+## modes, you can prefix a line with the mode and the line will be processed
+## only in that mode.
 ##
 ## You can optionally pass parameters at the command line to modify the
 ## behaviour of the test suite. By default only tests which fail will be echoed
@@ -31,6 +44,8 @@ type
     mode: TRunMode # Stores the type of run mode the session was started with.
     lastOutput: string # Preserves the last output, needed for ProcRun mode.
     filename: string # Appended to each command starting with '>'.
+
+const modes = [CaasRun, ProcRun]
 
 var
   TesterDir = getAppDir()
@@ -103,9 +118,21 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
     while f.readLine(tline):
       var line = tline.string
       inc ln
+
+      # Filter lines by run mode, removing the prefix if the mode is current.
+      for testMode in modes:
+        if line.startsWith($testMode):
+          if testMode != mode:
+            line = ""
+          else:
+            line = line[len($testMode)..len(line) - 1].strip
+          break
+
       if line.strip.len == 0: continue
 
-      if line.startsWith(">"):
+      if line.startsWith("#"):
+        continue
+      elif line.startsWith(">"):
         s.doCommand(line.substr(1).strip)
         output.writeln line, "\n", s.lastOutput
       else:
@@ -127,7 +154,7 @@ iterator caasTestsRunner*(filter = ""): tuple[test, output: string,
                                               status: bool, mode: TRunMode] =
   for scenario in os.walkFiles(TesterDir / "caas/*.txt"):
     if filter.len > 0 and find(scenario, filter) == -1: continue
-    for mode in [CaasRun, ProcRun]:
+    for mode in modes:
       var outStream = newStringStream()
       let r = doScenario(scenario, outStream, mode)
       yield (scenario, outStream.data, r, mode)
