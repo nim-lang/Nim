@@ -1,7 +1,7 @@
 main.nim
 > c
 SuccessX
-> idetools --trackDirty:main_dirty.nim,main.nim,12,7 --suggest main.nim
+> idetools --trackDirty:main_dirty.nim,main.nim,12,7 --suggest
 skField\tx
 skField\ty
 
