@@ -1,7 +1,7 @@
 main.nim
-> idetools --track:main.nim,5,18 --def main.nim
+> idetools --track:main.nim,5,18 --def
 strutils.toUpper
-SuccessX
+! SuccessX
 > c
 SuccessX
 
