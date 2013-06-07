@@ -167,4 +167,7 @@ examples/cross_calculator/android/tags
 /run.json
 /testresults.html
 /testresults.json
+/tests/caas/imported
+/tests/caas/main
+/tests/caasdriver
 /tools/nimgrep

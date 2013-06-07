@@ -18,9 +18,9 @@ proc startNimrodSession*(project: string): TNimrodSession =
 proc doCommand*(session: var TNimrodSession, command: string): string =
   session.nim.inputStream.write(command & "\n")
   session.nim.inputStream.flush
-  
+
   result = ""
-  
+
   while true:
     var line = TaintedString("")
     if session.nim.outputStream.readLine(line):
@@ -38,7 +38,7 @@ proc doScenario(script: string, output: PStream): bool =
 
   var f = open(script)
   var project = TaintedString("")
-  
+
   if f.readLine(project):
     var
       s = startNimrodSession(script.dirname / project.string)
@@ -78,9 +78,14 @@ iterator caasTestsRunner*(filter = ""): tuple[test, output: string,
     yield (scenario, outStream.data, r)
 
 when isMainModule:
-  var filter = ""
+  var
+    filter = ""
+    failures = 0
   if paramCount() > 0: filter = paramStr(1)
-  
-  for t, o, r in caasTestsRunner(filter):
-    echo t, "\n", o
-    
+
+  for test, output, result in caasTestsRunner(filter):
+    echo test, "\n", output, "-> ", $result, "\n-----"
+    if not result:
+      failures += 1
+
+  quit(failures)
