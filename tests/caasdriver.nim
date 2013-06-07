@@ -81,10 +81,20 @@ when isMainModule:
   var
     filter = ""
     failures = 0
-  if paramCount() > 0: filter = paramStr(1)
+    verbose = false
+
+  for i in 0..ParamCount() - 1:
+    let param = paramStr(i + 1)
+    case param
+    of "verbose": verbose = true
+    else: filter = param
+
+  if verbose and len(filter) > 0:
+    echo "Running only test cases matching filter '$1'" % [filter]
 
   for test, output, result in caasTestsRunner(filter):
-    echo test, "\n", output, "-> ", $result, "\n-----"
+    if not result or verbose:
+      echo test, "\n", output, "-> ", $result, "\n-----"
     if not result:
       failures += 1
 
