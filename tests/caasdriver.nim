@@ -21,6 +21,9 @@ import osproc, streams, os, strutils, re
 ## modes, you can prefix a line with the mode and the line will be processed
 ## only in that mode.
 ##
+## The rest of the line is treated as a regular expression, so be careful
+## escaping metacharacters like parenthesis.
+##
 ## You can optionally pass parameters at the command line to modify the
 ## behaviour of the test suite. By default only tests which fail will be echoed
 ## to stdout. If you want to see all the output pass the word "verbose" as a
@@ -142,7 +145,8 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
           pattern = line.substr(1).strip
           expectMatch = false
 
-        var actualMatch = s.lastOutput.find(re(pattern)) != -1
+        let actualMatch =
+          s.lastOutput.find(re(pattern, flags = {reStudy})) != -1
 
         if expectMatch == actualMatch:
           output.writeln "SUCCESS ", line
