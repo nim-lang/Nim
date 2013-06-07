@@ -170,6 +170,7 @@ examples/cross_calculator/android/tags
 /tests/caas/idetools_api
 /tests/caas/imported
 /tests/caas/issue_416
+/tests/caas/issue_452
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
