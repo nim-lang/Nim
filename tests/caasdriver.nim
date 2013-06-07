@@ -134,6 +134,7 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
       if line.strip.len == 0: continue
 
       if line.startsWith("#"):
+        output.writeln line
         continue
       elif line.startsWith(">"):
         s.doCommand(line.substr(1).strip)
