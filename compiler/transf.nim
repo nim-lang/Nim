@@ -504,8 +504,8 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     result.add(elseBranch)
   elif result.Pnode.lastSon.kind != nkElse and not (
       skipTypes(n.sons[0].Typ, abstractVarRange).Kind in
-        {tyInt..tyInt64, tyChar, tyEnum}):
-    # fix a stupid code gen bug by normalizing: 
+        {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
+    # fix a stupid code gen bug by normalizing:
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = newTransNode(nkNilLit, n.info, 0)
     add(result, elseBranch)
@@ -704,7 +704,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
     result = n
   else:
-    when useEffectSystem: trackProc(prc, n)
+    #when useEffectSystem: trackProc(prc, n)
     var c = openTransf(module, "")
     result = processTransf(c, n)
     if prc.kind != skMacro:
@@ -713,6 +713,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     if prc.kind == skIterator and prc.typ.callConv == ccClosure:
       result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
+    when useEffectSystem: trackProc(prc, result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

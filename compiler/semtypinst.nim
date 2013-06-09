@@ -152,6 +152,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
       x = lookupTypeVar(cl, x)
       if header == nil: header = copyType(t, t.owner, false)
       header.sons[i] = x
+      propagateToOwner(header, x)
       #idTablePut(cl.typeMap, body.sons[i-1], x)
   if header != nil:
     # search again after first pass:
@@ -170,6 +171,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     var x = replaceTypeVarsT(cl, t.sons[i])
     assert x.kind != tyGenericInvokation
     header.sons[i] = x
+    propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
   
   for i in countup(1, sonsLen(t) - 1): 

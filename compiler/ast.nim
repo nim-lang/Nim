@@ -353,7 +353,7 @@ type
     nfSem       # node has been checked for semantics
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 19)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -380,7 +380,13 @@ type
     tfByRef,          # pass object/tuple by reference (C backend)
     tfIterator,       # type is really an iterator, not a tyProc
     tfShared,         # type is 'shared'
-    tfNotNil          # type cannot be 'nil'
+    tfNotNil,         # type cannot be 'nil'
+    
+    tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
+                      # other type so that it requires inititalization
+    tfHasShared,      # type constains a "shared" constraint modifier somewhere
+    tfHasMeta,        # type has "typedesc" or "expr" somewhere
+    tfHasGCedMem,     # type contains GC'ed memory
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -1168,14 +1174,25 @@ proc newSons(father: PNode, length: int) =
   else:
     setlen(father.sons, length)
 
-proc addSon*(father, son: PType) {.deprecated.} =
-  if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-  #assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
+proc propagateToOwner*(owner, elem: PType) =
+  owner.flags = owner.flags + (elem.flags * {tfNeedsInit, tfHasShared, 
+                                             tfHasMeta, tfHasGCedMem})
+  if tfNotNil in elem.flags:
+    owner.flags.incl tfNeedsInit
+    
+  if tfShared in elem.flags:
+    owner.flags.incl tfHasShared
+  
+  if elem.kind in {tyExpr, tyTypeDesc}:
+    owner.flags.incl tfHasMeta
+  elif elem.kind in {tyString, tyRef, tySequence} or
+      elem.kind == tyProc and elem.callConv == ccClosure:
+    owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
+  if not son.isNil: propagateToOwner(father, son)
 
 proc addSon(father, son: PNode) = 
   assert son != nil

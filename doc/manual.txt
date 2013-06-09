@@ -327,36 +327,36 @@ Numerical constants
 
 `Numerical constants`:idx: are of a single type and have the form::
 
-  hexdigit ::= digit | 'A'..'F' | 'a'..'f'
-  octdigit ::= '0'..'7'
-  bindigit ::= '0'..'1'
-  HEX_LIT ::= '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
-  DEC_LIT ::= digit ( ['_'] digit )*
-  OCT_LIT ::= '0o' octdigit ( ['_'] octdigit )*
-  BIN_LIT ::= '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
+  hexdigit = digit | 'A'..'F' | 'a'..'f'
+  octdigit = '0'..'7'
+  bindigit = '0'..'1'
+  HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
+  DEC_LIT = digit ( ['_'] digit )*
+  OCT_LIT = '0o' octdigit ( ['_'] octdigit )*
+  BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
   
-  INT_LIT ::= HEX_LIT
-            | DEC_LIT
-            | OCT_LIT
-            | BIN_LIT
+  INT_LIT = HEX_LIT
+          | DEC_LIT
+          | OCT_LIT
+          | BIN_LIT
 
-  INT8_LIT ::= INT_LIT ['\''] ('i' | 'I') '8'
-  INT16_LIT ::= INT_LIT ['\''] ('i' | 'I') '16'
-  INT32_LIT ::= INT_LIT ['\''] ('i' | 'I') '32'
-  INT64_LIT ::= INT_LIT ['\''] ('i' | 'I') '64'
+  INT8_LIT = INT_LIT ['\''] ('i' | 'I') '8'
+  INT16_LIT = INT_LIT ['\''] ('i' | 'I') '16'
+  INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
+  INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
 
-  UINT8_LIT ::= INT_LIT ['\''] ('u' | 'U')
-  UINT8_LIT ::= INT_LIT ['\''] ('u' | 'U') '8'
-  UINT16_LIT ::= INT_LIT ['\''] ('u' | 'U') '16'
-  UINT32_LIT ::= INT_LIT ['\''] ('u' | 'U') '32'
-  UINT64_LIT ::= INT_LIT ['\''] ('u' | 'U') '64'
+  UINT8_LIT = INT_LIT ['\''] ('u' | 'U')
+  UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
+  UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
+  UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
+  UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
-  exponent ::= ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT ::= digit (['_'] digit)*  ('.' (['_'] digit)* [exponent] |exponent)
-  FLOAT32_LIT ::= HEX_LIT '\'' ('f'|'F') '32'
-             | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '32'
-  FLOAT64_LIT ::= HEX_LIT '\'' ('f'|'F') '64'
-             | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '64'
+  exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
+  FLOAT_LIT = digit (['_'] digit)*  ('.' (['_'] digit)* [exponent] |exponent)
+  FLOAT32_LIT = HEX_LIT '\'' ('f'|'F') '32'
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '32'
+  FLOAT64_LIT = HEX_LIT '\'' ('f'|'F') '64'
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '64'
 
 
 As can be seen in the productions, numerical constants can contain underscores
@@ -1817,6 +1817,24 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 .. code-block:: nimrod
   proc returnUndefinedValue: int {.noinit.} = nil
 
+
+The implicit initialization can be also prevented by the `requiresInit`:idx:
+type pragma. The compiler requires an explicit initialization then. However
+it does a `control flow analysis`:idx: to prove the variable has been 
+initialized and does not rely on syntactic properties:
+
+.. code-block:: nimrod
+  type
+    TMyObject = object {.requiresInit.}
+    
+  proc p() =
+    # the following is valid:
+    var x: TMyObject
+    if someCondition():
+      x = a()
+    else:
+      x = a()
+    use x
 
 let statement
 -------------

@@ -338,24 +338,24 @@ when not defined(JS):
     const
       weekDays: array [0..6, TWeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-    result.second = int(tm.second)
-    result.minute = int(tm.minute)
-    result.hour = int(tm.hour)
-    result.monthday = int(tm.monthday)
-    result.month = TMonth(tm.month)
-    result.year = tm.year + 1900'i32
-    result.weekday = weekDays[int(tm.weekDay)]
-    result.yearday = int(tm.yearday)
-    result.isDST = tm.isDST > 0
-    if local:
-      if result.isDST:
-        result.tzname = getTzname().DST
-      else:
-        result.tzname = getTzname().nonDST
-    else:
-      result.tzname = "UTC"
-    
-    result.timezone = if local: getTimezone() else: 0
+    TTimeInfo(second: int(tm.second),
+      minute: int(tm.minute),
+      hour: int(tm.hour),
+      monthday: int(tm.monthday),
+      month: TMonth(tm.month),
+      year: tm.year + 1900'i32,
+      weekday: weekDays[int(tm.weekDay)],
+      yearday: int(tm.yearday),
+      isDST: tm.isDST > 0,
+      tzname: if local:
+          if tm.isDST > 0:
+            getTzname().DST
+          else:
+            getTzname().nonDST
+        else:
+          "UTC",
+      timezone: if local: getTimezone() else: 0
+    )
   
   proc timeInfoToTM(t: TTimeInfo): structTM =
     const

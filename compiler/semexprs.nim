@@ -1601,6 +1601,25 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
 
+proc checkInitialized(n: PNode, ids: TIntSet, info: TLineInfo) =
+  case n.kind
+  of nkRecList:
+    for i in countup(0, sonsLen(n) - 1):
+      checkInitialized(n.sons[i], ids, info)
+  of nkRecCase:
+    if (n.sons[0].kind != nkSym): InternalError(info, "checkInitialized")
+    checkInitialized(n.sons[0], ids, info)
+    when false:
+      # XXX we cannot check here, as we don't know the branch!
+      for i in countup(1, sonsLen(n) - 1):
+        case n.sons[i].kind
+        of nkOfBranch, nkElse: checkInitialized(lastSon(n.sons[i]), ids, info)
+        else: internalError(info, "checkInitialized")
+  of nkSym:
+    if tfNeedsInit in n.sym.typ.flags and n.sym.name.id notin ids:
+      Message(info, errGenerated, "field not initialized: " & n.sym.name.s)
+  else: internalError(info, "checkInitialized")
+
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = n
@@ -1611,6 +1630,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if t.kind != tyObject:
     localError(n.info, errGenerated, "object constructor needs an object type")
     return
+  var objType = t
   var ids = initIntSet()
   for i in 1.. <n.len:
     let it = n.sons[i]
@@ -1642,6 +1662,11 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       localError(it.info, errUndeclaredFieldX, id.s)
     it.sons[1] = e
     # XXX object field name check for 'case objects' if the kind is static?
+  if tfNeedsInit in objType.flags:
+    while true:
+      checkInitialized(objType.n, ids, n.info)
+      if objType.sons[0] == nil: break
+      objType = skipTypes(objType.sons[0], {tyGenericInst})
 
 proc semBlock(c: PContext, n: PNode): PNode =
   result = n

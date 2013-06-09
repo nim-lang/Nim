@@ -374,7 +374,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             if warnShadowIdent in gNotes and not identWithin(def, v.name):
               Message(a.info, warnShadowIdent, v.name.s)
       if def != nil and def.kind != nkEmpty:
-        # this is only needed for the evaluation pass:
+        # this is needed for the evaluation pass and for the guard checking:
         v.ast = def
         if sfThread in v.flags: LocalError(def.info, errThreadvarCannotInit)
       if a.kind != nkVarTuple:

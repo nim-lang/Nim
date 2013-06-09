@@ -50,7 +50,7 @@ const
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
     wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow, 
     wImportcpp, wImportobjc, wError, wIncompleteStruct, wByCopy, wByRef,
-    wInheritable, wGenSym, wInject}
+    wInheritable, wGenSym, wInject, wRequiresInit}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern, 
     wImportcpp, wImportobjc, wError}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
@@ -253,11 +253,11 @@ proc processNote(c: PContext, n: PNode) =
     of wHint:
       var x = findStr(msgs.HintsToStr, n.sons[0].sons[1].ident.s)
       if x >= 0: nk = TNoteKind(x + ord(hintMin))
-      else: invalidPragma(n)
+      else: invalidPragma(n); return
     of wWarning:
       var x = findStr(msgs.WarningsToStr, n.sons[0].sons[1].ident.s)
       if x >= 0: nk = TNoteKind(x + ord(warnMin))
-      else: InvalidPragma(n)
+      else: InvalidPragma(n); return
     else:
       invalidPragma(n)
       return
@@ -695,6 +695,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           noVal(it)
           if sym.typ == nil: invalidPragma(it)
           else: incl(sym.typ.flags, tfIncompleteStruct)
+        of wRequiresInit:
+          noVal(it)
+          if sym.typ == nil: invalidPragma(it)
+          else: incl(sym.typ.flags, tfNeedsInit)
         of wByRef:
           noVal(it)
           if sym == nil or sym.typ == nil:
