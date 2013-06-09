@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a generator of HTML/Latex from `reStructuredText`:idx.
+## This module implements a generator of HTML/Latex from `reStructuredText`:idx:.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite
 
