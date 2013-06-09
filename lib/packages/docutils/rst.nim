@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a `reStructuredText`:idx parser. A large
+## This module implements a `reStructuredText`:idx: parser. A large
 ## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
 ## also supported.
 
