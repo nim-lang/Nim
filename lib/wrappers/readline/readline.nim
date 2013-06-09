@@ -156,33 +156,34 @@ const
 type 
   Thook_func* = proc (a2: cstring): cstring{.cdecl.}
 
-# If non-null, this contains the address of a function that the application
-#   wants called before trying the standard tilde expansions.  The function
-#   is called with the text sans tilde, and returns a malloc()'ed string
-#   which is the expansion, or a NULL pointer if the expansion fails. 
+when not defined(macosx):
+  # If non-null, this contains the address of a function that the application
+  #   wants called before trying the standard tilde expansions.  The function
+  #   is called with the text sans tilde, and returns a malloc()'ed string
+  #   which is the expansion, or a NULL pointer if the expansion fails. 
 
-var expansion_preexpansion_hook*{.importc: "tilde_expansion_preexpansion_hook", 
-                                  dynlib: tildeDll.}: Thook_func
+  var expansion_preexpansion_hook*{.importc: "tilde_expansion_preexpansion_hook", 
+                                    dynlib: tildeDll.}: Thook_func
 
-# If non-null, this contains the address of a function to call if the
-#   standard meaning for expanding a tilde fails.  The function is called
-#   with the text (sans tilde, as in "foo"), and returns a malloc()'ed string
-#   which is the expansion, or a NULL pointer if there is no expansion. 
+  # If non-null, this contains the address of a function to call if the
+  #   standard meaning for expanding a tilde fails.  The function is called
+  #   with the text (sans tilde, as in "foo"), and returns a malloc()'ed string
+  #   which is the expansion, or a NULL pointer if there is no expansion. 
 
-var expansion_failure_hook*{.importc: "tilde_expansion_failure_hook", 
-                             dynlib: tildeDll.}: Thook_func
+  var expansion_failure_hook*{.importc: "tilde_expansion_failure_hook", 
+                               dynlib: tildeDll.}: Thook_func
 
-# When non-null, this is a NULL terminated array of strings which
-#   are duplicates for a tilde prefix.  Bash uses this to expand
-#   `=~' and `:~'. 
+  # When non-null, this is a NULL terminated array of strings which
+  #   are duplicates for a tilde prefix.  Bash uses this to expand
+  #   `=~' and `:~'. 
 
-var additional_prefixes*{.importc: "tilde_additional_prefixes", dynlib: tildeDll.}: cstringArray
+  var additional_prefixes*{.importc: "tilde_additional_prefixes", dynlib: tildeDll.}: cstringArray
 
-# When non-null, this is a NULL terminated array of strings which match
-#   the end of a username, instead of just "/".  Bash sets this to
-#   `:' and `=~'. 
+  # When non-null, this is a NULL terminated array of strings which match
+  #   the end of a username, instead of just "/".  Bash sets this to
+  #   `:' and `=~'. 
 
-var additional_suffixes*{.importc: "tilde_additional_suffixes", dynlib: tildeDll.}: cstringArray
+  var additional_suffixes*{.importc: "tilde_additional_suffixes", dynlib: tildeDll.}: cstringArray
 
 # Return a new string which is the result of tilde expanding STRING. 
 
@@ -229,7 +230,8 @@ type
 
 # The current undo list for RL_LINE_BUFFER. 
 
-var undo_list*{.importc: "rl_undo_list", dynlib: readlineDll.}: ptr TUNDO_LIST
+when not defined(macosx):
+  var undo_list*{.importc: "rl_undo_list", dynlib: readlineDll.}: ptr TUNDO_LIST
 
 # The data structure for mapping textual names to code addresses. 
 
@@ -239,7 +241,8 @@ type
     function*: TCommandFunc
 
 
-var funmap*{.importc: "funmap", dynlib: readlineDll.}: ptr ptr TFUNMAP
+when not defined(macosx):
+  var funmap*{.importc: "funmap", dynlib: readlineDll.}: ptr ptr TFUNMAP
 
 # **************************************************************** 
 #								    
