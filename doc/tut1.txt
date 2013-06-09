@@ -1182,6 +1182,21 @@ type and instead write it embedded directly as the type of the first dimension:
   type
     TLightTower = array[1..10, array[north..west, TBlinkLights]]
 
+It is quite frequent to have arrays start at zero, so there's a shortcut syntax
+to specify a range from zero to the specified index minus one:
+
+.. code-block:: nimrod
+  type
+    TIntArray = array[0..5, int] # an array that is indexed with 0..5
+    TQuickArray = array[6, int]  # an array that is indexed with 0..5
+  var
+    x: TIntArray
+    y: TQuickArray
+  x = [1, 2, 3, 4, 5, 6]
+  y = x
+  for i in low(x)..high(x):
+    echo(x[i], y[i])
+
 
 Sequences
 ---------
