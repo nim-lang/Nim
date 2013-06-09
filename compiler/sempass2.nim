@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees, 
-  wordrecg, strutils, options
+  wordrecg, strutils, options, guards
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -75,7 +75,7 @@ type
     owner: PSym
     init: seq[int] # list of initialized variables
                    # coming soon: "guard" tracking for 'let' variables
-  
+    guards: TModel # nested guards
   PEffects = var TEffects
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
@@ -93,11 +93,14 @@ proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
     if s.id notin a.init:
-      if true:
-        Message(n.info, warnUninit, s.name.s)
+      if tfNeedsInit in s.typ.flags:
+        when true:
+          Message(n.info, warnProveInit, s.name.s)
+        else:
+          Message(n.info, errGenerated,
+            "'$1' might not have been initialized" % s.name.s)
       else:
-        Message(n.info, errGenerated,
-          "read from potentially uninitialized variable: '$1'" % s.name.s)
+        Message(n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
 
@@ -295,7 +298,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
 
-proc trackOperand(tracked: PEffects, n: PNode) =
+proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let op = n.typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
     InternalAssert op.n.sons[0].kind == nkEffectList
@@ -312,16 +315,40 @@ proc trackOperand(tracked: PEffects, n: PNode) =
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
+  if paramType != nil and tfNotNil in paramType.flags and
+      op != nil and tfNotNil notin op.flags:
+    case impliesNotNil(tracked.guards, n)
+    of impUnknown:
+      Message(n.info, errGenerated, 
+              "cannot prove '$1' is not nil" % n.renderTree)
+    of impNo:
+      Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
+    of impYes: discard
+
+proc breaksBlock(n: PNode): bool =
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    for c in n: 
+      if breaksBlock(c): return true
+  of nkBreakStmt, nkReturnStmt, nkRaiseStmt:
+    return true
+  of nkCallKinds:
+    if n.sons[0].kind == nkSym and sfNoReturn in n.sons[0].sym.flags:
+      return true
+  else:
+    discard
 
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0])
   let oldState = tracked.init.len
   var inter: TIntersection = @[]
+  var toCover = 0
   for i in 1.. <n.len:
     let branch = n.sons[i]
     setLen(tracked.init, oldState)
     for i in 0 .. <branch.len:
       track(tracked, branch.sons[i])
+    if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
   let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
@@ -332,30 +359,41 @@ proc trackCase(tracked: PEffects, n: PNode) =
   setLen(tracked.init, oldState)
   if exh:
     for id, count in items(inter):
-      if count == n.len-1: tracked.init.add id
+      if count >= toCover: tracked.init.add id
     # else we can't merge
 
 proc trackIf(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0].sons[0])
+  let oldFacts = tracked.guards.len
+  addFact(tracked.guards, n.sons[0].sons[0])
   let oldState = tracked.init.len
 
   var inter: TIntersection = @[]
+  var toCover = 0
   track(tracked, n.sons[0].sons[1])
+  if not breaksBlock(n.sons[0].sons[1]): inc toCover
   for i in oldState.. <tracked.init.len:
     addToIntersection(inter, tracked.init[i])
 
   for i in 1.. <n.len:
     let branch = n.sons[i]
+    setLen(tracked.guards, oldFacts)
+    for j in 0..i-1:
+      addFactNeg(tracked.guards, n.sons[j].sons[0])
+    if branch.len > 1:
+      addFact(tracked.guards, branch.sons[0])
     setLen(tracked.init, oldState)
     for i in 0 .. <branch.len:
       track(tracked, branch.sons[i])
+    if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
     for id, count in items(inter):
-      if count == n.len: tracked.init.add id
+      if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
+  setLen(tracked.guards, oldFacts)
   
 proc trackBlock(tracked: PEffects, n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
@@ -376,6 +414,9 @@ proc trackBlock(tracked: PEffects, n: PNode) =
 proc isTrue(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
+
+proc paramType(op: PType, i: int): PType =
+  if op != nil and i < op.len: result = op.sons[i]
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
@@ -404,11 +445,12 @@ proc track(tracked: PEffects, n: PNode) =
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
-    for i in 1 .. <len(n): trackOperand(tracked, n.sons[i])
+    for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, 
                                            mNewSeq, mShallowCopy}:
       # may not look like an assignment, but it is:
       initVar(tracked, n.sons[1])
+      # XXX new(objWithNotNil) is not initialized properly!
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
   of nkTryStmt: trackTryStmt(tracked, n)
@@ -510,8 +552,14 @@ proc trackProc*(s: PSym, body: PNode) =
   t.tags = effects.sons[tagEffects]
   t.owner = s
   t.init = @[]
+  t.guards = @[]
   track(t, body)
   
+  if not isEmptyType(s.typ.sons[0]) and tfNeedsInit in s.typ.sons[0].flags and
+      s.kind in {skProc, skConverter, skMethod}:
+    var res = s.ast.sons[resultPos].sym # get result symbol
+    if res.id notin t.init:
+      Message(body.info, warnProveInit, "result")
   let p = s.ast.sons[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):

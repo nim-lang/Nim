@@ -106,7 +106,7 @@ type
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
-    warnEachIdentIsTuple, warnShadowIdent, warnUninit, warnUser,
+    warnEachIdentIsTuple, warnShadowIdent, warnProveInit, warnUninit, warnUser,
     hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
@@ -355,7 +355,8 @@ const
     warnImplicitClosure: "implicit closure convention: '$1' [ImplicitClosure]",
     warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
     warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
-    warnUninit: "read from potentially uninitialized variable: '$1' [Uninit]",
+    warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
+    warnUninit: "'$1' might not have been initialized [Uninit]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#) [SuccessX]", 
@@ -375,14 +376,14 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..20, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..21, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
-    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", "Uninit",
+    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", "ProveInit", "Uninit",
     "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 

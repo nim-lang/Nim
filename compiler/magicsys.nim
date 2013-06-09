@@ -43,6 +43,18 @@ proc getSysSym(name: string): PSym =
     result.typ = newType(tyError, systemModule)
   if result.kind == skStub: loadStub(result)
   
+proc getSysMagic*(name: string, m: TMagic): PSym =
+  var ti: TIdentIter
+  let id = getIdent(name)
+  result = InitIdentIter(ti, systemModule.tab, id)
+  while result != nil:
+    if result.kind == skStub: loadStub(result)
+    if result.magic == m: return result
+    result = NextIdentIter(ti, systemModule.tab)
+  rawMessage(errSystemNeeds, name)
+  result = newSym(skError, id, systemModule, systemModule.info)
+  result.typ = newType(tyError, systemModule)
+  
 proc sysTypeFromName*(name: string): PType = 
   result = getSysSym(name).typ
 
@@ -111,7 +123,9 @@ proc skipIntLit*(t: PType): PType {.inline.} =
 
 proc AddSonSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
-  add(father.sons, son.skipIntLit)
+  let s = son.skipIntLit
+  add(father.sons, s)
+  propagateToOwner(father, s)
 
 proc setIntLitType*(result: PNode) =
   let i = result.intVal

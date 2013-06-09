@@ -50,6 +50,8 @@ proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
 proc whichAlias*(p: PSym): TAliasRequest =
   if p.constraint != nil:
     result = TAliasRequest(p.constraint.strVal[0].ord)
+  else:
+    result = aqNone
 
 proc compileConstraints(p: PNode, result: var TPatternCode) =
   case p.kind

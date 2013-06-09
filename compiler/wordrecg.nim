@@ -41,7 +41,7 @@ type
     
     wImmediate, wDestructor, wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wIncompleteStruct,
+    wImportc, wExportc, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
@@ -122,7 +122,7 @@ const
     
     "immediate", "destructor", "importcpp", "importobjc",
     "importcompilerproc", "importc", "exportc", "incompletestruct",
-    "align", "nodecl", "pure", "sideeffect",
+    "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 

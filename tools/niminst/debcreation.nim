@@ -227,9 +227,9 @@ when isMainModule:
   
   #echo(createRules())
 
-  prepDeb("nimrod", "0.8.14", "Dominik Picheta", "morfeusz8@gmail.com", 
+  prepDeb("nimrod", "0.9.2", "Dominik Picheta", "morfeusz8@gmail.com", 
     "The Nimrod compiler", "Compiler for the Nimrod programming language",
-    @[("bin/nimrod", "gpl2"), ("lib/*", "lgpl")], 
+    @[("bin/nimrod", "MIT"), ("lib/*", "MIT")], 
     @["bin/nimrod"], @["config/*"], @["doc/*"], @["lib/*"],
     "gcc (>= 4:4.3.2)", "gcc (>= 4:4.3.2)")
 

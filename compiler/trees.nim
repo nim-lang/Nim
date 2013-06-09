@@ -93,8 +93,7 @@ proc getOpSym*(op: PNode): PSym =
   
 proc getMagic*(op: PNode): TMagic = 
   case op.kind
-  of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit, nkPrefix, nkPostfix,
-     nkInfix: 
+  of nkCallKinds:
     case op.sons[0].Kind
     of nkSym: result = op.sons[0].sym.magic
     else: result = mNone
