@@ -77,7 +77,7 @@ type
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: PNonTerminal
-    of pkBackRef..pkBackRefIgnoreStyle: index: range[1..MaxSubpatterns]
+    of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
     else: sons: seq[TNode]
   PNonTerminal* = ref TNonTerminal
   

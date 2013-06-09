@@ -1,6 +1,6 @@
 discard """
   errormsg: "'y' might not have been initialized"
-  line:28
+  line:34
 """
 
 import strutils
