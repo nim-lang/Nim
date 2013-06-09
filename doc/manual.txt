@@ -1388,7 +1388,7 @@ accesses its environment. If it does so, it has the calling convention
 Distinct type
 -------------
 
-A distinct type is new type derived from a `base type`:idx: that is
+A `distinct type`:idx: is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
@@ -1435,7 +1435,7 @@ number without unit; and the same holds for division:
 This quickly gets tedious. The implementations are trivial and the compiler
 should not generate all this code only to optimize it away later - after all
 ``+`` for dollars should produce the same binary code as ``+`` for ints.
-The pragma ``borrow`` has been designed to solve this problem; in principle
+The pragma `borrow`:idx: has been designed to solve this problem; in principle
 it generates the above trivial implementations:
 
 .. code-block:: nimrod

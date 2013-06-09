@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements an AST for the `reStructuredText`:idx parser.
+## This module implements an AST for the `reStructuredText`:idx: parser.
 
 import strutils
 
