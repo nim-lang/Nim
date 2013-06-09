@@ -21,7 +21,7 @@ s[0] = substr(s[0], 0, 2)
 
 echo s[0]
 
-if true:
+if s[0] != "hi":
   echo "do it"
   echo "more branches"
 else:

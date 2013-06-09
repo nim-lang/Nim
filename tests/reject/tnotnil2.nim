@@ -1,6 +1,6 @@
 discard """
   errormsg: "cannot prove 'y' is not nil"
-  line:22
+  line:20
 """
 
 import strutils
