@@ -26,9 +26,9 @@ import
 
 proc pushstring*(L: PState, s: string)
   # compatibilty macros
-proc getn*(L: PState, n: int): int
+proc getn*(L: PState, n: cint): cint
   # calls lua_objlen
-proc setn*(L: PState, t, n: int)
+proc setn*(L: PState, t, n: cint)
   # does nothing!
 type 
   Treg*{.final.} = object 
@@ -37,58 +37,45 @@ type
 
   Preg* = ptr Treg
 
-proc openlib*(L: PState, libname: cstring, lr: Preg, nup: int){.cdecl, 
-    dynlib: lua.LIB_NAME, importc: "luaL_openlib".}
-proc register*(L: PState, libname: cstring, lr: Preg){.cdecl, 
-    dynlib: lua.LIB_NAME, importc: "luaL_register".}
-proc getmetafield*(L: PState, obj: int, e: cstring): int{.cdecl, 
-    dynlib: lua.LIB_NAME, importc: "luaL_getmetafield".}
-proc callmeta*(L: PState, obj: int, e: cstring): int{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_callmeta".}
-proc typerror*(L: PState, narg: int, tname: cstring): int{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_typerror".}
-proc argerror*(L: PState, numarg: int, extramsg: cstring): int{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_argerror".}
-proc checklstring*(L: PState, numArg: int, len: ptr int): cstring{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_checklstring".}
-proc optlstring*(L: PState, numArg: int, def: cstring, len: ptr int): cstring{.
-    cdecl, dynlib: LIB_NAME, importc: "luaL_optlstring".}
-proc checknumber*(L: PState, numArg: int): Number{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_checknumber".}
-proc optnumber*(L: PState, nArg: int, def: Number): Number{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_optnumber".}
-proc checkinteger*(L: PState, numArg: int): Integer{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_checkinteger".}
-proc optinteger*(L: PState, nArg: int, def: Integer): Integer{.
-    cdecl, dynlib: LIB_NAME, importc: "luaL_optinteger".}
-proc checkstack*(L: PState, sz: int, msg: cstring){.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_checkstack".}
-proc checktype*(L: PState, narg, t: int){.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_checktype".}
-proc checkany*(L: PState, narg: int){.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_checkany".}
-proc newmetatable*(L: PState, tname: cstring): int{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_newmetatable".}
-proc checkudata*(L: PState, ud: int, tname: cstring): Pointer{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_checkudata".}
-proc where*(L: PState, lvl: int){.cdecl, dynlib: LIB_NAME, 
-                                      importc: "luaL_where".}
-proc error*(L: PState, fmt: cstring): int{.cdecl, varargs, 
-    dynlib: LIB_NAME, importc: "luaL_error".}
-proc checkoption*(L: PState, narg: int, def: cstring, lst: cstringArray): int{.
-    cdecl, dynlib: LIB_NAME, importc: "luaL_checkoption".}
-proc reference*(L: PState, t: int): int{.cdecl, dynlib: LIB_NAME, 
-                                       importc: "luaL_ref".}
-proc unref*(L: PState, t, theref: int){.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_unref".}
-proc loadfile*(L: PState, filename: cstring): int{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_loadfile".}
-proc loadbuffer*(L: PState, buff: cstring, size: int, name: cstring): int{.
-    cdecl, dynlib: LIB_NAME, importc: "luaL_loadbuffer".}
-proc loadstring*(L: PState, s: cstring): int{.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_loadstring".}
-proc newstate*(): PState{.cdecl, dynlib: LIB_NAME, 
-                              importc: "luaL_newstate".}
+
+{.push callConv: cdecl, dynlib: lua.LIB_NAME.}
+{.push importc: "luaL_$1".}
+
+proc openlib*(L: PState, libname: cstring, lr: Preg, nup: cint)
+proc register*(L: PState, libname: cstring, lr: Preg)
+
+proc getmetafield*(L: PState, obj: cint, e: cstring): cint
+proc callmeta*(L: PState, obj: cint, e: cstring): cint
+proc typerror*(L: PState, narg: cint, tname: cstring): cint
+proc argerror*(L: PState, numarg: cint, extramsg: cstring): cint
+proc checklstring*(L: PState, numArg: cint, len: ptr int): cstring
+proc optlstring*(L: PState, numArg: cint, def: cstring, len: ptr cint): cstring
+proc checknumber*(L: PState, numArg: cint): Number
+proc optnumber*(L: PState, nArg: cint, def: Number): Number
+proc checkinteger*(L: PState, numArg: cint): Integer
+proc optinteger*(L: PState, nArg: cint, def: Integer): Integer
+proc checkstack*(L: PState, sz: cint, msg: cstring)
+proc checktype*(L: PState, narg, t: cint)
+
+proc checkany*(L: PState, narg: cint)
+proc newmetatable*(L: PState, tname: cstring): cint
+
+proc checkudata*(L: PState, ud: cint, tname: cstring): Pointer
+proc where*(L: PState, lvl: cint)
+proc error*(L: PState, fmt: cstring): cint{.varargs.}
+proc checkoption*(L: PState, narg: cint, def: cstring, lst: cstringArray): cint
+
+proc unref*(L: PState, t, theref: cint)
+proc loadfile*(L: PState, filename: cstring): cint
+proc loadbuffer*(L: PState, buff: cstring, size: cint, name: cstring): cint
+proc loadstring*(L: PState, s: cstring): cint
+proc newstate*(): PState
+
+{.pop.}
+proc reference*(L: PState, t: cint): cint{.importc: "luaL_ref".}
+
+{.pop.}
+
 proc open*(): PState
   # compatibility; moved from unit lua to lauxlib because it needs luaL_newstate
   #
@@ -96,18 +83,18 @@ proc open*(): PState
   #** some useful macros
   #** ===============================================================
   #
-proc argcheck*(L: PState, cond: bool, numarg: int, extramsg: cstring)
-proc checkstring*(L: PState, n: int): cstring
-proc optstring*(L: PState, n: int, d: cstring): cstring
-proc checkint*(L: PState, n: int): int
-proc checklong*(L: PState, n: int): int32
-proc optint*(L: PState, n: int, d: float64): int
-proc optlong*(L: PState, n: int, d: float64): int32
-proc dofile*(L: PState, filename: cstring): int
-proc dostring*(L: PState, str: cstring): int
+proc argcheck*(L: PState, cond: bool, numarg: cint, extramsg: cstring)
+proc checkstring*(L: PState, n: cint): cstring
+proc optstring*(L: PState, n: cint, d: cstring): cstring
+proc checkint*(L: PState, n: cint): cint
+proc checklong*(L: PState, n: cint): clong
+proc optint*(L: PState, n: cint, d: float64): cint
+proc optlong*(L: PState, n: cint, d: float64): clong
+proc dofile*(L: PState, filename: cstring): cint
+proc dostring*(L: PState, str: cstring): cint
 proc getmetatable*(L: PState, tname: cstring)
   # not translated:
-  # #define luaL_opt(L,f,n,d)	(lua_isnoneornil(L,(n)) ? (d) : f(L,(n)))
+  # #define luaL_opt(L,f,n,d)  (lua_isnoneornil(L,(n)) ? (d) : f(L,(n)))
   #
   #** =======================================================
   #** Generic Buffer manipulation
@@ -119,7 +106,7 @@ const                         # note: this is just arbitrary, as it related to t
 type 
   Buffer*{.final.} = object 
     p*: cstring               # current position in buffer 
-    lvl*: int                 # number of strings in the stack (level) 
+    lvl*: cint                 # number of strings in the stack (level) 
     L*: PState
     buffer*: array[0..BUFFERSIZE - 1, Char] # warning: see note above about LUAL_BUFFERSIZE
   
@@ -130,80 +117,76 @@ proc addchar*(B: PBuffer, c: Char)
   # compatibility only (alias for luaL_addchar) 
 proc putchar*(B: PBuffer, c: Char)
   # warning: see note above about LUAL_BUFFERSIZE
-proc addsize*(B: PBuffer, n: int)
-proc buffinit*(L: PState, B: PBuffer){.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_buffinit".}
-proc prepbuffer*(B: PBuffer): cstring{.cdecl, dynlib: LIB_NAME, 
-                                       importc: "luaL_prepbuffer".}
-proc addlstring*(B: PBuffer, s: cstring, L: int){.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_addlstring".}
-proc addstring*(B: PBuffer, s: cstring){.cdecl, dynlib: LIB_NAME, 
-    importc: "luaL_addstring".}
-proc addvalue*(B: PBuffer){.cdecl, dynlib: LIB_NAME, 
-                            importc: "luaL_addvalue".}
-proc pushresult*(B: PBuffer){.cdecl, dynlib: LIB_NAME, 
-                              importc: "luaL_pushresult".}
-proc gsub*(L: PState, s, p, r: cstring): cstring{.cdecl, 
-    dynlib: LIB_NAME, importc: "luaL_gsub".}
-proc findtable*(L: PState, idx: int, fname: cstring, szhint: int): cstring{.
-    cdecl, dynlib: LIB_NAME, importc: "luaL_findtable".}
+proc addsize*(B: PBuffer, n: cint)
+
+{.push callConv: cdecl, dynlib: lua.LIB_NAME, importc: "luaL_$1".}
+proc buffinit*(L: PState, B: PBuffer)
+proc prepbuffer*(B: PBuffer): cstring
+proc addlstring*(B: PBuffer, s: cstring, L: cint)
+proc addstring*(B: PBuffer, s: cstring)
+proc addvalue*(B: PBuffer)
+proc pushresult*(B: PBuffer)
+proc gsub*(L: PState, s, p, r: cstring): cstring
+proc findtable*(L: PState, idx: cint, fname: cstring, szhint: cint): cstring
   # compatibility with ref system 
   # pre-defined references 
+{.pop.}
+
 const 
   NOREF* = - 2
   REFNIL* = - 1
 
-proc unref*(L: PState, theref: int)
-proc getref*(L: PState, theref: int)
+proc unref*(L: PState, theref: cint)
+proc getref*(L: PState, theref: cint)
   #
   #** Compatibility macros and functions
   #
 # implementation
 
 proc pushstring(L: PState, s: string) = 
-  pushlstring(L, cstring(s), len(s))
+  pushlstring(L, cstring(s), s.len.cint)
 
-proc getn(L: PState, n: int): int = 
+proc getn(L: PState, n: cint): cint = 
   Result = objlen(L, n)
 
-proc setn(L: PState, t, n: int) = 
+proc setn(L: PState, t, n: cint) = 
   # does nothing as this operation is deprecated
   nil
 
 proc open(): PState = 
   Result = newstate()
 
-proc dofile(L: PState, filename: cstring): int = 
+proc dofile(L: PState, filename: cstring): cint = 
   Result = loadfile(L, filename)
   if Result == 0: Result = pcall(L, 0, MULTRET, 0)
   
-proc dostring(L: PState, str: cstring): int = 
+proc dostring(L: PState, str: cstring): cint = 
   Result = loadstring(L, str)
   if Result == 0: Result = pcall(L, 0, MULTRET, 0)
   
 proc getmetatable(L: PState, tname: cstring) = 
   getfield(L, REGISTRYINDEX, tname)
 
-proc argcheck(L: PState, cond: bool, numarg: int, extramsg: cstring) = 
+proc argcheck(L: PState, cond: bool, numarg: cint, extramsg: cstring) = 
   if not cond: 
     discard argerror(L, numarg, extramsg)
 
-proc checkstring(L: PState, n: int): cstring = 
+proc checkstring(L: PState, n: cint): cstring = 
   Result = checklstring(L, n, nil)
 
-proc optstring(L: PState, n: int, d: cstring): cstring = 
+proc optstring(L: PState, n: cint, d: cstring): cstring = 
   Result = optlstring(L, n, d, nil)
 
-proc checkint(L: PState, n: int): int = 
-  Result = toInt(checknumber(L, n))
+proc checkint(L: PState, n: cint): cint = 
+  Result = cint(checknumber(L, n))
 
-proc checklong(L: PState, n: int): int32 = 
+proc checklong(L: PState, n: cint): clong = 
   Result = int32(ToInt(checknumber(L, n)))
 
-proc optint(L: PState, n: int, d: float64): int = 
-  Result = int(ToInt(optnumber(L, n, d)))
+proc optint(L: PState, n: cint, d: float64): cint = 
+  Result = optnumber(L, n, d).cint
 
-proc optlong(L: PState, n: int, d: float64): int32 = 
+proc optlong(L: PState, n: cint, d: float64): clong = 
   Result = int32(ToInt(optnumber(L, n, d)))
 
 proc addchar(B: PBuffer, c: Char) = 
@@ -215,11 +198,11 @@ proc addchar(B: PBuffer, c: Char) =
 proc putchar(B: PBuffer, c: Char) = 
   addchar(B, c)
 
-proc addsize(B: PBuffer, n: int) = 
+proc addsize(B: PBuffer, n: cint) = 
   B.p = cast[cstring](cast[int](B.p) + n)
 
-proc unref(L: PState, theref: int) = 
+proc unref(L: PState, theref: cint) = 
   unref(L, REGISTRYINDEX, theref)
 
-proc getref(L: PState, theref: int) = 
+proc getref(L: PState, theref: cint) = 
   rawgeti(L, REGISTRYINDEX, theref)

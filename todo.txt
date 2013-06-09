@@ -25,7 +25,6 @@ Bugs
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - osproc execProcesses can deadlock if all processes fail (as experienced
   in c++ mode)
-- bootstrapping does not work in C++ mode
 - result = result shr 8 for the "system()" wrapper
 
 

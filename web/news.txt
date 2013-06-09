@@ -36,6 +36,8 @@ Language Additions
 
 - Arrays can now be declared with a single integer literal ``N`` instead of a
   range; the range is then ``0..N-1``.
+- ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
+  ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 - Added ``requiresInit`` pragma to enforce explicit initialization.
 
 
