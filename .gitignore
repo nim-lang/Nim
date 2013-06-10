@@ -171,6 +171,7 @@ examples/cross_calculator/android/tags
 /tests/caas/imported
 /tests/caas/issue_416_template_shift
 /tests/caas/issue_452_export_shift
+/tests/caas/issue_477_dynamic_dispatch
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
