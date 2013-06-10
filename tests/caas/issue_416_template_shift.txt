@@ -1,0 +1,14 @@
+issue_416_template_shift.nim
+> c
+SuccessX
+> idetools --track:issue_416_template_shift.nim,12,28 --def
+def\tskType\tsystem.string\tstring
+> idetools --track:issue_416_template_shift.nim,12,35 --def
+def\tskLet\tissue_416_template_shift.failtest.input\tTaintedString
+
+# The following fail because they seem shifted one colum to the right.
+> idetools --track:issue_416_template_shift.nim,12,16 --def
+def\tskTemplate\tsequtils.toSeq\tproc \(expr\): expr
+> idetools --track:issue_416_template_shift.nim,12,22 --def
+def\tskIterator\tunicode.runes\titerator \(string\): TRune
+
