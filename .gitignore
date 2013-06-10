@@ -167,4 +167,10 @@ examples/cross_calculator/android/tags
 /run.json
 /testresults.html
 /testresults.json
+/tests/caas/idetools_api
+/tests/caas/imported
+/tests/caas/issue_416
+/tests/caas/issue_452
+/tests/caas/main
+/tests/caasdriver
 /tools/nimgrep

@@ -1,0 +1,41 @@
+idetools_api.nim
+> c
+SuccessX
+> idetools --track:idetools_api.nim,4,11 --def
+def\tskType\tsystem.TFile\tTFile
+> idetools --track:idetools_api.nim,5,7 --def
+def\tskProc\tsystem.Open\tproc \(var TFile, string, TFileMode, int\): bool
+> idetools --track:idetools_api.nim,5,21 --def
+def\tskProc\tsystem.\&\tproc \(string, string\): string\{.noSideEffect.\}
+> idetools --track:idetools_api.nim,5,38 --def
+def\tskEnumField\tsystem.TFileMode.fmWrite\tTFileMode
+> idetools --track:idetools_api.nim,7,6 --def
+def\tskProc\tsystem.Close\tproc \(TFile\)
+> idetools --track:idetools_api.nim,12,23 --def
+def\tskIterator\tunicode.runes\titerator \(string\): TRune
+> idetools --track:idetools_api.nim,12,15 --def
+def\tskTemplate\tsequtils.toSeq\tproc \(expr\): expr
+> idetools --track:idetools_api.nim,15,7 --def
+
+# ProcRun mode will fail the next line, because the type is returned empty.
+def\tskConst\tidetools_api.SOME_SEQUENCE\tseq\[int\]\t
+> idetools --track:idetools_api.nim,15,23 --def
+def\tskProc\tsystem.@\tproc \(array\[IDX, T\]\): seq\[T\]\{.noSideEffect.\}
+> idetools --track:idetools_api.nim,17,3 --def
+
+# ProcRun mode will fail the next line, because the type is returned empty.
+def\tskType\tidetools_api.bad_string\tbad_string\t
+> idetools --track:idetools_api.nim,11,24 --def
+def\tskParam\tidetools_api.test_iterators.filename\tstring
+> idetools --track:idetools_api.nim,6,5 --def
+def\tskVar\tidetools_api.test_enums.o\tTFile
+> idetools --track:idetools_api.nim,12,34 --def
+def\tskLet\tidetools_api.test_iterators.input\tTaintedString
+> idetools --track:idetools_api.nim,13,35 --def
+def\tskForVar\tidetools_api.test_iterators.letter\tTRune
+> idetools --track:idetools_api.nim,23,3 --def
+def\tskResult\tidetools_api.adder.result\tint
+> idetools --track:idetools_api.nim,19,6 --def
+
+# ProcRun mode will fail the next line, because the type is returned empty.
+def\tskField\tidetools_api.TPerson.name\tbad_string\t
