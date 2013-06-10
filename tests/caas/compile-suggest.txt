@@ -1,7 +1,8 @@
 main.nim
 > c
 SuccessX
-> idetools --trackDirty:main_dirty.nim,main.nim,12,7 --suggest main.nim
-skField\tx
-skField\ty
+# Ugh, undocumented trackDirty, how is it supposed to work? Fails in proc mode.
+> idetools --trackDirty:main_dirty.nim,main.nim,12,7 --suggest
+CaasRun skField\tx
+CaasRun skField\ty
 

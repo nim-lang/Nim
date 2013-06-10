@@ -2,6 +2,9 @@ main.nim
 > c
 SuccessX
 > c
-! Processing
+# The "Processing" string will be found always in proc mode since each
+# compilation command will generate it. We need to test it only in Caas mode to
+# verify the server is not recompiling again the file.
+CaasRun ! Processing
 SuccessX
 
