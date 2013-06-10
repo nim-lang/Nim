@@ -39,3 +39,6 @@ def\tskResult\tidetools_api.adder.result\tint
 
 # ProcRun mode will fail the next line, because the type is returned empty.
 def\tskField\tidetools_api.TPerson.name\tbad_string\t
+
+> idetools --track:idetools_api.nim,43,7 --def
+def\tskMethod\tidetools_api.eval\tproc \(PPlusExpr\): int\t
