@@ -365,8 +365,9 @@ proc outputJSON(reject, compile, run: TResults) =
   writeFile(jsonFile, s)
 
 proc runCaasTests(r: var TResults) =
-  for test, output, status in caasTestsRunner():
-    r.addResult(test, "", output, if status: reSuccess else: reOutputsDiffer)
+  for test, output, status, mode in caasTestsRunner():
+    r.addResult(test, "", output & "-> " & $mode,
+                if status: reSuccess else: reOutputsDiffer)
 
 proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
