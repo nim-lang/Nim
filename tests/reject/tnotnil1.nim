@@ -1,6 +1,6 @@
 discard """
   errormsg: "'y' is provably nil"
-  line:22
+  line:25
 """
 
 import strutils
@@ -15,6 +15,9 @@ proc q(x: pointer not nil) =
 
 proc p() =
   var x: pointer
+  if not x.isNil:
+    q(x)
+  
   let y = x
   if not y.isNil:
     q(y)
