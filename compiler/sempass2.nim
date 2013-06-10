@@ -315,15 +315,17 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
-  if paramType != nil and tfNotNil in paramType.flags and
-      op != nil and tfNotNil notin op.flags:
-    case impliesNotNil(tracked.guards, n)
-    of impUnknown:
-      Message(n.info, errGenerated, 
-              "cannot prove '$1' is not nil" % n.renderTree)
-    of impNo:
-      Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
-    of impYes: discard
+  if paramType != nil:
+    if tfNotNil in paramType.flags and op != nil and tfNotNil notin op.flags:
+      case impliesNotNil(tracked.guards, n)
+      of impUnknown:
+        Message(n.info, errGenerated, 
+                "cannot prove '$1' is not nil" % n.renderTree)
+      of impNo:
+        Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
+      of impYes: discard
+    if skipTypes(paramType, abstractInst).kind == tyVar:
+      invalidateFacts(tracked.guards, n)
 
 proc breaksBlock(n: PNode): bool =
   case n.kind
@@ -341,16 +343,22 @@ proc breaksBlock(n: PNode): bool =
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0])
   let oldState = tracked.init.len
+  let oldFacts = tracked.guards.len
+  let interesting = interestingCaseExpr(n.sons[0]) and warnProveField in gNotes
   var inter: TIntersection = @[]
   var toCover = 0
   for i in 1.. <n.len:
     let branch = n.sons[i]
     setLen(tracked.init, oldState)
+    if interesting:
+      setLen(tracked.guards, oldFacts)
+      addCaseBranchFacts(tracked.guards, n, i)
     for i in 0 .. <branch.len:
       track(tracked, branch.sons[i])
     if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
+    
   let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
             of tyFloat..tyFloat128, tyString:
               lastSon(n).kind == nkElse
@@ -361,6 +369,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge
+  setLen(tracked.guards, oldFacts)
 
 proc trackIf(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0].sons[0])
@@ -453,12 +462,16 @@ proc track(tracked: PEffects, n: PNode) =
       # XXX new(objWithNotNil) is not initialized properly!
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
+  of nkCheckedFieldExpr:
+    track(tracked, n.sons[0])
+    if warnProveField in gNotes: checkFieldAccess(tracked.guards, n)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
   of nkMacroDef, nkTemplateDef: discard
   of nkAsgn, nkFastAsgn:
     track(tracked, n.sons[1])
     initVar(tracked, n.sons[0])
+    invalidateFacts(tracked.guards, n.sons[0])
     track(tracked, n.sons[0])
   of nkVarSection:
     for child in n:
@@ -476,8 +489,11 @@ proc track(tracked: PEffects, n: PNode) =
     else:
       # loop may never execute:
       let oldState = tracked.init.len
+      let oldFacts = tracked.guards.len
+      addFact(tracked.guards, n.sons[0])
       track(tracked, n.sons[1])
       setLen(tracked.init, oldState)
+      setLen(tracked.guards, oldFacts)
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len

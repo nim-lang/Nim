@@ -106,11 +106,13 @@ type
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
     warnNilStatement, warnAnalysisLoophole,
     warnDifferentHeaps, warnWriteToForeignHeap, warnImplicitClosure,
-    warnEachIdentIsTuple, warnShadowIdent, warnProveInit, warnUninit, warnUser,
-    hintSuccess, hintSuccessX, 
-    hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
-    hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
-    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, 
+    warnEachIdentIsTuple, warnShadowIdent, 
+    warnProveInit, warnProveField, warnProveIndex,
+    warnUninit, warnUser,
+    hintSuccess, hintSuccessX,
+    hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
+    hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
+    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintPattern,
     hintUser
 
@@ -356,6 +358,8 @@ const
     warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
     warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
+    warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
+    warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
@@ -376,15 +380,15 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..21, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..23, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "NilStmt",
     "AnalysisLoophole", "DifferentHeaps", "WriteToForeignHeap",
-    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", "ProveInit", "Uninit",
-    "User"]
+    "ImplicitClosure", "EachIdentIsTuple", "ShadowIdent", 
+    "ProveInit", "ProveField", "ProveIndex", "Uninit", "User"]
 
   HintsToStr*: array[0..15, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
@@ -516,7 +520,8 @@ proc sourceLine*(i: TLineInfo): PRope
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} - 
-                        {warnShadowIdent, warnUninit}
+                        {warnShadowIdent, warnUninit,
+                         warnProveField, warnProveIndex}
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0

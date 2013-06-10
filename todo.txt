@@ -1,9 +1,10 @@
 version 0.9.4
 =============
 
-- make 'bind' default for templates and introduce 'mixin';
-- test 'not nil' checking more
-- prove field accesses; prove array accesses
+- make 'bind' default for templates and introduce 'mixin'
+- fix tcheckedfield1
+- 'not nil' checking for globals
+- prove array accesses
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
