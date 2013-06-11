@@ -1,11 +1,11 @@
 issue_452_export_shift.nim
 > c
 SuccessX
-> idetools --track:issue_452_export_shift.nim,2,2 --def
-def\tskConst\tissue_452_export_shift.VERSION_STR1\tstring
-> idetools --track:issue_452_export_shift.nim,3,2 --def
-def\tskConst\tissue_452_export_shift.VERSION_STR2\tstring
-> idetools --track:issue_452_export_shift.nim,7,5 --def
-def\tskProc\tissue_452_export_shift.forward1\tproc \(\): string\t
-> idetools --track:issue_452_export_shift.nim,8,5 --def
-def\tskProc\tissue_452_export_shift.forward2\tproc \(\): string\t
+> idetools --track:$TESTNIM,2,2 --def
+def\tskConst\t$MODULE.VERSION_STR1\tstring
+> idetools --track:$TESTNIM,3,2 --def
+def\tskConst\t$MODULE.VERSION_STR2\tstring
+> idetools --track:$TESTNIM,7,5 --def
+def\tskProc\t$MODULE.forward1\tproc \(\): string\t
+> idetools --track:$TESTNIM,8,5 --def
+def\tskProc\t$MODULE.forward2\tproc \(\): string\t
