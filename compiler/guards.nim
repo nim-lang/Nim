@@ -38,7 +38,7 @@ proc isLet(n: PNode): bool =
 
 proc isVar(n: PNode): bool =
   n.kind == nkSym and n.sym.kind in {skResult, skVar} and
-      sfGlobal notin n.sym.flags
+      {sfGlobal, sfAddrTaken} * n.sym.flags == {}
 
 proc isLetLocation(m: PNode, isApprox: bool): bool =
   # consider: 'n[].kind' --> we really need to support 1 deref op even if this
@@ -67,27 +67,58 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
   if not result and isApprox:
     result = isVar(n)
 
-proc interestingCaseExpr*(m: PNode): bool = 
-  var n = m
-  while true:
-    case n.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv, 
-       nkDerefExpr, nkHiddenDeref:
-      n = n.sons[0]
-    of nkBracketExpr:
-      if isConstExpr(n.sons[1]) or isLet(n.sons[1]):
-        n = n.sons[0]
-      else: return
-    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-      n = n.sons[1]
-    else:
-      break
-  result = n.isLet
+proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
+
+proc swapArgs(fact: PNode, newOp: string, m: TMagic): PNode =
+  result = newNodeI(nkCall, fact.info, 3)
+  result.sons[0] = newSymNode(getSysMagic(newOp, m))
+  result.sons[1] = fact.sons[2]
+  result.sons[2] = fact.sons[1]
 
 proc neg(n: PNode): PNode =
-  if n.getMagic == mNot:
+  if n == nil: return nil
+  case n.getMagic
+  of mNot:
     result = n.sons[1]
+  of someLt:
+    # not (a < b)  ==  a >= b  ==  b <= a
+    result = swapArgs(n, "<=", mLeI)
+  of someLe:
+    result = swapArgs(n, "<", mLtI)
+  of mInSet:
+    if n.sons[1].kind != nkCurly: return nil
+    let t = n.sons[2].typ.skipTypes(abstractInst)
+    result = newNodeI(nkCall, n.info, 3)
+    result.sons[0] = n.sons[0]
+    result.sons[2] = n.sons[2]
+    if t.kind == tyEnum:
+      var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)    
+      for e in t.n:
+        let eAsNode = newIntNode(nkIntLit, e.sym.position)
+        if not inSet(n.sons[1], eAsNode): s.add eAsNode
+      result.sons[1] = s
+    elif lengthOrd(t) < 1000:
+      result.sons[1] = complement(n.sons[1])
+    else:
+      # not ({2, 3, 4}.contains(x))   x != 2 and x != 3 and x != 4
+      # XXX todo
+      result = nil
+  of mOr:
+    # not (a or b) --> not a and not b
+    let
+      a = n.sons[1].neg
+      b = n.sons[2].neg
+    if a != nil and b != nil:
+      result = newNodeI(nkCall, n.info, 3)
+      result.sons[0] = newSymNode(getSysMagic("and", mAnd))
+      result.sons[1] = a
+      result.sons[2] = b
+    elif a != nil:
+      result = a
+    elif b != nil:
+      result = b
   else:
+    # leave  not (a == 4)  as it is
     result = newNodeI(nkCall, n.info, 2)
     result.sons[0] = newSymNode(getSysMagic("not", mNot))
     result.sons[1] = n
@@ -131,26 +162,9 @@ proc usefulFact(n: PNode): PNode =
     elif b != nil:
       result = b
   of mNot:
-    case n.sons[1].getMagic
-    of mNot:
-      # normalize 'not (not a)' into 'a':
-      result = usefulFact(n.sons[1].sons[1])
-    of mOr:
-      # not (a or b) --> not a and not b
-      let n = n.sons[1]
-      let
-        a = usefulFact(n.sons[1])
-        b = usefulFact(n.sons[2])
-      if a != nil and b != nil:
-        result = newNodeI(nkCall, n.info, 3)
-        result.sons[0] = newSymNode(getSysMagic("and", mAnd))
-        result.sons[1] = a.neg
-        result.sons[2] = b.neg
-    else:
-      let a = usefulFact(n.sons[1])
-      if a != nil:
-        result = copyTree(n)
-        result.sons[1] = a
+    let a = usefulFact(n.sons[1])
+    if a != nil:
+      result = a.neg
   of mOr:
     # 'or' sucks! (p.isNil or q.isNil) --> hard to do anything
     # with that knowledge...
@@ -159,13 +173,13 @@ proc usefulFact(n: PNode): PNode =
     #  (x == 3) or (y == 2)  ---> not ( not (x==3) and not (y == 2))
     #  not (x != 3 and y != 2)
     let
-      a = usefulFact(n.sons[1])
-      b = usefulFact(n.sons[2])
+      a = usefulFact(n.sons[1]).neg
+      b = usefulFact(n.sons[2]).neg
     if a != nil and b != nil:
       result = newNodeI(nkCall, n.info, 3)
       result.sons[0] = newSymNode(getSysMagic("and", mAnd))
-      result.sons[1] = a.neg
-      result.sons[2] = b.neg
+      result.sons[1] = a
+      result.sons[2] = b
       result = result.neg
   elif n.kind == nkSym and n.sym.kind == skLet:
     # consider:
@@ -184,7 +198,9 @@ proc addFact*(m: var TModel, n: PNode) =
   let n = usefulFact(n)
   if n != nil: m.add n
 
-proc addFactNeg*(m: var TModel, n: PNode) = addFact(m, n.neg)
+proc addFactNeg*(m: var TModel, n: PNode) = 
+  let n = n.neg
+  if n != nil: addFact(m, n)
 
 proc sameTree(a, b: PNode): bool = 
   result = false
@@ -270,7 +286,7 @@ proc impliesEq(fact, eq: PNode): TImplication =
 proc leImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
     # fact:  x <= 4;  question x in {56}?
-    # --> true iff every value <= 4 is in the set {56}
+    # --> true if every value <= 4 is in the set {56}
     #   
     var value = newIntNode(c.kind, firstOrd(x.typ))
     # don't iterate too often:
@@ -282,8 +298,6 @@ proc leImpliesIn(x, c, aSet: PNode): TImplication =
         inc i; inc value.intVal
       if pos == i: result = impYes
       elif neg == i: result = impNo
-      #echo "result ", result, " ", i, " ", neg, " ", pos
-      # XXX wrong for the impNo case
 
 proc geImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
@@ -427,33 +441,48 @@ proc impliesLt(fact, x, c: PNode): TImplication =
     if q != x:
       result = impliesLe(fact, q, c)
 
-proc factImplies(fact, prop: PNode, isNegation: bool): TImplication =
+proc `~`(x: TImplication): TImplication =
+  case x
+  of impUnknown: impUnknown
+  of impNo: impYes
+  of impYes: impNo
+
+proc factImplies(fact, prop: PNode): TImplication =
   case fact.getMagic
   of mNot:
-    case factImplies(fact.sons[1], prop, not isNegation)
-    of impUnknown: return impUnknown
-    of impNo: return impYes
-    of impYes: return impNo
-  of mAnd:
-    if not isNegation:
-      result = factImplies(fact.sons[1], prop, isNegation)
-      if result != impUnknown: return result
-      return factImplies(fact.sons[2], prop, isNegation)
-    else:
-      # careful!  not (a and b)  means  not a or not b:
+    # Consider:
+    # enum nkBinary, nkTernary, nkStr
+    # fact:      not (k <= nkBinary)
+    # question:  k in {nkStr}
+    # --> 'not' for facts is entirely different than 'not' for questions!
+    # it's provably wrong if every value > 4 is in the set {56}
+    # That's because we compute the implication and  'a -> not b' cannot
+    # be treated the same as 'not a -> b'
+    
+    #  (not a) -> b  compute as  not (a -> b) ???
+    #  == not a or not b == not (a and b)
+    let arg = fact.sons[1]
+    case arg.getMagic
+    of mIsNil:
+      return ~factImplies(arg, prop)
+    of mAnd:
+      # not (a and b)  means  not a or not b:
       # a or b --> both need to imply 'prop'
-      let a = factImplies(fact.sons[1], prop, isNegation)
-      let b = factImplies(fact.sons[2], prop, isNegation)
-      if a == b: return a
+      let a = factImplies(arg.sons[1], prop)
+      let b = factImplies(arg.sons[2], prop)
+      if a == b: return ~a
       return impUnknown
+    else:
+      InternalError(fact.info, "invalid fact")
+  of mAnd:
+    result = factImplies(fact.sons[1], prop)
+    if result != impUnknown: return result
+    return factImplies(fact.sons[2], prop)
   else: discard
   
   case prop.sons[0].sym.magic
   of mNot:
-    case fact.factImplies(prop.sons[1], isNegation)
-    of impUnknown: result = impUnknown
-    of impNo: result = impYes
-    of impYes: result = impNo
+    result = ~fact.factImplies(prop.sons[1])
   of mIsNil:
     result = impliesIsNil(fact, prop)
   of someEq:
@@ -472,7 +501,7 @@ proc doesImply*(facts: TModel, prop: PNode): TImplication =
   for f in facts:
     # facts can be invalidated, in which case they are 'nil':
     if not f.isNil:
-      result = f.factImplies(prop, false)
+      result = f.factImplies(prop)
       if result != impUnknown: return
 
 proc impliesNotNil*(facts: TModel, arg: PNode): TImplication =

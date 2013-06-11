@@ -324,8 +324,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
       of impNo:
         Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
       of impYes: discard
-    if skipTypes(paramType, abstractInst).kind == tyVar:
-      invalidateFacts(tracked.guards, n)
 
 proc breaksBlock(n: PNode): bool =
   case n.kind

@@ -2,7 +2,6 @@ version 0.9.4
 =============
 
 - make 'bind' default for templates and introduce 'mixin'
-- fix tcheckedfield1
 - 'not nil' checking for globals
 - prove array accesses
 - special rule for ``[]=``
