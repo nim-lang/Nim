@@ -1,8 +1,8 @@
 main.nim
-> idetools --track:main.nim,5,18 --def
+> idetools --track:$TESTNIM,5,18 --def
 strutils.toUpper
 ! SuccessX
-> idetools --track:main.nim,5,18 --def
+> idetools --track:$TESTNIM,5,18 --def
 strutils.toUpper
 ! SuccessX
 > c

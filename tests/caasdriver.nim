@@ -22,7 +22,12 @@ import osproc, streams, os, strutils, re
 ## only in that mode.
 ##
 ## The rest of the line is treated as a regular expression, so be careful
-## escaping metacharacters like parenthesis.
+## escaping metacharacters like parenthesis. Before the line is processed as a
+## regular expression, some basic variables are searched for and replaced in
+## the tests. The variables which will be replaced are:
+##
+## - $TESTNIM: filename specified in the first line of the script.
+## - $MODULE: like $TESTNIM but without extension, useful for expected output.
 ##
 ## You can optionally pass parameters at the command line to modify the
 ## behaviour of the test suite. By default only tests which fail will be echoed
@@ -46,26 +51,35 @@ type
     nim: PProcess # Holds the open process for CaasRun sessions, nil otherwise.
     mode: TRunMode # Stores the type of run mode the session was started with.
     lastOutput: string # Preserves the last output, needed for ProcRun mode.
-    filename: string # Appended to each command starting with '>'.
+    filename: string # Appended to each command starting with '>'. Also a var.
+    modname: string # Like filename but without extension.
 
-const modes = [CaasRun, ProcRun]
+const
+  modes = [CaasRun, ProcRun]
+  filenameReplaceVar = "$TESTNIM"
+  moduleReplaceVar = "$MODULE"
 
 var
   TesterDir = getAppDir()
   NimrodBin = TesterDir / "../bin/nimrod"
 
+proc replaceVars(session: var TNimrodSession, text: string): string =
+  result = text.replace(filenameReplaceVar, session.filename)
+  result = result.replace(moduleReplaceVar, session.modname)
+
 proc startNimrodSession(project: string, mode: TRunMode): TNimrodSession =
-  let (dir, name) = project.SplitPath
+  let (dir, name, ext) = project.splitFile
   result.mode = mode
   result.lastOutput = ""
-  result.filename = name
+  result.filename = name & ext
+  result.modname = name
   if mode == CaasRun:
     result.nim = startProcess(NimrodBin, workingDir = dir,
       args = ["serve", "--server.type:stdin", name])
 
 proc doCaasCommand(session: var TNimrodSession, command: string): string =
   assert session.mode == CaasRun
-  session.nim.inputStream.write(command & "\n")
+  session.nim.inputStream.write(session.replaceVars(command) & "\n")
   session.nim.inputStream.flush
 
   result = ""
@@ -83,7 +97,7 @@ proc doProcCommand(session: var TNimrodSession, command: string): string =
   assert session.mode == ProcRun
   except: result = "FAILED TO EXECUTE: " & command & "\n" & result
   var
-    process = startProcess(NimrodBin, args = command.split)
+    process = startProcess(NimrodBin, args = session.replaceVars(command).split)
     stream = outputStream(process)
     line = TaintedString("")
 
@@ -141,9 +155,9 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
         output.writeln line, "\n", s.lastOutput
       else:
         var expectMatch = true
-        var pattern = line
+        var pattern = s.replaceVars(line)
         if line.startsWith("!"):
-          pattern = line.substr(1).strip
+          pattern = pattern.substr(1).strip
           expectMatch = false
 
         let actualMatch =
