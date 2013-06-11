@@ -45,7 +45,7 @@ import osproc, streams, os, strutils, re
 
 type
   TRunMode = enum
-    ProcRun, CaasRun
+    ProcRun, CaasRun, SymbolProcRun
 
   TNimrodSession* = object
     nim: PProcess # Holds the open process for CaasRun sessions, nil otherwise.
@@ -53,9 +53,10 @@ type
     lastOutput: string # Preserves the last output, needed for ProcRun mode.
     filename: string # Appended to each command starting with '>'. Also a var.
     modname: string # Like filename but without extension.
+    nimcache: string # Input script based name for the nimcache dir.
 
 const
-  modes = [CaasRun, ProcRun]
+  modes = [CaasRun, ProcRun, SymbolProcRun]
   filenameReplaceVar = "$TESTNIM"
   moduleReplaceVar = "$MODULE"
 
@@ -67,12 +68,14 @@ proc replaceVars(session: var TNimrodSession, text: string): string =
   result = text.replace(filenameReplaceVar, session.filename)
   result = result.replace(moduleReplaceVar, session.modname)
 
-proc startNimrodSession(project: string, mode: TRunMode): TNimrodSession =
+proc startNimrodSession(project, script: string, mode: TRunMode):
+                        TNimrodSession =
   let (dir, name, ext) = project.splitFile
   result.mode = mode
   result.lastOutput = ""
   result.filename = name & ext
   result.modname = name
+  result.nimcache = "SymbolProcRun." & script.splitFile.name
   if mode == CaasRun:
     result.nim = startProcess(NimrodBin, workingDir = dir,
       args = ["serve", "--server.type:stdin", name])
@@ -94,7 +97,7 @@ proc doCaasCommand(session: var TNimrodSession, command: string): string =
       break
 
 proc doProcCommand(session: var TNimrodSession, command: string): string =
-  assert session.mode == ProcRun
+  assert session.mode == ProcRun or session.mode == SymbolProcRun
   except: result = "FAILED TO EXECUTE: " & command & "\n" & result
   var
     process = startProcess(NimrodBin, args = session.replaceVars(command).split)
@@ -113,6 +116,13 @@ proc doCommand(session: var TNimrodSession, command: string) =
     session.lastOutput = doCaasCommand(session,
                                        command & " " & session.filename)
   else:
+    var command = command
+    # For symbol runs we prepend the necessary parameters to avoid clobbering
+    # the normal nimcache.
+    if session.mode == SymbolProcRun:
+      command = "--symbolFiles:on --nimcache:" & session.nimcache &
+                " " & command
+    echo "Running ", command
     session.lastOutput = doProcCommand(session,
                                        command & " " & session.filename)
 
@@ -128,7 +138,7 @@ proc doScenario(script: string, output: PStream, mode: TRunMode): bool =
 
   if f.readLine(project):
     var
-      s = startNimrodSession(script.parentDir / project.string, mode)
+      s = startNimrodSession(script.parentDir / project.string, script, mode)
       tline = TaintedString("")
       ln = 1
 

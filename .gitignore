@@ -167,6 +167,7 @@ examples/cross_calculator/android/tags
 /run.json
 /testresults.html
 /testresults.json
+/tests/caas/SymbolProcRun.*/
 /tests/caas/idetools_api
 /tests/caas/imported
 /tests/caas/issue_416_template_shift
@@ -175,3 +176,4 @@ examples/cross_calculator/android/tags
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
+no changes added to commit (use "git add" and/or "git commit -a")
