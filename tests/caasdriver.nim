@@ -75,7 +75,13 @@ proc startNimrodSession(project, script: string, mode: TRunMode):
   result.lastOutput = ""
   result.filename = name & ext
   result.modname = name
-  result.nimcache = "SymbolProcRun." & script.splitFile.name
+
+  let (nimcacheDir, nimcacheName, nimcacheExt) = script.splitFile
+  result.nimcache = "SymbolProcRun." & nimcacheName
+
+  if mode == SymbolProcRun:
+    removeDir(nimcacheDir / result.nimcache)
+
   if mode == CaasRun:
     result.nim = startProcess(NimrodBin, workingDir = dir,
       args = ["serve", "--server.type:stdin", name])
@@ -122,7 +128,6 @@ proc doCommand(session: var TNimrodSession, command: string) =
     if session.mode == SymbolProcRun:
       command = "--symbolFiles:on --nimcache:" & session.nimcache &
                 " " & command
-    echo "Running ", command
     session.lastOutput = doProcCommand(session,
                                        command & " " & session.filename)
 
