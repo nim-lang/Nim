@@ -1,5 +1,4 @@
 main.nim
-# Ugh, undocumented trackDirty, how is it supposed to work? Fails in proc mode.
 > idetools --trackDirty:main_dirty.nim,$TESTNIM,12,7 --suggest
 skField\tx
 skField\ty
