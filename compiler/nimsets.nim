@@ -156,6 +156,12 @@ proc equalSets(a, b: PNode): bool =
   toBitSet(b, y)
   result = bitSetEquals(x, y)
 
+proc complement*(a: PNode): PNode =
+  var x: TBitSet
+  toBitSet(a, x)
+  for i in countup(0, high(x)): x[i] = not x[i]
+  result = toTreeSet(x, a.typ, a.info)
+
 proc cardSet(s: PNode): BiggestInt = 
   # here we can do better than converting it into a compact set
   # we just count the elements directly

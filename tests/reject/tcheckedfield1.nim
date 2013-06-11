@@ -1,6 +1,6 @@
 discard """
-  errormsg: "cannot prove that field 's' is accessible"
-  line:54
+  errormsg: "cannot prove that field 'x.s' is accessible"
+  line:51
 """
 
 import strutils
