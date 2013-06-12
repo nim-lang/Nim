@@ -1,0 +1,5 @@
+issue_477_dynamic_dispatch.nim
+> c --run
+SuccessX
+> idetools --track:issue_477_dynamic_dispatch.nim,19,5 --def
+def\tskMethod\tissue_477_dynamic_dispatch.collide\tproc \(TUnit, TThing\)\{.inline.\}
