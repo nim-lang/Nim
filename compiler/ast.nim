@@ -1175,10 +1175,18 @@ proc newSons(father: PNode, length: int) =
     setlen(father.sons, length)
 
 proc propagateToOwner*(owner, elem: PType) =
-  owner.flags = owner.flags + (elem.flags * {tfNeedsInit, tfHasShared, 
-                                             tfHasMeta, tfHasGCedMem})
+  const HaveTheirOwnEmpty =  {tySequence, tySet}
+  owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
+                                             tfHasGCedMem})
   if tfNotNil in elem.flags:
-    owner.flags.incl tfNeedsInit
+    if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvokation}:
+      owner.flags.incl tfNotNil
+    elif owner.kind notin HaveTheirOwnEmpty:
+      owner.flags.incl tfNeedsInit
+  
+  if tfNeedsInit in elem.flags:
+    if owner.kind in HaveTheirOwnEmpty: nil
+    else: owner.flags.incl tfNeedsInit
     
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared

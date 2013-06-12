@@ -55,7 +55,8 @@ idPacket(ZoneQuery, 'Q',
   tuple[pad: char = '\0'])
 
 type SpawnKind = enum
-  SpawnItem = 1'i8, SpawnVehicle, SpawnObject
+  SpawnDummy,
+  SpawnItem, SpawnVehicle, SpawnObject
 forwardPacketT(SpawnKind, int8)
 defPacket(ScSpawn, tuple[
   kind: SpawnKind; id: uint16; record: uint16; amount: uint16])
@@ -64,7 +65,8 @@ defPacket(ScSpawn, tuple[
 
 
 type TAssetType* = enum
-  FZoneCfg = 1'i8, FGraphics, FSound 
+  FDummy, 
+  FZoneCfg, FGraphics, FSound 
 
 forwardPacketT(TAssetType, int8)
 forwardPacket(MD5Digest, array[0..15, int8])

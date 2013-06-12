@@ -315,6 +315,13 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
   suggestSym(n, result)
 
+proc checkNilable(v: PSym) =
+  if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
+    if v.ast.isNil:
+      Message(v.info, warnProveInit, v.name.s)
+    elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
+      Message(v.info, warnProveInit, v.name.s)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode = 
   var b: PNode
   result = copyNode(n)
@@ -390,6 +397,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       else: 
         v.typ = tup.sons[j]
         b.sons[j] = newSymNode(v)
+      checkNilable(v)
     
 proc semConst(c: PContext, n: PNode): PNode = 
   result = copyNode(n)
