@@ -47,6 +47,9 @@ type
     isGeneric,
     isFromIntLit,            # conversion *from* int literal; proven safe
     isEqual
+  
+const
+  isNilConversion = isConvertible # maybe 'isIntConv' fits better?
     
 proc markUsed*(n: PNode, s: PSym)
 
@@ -471,6 +474,8 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       else:
         result = typeRel(c, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
+        elif tfNotNil in f.flags and tfNotNil notin a.flags:
+          result = isNilConversion
     of tyNil: result = f.allowsNil
     else: nil
   of tyOrdinal:
@@ -506,6 +511,8 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     of tyPtr: 
       result = typeRel(c, base(f), base(a))
       if result <= isConvertible: result = isNone
+      elif tfNotNil in f.flags and tfNotNil notin a.flags:
+        result = isNilConversion
     of tyNil: result = f.allowsNil
     else: nil
   of tyRef: 
@@ -513,13 +520,21 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     of tyRef:
       result = typeRel(c, base(f), base(a))
       if result <= isConvertible: result = isNone
+      elif tfNotNil in f.flags and tfNotNil notin a.flags:
+        result = isNilConversion
     of tyNil: result = f.allowsNil
     else: nil
   of tyProc:
     result = procTypeRel(c, f, a)
-  of tyPointer: 
+    if result != isNone and tfNotNil in f.flags and tfNotNil notin a.flags:
+      result = isNilConversion
+  of tyPointer:
     case a.kind
-    of tyPointer: result = isEqual
+    of tyPointer:
+      if tfNotNil in f.flags and tfNotNil notin a.flags:
+        result = isNilConversion
+      else:
+        result = isEqual
     of tyNil: result = f.allowsNil
     of tyProc:
       if a.callConv != ccClosure: result = isConvertible
@@ -527,13 +542,21 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     else: nil
   of tyString: 
     case a.kind
-    of tyString: result = isEqual
+    of tyString: 
+      if tfNotNil in f.flags and tfNotNil notin a.flags:
+        result = isNilConversion
+      else:
+        result = isEqual
     of tyNil: result = f.allowsNil
     else: nil
   of tyCString:
     # conversion from string to cstring is automatic:
     case a.Kind
-    of tyCString: result = isEqual
+    of tyCString:
+      if tfNotNil in f.flags and tfNotNil notin a.flags:
+        result = isNilConversion
+      else:
+        result = isEqual
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:

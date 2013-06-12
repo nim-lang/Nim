@@ -2,7 +2,6 @@ version 0.9.4
 =============
 
 - make 'bind' default for templates and introduce 'mixin'
-- 'not nil' checking for globals
 - prove array accesses
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general

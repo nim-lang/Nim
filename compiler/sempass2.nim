@@ -74,7 +74,6 @@ type
     bottom: int
     owner: PSym
     init: seq[int] # list of initialized variables
-                   # coming soon: "guard" tracking for 'let' variables
     guards: TModel # nested guards
   PEffects = var TEffects
 
@@ -89,11 +88,19 @@ proc initVar(a: PEffects, n: PNode) =
       if x == s.id: return
     a.init.add s.id
 
+proc initVarViaNew(a: PEffects, n: PNode) =
+  if n.kind != nkSym: return
+  let s = n.sym
+  if {tfNeedsInit, tfNotNil} * s.typ.flags == {tfNotNil}:
+    # 'x' is not nil, but that doesn't mean it's not nil children
+    # are initialized:
+    initVarViaNew(a, n)
+
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
     if s.id notin a.init:
-      if tfNeedsInit in s.typ.flags:
+      if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
         when true:
           Message(n.info, warnProveInit, s.name.s)
         else:
@@ -298,6 +305,18 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
 
+proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
+  let n = n.skipConv
+  if paramType != nil and tfNotNil in paramType.flags and 
+      n.typ != nil and tfNotNil notin n.typ.flags:
+    case impliesNotNil(tracked.guards, n)
+    of impUnknown:
+      Message(n.info, errGenerated, 
+              "cannot prove '$1' is not nil" % n.renderTree)
+    of impNo:
+      Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
+    of impYes: discard
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let op = n.typ
   if op != nil and op.kind == tyProc and n.kind != nkNilLit:
@@ -315,15 +334,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
-  if paramType != nil:
-    if tfNotNil in paramType.flags and op != nil and tfNotNil notin op.flags:
-      case impliesNotNil(tracked.guards, n)
-      of impUnknown:
-        Message(n.info, errGenerated, 
-                "cannot prove '$1' is not nil" % n.renderTree)
-      of impNo:
-        Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
-      of impYes: discard
+  notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
   case n.kind
@@ -456,8 +467,7 @@ proc track(tracked: PEffects, n: PNode) =
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, 
                                            mNewSeq, mShallowCopy}:
       # may not look like an assignment, but it is:
-      initVar(tracked, n.sons[1])
-      # XXX new(objWithNotNil) is not initialized properly!
+      initVarViaNew(tracked, n.sons[1])
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
   of nkCheckedFieldExpr:
@@ -471,11 +481,17 @@ proc track(tracked: PEffects, n: PNode) =
     initVar(tracked, n.sons[0])
     invalidateFacts(tracked.guards, n.sons[0])
     track(tracked, n.sons[0])
+    notNilCheck(tracked, n.sons[1], n.sons[0].typ)
   of nkVarSection:
     for child in n:
-      if child.kind == nkIdentDefs and lastSon(child).kind != nkEmpty:
-        track(tracked, lastSon(child))
-        for i in 0 .. child.len-3: initVar(tracked, child.sons[i])
+      let last = lastSon(child)
+      if child.kind == nkIdentDefs and last.kind != nkEmpty:
+        track(tracked, last)
+        for i in 0 .. child.len-3:
+          initVar(tracked, child.sons[i])
+          notNilCheck(tracked, last, child.sons[i].typ)
+      # since 'var (a, b): T = ()' is not even allowed, there is always type
+      # inference for (a, b) and thus no nil checking is necessary.
   of nkCaseStmt: trackCase(tracked, n)
   of nkIfStmt, nkIfExpr: trackIf(tracked, n)
   of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n.sons[1])
@@ -498,6 +514,15 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 .. <len(n):
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
+  of nkObjConstr:
+    track(tracked, n.sons[0])
+    let oldFacts = tracked.guards.len
+    for i in 1 .. <len(n):
+      let x = n.sons[i]
+      track(tracked, x)
+      if sfDiscriminant in x.sons[0].sym.flags:
+        addDiscriminantFact(tracked.guards, x)
+    setLen(tracked.guards, oldFacts)
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 

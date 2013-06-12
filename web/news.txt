@@ -29,6 +29,7 @@ Compiler Additions
 - The compiler can now warn about "uninitialized" variables. (There are no
   real uninitialized variables in Nimrod as they are initialized to binary
   zero). Activate via ``{.warning[Uninit]:on.}``.
+- The compiler now enforces the ``not nil`` constraint.
 
 
 Language Additions

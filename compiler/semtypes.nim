@@ -865,7 +865,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         if result.kind in NilableTypes and n.sons[2].kind == nkNilLit:
           result = freshType(result, prev)
           result.flags.incl(tfNotNil)
-          result.flags.incl(tfNeedsInit)
         else:
           LocalError(n.info, errGenerated, "invalid type")
       else:

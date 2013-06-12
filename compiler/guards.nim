@@ -532,6 +532,13 @@ proc buildElse(n: PNode): PNode =
   result.sons[1] = s
   result.sons[2] = n.sons[0]
 
+proc addDiscriminantFact*(m: var TModel, n: PNode) =
+  var fact = newNodeI(nkCall, n.info, 3)
+  fact.sons[0] = newSymNode(getSysMagic("==", mEqI))
+  fact.sons[1] = n.sons[0]
+  fact.sons[2] = n.sons[1]
+  m.add fact
+
 proc addCaseBranchFacts*(m: var TModel, n: PNode, i: int) =
   let branch = n.sons[i]
   if branch.kind == nkOfBranch:
