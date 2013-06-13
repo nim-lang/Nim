@@ -345,12 +345,22 @@ proc impliesIn(fact, loc, aSet: PNode): TImplication =
       result = geImpliesIn(fact.sons[2], fact.sons[1].pred, aSet)
   of mNot, mOr, mAnd: internalError(loc.info, "impliesIn")
   else: discard
-  
+
+proc valueIsNil(n: PNode): TImplication =
+  if n.kind == nkNilLit: impYes
+  elif n.kind in {nkStrLit..nkTripleStrLit, nkBracket, nkObjConstr}: impNo
+  else: impUnknown
+
 proc impliesIsNil(fact, eq: PNode): TImplication =
   case fact.sons[0].sym.magic
   of mIsNil:
     if sameTree(fact.sons[1], eq.sons[1]):
       result = impYes
+  of someEq:
+    if sameTree(fact.sons[1], eq.sons[1]):
+      result = valueIsNil(fact.sons[2].skipConv)
+    elif sameTree(fact.sons[2], eq.sons[1]):
+      result = valueIsNil(fact.sons[1].skipConv)
   of mNot, mOr, mAnd: internalError(eq.info, "impliesIsNil")
   else: discard
 
@@ -537,6 +547,13 @@ proc addDiscriminantFact*(m: var TModel, n: PNode) =
   fact.sons[0] = newSymNode(getSysMagic("==", mEqI))
   fact.sons[1] = n.sons[0]
   fact.sons[2] = n.sons[1]
+  m.add fact
+
+proc addAsgnFact*(m: var TModel, key, value: PNode) =
+  var fact = newNodeI(nkCall, key.info, 3)
+  fact.sons[0] = newSymNode(getSysMagic("==", mEqI))
+  fact.sons[1] = key
+  fact.sons[2] = value
   m.add fact
 
 proc addCaseBranchFacts*(m: var TModel, n: PNode, i: int) =

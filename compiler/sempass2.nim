@@ -309,6 +309,12 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType != nil and tfNotNil in paramType.flags and 
       n.typ != nil and tfNotNil notin n.typ.flags:
+    if n.kind == nkAddr:
+      # addr(x[]) can't be proven, but addr(x) can:
+      if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
+    elif n.kind == nkSym and n.sym.kind in RoutineKinds:
+      # 'p' is not nil obviously:
+      return
     case impliesNotNil(tracked.guards, n)
     of impUnknown:
       Message(n.info, errGenerated, 
@@ -481,6 +487,7 @@ proc track(tracked: PEffects, n: PNode) =
     initVar(tracked, n.sons[0])
     invalidateFacts(tracked.guards, n.sons[0])
     track(tracked, n.sons[0])
+    addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
   of nkVarSection:
     for child in n:
@@ -489,6 +496,7 @@ proc track(tracked: PEffects, n: PNode) =
         track(tracked, last)
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i])
+          addAsgnFact(tracked.guards, child.sons[i], last)
           notNilCheck(tracked, last, child.sons[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
@@ -523,6 +531,7 @@ proc track(tracked: PEffects, n: PNode) =
       if sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards, oldFacts)
+  of nkTypeSection: discard
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 
