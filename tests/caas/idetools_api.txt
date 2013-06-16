@@ -1,44 +1,44 @@
 idetools_api.nim
-> c
+> c --verbosity:0 --hints:on
 SuccessX
-> idetools --track:$TESTNIM,4,11 --def
+> idetools --track:$TESTNIM,4,11 --def $SILENT
 def\tskType\tsystem.TFile\tTFile
-> idetools --track:$TESTNIM,5,7 --def
+> idetools --track:$TESTNIM,5,7 --def $SILENT
 def\tskProc\tsystem.Open\tproc \(var TFile, string, TFileMode, int\): bool
-> idetools --track:$TESTNIM,5,21 --def
+> idetools --track:$TESTNIM,5,21 --def $SILENT
 def\tskProc\tsystem.\&\tproc \(string, string\): string\{.noSideEffect.\}
-> idetools --track:$TESTNIM,5,38 --def
+> idetools --track:$TESTNIM,5,38 --def $SILENT
 def\tskEnumField\tsystem.TFileMode.fmWrite\tTFileMode
-> idetools --track:$TESTNIM,7,6 --def
+> idetools --track:$TESTNIM,7,6 --def $SILENT
 def\tskProc\tsystem.Close\tproc \(TFile\)
-> idetools --track:$TESTNIM,12,23 --def
+> idetools --track:$TESTNIM,12,23 --def $SILENT
 def\tskIterator\tunicode.runes\titerator \(string\): TRune
-> idetools --track:$TESTNIM,12,15 --def
+> idetools --track:$TESTNIM,12,15 --def $SILENT
 def\tskTemplate\tsequtils.toSeq\tproc \(expr\): expr
-> idetools --track:$TESTNIM,15,7 --def
+> idetools --track:$TESTNIM,15,7 --def $SILENT
 
 # ProcRun mode will fail the next line, because the type is returned empty.
 def\tskConst\t$MODULE.SOME_SEQUENCE\tseq\[int\]\t
-> idetools --track:$TESTNIM,15,23 --def
+> idetools --track:$TESTNIM,15,23 --def $SILENT
 def\tskProc\tsystem.@\tproc \(array\[IDX, T\]\): seq\[T\]\{.noSideEffect.\}
-> idetools --track:$TESTNIM,17,3 --def
+> idetools --track:$TESTNIM,17,3 --def $SILENT
 
 # ProcRun mode will fail the next line, because the type is returned empty.
 def\tskType\t$MODULE.bad_string\tbad_string\t
-> idetools --track:$TESTNIM,11,24 --def
+> idetools --track:$TESTNIM,11,24 --def $SILENT
 def\tskParam\t$MODULE.test_iterators.filename\tstring
-> idetools --track:$TESTNIM,6,5 --def
+> idetools --track:$TESTNIM,6,5 --def $SILENT
 def\tskVar\t$MODULE.test_enums.o\tTFile
-> idetools --track:$TESTNIM,12,34 --def
+> idetools --track:$TESTNIM,12,34 --def $SILENT
 def\tskLet\t$MODULE.test_iterators.input\tTaintedString
-> idetools --track:$TESTNIM,13,35 --def
+> idetools --track:$TESTNIM,13,35 --def $SILENT
 def\tskForVar\t$MODULE.test_iterators.letter\tTRune
-> idetools --track:$TESTNIM,23,3 --def
+> idetools --track:$TESTNIM,23,3 --def $SILENT
 def\tskResult\t$MODULE.adder.result\tint
-> idetools --track:$TESTNIM,19,6 --def
+> idetools --track:$TESTNIM,19,6 --def $SILENT
 
 # ProcRun mode will fail the next line, because the type is returned empty.
 def\tskField\t$MODULE.TPerson.name\tbad_string\t
 
-> idetools --track:$TESTNIM,43,7 --def
+> idetools --track:$TESTNIM,43,7 --def $SILENT
 def\tskMethod\t$MODULE.eval\tproc \(PPlusExpr\): int\t
