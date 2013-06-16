@@ -173,7 +173,7 @@ examples/cross_calculator/android/tags
 /tests/caas/issue_416_template_shift
 /tests/caas/issue_452_export_shift
 /tests/caas/issue_477_dynamic_dispatch
+/tests/caas/its_full_of_procs
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
-no changes added to commit (use "git add" and/or "git commit -a")
