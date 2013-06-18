@@ -194,6 +194,8 @@ proc runSpecialTests(r: var TResults, options: string) =
 
   for t in os.walkFiles("tests/patterns/t*.nim"):
     runSingleTest(r, t, options)
+  for t in ["lib/packages/docutils/highlite"]:
+    runSingleTest(r, t, options)
 
 proc rejectSpecialTests(r: var TResults, options: string) =
   rejectThreadTests(r, options)
