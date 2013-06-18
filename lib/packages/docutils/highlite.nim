@@ -556,5 +556,5 @@ when isMainModule:
   doAssert (not keywords.isNil, "Couldn't read any keywords.txt file!")
   doAssert keywords.len == nimrodKeywords.len, "No matching lengths"
   for i in 0..keywords.len-1:
-    echo keywords[i], " == ", nimrodKeywords[i]
+    #echo keywords[i], " == ", nimrodKeywords[i]
     doAssert keywords[i] == nimrodKeywords[i], "Unexpected keyword"
