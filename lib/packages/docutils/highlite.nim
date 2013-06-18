@@ -44,7 +44,17 @@ const
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink", 
     "Label", "Reference", "Other"]
 
-  nimrodKeywords = slurp("doc/keywords.txt").split
+  # The following list comes from doc/keywords.txt, make sure it is
+  # synchronized with this array.
+  nimrodKeywords = ["addr", "and", "as", "asm", "atomic", "bind", "block",
+    "break", "case", "cast", "const", "continue", "converter", "discard",
+    "distinct", "div", "do", "elif", "else", "end", "enum", "except", "export",
+    "finally", "for", "from", "generic", "if", "import", "in", "include",
+    "interface", "is", "isnot", "iterator", "lambda", "let", "macro", "method",
+    "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
+    "ptr", "raise", "ref", "return", "shared", "shl", "shr", "static",
+    "template", "try", "tuple", "type", "var", "when", "while", "with",
+    "without", "xor", "yield"]
 
 proc getSourceLanguage*(name: string): TSourceLanguage = 
   for i in countup(succ(low(TSourceLanguage)), high(TSourceLanguage)): 
