@@ -423,6 +423,10 @@ proc isConnecting*(s: PAsyncSocket): bool =
 proc isClosed*(s: PAsyncSocket): bool =
   ## Determines whether ``s`` has been closed.
   return s.info == SockClosed
+proc isSendDataBuffered*(s: PAsyncSocket): bool =
+  ## Determines whether ``s`` has data waiting to be sent, i.e. whether this
+  ## socket's sendBuffer contains data. 
+  return s.sendBuffer.len != 0
 
 proc setHandleWrite*(s: PAsyncSocket,
     handleWrite: proc (s: PAsyncSocket) {.closure.}) =
