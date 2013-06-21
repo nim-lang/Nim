@@ -175,6 +175,15 @@ proc recvBufferAsync(client: PAsyncClient, L: int): TReadLineResult =
   if ret == L:
     return ReadFullLine
 
+proc checkCloseSocket(client: PAsyncClient) =
+  if not client.c.isClosed:
+    if client.c.isSendDataBuffered:
+      client.c.setHandleWrite do (s: PAsyncSocket):
+        if not s.isClosed and not s.isSendDataBuffered:
+          s.close()
+          s.delHandleWrite()
+    else: client.c.close()
+    
 proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
   case client.mode
   of ClientReadChar:
@@ -206,7 +215,7 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
         client.mode = ClientReadContent
       else:
         s.handleRequest(client.c, client.input, client.headers)
-        if not client.c.isClosed: client.c.close()
+        checkCloseSocket(client)
     of ReadPartialLine, ReadDisconnected, ReadNone: return
   of ClientReadContent:
     let L = parseInt(client.headers["CONTENT_LENGTH"])-client.input.len
@@ -215,11 +224,11 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
       case ret
       of ReadFullLine:
         s.handleRequest(client.c, client.input, client.headers)
-        if not client.c.isClosed: client.c.close()
+        checkCloseSocket(client)
       of ReadPartialLine, ReadDisconnected, ReadNone: return
     else:
       s.handleRequest(client.c, client.input, client.headers)
-      if not client.c.isClosed: client.c.close()
+      checkCloseSocket(client)
 
 proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
   var client: PAsyncSocket
