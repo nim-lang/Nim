@@ -1368,6 +1368,9 @@ when defined(macosx):
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
   ## Returns the filename of the application's executable.
+  ##
+  ## This procedure will resolve symlinks.
+  ##
   ## **Note**: This does not work reliably on BSD.
 
   # Linux: /proc/<pid>/exe
@@ -1397,6 +1400,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
     result = newString(int(size))
     if getExecPath2(result, size):
       result = "" # error!
+    if result.len > 0:
+      result = result.expandFilename
   else:
     # little heuristic that may work on other POSIX-like systems:
     result = string(getEnv("_"))
