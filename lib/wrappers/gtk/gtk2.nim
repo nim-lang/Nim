@@ -2,6 +2,8 @@
 import 
   glib2, atk, pango, gdk2pixbuf, gdk2
 
+export gbool, toBool
+
 when defined(win32): 
   const 
     lib = "libgtk-win32-2.0-0.dll"
