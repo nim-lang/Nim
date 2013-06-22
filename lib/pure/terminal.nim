@@ -39,8 +39,6 @@ when defined(windows):
     # workaround Windows bugs: try several times
     if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
       return c.wAttributes
-    else:
-      OSError()
     return 0x70'i16 # ERROR: return white background, black text
 
   var
