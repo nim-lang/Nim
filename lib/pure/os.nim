@@ -39,6 +39,8 @@ type
   FWriteDir* = object of FWriteIO ## effect that denotes a write operation to
                                   ## the directory structure
 
+  TOSErrorCode* = distinct int32 ## Specifies an OS Error Code.
+
 const
   doslike = defined(windows) or defined(OS2) or defined(DOS)
     # DOS-like filesystem
@@ -171,10 +173,13 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
+proc OSErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
   ## On Windows ``GetLastError`` is checked before ``errno``.
   ## Returns "" if no error occured.
+  ##
+  ## **Deprecated since version 0.9.4**: use the other ``OSErrorMsg`` proc.
+  
   result = ""
   when defined(Windows):
     var err = GetLastError()
@@ -194,17 +199,89 @@ proc OSErrorMsg*(): string {.rtl, extern: "nos$1".} =
   if errno != 0'i32:
     result = $os.strerror(errno)
 
-proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
+{.push warning[deprecated]: off.}
+proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1", deprecated.} =
   ## raises an EOS exception with the given message ``msg``.
   ## If ``msg == ""``, the operating system's error flag
   ## (``errno``) is converted to a readable error message. On Windows
   ## ``GetLastError`` is checked before ``errno``.
   ## If no error flag is set, the message ``unknown OS error`` is used.
+  ##
+  ## **Deprecated since version 0.9.4**: use the other ``OSError`` proc.
   if len(msg) == 0:
     var m = OSErrorMsg()
     raise newException(EOS, if m.len > 0: m else: "unknown OS error")
   else:
     raise newException(EOS, msg)
+{.pop.}
+
+proc `==`*(err1, err2: TOSErrorCode): bool {.borrow.}
+proc `$`*(err: TOSErrorCode): string {.borrow.}
+
+proc OSErrorMsg*(errorCode: TOSErrorCode): string =
+  ## Converts an OS error code into a human readable string.
+  ##
+  ## The error code can be retrieved using the ``OSLastError`` proc.
+  ##
+  ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
+  ## returned.
+  ##
+  ## On Windows, the ``-d:useWinAnsi`` compilation flag can be used to
+  ## make this procedure use the non-unicode Win API calls to retrieve the
+  ## message.
+  result = ""
+  when defined(Windows):
+    if errorCode != TOSErrorCode(0'i32):
+      when useWinUnicode:
+        var msgbuf: widecstring
+        if FormatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
+          result = $msgbuf
+          if msgbuf != nil: LocalFree(cast[pointer](msgbuf))
+      else:
+        var msgbuf: cstring
+        if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
+          result = $msgbuf
+          if msgbuf != nil: LocalFree(msgbuf)
+  else:
+    if errorCode != TOSErrorCode(0'i32):
+      result = $os.strerror(errorCode.int32)
+
+proc OSError*(errorCode: TOSErrorCode) =
+  ## Raises an ``EOS`` exception. The ``errorCode`` will determine the
+  ## message, ``OSErrorMsg`` will be used to get this message.
+  ##
+  ## The error code can be retrieved using the ``OSLastError`` proc.
+  ##
+  ## If the error code is ``0`` or an error message could not be retrieved,
+  ## the message ``unknown OS error`` will be used.
+  let msg = OSErrorMsg(errorCode)
+  if msg == "":
+    raise newException(EOS, "unknown OS error")
+  else:
+    raise newException(EOS, msg)
+
+{.push stackTrace:off.}
+proc OSLastError*(): TOSErrorCode =
+  ## Retrieves the last operating system error code.
+  ##
+  ## This procedure is useful in the event when an OS call fails. In that case
+  ## this procedure will return the error code describing the reason why the
+  ## OS call failed. The ``OSErrorMsg`` procedure can then be used to convert
+  ## this code into a string.
+  ##
+  ## **Warning**:
+  ## The behaviour of this procedure varies between Windows and POSIX systems.
+  ## On Windows some OS calls can reset the error code to ``0`` causing this
+  ## procedure to return ``0``. It is therefore advised to call this procedure
+  ## immediately after an OS call fails. On POSIX systems this is not a problem.
+  
+  when defined(windows):
+    result = TOSErrorCode(GetLastError())
+  else:
+    result = TOSErrorCode(errno)
+{.pop.}
 
 proc UnixToNativePath*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -311,12 +388,12 @@ proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: TStat
-    if stat(file, res) < 0'i32: OSError()
+    if stat(file, res) < 0'i32: OSError(OSLastError())
     return res.st_mtime
   else:
     var f: TWIN32_Find_Data
     var h = findfirstFile(file, f)
-    if h == -1'i32: OSError()
+    if h == -1'i32: OSError(OSLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
     findclose(h)
 
@@ -324,12 +401,12 @@ proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: TStat
-    if stat(file, res) < 0'i32: OSError()
+    if stat(file, res) < 0'i32: OSError(OSLastError())
     return res.st_atime
   else:
     var f: TWIN32_Find_Data
     var h = findfirstFile(file, f)
-    if h == -1'i32: OSError()
+    if h == -1'i32: OSError(OSLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
     findclose(h)
 
@@ -337,12 +414,12 @@ proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
   when defined(posix):
     var res: TStat
-    if stat(file, res) < 0'i32: OSError()
+    if stat(file, res) < 0'i32: OSError(OSLastError())
     return res.st_ctime
   else:
     var f: TWIN32_Find_Data
     var h = findfirstFile(file, f)
-    if h == -1'i32: OSError()
+    if h == -1'i32: OSError(OSLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
     findclose(h)
 
@@ -358,30 +435,30 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
     when useWinUnicode:
       var res = newWideCString("", bufsize)
       var L = GetCurrentDirectoryW(bufsize, res)
-      if L == 0'i32: OSError()
+      if L == 0'i32: OSError(OSLastError())
       result = res$L
     else:
       result = newString(bufsize)
       var L = GetCurrentDirectoryA(bufsize, result)
-      if L == 0'i32: OSError()
+      if L == 0'i32: OSError(OSLastError())
       setLen(result, L)
   else:
     result = newString(bufsize)
     if getcwd(result, bufsize) != nil:
       setlen(result, c_strlen(result))
     else:
-      OSError()
+      OSError(OSLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## Sets the `current working directory`:idx:; `EOS` is raised if
   ## `newDir` cannot been set.
   when defined(Windows):
     when useWinUnicode:
-      if SetCurrentDirectoryW(newWideCString(newDir)) == 0'i32: OSError()
+      if SetCurrentDirectoryW(newWideCString(newDir)) == 0'i32: OSError(OSLastError())
     else:
-      if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
+      if SetCurrentDirectoryA(newDir) == 0'i32: OSError(OSLastError())
   else:
-    if chdir(newDir) != 0'i32: OSError()
+    if chdir(newDir) != 0'i32: OSError(OSLastError())
 
 proc JoinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -571,23 +648,23 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       var res = newWideCString("", bufsize div 2)
       var L = GetFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L <= 0'i32 or L >= bufsize: 
-        OSError()
+        OSError(OSLastError())
       result = res$L
     else:
       var unused: cstring
       result = newString(bufsize)
       var L = GetFullPathNameA(filename, bufsize, result, unused)
-      if L <= 0'i32 or L >= bufsize: OSError()
+      if L <= 0'i32 or L >= bufsize: OSError(OSLastError())
       setLen(result, L)
   elif defined(macosx) or defined(bsd):
     # On Mac OS X 10.5, realpath does not allocate the buffer on its own
     var pathBuffer: cstring = newString(pathMax)
     var resultBuffer = realpath(filename, pathBuffer)
-    if resultBuffer == nil: OSError()
+    if resultBuffer == nil: OSError(OSLastError())
     result = $resultBuffer
   else:
     var res = realpath(filename, nil)
-    if res == nil: OSError()
+    if res == nil: OSError(OSLastError())
     result = $res
     c_free(res)
  
@@ -677,6 +754,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
       var f1 = OpenHandle(path1)
       var f2 = OpenHandle(path2)
 
+    var lastErr: TOSErrorCode
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
       var fi1, fi2: TBY_HANDLE_FILE_INFORMATION
 
@@ -685,17 +763,21 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
         result = fi1.dwVolumeSerialNumber == fi2.dwVolumeSerialNumber and
                  fi1.nFileIndexHigh == fi2.nFileIndexHigh and
                  fi1.nFileIndexLow == fi2.nFileIndexLow
-      else: success = false
-    else: success = false
+      else:
+        lastErr = OSLastError()
+        success = false
+    else:
+      lastErr = OSLastError()
+      success = false
 
     discard CloseHandle(f1)
     discard CloseHandle(f2)
 
-    if not success: OSError()
+    if not success: OSError(lastErr)
   else:
     var a, b: TStat
     if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
-      OSError()
+      OSError(OSLastError())
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
@@ -738,17 +820,17 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if CopyFileW(s, d, 0'i32) == 0'i32: OSError()
+      if CopyFileW(s, d, 0'i32) == 0'i32: OSError(OSLastError())
     else:
-      if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
+      if CopyFileA(source, dest, 0'i32) == 0'i32: OSError(OSLastError())
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager
     var d, s: TFile
-    if not open(s, source): OSError()
+    if not open(s, source): OSError(OSLastError())
     if not open(d, dest, fmWrite):
       close(s)
-      OSError()
+      OSError(OSLastError())
     var buf = alloc(bufsize)
     while True:
       var bytesread = readBuffer(s, buf, bufsize)
@@ -758,7 +840,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
           dealloc(buf)
           close(s)
           close(d)
-          OSError()
+          OSError(OSLastError())
       if bytesread != bufSize: break
     dealloc(buf)
     close(s)
@@ -767,7 +849,8 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FReadIO, FWriteIO].} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
-  if crename(source, dest) != 0'i32: OSError()
+  if crename(source, dest) != 0'i32:
+    raise newException(EOS, $strerror(errno))
 
 when not defined(ENOENT):
   var ENOENT {.importc, header: "<errno.h>".}: cint
@@ -775,7 +858,8 @@ when not defined(ENOENT):
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
-  if cremove(file) != 0'i32 and errno != ENOENT: OSError()
+  if cremove(file) != 0'i32 and errno != ENOENT:
+    raise newException(EOS, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1", 
   tags: [FExecIO].} =
@@ -907,14 +991,14 @@ proc putEnv*(key, val: string) {.tags: [FWriteEnv].} =
     indx = high(environment)
   when defined(unix):
     if cputenv(environment[indx]) != 0'i32:
-      OSError()
+      OSError(OSLastError())
   else:
     when useWinUnicode:
       var k = newWideCString(key)
       var v = newWideCString(val)
-      if SetEnvironmentVariableW(k, v) == 0'i32: OSError()
+      if SetEnvironmentVariableW(k, v) == 0'i32: OSError(OSLastError())
     else:
-      if SetEnvironmentVariableA(key, val) == 0'i32: OSError()
+      if SetEnvironmentVariableA(key, val) == 0'i32: OSError(OSLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [FReadEnv].} =
   ## Iterate over all `environments variables`:idx:. In the first component 
@@ -1044,10 +1128,12 @@ proc rawRemoveDir(dir: string) =
       wrapUnary(res, RemoveDirectoryW, dir)
     else:
       var res = RemoveDirectoryA(dir)
-    if res == 0'i32 and GetLastError() != 3'i32 and 
-        GetLastError() != 18'i32: OSError()
+    let lastError = OSLastError()
+    if res == 0'i32 and lastError.int32 != 3'i32 and 
+        lastError.int32 != 18'i32 and lastError.int32 != 2'i32:
+      OSError(lastError)
   else:
-    if rmdir(dir) != 0'i32 and errno != ENOENT: OSError()
+    if rmdir(dir) != 0'i32 and errno != ENOENT: OSError(OSLastError())
 
 proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   FWriteDir, FReadDir].} =
@@ -1065,14 +1151,14 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
 proc rawCreateDir(dir: string) =
   when defined(unix):
     if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
-      OSError()
+      OSError(OSLastError())
   else:
     when useWinUnicode:
       wrapUnary(res, CreateDirectoryW, dir)
     else:
       var res = CreateDirectoryA(dir)
     if res == 0'i32 and GetLastError() != 183'i32:
-      OSError()
+      OSError(OSLastError())
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Creates the `directory`:idx: `dir`.
@@ -1213,7 +1299,7 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
   ## permission is available in any case.
   when defined(posix):
     var a: TStat
-    if stat(filename, a) < 0'i32: OSError()
+    if stat(filename, a) < 0'i32: OSError(OSLastError())
     result = {}
     if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
     if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
@@ -1231,7 +1317,7 @@ proc getFilePermissions*(filename: string): set[TFilePermission] {.
       wrapUnary(res, GetFileAttributesW, filename)
     else:
       var res = GetFileAttributesA(filename)
-    if res == -1'i32: OSError()
+    if res == -1'i32: OSError(OSLastError())
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
                 fpOthersExec, fpOthersRead}
@@ -1257,13 +1343,13 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
     
-    if chmod(filename, p) != 0: OSError()
+    if chmod(filename, p) != 0: OSError(OSLastError())
   else:
     when useWinUnicode:
       wrapUnary(res, GetFileAttributesW, filename)
     else:
       var res = GetFileAttributesA(filename)
-    if res == -1'i32: OSError()
+    if res == -1'i32: OSError(OSLastError())
     if fpUserWrite in permissions: 
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
@@ -1272,7 +1358,7 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
       wrapBinary(res2, SetFileAttributesW, filename, res)
     else:
       var res2 = SetFileAttributesA(filename, res)
-    if res2 == - 1'i32: OSError()
+    if res2 == - 1'i32: OSError(OSLastError())
   
 proc inclFilePermissions*(filename: string, 
                           permissions: set[TFilePermission]) {.
@@ -1448,7 +1534,7 @@ proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1",
   when defined(windows):
     var a: TWin32FindData
     var resA = findfirstFile(file, a)
-    if resA == -1: OSError()
+    if resA == -1: OSError(OSLastError())
     result = rdFileSize(a)
     findclose(resA)
   else:
@@ -1456,7 +1542,7 @@ proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1",
     if open(f, file): 
       result = getFileSize(f)
       close(f)
-    else: OSError()
+    else: OSError(OSLastError())
 
 proc findExe*(exe: string): string {.tags: [FReadDir, FReadEnv].} = 
   ## Searches for `exe` in the current working directory and then

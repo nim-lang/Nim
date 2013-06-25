@@ -489,7 +489,7 @@ proc FD_SET*(Socket: TWinSocket, FDSet: var TFDSet) =
 proc FD_ZERO*(FDSet: var TFDSet) =
   FDSet.fd_count = 0
 
-proc WSAStartup*(wVersionRequired: int16, WSData: var TWSAData): cint {.
+proc WSAStartup*(wVersionRequired: int16, WSData: ptr TWSAData): cint {.
   stdcall, importc: "WSAStartup", dynlib: ws2dll.}
 
 proc getaddrinfo*(nodename, servname: cstring, hints: ptr TAddrInfo,

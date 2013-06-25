@@ -167,7 +167,7 @@ proc AsyncSocket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
-  if result.socket == InvalidSocket: OSError()
+  if result.socket == InvalidSocket: OSError(OSLastError())
   result.socket.setBlocking(false)
 
 proc toAsyncSocket*(sock: TSocket, state: TInfo = SockConnected): PAsyncSocket =
@@ -349,7 +349,7 @@ proc acceptAddr*(server: PAsyncSocket, client: var PAsyncSocket,
     client.sslNeedAccept = false
     client.info = SockConnected
 
-  if c == InvalidSocket: OSError()
+  if c == InvalidSocket: SocketError(server.socket)
   c.setBlocking(false) # TODO: Needs to be tested.
   
   # deleg.open is set in ``toDelegate``.
@@ -642,8 +642,7 @@ when isMainModule:
   proc testRead(s: PAsyncSocket, no: int) =
     echo("Reading! " & $no)
     var data = ""
-    if not s.readLine(data):
-      OSError()
+    if not s.readLine(data): return
     if data == "":
       echo("Closing connection. " & $no)
       s.close()
