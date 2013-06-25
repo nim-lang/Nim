@@ -370,6 +370,7 @@ when defined(Windows) and not defined(useNimRtl):
     else:
       success = winlean.CreateProcessA(nil,
         cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
+    let lastError = OSLastError()
 
     if poParentStreams notin options:
       FileClose(si.hStdInput)
@@ -379,7 +380,7 @@ when defined(Windows) and not defined(useNimRtl):
 
     if e != nil: dealloc(e)
     dealloc(cmdl)
-    if success == 0: OSError()
+    if success == 0: OSError(lastError)
     # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
     result.FProcessHandle = procInfo.hProcess
@@ -450,7 +451,7 @@ when defined(Windows) and not defined(useNimRtl):
       var res = winlean.CreateProcessA(nil, command, nil, nil, 0,
         NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo)
     if res == 0:
-      OSError()
+      OSError(OSLastError())
     else:
       Process = ProcInfo.hProcess
       discard CloseHandle(ProcInfo.hThread)
