@@ -196,7 +196,7 @@ const
 
 proc SSL_library_init*(): cInt{.cdecl, dynlib: DLLSSLName, importc, discardable.}
 proc SSL_load_error_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
-proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
+proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
 proc SSLv23_client_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSLv23_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
@@ -262,14 +262,15 @@ proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl,
 proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLSSLName, importc: "OPENSSL_add_all_algorithms_conf".}
+proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSSL_add_all_algorithms_conf".}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
 proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, dynlib: DLLSSLName, importc.}
 
 proc CRYPTO_malloc_init*() =
-  CRYPTO_set_mem_functions(alloc, realloc, dealloc)
+  when not defined(windows):
+    CRYPTO_set_mem_functions(alloc, realloc, dealloc)
 
 when True:
   nil
