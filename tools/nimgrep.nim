@@ -32,6 +32,7 @@ Options:
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
+  --nocolor           output will be given without any colours.
   --verbose           be verbose: list every processed file
   --help, -h          shows this help
   --version, -v       shows the version
@@ -291,6 +292,7 @@ for kind, key, val in getopt():
     of "ignorecase", "i": incl(options, optIgnoreCase)
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
     of "ext": extensions = val.split('|')
+    of "nocolor": useWriteStyled = false
     of "verbose": incl(options, optVerbose)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
