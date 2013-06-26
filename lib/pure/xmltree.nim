@@ -71,6 +71,16 @@ proc text*(n: PXmlNode): string {.inline.} =
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
+proc rawText*(n: PXmlNode): string {.inline.} =
+  ## returns the underlying 'text' string by reference.
+  ## This is only used for speed hacks.
+  shallowCopy(result, n.fText)
+
+proc rawTag*(n: PXmlNode): string {.inline.} =
+  ## returns the underlying 'tag' string by reference.
+  ## This is only used for speed hacks.
+  shallowCopy(result, n.fTag)
+
 proc innerText*(n: PXmlNode): string =
   ## gets the inner text of `n`. `n` has to be an ``xnElement`` node. Only
   ## ``xnText`` and ``xnEntity`` nodes are considered part of `n`'s inner text,

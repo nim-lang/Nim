@@ -283,6 +283,9 @@ const
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
 
+  sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
+                       # require RC ops
+
 const
   # getting ready for the future expr/stmt merge
   nkWhen* = nkWhenStmt

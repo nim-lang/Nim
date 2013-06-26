@@ -19,7 +19,7 @@ when defined(Windows):
       OwningThread: int
       LockSemaphore: int
       Reserved: int32
-          
+
     TSysCond = THandle
           
   proc InitSysLock(L: var TSysLock) {.stdcall, noSideEffect,

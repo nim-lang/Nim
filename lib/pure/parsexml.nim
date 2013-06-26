@@ -131,16 +131,16 @@ proc close*(my: var TXmlParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
+proc kind*(my: TXmlParser): TXmlEventKind {.inline.} = 
+  ## returns the current event type for the XML parser
+  return my.kind
+
 proc charData*(my: TXmlParser): string {.inline.} = 
   ## returns the character data for the events: ``xmlCharData``, 
   ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData, 
                      xmlSpecial})
   return my.a
-
-proc kind*(my: TXmlParser): TXmlEventKind {.inline.} = 
-  ## returns the current event type for the XML parser
-  return my.kind
 
 proc elementName*(my: TXmlParser): string {.inline.} = 
   ## returns the element name for the events: ``xmlElementStart``, 
@@ -172,6 +172,16 @@ proc PIRest*(my: TXmlParser): string {.inline.} =
   ## returns the rest of the processing instruction for the event ``xmlPI``
   assert(my.kind == xmlPI)
   return my.b
+
+proc rawData*(my: TXmlParser): string {.inline.} =
+  ## returns the underlying 'data' string by reference.
+  ## This is only used for speed hacks.
+  shallowCopy(result, my.a)
+
+proc rawData2*(my: TXmlParser): string {.inline.} =
+  ## returns the underlying second 'data' string by reference.
+  ## This is only used for speed hacks.
+  shallowCopy(result, my.b)
 
 proc getColumn*(my: TXmlParser): int {.inline.} = 
   ## get the current column the parser has arrived at.
@@ -439,6 +449,7 @@ proc parseTag(my: var TXmlParser) =
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
       inc(my.bufpos, 2)
       my.state = stateEmptyElementTag
+      my.c = nil
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)  
     else:
