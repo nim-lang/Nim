@@ -27,11 +27,11 @@ when defined(windows):
     var hTemp = GetStdHandle(STD_OUTPUT_HANDLE)
     if DuplicateHandle(GetCurrentProcess(), hTemp, GetCurrentProcess(),
                        addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
-      OSError()
+      OSError(OSLastError())
 
   proc getCursorPos(): tuple [x,y: int] =
     var c: TCONSOLE_SCREEN_BUFFER_INFO
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: OSError()
+    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0: OSError(OSLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
   proc getAttributes(): int16 =
@@ -39,8 +39,6 @@ when defined(windows):
     # workaround Windows bugs: try several times
     if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
       return c.wAttributes
-    else:
-      OSError()
     return 0x70'i16 # ERROR: return white background, black text
 
   var
@@ -53,7 +51,7 @@ proc setCursorPos*(x, y: int) =
     var c: TCoord
     c.x = int16(x)
     c.y = int16(y)
-    if SetConsoleCursorPosition(conHandle, c) == 0: OSError()
+    if SetConsoleCursorPosition(conHandle, c) == 0: OSError(OSLastError())
   else:
     stdout.write("\e[" & $y & ';' & $x & 'f')
 
@@ -63,10 +61,10 @@ proc setCursorXPos*(x: int) =
   when defined(windows):
     var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError()
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = int16(x)
-    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError()
+    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
   else:
     stdout.write("\e[" & $x & 'G')
 
@@ -77,10 +75,10 @@ when defined(windows):
     when defined(windows):
       var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
       var hStdout = conHandle
-      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError()
+      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
       var origin = scrbuf.dwCursorPosition
       origin.y = int16(y)
-      if SetConsoleCursorPosition(conHandle, origin) == 0: OSError()
+      if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
     else:
       nil
 
@@ -157,18 +155,18 @@ proc EraseLine* =
     var scrbuf: TCONSOLE_SCREEN_BUFFER_INFO
     var numwrote: DWORD
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError()
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
     var origin = scrbuf.dwCursorPosition
     origin.x = 0'i16
-    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError()
+    if SetConsoleCursorPosition(conHandle, origin) == 0: OSError(OSLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
     if FillConsoleOutputCharacter(hStdout,' ', ht*wt,
                                   origin, addr(numwrote)) == 0:
-      OSError()
+      OSError(OSLastError())
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, ht * wt,
                                   scrbuf.dwCursorPosition, addr(numwrote)) == 0:
-      OSError()
+      OSError(OSLastError())
   else:
     stdout.write("\e[2K")
     setCursorXPos(0)
@@ -180,14 +178,14 @@ proc EraseScreen* =
     var numwrote: DWORD
     var origin: TCoord # is inititalized to 0, 0
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError()
+    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0: OSError(OSLastError())
     if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
-      OSError()
+      OSError(OSLastError())
     if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes,
                                   scrbuf.dwSize.X * scrbuf.dwSize.Y,
                                   origin, addr(numwrote)) == 0:
-      OSError()
+      OSError(OSLastError())
     setCursorXPos(0)
   else:
     stdout.write("\e[2J")

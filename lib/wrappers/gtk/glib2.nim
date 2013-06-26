@@ -27,7 +27,7 @@ type
   gshort* = cshort
   glong* = clong
   gint* = cint
-  gboolean* = bool
+  gboolean* = distinct gint
   guchar* = char
   gushort* = int16
   gulong* = int
@@ -172,6 +172,12 @@ type
   TGBoxedCopyFunc* = proc (boxed: gpointer): gpointer{.cdecl.}
   TGBoxedFreeFunc* = proc (boxed: gpointer){.cdecl.}
   PGsource = pointer          # I don't know and don't care
+
+converter gbool*(nimbool: bool): gboolean =
+  return ord(nimbool).gboolean
+
+converter toBool*(gbool: gboolean): bool =
+  return int(gbool) == 1
 
 const 
   G_TYPE_FUNDAMENTAL_SHIFT* = 2
