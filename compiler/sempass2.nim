@@ -57,14 +57,6 @@ discard """
     c()
  
  --> we need a stack of scopes for this analysis
- 
- 
-  Effect tracking:
-  
-  We track the effects per proc; forward declarations and indirect calls cause
-  problems: Forward declarations are computed lazily (we do this pass after
-  a whole module) and indirect calls are assumed the worst, unless they have
-  an effect annotation.
 """
 
 type
@@ -75,6 +67,7 @@ type
     owner: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
+    locked: seq[PNode] # locked locations
   PEffects = var TEffects
 
 proc isLocalVar(a: PEffects, s: PSym): bool =

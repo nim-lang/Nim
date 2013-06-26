@@ -2,7 +2,6 @@ version 0.9.4
 =============
 
 - make 'bind' default for templates and introduce 'mixin'
-- prove array accesses
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
@@ -16,8 +15,11 @@ version 0.9.4
 Bugs
 ====
 
+- simple closure iterator doesn't work
+- marshal doesn't support unsigned types
+- sfAnon is not respected in renderer
 - docgen: sometimes effects are listed twice
-- 'result' is not properly cleaned for NRVO
+- 'result' is not properly cleaned for NRVO --> use uninit checking instead
 - sneaking with qualifiedLookup() is really broken!
 - aporia.nim(968, 5) Error: ambiguous identifier: 'DELETE' -- 
   use a qualifier
@@ -140,6 +142,7 @@ Not essential for 1.0.0
 - implement closures that support nesting of *procs* > 1
 - object constructors: static check for fields if discriminator is known at 
   compile time
+- prove array accesses
 
 
 Optimizations
