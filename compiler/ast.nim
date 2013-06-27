@@ -278,8 +278,6 @@ const
     # the compiler will avoid printing such names 
     # in user messages.
       
-  sfHoist* = sfVolatile ## proc return value can be hoisted
-
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
 
@@ -673,7 +671,9 @@ type
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to safe space)
-    constraint*: PNode        # additional constraints like 'lit|result'
+    constraint*: PNode        # additional constraints like 'lit|result'; also
+                              # misused for the codegenDecl pragma in the hope
+                              # it won't cause problems
   
   TTypeSeq* = seq[PType]
   TType* {.acyclic.} = object of TIdObj # \

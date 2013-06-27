@@ -401,6 +401,21 @@ this to work. The conditional symbol ``objc`` is defined when the compiler
 emits Objective C code.
 
 
+CodegenDecl pragma
+------------------
+
+The `codegenDecl`:idx: pragma can be used to directly influence Nimrod's code
+generator. It receives a format string that determines how the variable or 
+proc is declared in the generated code:
+
+.. code-block:: nimrod
+  var
+    a {.codegenDecl: "$# progmem $#".}: int
+
+  proc myinterrupt() {.codegenDecl: "__interrupt $# $#$#".} =
+    echo "realistic interrupt handler"
+
+
 LineDir option
 --------------
 The `lineDir`:idx: option can be turned on or off. If turned on the

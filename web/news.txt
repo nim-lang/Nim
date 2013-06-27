@@ -33,6 +33,8 @@ Compiler Additions
   real uninitialized variables in Nimrod as they are initialized to binary
   zero). Activate via ``{.warning[Uninit]:on.}``.
 - The compiler now enforces the ``not nil`` constraint.
+- The compiler now supports a ``codegenDecl`` pragma for even more control
+  over the generated code.
 
 
 Language Additions

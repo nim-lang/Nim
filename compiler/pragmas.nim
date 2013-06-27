@@ -23,7 +23,7 @@ const
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wHoist,
+    wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGenSym, wInject, wRaises, wTags}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
@@ -56,7 +56,7 @@ const
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern,
     wImportcpp, wImportobjc, wError, wNoInit, wCompileTime, wGlobal,
-    wGenSym, wInject}
+    wGenSym, wInject, wCodegenDecl}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportcpp, wImportobjc, wError, wGenSym, wInject}
   letPragmas* = varPragmas
@@ -147,7 +147,10 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string = 
   if n.kind == nkExprColonExpr: result = expectStrLit(c, n)
   else: result = defaultStr
-  
+
+proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
+  sym.constraint = getStrLitNode(c, n)
+
 proc processMagic(c: PContext, n: PNode, s: PSym) = 
   #if sfSystemModule notin c.module.flags:
   #  liMessage(n.info, errMagicOnlyInSystem)
@@ -669,9 +672,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wNoInit:
           noVal(it)
           if sym != nil: incl(sym.flags, sfNoInit)
-        of wHoist:
-          noVal(it)
-          if sym != nil: incl(sym.flags, sfHoist)
+        of wCodegenDecl: processCodegenDecl(c, it, sym)
         of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
            wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
            wLinedir, wStacktrace, wLinetrace, wOptimization,
