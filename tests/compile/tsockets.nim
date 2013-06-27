@@ -4,8 +4,8 @@ s = socket()
 
 s.connect("www.google.com", TPort(80))
 
-var recvData: string = ""
-echo(s.recvLine(recvData))
-echo(recvData)
+var data: string = ""
+s.readLine(data)
+echo(data)
 
 

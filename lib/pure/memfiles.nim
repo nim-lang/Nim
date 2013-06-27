@@ -50,11 +50,11 @@ proc open*(filename: string, mode: TFileMode = fmRead,
     result.size = 0
 
   when defined(windows):
-    template fail(msg: expr) =
+    template fail(errCode: TOSErrorCode, msg: expr) =
       rollback()
       if result.fHandle != 0: discard CloseHandle(result.fHandle)
       if result.mapHandle != 0: discard CloseHandle(result.mapHandle)
-      OSError()
+      OSError(errCode)
       # return false
       #raise newException(EIO, msg)
 
@@ -74,7 +74,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       result.fHandle = callCreateFile(CreateFileA, filename)
 
     if result.fHandle == INVALID_HANDLE_VALUE:
-      fail "error opening file"
+      fail(OSLastError(), "error opening file")
 
     if newFileSize != -1:
       var 
@@ -83,9 +83,10 @@ proc open*(filename: string, mode: TFileMode = fmRead,
 
       var status = SetFilePointer(result.fHandle, sizeLow, addr(sizeHigh),
                                   FILE_BEGIN)
-      if (status == INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) or
+      let lastErr = OSLastError()
+      if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
          (SetEndOfFile(result.fHandle) == 0):
-        fail "error setting file size"
+        fail(lastErr, "error setting file size")
 
     # since the strings are always 'nil', we simply always call
     # CreateFileMappingW which should be slightly faster anyway:
@@ -95,7 +96,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       0, 0, nil)
 
     if result.mapHandle == 0:
-      fail "error creating mapping"
+      fail(OSLastError(), "error creating mapping")
 
     result.mem = MapViewOfFileEx(
       result.mapHandle,
@@ -106,22 +107,22 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       nil)
 
     if result.mem == nil:
-      fail "error mapping view"
+      fail(OSLastError(), "error mapping view")
 
     var hi, low: int32
     low = GetFileSize(result.fHandle, addr(hi))
     if low == INVALID_FILE_SIZE:
-      fail "error getting file size"
+      fail(OSLastError(), "error getting file size")
     else:
       var fileSize = (int64(hi) shr 32) or low
       if mappedSize != -1: result.size = min(fileSize, mappedSize).int
       else: result.size = fileSize.int
 
   else:
-    template fail(msg: expr) =
+    template fail(errCode: TOSErrorCode, msg: expr) =
       rollback()
       if result.handle != 0: discard close(result.handle)
-      OSError()
+      OSError(errCode)
   
     var flags = if readonly: O_RDONLY else: O_RDWR
 
@@ -132,11 +133,11 @@ proc open*(filename: string, mode: TFileMode = fmRead,
     if result.handle == -1:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?
-      fail "error opening file"
+      fail(OSLastError(), "error opening file")
 
     if newFileSize != -1:
       if ftruncate(result.handle, newFileSize) == -1:
-        fail "error setting file size"
+        fail(OSLastError(), "error setting file size")
 
     if mappedSize != -1:
       result.size = mappedSize
@@ -147,7 +148,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
         # Why is mmap taking int anyway?
         result.size = int(stat.st_size)
       else:
-        fail "error getting file size"
+        fail(OSLastError(), "error getting file size")
 
     result.mem = mmap(
       nil,
@@ -158,21 +159,24 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       offset)
 
     if result.mem == cast[pointer](MAP_FAILED):
-      fail "file mapping failed"
+      fail(OSLastError(), "file mapping failed")
 
 proc close*(f: var TMemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
   
   var error = false
+  var lastErr: TOSErrorCode
 
   when defined(windows):
     if f.fHandle != INVALID_HANDLE_VALUE:
+      lastErr = OSLastError()
       error = UnmapViewOfFile(f.mem) == 0
       error = (CloseHandle(f.mapHandle) == 0) or error
       error = (CloseHandle(f.fHandle) == 0) or error
   else:
     if f.handle != 0:
+      lastErr = OSLastError()
       error = munmap(f.mem, f.size) != 0
       error = (close(f.handle) != 0) or error
 
@@ -185,5 +189,5 @@ proc close*(f: var TMemFile) =
   else:
     f.handle = 0
   
-  if error: OSError()
+  if error: OSError(lastErr)
 
