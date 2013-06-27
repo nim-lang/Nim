@@ -33,6 +33,7 @@ type
                            # indentation value
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
+    checkAnon: bool        # we're in a context that can contain sfAnon
 
 
 proc renderModule*(n: PNode, filename: string, renderFlags: TRenderFlags = {})
@@ -70,7 +71,8 @@ proc InitSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.idx = 0
   g.buf = ""
   g.flags = renderFlags
-  g.pendingNL = - 1
+  g.pendingNL = -1
+  g.checkAnon = false
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) = 
   var length = len(g.tokens)
@@ -493,13 +495,15 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0, 
                theEnd: int = - 1, separator = tkComma) = 
-  for i in countup(start, sonsLen(n) + theEnd): 
+  for i in countup(start, sonsLen(n) + theEnd):
     var c = i < sonsLen(n) + theEnd
     var sublen = lsub(n.sons[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < maxLineLen): optNL(g, ind)
+    let oldLen = g.tokens.len
     gsub(g, n.sons[i])
-    if c: 
-      putWithSpace(g, separator, TokTypeToStr[separator])
+    if c:
+      if g.tokens.len > oldLen:
+        putWithSpace(g, separator, TokTypeToStr[separator])
       if hasCom(n.sons[i]): 
         gcoms(g)
         optNL(g, ind)
@@ -673,7 +677,10 @@ proc gproc(g: var TSrcGen, n: PNode) =
   
   if n.sons[patternPos].kind != nkEmpty:
     gpattern(g, n.sons[patternPos])
+  let oldCheckAnon = g.checkAnon
+  g.checkAnon = true
   gsub(g, n.sons[genericParamsPos])
+  g.checkAnon = oldCheckAnon
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
   if renderNoBody notin g.flags:
@@ -724,7 +731,8 @@ proc gasm(g: var TSrcGen, n: PNode) =
   gcoms(g)
   gsub(g, n.sons[1])
 
-proc gident(g: var TSrcGen, n: PNode) = 
+proc gident(g: var TSrcGen, n: PNode) =
+  if g.checkAnon and n.kind == nkSym and sfAnon in n.sym.flags: return
   var t: TTokType
   var s = atom(n)
   if (s[0] in lexer.SymChars): 
@@ -897,8 +905,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[pragmasPos])
     put(g, tkColon, ":")
     gsub(g, n.sons[bodyPos])
-  of nkConstDef, nkIdentDefs: 
-    gcomma(g, n, 0, - 3)
+  of nkConstDef, nkIdentDefs:
+    gcomma(g, n, 0, -3)
     var L = sonsLen(n)
     if n.sons[L - 2].kind != nkEmpty: 
       putWithSpace(g, tkColon, ":")
@@ -909,7 +917,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[L - 1], c)
   of nkVarTuple: 
     put(g, tkParLe, "(")
-    gcomma(g, n, 0, - 3)
+    gcomma(g, n, 0, -3)
     put(g, tkParRi, ")")
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
