@@ -235,9 +235,9 @@ proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) =
 proc matchTwoChars(L: TLexer, first: Char, second: TCharSet): bool = 
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in Second)
 
-proc isFloatLiteral(s: string): bool = 
-  for i in countup(0, len(s) + 0 - 1): 
-    if s[i] in {'.', 'e', 'E'}: 
+proc isFloatLiteral(s: string): bool =
+  for i in countup(0, len(s) - 1):
+    if s[i] in {'.', 'e', 'E'}:
       return true
   result = false
 
@@ -250,25 +250,26 @@ proc GetNumber(L: var TLexer): TToken =
   result.literal = ""
   result.base = base10        # BUGFIX
   pos = L.bufpos     # make sure the literal is correct for error messages:
+  var eallowed = false
   if L.buf[pos] == '0' and L.buf[pos+1] in {'X', 'x'}:
     matchUnderscoreChars(L, result, {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x'})
   else:
     matchUnderscoreChars(L, result, {'0'..'9', 'b', 'B', 'o', 'c', 'C'})
+    eallowed = true
   if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
     add(result.literal, '.')
-    inc(L.bufpos) 
-    #matchUnderscoreChars(L, result, ['A'..'Z', 'a'..'z', '0'..'9'])
+    inc(L.bufpos)
     matchUnderscoreChars(L, result, {'0'..'9'})
-    if L.buf[L.bufpos] in {'e', 'E'}: 
-      add(result.literal, 'e')
+    eallowed = true
+  if eallowed and L.buf[L.bufpos] in {'e', 'E'}: 
+    add(result.literal, 'e')
+    inc(L.bufpos)
+    if L.buf[L.bufpos] in {'+', '-'}: 
+      add(result.literal, L.buf[L.bufpos])
       inc(L.bufpos)
-      if L.buf[L.bufpos] in {'+', '-'}: 
-        add(result.literal, L.buf[L.bufpos])
-        inc(L.bufpos)
-      matchUnderscoreChars(L, result, {'0'..'9'})
+    matchUnderscoreChars(L, result, {'0'..'9'})
   endpos = L.bufpos
   if L.buf[endpos] in {'\'', 'f', 'F', 'i', 'I', 'u', 'U'}:
-    #matchUnderscoreChars(L, result, ['''', 'f', 'F', 'i', 'I', '0'..'9']);
     if L.buf[endpos] == '\'': inc(endpos)
     L.bufpos = pos            # restore position
     case L.buf[endpos]
