@@ -47,10 +47,11 @@ proc badRequest(client: TSocket) =
   send(client, "<p>Your browser sent a bad request, " &
                "such as a POST without a Content-Length.</p>" & wwwNL)
 
-proc cannotExec(client: TSocket) =
-  send(client, "HTTP/1.1 500 Internal Server Error" & wwwNL)
-  sendTextContentType(client)
-  send(client, "<P>Error prohibited CGI execution." & wwwNL)
+when false:
+  proc cannotExec(client: TSocket) =
+    send(client, "HTTP/1.1 500 Internal Server Error" & wwwNL)
+    sendTextContentType(client)
+    send(client, "<P>Error prohibited CGI execution." & wwwNL)
 
 proc headers(client: TSocket, filename: string) =
   # XXX could use filename to determine file type
@@ -79,11 +80,11 @@ proc unimplemented(client: TSocket) =
 
 # ----------------- file serving ---------------------------------------------
 
-proc discardHeaders(client: TSocket) = skip(client)
+when false:
+  proc discardHeaders(client: TSocket) = skip(client)
 
 proc serveFile*(client: TSocket, filename: string) =
   ## serves a file to the client.
-  when false: discardHeaders(client)
   var f: TFile
   if open(f, filename):
     headers(client, filename)
@@ -96,7 +97,7 @@ proc serveFile*(client: TSocket, filename: string) =
         if bytesread != bytesWritten:
           dealloc(buf)
           close(f)
-          OSError()
+          OSError(OSLastError())
       if bytesread != bufSize: break
     dealloc(buf)
     close(f)
@@ -104,108 +105,109 @@ proc serveFile*(client: TSocket, filename: string) =
     notFound(client)
 
 # ------------------ CGI execution -------------------------------------------
+when false:
+  # TODO: Fix this, or get rid of it.
+  type
+    TRequestMethod = enum reqGet, reqPost
 
-type
-  TRequestMethod = enum reqGet, reqPost
+  proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
+    var env = newStringTable(modeCaseInsensitive)
+    var contentLength = -1
+    case meth
+    of reqGet:
+      discardHeaders(client)
 
-proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
-  var env = newStringTable(modeCaseInsensitive)
-  var contentLength = -1
-  case meth
-  of reqGet:
-    discardHeaders(client)
+      env["REQUEST_METHOD"] = "GET"
+      env["QUERY_STRING"] = query
+    of reqPost:
+      var buf = TaintedString""
+      var dataAvail = false
+      while dataAvail:
+        dataAvail = recvLine(client, buf) # TODO: This is incorrect.
+        var L = toLower(buf.string)
+        if L.startsWith("content-length:"):
+          var i = len("content-length:")
+          while L[i] in Whitespace: inc(i)
+          contentLength = parseInt(substr(L, i))
 
-    env["REQUEST_METHOD"] = "GET"
-    env["QUERY_STRING"] = query
-  of reqPost:
-    var buf = TaintedString""
-    var dataAvail = false
-    while dataAvail:
-      dataAvail = recvLine(client, buf) # TODO: This is incorrect.
-      var L = toLower(buf.string)
-      if L.startsWith("content-length:"):
-        var i = len("content-length:")
-        while L[i] in Whitespace: inc(i)
-        contentLength = parseInt(substr(L, i))
+      if contentLength < 0:
+        badRequest(client)
+        return
 
-    if contentLength < 0:
-      badRequest(client)
-      return
+      env["REQUEST_METHOD"] = "POST"
+      env["CONTENT_LENGTH"] = $contentLength
 
-    env["REQUEST_METHOD"] = "POST"
-    env["CONTENT_LENGTH"] = $contentLength
+    send(client, "HTTP/1.0 200 OK" & wwwNL)
 
-  send(client, "HTTP/1.0 200 OK" & wwwNL)
-
-  var process = startProcess(command=path, env=env)
-  if meth == reqPost:
-    # get from client and post to CGI program:
-    var buf = alloc(contentLength)
-    if recv(client, buf, contentLength) != contentLength: 
+    var process = startProcess(command=path, env=env)
+    if meth == reqPost:
+      # get from client and post to CGI program:
+      var buf = alloc(contentLength)
+      if recv(client, buf, contentLength) != contentLength: 
+        dealloc(buf)
+        OSError()
+      var inp = process.inputStream
+      inp.writeData(buf, contentLength)
       dealloc(buf)
-      OSError()
-    var inp = process.inputStream
-    inp.writeData(buf, contentLength)
-    dealloc(buf)
 
-  var outp = process.outputStream
-  var line = newStringOfCap(120).TaintedString
-  while true:
-    if outp.readLine(line):
-      send(client, line.string)
-      send(client, wwwNL)
-    elif not running(process): break
+    var outp = process.outputStream
+    var line = newStringOfCap(120).TaintedString
+    while true:
+      if outp.readLine(line):
+        send(client, line.string)
+        send(client, wwwNL)
+      elif not running(process): break
 
-# --------------- Server Setup -----------------------------------------------
+  # --------------- Server Setup -----------------------------------------------
 
-proc acceptRequest(client: TSocket) =
-  var cgi = false
-  var query = ""
-  var buf = TaintedString""
-  discard recvLine(client, buf)
-  var path = ""
-  var data = buf.string.split()
-  var meth = reqGet
+  proc acceptRequest(client: TSocket) =
+    var cgi = false
+    var query = ""
+    var buf = TaintedString""
+    discard recvLine(client, buf)
+    var path = ""
+    var data = buf.string.split()
+    var meth = reqGet
 
-  var q = find(data[1], '?')
+    var q = find(data[1], '?')
 
-  # extract path
-  if q >= 0:
-    # strip "?..." from path, this may be found in both POST and GET
-    path = "." & data[1].substr(0, q-1)
-  else:
-    path = "." & data[1]
-  # path starts with "/", by adding "." in front of it we serve files from cwd
-  
-  if cmpIgnoreCase(data[0], "GET") == 0:
+    # extract path
     if q >= 0:
+      # strip "?..." from path, this may be found in both POST and GET
+      path = "." & data[1].substr(0, q-1)
+    else:
+      path = "." & data[1]
+    # path starts with "/", by adding "." in front of it we serve files from cwd
+    
+    if cmpIgnoreCase(data[0], "GET") == 0:
+      if q >= 0:
+        cgi = true
+        query = data[1].substr(q+1)
+    elif cmpIgnoreCase(data[0], "POST") == 0:
       cgi = true
-      query = data[1].substr(q+1)
-  elif cmpIgnoreCase(data[0], "POST") == 0:
-    cgi = true
-    meth = reqPost
-  else:
-    unimplemented(client)
-
-  if path[path.len-1] == '/' or existsDir(path):
-    path = path / "index.html"
-
-  if not ExistsFile(path):
-    discardHeaders(client)
-    notFound(client)
-  else:
-    when defined(Windows):
-      var ext = splitFile(path).ext.toLower
-      if ext == ".exe" or ext == ".cgi":
-        # XXX: extract interpreter information here?
-        cgi = true
+      meth = reqPost
     else:
-      if {fpUserExec, fpGroupExec, fpOthersExec} * path.getFilePermissions != {}:
-        cgi = true
-    if not cgi:
-      serveFile(client, path)
+      unimplemented(client)
+
+    if path[path.len-1] == '/' or existsDir(path):
+      path = path / "index.html"
+
+    if not ExistsFile(path):
+      discardHeaders(client)
+      notFound(client)
     else:
-      executeCgi(client, path, query, meth)
+      when defined(Windows):
+        var ext = splitFile(path).ext.toLower
+        if ext == ".exe" or ext == ".cgi":
+          # XXX: extract interpreter information here?
+          cgi = true
+      else:
+        if {fpUserExec, fpGroupExec, fpOthersExec} * path.getFilePermissions != {}:
+          cgi = true
+      if not cgi:
+        serveFile(client, path)
+      else:
+        executeCgi(client, path, query, meth)
 
 type
   TServer* = object of TObject  ## contains the current server state
@@ -226,7 +228,7 @@ proc open*(s: var TServer, port = TPort(80)) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
-  if s.socket == InvalidSocket: OSError()
+  if s.socket == InvalidSocket: OSError(OSLastError())
   bindAddr(s.socket, port)
   listen(s.socket)
 
