@@ -488,12 +488,15 @@ proc assignLocalVar(p: BProc, s: PSym) =
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   var decl = getTypeDesc(p.module, s.loc.t)
-  if sfRegister in s.flags: app(decl, " register")
-  #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
-  #  app(decl, " GC_GUARD")
-  if sfVolatile in s.flags or p.nestedTryStmts.len > 0: 
-    app(decl, " volatile")
-  appf(decl, " $1;$n", [s.loc.r])
+  if s.constraint.isNil:
+    if sfRegister in s.flags: app(decl, " register")
+    #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
+    #  app(decl, " GC_GUARD")
+    if sfVolatile in s.flags or p.nestedTryStmts.len > 0: 
+      app(decl, " volatile")
+    appf(decl, " $1;$n", [s.loc.r])
+  else:
+    decl = ropef(s.cgDeclFrmt & ";$n", decl, s.loc.r)
   line(p, cpsLocals, decl)
   localDebugInfo(p, s)
 
@@ -518,11 +521,17 @@ proc assignGlobalVar(p: BProc, s: PSym) =
   if sfThread in s.flags: 
     declareThreadVar(p.module, s, sfImportc in s.flags)
   else: 
-    if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
-    app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
-    if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
-    if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
-    appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
+    var decl: PRope = nil
+    var td = getTypeDesc(p.module, s.loc.t)
+    if s.constraint.isNil:
+      if sfImportc in s.flags: app(decl, "extern ")
+      app(decl, td)
+      if sfRegister in s.flags: app(decl, " register")
+      if sfVolatile in s.flags: app(decl, " volatile")
+      appf(decl, " $1;$n", [s.loc.r])
+    else:
+      decl = ropef(s.cgDeclFrmt & ";$n", td, s.loc.r)
+    app(p.module.s[cfsVars], decl)
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
