@@ -379,7 +379,7 @@ proc getBiggestInt*(x: TAny): biggestInt =
   of tyInt8: result = biggestInt(cast[ptr int8](x.value)[])
   of tyInt16: result = biggestInt(cast[ptr int16](x.value)[])
   of tyInt32: result = biggestInt(cast[ptr int32](x.value)[])
-  of tyInt64: result = biggestInt(cast[ptr int64](x.value)[])
+  of tyInt64, tyUInt64: result = biggestInt(cast[ptr int64](x.value)[])
   of tyBool: result = biggestInt(cast[ptr bool](x.value)[])
   of tyChar: result = biggestInt(cast[ptr char](x.value)[])
   of tyEnum, tySet:
@@ -389,6 +389,10 @@ proc getBiggestInt*(x: TAny): biggestInt =
     of 4: result = biggestInt(cast[ptr int32](x.value)[])
     of 8: result = biggestInt(cast[ptr int64](x.value)[])
     else: assert false
+  of tyUInt: result = biggestInt(cast[ptr uint](x.value)[])
+  of tyUInt8: result = biggestInt(cast[ptr uint8](x.value)[])
+  of tyUInt16: result = biggestInt(cast[ptr uint16](x.value)[])
+  of tyUInt32: result = biggestInt(cast[ptr uint32](x.value)[])
   else: assert false
 
 proc setBiggestInt*(x: TAny, y: biggestInt) =
@@ -400,7 +404,7 @@ proc setBiggestInt*(x: TAny, y: biggestInt) =
   of tyInt8: cast[ptr int8](x.value)[] = int8(y)
   of tyInt16: cast[ptr int16](x.value)[] = int16(y)
   of tyInt32: cast[ptr int32](x.value)[] = int32(y)
-  of tyInt64: cast[ptr int64](x.value)[] = int64(y)
+  of tyInt64, tyUInt64: cast[ptr int64](x.value)[] = int64(y)
   of tyBool: cast[ptr bool](x.value)[] = y != 0
   of tyChar: cast[ptr char](x.value)[] = chr(y.int)
   of tyEnum, tySet:
@@ -410,6 +414,10 @@ proc setBiggestInt*(x: TAny, y: biggestInt) =
     of 4: cast[ptr int32](x.value)[] = int32(y)
     of 8: cast[ptr int64](x.value)[] = y
     else: assert false
+  of tyUInt: cast[ptr uint](x.value)[] = uint(y)
+  of tyUInt8: cast[ptr uint8](x.value)[] = uint8(y)
+  of tyUInt16: cast[ptr uint16](x.value)[] = uint16(y)
+  of tyUInt32: cast[ptr uint32](x.value)[] = uint32(y)
   else: assert false
 
 proc getChar*(x: TAny): char =

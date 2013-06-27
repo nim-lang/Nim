@@ -252,7 +252,7 @@ when isMainModule:
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
     ["test", "1", "2", "3", "4"]]
   testit(x)
-  var test2: tuple[name: string, s: int] = ("tuple test", 56)
+  var test2: tuple[name: string, s: uint] = ("tuple test", 56u)
   testit(test2)
   
   type

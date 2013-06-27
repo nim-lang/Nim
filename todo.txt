@@ -16,7 +16,6 @@ Bugs
 ====
 
 - simple closure iterator doesn't work
-- marshal doesn't support unsigned types
 - sfAnon is not respected in renderer
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
