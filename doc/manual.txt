@@ -352,7 +352,7 @@ Numerical constants
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)*  ('.' (['_'] digit)* [exponent] |exponent)
+  FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
   FLOAT32_LIT = HEX_LIT '\'' ('f'|'F') '32'
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '32'
   FLOAT64_LIT = HEX_LIT '\'' ('f'|'F') '64'
