@@ -36,7 +36,7 @@ proc open*(host = "localhost", port = 6379.TPort): TRedis =
   ## Opens a connection to the redis server.
   result.socket = socket(buffered = false)
   if result.socket == InvalidSocket:
-    OSError()
+    OSError(OSLastError())
   result.socket.connect(host, port)
 
 proc raiseInvalidReply(expected, got: char) =
@@ -50,34 +50,31 @@ proc raiseNoOK(status: string) =
 
 proc parseStatus(r: TRedis): TRedisStatus =
   var line = ""
-  if r.socket.recvLine(line):
-    if line == "":
-      raise newException(ERedis, "Server closed connection prematurely")
+  r.socket.readLine(line)
+  if line == "":
+    raise newException(ERedis, "Server closed connection prematurely")
+
+  if line[0] == '-':
+    raise newException(ERedis, strip(line))
+  if line[0] != '+':
+    raiseInvalidReply('+', line[0])
   
-    if line[0] == '-':
-      raise newException(ERedis, strip(line))
-    if line[0] != '+':
-      raiseInvalidReply('+', line[0])
-    
-    return line.substr(1) # Strip '+'
-  else:
-    OSError()
+  return line.substr(1) # Strip '+'
   
 proc parseInteger(r: TRedis): TRedisInteger =
   var line = ""
-  if r.socket.recvLine(line):
-    if line == "":
-      raise newException(ERedis, "Server closed connection prematurely")
+  r.socket.readLine(line)
+  if line == "":
+    raise newException(ERedis, "Server closed connection prematurely")
 
-    if line[0] == '-':
-      raise newException(ERedis, strip(line))
-    if line[0] != ':':
-      raiseInvalidReply(':', line[0])
-    
-    # Strip ':'
-    if parseBiggestInt(line, result, 1) == 0:
-      raise newException(EInvalidReply, "Unable to parse integer.") 
-  else: OSError()
+  if line[0] == '-':
+    raise newException(ERedis, strip(line))
+  if line[0] != ':':
+    raiseInvalidReply(':', line[0])
+  
+  # Strip ':'
+  if parseBiggestInt(line, result, 1) == 0:
+    raise newException(EInvalidReply, "Unable to parse integer.") 
 
 proc recv(sock: TSocket, size: int): TaintedString =
   result = newString(size).TaintedString
@@ -86,8 +83,7 @@ proc recv(sock: TSocket, size: int): TaintedString =
 
 proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var line = ""
-  if not r.socket.recvLine(line.TaintedString):
-    raise newException(EInvalidReply, "recvLine failed")
+  r.socket.readLine(line.TaintedString)
   
   # Error.
   if line[0] == '-':
@@ -110,8 +106,7 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
 
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = TaintedString""
-  if not r.socket.recvLine(line):
-    raise newException(EInvalidReply, "recvLine failed")
+  r.socket.readLine(line)
     
   if line.string[0] != '*':
     raiseInvalidReply('*', line.string[0])
@@ -848,10 +843,8 @@ proc shutdown*(r: TRedis) =
   ## Synchronously save the dataset to disk and then shut down the server
   r.sendCommand("SHUTDOWN")
   var s = "".TaintedString
-  if r.socket.recvLine(s):
-    if s.string.len != 0: raise newException(ERedis, s.string)
-  else:
-    OSError()
+  r.socket.readLine(s)
+  if s.string.len != 0: raise newException(ERedis, s.string)
 
 proc slaveof*(r: TRedis, host: string, port: string) =
   ## Make the server a slave of another instance, or promote it as master
