@@ -544,6 +544,8 @@ proc parseHtml*(s: PStream, filename: string,
       # force progress!
       next(x)
   close(x)
+  if result.len == 1:
+    result = result[0]
 
 proc parseHtml*(s: PStream): PXmlNode = 
   ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
