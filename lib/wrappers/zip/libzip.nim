@@ -8,7 +8,9 @@
 #
 
 ## Interface to the `libzip <http://www.nih.at/libzip/index.html>`_ library by
-## Dieter Baron and Thomas Klausner.
+## Dieter Baron and Thomas Klausner. This version links
+## against ``libzip2.so.2`` unless you define the symbol ``useLibzipSrc``; then
+## it is compiled against some old ``libizp_all.c`` file.
 
 #
 #  zip.h -- exported declarations.
@@ -45,12 +47,12 @@
 
 import times
 
-when defined(unix):
+when defined(unix) and not defined(useLibzipSrc):
   {.passl: "-lz".}
   when defined(macosx):
     {.pragma: mydll, dynlib: "libzip2.dylib".}
   else:
-    {.pragma: mydll, dynlib: "libzip2.so(|.0|.1)".}
+    {.pragma: mydll, dynlib: "libzip2.so(|.2|.1|.0)".}
 else:
   {.compile: "libzip_all.c".}
   {.pragma: mydll.}

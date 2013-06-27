@@ -64,13 +64,16 @@ proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
+const
+  compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
+
 proc csource(args: string) = 
-  exec("nimrod cc $1 -r tools/niminst/niminst --var:version=$2 csource compiler/nimrod.ini $1" %
-       [args, NimrodVersion])
+  exec("nimrod cc $1 -r $3 --var:version=$2 csource compiler/nimrod.ini $1" %
+       [args, NimrodVersion, compileNimInst])
 
 proc zip(args: string) = 
-  exec("nimrod cc -r tools/niminst/niminst --var:version=$# zip compiler/nimrod.ini" %
-       NimrodVersion)
+  exec("nimrod cc -r $2 --var:version=$1 zip compiler/nimrod.ini" %
+       [NimrodVersion, compileNimInst])
   
 proc buildTool(toolname, args: string) = 
   exec("nimrod cc $# $#" % [args, toolname])
@@ -85,9 +88,9 @@ proc inno(args: string) =
        NimrodVersion)
 
 proc install(args: string) = 
-  exec("nimrod cc -r tools/niminst/niminst --var:version=$# scripts compiler/nimrod.ini" %
-       NimrodVersion)
-  exec("sh ./install.sh $#" % args)  
+  exec("nimrod cc -r $# --var:version=$# scripts compiler/nimrod.ini" %
+       [compileNimInst, NimrodVersion])
+  exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
   exec(("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" &
