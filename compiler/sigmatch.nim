@@ -166,6 +166,15 @@ proc writeMatches*(c: TCandidate) =
   Writeln(stdout, "intconv matches: " & $c.intConvMatches)
   Writeln(stdout, "generic matches: " & $c.genericMatches)
 
+proc argTypeToString(arg: PNode): string =
+  if arg.kind in nkSymChoices:
+    result = typeToString(arg[0].typ)
+    for i in 1 .. <arg.len:
+      result.add(" | ")
+      result.add typeToString(arg[i].typ)
+  else:
+    result = arg.typ.typeToString
+
 proc NotFoundError*(c: PContext, n: PNode) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
@@ -175,20 +184,20 @@ proc NotFoundError*(c: PContext, n: PNode) =
     GlobalError(n.info, errTypeMismatch, "")
   var result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1):
-    var nt = n.sons[i].typ
+    var arg = n.sons[i]
     if n.sons[i].kind == nkExprEqExpr: 
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
-      if nt.isNil:
-        n.sons[i].sons[1] = c.semOperand(c, n.sons[i].sons[1])
-        nt = n.sons[i].sons[1].typ
-        n.sons[i].typ = nt
+      if arg.typ.isNil:
+        arg = c.semOperand(c, n.sons[i].sons[1])
+        n.sons[i].typ = arg.typ
+        n.sons[i].sons[1] = arg
     else:
-      if nt.isNil:
-        n.sons[i] = c.semOperand(c, n.sons[i])
-        nt = n.sons[i].typ
-    if nt.kind == tyError: return
-    add(result, typeToString(nt))
+      if arg.typ.isNil:
+        arg = c.semOperand(c, n.sons[i])
+        n.sons[i] = arg
+    if arg.typ.kind == tyError: return
+    add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
   add(result, ')')
   var candidates = ""
@@ -199,7 +208,7 @@ proc NotFoundError*(c: PContext, n: PNode) =
       add(candidates, getProcHeader(sym))
       add(candidates, "\n")
     sym = nextOverloadIter(o, c, n.sons[0])
-  if candidates != "": 
+  if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   LocalError(n.Info, errGenerated, result)
   
