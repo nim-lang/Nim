@@ -15,3 +15,12 @@ else:
   return tkUnknown
   
 case_token: inc i
+
+#bug #488
+
+macro foo: stmt =
+  var exp = newCall("whatwhat", newIntLitNode(1))
+  if compiles(getAst(exp)): return exp
+  else: echo "Does not compute!"
+
+foo()

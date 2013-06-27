@@ -1290,6 +1290,7 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]
   var expandedSym = expectMacroOrTemplateCall(c, macroCall)
+  if expandedSym.kind == skError: return n
 
   macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
   markUsed(n, expandedSym)
