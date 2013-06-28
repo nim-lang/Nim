@@ -1532,10 +1532,11 @@ var oldErrorCount: int
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   # don't eval errornous code:
-  if oldErrorCount != msgs.gErrorCounter:
-    oldErrorCount = msgs.gErrorCounter
-    return n
-  result = eval(PEvalContext(c), n)
+  if oldErrorCount == msgs.gErrorCounter:
+    result = eval(PEvalContext(c), n)
+  else:
+    result = n
+  oldErrorCount = msgs.gErrorCounter
 
 const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 

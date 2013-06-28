@@ -91,7 +91,8 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  c.importTable.addSym(result)
+  if gCmd != cmdInteractive:
+    c.importTable.addSym(result)
 
 type 
   TOverloadIterMode* = enum 
