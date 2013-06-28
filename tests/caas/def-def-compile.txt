@@ -1,10 +1,12 @@
 main.nim
-> idetools --track:$TESTNIM,5,18 --def
+> idetools --track:$TESTNIM,5,18 --def --verbosity:0 --hints:on
 strutils.toUpper
 ! SuccessX
-> idetools --track:$TESTNIM,5,18 --def
+
+> idetools --track:$TESTNIM,5,18 --def --verbosity:0 --hints:on
 strutils.toUpper
 ! SuccessX
-> c
+
+> c --verbosity:0 --hints:on
 SuccessX
 
