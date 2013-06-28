@@ -666,6 +666,7 @@ type
                               # (or not in symbol table)
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
+                              # for variables a slot index for the evaluator
 
     offset*: int              # offset of record field
     loc*: TLoc
