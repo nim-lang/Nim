@@ -23,12 +23,12 @@ when hasFFI:
 
 type 
   PStackFrame* = ref TStackFrame
-  TStackFrame*{.final.} = object 
-    mapping*: TIdNodeTable    # mapping from symbols to nodes
-    prc*: PSym                # current prc; proc that is evaluated
-    call*: PNode
-    next*: PStackFrame        # for stacking
-    params*: TNodeSeq         # parameters passed to the proc
+  TStackFrame* = object
+    prc: PSym                 # current prc; proc that is evaluated
+    slots: TNodeSeq           # parameters passed to the proc + locals;
+                              # parameters come first
+    call: PNode
+    next: PStackFrame         # for stacking
   
   TEvalMode* = enum           ## reason for evaluation
     emRepl,                   ## evaluate because in REPL mode
@@ -67,10 +67,9 @@ const
 # other idea: use a timeout! -> Wether code compiles depends on the machine
 # the compiler runs on then! Bad idea!
 
-proc newStackFrame*(): PStackFrame = 
+proc newStackFrame*(): PStackFrame =
   new(result)
-  initIdNodeTable(result.mapping)
-  result.params = @[]
+  result.slots = @[]
 
 proc newEvalContext*(module: PSym, mode: TEvalMode): PEvalContext =
   new(result)
@@ -291,6 +290,20 @@ proc evalVarValue(c: PEvalContext, n: PNode): PNode =
   result = evalAux(c, n, {})
   if result.kind in {nkType..nkNilLit}: result = result.copyNode
 
+proc setSlot(c: PStackFrame, sym: PSym, val: PNode) =
+  assert sym.owner == c.prc
+  var idx = sym.position
+  if idx == 0:
+    idx = c.slots.len
+    if idx == 0: idx = 1
+    sym.position = idx
+  setLen(c.slots, max(idx+1, c.slots.len))
+  c.slots[idx] = val
+
+proc setVar(c: PEvalContext, v: PSym, n: PNode) =
+  if sfGlobal notin v.flags: setSlot(c.tos, v, n)
+  else: IdNodeTablePut(c.globals, v, n)
+
 proc evalVar(c: PEvalContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     let a = n.sons[i]
@@ -305,7 +318,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
         return raiseCannotEval(c, n.info)
       for i in 0 .. a.len-3:
         var v = a.sons[i].sym
-        IdNodeTablePut(c.tos.mapping, v, result.sons[i])
+        setVar(c, v, result.sons[i])
     else:
       if a.sons[2].kind != nkEmpty:
         result = evalVarValue(c, a.sons[2])
@@ -314,7 +327,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
         result = getNullValue(a.sons[0].typ, a.sons[0].info)
       if a.sons[0].kind == nkSym:
         var v = a.sons[0].sym
-        IdNodeTablePut(c.tos.mapping, v, result)
+        setVar(c, v, result)
       else:
         # assign to a.sons[0]:
         var x = result
@@ -339,21 +352,22 @@ proc aliasNeeded(n: PNode, flags: TEvalFlags): bool =
   result = efLValue in flags or n.typ == nil or 
     n.typ.kind in {tyExpr, tyStmt, tyTypeDesc}
 
-proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode = 
+proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   # We need to return a node to the actual value,
   # which can be modified.
+  assert sym.position != 0 or skResult == sym.kind
   var x = c
-  while x != nil: 
-    if sym.kind == skResult and x.params.len > 0:
-      result = x.params[0]
-      if result == nil: result = emptyNode
+  while x != nil:
+    if sym.owner == c.prc:
+      result = x.slots[sym.position]
+      assert result != nil
+      if not aliasNeeded(result, flags):
+        result = copyTree(result)
       return
-    result = IdNodeTableGet(x.mapping, sym)
-    if result != nil and not aliasNeeded(result, flags): 
-      result = copyTree(result)
-    if result != nil: return 
     x = x.next
-  #internalError(sym.info, "cannot eval " & sym.name.s)
+  debug sym.owner
+  debug c.prc
+  internalError(sym.info, "cannot eval " & sym.name.s & " " & $sym.position)
   result = raiseCannotEval(nil, sym.info)
   #result = emptyNode
 
@@ -385,12 +399,12 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
   d.call = n
   var prc = n.sons[0]
   let isClosure = prc.kind == nkClosure
-  setlen(d.params, sonsLen(n) + ord(isClosure))
+  setlen(d.slots, sonsLen(n) + ord(isClosure))
   if isClosure:
     #debug prc
     result = evalAux(c, prc.sons[1], {efLValue})
     if isSpecial(result): return
-    d.params[sonsLen(n)] = result
+    d.slots[sonsLen(n)] = result
     result = evalAux(c, prc.sons[0], {})
   else:
     result = evalAux(c, prc, {})
@@ -408,21 +422,21 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
   for i in countup(1, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i], {})
     if isSpecial(result): return 
-    d.params[i] = result
-  if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
+    d.slots[i] = result
+  if n.typ != nil: d.slots[0] = getNullValue(n.typ, n.info)
   
   when hasFFI:
     if sfImportc in prc.sym.flags and allowFFI in c.features:
       var newCall = newNodeI(nkCall, n.info, n.len)
       newCall.sons[0] = evalGlobalVar(c, prc.sym, {})
       for i in 1 .. <n.len:
-        newCall.sons[i] = d.params[i]
+        newCall.sons[i] = d.slots[i]
       return callForeignFunction(newCall)
   
   pushStackFrame(c, d)
   result = evalAux(c, prc.sym.getBody, {})
   if result.kind == nkExceptBranch: return 
-  if n.typ != nil: result = d.params[0]
+  if n.typ != nil: result = d.slots[0]
   popStackFrame(c)
 
 proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
@@ -564,8 +578,8 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       result = evalGlobalVar(c, s, flags)
   of skParam:
     # XXX what about LValue?
-    if s.position + 1 <% c.tos.params.len:
-      result = c.tos.params[s.position + 1]
+    if s.position + 1 <% c.tos.slots.len:
+      result = c.tos.slots[s.position + 1]
   of skConst: result = s.ast
   of skEnumField: result = newIntNodeT(s.position, n)
   else: result = nil
@@ -750,10 +764,12 @@ proc evalProc(c: PEvalContext, n: PNode): PNode =
     if (resultPos < sonsLen(n)) and (n.sons[resultPos].kind != nkEmpty): 
       var v = n.sons[resultPos].sym
       result = getNullValue(v.typ, n.info)
-      IdNodeTablePut(c.tos.mapping, v, result)
+      if c.tos.slots.len == 0: setLen(c.tos.slots, 1)
+      c.tos.slots[0] = result
+      #IdNodeTablePut(c.tos.mapping, v, result)
       result = evalAux(c, s.getBody, {})
-      if result.kind == nkReturnToken: 
-        result = IdNodeTableGet(c.tos.mapping, v)
+      if result.kind == nkReturnToken:
+        result = c.tos.slots[0]
     else:
       result = evalAux(c, s.getBody, {})
       if result.kind == nkReturnToken: 
@@ -1507,16 +1523,17 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   c.callsite = nOrig
   var s = newStackFrame()
   s.call = n
+  s.prc = sym
   var L = n.safeLen
   if L == 0: L = 1
-  setlen(s.params, L)
+  setlen(s.slots, L)
   # return value:
-  s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  s.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1 .. < L: s.params[i] = setupMacroParam(n.sons[i])
+  for i in 1 .. < L: s.slots[i] = setupMacroParam(n.sons[i])
   pushStackFrame(c, s)
   discard eval(c, sym.getBody)
-  result = s.params[0]
+  result = s.slots[0]
   popStackFrame(c)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   dec(evalTemplateCounter)

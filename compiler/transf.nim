@@ -417,6 +417,15 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     if skipTypes(formal, abstractInst).kind == tyVar: result = paVarAsgn
     else: result = paFastAsgn
   
+proc findWrongOwners(c: PTransf, n: PNode) =
+  if n.kind == nkVarSection:
+    let x = n.sons[0].sons[0]
+    if x.kind == nkSym and x.sym.owner != getCurrOwner(c):
+      internalError(x.info, "bah " & x.sym.name.s & " " & 
+        x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
+  else:
+    for i in 0 .. <safeLen(n): findWrongOwners(c, n.sons[i])
+  
 proc transformFor(c: PTransf, n: PNode): PTransNode = 
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -468,6 +477,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   pushInfoContext(n.info)
   inc(c.inlining)
   add(result, transform(c, body))
+  #findWrongOwners(c, result.pnode)
   dec(c.inlining)
   popInfoContext()
   popTransCon(c)
@@ -675,12 +685,12 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   if cnst != nil and not dontInlineConstant(n, cnst):
     result = PTransNode(cnst) # do not miss an optimization
 
-proc processTransf(c: PTransf, n: PNode): PNode = 
+proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode = 
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
   if passes.skipCodegen(n) or c.fromCache or nfTransf in n.flags: return n
-  pushTransCon(c, newTransCon(getCurrOwner(c)))
+  pushTransCon(c, newTransCon(owner))
   result = PNode(transform(c, n))
   popTransCon(c)
   incl(result.flags, nfTransf)
@@ -691,22 +701,13 @@ proc openTransf(module: PSym, filename: string): PTransf =
   result.breakSyms = @[]
   result.module = module
 
-when false:
-  proc openTransfCached(module: PSym, filename: string, 
-                        rd: PRodReader): PPassContext = 
-    result = openTransf(module, filename)
-    for m in items(rd.methods): methodDef(m, true)
-
-  const transfPass* = makePass(openTransf, openTransfCached,
-    processTransf, processTransf) # we need to process generics too!
-  
 proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
     result = n
   else:
     #when useEffectSystem: trackProc(prc, n)
     var c = openTransf(module, "")
-    result = processTransf(c, n)
+    result = processTransf(c, n, prc)
     if prc.kind != skMacro:
       # XXX no closures yet for macros:
       result = liftLambdas(prc, result)
@@ -720,7 +721,7 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     result = n
   else:
     var c = openTransf(module, "")
-    result = processTransf(c, n)
+    result = processTransf(c, n, module)
     result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
 
@@ -729,5 +730,5 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     result = n
   else:
     var c = openTransf(module, "")
-    result = processTransf(c, n)
+    result = processTransf(c, n, module)
     incl(result.flags, nfTransf)
