@@ -15,6 +15,7 @@ version 0.9.4
 Bugs
 ====
 
+- REPL: after an error no evaluation is performed for the next line
 - simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead

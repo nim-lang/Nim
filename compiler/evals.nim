@@ -287,41 +287,52 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkCurly, info, t)    
   else: InternalError("getNullValue: " & $t.kind)
   
-proc evalVar(c: PEvalContext, n: PNode): PNode = 
-  for i in countup(0, sonsLen(n) - 1): 
-    var a = n.sons[i]
-    if a.kind == nkCommentStmt: continue 
-    if a.kind != nkIdentDefs: return raiseCannotEval(c, n.info)
-    # XXX var (x, y) = z support?
+proc evalVarValue(c: PEvalContext, n: PNode): PNode =
+  result = evalAux(c, n, {})
+  if result.kind in {nkType..nkNilLit}: result = result.copyNode
+
+proc evalVar(c: PEvalContext, n: PNode): PNode =
+  for i in countup(0, sonsLen(n) - 1):
+    let a = n.sons[i]
+    if a.kind == nkCommentStmt: continue
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
-    if a.sons[2].kind != nkEmpty:
-      result = evalAux(c, a.sons[2], {})
-      if result.kind in {nkType..nkNilLit}: 
+    if a.kind == nkVarTuple:
+      result = evalVarValue(c, a.lastSon)
+      if result.kind in {nkType..nkNilLit}:
         result = result.copyNode
       if isSpecial(result): return
+      if result.kind != nkPar:
+        return raiseCannotEval(c, n.info)
+      for i in 0 .. a.len-3:
+        var v = a.sons[i].sym
+        IdNodeTablePut(c.tos.mapping, v, result.sons[i])
     else:
-      result = getNullValue(a.sons[0].typ, a.sons[0].info)
-    if a.sons[0].kind == nkSym:
-      var v = a.sons[0].sym
-      IdNodeTablePut(c.tos.mapping, v, result)
-    else:
-      # assign to a.sons[0]:
-      var x = result
-      result = evalAux(c, a.sons[0], {})
-      if isSpecial(result): return 
-      myreset(x)
-      x.kind = result.kind
-      x.typ = result.typ
-      case x.kind
-      of nkCharLit..nkInt64Lit: x.intVal = result.intVal
-      of nkFloatLit..nkFloat64Lit: x.floatVal = result.floatVal
-      of nkStrLit..nkTripleStrLit: x.strVal = result.strVal
-      of nkIdent: x.ident = result.ident
-      of nkSym: x.sym = result.sym
+      if a.sons[2].kind != nkEmpty:
+        result = evalVarValue(c, a.sons[2])
+        if isSpecial(result): return
       else:
-        if x.kind notin {nkEmpty..nkNilLit}:
-          discardSons(x)
-          for j in countup(0, sonsLen(result) - 1): addSon(x, result.sons[j])
+        result = getNullValue(a.sons[0].typ, a.sons[0].info)
+      if a.sons[0].kind == nkSym:
+        var v = a.sons[0].sym
+        IdNodeTablePut(c.tos.mapping, v, result)
+      else:
+        # assign to a.sons[0]:
+        var x = result
+        result = evalAux(c, a.sons[0], {})
+        if isSpecial(result): return
+        myreset(x)
+        x.kind = result.kind
+        x.typ = result.typ
+        case x.kind
+        of nkCharLit..nkInt64Lit: x.intVal = result.intVal
+        of nkFloatLit..nkFloat64Lit: x.floatVal = result.floatVal
+        of nkStrLit..nkTripleStrLit: x.strVal = result.strVal
+        of nkIdent: x.ident = result.ident
+        of nkSym: x.sym = result.sym
+        else:
+          if x.kind notin {nkEmpty..nkNilLit}:
+            discardSons(x)
+            for j in countup(0, sonsLen(result) - 1): addSon(x, result.sons[j])
   result = emptyNode
 
 proc aliasNeeded(n: PNode, flags: TEvalFlags): bool = 
