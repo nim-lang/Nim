@@ -358,7 +358,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   assert sym.position != 0 or skResult == sym.kind
   var x = c
   while x != nil:
-    if sym.owner == c.prc:
+    if sym.owner == x.prc:
       result = x.slots[sym.position]
       assert result != nil
       if not aliasNeeded(result, flags):
