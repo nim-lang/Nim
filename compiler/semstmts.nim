@@ -380,11 +380,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             # side of the '=':
             if warnShadowIdent in gNotes and not identWithin(def, v.name):
               Message(a.info, warnShadowIdent, v.name.s)
-      if def != nil and def.kind != nkEmpty:
-        # this is needed for the evaluation pass and for the guard checking:
-        v.ast = def
-        if sfThread in v.flags: LocalError(def.info, errThreadvarCannotInit)
       if a.kind != nkVarTuple:
+        if def != nil and def.kind != nkEmpty:
+          # this is needed for the evaluation pass and for the guard checking:
+          v.ast = def
+          if sfThread in v.flags: LocalError(def.info, errThreadvarCannotInit)
         v.typ = typ
         b = newNodeI(nkIdentDefs, a.info)
         if importantComments():
@@ -394,7 +394,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(b, a.sons[length-2])      # keep type desc for doc generator
         addSon(b, copyTree(def))
         addSon(result, b)
-      else: 
+      else:
+        if def.kind == nkPar: v.ast = def[j]
         v.typ = tup.sons[j]
         b.sons[j] = newSymNode(v)
       checkNilable(v)

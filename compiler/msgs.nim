@@ -798,11 +798,12 @@ proc addSourceLine*(fileIdx: int32, line: string) =
 proc sourceLine*(i: TLineInfo): PRope =
   if i.fileIndex < 0: return nil
   
-  if not optPreserveOrigSource and
-         fileInfos[i.fileIndex].lines.len == 0:
-    for line in lines(i.toFullPath):
-      addSourceLine i.fileIndex, line.string
-
+  if not optPreserveOrigSource and fileInfos[i.fileIndex].lines.len == 0:
+    try:
+      for line in lines(i.toFullPath):
+        addSourceLine i.fileIndex, line.string
+    except EIO:
+      discard
   InternalAssert i.fileIndex < fileInfos.len
   # can happen if the error points to EOF:
   if i.line > fileInfos[i.fileIndex].lines.len: return nil
