@@ -44,7 +44,17 @@ const
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink", 
     "Label", "Reference", "Other"]
 
-  nimrodKeywords = slurp("doc/keywords.txt").split
+  # The following list comes from doc/keywords.txt, make sure it is
+  # synchronized with this array by running the module itself as a test case.
+  nimrodKeywords = ["addr", "and", "as", "asm", "atomic", "bind", "block",
+    "break", "case", "cast", "const", "continue", "converter", "discard",
+    "distinct", "div", "do", "elif", "else", "end", "enum", "except", "export",
+    "finally", "for", "from", "generic", "if", "import", "in", "include",
+    "interface", "is", "isnot", "iterator", "lambda", "let", "macro", "method",
+    "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
+    "ptr", "raise", "ref", "return", "shared", "shl", "shr", "static",
+    "template", "try", "tuple", "type", "var", "when", "while", "with",
+    "without", "xor", "yield"]
 
 proc getSourceLanguage*(name: string): TSourceLanguage = 
   for i in countup(succ(low(TSourceLanguage)), high(TSourceLanguage)): 
@@ -535,3 +545,16 @@ proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage) =
   of langC: cNextToken(g)
   of langJava: javaNextToken(g)
   
+when isMainModule:
+  var keywords: seq[string]
+  # Try to work running in both the subdir or at the root.
+  for filename in ["doc/keywords.txt", "../../../doc/keywords.txt"]:
+    except: echo filename, " not found"
+    let input = string(readFile(filename))
+    keywords = input.split()
+    break
+  doAssert (not keywords.isNil, "Couldn't read any keywords.txt file!")
+  doAssert keywords.len == nimrodKeywords.len, "No matching lengths"
+  for i in 0..keywords.len-1:
+    #echo keywords[i], " == ", nimrodKeywords[i]
+    doAssert keywords[i] == nimrodKeywords[i], "Unexpected keyword"
