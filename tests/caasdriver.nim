@@ -59,6 +59,8 @@ const
   modes = [CaasRun, ProcRun, SymbolProcRun]
   filenameReplaceVar = "$TESTNIM"
   moduleReplaceVar = "$MODULE"
+  silentReplaceVar = "$SILENT"
+  silentReplaceText = "--verbosity:0 --hints:off"
 
 var
   TesterDir = getAppDir()
@@ -67,6 +69,7 @@ var
 proc replaceVars(session: var TNimrodSession, text: string): string =
   result = text.replace(filenameReplaceVar, session.filename)
   result = result.replace(moduleReplaceVar, session.modname)
+  result = result.replace(silentReplaceVar, silentReplaceText)
 
 proc startNimrodSession(project, script: string, mode: TRunMode):
                         TNimrodSession =

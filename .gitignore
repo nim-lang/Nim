@@ -168,12 +168,14 @@ examples/cross_calculator/android/tags
 /testresults.html
 /testresults.json
 /tests/caas/SymbolProcRun.*/
+/tests/caas/absurd_nesting
+/tests/caas/forward_declarations
 /tests/caas/idetools_api
 /tests/caas/imported
 /tests/caas/issue_416_template_shift
 /tests/caas/issue_452_export_shift
 /tests/caas/issue_477_dynamic_dispatch
+/tests/caas/its_full_of_procs
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
-no changes added to commit (use "git add" and/or "git commit -a")

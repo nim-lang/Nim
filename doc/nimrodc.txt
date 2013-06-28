@@ -458,6 +458,14 @@ in C/C++).
 **Note**: This pragma will not exist for the LLVM backend.
 
 
+Nimrod idetools integration
+=======================
+
+Nimrod provides language integration with external IDEs through the
+idetools command. See the documentation of `idetools <idetools.html>`_
+for further information.
+
+
 Nimrod interactive mode
 =======================
 
