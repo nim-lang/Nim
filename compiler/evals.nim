@@ -947,7 +947,7 @@ proc evalTypeTrait*(n: PNode, context: PSym): PNode =
   let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
   case n.sons[0].sym.name.s.normalize
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result = newStrNode(nkStrLit, typ.typeToString(preferExported))
     result.typ = newType(tyString, context)
     result.info = n.info
   else:
@@ -1493,20 +1493,21 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
     else:
       stackTrace(c, result, errCannotInterpretNodeX, renderTree(n))
 
-proc evalConstExprAux(module: PSym, e: PNode, mode: TEvalMode): PNode = 
+proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
   var p = newEvalContext(module, mode)
   var s = newStackFrame()
   s.call = e
+  s.prc = prc
   pushStackFrame(p, s)
   result = tryEval(p, e)
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(module, e, emConst)
+  result = evalConstExprAux(module, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(module, e, emStatic)
+proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
+  result = evalConstExprAux(module, prc, e, emStatic)
 
 proc setupMacroParam(x: PNode): PNode =
   result = x
