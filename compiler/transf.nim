@@ -702,7 +702,7 @@ proc openTransf(module: PSym, filename: string): PTransf =
   result.module = module
 
 proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
-  if nfTransf in n.flags or prc.kind in {skTemplate, skMacro}:
+  if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
   else:
     #when useEffectSystem: trackProc(prc, n)
