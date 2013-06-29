@@ -48,12 +48,13 @@
 import times
 
 when defined(unix) and not defined(useLibzipSrc):
-  {.passl: "-lz".}
   when defined(macosx):
     {.pragma: mydll, dynlib: "libzip2.dylib".}
   else:
     {.pragma: mydll, dynlib: "libzip2.so(|.2|.1|.0)".}
 else:
+  when defined(unix):
+    {.passl: "-lz".}
   {.compile: "libzip_all.c".}
   {.pragma: mydll.}
 
