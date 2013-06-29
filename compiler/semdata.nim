@@ -187,9 +187,9 @@ proc newLib(kind: TLibKind): PLib =
   new(result)
   result.kind = kind          #initObjectSet(result.syms)
   
-proc addToLib(lib: PLib, sym: PSym) = 
-  #ObjectSetIncl(lib.syms, sym);
-  if sym.annex != nil: LocalError(sym.info, errInvalidPragma)
+proc addToLib(lib: PLib, sym: PSym) =
+  #if sym.annex != nil and not isGenericRoutine(sym):
+  #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
