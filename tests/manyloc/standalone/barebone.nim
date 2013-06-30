@@ -1,4 +1,6 @@
 
 proc printf(frmt: cstring) {.varargs, header: "<stdio.h>", cdecl.}
 
-printf("hi %ld\n", 4777)
+var x = 0
+inc x
+printf("hi %ld\n", x+4777)

@@ -1889,9 +1889,11 @@ when not defined(JS): #and not defined(NimrodVM):
 
     # text file handling:
     var
-      stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
-      stdout* {.importc: "stdout", noDecl.}: TFile ## The standard output stream.
-      stderr* {.importc: "stderr", noDecl.}: TFile
+      stdin* {.importc: "stdin", header: "<stdio.h>".}: TFile
+        ## The standard input stream.
+      stdout* {.importc: "stdout", header: "<stdio.h>".}: TFile
+        ## The standard output stream.
+      stderr* {.importc: "stderr", header: "<stdio.h>".}: TFile
         ## The standard error stream.
         ##
         ## Note: In my opinion, this should not be used -- the concept of a
