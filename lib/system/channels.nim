@@ -187,7 +187,7 @@ template lockChannel(q: expr, action: stmt) {.immediate.} =
 
 template sendImpl(q: expr) {.immediate.} =  
   if q.mask == ChannelDeadMask:
-    raise newException(EDeadThread, "cannot send message; thread died")
+    sysFatal(EDeadThread, "cannot send message; thread died")
   acquireSys(q.lock)
   var m: TMsg
   shallowCopy(m, msg)
@@ -211,7 +211,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    raise newException(EInvalidValue, "cannot receive message of wrong type")
+    sysFatal(EInvalidValue, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
   releaseSys(q.lock)
 

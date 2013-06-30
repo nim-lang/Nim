@@ -493,9 +493,14 @@ OS features.
 To make the compiler output code for a 16bit target use the ``--cpu:avr`` 
 target.
 
-So to generate code for an `AVR`:idx: processor use this command::
+For example, to generate code for an `AVR`:idx: processor use this command::
   
-  nimrod c --cpu:avr --os:standalone --gc:none -d:useMalloc --genScript x.nim
+  nimrod c --cpu:avr --os:standalone --deadCodeElim:on --genScript x.nim
+
+For the ``standalone`` target you need to provide 
+a file ``panicoverride.nim``. 
+See ``tests/manyloc/standalone/panicoverride.nim`` for an example 
+implementation.
 
 
 Nimrod for realtime systems

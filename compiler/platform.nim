@@ -147,7 +147,7 @@ const
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", props: {}),
      (name: "Standalone", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
-      scriptExt: ".sh", curDir: ".", exeExt: ".elf", extSep: ".", 
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".", 
       props: {})]
 
 type 

@@ -165,7 +165,7 @@ when not defined(JS):
     ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
     ## m.
   
-  proc round*(x: float): int {.importc: "lrint", nodecl.}
+  proc round*(x: float): int {.importc: "lrint", header: "<math.h>".}
     ## converts a float to an int by rounding.  
   
   proc arccos*(x: float): float {.importc: "acos", header: "<math.h>".}
@@ -191,12 +191,12 @@ when not defined(JS):
     
   # C procs:
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
-  proc srand(seed: cint) {.importc: "srand", nodecl.}
-  proc rand(): cint {.importc: "rand", nodecl.}
+  proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
+  proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
   
   when not defined(windows):
-    proc srand48(seed: clong) {.importc: "srand48", nodecl.}
-    proc drand48(): float {.importc: "drand48", nodecl.}
+    proc srand48(seed: clong) {.importc: "srand48", header: "<stdlib.h>".}
+    proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
     proc random(max: float): float =
       result = drand48() * max
     
@@ -209,13 +209,13 @@ when not defined(JS):
   proc random(max: int): int =
     result = int(rand()) mod max
 
-  proc trunc*(x: float): float {.importc: "trunc", nodecl.}
-  proc floor*(x: float): float {.importc: "floor", nodecl.}
-  proc ceil*(x: float): float {.importc: "ceil", nodecl.}
+  proc trunc*(x: float): float {.importc: "trunc", header: "<math.h>".}
+  proc floor*(x: float): float {.importc: "floor", header: "<math.h>".}
+  proc ceil*(x: float): float {.importc: "ceil", header: "<math.h>".}
 
   proc fmod*(x, y: float): float {.importc: "fmod", header: "<math.h>".}
 
-else:  
+else:
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float): float {.importc: "Math.ceil", nodecl.}

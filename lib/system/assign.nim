@@ -223,6 +223,4 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
   var oldBranch = selectBranch(oldDiscVal, L, a)
   var newBranch = selectBranch(newDiscVal, L, a)
   if newBranch != oldBranch and oldDiscVal != 0:
-    raise newException(EInvalidField, 
-                       "assignment to discriminant changes object branch")
-
+    sysFatal(EInvalidField, "assignment to discriminant changes object branch")
