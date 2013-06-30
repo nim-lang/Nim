@@ -1,6 +1,6 @@
 discard """
   file: "tsubrange2.nim"
-  outputsub: "value 50 out of range [EOutOfRange]"
+  outputsub: "value out of range: 50 [EOutOfRange]"
   exitcode: "1"
 """
 
