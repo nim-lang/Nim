@@ -450,7 +450,7 @@ proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
 proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
   ## zero extends a smaller integer type to ``int64``. This treats `x` as
   ## unsigned.
-proc ze64*(x: int): int64 {.magic: "ZeIToI64", noDecl, noSideEffect.}
+proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
   ## zero extends a smaller integer type to ``int64``. This treats `x` as
   ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
   ## (This is the case on 64 bit processors.)
@@ -909,7 +909,7 @@ var programResult* {.exportc: "nim_program_result".}: int
   ## prematurelly using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", noDecl, noReturn.}
+  magic: "Exit", importc: "exit", header: "<stdlib.h>", noReturn.}
   ## Stops the program immediately with an exit code.
   ##
   ## Before stopping the program the "quit procedures" are called in the
@@ -1064,7 +1064,8 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
 
-proc addQuitProc*(QuitProc: proc() {.noconv.}) {.importc: "atexit", nodecl.}
+proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>".}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
   ## registers another quit procedure. Up to 30 procedures can be
   ## registered. They are executed on a last-in, first-out basis
@@ -1104,13 +1105,15 @@ when not defined(nimrodVM):
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: Pointer, size: int) {.importc: "memcpy", noDecl.}
+  proc copyMem*(dest, source: Pointer, size: int) {.
+    importc: "memcpy", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: Pointer, size: int) {.importc: "memmove", noDecl.}
+  proc moveMem*(dest, source: Pointer, size: int) {.
+    importc: "memmove", header: "<string.h>".}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may overlap, ``moveMem`` handles this case appropriately
@@ -1124,61 +1127,62 @@ when not defined(nimrodVM):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
-  proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
-    ## allocates a new memory block with at least ``size`` bytes. The
-    ## block has to be freed with ``realloc(block, 0)`` or
-    ## ``dealloc(block)``. The block is not initialized, so reading
-    ## from it before writing to it is undefined behaviour!
-    ## The allocated memory belongs to its allocating thread!
-    ## Use `allocShared` to allocate from a shared heap.
-  proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
-    ## allocates a new memory block with at least ``size`` bytes. The
-    ## block has to be freed with ``realloc(block, 0)`` or
-    ## ``dealloc(block)``. The block is initialized with all bytes
-    ## containing zero, so it is somewhat safer than ``alloc``.
-    ## The allocated memory belongs to its allocating thread!
-    ## Use `allocShared0` to allocate from a shared heap.
-  proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
-    ## grows or shrinks a given memory block. If p is **nil** then a new
-    ## memory block is returned. In either way the block has at least
-    ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
-    ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
-    ## be freed with ``dealloc``.
-    ## The allocated memory belongs to its allocating thread!
-    ## Use `reallocShared` to reallocate from a shared heap.
-  proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
-    ## frees the memory allocated with ``alloc``, ``alloc0`` or
-    ## ``realloc``. This procedure is dangerous! If one forgets to
-    ## free the memory a leak occurs; if one tries to access freed
-    ## memory (or just freeing it twice!) a core dump may happen
-    ## or other memory may be corrupted. 
-    ## The freed memory must belong to its allocating thread!
-    ## Use `deallocShared` to deallocate from a shared heap.
+  when hostOs != "standalone":
+    proc alloc*(size: int): pointer {.noconv, rtl, tags: [].}
+      ## allocates a new memory block with at least ``size`` bytes. The
+      ## block has to be freed with ``realloc(block, 0)`` or
+      ## ``dealloc(block)``. The block is not initialized, so reading
+      ## from it before writing to it is undefined behaviour!
+      ## The allocated memory belongs to its allocating thread!
+      ## Use `allocShared` to allocate from a shared heap.
+    proc alloc0*(size: int): pointer {.noconv, rtl, tags: [].}
+      ## allocates a new memory block with at least ``size`` bytes. The
+      ## block has to be freed with ``realloc(block, 0)`` or
+      ## ``dealloc(block)``. The block is initialized with all bytes
+      ## containing zero, so it is somewhat safer than ``alloc``.
+      ## The allocated memory belongs to its allocating thread!
+      ## Use `allocShared0` to allocate from a shared heap.
+    proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl, tags: [].}
+      ## grows or shrinks a given memory block. If p is **nil** then a new
+      ## memory block is returned. In either way the block has at least
+      ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+      ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
+      ## be freed with ``dealloc``.
+      ## The allocated memory belongs to its allocating thread!
+      ## Use `reallocShared` to reallocate from a shared heap.
+    proc dealloc*(p: Pointer) {.noconv, rtl, tags: [].}
+      ## frees the memory allocated with ``alloc``, ``alloc0`` or
+      ## ``realloc``. This procedure is dangerous! If one forgets to
+      ## free the memory a leak occurs; if one tries to access freed
+      ## memory (or just freeing it twice!) a core dump may happen
+      ## or other memory may be corrupted. 
+      ## The freed memory must belong to its allocating thread!
+      ## Use `deallocShared` to deallocate from a shared heap.
 
-  proc allocShared*(size: int): pointer {.noconv, rtl.}
-    ## allocates a new memory block on the shared heap with at
-    ## least ``size`` bytes. The block has to be freed with
-    ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
-    ## is not initialized, so reading from it before writing to it is 
-    ## undefined behaviour!
-  proc allocShared0*(size: int): pointer {.noconv, rtl.}
-    ## allocates a new memory block on the shared heap with at 
-    ## least ``size`` bytes. The block has to be freed with
-    ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
-    ## The block is initialized with all bytes
-    ## containing zero, so it is somewhat safer than ``allocShared``.
-  proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
-    ## grows or shrinks a given memory block on the heap. If p is **nil**
-    ## then a new memory block is returned. In either way the block has at least
-    ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
-    ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
-    ## block has to be freed with ``deallocShared``.
-  proc deallocShared*(p: Pointer) {.noconv, rtl.}
-    ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
-    ## ``reallocShared``. This procedure is dangerous! If one forgets to
-    ## free the memory a leak occurs; if one tries to access freed
-    ## memory (or just freeing it twice!) a core dump may happen
-    ## or other memory may be corrupted.
+    proc allocShared*(size: int): pointer {.noconv, rtl.}
+      ## allocates a new memory block on the shared heap with at
+      ## least ``size`` bytes. The block has to be freed with
+      ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
+      ## is not initialized, so reading from it before writing to it is 
+      ## undefined behaviour!
+    proc allocShared0*(size: int): pointer {.noconv, rtl.}
+      ## allocates a new memory block on the shared heap with at 
+      ## least ``size`` bytes. The block has to be freed with
+      ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
+      ## The block is initialized with all bytes
+      ## containing zero, so it is somewhat safer than ``allocShared``.
+    proc reallocShared*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
+      ## grows or shrinks a given memory block on the heap. If p is **nil**
+      ## then a new memory block is returned. In either way the block has at least
+      ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
+      ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
+      ## block has to be freed with ``deallocShared``.
+    proc deallocShared*(p: Pointer) {.noconv, rtl.}
+      ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
+      ## ``reallocShared``. This procedure is dangerous! If one forgets to
+      ## free the memory a leak occurs; if one tries to access freed
+      ## memory (or just freeing it twice!) a core dump may happen
+      ## or other memory may be corrupted.
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
@@ -1201,7 +1205,7 @@ proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
-  when not defined(JS):
+  when not defined(JS) and hostOS != "standalone":
     proc `$` *(x: uint64): string {.noSideEffect.}
       ## The stingify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
@@ -1254,7 +1258,7 @@ const
 
 # GC interface:
 
-when not defined(nimrodVM):
+when not defined(nimrodVM) and hostOS != "standalone":
   proc getOccupiedMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process and hold data.
 
@@ -1632,7 +1636,7 @@ when false:
 
 # ----------------- GC interface ---------------------------------------------
 
-when not defined(nimrodVM):
+when not defined(nimrodVM) and hostOS != "standalone":
   proc GC_disable*() {.rtl, inl.}
     ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
     ## reactivate the GC. Note that in most circumstances one should only disable
@@ -1668,17 +1672,17 @@ when not defined(nimrodVM):
     ## returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
     
-proc GC_ref*[T](x: ref T) {.magic: "GCref".}
-proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
-proc GC_ref*(x: string) {.magic: "GCref".}
-  ## marks the object `x` as referenced, so that it will not be freed until
-  ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
-  ## n calls to `GC_unref` are needed to unmark `x`. 
-  
-proc GC_unref*[T](x: ref T) {.magic: "GCunref".}
-proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
-proc GC_unref*(x: string) {.magic: "GCunref".}
-  ## see the documentation of `GC_ref`.
+  proc GC_ref*[T](x: ref T) {.magic: "GCref".}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
+  proc GC_ref*(x: string) {.magic: "GCref".}
+    ## marks the object `x` as referenced, so that it will not be freed until
+    ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
+    ## n calls to `GC_unref` are needed to unmark `x`. 
+    
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref".}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
+  proc GC_unref*(x: string) {.magic: "GCunref".}
+    ## see the documentation of `GC_ref`.
 
 template accumulateResult*(iter: expr) =
   ## helps to convert an iterator to a proc.
@@ -1741,15 +1745,7 @@ type
     filename*: cstring  ## filename of the proc that is currently executing
     len*: int           ## length of the inspectable slots
 
-when not defined(JS):
-  {.push stack_trace:off, profiler:off.}
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
-    var i = 0
-    while y[i] != '\0':
-      add(x, y[i])
-      inc(i)
-  {.pop.}
-else:
+when defined(JS):
   proc add*(x: var string, y: cstring) {.noStackFrame.} =
     asm """
       var len = `x`[0].length-1;
@@ -1759,8 +1755,16 @@ else:
       }
       `x`[0][len] = 0
     """
-
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
+
+elif hostOS != "standalone":
+  {.push stack_trace:off, profiler:off.}
+  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+    var i = 0
+    while y[i] != '\0':
+      add(x, y[i])
+      inc(i)
+  {.pop.}
 
 proc echo*[T](x: varargs[T, `$`]) {.magic: "Echo", tags: [FWriteIO].}
   ## special built-in that takes a variable number of arguments. Each argument
@@ -1786,6 +1790,29 @@ template newException*(exceptn: typeDesc, message: string): expr =
   e.msg = message
   e
 
+when hostOS == "standalone":
+  include panicoverride
+
+when not defined(sysFatal):
+  template sysFatal(exceptn: typeDesc, message: string) =
+    when hostOS == "standalone":
+      panic(message)
+    else:
+      var e: ref exceptn
+      new(e)
+      e.msg = message
+      raise e
+
+  template sysFatal(exceptn: typeDesc, message, arg: string) =
+    when hostOS == "standalone":
+      rawoutput(message)
+      panic(arg)
+    else:
+      var e: ref exceptn
+      new(e)
+      e.msg = message & arg
+      raise e
+
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
@@ -1793,7 +1820,7 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
 when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
-  when not defined(NimrodVM):
+  when not defined(NimrodVM) and hostOS != "standalone":
     proc initGC()
     when not defined(boehmgc) and not defined(useMalloc):
       proc initAllocator() {.inline.}
@@ -1839,200 +1866,203 @@ when not defined(JS): #and not defined(NimrodVM):
       proc endbStep()
 
   # ----------------- IO Part ------------------------------------------------
-  type
-    CFile {.importc: "FILE", nodecl, final, incompletestruct.} = object
-    TFile* = ptr CFile ## The type representing a file handle.
+  when hostOS != "standalone":
+    type
+      CFile {.importc: "FILE", header: "<stdio.h>", 
+              final, incompletestruct.} = object
+      TFile* = ptr CFile ## The type representing a file handle.
 
-    TFileMode* = enum           ## The file mode when opening a file.
-      fmRead,                   ## Open the file for read access only.
-      fmWrite,                  ## Open the file for write access only.
-      fmReadWrite,              ## Open the file for read and write access.
-                                ## If the file does not exist, it will be
-                                ## created.
-      fmReadWriteExisting,      ## Open the file for read and write access.
-                                ## If the file does not exist, it will not be
-                                ## created.
-      fmAppend                  ## Open the file for writing only; append data
-                                ## at the end.
+      TFileMode* = enum           ## The file mode when opening a file.
+        fmRead,                   ## Open the file for read access only.
+        fmWrite,                  ## Open the file for write access only.
+        fmReadWrite,              ## Open the file for read and write access.
+                                  ## If the file does not exist, it will be
+                                  ## created.
+        fmReadWriteExisting,      ## Open the file for read and write access.
+                                  ## If the file does not exist, it will not be
+                                  ## created.
+        fmAppend                  ## Open the file for writing only; append data
+                                  ## at the end.
 
-    TFileHandle* = cint ## type that represents an OS file handle; this is
-                        ## useful for low-level file access
+      TFileHandle* = cint ## type that represents an OS file handle; this is
+                          ## useful for low-level file access
 
-  # text file handling:
-  var
-    stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
-    stdout* {.importc: "stdout", noDecl.}: TFile ## The standard output stream.
-    stderr* {.importc: "stderr", noDecl.}: TFile
-      ## The standard error stream.
+    # text file handling:
+    var
+      stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
+      stdout* {.importc: "stdout", noDecl.}: TFile ## The standard output stream.
+      stderr* {.importc: "stderr", noDecl.}: TFile
+        ## The standard error stream.
+        ##
+        ## Note: In my opinion, this should not be used -- the concept of a
+        ## separate error stream is a design flaw of UNIX. A separate *message
+        ## stream* is a good idea, but since it is named ``stderr`` there are few
+        ## programs out there that distinguish properly between ``stdout`` and
+        ## ``stderr``. So, that's what you get if you don't name your variables
+        ## appropriately. It also annoys people if redirection
+        ## via ``>output.txt`` does not work because the program writes
+        ## to ``stderr``.
+
+    proc Open*(f: var TFile, filename: string,
+               mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
+      ## Opens a file named `filename` with given `mode`.
       ##
-      ## Note: In my opinion, this should not be used -- the concept of a
-      ## separate error stream is a design flaw of UNIX. A separate *message
-      ## stream* is a good idea, but since it is named ``stderr`` there are few
-      ## programs out there that distinguish properly between ``stdout`` and
-      ## ``stderr``. So, that's what you get if you don't name your variables
-      ## appropriately. It also annoys people if redirection
-      ## via ``>output.txt`` does not work because the program writes
-      ## to ``stderr``.
+      ## Default mode is readonly. Returns true iff the file could be opened.
+      ## This throws no exception if the file could not be opened.
 
-  proc Open*(f: var TFile, filename: string,
-             mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
-    ## Opens a file named `filename` with given `mode`.
-    ##
-    ## Default mode is readonly. Returns true iff the file could be opened.
-    ## This throws no exception if the file could not be opened.
+    proc Open*(f: var TFile, filehandle: TFileHandle,
+               mode: TFileMode = fmRead): Bool {.tags: [].}
+      ## Creates a ``TFile`` from a `filehandle` with given `mode`.
+      ##
+      ## Default mode is readonly. Returns true iff the file could be opened.
+      
+    proc Open*(filename: string,
+               mode: TFileMode = fmRead, bufSize: int = -1): TFile = 
+      ## Opens a file named `filename` with given `mode`.
+      ##
+      ## Default mode is readonly. Raises an ``IO`` exception if the file
+      ## could not be opened.
+      if not open(result, filename, mode, bufSize):
+        sysFatal(EIO, "cannot open: ", filename)
 
-  proc Open*(f: var TFile, filehandle: TFileHandle,
-             mode: TFileMode = fmRead): Bool {.tags: [].}
-    ## Creates a ``TFile`` from a `filehandle` with given `mode`.
-    ##
-    ## Default mode is readonly. Returns true iff the file could be opened.
+    proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool {.
+      tags: [].}
+      ## reopens the file `f` with given `filename` and `mode`. This 
+      ## is often used to redirect the `stdin`, `stdout` or `stderr`
+      ## file variables.
+      ##
+      ## Default mode is readonly. Returns true iff the file could be reopened.
+
+    proc Close*(f: TFile) {.importc: "fclose", header: "<stdio.h>", tags: [].}
+      ## Closes the file.
+
+    proc EndOfFile*(f: TFile): Bool {.tags: [].}
+      ## Returns true iff `f` is at the end.
+      
+    proc readChar*(f: TFile): char {.
+      importc: "fgetc", header: "<stdio.h>", tags: [FReadIO].}
+      ## Reads a single character from the stream `f`.
+    proc FlushFile*(f: TFile) {.
+      importc: "fflush", header: "<stdio.h>", tags: [FWriteIO].}
+      ## Flushes `f`'s buffer.
+
+    proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
+      ## Reads all data from the stream `file`. Raises an IO exception
+      ## in case of an error
     
-  proc Open*(filename: string,
-             mode: TFileMode = fmRead, bufSize: int = -1): TFile = 
-    ## Opens a file named `filename` with given `mode`.
-    ##
-    ## Default mode is readonly. Raises an ``IO`` exception if the file
-    ## could not be opened.
-    if not open(result, filename, mode, bufSize):
-      raise newException(EIO, "cannot open: " & filename)
+    proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
+      ## Opens a file named `filename` for reading. Then calls `readAll`
+      ## and closes the file afterwards. Returns the string. 
+      ## Raises an IO exception in case of an error.
 
-  proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool {.
-    tags: [].}
-    ## reopens the file `f` with given `filename` and `mode`. This 
-    ## is often used to redirect the `stdin`, `stdout` or `stderr`
-    ## file variables.
-    ##
-    ## Default mode is readonly. Returns true iff the file could be reopened.
+    proc writeFile*(filename, content: string) {.tags: [FWriteIO].}
+      ## Opens a file named `filename` for writing. Then writes the
+      ## `content` completely to the file and closes the file afterwards.
+      ## Raises an IO exception in case of an error.
 
-  proc Close*(f: TFile) {.importc: "fclose", nodecl, tags: [].}
-    ## Closes the file.
+    proc write*(f: TFile, r: float) {.tags: [FWriteIO].}
+    proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
+    proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
+    proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
+    proc write*(f: TFile, s: string) {.tags: [FWriteIO].}
+    proc write*(f: TFile, b: Bool) {.tags: [FWriteIO].}
+    proc write*(f: TFile, c: char) {.tags: [FWriteIO].}
+    proc write*(f: TFile, c: cstring) {.tags: [FWriteIO].}
+    proc write*(f: TFile, a: varargs[string, `$`]) {.tags: [FWriteIO].}
+      ## Writes a value to the file `f`. May throw an IO exception.
 
-  proc EndOfFile*(f: TFile): Bool {.tags: [].}
-    ## Returns true iff `f` is at the end.
+    proc readLine*(f: TFile): TaintedString  {.tags: [FReadIO].}
+      ## reads a line of text from the file `f`. May throw an IO exception.
+      ## A line of text may be delimited by ``CR``, ``LF`` or
+      ## ``CRLF``. The newline character(s) are not part of the returned string.
     
-  proc readChar*(f: TFile): char {.importc: "fgetc", nodecl, tags: [FReadIO].}
-    ## Reads a single character from the stream `f`.
-  proc FlushFile*(f: TFile) {.importc: "fflush", noDecl, tags: [FWriteIO].}
-    ## Flushes `f`'s buffer.
+    proc readLine*(f: TFile, line: var TaintedString): bool {.tags: [FReadIO].}
+      ## reads a line of text from the file `f` into `line`. `line` must not be
+      ## ``nil``! May throw an IO exception.
+      ## A line of text may be delimited by ``CR``, ``LF`` or
+      ## ``CRLF``. The newline character(s) are not part of the returned string.
+      ## Returns ``false`` if the end of the file has been reached, ``true``
+      ## otherwise. If ``false`` is returned `line` contains no new data.
 
-  proc readAll*(file: TFile): TaintedString {.tags: [FReadIO].}
-    ## Reads all data from the stream `file`. Raises an IO exception
-    ## in case of an error
-  
-  proc readFile*(filename: string): TaintedString {.tags: [FReadIO].}
-    ## Opens a file named `filename` for reading. Then calls `readAll`
-    ## and closes the file afterwards. Returns the string. 
-    ## Raises an IO exception in case of an error.
+    proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, tags: [FWriteIO].}
+      ## writes the values `x` to `f` and then writes "\n".
+      ## May throw an IO exception.
 
-  proc writeFile*(filename, content: string) {.tags: [FWriteIO].}
-    ## Opens a file named `filename` for writing. Then writes the
-    ## `content` completely to the file and closes the file afterwards.
-    ## Raises an IO exception in case of an error.
+    proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
+      ## retrieves the file size (in bytes) of `f`.
 
-  proc write*(f: TFile, r: float) {.tags: [FWriteIO].}
-  proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
-  proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
-  proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
-  proc write*(f: TFile, s: string) {.tags: [FWriteIO].}
-  proc write*(f: TFile, b: Bool) {.tags: [FWriteIO].}
-  proc write*(f: TFile, c: char) {.tags: [FWriteIO].}
-  proc write*(f: TFile, c: cstring) {.tags: [FWriteIO].}
-  proc write*(f: TFile, a: varargs[string, `$`]) {.tags: [FWriteIO].}
-    ## Writes a value to the file `f`. May throw an IO exception.
+    proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
+      tags: [FReadIO].}
+      ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+      ## the actual number of bytes that have been read which may be less than
+      ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc readLine*(f: TFile): TaintedString  {.tags: [FReadIO].}
-    ## reads a line of text from the file `f`. May throw an IO exception.
-    ## A line of text may be delimited by ``CR``, ``LF`` or
-    ## ``CRLF``. The newline character(s) are not part of the returned string.
-  
-  proc readLine*(f: TFile, line: var TaintedString): bool {.tags: [FReadIO].}
-    ## reads a line of text from the file `f` into `line`. `line` must not be
-    ## ``nil``! May throw an IO exception.
-    ## A line of text may be delimited by ``CR``, ``LF`` or
-    ## ``CRLF``. The newline character(s) are not part of the returned string.
-    ## Returns ``false`` if the end of the file has been reached, ``true``
-    ## otherwise. If ``false`` is returned `line` contains no new data.
+    proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int {.
+      tags: [FReadIO].}
+      ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+      ## the actual number of bytes that have been read which may be less than
+      ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc writeln*[Ty](f: TFile, x: varargs[Ty, `$`]) {.inline, tags: [FWriteIO].}
-    ## writes the values `x` to `f` and then writes "\n".
-    ## May throw an IO exception.
+    proc readBuffer*(f: TFile, buffer: pointer, len: int): int {.tags: [FReadIO].}
+      ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
+      ## the actual number of bytes that have been read which may be less than
+      ## `len` (if not as many bytes are remaining), but not greater.
 
-  proc getFileSize*(f: TFile): int64 {.tags: [FReadIO].}
-    ## retrieves the file size (in bytes) of `f`.
+    proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int {.
+      tags: [FWriteIO].}
+      ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+      ## the number of actual written bytes, which may be less than `len` in case
+      ## of an error.
 
-  proc ReadBytes*(f: TFile, a: var openarray[int8], start, len: int): int {.
-    tags: [FReadIO].}
-    ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-    ## the actual number of bytes that have been read which may be less than
-    ## `len` (if not as many bytes are remaining), but not greater.
+    proc writeChars*(f: tFile, a: openarray[char], start, len: int): int {.
+      tags: [FWriteIO].}
+      ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+      ## the number of actual written bytes, which may be less than `len` in case
+      ## of an error.
 
-  proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int {.
-    tags: [FReadIO].}
-    ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-    ## the actual number of bytes that have been read which may be less than
-    ## `len` (if not as many bytes are remaining), but not greater.
+    proc writeBuffer*(f: TFile, buffer: pointer, len: int): int {.
+      tags: [FWriteIO].}
+      ## writes the bytes of buffer pointed to by the parameter `buffer` to the
+      ## file `f`. Returns the number of actual written bytes, which may be less
+      ## than `len` in case of an error.
 
-  proc readBuffer*(f: TFile, buffer: pointer, len: int): int {.tags: [FReadIO].}
-    ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
-    ## the actual number of bytes that have been read which may be less than
-    ## `len` (if not as many bytes are remaining), but not greater.
+    proc setFilePos*(f: TFile, pos: int64)
+      ## sets the position of the file pointer that is used for read/write
+      ## operations. The file's first byte has the index zero.
 
-  proc writeBytes*(f: TFile, a: openarray[int8], start, len: int): int {.
-    tags: [FWriteIO].}
-    ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-    ## the number of actual written bytes, which may be less than `len` in case
-    ## of an error.
+    proc getFilePos*(f: TFile): int64
+      ## retrieves the current position of the file pointer that is used to
+      ## read from the file `f`. The file's first byte has the index zero.
 
-  proc writeChars*(f: tFile, a: openarray[char], start, len: int): int {.
-    tags: [FWriteIO].}
-    ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-    ## the number of actual written bytes, which may be less than `len` in case
-    ## of an error.
+    proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
+                                              header: "<stdio.h>"}
+      ## returns the OS file handle of the file ``f``. This is only useful for
+      ## platform specific programming.
 
-  proc writeBuffer*(f: TFile, buffer: pointer, len: int): int {.
-    tags: [FWriteIO].}
-    ## writes the bytes of buffer pointed to by the parameter `buffer` to the
-    ## file `f`. Returns the number of actual written bytes, which may be less
-    ## than `len` in case of an error.
+    proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
+      ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
+      ## of length ``len``.
+      newSeq(result, len)
+      for i in 0..len-1: result[i] = $a[i]
 
-  proc setFilePos*(f: TFile, pos: int64)
-    ## sets the position of the file pointer that is used for read/write
-    ## operations. The file's first byte has the index zero.
-
-  proc getFilePos*(f: TFile): int64
-    ## retrieves the current position of the file pointer that is used to
-    ## read from the file `f`. The file's first byte has the index zero.
-
-  proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
-                                            header: "<stdio.h>"}
-    ## returns the OS file handle of the file ``f``. This is only useful for
-    ## platform specific programming.
-
-  proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
-    ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
-    ## of length ``len``.
-    newSeq(result, len)
-    for i in 0..len-1: result[i] = $a[i]
-
-  proc cstringArrayToSeq*(a: cstringArray): seq[string] =
-    ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
-    ## terminated by ``nil``.
-    var L = 0
-    while a[L] != nil: inc(L)
-    result = cstringArrayToSeq(a, L)
+    proc cstringArrayToSeq*(a: cstringArray): seq[string] =
+      ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
+      ## terminated by ``nil``.
+      var L = 0
+      while a[L] != nil: inc(L)
+      result = cstringArrayToSeq(a, L)
 
   # -------------------------------------------------------------------------
 
-  when not defined(NimrodVM):
+  when not defined(NimrodVM) and hostOS != "standalone":
     proc allocCStringArray*(a: openArray[string]): cstringArray =
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
+      let x = cast[ptr array[0..20_000, string]](a)
       for i in 0 .. a.high:
-        # XXX get rid of this string copy here:
-        var x = a[i]
-        result[i] = cast[cstring](alloc0(x.len+1))
-        copyMem(result[i], addr(x[0]), x.len)
+        result[i] = cast[cstring](alloc0(x[i].len+1))
+        copyMem(result[i], addr(x[i][0]), x[i].len)
 
     proc deallocCStringArray*(a: cstringArray) =
       ## frees a NULL terminated cstringArray.
@@ -2042,6 +2072,7 @@ when not defined(JS): #and not defined(NimrodVM):
         inc(i)
       dealloc(a)
 
+  when not defined(NimrodVM):
     proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable.}
       ## atomic increment of `memLoc`. Returns the value after the operation.
     
@@ -2064,7 +2095,7 @@ when not defined(JS): #and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/syslocks"
     include "system/threads"
-  elif not defined(nogc) and not defined(NimrodVM):
+  elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     initGC()
 
@@ -2089,6 +2120,7 @@ when not defined(JS): #and not defined(NimrodVM):
       include "system/embedded"
     else:
       include "system/excpt"
+    include "system/chcks"
       
     # we cannot compile this with stack tracing on
     # as it would recurse endlessly!
@@ -2124,29 +2156,30 @@ when not defined(JS): #and not defined(NimrodVM):
       else:
         result = n.sons[n.len]
 
-    include "system/mmdisp"
+    when hostOS != "standalone": include "system/mmdisp"
     {.push stack_trace: off, profiler:off.}
     when hostOS != "standalone": include "system/sysstr"
     {.pop.}
 
-    include "system/sysio"
+    when hostOS != "standalone": include "system/sysio"
     when hasThreadSupport:
-      include "system/channels"
+      when hostOS != "standalone": include "system/channels"
   else:
     include "system/sysio"
 
-  iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
-    ## Iterate over any line in the file named `filename`.
-    ## If the file does not exist `EIO` is raised.
-    var f = open(filename)
-    var res = TaintedString(newStringOfCap(80))
-    while f.readLine(res): yield res
-    close(f)
+  when hostOS != "standalone":
+    iterator lines*(filename: string): TaintedString {.tags: [FReadIO].} =
+      ## Iterate over any line in the file named `filename`.
+      ## If the file does not exist `EIO` is raised.
+      var f = open(filename)
+      var res = TaintedString(newStringOfCap(80))
+      while f.readLine(res): yield res
+      close(f)
 
-  iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
-    ## Iterate over any line in the file `f`.
-    var res = TaintedString(newStringOfCap(80))
-    while f.readLine(res): yield TaintedString(res)
+    iterator lines*(f: TFile): TaintedString {.tags: [FReadIO].} =
+      ## Iterate over any line in the file `f`.
+      var res = TaintedString(newStringOfCap(80))
+      while f.readLine(res): yield res
 
   when hostOS != "standalone" and not defined(NimrodVM):
     include "system/assign"
@@ -2263,10 +2296,6 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 template `-|`*(b, s: expr): expr =
   (if b >= 0: b else: s.len + b)
 
-proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
-  ## slice operation for strings. Negative indexes are supported.
-  result = s.substr(x.a-|s, x.b-|s)
-
 template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # make room for additional elements or cut:
   var slen = s.len
@@ -2283,21 +2312,26 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]  
 
-proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
-  ## slice assignment for strings. Negative indexes are supported. If
-  ## ``b.len`` is not exactly the number of elements that are referred to
-  ## by `x`, a `splice`:idx: is performed:
-  ##
-  ## .. code-block:: nimrod
-  ##   var s = "abcdef"
-  ##   s[1 .. -2] = "xyz"
-  ##   assert s == "axyzf"
-  var a = x.a-|s
-  var L = x.b-|s - a + 1
-  if L == b.len:
-    for i in 0 .. <L: s[i+a] = b[i]
-  else:
-    spliceImpl(s, a, L, b)
+when hostOS != "standalone":
+  proc `[]`*(s: string, x: TSlice[int]): string {.inline.} =
+    ## slice operation for strings. Negative indexes are supported.
+    result = s.substr(x.a-|s, x.b-|s)
+
+  proc `[]=`*(s: var string, x: TSlice[int], b: string) = 
+    ## slice assignment for strings. Negative indexes are supported. If
+    ## ``b.len`` is not exactly the number of elements that are referred to
+    ## by `x`, a `splice`:idx: is performed:
+    ##
+    ## .. code-block:: nimrod
+    ##   var s = "abcdef"
+    ##   s[1 .. -2] = "xyz"
+    ##   assert s == "axyzf"
+    var a = x.a-|s
+    var L = x.b-|s - a + 1
+    if L == b.len:
+      for i in 0 .. <L: s[i+a] = b[i]
+    else:
+      spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[int]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2313,7 +2347,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[int], b: openArray[T]) =
   if L == b.len:
     for i in 0 .. <L: a[i+x.a] = b[i]
   else:
-    raise newException(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "differing lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: TSlice[Idx]): seq[T] =
   ## slice operation for arrays. Negative indexes are **not** supported
@@ -2335,7 +2369,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: TSlice[Idx], b: openArray[T]) =
       a[j] = b[i]
       inc(j)
   else:
-    raise newException(EOutOfRange, "differing lengths for slice assignment")
+    sysFatal(EOutOfRange, "differing lengths for slice assignment")
 
 proc `[]`*[T](s: seq[T], x: TSlice[int]): seq[T] = 
   ## slice operation for sequences. Negative indexes are supported.
@@ -2448,7 +2482,7 @@ template CurrentSourcePath*: string = InstantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
 
 proc raiseAssert*(msg: string) {.noinline.} =
-  raise newException(EAssertionFailed, msg)
+  sysFatal(EAssertionFailed, msg)
 
 when true:
   proc hiddenRaiseAssert(msg: string) {.raises: [], tags: [].} =
@@ -2532,18 +2566,19 @@ template eval*(blk: stmt): stmt =
   macro payload: stmt {.gensym.} = blk
   payload()
 
-proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
-  ## inserts `item` into `x` at position `i`.
-  var xl = x.len
-  setLen(x, xl+item.len)
-  var j = xl-1
-  while j >= i:
-    shallowCopy(x[j+item.len], x[j])
-    dec(j)
-  j = 0
-  while j < item.len:
-    x[j+i] = item[j]
-    inc(j)
+when hostOS != "standalone":
+  proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
+    ## inserts `item` into `x` at position `i`.
+    var xl = x.len
+    setLen(x, xl+item.len)
+    var j = xl-1
+    while j >= i:
+      shallowCopy(x[j+item.len], x[j])
+      dec(j)
+    j = 0
+    while j < item.len:
+      x[j+i] = item[j]
+      inc(j)
 
 proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
@@ -2558,18 +2593,19 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
 when defined(initDebugger):
   initDebugger()
 
-# XXX: make these the default (or implement the NilObject optimization)
-proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
-  if x == nil: x = @[y]
-  else: x.add(y)
+when hostOS != "standalone":
+  # XXX: make these the default (or implement the NilObject optimization)
+  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+    if x == nil: x = @[y]
+    else: x.add(y)
 
-proc safeAdd*(x: var string, y: char) =
-  if x == nil: x = ""
-  x.add(y)
+  proc safeAdd*(x: var string, y: char) =
+    if x == nil: x = ""
+    x.add(y)
 
-proc safeAdd*(x: var string, y: string) =
-  if x == nil: x = y
-  else: x.add(y)
+  proc safeAdd*(x: var string, y: string) =
+    if x == nil: x = y
+    else: x.add(y)
 
 proc locals*(): TObject {.magic: "Locals", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables

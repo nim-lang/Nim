@@ -249,7 +249,7 @@ proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
-    raise newException(ENoExceptionToReraise, "no exception to reraise")
+    sysFatal(ENoExceptionToReraise, "no exception to reraise")
   else:
     raiseExceptionAux(currException)
 
@@ -324,63 +324,3 @@ proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
   type TSignalHandler = proc (sig: cint) {.noconv.}
   c_signal(SIGINT, cast[TSignalHandler](hook))
-
-proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn, noinline.} =
-  raise newException(EOutOfRange, "value " & $val & " out of range")
-
-proc raiseIndexError() {.compilerproc, noreturn, noinline.} =
-  raise newException(EInvalidIndex, "index out of bounds")
-
-proc raiseFieldError(f: string) {.compilerproc, noreturn, noinline.} =
-  raise newException(EInvalidField, f & " is not accessible")
-
-proc chckIndx(i, a, b: int): int =
-  if i >= a and i <= b:
-    return i
-  else:
-    raiseIndexError()
-
-proc chckRange(i, a, b: int): int =
-  if i >= a and i <= b:
-    return i
-  else:
-    raiseRangeError(i)
-
-proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
-  if i >= a and i <= b:
-    return i
-  else:
-    raiseRangeError(i)
-
-proc chckRangeF(x, a, b: float): float =
-  if x >= a and x <= b:
-    return x
-  else:
-    raise newException(EOutOfRange, "value " & $x & " out of range")
-
-proc chckNil(p: pointer) =
-  if p == nil:
-    raise newException(EInvalidValue, "attempt to write to a nil address")
-    #c_raise(SIGSEGV)
-
-proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
-  # checks if obj is of type subclass:
-  var x = obj
-  if x == subclass: return # optimized fast path
-  while x != subclass:
-    if x == nil:
-      raise newException(EInvalidObjectConversion, "invalid object conversion")
-    x = x.base
-
-proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
-  if a != b:
-    raise newException(EInvalidObjectAssignment, "invalid object assignment")
-
-proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
-  # checks if obj is of type subclass:
-  var x = obj
-  if x == subclass: return true # optimized fast path
-  while x != subclass:
-    if x == nil: return false
-    x = x.base
-  return true

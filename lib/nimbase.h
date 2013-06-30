@@ -27,9 +27,7 @@ __clang__
 #  define _GNU_SOURCE 1
 #endif
 
-#if !defined(__TINYC__)
-#  include  <math.h>
-#else
+#if defined(__TINYC__)
 /*#  define __GNUC__ 3
 #  define GCC_MAJOR 4
 #  define __GNUC_MINOR__ 4
@@ -56,10 +54,6 @@ __clang__
 #  define N_INLINE(rettype, name) __inline rettype name
 #else /* others are less picky: */
 #  define N_INLINE(rettype, name) rettype __inline name
-#endif
-
-#if defined(__POCC__) || defined(_MSC_VER)
-#  define HAVE_LRINT 1
 #endif
 
 #if defined(__POCC__)
@@ -157,110 +151,8 @@ __clang__
 
 /* ----------------------------------------------------------------------- */
 
-/* from float_cast.h: */
-
-/*
-** Copyright (C) 2001 Erik de Castro Lopo <erikd AT mega-nerd DOT com>
-**
-** Permission to use, copy, modify, distribute, and sell this file for any
-** purpose is hereby granted without fee, provided that the above copyright
-** and this permission notice appear in all copies.  No representations are
-** made about the suitability of this software for any purpose.  It is
-** provided "as is" without express or implied warranty.
-*/
-
-/* Version 1.1 */
-
-
-/*============================================================================
-**  On Intel Pentium processors (especially PIII and probably P4), converting
-**  from float to int is very slow. To meet the C specs, the code produced by
-**  most C compilers targeting Pentium needs to change the FPU rounding mode
-**  before the float to int conversion is performed.
-**
-**  Changing the FPU rounding mode causes the FPU pipeline to be flushed. It
-**  is this flushing of the pipeline which is so slow.
-**
-**  Fortunately the ISO C99 specifications define the functions lrint, lrintf,
-**  llrint and llrintf which fix this problem as a side effect.
-*/
-
-/*
-**	The C99 prototypes for lrint and lrintf are as follows:
-**
-**		long int lrintf (float x);
-**		long int lrint  (double x);
-*/
-
-#if defined(__LCC__) || (defined(__GNUC__))
-/* Linux' GCC does not seem to have these. Why? */
-#  define HAVE_LRINT
-#  define HAVE_LRINTF
-#endif
-
-#if defined(HAVE_LRINT) && defined(HAVE_LRINTF)
-
-/*  These defines enable functionality introduced with the 1999 ISO C
-**  standard. They must be defined before the inclusion of math.h to
-**  engage them. If optimisation is enabled, these functions will be
-**  inlined. With optimisation switched off, you have to link in the
-**  maths library using -lm.
-*/
-
-#  define  _ISOC9X_SOURCE  1
-#  define  _ISOC99_SOURCE  1
-#  define  __USE_ISOC9X  1
-#  define  __USE_ISOC99  1
-
-#elif (defined(WIN32) || defined(_WIN32) || defined(__WIN32__)) \
-   && !defined(__BORLANDC__) && !defined(__POCC__) && !defined(_M_X64)
-
-/*  Win32 doesn't seem to have these functions.
-**  Therefore implement inline versions of these functions here.
-*/
-static N_INLINE(long int, lrint)(double flt) {
-  long int intgr;
-  _asm {
-    fld flt
-    fistp intgr
-  };
-  return intgr;
-}
-
-static N_INLINE(long int, lrintf)(float flt) {
-  long int intgr;
-  _asm {
-    fld flt
-    fistp intgr
-  };
-  return intgr;
-}
-
-#else
-
-#  ifndef lrint
-#    define  lrint(dbl)   ((long int)(dbl))
-#  endif
-#  ifndef lrintf
-#    define  lrintf(flt)  ((long int)(flt))
-#  endif
-
-#endif /* defined(HAVE_LRINT) && defined(HAVE_LRINTF) */
-
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <limits.h>
 #include <stddef.h>
-#include <signal.h>
-#include <setjmp.h>
-
-/*
-#ifndef INF
-static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
-#  define INF (*(double*) nimInf)
-#endif */
 
 /* C99 compiler? */
 #if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))
