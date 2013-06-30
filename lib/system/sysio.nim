@@ -46,8 +46,8 @@ proc write(f: TFile, c: cstring) = fputs(c, f)
 {.pop.}
 
 var
-  IOFBF {.importc: "_IOFBF", header: "<stdio.h>".}: cint
-  IONBF {.importc: "_IONBF", header: "<stdio.h>".}: cint
+  IOFBF {.importc: "_IOFBF", nodecl.}: cint
+  IONBF {.importc: "_IONBF", nodecl.}: cint
 
 const
   buf_size = 4000
