@@ -34,9 +34,9 @@ type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = array[0..31, int]
 
 var
-  c_stdin {.importc: "stdin", header: "<stdio.h>".}: C_TextFileStar
-  c_stdout {.importc: "stdout", header: "<stdio.h>".}: C_TextFileStar
-  c_stderr {.importc: "stderr", header: "<stdio.h>".}: C_TextFileStar
+  c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
+  c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
+  c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
 
 # constants faked as variables:
 when not defined(SIGINT):
@@ -109,8 +109,9 @@ proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
 proc c_realloc(p: pointer, newsize: int): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
-when not defined(errno):
-  var errno {.importc, header: "<errno.h>".}: cint ## error variable
+when hostOS != "standalone":
+  when not defined(errno):
+    var errno {.importc, header: "<errno.h>".}: cint ## error variable
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
 proc c_remove(filename: CString): cint {.
