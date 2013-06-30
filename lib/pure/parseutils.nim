@@ -215,6 +215,17 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   else:
     number = int(res)
 
+proc tenToThePowerOf(b: int): biggestFloat =
+  var b = b
+  var a = 10.0
+  result = 1.0
+  while true:
+    if (b and 1) == 1:
+      result *= a
+    b = b shr 1
+    if b == 0: break
+    a *= a
+
 proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int {.
   rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
@@ -280,9 +291,7 @@ proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int {.
       inc(i)
       while s[i] == '_': inc(i)
   # Calculate Exponent
-  var hd = 1.0
-  # XXX: this loop is horrible for large exponents:
-  for j in 1..exponent: hd = hd * 10.0
+  let hd = tenToThePowerOf(exponent)
   if esign > 0.0: number = number * hd
   else:           number = number / hd
   # evaluate sign
