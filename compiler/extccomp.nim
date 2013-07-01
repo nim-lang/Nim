@@ -603,14 +603,14 @@ proc CallCCompiler*(projectfile: string) =
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
       else: buildGui = ""
       var exefile: string
-      if options.outFile.len > 0: 
-        exefile = options.outFile
-      elif optGenDynLib in gGlobalOptions:
+      if optGenDynLib in gGlobalOptions:
         exefile = platform.os[targetOS].dllFrmt % splitFile(projectFile).name
         buildDll = cc[c].buildDll
       else:
         exefile = splitFile(projectFile).name & platform.os[targetOS].exeExt
         buildDll = ""
+      if options.outFile.len > 0: 
+        exefile = options.outFile
       if not noAbsolutePaths():
         exefile = joinPath(splitFile(projectFile).dir, exefile)
       exefile = quoteIfContainsWhite(exefile)
