@@ -23,6 +23,9 @@ proc getPA(): PA =
   b = not false
   return nil
 
+# bug #501
+proc f(): int = result
+
 var
   global: int
 

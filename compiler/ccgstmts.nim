@@ -873,4 +873,4 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 proc genStmts(p: BProc, t: PNode) = 
   var a: TLoc
   expr(p, t, a)
-  InternalAssert a.k in {locNone, locTemp}
+  InternalAssert a.k in {locNone, locTemp, locLocalVar}
