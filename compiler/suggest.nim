@@ -11,7 +11,7 @@
 
 # included from sigmatch.nim
 
-import algorithm
+import algorithm, sequtils
 
 const
   sep = '\t'
@@ -71,7 +71,10 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
-    for item in items(scope.symbols):
+    var entries = sequtils.toSeq(items(scope.symbols))
+    sort(entries) do (a,b: PSym) -> int:
+      return cmp(a.name.s, b.name.s)
+    for item in entries:
       let it {.inject.} = item
       if cond:
         SuggestWriteln(SymToStr(it, isLocal = isLocal, section))
