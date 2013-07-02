@@ -750,8 +750,11 @@ proc semEcho(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 1)
   for i in countup(1, sonsLen(n) - 1): 
     var arg = semExprWithType(c, n.sons[i])
-    n.sons[i] = semExpr(c, buildStringify(c, arg))
-  
+    n.sons[i] = semExprWithType(c, buildStringify(c, arg))
+    let t = n.sons[i].typ
+    if t == nil or t.skipTypes(abstractInst).kind != tyString:  
+      LocalError(n.info, errGenerated,
+                 "implicitly invoked '$' does not return string")
   let t = n.sons[0].typ
   if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   result = n
