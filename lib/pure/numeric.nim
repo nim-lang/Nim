@@ -86,28 +86,3 @@ proc brent*(xmin,xmax:float ,function:TOneVarFunction, rootx,rooty:var float,tol
   rootx=b
   rooty=fb  
   return true
-
-
-
-when isMainModule:
-  var rootx=0.0
-  var rooty=0.0
-  var err=0.0
-  
-  var cnt=0
-  proc myf(x:float):float=
-    inc cnt
-    echo ($cnt & " : " & $x)
-    return x*x-200
-
-  
-  var suc=brent(-10000.0,0.2,myf,rootx,rooty,1.0e-3)
-  
-  
-  echo suc
-  echo rootx
-  echo rooty
-  
-  
-  
-  discard(readline(stdin))
