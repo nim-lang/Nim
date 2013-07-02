@@ -169,6 +169,7 @@ examples/cross_calculator/android/tags
 /testresults.json
 /tests/caas/SymbolProcRun.*/
 /tests/caas/absurd_nesting
+/tests/caas/completion_dot_syntax_main
 /tests/caas/forward_declarations
 /tests/caas/idetools_api
 /tests/caas/imported
