@@ -53,11 +53,9 @@ proc `[]=` *(p:var TPoly;idx:int,v:float)=
   ## p[2] set the quadric term, p[3] the cubic etc.
   ## If index is out of range for the coefficients,
   ## the polynomial grows to the smallest needed degree.
-  if idx<0: 
-    return
+  assert(idx>=0)
 
   if idx>p.degree:  #polynomial must grow
-    echo("GROW!")
     var oldlen=p.cofs.len
     p.cofs.setLen(idx+1)
     for q in oldlen.. <high(p.cofs):
@@ -66,7 +64,7 @@ proc `[]=` *(p:var TPoly;idx:int,v:float)=
   p.cofs[idx]=v
     
       
-iterator coefficients*(p:TPoly):float=
+iterator items*(p:TPoly):float=
   ## Iterates through the corfficients of the polynomial.
   var i=p.degree
   while i>=0:
@@ -94,7 +92,7 @@ proc `$` *(p:TPoly):string =
   var first=true #might skip + sign if first coefficient
   
   for idx in countdown(p.degree,0):
-    var a=p[idx]
+    let a=p[idx]
     
     if a==0.0:
       continue
@@ -104,7 +102,7 @@ proc `$` *(p:TPoly):string =
     first=false
 
     if a!=1.0 or idx==0:
-      result=result & formatFloat(a,ffDefault,0)
+      result.add(formatFloat(a,ffDefault,0))
     if idx>=2:
       result.add("x^" & $idx)
     elif idx==1:
@@ -248,7 +246,7 @@ proc `-` *(p1:TPoly,p2:TPoly):TPoly=
   result.clean # drop zero coefficients in remainder
     
 proc `/`*(p:TPoly,f:float):TPoly=
-  ## Divides polynomial `p`with real number `f`
+  ## Divides polynomial `p` with a real number `f`
   result=initPolyFromDegree(p.degree)
   for i in 0..high(p.cofs):
     result[i]=p.cofs[i]/f
@@ -260,7 +258,7 @@ proc `/` *(p,q:TPoly):TPoly=
   p.divMod(q,result,dummy)  
 
 proc `mod` *(p,q:TPoly):TPoly=
-  ## computes the polynomial modulo operation,
+  ## Computes the polynomial modulo operation,
   ## that is the remainder op `p`/`q`
   var dummy:TPoly
   p.divMod(q,dummy,result)
@@ -277,9 +275,7 @@ proc normalize*(p:var TPoly)=
 proc solveQuadric*(a,b,c:float;zerotol=0.0):seq[float]=
   ## Solves the quadric equation `ax^2+bx+c`, with a possible
   ## tolerance `zerotol` to find roots of curves just 'touching'
-  ## the x axis. Returns sequence with 1 or 2 solutions, or nil
-  ## in case of no real solution.
-  result=nil
+  ## the x axis. Returns sequence with 0,1 or 2 solutions.
   
   var p,q,d:float
   
@@ -288,7 +284,7 @@ proc solveQuadric*(a,b,c:float;zerotol=0.0):seq[float]=
   if p==inf or p==neginf: #linear equation..
     var linrt= -c/b
     if linrt==inf or linrt==neginf: #constant only
-      return nil
+      return @[]
     return @[linrt]
   
   q=c/a
@@ -298,12 +294,12 @@ proc solveQuadric*(a,b,c:float;zerotol=0.0):seq[float]=
     #check for inside zerotol range for neg. roots
     var err=a*p*p-b*p+c #evaluate error at parabola center axis
     if(err<=zerotol): return @[-p]
-    return nil
+    return @[]
   else:
     var sr=sqrt(d)
     result= @[-sr-p,sr-p]
 
-proc getRangeForRoots(p:TPoly;xmin,xmax:var float)=
+proc getRangeForRoots(p:TPoly):tuple[xmin,xmax:float]=
   ## helper function for `roots` function
   ## quickly computes a range, guaranteed to contain
   ## all the real roots of the polynomial
@@ -319,36 +315,36 @@ proc getRangeForRoots(p:TPoly;xmin,xmax:var float)=
       bound2=bound2+c
       
   bound2=max(1.0,bound2)
-  xmax=min(bound1,bound2)
-  xmin= -xmax
+  result.xmax=min(bound1,bound2)
+  result.xmin= -result.xmax
 
 
-proc addRoot(p:TPoly,res:var seq[float],xp0,xp1,tol,zerotol,mergetol:float)=
+proc addRoot(p:TPoly,res:var seq[float],xp0,xp1,tol,zerotol,mergetol:float,maxiter:int)=
   ## helper function for `roots` function
   ## try to do a numeric search for a single root in range xp0-xp1,
   ## adding it to `res` (allocating `res` if nil)
-  var rootx,rooty:float
-  
-  if brent(xp0,xp1, proc(x:float):float=p.eval(x),rootx,rooty,tol):
-    if res==nil: res= @[rootx]
-    elif rootx>=res[high(res)]+mergetol: res.add(rootx) #dont add equal roots.
+  var br=brent(xp0,xp1, proc(x:float):float=p.eval(x),tol)
+  if br.success:
+    if res.len==0 or br.rootx>=res[high(res)]+mergetol: #dont add equal roots.
+      res.add(br.rootx) 
   else:
     #this might be a 'touching' case, check function value against
     #zero tolerance
-    if abs(rooty)<=zerotol:
-      if res==nil: res= @[rootx]
-      elif rootx>=res[high(res)]+mergetol: res.add(rootx) #dont add equal roots.
+    if abs(br.rooty)<=zerotol:
+      if res.len==0 or br.rootx>=res[high(res)]+mergetol: #dont add equal roots.
+        res.add(br.rootx) 
 
 
-proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12):seq[float]=
+proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq[float]=
   ## Computes the real roots of the polynomial `p`
   ## `tol` is the tolerance use to break searching for each root when reached.
   ## `zerotol` is the tolerance, which is 'close enough' to zero to be considered a root
   ## and is used to find roots for curves that only 'touch' the x-axis.
   ## `mergetol` is the tolerance, of which two x-values are considered beeing the same root.
-  ## Returns a sequence with the solutions, or nil in case of no solutions.
+  ## `maxiter` can be used to limit the number of iterations for each root.
+  ## Returns a (possibly empty) sorted sequence with the solutions.
   var deg=p.degree
-  var res:seq[float]=nil
+  result= @[]
   if deg<=0:
     return nil
   elif p.degree==1:
@@ -361,13 +357,13 @@ proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12):seq[float]=
   else:
     # degree >=3 , find min/max points of polynomial with recursive
     # derivative and do a numerical search for root between each min/max
-    var x0,x1:float
-    p.getRangeForRoots(x0,x1)
+    var range=p.getRangeForRoots()
     var minmax=p.derivative.roots(tol,zerotol,mergetol)
     if minmax!=nil: #ie. we have minimas/maximas in this function
       for x in minmax.items:
-        addRoot(p,res,x0,x,tol,zerotol,mergetol)
-        x0=x
-    addRoot(p,res,x0,x1,tol,zerotol,mergetol)
+        addRoot(p,result,range.xmin,x,tol,zerotol,mergetol,maxiter)
+        range.xmin=x
+    addRoot(p,result,range.xmin,range.xmax,tol,zerotol,mergetol,maxiter)
 
-  return res
+    
+  
