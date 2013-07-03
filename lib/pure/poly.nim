@@ -12,6 +12,8 @@ import strutils
 import numeric
 
 
+import times  #todo: remove
+
 type 
     TPoly* = object
         cofs:seq[float]
@@ -169,28 +171,25 @@ proc divMod*(p,d:TPoly;q,r:var TPoly)=
     power=p.degree-d.degree
     ratio:float
   
+  r.cofs = p.cofs #initial remainder=numerator
   if power<0: #denominator is larger than numerator
-    q=initPoly(0.0) #division result is 0
-    r=p #remainder is numerator
-    return 
+    q.cofs= @ [0.0] #quotinent is 0.0
+    return # keep remainder as numerator
       
-  q=initPolyFromDegree(power)
-  r=p
+  q.cofs=newSeq[float](power+1)
   
   for i in countdown(pdeg,ddeg):
-    ratio=r[i]/d[ddeg]
+    ratio=r.cofs[i]/d.cofs[ddeg]
     
-    q[i-ddeg]=ratio
-    r[i]=0.0
+    q.cofs[i-ddeg]=ratio
+    r.cofs[i]=0.0
     
     for j in countup(0,<ddeg):
         var idx=i-ddeg+j
-        r[idx] = r[idx] - d[j]*ratio
+        r.cofs[idx] = r.cofs[idx] - d.cofs[j]*ratio
      
   r.clean # drop zero coefficients in remainder
- 
 
-        
 proc `+` *(p1:TPoly,p2:TPoly):TPoly=
   ## Adds two polynomials
   var n=max(p1.cofs.len,p2.cofs.len)
@@ -337,7 +336,7 @@ proc addRoot(p:TPoly,res:var seq[float],xp0,xp1,tol,zerotol,mergetol:float,maxit
 
 proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq[float]=
   ## Computes the real roots of the polynomial `p`
-  ## `tol` is the tolerance use to break searching for each root when reached.
+  ## `tol` is the tolerance used to break searching for each root when reached.
   ## `zerotol` is the tolerance, which is 'close enough' to zero to be considered a root
   ## and is used to find roots for curves that only 'touch' the x-axis.
   ## `mergetol` is the tolerance, of which two x-values are considered beeing the same root.
@@ -365,5 +364,4 @@ proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq
         range.xmin=x
     addRoot(p,result,range.xmin,range.xmax,tol,zerotol,mergetol,maxiter)
 
-    
   
