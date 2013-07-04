@@ -2,8 +2,12 @@
 import 
   x
 
-const 
-  libX11* = "libX11.so"
+when defined(macosx):
+    const 
+      libX11* = "libX11.dylib"
+else:
+    const 
+      libX11* = "libX11.so"
 
 type
   cunsigned* = cint
