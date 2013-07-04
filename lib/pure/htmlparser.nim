@@ -460,7 +460,7 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
       if cmpIgnoreCase(x.elemName, result.tag) == 0: 
         next(x)
       else:
-        echo "5; expected: ", result.htmltag, " ", x.elemName 
+        #echo "5; expected: ", result.htmltag, " ", x.elemName 
         errors.add(expected(x, result))
         # do not skip it here!
       break
