@@ -2,13 +2,19 @@
 import 
   x, xlib
 
-when defined(macosx):
-    const 
-      libXrender* = "libXrender.dylib"
+when defined(pkclibx):
+    {.passl: gorge("pkg-config xrender --libs").}
+    {.pragma: libxrender, cdecl, importc.}
 else:
-    const 
-      libXrender* = "libXrender.so"
+    when defined(macosx):
+        const 
+          libXrender* = "libXrender.dylib"
+    else:
+        const 
+          libXrender* = "libXrender.so"
 
+    
+    {.pragma: libxrender, dynlib: libXrender, cdecl, importc.}
 #const 
 #  libXrender* = "libXrender.so"
 
@@ -194,45 +200,39 @@ type
 
 
 proc XRenderQueryExtension*(dpy: PDisplay, event_basep: ptr int32, 
-                            error_basep: ptr int32): TBool{.cdecl, 
-    dynlib: libXrender, importc.}
+                            error_basep: ptr int32): TBool{.libxrender.}
 proc XRenderQueryVersion*(dpy: PDisplay, major_versionp: ptr int32, 
-                          minor_versionp: ptr int32): TStatus{.cdecl, 
-    dynlib: libXrender, importc.}
-proc XRenderQueryFormats*(dpy: PDisplay): TStatus{.cdecl, dynlib: libXrender, 
-    importc.}
+                          minor_versionp: ptr int32): TStatus{.libxrender.}
+proc XRenderQueryFormats*(dpy: PDisplay): TStatus{.libxrender.}
 proc XRenderFindVisualFormat*(dpy: PDisplay, visual: PVisual): PXRenderPictFormat{.
-    cdecl, dynlib: libXrender, importc.}
+    libxrender.}
 proc XRenderFindFormat*(dpy: PDisplay, mask: int32, 
                         `template`: PXRenderPictFormat, count: int32): PXRenderPictFormat{.
-    cdecl, dynlib: libXrender, importc.}
+    libxrender.}
 proc XRenderCreatePicture*(dpy: PDisplay, drawable: TDrawable, 
                            format: PXRenderPictFormat, valuemask: int32, 
                            attributes: PXRenderPictureAttributes): TPicture{.
-    cdecl, dynlib: libXrender, importc.}
+    libxrender.}
 proc XRenderChangePicture*(dpy: PDisplay, picture: TPicture, valuemask: int32, 
-                           attributes: PXRenderPictureAttributes){.cdecl, 
-    dynlib: libXrender, importc.}
-proc XRenderFreePicture*(dpy: PDisplay, picture: TPicture){.cdecl, 
-    dynlib: libXrender, importc.}
+                           attributes: PXRenderPictureAttributes){.libxrender.}
+proc XRenderFreePicture*(dpy: PDisplay, picture: TPicture){.libxrender.}
 proc XRenderComposite*(dpy: PDisplay, op: int32, src: TPicture, mask: TPicture, 
                        dst: TPicture, src_x: int32, src_y: int32, mask_x: int32, 
                        mask_y: int32, dst_x: int32, dst_y: int32, width: int32, 
-                       height: int32){.cdecl, dynlib: libXrender, importc.}
+                       height: int32){.libxrender.}
 proc XRenderCreateGlyphSet*(dpy: PDisplay, format: PXRenderPictFormat): TGlyphSet{.
-    cdecl, dynlib: libXrender, importc.}
+    libxrender.}
 proc XRenderReferenceGlyphSet*(dpy: PDisplay, existing: TGlyphSet): TGlyphSet{.
-    cdecl, dynlib: libXrender, importc.}
-proc XRenderFreeGlyphSet*(dpy: PDisplay, glyphset: TGlyphSet){.cdecl, 
-    dynlib: libXrender, importc.}
+    libxrender.}
+proc XRenderFreeGlyphSet*(dpy: PDisplay, glyphset: TGlyphSet){.libxrender.}
 proc XRenderAddGlyphs*(dpy: PDisplay, glyphset: TGlyphSet, gids: PGlyph, 
                        glyphs: PXGlyphInfo, nglyphs: int32, images: cstring, 
-                       nbyte_images: int32){.cdecl, dynlib: libXrender, importc.}
+                       nbyte_images: int32){.libxrender.}
 proc XRenderFreeGlyphs*(dpy: PDisplay, glyphset: TGlyphSet, gids: PGlyph, 
-                        nglyphs: int32){.cdecl, dynlib: libXrender, importc.}
+                        nglyphs: int32){.libxrender.}
 proc XRenderCompositeString8*(dpy: PDisplay, op: int32, src: TPicture, 
                               dst: TPicture, maskFormat: PXRenderPictFormat, 
                               glyphset: TGlyphSet, xSrc: int32, ySrc: int32, 
                               xDst: int32, yDst: int32, str: cstring, 
-                              nchar: int32){.cdecl, dynlib: libXrender, importc.}
+                              nchar: int32){.libxrender.}
 # implementation
