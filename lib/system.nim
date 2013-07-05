@@ -2392,8 +2392,10 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
     spliceImpl(s, a, L, b)
   
 proc slurp*(filename: string): string {.magic: "Slurp".}
+  ## This is an alias for ``staticRead``.
+
 proc staticRead*(filename: string): string {.magic: "Slurp".}
-  ## compile-time ``readFile`` proc for easy `resource`:idx: embedding:
+  ## Compile-time ``readFile`` proc for easy `resource`:idx: embedding:
   ##
   ## .. code-block:: nimrod
   ##     const myResource = staticRead"mydatafile.bin"
@@ -2402,9 +2404,11 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
 
 proc gorge*(command: string, input = ""): string {.
   magic: "StaticExec".} = nil
+  ## This is an alias for ``staticExec``.
+
 proc staticExec*(command: string, input = ""): string {.
   magic: "StaticExec".} = nil
-  ## executes an external process at compile-time.
+  ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
   ##
@@ -2412,7 +2416,9 @@ proc staticExec*(command: string, input = ""): string {.
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") & 
   ##                       "\nCompiled on " & staticExec("uname -v")
   ##
-  ## ``gorge`` is an alias for ``staticExec``.
+  ## ``gorge`` is an alias for ``staticExec``. Note that you can use this proc
+  ## inside a pragma like `passC <nimrodc.html#passc-pragma>`_ or `passL
+  ## <nimrodc.html#passl-pragma>`_.
 
 proc `+=`*[T: TOrdinal](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
