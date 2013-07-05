@@ -23,8 +23,8 @@ type
   
   PXmlAttributes* = PStringTable ## an alias for a string to string mapping
   
-  TXmlNode {.pure, final, acyclic.} = object 
-    case k: TXmlNodeKind
+  TXmlNode* {.pure, final, acyclic.} = object 
+    case k*: TXmlNodeKind
     of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
