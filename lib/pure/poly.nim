@@ -16,13 +16,6 @@ type
         cofs:seq[float]
 
   
-proc initPolyFromDegree(n:int):TPoly=
-  ## internal usage only
-  ## caller must initialize coefficients of poly
-  ## and possibly  `clean` away zero exponents
-  var numcof=n+1   #num. coefficients is one more than degree
-  result.cofs=newSeq[float](numcof)
-  
 proc degree*(p:TPoly):int=
   ## Returns the degree of the polynomial,
   ## that is the number of coefficients-1
@@ -130,7 +123,7 @@ proc diff*(p:TPoly,x:float):float=
 proc integral*(p:TPoly):TPoly=
   ## Returns a new polynomial which is the indefinite
   ## integral of `p`. The constant term is set to 0.0
-  result=initPolyFromDegree(p.degree+1)
+  newSeq(result.cofs,p.cofs.len+1)
   result.cofs[0]=0.0  #constant arbitrary term, use 0.0
   for i in 1..high(result.cofs):
     result.cofs[i]=p.cofs[i-1]/float(i)
@@ -227,7 +220,7 @@ proc `*` *(p1:TPoly,p2:TPoly):TPoly=
 
 proc `*` *(p:TPoly,f:float):TPoly=
   ## Multiplies the polynomial `p` with a real number
-  result=initPolyFromDegree(p.degree)
+  newSeq(result.cofs,p.cofs.len)
   for i in 0..high(p.cofs):
     result[i]=p.cofs[i]*f
   result.clean
@@ -254,7 +247,7 @@ proc `-` *(p1:TPoly,p2:TPoly):TPoly=
     
 proc `/`*(p:TPoly,f:float):TPoly=
   ## Divides polynomial `p` with a real number `f`
-  result=initPolyFromDegree(p.degree)
+  newSeq(result.cofs,p.cofs.len)
   for i in 0..high(p.cofs):
     result[i]=p.cofs[i]/f
   result.clean
@@ -351,13 +344,12 @@ proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq
   ## `maxiter` can be used to limit the number of iterations for each root.
   ## Returns a (possibly empty) sorted sequence with the solutions.
   var deg=p.degree
-  result= @[]
-  if deg<=0:
-    return nil
-  elif p.degree==1:
+  if deg<=0: #constant only => no roots
+    return @[]
+  elif p.degree==1: #linear
     var linrt= -p.cofs[0]/p.cofs[1]
     if linrt==inf or linrt==neginf:
-      return nil #constant only => no roots
+      return @[] #constant only => no roots
     return @[linrt]
   elif p.degree==2:
     return solveQuadric(p.cofs[2],p.cofs[1],p.cofs[0],zerotol)
@@ -366,8 +358,10 @@ proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq
     # derivative and do a numerical search for root between each min/max
     var range=p.getRangeForRoots()
     var minmax=p.derivative.roots(tol,zerotol,mergetol)
+    result= @[]
     if minmax!=nil: #ie. we have minimas/maximas in this function
       for x in minmax.items:
         addRoot(p,result,range.xmin,x,tol,zerotol,mergetol,maxiter)
         range.xmin=x
     addRoot(p,result,range.xmin,range.xmax,tol,zerotol,mergetol,maxiter)
+
