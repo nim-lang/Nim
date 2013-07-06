@@ -119,7 +119,9 @@ separators!).
 
 The typical usage scenario for this option is to call it after the
 user has typed the dot character for `the object oriented call
-syntax <tut2.html#method-call-syntax>`_.
+syntax <tut2.html#method-call-syntax>`_. Idetools will try to return
+the suggestions sorted first by scope (from innermost to outermost)
+and then by item name.
 
 
 Invokation context
