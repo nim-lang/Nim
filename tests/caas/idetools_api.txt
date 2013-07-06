@@ -48,3 +48,7 @@ def\tskLabel\t$MODULE.findVowelPosition.loops\t\t
 # For some reason the use of the label with break displaces its position.
 > idetools --track:$TESTNIM,52,16 --def $SILENT
 def\tskLabel\t$MODULE.findVowelPosition.loops\t\t
+
+# Displaced macro usage by one character.
+> idetools --track:$TESTNIM,80,2 --def $SILENT
+def\tskMacro\t$MODULE.expect\tproc \(varargs\[expr\], stmt\): stmt\t

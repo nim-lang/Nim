@@ -1,4 +1,4 @@
-import unicode, sequtils
+import unicode, sequtils, macros
 
 proc test_enums() =
   var o: Tfile
@@ -53,3 +53,31 @@ proc findVowelPosition(text: string) =
   echo found
 
 findVowelPosition("Zerg") # should output 1, position of vowel.
+
+macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
+  ## Expect docstrings
+  let exp = callsite()
+  template expectBody(errorTypes, lineInfoLit: expr,
+                      body: stmt): PNimrodNode {.dirty.} =
+    try:
+      body
+      assert false
+    except errorTypes:
+      nil
+
+  var body = exp[exp.len - 1]
+
+  var errorTypes = newNimNode(nnkBracket)
+  for i in countup(1, exp.len - 2):
+    errorTypes.add(exp[i])
+
+  result = getAst(expectBody(errorTypes, exp.lineinfo, body))
+
+proc err =
+  raise newException(EArithmetic, "some exception")
+
+proc testMacro() =
+  expect(EArithmetic):
+    err()
+
+testMacro()
