@@ -13,7 +13,7 @@ else:
         const 
           libX11* = "libX11.so"
 
-    {.pragma: libx11, dynlib: libX11, importc.}
+    {.pragma: libx11, cdecl, dynlib: libX11, importc.}
 
 type
   cunsigned* = cint
