@@ -1,4 +1,4 @@
-import unicode, sequtils, macros
+import unicode, sequtils, macros, re
 
 proc test_enums() =
   var o: Tfile
@@ -81,3 +81,4 @@ proc testMacro() =
     err()
 
 testMacro()
+let notAModule = re"(\w+)=(.*)"
