@@ -295,6 +295,22 @@ posterior instances of the iterator.
         col 7: "iterates over any unicode character of the string `s`."
 
 
+skLabel
+-------
+
+| **Third column**: module + [n scope nesting] + name.
+| **Fourth column**: always the empty string.
+| **Docstring**: always the empty string.
+
+.. code-block:: nimrod
+    proc test(text: string) =
+      var found = -1
+      block loops:
+    --> col 2: $MODULE.test.loops
+        col 3: ""
+        col 7: ""
+
+
 skLet
 -----
 

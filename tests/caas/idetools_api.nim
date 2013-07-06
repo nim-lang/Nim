@@ -41,3 +41,15 @@ proc newLit(x: int): PLiteral = PLiteral(x: x)
 proc newPlus(a, b: PExpr): PPlusExpr = PPlusExpr(a: a, b: b)
 
 echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+
+proc findVowelPosition(text: string) =
+  var found = -1
+  block loops:
+    for i, letter in pairs(text):
+      for j in ['a', 'e', 'i', 'o', 'u']:
+        if letter == j:
+          found = i
+          break loops # leave both for-loops
+  echo found
+
+findVowelPosition("Zerg") # should output 1, position of vowel.
