@@ -11,9 +11,6 @@ import math
 import strutils
 import numeric
 
-
-import times  #todo: remove
-
 type 
     TPoly* = object
         cofs:seq[float]
@@ -141,11 +138,22 @@ proc integral*(p:TPoly):TPoly=
 
 proc integrate*(p:TPoly;xmin,xmax:float):float=
   ## Computes the definite integral of `p` between `xmin` and `xmax`
-  # TODO: this can be done faster using a modified horners method,
-  # see 'diff' function above.
-  var igr=p.integral
-  result=igr.eval(xmax)-igr.eval(xmin)
+  ## quickly using a modified version of Horners method
+  var
+    n=p.degree
+    s1=p[n]/float(n+1)
+    s2=s1
+    fac:float
 
+  dec n
+  while n>=0:
+    fac=p[n]/float(n+1)
+    s1 = s1*xmin+fac
+    s2 = s2*xmax+fac
+    dec n
+ 
+  result=s2*xmax-s1*xmin
+  
 proc initPoly*(cofs:varargs[float]):TPoly=
   ## Initializes a polynomial with given coefficients.
   ## The most significant coefficient is first, so to create x^2-2x+3:
@@ -258,7 +266,7 @@ proc `/` *(p,q:TPoly):TPoly=
 
 proc `mod` *(p,q:TPoly):TPoly=
   ## Computes the polynomial modulo operation,
-  ## that is the remainder op `p`/`q`
+  ## that is the remainder of `p`/`q`
   var dummy:TPoly
   p.divMod(q,dummy,result)
 
@@ -363,5 +371,3 @@ proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq
         addRoot(p,result,range.xmin,x,tol,zerotol,mergetol,maxiter)
         range.xmin=x
     addRoot(p,result,range.xmin,range.xmax,tol,zerotol,mergetol,maxiter)
-
-  
