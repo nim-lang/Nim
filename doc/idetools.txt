@@ -11,8 +11,8 @@
 Nimrod differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-``idetools`` command of `the compiler <nimrodc.html>`_, any IDE can
-query a ``.nim`` source file and obtain useful information like
+`idetools`:idx: command of `the compiler <nimrodc.html>`_, any IDE
+can query a ``.nim`` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
 This document will guide you through the available options. If you
@@ -162,12 +162,12 @@ clicks it and after a second or two the IDE displays where that
 symbol is defined. Such latencies would be terrible for features
 like symbol suggestion, plus why wait at all if we can avoid it?
 
-The idetools command can be run as a compiler service, where you
-first launch the compiler and it will stay online as a server,
-accepting queries in a telnet like fashion. The advantage of staying
-on is that for many queries the compiler can cache the results of
-the compilation, and subsequent queries should be fast in the
-millisecond range, thus being responsive enough for IDEs.
+The idetools command can be run as a compiler service (`caas`:idx:),
+where you first launch the compiler and it will stay online as a
+server, accepting queries in a telnet like fashion. The advantage
+of staying on is that for many queries the compiler can cache the
+results of the compilation, and subsequent queries should be fast
+in the millisecond range, thus being responsive enough for IDEs.
 
 If you want to start the server using stdin/stdout as communication
 you need to type::
