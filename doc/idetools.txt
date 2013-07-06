@@ -326,6 +326,26 @@ skLet
         col 7: ""
 
 
+skMacro
+-------
+
+The fourth column will be the empty string if the macro is being
+defined, since at that point in the file the parser hasn't processed
+the full line yet. The signature will be returned complete in
+posterior instances of the macro.
+
+| **Third column**: module + [n scope nesting] + macro name.
+| **Fourth column**: signature of the macro including return type.
+| **Docstring**: docstring if available.
+
+.. code-block:: nimrod
+    proc testMacro() =
+      expect(EArithmetic):
+    --> col 2: idetools_api.expect
+        col 3: proc (varargs[expr], stmt): stmt
+        col 7: ""
+
+
 skMethod
 --------
 
