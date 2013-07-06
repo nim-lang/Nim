@@ -84,6 +84,8 @@ proc startNimrodSession(project, script: string, mode: TRunMode):
 
   if mode == SymbolProcRun:
     removeDir(nimcacheDir / result.nimcache)
+  else:
+    removeDir(nimcacheDir / "nimcache")
 
   if mode == CaasRun:
     result.nim = startProcess(NimrodBin, workingDir = dir,
