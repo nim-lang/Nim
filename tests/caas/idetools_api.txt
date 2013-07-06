@@ -52,3 +52,8 @@ def\tskLabel\t$MODULE.findVowelPosition.loops\t\t
 # Displaced macro usage by one character.
 > idetools --track:$TESTNIM,80,2 --def $SILENT
 def\tskMacro\t$MODULE.expect\tproc \(varargs\[expr\], stmt\): stmt\t
+
+# The syntax for extended raw string literals should not be returned as module
+# but as the proc re() inside the re module.
+> idetools --track:$TESTNIM,84,17 --def $SILENT
+!def\tskModule
