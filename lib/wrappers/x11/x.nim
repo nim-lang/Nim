@@ -47,6 +47,8 @@ type
   PKeyCode* = ptr TKeyCode
   TKeyCode* = cuchar
 
+proc `==`*(a, b: TAtom): bool {.borrow.} 
+
 const 
   None* = 0
   ParentRelative* = 1
