@@ -2,45 +2,7 @@ import osproc, streams, os, strutils, re
 
 ## Compiler as a service tester.
 ##
-## This test cases uses the txt files in the caas/ subdirectory.
-##
-## Each of the text files inside encodes a session with the compiler:
-##
-## The first line indicates the main project file.
-##
-## Lines starting with '>' indicate a command to be sent to the compiler and
-## the lines following a command include checks for expected or forbidden
-## output (! for forbidden).
-##
-## If a line starts with '#' it will be ignored completely, so you can use that
-## for comments.
-##
-## All the tests are run both in ProcRun (each command creates a separate
-## process) and CaasRun (first command starts up a server and it is reused for
-## the rest) modes. Since some cases are specific to either ProcRun or CaasRun
-## modes, you can prefix a line with the mode and the line will be processed
-## only in that mode.
-##
-## The rest of the line is treated as a regular expression, so be careful
-## escaping metacharacters like parenthesis. Before the line is processed as a
-## regular expression, some basic variables are searched for and replaced in
-## the tests. The variables which will be replaced are:
-##
-## - $TESTNIM: filename specified in the first line of the script.
-## - $MODULE: like $TESTNIM but without extension, useful for expected output.
-##
-## You can optionally pass parameters at the command line to modify the
-## behaviour of the test suite. By default only tests which fail will be echoed
-## to stdout. If you want to see all the output pass the word "verbose" as a
-## parameter.
-##
-## If you don't want to run all the test case files, you can pass any substring
-## as a parameter. Only files matching the passed substring will be run. The
-## filtering doesn't use any globbing metacharacters, it's a plain match.
-##
-## Example to run only "*-compile*.txt" tests in verbose mode:
-##
-##   ./caasdriver verbose -compile
+## Please read docs/idetools.txt for information about this.
 
 
 type
