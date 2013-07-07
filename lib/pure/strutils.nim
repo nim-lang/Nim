@@ -440,16 +440,23 @@ proc repeatStr*(count: int, s: string): string {.noSideEffect,
   result = newStringOfCap(count*s.len)
   for i in 0..count-1: result.add(s)
 
-proc align*(s: string, count: int): string {.
+proc align*(s: string, count: int, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
-  ## Aligns a string `s` with spaces, so that is of length `count`. Spaces are
-  ## added before `s` resulting in right alignment. If ``s.len >= count``, no
-  ## spaces are added and `s` is returned unchanged. If you need to left align
-  ## a string use the repeatChar proc.
+  ## Aligns a string `s` with `padding`, so that is of length `count`.
+  ## `padding` characters (by default spaces) are added before `s` resulting in
+  ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to left align a string use the
+  ## ``repeatChar`` proc. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   assert align("abc", 4) == " abc"
+  ##   assert align("a", 0) == "a"
+  ##   assert align("1232", 6) == "  1232"
+  ##   assert align("1232", 6, '#') == "##1232"
   if s.len < count:
     result = newString(count)
     var spaces = count - s.len
-    for i in 0..spaces-1: result[i] = ' '
+    for i in 0..spaces-1: result[i] = padding
     for i in spaces..count-1: result[i] = s[i-spaces]
   else:
     result = s
@@ -1211,6 +1218,7 @@ when isMainModule:
   doAssert align("abc", 4) == " abc"
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
+  doAssert align("1232", 6, '#') == "##1232"
   echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
                    it goes""", 10, false)
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
