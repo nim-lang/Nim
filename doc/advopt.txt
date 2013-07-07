@@ -48,8 +48,8 @@ Advanced options:
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
   --debugger:on|off         turn Embedded Nimrod Debugger on|off
-  -t, --passc:OPTION        pass an option to the C compiler
-  -l, --passl:OPTION        pass an option to the linker
+  -t, --passC:OPTION        pass an option to the C compiler
+  -l, --passL:OPTION        pass an option to the linker
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
