@@ -17,8 +17,8 @@ ECHO %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
 #      linkCmd.add(" " & changeFileExt(f, "o"))
 #    end for
 
-ECHO %LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
-%LINKER% %LINK_FLAGS% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd
+ECHO %LINKER% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
+%LINKER% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
 
 #  end block
 
