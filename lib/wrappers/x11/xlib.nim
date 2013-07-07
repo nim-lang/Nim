@@ -694,7 +694,7 @@ type
     window*: TWindow
     message_type*: TAtom
     format*: cint
-    data*: array[0..19, char]
+    data*: array[0..4, clong]
 
   PXMappingEvent* = ptr TXMappingEvent
   TXMappingEvent*{.final.} = object 
@@ -765,6 +765,13 @@ type
                               #          32 : ( pad : array[0..23] of clong );
                               #          
   
+
+proc xclient*(e: PXEvent): PXClientMessageEvent =
+    ## Treats XEvent as XClientMessageEvent
+    return cast[PXClientMessageEvent](e)
+
+proc xclient*(e: var TXEvent): PXClientMessageEvent =
+    return xclient(PXEvent(e.addr))
 
 type 
   PXCharStruct* = ptr TXCharStruct

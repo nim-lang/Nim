@@ -10,6 +10,7 @@
 #    x.h
 #
 # Pointers to basic pascal types, inserted by h2pas conversion program.
+import unsigned
 
 const 
   X_PROTOCOL* = 11
@@ -47,7 +48,8 @@ type
   PKeyCode* = ptr TKeyCode
   TKeyCode* = cuchar
 
-proc `==`*(a, b: TAtom): bool {.borrow.} 
+proc `==`*(a, b: TAtom): bool =
+    return unsigned.`==`(a,b)
 
 const 
   None* = 0
