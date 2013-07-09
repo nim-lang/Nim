@@ -187,7 +187,8 @@ proc usefulFact(n: PNode): PNode =
     #   if a:
     #     ...
     # We make can easily replace 'a' by '2 < x' here:
-    result = usefulFact(n.sym.ast)
+    if n.sym.ast != nil:
+      result = usefulFact(n.sym.ast)
   elif n.kind == nkStmtListExpr:
     result = usefulFact(n.lastSon)
 
