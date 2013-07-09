@@ -7,8 +7,7 @@
 import 
   cairo, x, xlib, xrender
 
-when defined(pkclibcairo):
-    {.passl: gorge("pkg-config cairo --libs").}
+when defined(use_pkg_config) or defined(use_pkg_config_static):
     {.pragma: libcairo, cdecl.}
 else:
     when defined(windows): 
