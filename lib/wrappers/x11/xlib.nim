@@ -2,9 +2,12 @@
 import 
   x
 
-when defined(pkclibx):
+when defined(use_pkg_config) or defined(use_pkg_config_static):
     {.pragma: libx11, cdecl, importc.}
-    {.passl: gorge("pkg-config x11 --libs").}
+    when defined(use_pkg_config_static):
+        {.passl: gorge("pkg-config x11 --static --libs").}
+    else:
+        {.passl: gorge("pkg-config x11 --libs").}
 else:
     when defined(macosx):
         const 
@@ -694,7 +697,8 @@ type
     window*: TWindow
     message_type*: TAtom
     format*: cint
-    data*: array[0..4, clong]
+    data*: array[0..4, clong] # using clong here to be 32/64-bit dependent
+        # as the original C union
 
   PXMappingEvent* = ptr TXMappingEvent
   TXMappingEvent*{.final.} = object 
