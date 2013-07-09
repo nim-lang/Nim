@@ -2,9 +2,12 @@
 import 
   x, xlib
 
-when defined(pkclibx):
-    {.passl: gorge("pkg-config xrender --libs").}
+when defined(use_pkg_config) or defined(use_pkg_config_static):
     {.pragma: libxrender, cdecl, importc.}
+    when defined(use_pkg_config):
+        {.passl: gorge("pkg-config xrender --libs").}
+    else:
+        {.passl: gorge("pkg-config xrender --static --libs").}
 else:
     when defined(macosx):
         const 
