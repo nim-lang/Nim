@@ -27,8 +27,24 @@ proc toLower(c: char): char {.inline.} =
 
 proc parseHex*(s: string, number: var int, start = 0): int {.
   rtl, extern: "npuParseHex", noSideEffect.}  = 
-  ## parses a hexadecimal number and stores its value in ``number``. Returns
-  ## the number of the parsed characters or 0 in case of an error.
+  ## Parses a hexadecimal number and stores its value in ``number``.
+  ##
+  ## Returns the number of the parsed characters or 0 in case of an error. This
+  ## proc is sensitive to the already existing value of ``number`` and will
+  ## likely not do what you want unless you make sure ``number`` is zero. You
+  ## can use this feature to *chain* calls, though the result int will quickly
+  ## overflow. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var value = 0
+  ##   discard parseHex("0x38", value)
+  ##   assert value == 56
+  ##   discard parseHex("0x34", value)
+  ##   assert value == 56 * 256 + 52
+  ##   value = -1
+  ##   discard parseHex("0x38", value)
+  ##   assert value == -200
+  ##
   var i = start
   var foundDigit = false
   if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
@@ -383,6 +399,14 @@ iterator interpolatedFragments*(s: string): tuple[kind: TInterpolatedKind,
 when isMainModule:
   for k, v in interpolatedFragments("$test{}  $this is ${an{  example}}  "):
     echo "(", k, ", \"", v, "\")"
+  var value = 0
+  discard parseHex("0x38", value)
+  assert value == 56
+  discard parseHex("0x34", value)
+  assert value == 56 * 256 + 52
+  value = -1
+  discard parseHex("0x38", value)
+  assert value == -200
 
 
 {.pop.}
