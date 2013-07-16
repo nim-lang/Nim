@@ -832,8 +832,13 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FReadIO, FWriteIO].} =
-  ## Copies a file from `source` to `dest`. If this fails,
-  ## `EOS` is raised.
+  ## Copies a file from `source` to `dest`.
+  ##
+  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## copy the source file's attributes into dest. On other platforms you need
+  ## to use getFilePermissions and setFilePermissions to copy them by hand,
+  ## otherwise `dest` will inherit the default permissions of a newly created
+  ## file for the user.
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
