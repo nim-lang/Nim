@@ -201,7 +201,10 @@ proc find*(s: string, pattern: TRegEx, start = 0): int =
   return rawMatches[0]
   
 iterator findAll*(s: string, pattern: TRegEx, start = 0): string = 
-  ## yields all matching *substrings* of `s` that match `pattern`.
+  ## Yields all matching *substrings* of `s` that match `pattern`.
+  ##
+  ## Note that since this is an iterator you should not modify the string you
+  ## are iterating over: bad things could happen.
   var i = int32(start)
   var rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
   while true:
