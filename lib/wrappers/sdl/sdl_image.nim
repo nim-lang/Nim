@@ -170,8 +170,10 @@ const
   IMG_INIT_TIF* = 0x00000004
   IMG_INIT_WEBP* = 0x00000008
 
-proc IMG_Init*(flags: cint): int {.cdecl, importc: "IMG_Init".}
-proc IMG_Quit*() {.cdecl, importc: "IMG_Quit".}
+proc IMG_Init*(flags: cint): int {.cdecl, importc: "IMG_Init",
+                                  dynlib: ImageLibName.}
+proc IMG_Quit*() {.cdecl, importc: "IMG_Quit",
+                                  dynlib: ImageLibName.}
 proc IMG_LoadTyped_RW*(src: PRWops, freesrc: cint, theType: cstring): PSurface{.
     cdecl, importc: "IMG_LoadTyped_RW", dynlib: ImageLibName.}
   # Convenience functions 
