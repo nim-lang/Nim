@@ -118,8 +118,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyInt
-  of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter,
-     tyProxy: 
+  of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter, tyProxy: 
     result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
@@ -826,17 +825,18 @@ proc genSwap(p: PProc, n: PNode) =
   gen(p, n.sons[1], a)
   gen(p, n.sons[2], b)
   inc(p.unique)
-  let tmp = ropef("Tmp$1", [toRope(p.unique)])
-  case mapType(skipTypes(n.sons[1].typ, abstractVar))
-  of etyBaseIndex: 
+  var tmp = ropef("Tmp$1", [toRope(p.unique)])
+  if mapType(skipTypes(n.sons[1].typ, abstractVar)) == etyBaseIndex:
     inc(p.unique)
     let tmp2 = ropef("Tmp$1", [toRope(p.unique)])
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex: 
       internalError(n.info, "genSwap")
-    appf(p.body, "var $1 = $2; $2 = $3; $3 = $1;$n", [tmp, a.address, b.address])
-    appf(p.body, "var $1 = $2; $2 = $3; $3 = $1", [tmp2, a.res, b.res])
-  else:
-    appf(p.body, "var $1 = $2; $2 = $3; $3 = $1", [tmp, a.res, b.res])
+    appf(p.body, "var $1 = $2; $2 = $3; $3 = $1;$n" |
+                 "local $1 = $2; $2 = $3; $3 = $1;$n", [
+                 tmp, a.address, b.address])
+    tmp = tmp2
+  appf(p.body, "var $1 = $2; $2 = $3; $3 = $1" | 
+               "local $1 = $2; $2 = $3; $3 = $1", [tmp, a.res, b.res])
 
 proc getFieldPosition(f: PNode): int =
   case f.kind
@@ -1664,25 +1664,27 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   app(p.g.code, p.locals)
   app(p.g.code, p.body)
 
+proc wholeCode*(m: BModule): PRope =
+  for prc in globals.forwarded:
+    if not globals.generatedSyms.containsOrIncl(prc.id):
+      var p = newProc(globals, m, nil, m.module.options)
+      app(p.g.code, genProc(p, prc))
+  
+  var disp = generateMethodDispatchers()
+  for i in 0..sonsLen(disp)-1: 
+    let prc = disp.sons[i].sym
+    if not globals.generatedSyms.containsOrIncl(prc.id):
+      var p = newProc(globals, m, nil, m.module.options)
+      app(p.g.code, genProc(p, prc))
+
+  result = con(globals.typeInfo, globals.code)
+  
 proc myClose(b: PPassContext, n: PNode): PNode = 
   if passes.skipCodegen(n): return n
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    for prc in globals.forwarded:
-      if not globals.generatedSyms.containsOrIncl(prc.id):
-        var p = newProc(globals, m, nil, m.module.options)
-        app(p.g.code, genProc(p, prc))
-    
-    var disp = generateMethodDispatchers()
-    for i in 0..sonsLen(disp)-1: 
-      let prc = disp.sons[i].sym
-      if not globals.generatedSyms.containsOrIncl(prc.id):
-        var p = newProc(globals, m, nil, m.module.options)
-        app(p.g.code, genProc(p, prc))
-
-    # write the file:
-    var code = con(globals.typeInfo, globals.code)
+    let code = wholeCode(m)
     var outfile = changeFileExt(completeCFilePath(m.module.filename), "js")
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 

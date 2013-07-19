@@ -341,6 +341,18 @@ proc CommandInteractive =
     incl(m.flags, sfMainModule)
     processModule(m, LLStreamOpenStdIn(), nil)
 
+proc execute*(program: string) =
+  passes.gIncludeFile = includeModule
+  passes.gImportModule = importModule
+  initDefines()
+  LoadConfigs(DefaultConfig)
+  InteractivePasses()
+  appendStr(searchPaths, options.libpath)
+  compileSystemModule()
+  var m = makeStdinModule()
+  incl(m.flags, sfMainModule)
+  processModule(m, LLStreamOpen(program), nil)
+
 const evalPasses = [verbosePass, semPass, evalPass]
 
 proc evalNim(nodes: PNode, module: PSym) =

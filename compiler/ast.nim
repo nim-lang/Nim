@@ -211,7 +211,7 @@ type
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
-    nkBreakState          # special break statement for easier code generation
+    nkBreakState,         # special break statement for easier code generation
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -534,7 +534,6 @@ type
     when defined(useNodeIds):
       id*: int
     typ*: PType
-    comment*: string
     info*: TLineInfo
     flags*: TNodeFlags
     case Kind*: TNodeKind
@@ -548,8 +547,9 @@ type
       sym*: PSym
     of nkIdent: 
       ident*: PIdent
-    else: 
+    else:
       sons*: TNodeSeq
+    comment*: string
   
   TSymSeq* = seq[PSym]
   TStrTable* = object         # a table[PIdent] of PSym
@@ -667,7 +667,7 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-
+                              # for routines a superop-ID
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
@@ -778,10 +778,10 @@ const
   genericParamsPos* = 2
   paramsPos* = 3
   pragmasPos* = 4
-  exceptionPos* = 5  # will be used for exception tracking
+  optimizedCodePos* = 5  # will be used for exception tracking
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
-  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 5!
+  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}

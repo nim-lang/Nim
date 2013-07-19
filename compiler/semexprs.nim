@@ -620,7 +620,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       {skProc, skMethod, skConverter, skMacro, skTemplate})
   if result != nil:
     if result.sons[0].kind != nkSym: 
-      InternalError("semDirectCallAnalyseEffects")
+      InternalError("semOverloadedCallAnalyseEffects")
       return
     let callee = result.sons[0].sym
     case callee.kind
@@ -631,10 +631,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       if sfNoSideEffect notin callee.flags: 
         if {sfImportc, sfSideEffect} * callee.flags != {}:
           incl(c.p.owner.flags, sfSideEffect)
-
-proc semDirectCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
-                                 flags: TExprFlags): PNode =
-  result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
@@ -707,10 +703,26 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         LocalError(n.info, errExprXCannotBeCalled,
                    renderTree(n, {renderNoComments}))
       return errorNode(c, n)
+  #result = afterCallActions(c, result, nOrig, flags)
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
   if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
     result = magicsAfterOverloadResolution(c, result, flags)
+  result = evalAtCompileTime(c, result)
+
+proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+  result = n
+  let callee = result.sons[0].sym
+  case callee.kind
+  of skMacro: result = semMacroExpr(c, result, orig, callee)
+  of skTemplate: result = semTemplateExpr(c, result, callee)
+  else:
+    semFinishOperands(c, result)
+    activate(c, result)
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+    if callee.magic != mNone:
+      result = magicsAfterOverloadResolution(c, result, flags)
   result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
@@ -723,18 +735,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if result == nil:
       NotFoundError(c, n)
       return errorNode(c, n)
-  let callee = result.sons[0].sym
-  case callee.kind
-  of skMacro: result = semMacroExpr(c, result, nOrig, callee)
-  of skTemplate: result = semTemplateExpr(c, result, callee)
-  else:
-    semFinishOperands(c, n)
-    activate(c, n)
-    fixAbstractType(c, result)
-    analyseIfAddressTakenInCall(c, result)
-    if callee.magic != mNone:
-      result = magicsAfterOverloadResolution(c, result, flags)
-  result = evalAtCompileTime(c, result)
+  result = afterCallActions(c, result, nOrig, flags)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and 
@@ -928,30 +929,33 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
       markUsed(n, f)
 
+proc dotTransformation(c: PContext, n: PNode): PNode =
+  if isSymChoice(n.sons[1]):
+    result = newNodeI(nkDotCall, n.info)
+    addSon(result, n.sons[1])
+    addSon(result, copyTree(n[0]))
+  else:
+    var i = considerAcc(n.sons[1])
+    var f = searchInScopes(c, i)
+    # if f != nil and f.kind == skStub: loadStub(f)
+    # ``loadStub`` is not correct here as we don't care for ``f`` really
+    if f != nil: 
+      # BUGFIX: do not check for (f.kind in {skProc, skMethod, skIterator}) here
+      # This special node kind is to merge with the call handler in `semExpr`.
+      result = newNodeI(nkDotCall, n.info)
+      addSon(result, newIdentNode(i, n[1].info))
+      addSon(result, copyTree(n[0]))
+    else:
+      if not ContainsOrIncl(c.UnknownIdents, i.id):
+        LocalError(n.Info, errUndeclaredFieldX, i.s)
+      result = errorNode(c, n)
+
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this is difficult, because the '.' is used in many different contexts
   # in Nimrod. We first allow types in the semantic checking.
   result = builtinFieldAccess(c, n, flags)
   if result == nil:
-    if isSymChoice(n.sons[1]):
-      result = newNodeI(nkDotCall, n.info)
-      addSon(result, n.sons[1])
-      addSon(result, copyTree(n[0]))
-    else:
-      var i = considerAcc(n.sons[1])
-      var f = searchInScopes(c, i)
-      # if f != nil and f.kind == skStub: loadStub(f)
-      # ``loadStub`` is not correct here as we don't care for ``f`` really
-      if f != nil: 
-        # BUGFIX: do not check for (f.kind in {skProc, skMethod, skIterator}) here
-        # This special node kind is to merge with the call handler in `semExpr`.
-        result = newNodeI(nkDotCall, n.info)
-        addSon(result, newIdentNode(i, n[1].info))
-        addSon(result, copyTree(n[0]))
-      else:
-        if not ContainsOrIncl(c.UnknownIdents, i.id):
-          LocalError(n.Info, errUndeclaredFieldX, i.s)
-        result = errorNode(c, n)
+    result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
@@ -1030,14 +1034,12 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   let aOrig = nOrig[0]
   result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExpr(c, n[1])])
   let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
-  result = semDirectCallAnalyseEffects(c, result, orig, {})
+  result = semOverloadedCallAnalyseEffects(c, result, orig, {})
+  
   if result != nil:
-    fixAbstractType(c, result)
-    analyseIfAddressTakenInCall(c, result)
-  else:
-    if not ContainsOrIncl(c.UnknownIdents, id.id):
-      LocalError(n.Info, errUndeclaredFieldX, id.s)
-    result = errorNode(c, n)
+    result = afterCallActions(c, result, nOrig, {})
+    #fixAbstractType(c, result)
+    #analyseIfAddressTakenInCall(c, result)
 
 proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   case n.kind
@@ -1072,7 +1074,14 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     let nOrig = n.copyTree
     a = builtinFieldAccess(c, a, {efLValue})
     if a == nil:
-      return propertyWriteAccess(c, n, nOrig, n[0])
+      a = propertyWriteAccess(c, n, nOrig, n[0])
+      if a != nil: return a
+      # we try without the '='; proc that return 'var' or macros are still
+      # possible:
+      a = dotTransformation(c, n[0])
+      if a.kind == nkDotCall:
+        a.kind = nkCall
+        a = semExprWithType(c, a, {efLValue})
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
