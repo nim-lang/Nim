@@ -24,7 +24,7 @@ type
   PXmlAttributes* = PStringTable ## an alias for a string to string mapping
   
   TXmlNode {.pure, final, acyclic.} = object 
-    case k: TXmlNodeKind
+    case k: TXmlNodeKind # private, use the kind() proc to read this field.
     of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
