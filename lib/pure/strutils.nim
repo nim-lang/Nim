@@ -101,7 +101,7 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   if j != s.len: setLen(result, j)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreCase", procvar.} =
+  rtl, extern: "nsuCmpIgnoreCase", procvar, operator: 4.} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 iff a == b
@@ -119,7 +119,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
                                        # thus we compile without checks here
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
+  rtl, extern: "nsuCmpIgnoreStyle", procvar, operator: 3.} =
   ## Compares two strings normalized (i.e. case and
   ## underscores do not matter). Returns:
   ##
@@ -141,7 +141,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 {.pop.}
 
 proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
-  rtl, extern: "nsuStrip".} =
+  rtl, extern: "nsuStrip", operator: 5.} =
   ## Strips whitespace from `s` and returns the resulting string.
   ## If `leading` is true, leading whitespace is stripped.
   ## If `trailing` is true, trailing whitespace is stripped.
@@ -665,7 +665,7 @@ proc findAux(s, sub: string, start: int, a: TSkipTable): int =
   return -1
 
 proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindStr".} =
+  rtl, extern: "nsuFindStr", operator: 6.} =
   ## Searches for `sub` in `s` starting at position `start`. Searching is
   ## case-sensitive. If `sub` is not in `s`, -1 is returned.
   var a {.noinit.}: TSkipTable
@@ -723,7 +723,7 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
   return find(s, chars) >= 0
 
 proc replace*(s, sub: string, by = ""): string {.noSideEffect,
-  rtl, extern: "nsuReplaceStr".} =
+  rtl, extern: "nsuReplaceStr", operator: 1.} =
   ## Replaces `sub` in `s` by the string `by`.
   var a {.noinit.}: TSkipTable
   result = ""
@@ -1023,7 +1023,7 @@ type
     ffScientific       ## use scientific notation (using ``e`` character)
 
 proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
-                         precision = 16): string {.noSideEffect,
+                         precision = 16): string {.noSideEffect, operator: 2,
                                                   rtl, extern: "nsu$1".} =
   ## converts a floating point value `f` to a string.
   ##
@@ -1054,7 +1054,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   result = $buf
 
 proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
-                  precision = 16): string {.noSideEffect,
+                  precision = 16): string {.noSideEffect, operator: 2,
                                            rtl, extern: "nsu$1".} =
   ## converts a floating point value `f` to a string.
   ##

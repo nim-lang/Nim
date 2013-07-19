@@ -12,11 +12,11 @@
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer
 
 const
-  someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc, 
+  someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqUntracedRef, mEqStr, mEqSet, mEqCString}
   
   # set excluded here as the semantics are vastly different:
-  someLe = {mLeI, mLeI64, mLeF64, mLeU, mLeU64, mLeEnum,  
+  someLe = {mLeI, mLeI64, mLeF64, mLeU, mLeU64, mLeEnum,
             mLeCh, mLeB, mLePtr, mLeStr}
   someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum, 
             mLtCh, mLtB, mLtPtr, mLtStr}
@@ -491,20 +491,13 @@ proc factImplies(fact, prop: PNode): TImplication =
   else: discard
   
   case prop.sons[0].sym.magic
-  of mNot:
-    result = ~fact.factImplies(prop.sons[1])
-  of mIsNil:
-    result = impliesIsNil(fact, prop)
-  of someEq:
-    result = impliesEq(fact, prop)
-  of someLe:
-    result = impliesLe(fact, prop.sons[1], prop.sons[2])
-  of someLt:
-    result = impliesLt(fact, prop.sons[1], prop.sons[2])
-  of mInSet:
-    result = impliesIn(fact, prop.sons[2], prop.sons[1])
-  else:
-    internalError(prop.info, "invalid proposition")
+  of mNot: result = ~fact.factImplies(prop.sons[1])
+  of mIsNil: result = impliesIsNil(fact, prop)
+  of someEq: result = impliesEq(fact, prop)
+  of someLe: result = impliesLe(fact, prop.sons[1], prop.sons[2])
+  of someLt: result = impliesLt(fact, prop.sons[1], prop.sons[2])
+  of mInSet: result = impliesIn(fact, prop.sons[2], prop.sons[1])
+  else: internalError(prop.info, "invalid proposition")
 
 proc doesImply*(facts: TModel, prop: PNode): TImplication =
   assert prop.kind in nkCallKinds

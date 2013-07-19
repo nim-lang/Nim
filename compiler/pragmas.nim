@@ -24,7 +24,7 @@ const
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
-    wGenSym, wInject, wRaises, wTags}
+    wGenSym, wInject, wRaises, wTags, wOperator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty}
@@ -34,7 +34,7 @@ const
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises,
-    wTags}
+    wTags, wOperator}
   exprPragmas* = {wLine}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -717,6 +717,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym == nil: invalidPragma(it)
         of wLine: PragmaLine(c, it)
         of wRaises, wTags: pragmaRaisesOrTags(c, it)
+        of wOperator:
+          if sym == nil: invalidPragma(it)
+          else: sym.position = expectIntLit(c, it)
         else: invalidPragma(it)
       else: invalidPragma(it)
   else: processNote(c, it)
