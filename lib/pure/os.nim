@@ -1425,6 +1425,9 @@ proc exclFilePermissions*(filename: string,
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [FReadEnv].} =
   ## Returns the home directory of the current user.
+  ##
+  ## This proc is wrapped by the expandTilde proc for the convenience of
+  ## processing paths coming from user configuration files.
   when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
   else: return string(getEnv("HOME")) & "/"
 
@@ -1601,6 +1604,27 @@ proc findExe*(exe: string): string {.tags: [FReadDir, FReadEnv].} =
     var x = candidate / result
     if ExistsFile(x): return x
   result = ""
+
+proc expandTilde*(path: string): string =
+  ## Expands a path starting with ``~/`` to a full path.
+  ##
+  ## If `path` starts with the tilde character and is followed by `/` or `\\`
+  ## this proc will return the reminder of the path appended to the result of
+  ## the getHomeDir() proc, otherwise the input path will be returned without
+  ## modification.
+  ##
+  ## The behaviour of this proc is the same on the Windows platform despite not
+  ## having this convention. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   let configFile = expandTilde("~" / "appname.cfg")
+  ##   echo configFile
+  ##   # --> C:\Users\amber\appname.cfg
+
+  if len(path) > 1 and path[0] == '~' and (path[1] == '/' or path[1] == '\\'):
+    result = getHomeDir() / path[2..len(path)-1]
+  else:
+    result = path
 
 {.pop.}
 
