@@ -1446,7 +1446,6 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
     result = n
   else: InternalError(n.info, "evalAux: " & $n.kind)
   if result == nil:
-    debug n
     InternalError(n.info, "evalAux: returned nil " & $n.kind)
   inc(gNestedEvals)
 
