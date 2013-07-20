@@ -1473,7 +1473,10 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     of nkElifBranch, nkElifExpr: 
       checkSonsLen(it, 2)
       var e = semConstExpr(c, it.sons[0])
-      if e.kind != nkIntLit: InternalError(n.info, "semWhen")
+      if e.kind != nkIntLit: 
+        # can happen for cascading errors, assume false
+        # InternalError(n.info, "semWhen")
+        discard
       elif e.intVal != 0 and result == nil:
         setResult(it.sons[1]) 
     of nkElse, nkElseExpr:
