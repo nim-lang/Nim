@@ -141,21 +141,23 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
 
-proc evalTypedExpr(c: PContext, e: PNode): PNode =
-  result = getConstExpr(c.module, e)
-  if result == nil:
-    result = evalConstExpr(c.module, e)
-    if result == nil or result.kind == nkEmpty:
-      LocalError(e.info, errConstExprExpected)
-      # error correction:
-      result = e
-
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:
     LocalError(n.info, errConstExprExpected)
     return n
-  result = evalTypedExpr(c, e)
+  result = getConstExpr(c.module, e)
+  if result == nil:
+    result = evalConstExpr(c.module, e)
+    if result == nil or result.kind == nkEmpty:
+      if e.info != n.info:
+        pushInfoContext(n.info)
+        LocalError(e.info, errConstExprExpected)
+        popInfoContext()
+      else:
+        LocalError(e.info, errConstExprExpected)
+      # error correction:
+      result = e
 
 include hlo, seminst, semcall
 

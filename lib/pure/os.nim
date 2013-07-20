@@ -474,8 +474,17 @@ proc JoinPath*(head, tail: string): string {.
   ## .. code-block:: nimrod
   ##   "usr/lib"
   ##
-  ## If head is the empty string, tail is returned.
-  ## If tail is the empty string, head is returned.
+  ## If head is the empty string, tail is returned. If tail is the empty
+  ## string, head is returned with a trailing path separator. If tail starts
+  ## with a path separator it will be removed when concatenated to head. Other
+  ## path separators not located on boundaries won't be modified. More
+  ## examples on Unix:
+  ##
+  ## .. code-block:: nimrod
+  ##   assert JoinPath("usr", "") == "usr/"
+  ##   assert JoinPath("", "lib") == "lib"
+  ##   assert JoinPath("", "/lib") == "/lib"
+  ##   assert JoinPath("usr/", "/lib") == "usr/lib"
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
@@ -491,15 +500,24 @@ proc JoinPath*(head, tail: string): string {.
 
 proc JoinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
-  ## The same as `JoinPath(head, tail)`, but works with any number
-  ## of directory parts.
+  ## The same as `JoinPath(head, tail)`, but works with any number of directory
+  ## parts. You need to pass at least one element or the proc will assert in
+  ## debug builds and crash on release builds.
   result = parts[0]
   for i in 1..high(parts):
     result = JoinPath(result, parts[i])
 
 proc `/` * (head, tail: string): string {.noSideEffect.} =
-  ## The same as ``joinPath(head, tail)``
-  return joinPath(head, tail)
+  ## The same as ``JoinPath(head, tail)``
+  ##
+  ## Here are some examples for Unix:
+  ##
+  ## .. code-block:: nimrod
+  ##   assert "usr" / "" == "usr/"
+  ##   assert "" / "lib" == "lib"
+  ##   assert "" / "/lib" == "/lib"
+  ##   assert "usr/" / "/lib" == "usr/lib"
+  return JoinPath(head, tail)
 
 proc SplitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -814,8 +832,13 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FReadIO, FWriteIO].} =
-  ## Copies a file from `source` to `dest`. If this fails,
-  ## `EOS` is raised.
+  ## Copies a file from `source` to `dest`.
+  ##
+  ## If this fails, `EOS` is raised. On the Windows platform this proc will
+  ## copy the source file's attributes into dest. On other platforms you need
+  ## to use getFilePermissions and setFilePermissions to copy them by hand,
+  ## otherwise `dest` will inherit the default permissions of a newly created
+  ## file for the user.
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
@@ -1498,7 +1521,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [FReadIO].} =
       if len(result) > 0 and result[0] != DirSep: # not an absolute path?
         # iterate over any path in the $PATH environment variable
         for p in split(string(getEnv("PATH")), {PathSep}):
-          var x = joinPath(p, result)
+          var x = JoinPath(p, result)
           if ExistsFile(x): return x
 
 proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =

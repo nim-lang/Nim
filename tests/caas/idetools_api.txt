@@ -42,3 +42,18 @@ def\tskField\t$MODULE.TPerson.name\tbad_string\t
 
 > idetools --track:$TESTNIM,43,7 --def $SILENT
 def\tskMethod\t$MODULE.eval\tproc \(PPlusExpr\): int\t
+
+> idetools --track:$TESTNIM,47,8 --def $SILENT
+def\tskLabel\t$MODULE.findVowelPosition.loops\t\t
+# For some reason the use of the label with break displaces its position.
+> idetools --track:$TESTNIM,52,16 --def $SILENT
+def\tskLabel\t$MODULE.findVowelPosition.loops\t\t
+
+# Displaced macro usage by one character.
+> idetools --track:$TESTNIM,80,2 --def $SILENT
+def\tskMacro\t$MODULE.expect\tproc \(varargs\[expr\], stmt\): stmt\t
+
+# The syntax for extended raw string literals should not be returned as module
+# but as the proc re() inside the re module.
+> idetools --track:$TESTNIM,84,17 --def $SILENT
+!def\tskModule
