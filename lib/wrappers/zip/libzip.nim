@@ -51,7 +51,7 @@ when defined(unix) and not defined(useLibzipSrc):
   when defined(macosx):
     {.pragma: mydll, dynlib: "libzip2.dylib".}
   else:
-    {.pragma: mydll, dynlib: "libzip2.so(|.2|.1|.0)".}
+    {.pragma: mydll, dynlib: "libzip(|2).so(|.2|.1|.0)".}
 else:
   when defined(unix):
     {.passl: "-lz".}
