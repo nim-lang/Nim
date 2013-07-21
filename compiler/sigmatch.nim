@@ -12,8 +12,10 @@
 
 import 
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, condsyms, idents, lexer, options, parampatterns, strutils,
-  docgen
+  magicsys, condsyms, idents, lexer, options, parampatterns, strutils
+
+when not defined(noDocgen):
+  import docgen
 
 type
   TCandidateState* = enum 

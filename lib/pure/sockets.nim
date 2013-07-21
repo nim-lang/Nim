@@ -404,7 +404,7 @@ template gaiNim(a, p, h, list: expr): stmt =
       when defined(windows):
         OSError(OSLastError())
       else:
-        OSError($gai_strerror(gaiResult))
+        raise newException(EOS, $gai_strerror(gaiResult))
 
 proc bindAddr*(socket: TSocket, port = TPort(0), address = "") {.
   tags: [FReadIO].} =
