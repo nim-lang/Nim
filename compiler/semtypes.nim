@@ -841,7 +841,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       LocalError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkCallKinds:
-    if n[0].kind == nkIdent:
+    if isRange(n):
+      result = semRangeAux(c, n, prev)
+    elif n[0].kind == nkIdent:
       let op = n.sons[0].ident
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3)

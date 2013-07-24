@@ -625,6 +625,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = newIntNodeT(sonsLen(a), n)
         else:
           result = magicCall(m, n)
+      of mLengthArray:
+        # It doesn't matter if the argument is const or not for mLengthArray.
+        # This fixes bug #544.
+        result = newIntNodeT(lengthOrd(n.sons[1].typ), n)
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
       of mConStrStr:

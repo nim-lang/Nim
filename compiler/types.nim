@@ -959,8 +959,8 @@ proc skipGenericAlias*(t: PType): PType =
 proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
   for i in countup(0, typeClass.sonsLen - 1):
     let req = typeClass.sons[i]
-    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
-      
+    var match = req.kind == skipTypes(t, {tyGenericInst, tyRange}).kind or
+                req.kind == skipTypes(t, {tyGenericInst}).kind
     if not match:
       case req.kind
       of tyGenericBody:
