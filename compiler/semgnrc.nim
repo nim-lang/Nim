@@ -312,7 +312,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)
   of nkPragma, nkPragmaExpr: nil
-  of nkExprColonExpr:
+  of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2)
     result.sons[1] = semGenericStmt(c, n.sons[1], flags, ctx)
   else:
