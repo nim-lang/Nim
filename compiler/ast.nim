@@ -488,7 +488,7 @@ type
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo
+    mInstantiationInfo, mGetTypeInfo, mNGenSym
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
