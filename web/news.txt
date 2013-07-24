@@ -14,6 +14,8 @@ Bugfixes
 Library Additions
 -----------------
 
+- Added ``macros.genSym`` builtin for AST generation.
+
 
 Changes affecting backwards compatibility
 -----------------------------------------

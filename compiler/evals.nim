@@ -1249,6 +1249,16 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNBindSym:
     # trivial implementation:
     result = n.sons[1]
+  of mNGenSym:
+    evalX(n.sons[1], {efLValue})
+    let k = getOrdValue(result)
+    evalX(n.sons[2], {efLValue})
+    let b = result
+    let name = if b.strVal.len == 0: ":tmp" else: b.strVal
+    if k < 0 or k > ord(high(TSymKind)):
+      internalError(n.info, "request to create a symbol with invalid kind")
+    result = newSymNode(newSym(k.TSymKind, name.getIdent, c.module, n.info))
+    incl(result.sym.flags, sfGenSym)
   of mStrToIdent: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 

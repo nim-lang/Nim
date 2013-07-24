@@ -85,11 +85,13 @@ type
   TNimTypeKinds* = set[TNimrodTypeKind]
   TNimrodSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
-    nskGenericParam, nskTemp, nskType, nskConst,
-    nskVar, nskProc, nskMethod, nskIterator,
+    nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet, 
+    nskConst, nskResult,
+    nskProc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
-    nskEnumField, nskForVar, nskModule, nskLabel,
+    nskEnumField, nskForVar, nskLabel,
     nskStub
+    
   TNimSymKinds* = set[TNimrodSymKind]
 
 type
@@ -219,6 +221,11 @@ proc bindSym*(ident: string, rule: TBindSymRule = brClosed): PNimrodNode {.
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
+
+proc genSym*(kind: TNimrodSymKind = nskLet; ident = ""): PNimrodNode {.
+  magic: "NGenSym".}
+  ## generates a fresh symbol that is guaranteed to be unique. The symbol
+  ## needs to occur in a declaration context.
 
 proc callsite*(): PNimrodNode {.magic: "NCallSite".}
   ## returns the AST if the invokation expression that invoked this macro.

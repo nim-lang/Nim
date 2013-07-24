@@ -8,7 +8,6 @@ version 0.9.4
 - mocking support with ``tyProxy`` that does: fallback for ``.`` operator
   - overloading of ``.``? Special case ``.=``?
 - built-in 'getImpl'
-- macros.gensym still missing?
 - optimize 'genericReset'; 'newException' leads to code bloat
 
 
