@@ -956,7 +956,7 @@ type
     gain*: byte              # Whether given states were gained or lost (1/0)
     state*: byte             # A mask of the focus states
   
-  PKeyboardEvent = ptr TKeyboardEvent
+  PKeyboardEvent* = ptr TKeyboardEvent
   TKeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
                                      # Mouse motion event structure
     kind*: TEventKind
@@ -964,7 +964,7 @@ type
     state*: byte             # SDL_PRESSED or SDL_RELEASED
     keysym*: TKeySym
 
-  PMouseMotionEvent = ptr TMouseMotionEvent
+  PMouseMotionEvent* = ptr TMouseMotionEvent
   TMouseMotionEvent*{.final.} = object  # SDL_MOUSEMOTION
                                         # Mouse button event structure
     kind*: TEventKind
@@ -974,7 +974,7 @@ type
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
-  PMouseButtonEvent = ptr TMouseButtonEvent
+  PMouseButtonEvent* = ptr TMouseButtonEvent
   TMouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
                                         # Joystick axis motion event structure
     kind*: TEventKind
@@ -984,7 +984,7 @@ type
     x*: UInt16                # The X coordinates of the mouse at press time
     y*: UInt16                # The Y coordinates of the mouse at press time
   
-  PJoyAxisEvent = ptr TJoyAxisEvent
+  PJoyAxisEvent* = ptr TJoyAxisEvent
   TJoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
                                     # Joystick trackball motion event structure
     kind*: TEventKind
@@ -992,7 +992,7 @@ type
     axis*: byte              # The joystick axis index
     value*: int16            # The axis value (range: -32768 to 32767)
   
-  PJoyBallEvent = ptr TJoyBallEvent
+  PJoyBallEvent* = ptr TJoyBallEvent
   TJoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
                                     # Joystick hat position change event structure
     kind*: TEventKind
@@ -1001,7 +1001,7 @@ type
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
-  PJoyHatEvent = ptr TJoyHatEvent
+  PJoyHatEvent* = ptr TJoyHatEvent
   TJoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
                                    # Joystick button event structure
     kind*: TEventKind
@@ -1013,7 +1013,7 @@ type
                              # 6   5   4
                              # Note that zero means the POV is centered.
   
-  PJoyButtonEvent = ptr TJoyButtonEvent
+  PJoyButtonEvent* = ptr TJoyButtonEvent
   TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
                                       # When you get this event, you are
@@ -1024,7 +1024,7 @@ type
     button*: byte            # The joystick button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
   
-  PResizeEvent = ptr TResizeEvent
+  PResizeEvent* = ptr TResizeEvent
   TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
                                    # A user-defined event type
     kind*: TEventKind
@@ -1115,11 +1115,11 @@ type
     kind*: TEventKind
     msg*: PSysWMmsg
 
-  PExposeEvent = ptr TExposeEvent
+  PExposeEvent* = ptr TExposeEvent
   TExposeEvent*{.final.} = object
     kind*: TEventKind
 
-  PQuitEvent = ptr TQuitEvent
+  PQuitEvent* = ptr TQuitEvent
   TQuitEvent*{.final.} = object
     kind*: TEventKind
 
