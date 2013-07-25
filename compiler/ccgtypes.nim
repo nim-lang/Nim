@@ -79,7 +79,7 @@ proc mangleName(s: PSym): PRope =
       else: InternalError(s.info, "mangleName")
     when oKeepVariableNames:
       let keepOrigName = s.kind in skLocalVars - {skForVar} and 
-        {sfFromGeneric, sfGlobal, sfShadowed} * s.flags == {} and
+        {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
         not isKeyword(s.name)
       # XXX: This is still very experimental
       #
