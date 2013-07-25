@@ -368,7 +368,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait,
-     mNLen..mNError, mEqRef, mSlurp, mStaticExec: 
+     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym: 
     nil
   of mRand:
     result = newIntNodeT(math.random(a.getInt.int), n)
