@@ -40,19 +40,22 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   ctx.debug.add(n.info)
 
 proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: biggestInt) =
-  let ins = (opc.ord or a shl 8 or b shl 16 or (imm+byteExcess) shl 24).TInstr
+  let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
+                           (b.uint32 shl 16'u32) or
+                           (imm+byteExcess).uint32 shl 24'u32).TInstr
   c.code.add(ins)
   c.debug.add(n.info)
 
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
-  let ins = (opc.ord or a shl 8 or (bx+wordExcess) shl 16).TInstr
+  let ins = (opc.uint32 or a.uint32 shl 8'u32 or 
+            (bx+wordExcess).uint32 shl 16'u32).TInstr
   c.code.add(ins)
   c.debug.add(n.info)
 
 proc xjmp(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0): TPosition =
   #assert opc in {opcJmp, opcFJmp, opcTJmp}
-  gABx(c, n, opc, a, 0)
   result = TPosition(c.code.len)
+  gABx(c, n, opc, a, 0)
 
 proc genLabel(c: PCtx): TPosition =
   result = TPosition(c.code.len)
@@ -71,7 +74,8 @@ proc patch(c: PCtx, p: TPosition) =
   InternalAssert(-0x7fff < diff and diff < 0x7fff)
   let oldInstr = c.code[p]
   # opcode and regA stay the same:
-  c.code[p] = ((oldInstr.int and 0xffff) or (diff+wordExcess)).TInstr
+  c.code[p] = ((oldInstr.uint32 and 0xffff'u32) or
+               uint32(diff+wordExcess) shr 16'u32).TInstr
 
 proc getSlotKind(t: PType): TSlotKind =
   case t.skipTypes(abstractRange).kind
@@ -704,7 +708,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let dest = c.genx(le.sons[0])
     let idx = c.genx(le.sons[1])
     let tmp = c.genx(ri)
-    if le.typ.skipTypes(abstractVarRange).kind in {tyString, tyCString}:
+    if le.sons[0].typ.skipTypes(abstractVarRange).kind in {tyString, tyCString}:
       c.gABC(le, opcWrStrIdx, dest, idx, tmp)
     else:
       c.gABC(le, whichAsgnOpc(le, opcWrArr), dest, idx, tmp)
@@ -820,7 +824,6 @@ proc setSlot(c: PCtx; v: PSym) =
     v.position = c.prc.maxSlots
     c.prc.slots[v.position] = (inUse: true, kind: slotFixed)
     inc c.prc.maxSlots
-    echo v.name.s, " has position ", v.position
 
 proc genVarSection(c: PCtx; n: PNode) =
   for a in n:

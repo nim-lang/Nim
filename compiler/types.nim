@@ -1028,9 +1028,9 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     result = kind == skParam
   of tyGenericInst, tyDistinct: 
     result = typeAllowedAux(marker, lastSon(t), kind)
-  of tyRange: 
+  of tyRange:
     result = skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind in
-        {tyChar, tyEnum, tyInt..tyFloat128}
+        {tyChar, tyEnum, tyInt..tyUInt64}
   of tyOpenArray, tyVarargs: 
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
   of tySequence: 

@@ -197,14 +197,10 @@ proc execute(c: PCtx, start: int) =
     of opcYldYoid: assert false
     of opcYldVal: assert false
     of opcAsgnInt:
-      echo ra, " ", instr.regB, " ", regs.len, tos.prc.name.s
       decodeB(nkIntLit)
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
       decodeB(nkStrLit)
-      debug regs[rb]
-      echo rb
-      Message(c.debug[pc], warnUser, " here")
       regs[ra].strVal = regs[rb].strVal
     of opcAsgnFloat:
       decodeB(nkFloatLit)
