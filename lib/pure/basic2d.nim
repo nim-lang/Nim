@@ -1,3 +1,12 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2013 Robert Persson
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import math
 import strutils
 
@@ -56,7 +65,7 @@ type
       ## transformations are applied the order they are concatenated.
       ## The rightmost column of the 3x3 matrix is left out since normally
       ## not used for geometric transformations in 2d.
-      ax*,ay*,bx*,by*,tx*,ty*:float #do not change order of thoose, addr of ax is used elsewhere!
+      ax*,ay*,bx*,by*,tx*,ty*:float
     TPoint2d* = object
       ## Implements a non-homegeneous 2d point stored as 
       ## an `x` coordinate and an `y` coordinate.
