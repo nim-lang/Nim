@@ -429,11 +429,17 @@ proc newStmtList*(stmts: varargs[PNimrodNode]): PNimrodNode {.compileTime.}=
 proc newBlockStmt*(label, body: PNimrodNode): PNimrodNode {.compileTime.} =
   ## Create a new block statement with label
   return newNimNode(nnkBlockStmt).add(label, body)
+
 proc newBlockStmt*(body: PNimrodNode): PNimrodNode {.compiletime.} =
   ## Create a new block: stmt
   return newNimNode(nnkBlockStmt).add(newEmptyNode(), body)
 
-proc newLetStmt*(name, value: PNimrodNode): PNimrodNode{.compiletime.} =
+proc newVarStmt*(name, value: PNimrodNode): PNimrodNode {.compiletime.} =
+  ## Create a new var stmt 
+  return newNimNode(nnkVarSection).add(
+    newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
+
+proc newLetStmt*(name, value: PNimrodNode): PNimrodNode {.compiletime.} =
   ## Create a new let stmt 
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
@@ -483,6 +489,22 @@ proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];
     newEmptyNode(),  ## pragmas
     newEmptyNode(),
     body)
+
+proc newIfStmt*(branches: varargs[tuple[cond, body: PNimrodNode]]): 
+                PNimrodNode {.compiletime.} =
+  ## Constructor for ``if`` statements.
+  ##
+  ## .. code-block:: nimrod
+  ##    
+  ##    newIfStmt(
+  ##      (Ident, StmtList),
+  ##      ...
+  ##    )
+  ##
+  result = newNimNode(nnkIfStmt)
+  for i in branches:
+    result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
+    
 
 proc copyChildrenTo*(src, dest: PNimrodNode) {.compileTime.}=
   ## Copy all children from `src` to `dest`
