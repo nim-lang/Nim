@@ -79,7 +79,9 @@ template decodeBx(k: expr) {.immediate, dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
-proc compile(c: PCtx, s: PSym): int = vmgen.genProc(c, s)
+proc compile(c: PCtx, s: PSym): int = 
+  result = vmgen.genProc(c, s)
+  c.echoCode
 
 proc myreset(n: PNode) =
   when defined(system.reset): 

@@ -25,11 +25,16 @@ proc codeListing(c: PCtx, result: var string) =
       result.addf("\t$#\tr$#, r$#, r$#", ($opc).substr(3), x.regA, 
                   x.regB, x.regC)
     else:
-      result.addf("\t$#\tr$#, r$#", ($opc).substr(3), x.regA, x.regBx)
-    result.add(" #")
+      result.addf("\t$#\tr$#, r$#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
+    result.add("\t#")
     result.add(toFileLine(c.debug[i]))
     result.add("\n")
     inc i
+
+proc echoCode*(c: PCtx) =
+  var buf = ""
+  codeListing(c, buf)
+  echo buf
 
 proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   assert opc.ord < 255
