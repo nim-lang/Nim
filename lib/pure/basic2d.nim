@@ -35,10 +35,6 @@ import strutils
 ##   var vec2:TVEctor2d=vec & m #concatenates vec with m and returns a new vector
 
 
- 
-
-
-
 const
   DEG360* = PI * 2.0
     ## 360 degrees in radians.
@@ -93,13 +89,13 @@ proc point2d*(x,y:float):TPoint2d {.noInit,inline.}
 
 
 let
-  IDMATRIX2D*:TMatrix2d=matrix2d(1.0,0.0,0.0,1.0,0.0,0.0)
+  IDMATRIX*:TMatrix2d=matrix2d(1.0,0.0,0.0,1.0,0.0,0.0)
     ## Quick access to an identity matrix
-  ORIGO2D*:TPoint2d=Point2d(0.0,0.0)
+  ORIGO*:TPoint2d=Point2d(0.0,0.0)
     ## Quick acces to point (0,0)
-  XAXIS2D*:TVector2d=vector2d(1.0,0.0)
+  XAXIS*:TVector2d=vector2d(1.0,0.0)
     ## Quick acces to an 2d x-axis unit vector
-  YAXIS2D*:TVector2d=vector2d(0.0,1.0)
+  YAXIS*:TVector2d=vector2d(0.0,1.0)
     ## Quick acces to an 2d y-axis unit vector
 
   
@@ -216,7 +212,7 @@ proc mirror*(v:TVector2d):TMatrix2d {.noInit.} =
     sqd=nd*(sqx-sqy)
     
   if nd==inf or nd==neginf:
-    return IDMATRIX2D #mirroring around a zero vector is arbitrary=>just use identity
+    return IDMATRIX #mirroring around a zero vector is arbitrary=>just use identity
 
   result.setElements(
     sqd,xy2,
@@ -235,7 +231,7 @@ proc mirror*(v:TVector2d,org:TPoint2d):TMatrix2d {.noInit.} =
     sqd=nd*(sqx-sqy)
     
   if nd==inf or nd==neginf:
-    return IDMATRIX2D #mirroring around a zero vector is arbitrary=>just use identity
+    return IDMATRIX #mirroring around a zero vector is arbitrary=>just use identity
 
   result.setElements(
     sqd,xy2,
@@ -314,7 +310,7 @@ proc `=~`*(m1,m2:TMatrix2d):bool=
 proc isIdentity*(m:TMatrix2d,tol=1.0e-6):bool=
   ## Checks is a matrix is approximately an identity matrix,
   ## using `tol` as tolerance for each element.
-  return equals(m,IDMATRIX2D,tol)
+  return equals(m,IDMATRIX,tol)
 
 
 
@@ -412,13 +408,9 @@ proc tryNormalize*(v:var TVector2d):bool=
 
   if mag==0.0:
     return false
-
-  let
-    newx=v.x/mag
-    newy=v.y/mag
-    
-  v.x=newx
-  v.y=newy
+  
+  v.x/=mag
+  v.y/=mag
   return true
 
 
@@ -819,19 +811,23 @@ proc radToDeg*(rad:float):float=
   ## converts `rad` radians to degrees
   rad * RAD2DEGCONST
 
-
-
-proc bisect*(v1,v2:TVector2d):tuple[vec:TVector2d,success:bool]=
-  ## Computes the bisector between v1 and v2 as a normalize vector `vec`
-  ## This can fail if any of `v1` or `v2` has zero length, in which
-  ## case `success` is set to false.
-  let
+proc bisect*(v1,v2:TVector2d):TVector2d {.noInit.}=
+  ## Computes the bisector between v1 and v2 as a normalize vector
+  ## If one of the input vectors has zero length, a normalized verison
+  ## of the other is returned.
+  ## If both input vectors has zer length, an arbitrary normalize vector
+  ## is returned.
+  var
     vmag1=v1.len
     vmag2=v2.len
     
-  if vmag1==0.0 or vmag2==0.0:
-    result.success=false
-    return
+  # zero length vector equals arbitrary vector, just change to magnitude to one to
+  # avoid zero division
+  if vmag1==0.0: 
+    if vmag2==0: #both are zero length return any normalized vector
+      return XAXIS
+    vmag1=1.0
+  if vmag2==0.0: vmag2=1.0    
     
   let
     x1=v1.x/vmag1
@@ -839,12 +835,13 @@ proc bisect*(v1,v2:TVector2d):tuple[vec:TVector2d,success:bool]=
     x2=v2.x/vmag2
     y2=v2.y/vmag2
     
+  result.x=(x1 + x2) * 0.5
+  result.y=(y1 + y2) * 0.5
   
-  result=(vector2d((x1 + x2) * 0.5, (y1 + y2) * 0.5) , true)
-  
-  if not result.vec.tryNormalize():
+  if not result.tryNormalize():
     # This can happen if vectors are colinear. In this special case
     # there are actually two bisectors, we select just 
-    # one of them (x1,y1 rotated 90 degrees).
-    result.vec=vector2d(y1,-x1)
+    # one of them (x1,y1 rotated 90 degrees ccw).
+    result.x = -y1
+    result.y = x1
   
