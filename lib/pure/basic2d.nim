@@ -110,7 +110,7 @@ proc safeArccos(v:float):float=
   ## assumes v is in range 0.0-1.0, but clamps
   ## the value to avoid out of domain errors
   ## due to rounding issues
-  return arccos(clamp(v,0.0,1.0))
+  return arccos(clamp(v,-1.0,1.0))
 
 
 template makeBinOpVector*(s:expr)= 
@@ -812,10 +812,10 @@ proc radToDeg*(rad:float):float=
   rad * RAD2DEGCONST
 
 proc bisect*(v1,v2:TVector2d):TVector2d {.noInit.}=
-  ## Computes the bisector between v1 and v2 as a normalize vector
+  ## Computes the bisector between v1 and v2 as a normalized vector
   ## If one of the input vectors has zero length, a normalized verison
   ## of the other is returned.
-  ## If both input vectors has zer length, an arbitrary normalize vector
+  ## If both input vectors has zero length, an arbitrary normalized vector
   ## is returned.
   var
     vmag1=v1.len
