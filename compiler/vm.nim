@@ -81,7 +81,7 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 
 proc compile(c: PCtx, s: PSym): int = 
   result = vmgen.genProc(c, s)
-  c.echoCode
+  #c.echoCode
 
 proc myreset(n: PNode) =
   when defined(system.reset): 
@@ -183,7 +183,7 @@ proc execute(c: PCtx, start: int) =
     {.interpreterLoop.}
     let instr = c.code[pc]
     let ra = instr.regA
-    echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
+    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
     case instr.opcode
     of opcEof: break
     of opcRet:
@@ -462,7 +462,8 @@ proc execute(c: PCtx, start: int) =
         newFrame.slots[i] = newNode(nkEmpty)
       tos = newFrame
       move(regs, newFrame.slots)
-      pc = newPc
+      # -1 for the following 'inc pc'
+      pc = newPc-1
     of opcTJmp:
       # jump Bx if A != 0
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
