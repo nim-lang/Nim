@@ -10,7 +10,10 @@
 ## This file implements the new evaluation engine for Nimrod code.
 ## An instruction is 1-2 int32s in memory, it is a register based VM.
 
-import ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned
+import
+  strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned
+
+from semfold import leValueConv
 
 type
   PStackFrame* = ref TStackFrame
@@ -79,10 +82,6 @@ template decodeBx(k: expr) {.immediate, dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
-proc compile(c: PCtx, s: PSym): int = 
-  result = vmgen.genProc(c, s)
-  #c.echoCode
-
 proc myreset(n: PNode) =
   when defined(system.reset): 
     var oldInfo = n.info
@@ -130,18 +129,14 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
 
 proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
 
-proc nextSafePoint(f: PStackFrame): int =
-  var f = f
-  while f.safePoints.isNil or f.safePoints.len == 0:
-    f = f.next
-    if f.isNil: return -1
-  result = f.safePoints.pop
-
 proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: TNodeSeq): int =
   let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
+  var f = tos
   while true:
-    var pc2 = tos.nextSafePoint
-    if pc2 == -1: return -1
+    while f.safePoints.isNil or f.safePoints.len == 0:
+      f = f.next
+      if f.isNil: return -1
+    var pc2 = f.safePoints[f.safePoints.high]
 
     var nextExceptOrFinally = -1
     if c.code[pc2].opcode == opcExcept:
@@ -163,6 +158,8 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: TNodeSeq): int =
     if c.code[pc2].opcode == opcFinally:
       # execute the corresponding handler, but don't quit walking the stack:
       return pc2
+    # not the right one:
+    discard f.safePoints.pop
 
 proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
   if f.safePoints.isNil: return -1
@@ -173,6 +170,10 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
     if c.code[pc].opcode == opcFinally:
       return pc
   return -1
+
+proc compile(c: PCtx, s: PSym): int = 
+  result = vmgen.genProc(c, s)
+  #c.echoCode
 
 proc execute(c: PCtx, start: int) =
   var pc = start
@@ -188,11 +189,12 @@ proc execute(c: PCtx, start: int) =
     of opcEof: break
     of opcRet:
       # XXX perform any cleanup actions
+      pc = tos.comesFrom
       tos = tos.next
       if tos.isNil: return
+      
       let retVal = regs[0]
       move(regs, tos.slots)
-      pc = tos.comesFrom
       assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
       if c.code[pc].opcode == opcIndCallAsgn:
         regs[c.code[pc].regA] = retVal
@@ -222,6 +224,10 @@ proc execute(c: PCtx, start: int) =
       let idx = regs[rc].intVal
       # XXX what if the array is not 0-based? -> codegen should insert a sub
       regs[ra] = regs[rb].sons[idx.int]
+    of opcLdStrIdx:
+      decodeBC(nkIntLit)
+      let idx = regs[rc].intVal
+      regs[ra].intVal = regs[rb].strVal[idx.int].ord
     of opcWrArr:
       # a[b] = c
       let rb = instr.regB
@@ -432,6 +438,15 @@ proc execute(c: PCtx, start: int) =
       regs[ra].strVal = getstr(regs[rb])
       for i in rb+1..rb+rc-1:
         regs[ra].strVal.add getstr(regs[i])
+    of opcAddStrCh:
+      decodeB(nkStrLit)
+      regs[ra].strVal.add(regs[rb].intVal.chr)
+    of opcAddStrStr:
+      decodeB(nkStrLit)
+      regs[ra].strVal.add(regs[rb].strVal)
+    of opcAddSeqElem:
+      decodeB(nkBracket)
+      regs[ra].add(copyTree(regs[rb]))
     of opcEcho:
       echo regs[ra].strVal
     of opcContainsSet:
@@ -444,6 +459,14 @@ proc execute(c: PCtx, start: int) =
       let rd = c.code[pc].regA
       regs[ra].strVal = substr(regs[rb].strVal, regs[rc].intVal.int, 
                                regs[rd].intVal.int)
+    of opcRangeChck:
+      let rb = instr.regB
+      let rc = instr.regC
+      if not (leValueConv(regs[rb], regs[ra]) and
+              leValueConv(regs[ra], regs[rc])):
+        stackTrace(c, tos, pc, errGenerated,
+          msgKindToString(errIllegalConvFromXtoY) % [
+          "unknown type" , "unknown type"])
     of opcIndCall, opcIndCallAsgn:
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
@@ -545,6 +568,12 @@ proc execute(c: PCtx, start: int) =
       regs[ra] = getNullValue(typ, c.debug[pc])
     of opcLdConst:
       regs[ra] = c.constants.sons[instr.regBx - wordExcess]
+    of opcAsgnConst:
+      let rb = instr.regBx - wordExcess
+      if regs[ra].isNil:
+        regs[ra] = copyTree(c.constants.sons[rb])
+      else:
+        asgnComplex(regs[ra], c.constants.sons[rb])
     of opcNBindSym:
       # trivial implementation:
       let rb = instr.regB
