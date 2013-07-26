@@ -25,7 +25,7 @@ proc codeListing(c: PCtx, result: var string) =
       result.addf("\t$#\tr$#, r$#, r$#", ($opc).substr(3), x.regA, 
                   x.regB, x.regC)
     else:
-      result.addf("\t$#\tr$#, r$#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
+      result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
     result.add(toFileLine(c.debug[i]))
     result.add("\n")
@@ -66,7 +66,7 @@ proc genLabel(c: PCtx): TPosition =
   result = TPosition(c.code.len)
   c.jumpTargets.incl(c.code.len)
 
-proc jmp(c: PCtx, n: PNode, opc: TOpcode, p = TPosition(0)) =
+proc jmpBack(c: PCtx, n: PNode, opc: TOpcode, p = TPosition(0)) =
   let dist = p.int - c.code.len
   InternalAssert(-0x7fff < dist and dist < 0x7fff)
   gABx(c, n, opc, 0, dist)
@@ -79,8 +79,8 @@ proc patch(c: PCtx, p: TPosition) =
   InternalAssert(-0x7fff < diff and diff < 0x7fff)
   let oldInstr = c.code[p]
   # opcode and regA stay the same:
-  c.code[p] = ((oldInstr.uint32 and 0xffff'u32) or
-               uint32(diff+wordExcess) shr 16'u32).TInstr
+  c.code[p] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
+               uint32(diff+wordExcess) shl 16'u32).TInstr
 
 proc getSlotKind(t: PType): TSlotKind =
   case t.skipTypes(abstractRange).kind
@@ -185,7 +185,7 @@ proc genWhile(c: PCtx; n: PNode) =
     let L2 = c.xjmp(n, opcFJmp, tmp)
     c.freeTemp(tmp)
     c.gen(n.sons[1])
-    c.jmp(n, opcJmp, L1)
+    c.jmpBack(n, opcJmp, L1)
     c.patch(L2)
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
@@ -222,7 +222,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
       withTemp(tmp, it.sons[0].typ):
         c.gen(it.sons[0], tmp)
         let elsePos = c.xjmp(it.sons[0], opcFJmp, tmp) # if false
-      c.gen(n.sons[1], dest) # then part
+      c.gen(it.sons[1], dest) # then part
       if i < sonsLen(n)-1:
         endings.add(c.xjmp(it.sons[1], opcJmp, 0))
       c.patch(elsePos)
