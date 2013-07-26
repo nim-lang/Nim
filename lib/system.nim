@@ -1454,9 +1454,9 @@ proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
 
 proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, y.len + 1)
+  result[0] = x
   for i in 0..y.len-1:
-    result[i] = y[i]
-  result[y.len] = x
+    result[i+1] = y[i]
 
 when not defined(NimrodVM):
   when not defined(JS):
