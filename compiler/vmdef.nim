@@ -21,10 +21,6 @@ type
   TDest* = range[-1 .. 255]
   TInstr* = distinct uint32
 
-  TInstrFormat = enum
-    ifABC,  # three registers
-    ifABx,  # A + extended B
-
   TOpcode* = enum
     opcEof,         # end of code
     opcRet,         # return
@@ -46,6 +42,7 @@ type
     opcAddr,
     opcDeref,
     opcWrStrIdx,
+    opcLdStrIdx, # a = b[c]
     
     opcAddInt, 
     opcAddImmInt,
@@ -66,12 +63,18 @@ type
     opcSwap, opcIsNil, opcOf,
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
     
+    opcAddStrCh,
+    opcAddStrStr,
+    opcAddSeqElem,
+    opcRangeChck,
+    
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
     opcIndCallAsgn, # dest = call regStart, n; where regStart = fn, arg1, ...
 
     opcRaise,
     opcNBindSym, # opcodes for the AST manipulation following
+    opcNewStr,
   
     opcTJmp,  # jump Bx if A != 0
     opcFJmp,  # jump Bx if A == 0
@@ -83,9 +86,9 @@ type
     opcFinallyEnd,
     opcNew,
     opcNewSeq,
-    opcNewStr,
     opcLdNull,    # dest = nullvalue(types[Bx])
     opcLdConst,   # dest = constants[Bx]
+    opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
     opcLdImmInt,  # dest = immediate value
     opcWrGlobal,
@@ -100,7 +103,8 @@ type
                       # temporary slot usage. This is required for the parameter
                       # passing implementation.
     slotEmpty,        # slot is unused
-    slotFixed,        # slot is used for a fixed var/param/result
+    slotFixedVar,     # slot is used for a fixed var/result (requires copy then)
+    slotFixedLet,     # slot is used for a fixed param/let
     slotTempUnknown,  # slot but type unknown (argument of proc call)
     slotTempInt,      # some temporary int
     slotTempFloat,    # some temporary float
@@ -117,11 +121,6 @@ type
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation
-    jumpTargets*: TIntSet   # we need to mark instructions that are
-                            # jump targets;
-                            # we must not optimize over a jump target and we
-                            # need to generate a label for a jump target when
-                            # producing a VM listing
     globals*: PNode         # 
     constants*: PNode       # constant data
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
@@ -132,7 +131,7 @@ type
   TPosition* = distinct int
   
 proc newCtx*(): PCtx =
-  PCtx(code: @[], debug: @[], jumpTargets: initIntSet(),
+  PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]))
 
@@ -141,6 +140,7 @@ const
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
     opcSubstr, opcConv, opcCast, opcNewSeq, opcOf}
   slotSomeTemp* = slotTempUnknown
+  relativeJumps* = {opcTJmp, opcFJmp, opcJmp}
 
 template opcode*(x: TInstr): TOpcode {.immediate.} = TOpcode(x.uint32 and 0xff'u32)
 template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
