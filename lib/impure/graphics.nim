@@ -360,7 +360,7 @@ proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural,
   ## of the ellipse.
   var 
     X, Y: Natural
-    XChange, YChange: Natural
+    XChange, YChange: Int
     EllipseError: Natural
     TwoASquare, TwoBSquare: Natural
     StoppingX, StoppingY: Natural
@@ -501,6 +501,7 @@ if sdl_ttf.Init() < 0: raiseEGraphics()
 
 when isMainModule:
   var surf = newScreenSurface(800, 600)
+
   surf.fillSurface(colWhite)
 
   # Draw the shapes
@@ -545,6 +546,8 @@ when isMainModule:
       if evk.keysym.sym == SDL.K_LEFT:
         surf.drawHorLine(395, 300, 50, colBlack)
         echo("Drawing")
+      elif evk.keysym.sym == SDL.K_ESCAPE:
+        break
       else:
         echo(evk.keysym.sym)
     of SDL.MOUSEBUTTONDOWN:
