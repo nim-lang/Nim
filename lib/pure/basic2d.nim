@@ -32,7 +32,7 @@ import strutils
 ##   
 ##   var pt2:TPoint2d=pt & m #concatenates pt with m and returns a new point
 ##   
-##   var vec2:TVEctor2d=vec & m #concatenates vec with m and returns a new vector
+##   var vec2:TVector2d=vec & m #concatenates vec with m and returns a new vector
 
 
 const
@@ -113,13 +113,13 @@ proc safeArccos(v:float):float=
   return arccos(clamp(v,-1.0,1.0))
 
 
-template makeBinOpVector*(s:expr)= 
+template makeBinOpVector(s:expr)= 
   ## implements binary operators + , - , * and / for vectors
   proc s*(a,b:TVector2d):TVector2d {.inline,noInit.} = vector2d(s(a.x,b.x),s(a.y,b.y))
   proc s*(a:TVector2d,b:float):TVector2d {.inline,noInit.}  = vector2d(s(a.x,b),s(a.y,b))
   proc s*(a:float,b:TVector2d):TVector2d {.inline,noInit.}  = vector2d(s(a,b.x),s(a,b.y))
   
-template makeBinOpAssignVector*(s:expr)= 
+template makeBinOpAssignVector(s:expr)= 
   ## implements inplace binary operators += , -= , /= and *= for vectors
   proc s*(a:var TVector2d,b:TVector2d) {.inline.} = s(a.x,b.x) ; s(a.y,b.y)
   proc s*(a:var TVector2d,b:float) {.inline.} = s(a.x,b) ; s(a.y,b)
@@ -312,6 +312,17 @@ proc isIdentity*(m:TMatrix2d,tol=1.0e-6):bool=
   ## using `tol` as tolerance for each element.
   return equals(m,IDMATRIX,tol)
 
+proc apply*(m:TMatrix2d,x,y:var float,translate=false)=
+  ## Applies transformation `m` onto `x`,`y`, optionally
+  ## using the translation part of the matrix.
+  if translate: # positional style transform
+    let newx=x*m.ax+y*m.bx+m.tx
+    y=x*m.ay+y*m.by+m.ty
+    x=newx
+  else: # delta style transform
+    let newx=x*m.ax+y*m.bx
+    y=x*m.ay+y*m.by
+    x=newx
 
 
 
@@ -421,11 +432,10 @@ proc normalize*(v:var TVector2d) {.inline.}=
     raise newException(EDivByZero,"Cannot normalize zero length vector")
   
 proc transformNorm*(v:var TVector2d,t:TMatrix2d)=
-  ## Applies transformation `m` onto `v` in place, assuming `v` is a normal.
-  ## The length of the resulting vector is undefined, 
-  ## but most likely not the same as the input vector.
-  ## If the matrix is not invertible (determinant=0), an EDivByZero
-  ## will be raised.
+  ## Applies a normal direction transformation `t` onto `v` in place.
+  ## The resulting vector is *not* normalized.  Transforming a vector ignores the 
+  ## translational part of the matrix. If the matrix is not invertible 
+  ## (determinant=0), an EDivByZero will be raised.
 
   # transforming a normal is done by transforming
   # by the transpose of the inverse of the original matrix
@@ -456,11 +466,11 @@ proc transformInv*(v:var TVector2d,t:TMatrix2d)=
   v.x = newx
 
 proc transformNormInv*(v:var TVector2d,t:TMatrix2d)=
-  ## Applies inverse of a transformation `m` to `v` in place, 
-  ## assuming `v` is a normal. This is faster than creating an inverse 
+  ## Applies an inverse normal direction transformation `t` onto `v` in place.
+  ## This is faster than creating an inverse 
   ## matrix and transformNorm(...) it. Transforming a vector ignores the 
   ## translational part of the matrix.
-  
+
   # normal inverse transform is done by transforming
   # by the inverse of the transpose of the inverse of the org. matrix
   # which is equivalent with transforming with the transpose.
@@ -596,6 +606,41 @@ proc turnAngle*(v1,v2:TVector2d):float=
     return -a
   return a
 
+proc bisect*(v1,v2:TVector2d):TVector2d {.noInit.}=
+  ## Computes the bisector between v1 and v2 as a normalized vector.
+  ## If one of the input vectors has zero length, a normalized verison
+  ## of the other is returned. If both input vectors has zero length, 
+  ## an arbitrary normalized vector is returned.
+  var
+    vmag1=v1.len
+    vmag2=v2.len
+    
+  # zero length vector equals arbitrary vector, just change to magnitude to one to
+  # avoid zero division
+  if vmag1==0.0: 
+    if vmag2==0: #both are zero length return any normalized vector
+      return XAXIS
+    vmag1=1.0
+  if vmag2==0.0: vmag2=1.0    
+    
+  let
+    x1=v1.x/vmag1
+    y1=v1.y/vmag1
+    x2=v2.x/vmag2
+    y2=v2.y/vmag2
+    
+  result.x=(x1 + x2) * 0.5
+  result.y=(y1 + y2) * 0.5
+  
+  if not result.tryNormalize():
+    # This can happen if vectors are colinear. In this special case
+    # there are actually two bisectors, we select just 
+    # one of them (x1,y1 rotated 90 degrees ccw).
+    result.x = -y1
+    result.y = x1
+
+
+
 # ***************************************
 #     TPoint2d implementation
 # ***************************************
@@ -729,17 +774,17 @@ proc scale*(p:var TPoint2d,fac:float) {.inline.}=
 proc scale*(p:var TPoint2d,fac:float,org:TPoint2d){.inline.}=
   ## Scales the point in place `fac` times with `org` as origin.
   p.x=(p.x - org.x) * fac + org.x
-  p.y=(p.x - org.y) * fac + org.y
+  p.y=(p.y - org.y) * fac + org.y
 
 proc stretch*(p:var TPoint2d,facx,facy:float){.inline.}=
   ## Scales a point in place non uniformly `facx` and `facy` times with world origo as origin.
   p.x*=facx
-  p.y*=facx
+  p.y*=facy
 
 proc stretch*(p:var TPoint2d,facx,facy:float,org:TPoint2d){.inline.}=
   ## Scales the point in place non uniformly `facx` and `facy` times with `org` as origin.
   p.x=(p.x - org.x) * facx + org.x
-  p.y=(p.x - org.y) * facy + org.y
+  p.y=(p.y - org.y) * facy + org.y
 
 proc move*(p:var TPoint2d,dx,dy:float){.inline.}=
   ## Translates a point `dx`, `dy` in place.
@@ -751,31 +796,15 @@ proc move*(p:var TPoint2d,v:TVector2d){.inline.}=
   p.x+=v.x
   p.y+=v.y
 
-
-# ***************************************
-#     Misc. 2d utilities
-# ***************************************
-proc transform*(x,y:var float,m:TMatrix2d,translate=false)=
-  ## Concatenates vector x,y with matrix m in place, optionally
-  ## using the translation part of the matrix.
-  if translate: # positional style transform
-    let newx=x*m.ax+y*m.bx+m.tx
-    y=x*m.ay+y*m.by+m.ty
-    x=newx
-  else: # delta style transform
-    let newx=x*m.ax+y*m.bx
-    y=x*m.ay+y*m.by
-    x=newx
-
 proc sgnArea*(a,b,c:TPoint2d):float=
-  ## Computes the signed area of the triangle a,b,c.
+  ## Computes the signed area of the triangle thru points `a`,`b` and `c`
   ## result>0.0 for counter clockwise triangle
   ## result<0.0 for clockwise triangle
   ## This is commonly used to determinate side of a point with respect to a line.
   return ((b.x - c.x) * (b.y - a.y)-(b.y - c.y) * (b.x - a.x))*0.5
 
 proc area*(a,b,c:TPoint2d):float=
-  ## Computes the area of the triangle a,b,c
+  ## Computes the area of the triangle thru points `a`,`b` and `c`
   return abs(sgnArea(a,b,c))
 
 proc closestPoint*(p:TPoint2d,pts:varargs[TPoint2d]):TPoint2d=
@@ -795,6 +824,11 @@ proc closestPoint*(p:TPoint2d,pts:varargs[TPoint2d]):TPoint2d=
   
   result=pts[bestidx]
 
+
+# ***************************************
+#     Misc. math utilities that should
+#     probably be in another module.
+# ***************************************
 proc normAngle*(ang:float):float=
   ## Returns an angle in radians, that is equal to `ang`,
   ## but in the range 0 to <2*PI
@@ -803,45 +837,12 @@ proc normAngle*(ang:float):float=
 
   return ang mod DEG360
   
-proc degToRad*(deg:float):float=
+proc degToRad*(deg:float):float {.inline.}=
   ## converts `deg` degrees to radians
   deg / RAD2DEGCONST
 
-proc radToDeg*(rad:float):float=
+proc radToDeg*(rad:float):float {.inline.}=
   ## converts `rad` radians to degrees
   rad * RAD2DEGCONST
 
-proc bisect*(v1,v2:TVector2d):TVector2d {.noInit.}=
-  ## Computes the bisector between v1 and v2 as a normalized vector
-  ## If one of the input vectors has zero length, a normalized verison
-  ## of the other is returned.
-  ## If both input vectors has zero length, an arbitrary normalized vector
-  ## is returned.
-  var
-    vmag1=v1.len
-    vmag2=v2.len
-    
-  # zero length vector equals arbitrary vector, just change to magnitude to one to
-  # avoid zero division
-  if vmag1==0.0: 
-    if vmag2==0: #both are zero length return any normalized vector
-      return XAXIS
-    vmag1=1.0
-  if vmag2==0.0: vmag2=1.0    
-    
-  let
-    x1=v1.x/vmag1
-    y1=v1.y/vmag1
-    x2=v2.x/vmag2
-    y2=v2.y/vmag2
-    
-  result.x=(x1 + x2) * 0.5
-  result.y=(y1 + y2) * 0.5
-  
-  if not result.tryNormalize():
-    # This can happen if vectors are colinear. In this special case
-    # there are actually two bisectors, we select just 
-    # one of them (x1,y1 rotated 90 degrees ccw).
-    result.x = -y1
-    result.y = x1
   
