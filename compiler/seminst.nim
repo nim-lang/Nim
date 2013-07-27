@@ -233,11 +233,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # we set the friend module:
   var oldFriend = c.friendModule
   c.friendModule = getModule(fn)
+  #let oldScope = c.currentScope
+  #c.currentScope = fn.scope
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
-  # keep the owner if it's an inner proc (for proper closure transformations):
-  if fn.owner.kind == skModule:
-    result.owner = getCurrOwner().owner
+  result.owner = fn
   result.ast = n
   pushOwner(result)
   openScope(c)
@@ -267,6 +267,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popInfoContext()
   closeScope(c)           # close scope for parameters
   popOwner()
+  #c.currentScope = oldScope
   c.friendModule = oldFriend
   dec(c.InstCounter)
   if result.kind == skMethod: finishMethod(c, result)
