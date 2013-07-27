@@ -14,6 +14,7 @@ import strutils
 ## Basic 2d support with vectors, points, matrices and some basic utilities.
 ## Vectors are implemented as direction vectors, ie. when transformed with a matrix
 ## the translation part of matrix is ignored. 
+## Operators `+` , `-` , `*` , `/` , `+=` , `-=` , `*=` and `/=` are implemented for vectors and scalars.
 ##
 ## Quick start example:
 ##   

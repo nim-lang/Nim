@@ -16,7 +16,8 @@ import times
 ## Vectors are implemented as direction vectors, ie. when transformed with a matrix
 ## the translation part of matrix is ignored. The coordinate system used is
 ## right handed, because its compatible with 2d coordinate system (rotation around
-## zaxis equals 2d rotation)
+## zaxis equals 2d rotation). 
+## Operators `+` , `-` , `*` , `/` , `+=` , `-=` , `*=` and `/=` are implemented for vectors and scalars.
 ##
 ##
 ## Quick start example:
@@ -66,9 +67,9 @@ type
 # Some forward declarations
 proc matrix3d*(ax,ay,az,aw,bx,by,bz,bw,cx,cy,cz,cw,tx,ty,tz,tw:float):TMatrix3d {.noInit.}
   ## Creates a new 4x4 3d transformation matrix. 
-  ## `ax`,`ay`,`az` is the local x axis
-  ## `bx`,`by`,`bz` is the local y axis
-  ## `tx`,`ty`,`tz` is the translation
+  ## `ax` , `ay` , `az` is the local x axis.
+  ## `bx` , `by` , `bz` is the local y axis.
+  ## `tx` , `ty` , `tz` is the translation.
 proc vector3d*(x,y,z:float):TVector3d {.noInit,inline.}
   ## Returns a new 3d vector (`x`,`y`,`z`)
 proc point3d*(x,y,z:float):TPoint3d {.noInit,inline.}
@@ -185,12 +186,12 @@ proc scale*(s:float,org:TPoint3d):TMatrix3d {.noInit.} =
 
 proc stretch*(sx,sy,sz:float):TMatrix3d {.noInit.} =
   ## Returns new a stretch matrix, which is a
-  ## scale matrix with non uniform scale in x and y.
+  ## scale matrix with non uniform scale in x,y and z.
   result.setElements(sx,0,0,0, 0,sy,0,0, 0,0,sz,0, 0,0,0,1)
     
 proc stretch*(sx,sy,sz:float,org:TPoint3d):TMatrix3d {.noInit.} =
   ## Returns a new stretch matrix, which is a
-  ## scale matrix with non uniform scale in x and y.
+  ## scale matrix with non uniform scale in x,y and z.
   ## `org` is used as stretch origin.
   result.setElements(sx,0,0,0, 0,sy,0,0, 0,0,sz,0, org.x-sx*org.x,org.y-sy*org.y,org.z-sz*org.z,1)
     
@@ -471,7 +472,7 @@ proc equals*(m1:TMatrix3d,m2:TMatrix3d,tol=1.0e-6):bool=
     abs(m1.tw-m2.tw)<=tol
 
 proc `=~`*(m1,m2:TMatrix3d):bool=
-  ## Checks if `m1`and `m2` is aproximately equal, using a
+  ## Checks if `m1` and `m2` is aproximately equal, using a
   ## tolerance of 1e-6.
   equals(m1,m2)
   
@@ -506,7 +507,7 @@ proc `$`*(m:TMatrix3d):string=
     "\n" & rtos(m.tx) & "," & rtos(m.ty) & "," &rtos(m.tz) & "," & rtos(m.tw)
     
 proc apply*(m:TMatrix3d, x,y,z:var float, translate=false)=
-  ## Applies transformation `m` onto `x`,`y`,`z`, optionally
+  ## Applies transformation `m` onto `x` , `y` , `z` , optionally
   ## using the translation part of the matrix.
   let 
     oldx=x
@@ -694,7 +695,7 @@ proc scale*(v:var TVector3d,s:float)=
   v.z*=s
 
 proc stretch*(v:var TVector3d,sx,sy,sz:float)=
-  ## Scales the vector non uniformly with factors `sx`,`sy`,`sz`
+  ## Scales the vector non uniformly with factors `sx` , `sy` , `sz`
   v.x*=sx
   v.y*=sy
   v.z*=sz
@@ -1006,7 +1007,7 @@ proc stretch*(p:var TPoint3d,facx,facy,facz:float,org:TPoint3d){.inline.}=
   
 
 proc move*(p:var TPoint3d,dx,dy,dz:float){.inline.}=
-  ## Translates a point `dx`,`dy`,`dz` in place.
+  ## Translates a point `dx` , `dy` , `dz` in place.
   p.x+=dx
   p.y+=dy
   p.z+=dz
@@ -1018,7 +1019,7 @@ proc move*(p:var TPoint3d,v:TVector3d){.inline.}=
   p.z+=v.z
 
 proc area*(a,b,c:TPoint3d):float {.inline.}=
-  ## Computes the area of the triangle thru points `a`,`b` and `c`
+  ## Computes the area of the triangle thru points `a` , `b` and `c`
   
   # The area of a planar 3d quadliteral is the magnitude of the cross
   # product of two edge vectors. Taking this time 0.5 gives the triangle area.
