@@ -1031,8 +1031,9 @@ proc genInitCode(m: BModule) =
   app(prc, initGCFrame(m.initProc))
  
   app(prc, genSectionStart(cpsLocals))
-  app(prc, m.initProc.s(cpsLocals))
   app(prc, m.preInitProc.s(cpsLocals))
+  app(prc, m.initProc.s(cpsLocals))
+  app(prc, m.postInitProc.s(cpsLocals))
   app(prc, genSectionEnd(cpsLocals))
 
   if optStackTrace in m.initProc.options and not m.FrameDeclared:
@@ -1048,11 +1049,13 @@ proc genInitCode(m: BModule) =
   app(prc, genSectionStart(cpsInit))
   app(prc, m.preInitProc.s(cpsInit))
   app(prc, m.initProc.s(cpsInit))
+  app(prc, m.postInitProc.s(cpsInit))
   app(prc, genSectionEnd(cpsInit))
 
   app(prc, genSectionStart(cpsStmts))
   app(prc, m.preInitProc.s(cpsStmts))
   app(prc, m.initProc.s(cpsStmts))
+  app(prc, m.postInitProc.s(cpsStmts))
   app(prc, genSectionEnd(cpsStmts))
   if optStackTrace in m.initProc.options and not m.PreventStackTrace:
     app(prc, deinitFrame(m.initProc))
@@ -1097,6 +1100,11 @@ proc newPreInitProc(m: BModule): BProc =
   # little hack so that unique temporaries are generated:
   result.labels = 100_000
 
+proc newPostInitProc(m: BModule): BProc =
+  result = newProc(nil, m)
+  # little hack so that unique temporaries are generated:
+  result.labels = 200_000
+
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
   InitLinkedList(result.headerFiles)
@@ -1111,6 +1119,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = gOptions
   result.preInitProc = newPreInitProc(result)
+  result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1131,6 +1140,7 @@ proc resetModule*(m: var BModule) =
   m.initProc = newProc(nil, m)
   m.initProc.options = gOptions
   m.preInitProc = newPreInitProc(m)
+  m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]

@@ -152,7 +152,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty
   if sfGlobal in v.flags:
     if v.owner.kind != skModule:
-      targetProc = p.module.preInitProc
+      targetProc = p.module.postInitProc
     assignGlobalVar(targetProc, v)
     # XXX: be careful here.
     # Global variables should not be zeromem-ed within loops 
