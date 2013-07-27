@@ -270,6 +270,7 @@
 #
 
 {.deadCodeElim: on.}
+import unsigned
 when defined(windows): 
   const 
     LibName = "SDL.dll"
@@ -1807,7 +1808,7 @@ proc ListModes*(format: PPixelFormat, flags: int32): PPSDL_Rect{.cdecl,
   #  applications that redraw the entire screen on every update.
   #
   #  This function returns the video framebuffer surface, or NULL if it fails.
-proc SetVideoMode*(width, height, bpp: int, flags: int32): PSurface{.cdecl, 
+proc SetVideoMode*(width, height, bpp: int, flags: uint32): PSurface{.cdecl, 
     importc: "SDL_SetVideoMode", dynlib: LibName.}
   # Makes sure the given list of rectangles is updated on the given screen.
   #  If 'x', 'y', 'w' and 'h' are all 0, SDL_UpdateRect will update the entire
