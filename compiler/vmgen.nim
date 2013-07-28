@@ -422,6 +422,11 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.gABC(n, opc, dest, tmp, 0)
   c.freeTemp(tmp)
 
+proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
+  let tmp = c.genx(n.sons[2])
+  c.gABC(n, opc, tmp, 0, 0)
+  c.freeTemp(tmp)
+
 proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   if dest < 0: dest = getTemp(c, n.typ)
   var x = c.getTempRange(n.len-1, slotTempStr)
@@ -636,26 +641,38 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mAppendSeqElem:
     unused(n, dest)
     genBinaryStmt(c, n, opcAddSeqElem)
-  of mParseExprToAst: InternalError(n.info, "cannot generate code for: " & $m)
-  of mParseStmtToAst: InternalError(n.info, "cannot generate code for: " & $m)
+  of mParseExprToAst:
+    genUnaryABC(c, n, dest, opcParseExprToAst)
+  of mParseStmtToAst:
+    genUnaryABC(c, n, dest, opcParseStmtToAst)
   of mExpandToAst: InternalError(n.info, "cannot generate code for: " & $m)
   of mTypeTrait: InternalError(n.info, "cannot generate code for: " & $m)
   of mIs: InternalError(n.info, "cannot generate code for: " & $m)
-  of mSlurp: InternalError(n.info, "cannot generate code for: " & $m)
-  of mStaticExec: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNLen: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNChild: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNSetChild: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNAdd: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNAddMultiple: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNDel: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNKind: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNIntVal: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNFloatVal: InternalError(n.info, "cannot generate code for: " & $m) 
-  of mNSymbol: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNIdent: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNGetType: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNStrVal: InternalError(n.info, "cannot generate code for: " & $m)
+  of mSlurp: genUnaryABC(c, n, dest, opcSlurp)
+  of mStaticExec: genBinaryABC(c, n, dest, opcGorge)
+  of mNLen: genUnaryABI(c, n, dest, opcLenSeq)
+  of mNChild: genBinaryABC(c, n, dest, opcNChild)
+  of mNSetChild:
+    unused(n, dest)
+    var
+      tmp1 = c.genx(n.sons[1])
+      tmp2 = c.genx(n.sons[2])
+      tmp3 = c.genx(n.sons[3])
+    c.gABC(n, opcNSetChild, tmp1, tmp2, tmp3)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp2)
+    c.freeTemp(tmp3)
+  of mNAdd: genBinaryABC(c, n, dest, opcNAdd)
+  of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
+  of mNDel:
+    InternalError(n.info, "cannot generate code for: " & $m)
+  of mNKind: genUnaryABC(c, n, dest, opcNKind)
+  of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
+  of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
+  of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
+  of mNIdent: genUnaryABC(c, n, dest, opcNIdent)
+  of mNGetType: genUnaryABC(c, n, dest, opcNGetType)
+  of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
   of mNSetIntVal: InternalError(n.info, "cannot generate code for: " & $m)
   of mNSetFloatVal: InternalError(n.info, "cannot generate code for: " & $m)
   of mNSetSymbol: InternalError(n.info, "cannot generate code for: " & $m)
@@ -665,16 +682,24 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNNewNimNode: InternalError(n.info, "cannot generate code for: " & $m)
   of mNCopyNimNode: InternalError(n.info, "cannot generate code for: " & $m)
   of mNCopyNimTree: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNBindSym: InternalError(n.info, "cannot generate code for: " & $m)
+  of mNBindSym: genUnaryABC(c, n, dest, opcNBindSym)
   of mStrToIdent: InternalError(n.info, "cannot generate code for: " & $m)
   of mIdentToStr: InternalError(n.info, "cannot generate code for: " & $m)
   of mEqIdent: InternalError(n.info, "cannot generate code for: " & $m)
   of mEqNimrodNode: InternalError(n.info, "cannot generate code for: " & $m)
   of mNLineInfo: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNHint: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNWarning: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNError: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNCallSite: InternalError(n.info, "cannot generate code for: " & $m)  
+  of mNHint: 
+    unused(n, dest)
+    genUnaryStmt(c, n, opcNHint)
+  of mNWarning: 
+    unused(n, dest)
+    genUnaryStmt(c, n, opcNWarning)
+  of mNError:
+    unused(n, dest)
+    genUnaryStmt(c, n, opcNError)
+  of mNCallSite:
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcCallSite, dest)
   else:
     # XXX get rid of these: mMinI, mMaxI, mMinI64, mMaxI64, mMinF64, mMaxF64
     # mGCref, mGCunref, mEqCString, mAbsI, mAbsI64, mAbsF64
