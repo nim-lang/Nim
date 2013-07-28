@@ -68,12 +68,33 @@ type
     opcAddSeqElem,
     opcRangeChck,
     
+    opcNAdd,
+    opcNAddMultiple,
+    opcNKind, 
+    opcNIntVal, 
+    opcNFloatVal, 
+    opcNSymbol, 
+    opcNIdent,
+    opcNGetType,
+    opcNStrVal,
+    
+    opcSlurp,
+    opcGorge,
+    opcParseExprToAst,
+    opcParseStmtToAst,
+    opcNError,
+    opcNWarning,
+    opcNHint,
+    
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
     opcIndCallAsgn, # dest = call regStart, n; where regStart = fn, arg1, ...
 
     opcRaise,
+    opcNChild,
+    opcNSetChild,
     opcNBindSym, # opcodes for the AST manipulation following
+    opcCallSite,
     opcNewStr,
   
     opcTJmp,  # jump Bx if A != 0
@@ -127,13 +148,15 @@ type
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
     prc*: PProc
+    module*: PSym
+    callsite*: PNode
 
   TPosition* = distinct int
   
-proc newCtx*(): PCtx =
+proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]))
+    prc: PProc(blocks: @[]), module: module)
 
 const
   firstABxInstr* = opcTJmp

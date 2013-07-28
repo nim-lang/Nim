@@ -11,7 +11,8 @@
 ## An instruction is 1-2 int32s in memory, it is a register based VM.
 
 import
-  strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned
+  strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
+  parser, vmdeps
 
 from semfold import leValueConv
 
@@ -72,6 +73,10 @@ template decodeBC(k: expr) {.immediate, dirty.} =
   let rb = instr.regB
   let rc = instr.regC
   ensureKind(k)
+
+template declBC() {.immediate, dirty.} =
+  let rb = instr.regB
+  let rc = instr.regC
 
 template decodeBImm(k: expr) {.immediate, dirty.} =
   let rb = instr.regB
@@ -283,7 +288,8 @@ proc execute(c: PCtx, start: int) =
       regs[ra].intVal = regs[rb].intVal - imm
     of opcLenSeq:
       decodeBImm(nkIntLit)
-      assert regs[rb].kind == nkBracket
+      #assert regs[rb].kind == nkBracket
+      # also used by mNLen
       regs[ra].intVal = regs[rb].len - imm
     of opcLenStr:
       decodeBImm(nkIntLit)
@@ -578,6 +584,85 @@ proc execute(c: PCtx, start: int) =
       # trivial implementation:
       let rb = instr.regB
       regs[ra] = regs[rb].sons[1]
+    of opcNChild:
+      let rb = instr.regB
+      let rc = instr.regC
+      regs[ra] = regs[rb].sons[regs[rc].intVal.int]
+    of opcNSetChild:
+      let rb = instr.regB
+      let rc = instr.regC
+      regs[ra].sons[regs[rb].intVal.int] = regs[rc]
+    of opcNAdd:
+      declBC()
+      regs[rb].add(regs[rb])
+      regs[ra] = regs[rb]
+    of opcNAddMultiple:
+      declBC()
+      let x = regs[rc]
+      # XXX can be optimized:
+      for i in 0.. <x.len: regs[rb].add(x.sons[i])
+      regs[ra] = regs[rb]
+    of opcNKind:
+      decodeB(nkIntLit)
+      regs[ra].intVal = ord(regs[rb].kind)
+    of opcNIntVal:
+      decodeB(nkIntLit)
+      let a = regs[rb]
+      case a.kind
+      of nkCharLit..nkInt64Lit: regs[ra].intVal = a.intVal
+      else: stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
+    of opcNFloatVal:
+      decodeB(nkFloatLit)
+      let a = regs[rb]
+      case a.kind
+      of nkFloatLit..nkFloat64Lit: regs[ra].floatVal = a.floatVal
+      else: stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
+    of opcNSymbol:
+      let rb = instr.regB
+      if regs[rb].kind != nkSym: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
+      regs[ra] = regs[rb]
+    of opcNIdent:
+      let rb = instr.regB
+      if regs[rb].kind != nkIdent: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "ident")
+      regs[ra] = regs[rb]
+    of opcNGetType:
+      InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)      
+    of opcNStrVal:
+      decodeB(nkStrLit)
+      let a = regs[rb]
+      case a.kind
+      of nkStrLit..nkTripleStrLit: regs[ra].strVal = a.strVal
+      else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+    of opcSlurp:
+      decodeB(nkStrLit)
+      regs[ra].strVal = opSlurp(regs[rb].strVal, c.debug[pc], c.module)
+    of opcGorge:
+      decodeBC(nkStrLit)
+      regs[ra].strVal = opGorge(regs[rb].strVal, regs[rc].strVal)
+    of opcNError:
+      stackTrace(c, tos, pc, errUser, regs[ra].strVal)
+    of opcNWarning:
+      Message(c.debug[pc], warnUser, regs[ra].strVal)
+    of opcNHint:
+      Message(c.debug[pc], hintUser, regs[ra].strVal)
+    of opcParseExprToAst:
+      let rb = instr.regB
+      # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
+      let ast = parseString(regs[rb].strVal, c.debug[pc].toFilename,
+                            c.debug[pc].line.int)
+      if sonsLen(ast) != 1:
+        GlobalError(c.debug[pc], errExprExpected, "multiple statements")
+      regs[ra] = ast.sons[0]
+    of opcParseStmtToAst:
+      let rb = instr.regB
+      let ast = parseString(regs[rb].strVal, c.debug[pc].toFilename,
+                            c.debug[pc].line.int)
+      regs[ra] = ast
+    of opcCallSite:
+      if c.callsite != nil: regs[ra] = c.callsite
+      else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
     else:
       InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     inc pc
@@ -596,7 +681,7 @@ proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
-  result = newCtx()
+  result = newCtx(module)
 
 var oldErrorCount: int
 
