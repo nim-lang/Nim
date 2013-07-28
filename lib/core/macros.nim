@@ -480,6 +480,9 @@ proc ExpectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
 proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
+  ##
+  ## The ``params`` array should start with the return type of the proc, 
+  ## followed by a list of IdentDefs which specify the params.
   assert procType in RoutineNodes
   result = newNimNode(procType).add(
     name,
