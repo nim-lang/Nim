@@ -11,7 +11,8 @@
 ## to convert Nimrod code into a consistent style.
 
 import 
-  os, options, ast, astalgo, msgs, ropes, idents, passes, importer
+  strutils, os, options, ast, astalgo, msgs, ropes, idents, passes, pegs,
+  intsets
 
 type 
   TGen = object of TPassContext
@@ -23,54 +24,110 @@ type
     dirty: bool
     fullpath: string
 
-proc addSourceLine(fileIdx: int32, line: string) =
-  fileInfos[fileIdx].lines.add line
+var
+  gSourceFiles: seq[TSourceFile]
 
-proc sourceLine(i: TLineInfo): PRope =
-  if i.fileIndex < 0: return nil
-  
-  if not optPreserveOrigSource and fileInfos[i.fileIndex].lines.len == 0:
-    try:
-      for line in lines(i.toFullPath):
-        addSourceLine i.fileIndex, line.string
-    except EIO:
-      discard
-  InternalAssert i.fileIndex < fileInfos.len
-  # can happen if the error points to EOF:
-  if i.line > fileInfos[i.fileIndex].lines.len: return nil
+proc loadFile(info: TLineInfo) =
+  let i = info.fileIndex
+  if i >= gSourceFiles.len:
+    gSourceFiles.setLen(i)
+    gSourceFiles[i].lines = @[]
+    let path = info.toFullPath
+    gSourceFiles[i].fullpath = path
+    # we want to die here for EIO:
+    for line in lines(path):
+      gSourceFiles[i].lines.add(line)
 
-  result = fileInfos[i.fileIndex].lines[i.line-1]
+proc overwriteFiles*() =
+  for i in 0 .. high(gSourceFiles):
+    if not gSourceFiles[i].dirty: continue
+    var f = open(gSourceFiles[i].fullpath.changeFileExt(".pretty.nim"), fmWrite)
+    for line in gSourceFiles[i].lines:
+      f.writeln(line)
+    f.close
 
-proc addDependencyAux(importing, imported: string) = 
-  appf(gDotGraph, "$1 -> $2;$n", [toRope(importing), toRope(imported)]) 
-  # s1 -> s2_4[label="[0-9]"];
-  
-proc addDotDependency(c: PPassContext, n: PNode): PNode = 
+proc beautifyName(s: string, k: TSymKind): string =
+  result = newStringOfCap(s.len)
+  var i = 0
+  case k
+  of skType, skGenericParam:
+    # skip leading 'T'
+    if s[0] == 'T' and s[1] in {'A'..'Z'}:
+      i = 1
+    result.add toUpper(s[i])
+  of skConst, skEnumField:
+    # for 'const' we keep how it's spelt; either upper case or lower case:
+    result.add s[0]
+  else:
+    result.add toLower(s[0])
+  inc i
+  let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
+  while i < s.len:
+    if s[i] == '_':
+      inc i
+      result.add toUpper(s[i])
+    elif allUpper:
+      result.add toLower(s[i])
+    else:
+      result.add s[i]
+    inc i
+
+const
+  Letters = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
+
+proc identLen(line: string, start: int): int =
+  while start+result < line.len and line[start+result] in Letters:
+    inc result
+
+proc differ(line: string, a, b: int, x: string): bool =
+  var j = 0
+  for i in a..b:
+    if line[i] != x[j]: return true
+    inc j
+  return false
+
+var cannotRename = initIntSet()
+
+proc processSym(c: PPassContext, n: PNode): PNode = 
   result = n
   var g = PGen(c)
   case n.kind
   of nkSym:
+    if n.info.fileIndex < 0: return
+    let s = n.sym
+    # operators stay as they are:
+    if s.kind == skTemp or s.name.s[0] notin Letters: return
     
-  of nkTypeSection:
-    # we need to figure out whether the PType or the TType should become
-    # Type. The other then is either TypePtr/TypeRef or TypeDesc.
+    if s.id in cannotRename: return
     
-  of nkImportStmt: 
-    for i in countup(0, sonsLen(n) - 1): 
-      var imported = getModuleName(n.sons[i])
-      addDependencyAux(g.module.name.s, imported)
-  of nkFromStmt, nkImportExceptStmt: 
-    var imported = getModuleName(n.sons[0])
-    addDependencyAux(g.module.name.s, imported)
-  of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr: 
-    for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
-  else: 
-    nil
-
-proc generateRefactorScript*(project: string) = 
-  writeRope(ropef("digraph $1 {$n$2}$n", [
-      toRope(changeFileExt(extractFileName(project), "")), gDotGraph]), 
-            changeFileExt(project, "dot"))
+    let newName = beautifyName(s.name.s, n.sym.kind)
+    
+    loadFile(n.info)
+    
+    let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
+    var first = n.info.col.int - len(s.name.s)
+    if line[first] == '`': inc first
+    
+    if {sfImportc, sfExportc} * s.flags != {}:
+      # careful, we must ensure the resulting name still matches the external
+      # name:
+      if newName != s.name.s and newName != s.loc.r.ropeToStr:
+        Message(n.info, errGenerated, 
+          "cannot rename $# to $# due to external name" % [s.name.s, newName])
+        cannotRename.incl(s.id)
+        return
+    let last = first+identLen(line, first)-1
+    if last-first+1 != newName.len or differ(line, first, last, newName):
+      var x = line.subStr(0, first-1) & newName & line.substr(last+1)
+      # the WinAPI module is full of 'TX = X' which after the substitution
+      # becomes 'X = X'. We remove those lines:
+      if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
+        x = ""
+      system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
+      gSourceFiles[n.info.fileIndex].dirty = true
+  else:
+    for i in 0 .. <n.safeLen:
+      discard processSym(c, n.sons[i])
 
 proc myOpen(module: PSym): PPassContext =
   var g: PGen
@@ -78,5 +135,5 @@ proc myOpen(module: PSym): PPassContext =
   g.module = module
   result = g
 
-const prettyPass* = makePass(open = myOpen, process = addDotDependency)
+const prettyPass* = makePass(open = myOpen, process = processSym)
 
