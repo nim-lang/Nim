@@ -170,6 +170,7 @@ proc CommandPrettyOld =
     renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
 
 proc CommandPretty =
+  msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   registerPass(prettyPass)
   compileProject()

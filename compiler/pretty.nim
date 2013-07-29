@@ -25,12 +25,13 @@ type
     fullpath: string
 
 var
-  gSourceFiles: seq[TSourceFile]
+  gSourceFiles: seq[TSourceFile] = @[]
 
 proc loadFile(info: TLineInfo) =
   let i = info.fileIndex
   if i >= gSourceFiles.len:
-    gSourceFiles.setLen(i)
+    gSourceFiles.setLen(i+1)
+  if gSourceFiles[i].lines.isNil:
     gSourceFiles[i].lines = @[]
     let path = info.toFullPath
     gSourceFiles[i].fullpath = path
@@ -80,11 +81,14 @@ proc identLen(line: string, start: int): int =
     inc result
 
 proc differ(line: string, a, b: int, x: string): bool =
-  var j = 0
-  for i in a..b:
-    if line[i] != x[j]: return true
-    inc j
-  return false
+  let y = line[a..b]
+  result = cmpIgnoreStyle(y, x) == 0 and y != x
+  when false:
+    var j = 0
+    for i in a..b:
+      if line[i] != x[j]: return true
+      inc j
+    return false
 
 var cannotRename = initIntSet()
 
@@ -106,6 +110,8 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     
     let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
     var first = n.info.col.int - len(s.name.s)
+    if first < 0: return
+    #inc first, skipIgnoreCase(line, "proc ", first)
     if line[first] == '`': inc first
     
     if {sfImportc, sfExportc} * s.flags != {}:
