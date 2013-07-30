@@ -119,7 +119,8 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     if {sfImportc, sfExportc} * s.flags != {}:
       # careful, we must ensure the resulting name still matches the external
       # name:
-      if newName != s.name.s and newName != s.loc.r.ropeToStr:
+      if newName != s.name.s and newName != s.loc.r.ropeToStr and
+          lfFullExternalName notin s.loc.flags:
         Message(n.info, errGenerated, 
           "cannot rename $# to $# due to external name" % [s.name.s, newName])
         cannotRename.incl(s.id)
