@@ -17,7 +17,8 @@ import times
 ## the translation part of matrix is ignored. The coordinate system used is
 ## right handed, because its compatible with 2d coordinate system (rotation around
 ## zaxis equals 2d rotation). 
-## Operators `+` , `-` , `*` , `/` , `+=` , `-=` , `*=` and `/=` are implemented for vectors and scalars.
+## Operators `+` , `-` , `*` , `/` , `+=` , `-=` , `*=` and `/=` are implemented
+## for vectors and scalars.
 ##
 ##
 ## Quick start example:
@@ -37,7 +38,7 @@ import times
 ##   
 ##   var pt2:TPoint3d=pt & m #concatenates pt with m and returns a new point
 ##   
-##   var vec2:TVector3d=vec & m #concatenates vec with m and returns a new vector            
+##   var vec2:TVector3d=vec & m #concatenates vec with m and returns a new vector
 
 
 
@@ -69,6 +70,7 @@ proc matrix3d*(ax,ay,az,aw,bx,by,bz,bw,cx,cy,cz,cw,tx,ty,tz,tw:float):TMatrix3d 
   ## Creates a new 4x4 3d transformation matrix. 
   ## `ax` , `ay` , `az` is the local x axis.
   ## `bx` , `by` , `bz` is the local y axis.
+  ## `cx` , `cy` , `cz` is the local z axis.
   ## `tx` , `ty` , `tz` is the translation.
 proc vector3d*(x,y,z:float):TVector3d {.noInit,inline.}
   ## Returns a new 3d vector (`x`,`y`,`z`)
@@ -114,14 +116,19 @@ proc safeArccos(v:float):float=
 
 template makeBinOpVector(s:expr)= 
   ## implements binary operators + , - , * and / for vectors
-  proc s*(a,b:TVector3d):TVector3d {.inline,noInit.} = vector3d(s(a.x,b.x),s(a.y,b.y),s(a.z,b.z))
-  proc s*(a:TVector3d,b:float):TVector3d {.inline,noInit.}  = vector3d(s(a.x,b),s(a.y,b),s(a.z,b))
-  proc s*(a:float,b:TVector3d):TVector3d {.inline,noInit.}  = vector3d(s(a,b.x),s(a,b.y),s(a,b.z))
+  proc s*(a,b:TVector3d):TVector3d {.inline,noInit.} = 
+    vector3d(s(a.x,b.x),s(a.y,b.y),s(a.z,b.z))
+  proc s*(a:TVector3d,b:float):TVector3d {.inline,noInit.}  = 
+    vector3d(s(a.x,b),s(a.y,b),s(a.z,b))
+  proc s*(a:float,b:TVector3d):TVector3d {.inline,noInit.}  = 
+    vector3d(s(a,b.x),s(a,b.y),s(a,b.z))
   
 template makeBinOpAssignVector(s:expr)= 
   ## implements inplace binary operators += , -= , /= and *= for vectors
-  proc s*(a:var TVector3d,b:TVector3d) {.inline.} = s(a.x,b.x) ; s(a.y,b.y) ; s(a.z,b.z)
-  proc s*(a:var TVector3d,b:float) {.inline.} = s(a.x,b) ; s(a.y,b) ; s(a.z,b)
+  proc s*(a:var TVector3d,b:TVector3d) {.inline.} = 
+    s(a.x,b.x) ; s(a.y,b.y) ; s(a.z,b.z)
+  proc s*(a:var TVector3d,b:float) {.inline.} = 
+    s(a.x,b) ; s(a.y,b) ; s(a.z,b)
 
 
 
@@ -235,7 +242,7 @@ proc rotate*(angle:float,axis:TVector3d):TMatrix3d {.noInit.}=
     uwomc+vsi, vwomc-usi, w2+(1.0-w2)*cs, 0.0,
     0.0,0.0,0.0,1.0)
 
-proc rotate*(angle:float,axis:TVector3d,org:TPoint3d):TMatrix3d {.noInit.}=
+proc rotate*(angle:float,org:TPoint3d,axis:TVector3d):TMatrix3d {.noInit.}=
   ## Creates a rotation matrix that rotates `angle` radians over
   ## `axis`, which passes through `org`.
 
@@ -319,7 +326,10 @@ proc isUniform*(m:TMatrix3d,tol=1.0e-6):bool=
   ## and perpendicular comparison.
   
   #dot product=0 means perpendicular coord. system, check xaxis vs yaxis and  xaxis vs zaxis
-  if abs(m.ax*m.bx+m.ay*m.by+m.az*m.bz)<=tol and abs(m.ax*m.cx+m.ay*m.cy+m.az*m.cz)<=tol:
+  if abs(m.ax*m.bx+m.ay*m.by+m.az*m.bz)<=tol and # x vs y
+    abs(m.ax*m.cx+m.ay*m.cy+m.az*m.cz)<=tol and #x vs z
+    abs(m.bx*m.cx+m.by*m.cy+m.bz*m.cz)<=tol: #y vs z
+    
     #subtract squared lengths of axes to check if uniform scaling:
     let
       sqxlen=(m.ax*m.ax+m.ay*m.ay+m.az*m.az)
@@ -355,7 +365,7 @@ proc mirror*(planeperp:TVector3d):TMatrix3d {.noInit.}=
     0,0,0,1)
 
 
-proc mirror*(planeperp:TVector3d,org:TPoint3d):TMatrix3d {.noInit.}=
+proc mirror*(org:TPoint3d,planeperp:TVector3d):TMatrix3d {.noInit.}=
   ## Creates a matrix that mirrors over the plane that has `planeperp` as normal,
   ## and passes through `org`. `planeperp` does not need to be normalized.
 
@@ -393,7 +403,8 @@ proc mirror*(planeperp:TVector3d,org:TPoint3d):TMatrix3d {.noInit.}=
 proc determinant*(m:TMatrix3d):float=
   ## Computes the determinant of matrix `m`.
   
-  # This computation is gotten from ratsimp(optimize(determinant(m))) in maxima CAS
+  # This computation is gotten from ratsimp(optimize(determinant(m))) 
+  # in maxima CAS
   let
     O1=m.cx*m.tw-m.cw*m.tx
     O2=m.cy*m.tw-m.cw*m.ty
@@ -537,7 +548,7 @@ proc len*(v:TVector3d):float=
 
 proc `len=`*(v:var TVector3d,newlen:float) {.noInit.} =
   ## Sets the length of the vector, keeping its direction.
-  ## If the vector has zero length before chenging it's length,
+  ## If the vector has zero length before changing it's length,
   ## an arbitrary vector of the requested length is returned.
 
   let fac=newlen/v.len
@@ -702,8 +713,7 @@ proc stretch*(v:var TVector3d,sx,sy,sz:float)=
 
 proc mirror*(v:var TVector3d,planeperp:TVector3d)=
   ## Computes the mirrored vector of `v` over the plane
-  ## that has `planeperp` as normal direction. This is the
-  ## same as reflecting the vector `v` on the plane.
+  ## that has `planeperp` as normal direction. 
   ## `planeperp` does not need to be normalized.
   
   var n=planeperp
@@ -750,7 +760,8 @@ proc cross*(v1,v2:TVector3d):TVector3d {.inline.}=
   ## Computes the cross product of two vectors.
   ## The result is a vector which is perpendicular
   ## to the plane of `v1` and `v2`, which means
-  ## cross(xaxis,yaxis)=zaxis
+  ## cross(xaxis,yaxis)=zaxis. The magnitude of the result is
+  ## zero if the vectors are colinear.
   result.x = (v1.y * v2.z) - (v2.y * v1.z)
   result.y = (v1.z * v2.x) - (v2.z * v1.x)
   result.z = (v1.x * v2.y) - (v2.x * v1.y)
@@ -798,16 +809,16 @@ proc arbitraryAxis*(norm:TVector3d):TMatrix3d {.noInit.}=
     0.0,0.0,0.0,1.0)
 
 proc bisect*(v1,v2:TVector3d):TVector3d {.noInit.}=
-  ## Computes the bisector between v1 and v2 as a normalized vector
-  ## If one of the input vectors has zero length, a normalized verison
+  ## Computes the bisector between v1 and v2 as a normalized vector.
+  ## If one of the input vectors has zero length, a normalized version
   ## of the other is returned. If both input vectors has zero length, 
-  ## an arbitrary normalized vector is returned.
+  ## an arbitrary normalized vector `v1`is returned.
   var
     vmag1=v1.len
     vmag2=v2.len
     
-  # zero length vector equals arbitrary vector, just change to magnitude to one to
-  # avoid zero division
+  # zero length vector equals arbitrary vector, just change 
+  # magnitude to one to avoid zero division
   if vmag1==0.0: 
     if vmag2==0: #both are zero length return any normalized vector
       return XAXIS
@@ -943,7 +954,7 @@ proc rotate*(p:var TPoint3d,rad:float,axis:TVector3d)=
   p.y=v.y
   p.z=v.z
     
-proc rotate*(p:var TPoint3d,angle:float,axis:TVector3d,org:TPoint3d)=
+proc rotate*(p:var TPoint3d,angle:float,org:TPoint3d,axis:TVector3d)=
   ## Rotates point `p` in place `rad` radians about an axis 
   ## passing through `org`
   
@@ -994,13 +1005,15 @@ proc scale*(p:var TPoint3d,fac:float,org:TPoint3d){.inline.}=
   p.z=(p.z - org.z) * fac + org.z
 
 proc stretch*(p:var TPoint3d,facx,facy,facz:float){.inline.}=
-  ## Scales a point in place non uniformly `facx` and `facy` times with world origo as origin.
+  ## Scales a point in place non uniformly `facx` , `facy` , `facz` times 
+  ## with world origo as origin.
   p.x*=facx
   p.y*=facy
   p.z*=facz
 
 proc stretch*(p:var TPoint3d,facx,facy,facz:float,org:TPoint3d){.inline.}=
-  ## Scales the point in place non uniformly `facx` and `facy` times with `org` as origin.
+  ## Scales the point in place non uniformly `facx` , `facy` , `facz` times
+  ## with `org` as origin.
   p.x=(p.x - org.x) * facx + org.x
   p.y=(p.y - org.y) * facy + org.y
   p.z=(p.z - org.z) * facz + org.z

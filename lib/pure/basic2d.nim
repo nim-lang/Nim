@@ -131,7 +131,7 @@ template makeBinOpAssignVector(s:expr)=
 # ***************************************
 
 proc setElements*(t:var TMatrix2d,ax,ay,bx,by,tx,ty:float) {.inline.}=
-  ## Sets arbitrary elements in an exisitng matrix.
+  ## Sets arbitrary elements in an existing matrix.
   t.ax=ax
   t.ay=ay
   t.bx=bx
@@ -220,7 +220,7 @@ proc mirror*(v:TVector2d):TMatrix2d {.noInit.} =
     xy2,-sqd,
     0.0,0.0)
 
-proc mirror*(v:TVector2d,org:TPoint2d):TMatrix2d {.noInit.} =
+proc mirror*(org:TPoint2d,v:TVector2d):TMatrix2d {.noInit.} =
   ## Returns a new mirror matrix, mirroring
   ## around the line that passes through `org` and
   ## has the direction of `v`
@@ -270,6 +270,7 @@ proc isUniform*(t:TMatrix2d,tol=1.0e-6):bool=
     
 proc determinant*(t:TMatrix2d):float=
   ## Computes the determinant of the matrix.
+  
   #NOTE: equivalent with perp.dot product for two 2d vectors
   return t.ax*t.by-t.bx*t.ay  
 
@@ -413,8 +414,8 @@ proc `&=`*(v:var TVector2d,m:TMatrix2d) {.inline.}=
 
 proc tryNormalize*(v:var TVector2d):bool= 
   ## Modifies `v` to have a length of 1.0, keeping its angle.
-  ## If `v` has zero length (and thus no angle), it is left unmodified and false is
-  ## returned, otherwise true is returned.
+  ## If `v` has zero length (and thus no angle), it is left unmodified and 
+  ## false is returned, otherwise true is returned.
 
   let mag=v.len
 
@@ -452,7 +453,7 @@ proc transformNorm*(v:var TVector2d,t:TMatrix2d)=
   v.x = newx
 
 proc transformInv*(v:var TVector2d,t:TMatrix2d)=
-  ## Applies inverse of a transformation `m` to `v` in place.
+  ## Applies inverse of a transformation `t` to `v` in place.
   ## This is faster than creating an inverse matrix and apply() it.
   ## Transforming a vector ignores the translational part
   ## of the matrix. If the matrix is not invertible (determinant=0), an EDivByZero
@@ -521,7 +522,7 @@ proc stretch*(v:var TVector2d,facx,facy:float){.inline.}=
   v.x*=facx
   v.y*=facy
   
-proc mirror*(v:var TVector2d,mirrvec:TVector2d){.inline.}=
+proc mirror*(v:var TVector2d,mirrvec:TVector2d)=
   ## Mirrors vector `v` using `mirrvec` as mirror direction.
   let
     sqx=mirrvec.x*mirrvec.x
@@ -561,7 +562,7 @@ proc dot*(v1,v2:TVector2d):float=
   
 proc cross*(v1,v2:TVector2d):float=
   ## Computes the cross product of two vectors, also called
-  ## the 'perpendicualar dot product' in 2d. Returns 0.0 if the vectors
+  ## the 'perpendicular dot product' in 2d. Returns 0.0 if the vectors
   ## are parallel.
   return v1.x*v2.y-v1.y*v2.x
   
@@ -575,7 +576,8 @@ proc `=~` *(v1,v2:TVector2d):bool=
   equals(v1,v2)
   
 proc angleTo*(v1,v2:TVector2d):float=
-  ## Returns the smallest of the two possible angles between `v1` and `v2` in radians.
+  ## Returns the smallest of the two possible angles 
+  ## between `v1` and `v2` in radians.
   var
     nv1=v1
     nv2=v2
@@ -585,7 +587,7 @@ proc angleTo*(v1,v2:TVector2d):float=
   
 proc angleCCW*(v1,v2:TVector2d):float=
   ## Returns the counter clockwise plane angle from `v1` to `v2`,
-  ## in range 0-PI
+  ## in range 0 - 2*PI
   let a=v1.angleTo(v2)
   if v1.cross(v2)>=0.0:
     return a
@@ -593,7 +595,7 @@ proc angleCCW*(v1,v2:TVector2d):float=
   
 proc angleCW*(v1,v2:TVector2d):float=
   ## Returns the clockwise plane angle from `v1` to `v2`,
-  ## in range 0-PI
+  ## in range 0 - 2*PI
   let a=v1.angleTo(v2)
   if v1.cross(v2)<=0.0:
     return a
@@ -609,7 +611,7 @@ proc turnAngle*(v1,v2:TVector2d):float=
 
 proc bisect*(v1,v2:TVector2d):TVector2d {.noInit.}=
   ## Computes the bisector between v1 and v2 as a normalized vector.
-  ## If one of the input vectors has zero length, a normalized verison
+  ## If one of the input vectors has zero length, a normalized version
   ## of the other is returned. If both input vectors has zero length, 
   ## an arbitrary normalized vector is returned.
   var
@@ -651,13 +653,13 @@ proc point2d*(x,y:float):TPoint2d =
   result.y=y
   
 proc sqrDist*(a,b:TPoint2d):float=
-  ## Computes the squared distance between `a`and `b`
+  ## Computes the squared distance between `a` and `b`
   let dx=b.x-a.x
   let dy=b.y-a.y
   result=dx*dx+dy*dy
   
 proc dist*(a,b:TPoint2d):float {.inline.}=
-  ## Computes the absolute distance between `a`and `b`
+  ## Computes the absolute distance between `a` and `b`
   result=sqrt(sqrDist(a,b))
 
 proc angle*(a,b:TPoint2d):float=
@@ -759,7 +761,8 @@ proc rotate*(p:var TPoint2d,rad:float)=
   p.x=newx
     
 proc rotate*(p:var TPoint2d,rad:float,org:TPoint2d)=
-  ## Rotates a point in place `rad` radians around another point `org`
+  ## Rotates a point in place `rad` radians using `org` as
+  ## center of rotation.
   let
     c=cos(rad)
     s=sin(rad)
@@ -778,12 +781,14 @@ proc scale*(p:var TPoint2d,fac:float,org:TPoint2d){.inline.}=
   p.y=(p.y - org.y) * fac + org.y
 
 proc stretch*(p:var TPoint2d,facx,facy:float){.inline.}=
-  ## Scales a point in place non uniformly `facx` and `facy` times with world origo as origin.
+  ## Scales a point in place non uniformly `facx` and `facy` times with 
+  ## world origo as origin.
   p.x*=facx
   p.y*=facy
 
 proc stretch*(p:var TPoint2d,facx,facy:float,org:TPoint2d){.inline.}=
-  ## Scales the point in place non uniformly `facx` and `facy` times with `org` as origin.
+  ## Scales the point in place non uniformly `facx` and `facy` times with 
+  ## `org` as origin.
   p.x=(p.x - org.x) * facx + org.x
   p.y=(p.y - org.y) * facy + org.y
 
@@ -809,7 +814,8 @@ proc area*(a,b,c:TPoint2d):float=
   return abs(sgnArea(a,b,c))
 
 proc closestPoint*(p:TPoint2d,pts:varargs[TPoint2d]):TPoint2d=
-  ## Returns a point selected from `pts`, that has the closest euclidean distance to `p`
+  ## Returns a point selected from `pts`, that has the closest 
+  ## euclidean distance to `p`
   assert(pts.len>0) # must have at least one point
   
   var 
