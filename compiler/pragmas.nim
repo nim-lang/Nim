@@ -75,7 +75,7 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
   if n != nil: 
     for i in countup(0, sonsLen(n) - 1): 
       let it = n.sons[i]
-      if (it.kind == nkExprColonExpr) and (it.sons[0].kind == nkIdent): 
+      if it.kind == nkExprColonExpr and it.sons[0].kind == nkIdent:
         case whichKeyword(it.sons[0].ident)
         of wSubsChar: 
           if it.sons[1].kind == nkCharLit: result = chr(int(it.sons[1].intVal))
