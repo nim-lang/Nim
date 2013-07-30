@@ -205,13 +205,11 @@ proc findClosestCall(n: PNode): PNode =
       if result != nil: return
 
 proc isTracked(current: TLineInfo, tokenLen: int): bool =
-  # the column of an identifier is at its *end*, so we subtract to get the
-  # start of it.
   for i in countup(0, high(checkPoints)):
     if current.fileIndex == checkPoints[i].fileIndex:
       if current.line == checkPoints[i].line:
         let col = checkPoints[i].col
-        if col >= current.col-tokenLen and col <= current.col:
+        if col >= current.col and col <= current.col+tokenLen-1:
           return true
 
 proc findClosestSym(n: PNode): PNode = 

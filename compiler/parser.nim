@@ -144,7 +144,7 @@ proc Eat(p: var TParser, TokType: TTokType) =
   else: lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
   
 proc parLineInfo(p: TParser): TLineInfo =
-  result = getLineInfo(p.lex)
+  result = getLineInfo(p.lex, p.tok)
 
 proc indAndComment(p: var TParser, n: PNode) =
   if p.tok.indent > p.currInd:
@@ -154,7 +154,7 @@ proc indAndComment(p: var TParser, n: PNode) =
     skipComment(p, n)
   
 proc newNodeP(kind: TNodeKind, p: TParser): PNode = 
-  result = newNodeI(kind, getLineInfo(p.lex))
+  result = newNodeI(kind, parLineInfo(p))
 
 proc newIntNodeP(kind: TNodeKind, intVal: BiggestInt, p: TParser): PNode = 
   result = newNodeP(kind, p)
@@ -350,7 +350,7 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
 
 proc dotExpr(p: var TParser, a: PNode): PNode =
   #| dotExpr = expr '.' optInd ('type' | 'addr' | symbol)
-  var info = p.lex.getlineInfo
+  var info = p.parLineInfo
   getTok(p)
   optInd(p, a)
   case p.tok.tokType

@@ -60,7 +60,9 @@ proc beautifyName(s: string, k: TSymKind): string =
     # for 'const' we keep how it's spelt; either upper case or lower case:
     result.add s[0]
   else:
-    result.add toLower(s[0])
+    # as a special rule, don't transform 'L' to 'l'
+    if s.len == 1 and s[0] == 'L': result.add 'L'
+    else: result.add toLower(s[0])
   inc i
   let allUpper = allCharsInSet(s, {'A'..'Z', '0'..'9', '_'})
   while i < s.len:
@@ -109,7 +111,7 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     loadFile(n.info)
     
     let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
-    var first = n.info.col.int - len(s.name.s)
+    var first = n.info.col.int
     if first < 0: return
     #inc first, skipIgnoreCase(line, "proc ", first)
     if line[first] == '`': inc first

@@ -157,7 +157,7 @@ proc checkSymbol(L: TLexer, tok: TToken) =
 proc parseAssignment(L: var TLexer, tok: var TToken) = 
   if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
     confTok(L, tok)           # skip unnecessary prefix
-  var info = getLineInfo(L)   # safe for later in case of an error
+  var info = getLineInfo(L, tok) # safe for later in case of an error
   checkSymbol(L, tok)
   var s = tokToStr(tok)
   confTok(L, tok)             # skip symbol
@@ -176,7 +176,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
     add(val, tokToStr(tok))
     confTok(L, tok)
     if tok.tokType == tkBracketRi: confTok(L, tok)
-    else: lexMessage(L, errTokenExpected, "\']\'")
+    else: lexMessage(L, errTokenExpected, "']'")
     add(val, ']')
   if tok.tokType in {tkColon, tkEquals}: 
     if len(val) > 0: add(val, ':')
