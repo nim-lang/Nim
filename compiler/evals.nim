@@ -889,17 +889,10 @@ proc evalRepr(c: PEvalContext, n: PNode): PNode =
 proc isEmpty(n: PNode): bool =
   result = n != nil and n.kind == nkEmpty
 
-# The lexer marks multi-line strings as residing at the line where they 
-# are closed. This function returns the line where the string begins
-# Maybe the lexer should mark both the beginning and the end of expressions,
-# then this function could be removed.
-proc stringStartingLine(s: PNode): int =
-  result = s.info.line.int - countLines(s.strVal)
-
 proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   var ast = parseString(code.getStrValue, code.info.toFilename,
-                        code.stringStartingLine)
+                        code.info.line.int)
   if sonsLen(ast) != 1:
     GlobalError(code.info, errExprExpected, "multiple statements")
   result = ast.sons[0]
@@ -908,7 +901,7 @@ proc evalParseExpr(c: PEvalContext, n: PNode): PNode =
 proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   var code = evalAux(c, n.sons[1], {})
   result = parseString(code.getStrValue, code.info.toFilename,
-                       code.stringStartingLine)
+                       code.info.line.int)
   #result.typ = newType(tyStmt, c.module)
  
 proc evalTypeTrait*(n: PNode, context: PSym): PNode =

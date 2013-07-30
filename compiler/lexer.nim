@@ -110,6 +110,7 @@ type
                               # or float literals
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
+    line*, col*: int
   
   TLexer* = object of TBaseLexer
     fileIdx*: int32
@@ -124,8 +125,10 @@ proc isKeyword*(kind: TTokType): bool
 proc openLexer*(lex: var TLexer, fileidx: int32, inputstream: PLLStream)
 proc rawGetTok*(L: var TLexer, tok: var TToken)
   # reads in the next token into tok and skips it
-proc getColumn*(L: TLexer): int
-proc getLineInfo*(L: TLexer): TLineInfo
+
+proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
+  newLineInfo(L.fileIdx, tok.line, tok.col)
+
 proc closeLexer*(lex: var TLexer)
 proc PrintTok*(tok: TToken)
 proc tokToStr*(tok: TToken): string
@@ -702,6 +705,8 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     tok.indent = -1
   skip(L, tok)
   var c = L.buf[L.bufpos]
+  tok.line = L.linenumber
+  tok.col = getColNumber(L, L.bufpos)
   if c in SymStartChars - {'r', 'R', 'l'}:
     getSymbol(L, tok)
   else:
