@@ -75,6 +75,12 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
+proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
+  let beau = beautifyName(s, k)
+  if s != beau:
+    Message(info, errGenerated, 
+      "name does not adhere to naming convention; should be: " & beau)
+
 const
   Letters = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
 
@@ -103,6 +109,7 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     let s = n.sym
     # operators stay as they are:
     if s.kind == skTemp or s.name.s[0] notin Letters: return
+    if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
     
     if s.id in cannotRename: return
     
