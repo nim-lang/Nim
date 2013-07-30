@@ -795,6 +795,9 @@ const
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
 
+  lfFullExternalName* = lfParamCopy # \
+    # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
+    # imported via 'importc: "fullname"' and no format string.
 
 # creator procs:
 proc NewSym*(symKind: TSymKind, Name: PIdent, owner: PSym,

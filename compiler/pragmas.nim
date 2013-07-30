@@ -84,8 +84,11 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
       else: 
         invalidPragma(it)
 
-proc setExternName(s: PSym, extname: string) = 
+proc setExternName(s: PSym, extname: string) =
   s.loc.r = toRope(extname % s.name.s)
+  if gCmd == cmdPretty and '$' notin extname:
+    # note that '{.importc.}' is transformed into '{.importc: "$1".}'
+    s.loc.flags.incl(lfFullExternalName)
 
 proc MakeExternImport(s: PSym, extname: string) = 
   setExternName(s, extname)
@@ -513,11 +516,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       if k in validPragmas: 
         case k
         of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, sym.name.s))
+          makeExternExport(sym, getOptionalStr(c, it, "$1"))
           incl(sym.flags, sfUsed) # avoid wrong hints
-        of wImportc: makeExternImport(sym, getOptionalStr(c, it, sym.name.s))
+        of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
         of wImportCompilerProc:
-          processImportCompilerProc(sym, getOptionalStr(c, it, sym.name.s))
+          processImportCompilerProc(sym, getOptionalStr(c, it, "$1"))
         of wExtern: setExternName(sym, expectStrLit(c, it))
         of wImmediate:
           if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
@@ -526,9 +529,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym.kind == skTemplate: incl(sym.flags, sfDirty)
           else: invalidPragma(it)
         of wImportCpp:
-          processImportCpp(sym, getOptionalStr(c, it, sym.name.s))
+          processImportCpp(sym, getOptionalStr(c, it, "$1"))
         of wImportObjC:
-          processImportObjC(sym, getOptionalStr(c, it, sym.name.s))
+          processImportObjC(sym, getOptionalStr(c, it, "$1"))
         of wAlign:
           if sym.typ == nil: invalidPragma(it)
           var align = expectIntLit(c, it)
