@@ -12,7 +12,7 @@
 
 import 
   strutils, os, options, ast, astalgo, msgs, ropes, idents, passes, pegs,
-  intsets
+  intsets, strtabs
 
 type 
   TGen = object of TPassContext
@@ -26,6 +26,7 @@ type
 
 var
   gSourceFiles: seq[TSourceFile] = @[]
+  rules: PStringTable
 
 proc loadFile(info: TLineInfo) =
   let i = info.fileIndex
@@ -108,12 +109,13 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     if n.info.fileIndex < 0: return
     let s = n.sym
     # operators stay as they are:
-    if s.kind == skTemp or s.name.s[0] notin Letters: return
+    if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
     if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
     
     if s.id in cannotRename: return
     
-    let newName = beautifyName(s.name.s, n.sym.kind)
+    let newName = if rules.hasKey(s.name.s): rules[s.name.s]
+                  else: beautifyName(s.name.s, n.sym.kind)
     
     loadFile(n.info)
     
@@ -121,6 +123,7 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     var first = n.info.col.int
     if first < 0: return
     #inc first, skipIgnoreCase(line, "proc ", first)
+    while first > 0 and line[first-1] in Letters: dec first
     if line[first] == '`': inc first
     
     if {sfImportc, sfExportc} * s.flags != {}:
@@ -139,6 +142,7 @@ proc processSym(c: PPassContext, n: PNode): PNode =
       # becomes 'X = X'. We remove those lines:
       if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
         x = ""
+      
       system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
       gSourceFiles[n.info.fileIndex].dirty = true
   else:
@@ -150,6 +154,16 @@ proc myOpen(module: PSym): PPassContext =
   new(g)
   g.module = module
   result = g
+  if rules.isNil:
+    rules = newStringTable(modeStyleInsensitive)
+    let path = joinPath([getPrefixDir(), "config", "rename.rules.cfg"])
+    for line in lines(path):
+      if line.len > 0:
+        let colon = line.find(':')
+        if colon > 0:
+          rules[line.substr(0, colon-1)] = line.substr(colon+1)
+        else:
+          rules[line] = line
 
 const prettyPass* = makePass(open = myOpen, process = processSym)
 
