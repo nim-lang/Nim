@@ -601,7 +601,7 @@ proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
       result.typ = newTypeS(tyExpr, c)
       result.typ.sons = paramType.sons
   of tyTypeDesc:
-     if tfInstantiated notin paramType.flags:
+    if tfInstantiated notin paramType.flags:
       result.typ = newTypeS(tyTypeDesc, c)
       result.typ.sons = paramType.sons
   of tyDistinct:
@@ -719,8 +719,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymG(skParam, a.sons[j], c)
-      var finalType = liftParamType(c, kind, genericParams, typ,
-                                    arg.name.s, arg.info).skipIntLit
+      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s, 
+                                    a.sons[length-2].info).skipIntLit
       arg.typ = finalType
       arg.position = counter
       arg.constraint = constraint

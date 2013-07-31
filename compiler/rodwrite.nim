@@ -45,14 +45,10 @@ proc addStmt(w: PRodWriter, n: PNode)
 proc writeRod(w: PRodWriter)
 
 proc getDefines(): string = 
-  var it: TTabIter
-  var s = InitTabIter(it, gSymbols)
   result = ""
-  while s != nil: 
-    if s.position == 1: 
-      if result.len != 0: add(result, " ")
-      add(result, s.name.s)
-    s = nextIter(it, gSymbols)
+  for d in definedSymbolNames():
+    if result.len != 0: add(result, " ")
+    add(result, d)
 
 proc fileIdx(w: PRodWriter, filename: string): int = 
   for i in countup(0, high(w.files)): 

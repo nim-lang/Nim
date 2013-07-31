@@ -11,8 +11,11 @@
 ## to convert Nimrod code into a consistent style.
 
 import 
-  strutils, os, options, ast, astalgo, msgs, ropes, idents, passes, pegs,
+  strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
   intsets, strtabs
+  
+const
+  removeTP = false # when true, "nimrod pretty" converts TTyp to Typ.
 
 type 
   TGen = object of TPassContext
@@ -43,10 +46,14 @@ proc loadFile(info: TLineInfo) =
 proc overwriteFiles*() =
   for i in 0 .. high(gSourceFiles):
     if not gSourceFiles[i].dirty: continue
-    var f = open(gSourceFiles[i].fullpath.changeFileExt(".pretty.nim"), fmWrite)
-    for line in gSourceFiles[i].lines:
-      f.writeln(line)
-    f.close
+    let newFile = gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
+    try:
+      var f = open(newFile, fmWrite)
+      for line in gSourceFiles[i].lines:
+        f.writeln(line)
+      f.close
+    except EIO:
+      rawMessage(errCannotOpenFile, newFile)
 
 proc beautifyName(s: string, k: TSymKind): string =
   result = newStringOfCap(s.len)
@@ -54,8 +61,9 @@ proc beautifyName(s: string, k: TSymKind): string =
   case k
   of skType, skGenericParam:
     # skip leading 'T'
-    if s[0] == 'T' and s[1] in {'A'..'Z'}:
-      i = 1
+    when removeTP:
+      if s[0] == 'T' and s[1] in {'A'..'Z'}:
+        i = 1
     result.add toUpper(s[i])
   of skConst, skEnumField:
     # for 'const' we keep how it's spelt; either upper case or lower case:
@@ -138,10 +146,11 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     let last = first+identLen(line, first)-1
     if last-first+1 != newName.len or differ(line, first, last, newName):
       var x = line.subStr(0, first-1) & newName & line.substr(last+1)
-      # the WinAPI module is full of 'TX = X' which after the substitution
-      # becomes 'X = X'. We remove those lines:
-      if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
-        x = ""
+      when removeTP:
+        # the WinAPI module is full of 'TX = X' which after the substitution
+        # becomes 'X = X'. We remove those lines:
+        if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
+          x = ""
       
       system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
       gSourceFiles[n.info.fileIndex].dirty = true
@@ -156,14 +165,16 @@ proc myOpen(module: PSym): PPassContext =
   result = g
   if rules.isNil:
     rules = newStringTable(modeStyleInsensitive)
-    let path = joinPath([getPrefixDir(), "config", "rename.rules.cfg"])
-    for line in lines(path):
-      if line.len > 0:
-        let colon = line.find(':')
-        if colon > 0:
-          rules[line.substr(0, colon-1)] = line.substr(colon+1)
-        else:
-          rules[line] = line
+    when removeTP:
+      # XXX activate when the T/P stuff is deprecated
+      let path = joinPath([getPrefixDir(), "config", "rename.rules.cfg"])
+      for line in lines(path):
+        if line.len > 0:
+          let colon = line.find(':')
+          if colon > 0:
+            rules[line.substr(0, colon-1)] = line.substr(colon+1)
+          else:
+            rules[line] = line
 
 const prettyPass* = makePass(open = myOpen, process = processSym)
 
