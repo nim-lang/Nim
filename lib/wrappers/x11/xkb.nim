@@ -71,6 +71,8 @@
 import 
   X, Xlib
 
+include "x11pragma.nim"
+
 proc XkbCharToInt*(v: int8): int16
 proc XkbIntTo2Chars*(i: int16, h, L: var int8)
 proc Xkb2CharsToInt*(h, L: int8): int16
@@ -1700,224 +1702,200 @@ proc XkbSetKeyShape*(g: PXkbGeometryPtr, k: PXkbKeyPtr, s: PXkbShapeDoodadPtr)
 proc XkbSetKeyColor*(g: PXkbGeometryPtr, k: PXkbKeyPtr, c: PXkbColorPtr)
 proc XkbGeomColorIndex*(g: PXkbGeometryPtr, c: PXkbColorPtr): int32
 proc XkbAddGeomProperty*(geom: PXkbGeometryPtr, name: cstring, value: cstring): PXkbPropertyPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomProperty".}
+    libx11c, importc: "XkbAddGeomProperty".}
 proc XkbAddGeomKeyAlias*(geom: PXkbGeometryPtr, alias: cstring, float: cstring): PXkbKeyAliasPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomKeyAlias".}
+    libx11c, importc: "XkbAddGeomKeyAlias".}
 proc XkbAddGeomColor*(geom: PXkbGeometryPtr, spec: cstring, pixel: int16): PXkbColorPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomColor".}
+    libx11c, importc: "XkbAddGeomColor".}
 proc XkbAddGeomOutline*(shape: PXkbShapePtr, sz_points: int16): PXkbOutlinePtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomOutline".}
+    libx11c, importc: "XkbAddGeomOutline".}
 proc XkbAddGeomShape*(geom: PXkbGeometryPtr, name: TAtom, sz_outlines: int16): PXkbShapePtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomShape".}
-proc XkbAddGeomKey*(row: PXkbRowPtr): PXkbKeyPtr{.cdecl, dynlib: libX11, 
+    libx11c, importc: "XkbAddGeomShape".}
+proc XkbAddGeomKey*(row: PXkbRowPtr): PXkbKeyPtr{.libx11c, 
     importc: "XkbAddGeomKey".}
-proc XkbAddGeomRow*(section: PXkbSectionPtr, sz_keys: int16): PXkbRowPtr{.cdecl, 
-    dynlib: libX11, importc: "XkbAddGeomRow".}
+proc XkbAddGeomRow*(section: PXkbSectionPtr, sz_keys: int16): PXkbRowPtr{.libx11c, importc: "XkbAddGeomRow".}
 proc XkbAddGeomSection*(geom: PXkbGeometryPtr, name: TAtom, sz_rows: int16, 
                         sz_doodads: int16, sz_overlays: int16): PXkbSectionPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomSection".}
+    libx11c, importc: "XkbAddGeomSection".}
 proc XkbAddGeomOverlay*(section: PXkbSectionPtr, name: TAtom, sz_rows: int16): PXkbOverlayPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomOverlay".}
+    libx11c, importc: "XkbAddGeomOverlay".}
 proc XkbAddGeomOverlayRow*(overlay: PXkbOverlayPtr, row_under: int16, 
-                           sz_keys: int16): PXkbOverlayRowPtr{.cdecl, 
-    dynlib: libX11, importc: "XkbAddGeomOverlayRow".}
+                           sz_keys: int16): PXkbOverlayRowPtr{.libx11c, importc: "XkbAddGeomOverlayRow".}
 proc XkbAddGeomOverlayKey*(overlay: PXkbOverlayPtr, row: PXkbOverlayRowPtr, 
                            over: cstring, under: cstring): PXkbOverlayKeyPtr{.
-    cdecl, dynlib: libX11, importc: "XkbAddGeomOverlayKey".}
+    libx11c, importc: "XkbAddGeomOverlayKey".}
 proc XkbAddGeomDoodad*(geom: PXkbGeometryPtr, section: PXkbSectionPtr, 
-                       name: TAtom): PXkbDoodadPtr{.cdecl, dynlib: libX11, 
+                       name: TAtom): PXkbDoodadPtr{.libx11c, 
     importc: "XkbAddGeomDoodad".}
 proc XkbFreeGeomKeyAliases*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                            freeAll: bool){.cdecl, dynlib: libX11, 
+                            freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomKeyAliases".}
 proc XkbFreeGeomColors*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                        freeAll: bool){.cdecl, dynlib: libX11, 
+                        freeAll: bool){.libx11c, 
                                         importc: "XkbFreeGeomColors".}
 proc XkbFreeGeomDoodads*(doodads: PXkbDoodadPtr, nDoodads: int16, freeAll: bool){.
-    cdecl, dynlib: libX11, importc: "XkbFreeGeomDoodads".}
+    libx11c, importc: "XkbFreeGeomDoodads".}
 proc XkbFreeGeomProperties*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                            freeAll: bool){.cdecl, dynlib: libX11, 
+                            freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomProperties".}
 proc XkbFreeGeomOverlayKeys*(row: PXkbOverlayRowPtr, first: int16, count: int16, 
-                             freeAll: bool){.cdecl, dynlib: libX11, 
+                             freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomOverlayKeys".}
 proc XkbFreeGeomOverlayRows*(overlay: PXkbOverlayPtr, first: int16, 
-                             count: int16, freeAll: bool){.cdecl, 
-    dynlib: libX11, importc: "XkbFreeGeomOverlayRows".}
+                             count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomOverlayRows".}
 proc XkbFreeGeomOverlays*(section: PXkbSectionPtr, first: int16, count: int16, 
-                          freeAll: bool){.cdecl, dynlib: libX11, 
+                          freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomOverlays".}
 proc XkbFreeGeomKeys*(row: PXkbRowPtr, first: int16, count: int16, freeAll: bool){.
-    cdecl, dynlib: libX11, importc: "XkbFreeGeomKeys".}
+    libx11c, importc: "XkbFreeGeomKeys".}
 proc XkbFreeGeomRows*(section: PXkbSectionPtr, first: int16, count: int16, 
-                      freeAll: bool){.cdecl, dynlib: libX11, 
+                      freeAll: bool){.libx11c, 
                                       importc: "XkbFreeGeomRows".}
 proc XkbFreeGeomSections*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                          freeAll: bool){.cdecl, dynlib: libX11, 
+                          freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomSections".}
 proc XkbFreeGeomPoints*(outline: PXkbOutlinePtr, first: int16, count: int16, 
-                        freeAll: bool){.cdecl, dynlib: libX11, 
+                        freeAll: bool){.libx11c, 
                                         importc: "XkbFreeGeomPoints".}
 proc XkbFreeGeomOutlines*(shape: PXkbShapePtr, first: int16, count: int16, 
-                          freeAll: bool){.cdecl, dynlib: libX11, 
+                          freeAll: bool){.libx11c, 
     importc: "XkbFreeGeomOutlines".}
 proc XkbFreeGeomShapes*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                        freeAll: bool){.cdecl, dynlib: libX11, 
+                        freeAll: bool){.libx11c, 
                                         importc: "XkbFreeGeomShapes".}
 proc XkbFreeGeometry*(geom: PXkbGeometryPtr, which: int16, freeMap: bool){.
-    cdecl, dynlib: libX11, importc: "XkbFreeGeometry".}
-proc XkbAllocGeomProps*(geom: PXkbGeometryPtr, nProps: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomProps".}
+    libx11c, importc: "XkbFreeGeometry".}
+proc XkbAllocGeomProps*(geom: PXkbGeometryPtr, nProps: int16): TStatus{.libx11c, importc: "XkbAllocGeomProps".}
 proc XkbAllocGeomKeyAliases*(geom: PXkbGeometryPtr, nAliases: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomKeyAliases".}
-proc XkbAllocGeomColors*(geom: PXkbGeometryPtr, nColors: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomColors".}
-proc XkbAllocGeomShapes*(geom: PXkbGeometryPtr, nShapes: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomShapes".}
+    libx11c, importc: "XkbAllocGeomKeyAliases".}
+proc XkbAllocGeomColors*(geom: PXkbGeometryPtr, nColors: int16): TStatus{.libx11c, importc: "XkbAllocGeomColors".}
+proc XkbAllocGeomShapes*(geom: PXkbGeometryPtr, nShapes: int16): TStatus{.libx11c, importc: "XkbAllocGeomShapes".}
 proc XkbAllocGeomSections*(geom: PXkbGeometryPtr, nSections: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomSections".}
+    libx11c, importc: "XkbAllocGeomSections".}
 proc XkbAllocGeomOverlays*(section: PXkbSectionPtr, num_needed: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlays".}
+    libx11c, importc: "XkbAllocGeomOverlays".}
 proc XkbAllocGeomOverlayRows*(overlay: PXkbOverlayPtr, num_needed: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlayRows".}
+    libx11c, importc: "XkbAllocGeomOverlayRows".}
 proc XkbAllocGeomOverlayKeys*(row: PXkbOverlayRowPtr, num_needed: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlayKeys".}
+    libx11c, importc: "XkbAllocGeomOverlayKeys".}
 proc XkbAllocGeomDoodads*(geom: PXkbGeometryPtr, nDoodads: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomDoodads".}
+    libx11c, importc: "XkbAllocGeomDoodads".}
 proc XkbAllocGeomSectionDoodads*(section: PXkbSectionPtr, nDoodads: int16): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeomSectionDoodads".}
-proc XkbAllocGeomOutlines*(shape: PXkbShapePtr, nOL: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomOutlines".}
-proc XkbAllocGeomRows*(section: PXkbSectionPtr, nRows: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomRows".}
-proc XkbAllocGeomPoints*(ol: PXkbOutlinePtr, nPts: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomPoints".}
-proc XkbAllocGeomKeys*(row: PXkbRowPtr, nKeys: int16): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbAllocGeomKeys".}
+    libx11c, importc: "XkbAllocGeomSectionDoodads".}
+proc XkbAllocGeomOutlines*(shape: PXkbShapePtr, nOL: int16): TStatus{.libx11c, importc: "XkbAllocGeomOutlines".}
+proc XkbAllocGeomRows*(section: PXkbSectionPtr, nRows: int16): TStatus{.libx11c, importc: "XkbAllocGeomRows".}
+proc XkbAllocGeomPoints*(ol: PXkbOutlinePtr, nPts: int16): TStatus{.libx11c, importc: "XkbAllocGeomPoints".}
+proc XkbAllocGeomKeys*(row: PXkbRowPtr, nKeys: int16): TStatus{.libx11c, importc: "XkbAllocGeomKeys".}
 proc XkbAllocGeometry*(xkb: PXkbDescPtr, sizes: PXkbGeometrySizesPtr): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbAllocGeometry".}
+    libx11c, importc: "XkbAllocGeometry".}
 proc XkbSetGeometryProc*(dpy: PDisplay, deviceSpec: int16, geom: PXkbGeometryPtr): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbSetGeometry".}
+    libx11c, importc: "XkbSetGeometry".}
 proc XkbComputeShapeTop*(shape: PXkbShapePtr, bounds: PXkbBoundsPtr): bool{.
-    cdecl, dynlib: libX11, importc: "XkbComputeShapeTop".}
-proc XkbComputeShapeBounds*(shape: PXkbShapePtr): bool{.cdecl, dynlib: libX11, 
+    libx11c, importc: "XkbComputeShapeTop".}
+proc XkbComputeShapeBounds*(shape: PXkbShapePtr): bool{.libx11c, 
     importc: "XkbComputeShapeBounds".}
 proc XkbComputeRowBounds*(geom: PXkbGeometryPtr, section: PXkbSectionPtr, 
-                          row: PXkbRowPtr): bool{.cdecl, dynlib: libX11, 
+                          row: PXkbRowPtr): bool{.libx11c, 
     importc: "XkbComputeRowBounds".}
 proc XkbComputeSectionBounds*(geom: PXkbGeometryPtr, section: PXkbSectionPtr): bool{.
-    cdecl, dynlib: libX11, importc: "XkbComputeSectionBounds".}
+    libx11c, importc: "XkbComputeSectionBounds".}
 proc XkbFindOverlayForKey*(geom: PXkbGeometryPtr, wanted: PXkbSectionPtr, 
-                           under: cstring): cstring{.cdecl, dynlib: libX11, 
+                           under: cstring): cstring{.libx11c, 
     importc: "XkbFindOverlayForKey".}
-proc XkbGetGeometryProc*(dpy: PDisplay, xkb: PXkbDescPtr): TStatus{.cdecl, 
-    dynlib: libX11, importc: "XkbGetGeometry".}
+proc XkbGetGeometryProc*(dpy: PDisplay, xkb: PXkbDescPtr): TStatus{.libx11c, importc: "XkbGetGeometry".}
 proc XkbGetNamedGeometry*(dpy: PDisplay, xkb: PXkbDescPtr, name: TAtom): TStatus{.
-    cdecl, dynlib: libX11, importc: "XkbGetNamedGeometry".}
+    libx11c, importc: "XkbGetNamedGeometry".}
 when defined(XKB_IN_SERVER): 
   proc SrvXkbAddGeomKeyAlias*(geom: PXkbGeometryPtr, alias: cstring, 
-                              float: cstring): PXkbKeyAliasPtr{.cdecl, 
-      dynlib: libX11, importc: "XkbAddGeomKeyAlias".}
+                              float: cstring): PXkbKeyAliasPtr{.libx11c, importc: "XkbAddGeomKeyAlias".}
   proc SrvXkbAddGeomColor*(geom: PXkbGeometryPtr, spec: cstring, pixel: int16): PXkbColorPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomColor".}
+      libx11c, importc: "XkbAddGeomColor".}
   proc SrvXkbAddGeomDoodad*(geom: PXkbGeometryPtr, section: PXkbSectionPtr, 
-                            name: TAtom): PXkbDoodadPtr{.cdecl, dynlib: libX11, 
+                            name: TAtom): PXkbDoodadPtr{.libx11c, 
       importc: "XkbAddGeomDoodad".}
   proc SrvXkbAddGeomKey*(geom: PXkbGeometryPtr, alias: cstring, float: cstring): PXkbKeyAliasPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomKeyAlias".}
+      libx11c, importc: "XkbAddGeomKeyAlias".}
   proc SrvXkbAddGeomOutline*(shape: PXkbShapePtr, sz_points: int16): PXkbOutlinePtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomOutline".}
+      libx11c, importc: "XkbAddGeomOutline".}
   proc SrvXkbAddGeomOverlay*(overlay: PXkbOverlayPtr, row: PXkbOverlayRowPtr, 
                              over: cstring, under: cstring): PXkbOverlayKeyPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomOverlayKey".}
+      libx11c, importc: "XkbAddGeomOverlayKey".}
   proc SrvXkbAddGeomOverlayRow*(overlay: PXkbOverlayPtr, row_under: int16, 
-                                sz_keys: int16): PXkbOverlayRowPtr{.cdecl, 
-      dynlib: libX11, importc: "XkbAddGeomOverlayRow".}
+                                sz_keys: int16): PXkbOverlayRowPtr{.libx11c, importc: "XkbAddGeomOverlayRow".}
   proc SrvXkbAddGeomOverlayKey*(overlay: PXkbOverlayPtr, row: PXkbOverlayRowPtr, 
                                 over: cstring, under: cstring): PXkbOverlayKeyPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomOverlayKey".}
+      libx11c, importc: "XkbAddGeomOverlayKey".}
   proc SrvXkbAddGeomProperty*(geom: PXkbGeometryPtr, name: cstring, 
-                              value: cstring): PXkbPropertyPtr{.cdecl, 
-      dynlib: libX11, importc: "XkbAddGeomProperty".}
+                              value: cstring): PXkbPropertyPtr{.libx11c, importc: "XkbAddGeomProperty".}
   proc SrvXkbAddGeomRow*(section: PXkbSectionPtr, sz_keys: int16): PXkbRowPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomRow".}
+      libx11c, importc: "XkbAddGeomRow".}
   proc SrvXkbAddGeomSection*(geom: PXkbGeometryPtr, name: TAtom, sz_rows: int16, 
                              sz_doodads: int16, sz_overlays: int16): PXkbSectionPtr{.
-      cdecl, dynlib: libX11, importc: "XkbAddGeomSection".}
+      libx11c, importc: "XkbAddGeomSection".}
   proc SrvXkbAddGeomShape*(geom: PXkbGeometryPtr, name: TAtom, 
-                           sz_outlines: int16): PXkbShapePtr{.cdecl, 
-      dynlib: libX11, importc: "XkbAddGeomShape".}
+                           sz_outlines: int16): PXkbShapePtr{.libx11c, importc: "XkbAddGeomShape".}
   proc SrvXkbAllocGeomKeyAliases*(geom: PXkbGeometryPtr, nAliases: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomKeyAliases".}
+      libx11c, importc: "XkbAllocGeomKeyAliases".}
   proc SrvXkbAllocGeomColors*(geom: PXkbGeometryPtr, nColors: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomColors".}
+      libx11c, importc: "XkbAllocGeomColors".}
   proc SrvXkbAllocGeomDoodads*(geom: PXkbGeometryPtr, nDoodads: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomDoodads".}
-  proc SrvXkbAllocGeomKeys*(row: PXkbRowPtr, nKeys: int16): TStatus{.cdecl, 
-      dynlib: libX11, importc: "XkbAllocGeomKeys".}
+      libx11c, importc: "XkbAllocGeomDoodads".}
+  proc SrvXkbAllocGeomKeys*(row: PXkbRowPtr, nKeys: int16): TStatus{.libx11c, importc: "XkbAllocGeomKeys".}
   proc SrvXkbAllocGeomOutlines*(shape: PXkbShapePtr, nOL: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomOutlines".}
-  proc SrvXkbAllocGeomPoints*(ol: PXkbOutlinePtr, nPts: int16): TStatus{.cdecl, 
-      dynlib: libX11, importc: "XkbAllocGeomPoints".}
+      libx11c, importc: "XkbAllocGeomOutlines".}
+  proc SrvXkbAllocGeomPoints*(ol: PXkbOutlinePtr, nPts: int16): TStatus{.libx11c, importc: "XkbAllocGeomPoints".}
   proc SrvXkbAllocGeomProps*(geom: PXkbGeometryPtr, nProps: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomProps".}
+      libx11c, importc: "XkbAllocGeomProps".}
   proc SrvXkbAllocGeomRows*(section: PXkbSectionPtr, nRows: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomRows".}
+      libx11c, importc: "XkbAllocGeomRows".}
   proc SrvXkbAllocGeomSectionDoodads*(section: PXkbSectionPtr, nDoodads: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomSectionDoodads".}
+      libx11c, importc: "XkbAllocGeomSectionDoodads".}
   proc SrvXkbAllocGeomSections*(geom: PXkbGeometryPtr, nSections: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomSections".}
+      libx11c, importc: "XkbAllocGeomSections".}
   proc SrvXkbAllocGeomOverlays*(section: PXkbSectionPtr, num_needed: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlays".}
+      libx11c, importc: "XkbAllocGeomOverlays".}
   proc SrvXkbAllocGeomOverlayRows*(overlay: PXkbOverlayPtr, num_needed: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlayRows".}
+      libx11c, importc: "XkbAllocGeomOverlayRows".}
   proc SrvXkbAllocGeomOverlayKeys*(row: PXkbOverlayRowPtr, num_needed: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomOverlayKeys".}
+      libx11c, importc: "XkbAllocGeomOverlayKeys".}
   proc SrvXkbAllocGeomShapes*(geom: PXkbGeometryPtr, nShapes: int16): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeomShapes".}
+      libx11c, importc: "XkbAllocGeomShapes".}
   proc SrvXkbAllocGeometry*(xkb: PXkbDescPtr, sizes: PXkbGeometrySizesPtr): TStatus{.
-      cdecl, dynlib: libX11, importc: "XkbAllocGeometry".}
+      libx11c, importc: "XkbAllocGeometry".}
   proc SrvXkbFreeGeomKeyAliases*(geom: PXkbGeometryPtr, first: int16, 
-                                 count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomKeyAliases".}
+                                 count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomKeyAliases".}
   proc SrvXkbFreeGeomColors*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                             freeAll: bool){.cdecl, dynlib: libX11, 
+                             freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomColors".}
   proc SrvXkbFreeGeomDoodads*(doodads: PXkbDoodadPtr, nDoodads: int16, 
-                              freeAll: bool){.cdecl, dynlib: libX11, 
+                              freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomDoodads".}
   proc SrvXkbFreeGeomProperties*(geom: PXkbGeometryPtr, first: int16, 
-                                 count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomProperties".}
+                                 count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomProperties".}
   proc SrvXkbFreeGeomOverlayKeys*(row: PXkbOverlayRowPtr, first: int16, 
-                                  count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomOverlayKeys".}
+                                  count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomOverlayKeys".}
   proc SrvXkbFreeGeomOverlayRows*(overlay: PXkbOverlayPtr, first: int16, 
-                                  count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomOverlayRows".}
+                                  count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomOverlayRows".}
   proc SrvXkbFreeGeomOverlays*(section: PXkbSectionPtr, first: int16, 
-                               count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomOverlays".}
+                               count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomOverlays".}
   proc SrvXkbFreeGeomKeys*(row: PXkbRowPtr, first: int16, count: int16, 
-                           freeAll: bool){.cdecl, dynlib: libX11, 
+                           freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomKeys".}
   proc SrvXkbFreeGeomRows*(section: PXkbSectionPtr, first: int16, count: int16, 
-                           freeAll: bool){.cdecl, dynlib: libX11, 
+                           freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomRows".}
   proc SrvXkbFreeGeomSections*(geom: PXkbGeometryPtr, first: int16, 
-                               count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomSections".}
+                               count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomSections".}
   proc SrvXkbFreeGeomPoints*(outline: PXkbOutlinePtr, first: int16, 
-                             count: int16, freeAll: bool){.cdecl, 
-      dynlib: libX11, importc: "XkbFreeGeomPoints".}
+                             count: int16, freeAll: bool){.libx11c, importc: "XkbFreeGeomPoints".}
   proc SrvXkbFreeGeomOutlines*(shape: PXkbShapePtr, first: int16, count: int16, 
-                               freeAll: bool){.cdecl, dynlib: libX11, 
+                               freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomOutlines".}
   proc SrvXkbFreeGeomShapes*(geom: PXkbGeometryPtr, first: int16, count: int16, 
-                             freeAll: bool){.cdecl, dynlib: libX11, 
+                             freeAll: bool){.libx11c, 
       importc: "XkbFreeGeomShapes".}
   proc SrvXkbFreeGeometry*(geom: PXkbGeometryPtr, which: int16, freeMap: bool){.
-      cdecl, dynlib: libX11, importc: "XkbFreeGeometry".}
+      libx11c, importc: "XkbFreeGeometry".}
 # implementation
 
 import                        #************************************ xkb ************************************
