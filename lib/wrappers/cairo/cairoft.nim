@@ -7,6 +7,7 @@
 import 
   cairo, freetypeh
 
+include "cairo_pragma.nim"
 #todo: properly define FcPattern:
 #It will require translate FontConfig header
 
@@ -23,13 +24,13 @@ type
   FcPattern* = Pointer
   PFcPattern* = ptr FcPattern
 
-proc ft_font_face_create_for_pattern*(pattern: PFcPattern): PFontFace{.cdecl, 
-    importc: "cairo_ft_font_face_create_for_pattern", dynlib: LIB_CAIRO.}
+proc ft_font_face_create_for_pattern*(pattern: PFcPattern): PFontFace{.libcairo,
+    importc: "cairo_ft_font_face_create_for_pattern".}
 proc ft_font_options_substitute*(options: PFontOptions, pattern: PFcPattern){.
-    cdecl, importc: "cairo_ft_font_options_substitute", dynlib: LIB_CAIRO.}
-proc ft_font_face_create_for_ft_face*(face: TFT_Face, load_flags: int32): PFontFace{.
-    cdecl, importc: "cairo_ft_font_face_create_for_ft_face", dynlib: LIB_CAIRO.}
-proc ft_scaled_font_lock_face*(scaled_font: PScaledFont): TFT_Face{.cdecl, 
-    importc: "cairo_ft_scaled_font_lock_face", dynlib: LIB_CAIRO.}
-proc ft_scaled_font_unlock_face*(scaled_font: PScaledFont){.cdecl, 
-    importc: "cairo_ft_scaled_font_unlock_face", dynlib: LIB_CAIRO.}
+    libcairo, importc: "cairo_ft_font_options_substitute".}
+proc ft_font_face_create_for_ft_face*(face: TFT_Face, load_flags: int32): PFontFace{.libcairo,
+    importc: "cairo_ft_font_face_create_for_ft_face".}
+proc ft_scaled_font_lock_face*(scaled_font: PScaledFont): TFT_Face{.libcairo,
+    importc: "cairo_ft_scaled_font_lock_face".}
+proc ft_scaled_font_unlock_face*(scaled_font: PScaledFont){.libcairo,
+    importc: "cairo_ft_scaled_font_unlock_face".}
