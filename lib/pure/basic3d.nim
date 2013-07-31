@@ -43,7 +43,7 @@ import times
 
 
 type 
-  TMatrix3d=object
+  TMatrix3d* =object
     ## Implements a row major 3d matrix, which means
     ## transformations are applied the order they are concatenated.
     ## This matrix is stored as an 4x4 matrix:
