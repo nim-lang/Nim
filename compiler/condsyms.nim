@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,48 +10,35 @@
 # This module handles the conditional symbols.
 
 import 
-  ast, astalgo, hashes, platform, strutils, idents
+  strtabs, platform, strutils, idents
 
-var gSymbols*: TStrTable
+# We need to use a PStringTable here as defined symbols are always guaranteed
+# to be style insensitive. Otherwise hell would break lose.
+var gSymbols: PStringTable
 
 proc DefineSymbol*(symbol: string) = 
-  var i = getIdent(symbol)
-  var sym = StrTableGet(gSymbols, i)
-  if sym == nil: 
-    new(sym)                  # circumvent the ID mechanism
-    sym.kind = skConditional
-    sym.name = i
-    StrTableAdd(gSymbols, sym)
-  sym.position = 1
+  gSymbols[symbol] = "true"
 
 proc UndefSymbol*(symbol: string) = 
-  var sym = StrTableGet(gSymbols, getIdent(symbol))
-  if sym != nil: sym.position = 0
-  
-proc isDefined*(symbol: PIdent): bool = 
-  var sym = StrTableGet(gSymbols, symbol)
-  result = sym != nil and sym.position == 1
+  gSymbols[symbol] = "false"
 
 proc isDefined*(symbol: string): bool = 
-  result = isDefined(getIdent(symbol))
+  if gSymbols.hasKey(symbol):
+    result = gSymbols[symbol] == "true"
+  
+proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
 
 iterator definedSymbolNames*: string =
-  var it: TTabIter
-  var s = InitTabIter(it, gSymbols)
-  while s != nil:
-    if s.position == 1: yield s.name.s
-    s = nextIter(it, gSymbols)
+  for key, val in pairs(gSymbols):
+    if val == "true": yield key
 
 proc countDefinedSymbols*(): int = 
-  var it: TTabIter
-  var s = InitTabIter(it, gSymbols)
   result = 0
-  while s != nil: 
-    if s.position == 1: inc(result)
-    s = nextIter(it, gSymbols)
+  for key, val in pairs(gSymbols):
+    if val == "true": inc(result)
 
 proc InitDefines*() = 
-  initStrTable(gSymbols)
+  gSymbols = newStringTable(modeStyleInsensitive)
   DefineSymbol("nimrod") # 'nimrod' is always defined
   # for bootstrapping purposes and old code:
   DefineSymbol("nimhygiene")
@@ -66,7 +53,7 @@ proc InitDefines*() =
   of cpuI386: DefineSymbol("x86")
   of cpuIa64: DefineSymbol("itanium")
   of cpuAmd64: DefineSymbol("x8664")
-  else: nil
+  else: discard
   case targetOS
   of osDOS: 
     DefineSymbol("msdos")
@@ -92,12 +79,10 @@ proc InitDefines*() =
     DefineSymbol("macintosh")
     DefineSymbol("unix")
     DefineSymbol("posix")
-  else: nil
+  else: discard
   DefineSymbol("cpu" & $cpu[targetCPU].bit)
   DefineSymbol(normalize(endianToStr[cpu[targetCPU].endian]))
   DefineSymbol(cpu[targetCPU].name)
   DefineSymbol(platform.os[targetOS].name)
   if platform.OS[targetOS].props.contains(ospLacksThreadVars):
     DefineSymbol("emulatedthreadvars")
-
-

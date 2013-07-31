@@ -431,7 +431,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     var b = newNodeI(nkConstDef, a.info)
     if importantComments(): b.comment = a.comment
     addSon(b, newSymNode(v))
-    addSon(b, ast.emptyNode)            # no type description
+    addSon(b, a.sons[1])
     addSon(b, copyTree(def))
     addSon(result, b)
 
