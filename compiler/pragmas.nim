@@ -601,7 +601,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           processDynLib(c, it, sym)
         of wCompilerProc: 
           noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, sym.name.s)
+          makeExternExport(sym, "$1")
           incl(sym.flags, sfCompilerProc)
           incl(sym.flags, sfUsed) # suppress all those stupid warnings
           registerCompilerProc(sym)
