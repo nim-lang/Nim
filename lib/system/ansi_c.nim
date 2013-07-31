@@ -31,7 +31,7 @@ type
   C_TextFileStar = ptr CTextFile
   C_BinaryFileStar = ptr CBinaryFile
 
-  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = array[0..31, int]
+  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
 var
   c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
