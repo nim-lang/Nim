@@ -24,7 +24,7 @@ type
   PXmlAttributes* = PStringTable ## an alias for a string to string mapping
   
   TXmlNode {.pure, final, acyclic.} = object 
-    case k: TXmlNodeKind
+    case k: TXmlNodeKind # private, use the kind() proc to read this field.
     of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
@@ -297,3 +297,40 @@ proc attr*(n: PXmlNode, name: string): string =
   assert n.kind == xnElement
   if n.attrs == nil: return ""
   return n.attrs[name]
+
+proc findAll*(n: PXmlNode, tag: string, result: var seq[PXmlNode]) =
+  ## Iterates over all the children of `n` returning those matching `tag`.
+  ##
+  ## Found nodes satisfying the condition will be appended to the `result`
+  ## sequence, which can't be nil or the proc will crash. Usage example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var
+  ##     html: PXmlNode
+  ##     tags: seq[PXmlNode] = @[]
+  ##
+  ##   html = buildHtml()
+  ##   findAll(html, "img", tags)
+  ##   for imgTag in tags:
+  ##     process(imgTag)
+  assert isNil(result) == false
+  assert n.k == xnElement
+  for child in n.items():
+    if child.k != xnElement:
+      continue
+    if child.tag == tag:
+      result.add(child)
+    elif child.k == xnElement:
+      child.findAll(tag, result)
+
+proc findAll*(n: PXmlNode, tag: string): seq[PXmlNode] =
+  ## Shortcut version to assign in let blocks. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   var html: PXmlNode
+  ##
+  ##   html = buildHtml(html)
+  ##   for imgTag in html.findAll("img"):
+  ##     process(imgTag)
+  newSeq(result, 0)
+  findAll(n, tag, result)
