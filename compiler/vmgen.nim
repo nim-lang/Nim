@@ -540,7 +540,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
   of mLePtr, mLeU, mLeU64: genBinaryABC(c, n, dest, opcLeu)
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
-  of mEqProc, mEqRef, mEqUntracedRef: genBinaryABC(c, n, dest, opcEqRef)
+  of mEqProc, mEqRef, mEqUntracedRef, mEqCString:
+    genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
   of mUnaryMinusI, mUnaryMinusI64: genUnaryABC(c, n, dest, opcUnaryMinusInt)
@@ -645,7 +646,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     genUnaryABC(c, n, dest, opcParseExprToAst)
   of mParseStmtToAst:
     genUnaryABC(c, n, dest, opcParseStmtToAst)
-  of mExpandToAst: InternalError(n.info, "cannot generate code for: " & $m)
+  of mExpandToAst:
+    InternalError(n.info, "cannot generate code for: " & $m)
   of mTypeTrait: InternalError(n.info, "cannot generate code for: " & $m)
   of mIs: InternalError(n.info, "cannot generate code for: " & $m)
   of mSlurp: genUnaryABC(c, n, dest, opcSlurp)
@@ -700,9 +702,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNCallSite:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
+  of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI, mAbsI64:
+    c.genCall(n, dest)
   else:
-    # XXX get rid of these: mMinI, mMaxI, mMinI64, mMaxI64, mMinF64, mMaxF64
-    # mGCref, mGCunref, mEqCString, mAbsI, mAbsI64, mAbsF64
+    # mGCref, mGCunref, 
     InternalError(n.info, "cannot generate code for: " & $m)
 
 const

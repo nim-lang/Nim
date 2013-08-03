@@ -85,6 +85,7 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
+    opcNLineInfo,
     
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...

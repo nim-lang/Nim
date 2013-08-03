@@ -144,7 +144,8 @@ proc processSym(c: PPassContext, n: PNode): PNode =
         cannotRename.incl(s.id)
         return
     let last = first+identLen(line, first)-1
-    if last-first+1 != newName.len or differ(line, first, last, newName):
+    if differ(line, first, last, newName):
+      # last-first+1 != newName.len or 
       var x = line.subStr(0, first-1) & newName & line.substr(last+1)
       when removeTP:
         # the WinAPI module is full of 'TX = X' which after the substitution

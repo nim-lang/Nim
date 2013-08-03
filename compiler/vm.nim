@@ -663,6 +663,10 @@ proc execute(c: PCtx, start: int) =
     of opcCallSite:
       if c.callsite != nil: regs[ra] = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
+    of opcNLineInfo:
+      let rb = instr.regB
+      let n = regs[rb]
+      regs[ra] = newStrNodeT(n.info.toFileLineCol, n)
     else:
       InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     inc pc

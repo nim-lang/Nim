@@ -581,15 +581,6 @@ proc `<` *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
   ## Returns true iff `x` is less than `y`.
 
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.}
-proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.}
-proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.}
-proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.}
-proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
-  ## returns the absolute value of `x`. If `x` is ``low(x)`` (that 
-  ## is -MININT for its type), an overflow exception is thrown (if overflow
-  ## checking is turned on).
-
 type
   IntMax32 = bool|int|int8|int16|int32
 
@@ -647,9 +638,6 @@ proc `/` *(x, y: float): float {.magic: "DivF64", noSideEffect.}
 proc `==` *(x, y: float): bool {.magic: "EqF64", noSideEffect.}
 proc `<=` *(x, y: float): bool {.magic: "LeF64", noSideEffect.}
 proc `<`  *(x, y: float): bool {.magic: "LtF64", noSideEffect.}
-proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.}
-proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.}
-proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.}
 
 # set operators
 proc `*` *[T](x, y: set[T]): set[T] {.magic: "MulSet", noSideEffect.}
@@ -1306,12 +1294,18 @@ iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   ## and GC.
   nil
 
-proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
+{.push stackTrace:off.}
+proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
+  if x <= y: x else: y
+proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
+  if x <= y: x else: y
+proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
+  if x <= y: x else: y
+proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
+  if x <= y: x else: y
+proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.} =
   ## The minimum value of two integers.
+  if x <= y: x else: y
 
 proc min*[T](x: varargs[T]): T =
   ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
@@ -1319,18 +1313,31 @@ proc min*[T](x: varargs[T]): T =
   for i in 1..high(x):
     if x[i] < result: result = x[i]
 
-proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
+proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
+  if y <= x: x else: y
+proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.} =
+  if y <= x: x else: y
+proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
+  if y <= x: x else: y
+proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
+  if y <= x: x else: y
+proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.} =
   ## The maximum value of two integers.
+  if y <= x: x else: y
 
 proc max*[T](x: varargs[T]): T =
   ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
   for i in 1..high(x):
     if result < x[i]: result = x[i]
+
+proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.} =
+  if x < 0.0: -x else: x
+proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
+  if x <= y: x else: y
+proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
+  if y <= x: x else: y
+{.pop.}
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b] 
@@ -1816,6 +1823,22 @@ when not defined(sysFatal):
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo".}
   ## get type information for `x`. Ordinary code should not use this, but
   ## the `typeinfo` module instead.
+
+{.push stackTrace: off.}
+proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
+  if x < 0: -x else: x
+proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
+  if x < 0: -x else: x
+proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
+  if x < 0: -x else: x
+proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
+  if x < 0: -x else: x
+proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.} =
+  ## returns the absolute value of `x`. If `x` is ``low(x)`` (that 
+  ## is -MININT for its type), an overflow exception is thrown (if overflow
+  ## checking is turned on).
+  if x < 0: -x else: x
+{.pop.}
 
 when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
@@ -2390,7 +2413,7 @@ proc `[]=`*[T](s: var seq[T], x: TSlice[int], b: openArray[T]) =
     for i in 0 .. <L: s[i+a] = b[i]
   else:
     spliceImpl(s, a, L, b)
-  
+
 proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for ``staticRead``.
 
