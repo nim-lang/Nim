@@ -51,8 +51,8 @@ type
   TGLuint* = cint
   TGLfloat* = float32
   TGLclampf* = float32
-  TGLdouble* = float
-  TGLclampd* = float
+  TGLdouble* = float64
+  TGLclampd* = float64
 
 const                         # Version
   GL_VERSION_1_1* = 1         # AccumOp
