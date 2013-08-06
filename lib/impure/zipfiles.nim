@@ -30,7 +30,7 @@ proc open*(z: var TZipArchive, filename: string, mode: TFileMode = fmRead): bool
   var err, flags: int32
   case mode
   of fmRead, fmReadWriteExisting, fmAppend: flags = 0
-  of fmWrite:                               
+  of fmWrite:
     if existsFile(filename): removeFile(filename)
     flags = ZIP_CREATE or ZIP_EXCL
   of fmReadWrite: flags = ZIP_CREATE

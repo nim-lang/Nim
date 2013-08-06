@@ -11,7 +11,7 @@
 
 import
   unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
-  trees, intsets, rodread
+  trees, intsets, rodread, magicsys
 
 proc codeListing(c: PCtx, result: var string) =
   # first iteration: compute all necessary labels:
@@ -456,12 +456,12 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
 proc unused(n: PNode; x: TDest) {.inline.} =
   if x >= 0: InternalError(n.info, "not unused")
 
-proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
+proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =  
   let tmp = c.genx(arg)
-  let t = genType(c, n.typ)
+  c.gABx(n, opcSetType, tmp, genType(c, arg.typ))
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
-  c.gABx(n, opc, 0, t)
+  c.gABx(n, opc, 0, genType(c, n.typ))
   c.freeTemp(tmp)
 
 proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
@@ -685,11 +685,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNCopyNimNode: InternalError(n.info, "cannot generate code for: " & $m)
   of mNCopyNimTree: InternalError(n.info, "cannot generate code for: " & $m)
   of mNBindSym: genUnaryABC(c, n, dest, opcNBindSym)
-  of mStrToIdent: InternalError(n.info, "cannot generate code for: " & $m)
-  of mIdentToStr: InternalError(n.info, "cannot generate code for: " & $m)
-  of mEqIdent: InternalError(n.info, "cannot generate code for: " & $m)
-  of mEqNimrodNode: InternalError(n.info, "cannot generate code for: " & $m)
-  of mNLineInfo: InternalError(n.info, "cannot generate code for: " & $m)
+  of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
+  of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
+  of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
+  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqRef)
+  of mNLineInfo: genUnaryABC(c, n, dest, opcNLineInfo)
   of mNHint: 
     unused(n, dest)
     genUnaryStmt(c, n, opcNHint)
@@ -946,6 +946,63 @@ proc genVarSection(c: PCtx; n: PNode) =
       else:
         genAsgn(c, a.sons[0], a.sons[2], true)
 
+proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if dest < 0: dest = c.getTemp(n.typ)
+  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+  let intType = getSysType(tyInt)
+  var tmp = getTemp(c, intType)
+  c.gABx(n, opcLdNull, tmp, c.genType(intType))
+  for x in n:
+    let a = c.genx(x)
+    c.gABC(n, opcWrArr, dest, a, tmp)
+    c.gABI(n, opcAddImmInt, tmp, tmp, 1)
+    c.freeTemp(a)
+  c.freeTemp(tmp)
+
+proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if dest < 0: dest = c.getTemp(n.typ)
+  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+  for x in n:
+    let a = c.genx(x)
+    c.gABC(n, opcIncl, dest, a)
+    c.freeTemp(a)
+
+proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if dest < 0: dest = c.getTemp(n.typ)
+  let t = n.typ.skipTypes(abstractRange)
+  if t.kind == tyRef:
+    c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
+  else:
+    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+  for i in 1.. <n.len:
+    let it = n.sons[i]
+    if it.kind == nkExprColonExpr and it.sons[0].kind == nkSym:
+      let idx = c.genx(it.sons[0])
+      let tmp = c.genx(it.sons[1])
+      c.gABC(it, whichAsgnOpc(it.sons[1], opcWrObj), dest, idx, tmp)
+      c.freeTemp(tmp)
+      c.freeTemp(idx)
+    else:
+      internalError(n.info, "invalid object constructor")
+
+proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if dest < 0: dest = c.getTemp(n.typ)
+  var idx = getTemp(c, getSysType(tyInt))
+  for i in 0.. <n.len:
+    let it = n.sons[i]
+    if it.kind == nkExprColonExpr:
+      let idx = c.genx(it.sons[0])
+      let tmp = c.genx(it.sons[1])
+      c.gABC(it, whichAsgnOpc(it.sons[1], opcWrObj), dest, idx, tmp)
+      c.freeTemp(tmp)
+      c.freeTemp(idx)
+    else:
+      let tmp = c.genx(it)
+      c.gABx(it, opcLdImmInt, idx, i)
+      c.gABC(it, whichAsgnOpc(it, opcWrObj), dest, idx, tmp)
+      c.freeTemp(tmp)
+  c.freeTemp(idx)
+
 proc genProc*(c: PCtx; s: PSym): int
 
 proc gen(c: PCtx; n: PNode; dest: var TDest) =
@@ -1048,8 +1105,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n.sons[0], dest)
+  of nkBracket: genArrayConstr(c, n, dest)
+  of nkCurly: genSetConstr(c, n, dest)
+  of nkObjConstr: genObjConstr(c, n, dest)
+  of nkPar, nkClosure: genTupleConstr(c, n, dest)
   else:
-    #of nkCurly, nkBracket, nkPar:
     InternalError n.info, "too implement " & $n.kind
 
 proc removeLastEof(c: PCtx) =
@@ -1075,6 +1135,51 @@ proc genParams(c: PCtx; params: PNode) =
     let param = params.sons[i].sym
     c.prc.slots[i] = (inUse: true, kind: slotFixedLet)
   c.prc.maxSlots = max(params.len, 1)
+
+proc finalJumpTarget(c: PCtx; pc, diff: int) =
+  InternalAssert(-0x7fff < diff and diff < 0x7fff)
+  let oldInstr = c.code[pc]
+  # opcode and regA stay the same:
+  c.code[pc] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
+                uint32(diff+wordExcess) shl 16'u32).TInstr
+
+proc optimizeJumps(c: PCtx; start: int) =
+  const maxIterations = 10
+  for i in start .. <c.code.len:
+    let opc = c.code[i].opcode
+    case opc
+    of opcTJmp, opcFJmp:
+      var reg = c.code[i].regA
+      var d = i + c.code[i].regBx
+      var iters = maxIterations
+      while iters > 0:
+        case c.code[d].opcode
+        of opcJmp:
+          d = d + c.code[d].regBx
+        of opcTJmp, opcFJmp:
+          if c.code[d].regA != reg: break
+          # tjmp x, 23
+          # ...
+          # tjmp x, 12
+          # -- we know 'x' is true, and so can jump to 12+13:
+          if c.code[d].opcode == opc:
+            d = d + c.code[d].regBx
+          else:
+            # tjmp x, 23
+            # fjmp x, 22
+            # We know 'x' is true so skip to the next instruction:
+            d = d + 1
+        else: break
+        dec iters
+      c.finalJumpTarget(i, d - i)
+    of opcJmp:
+      var d = i + c.code[i].regBx
+      var iters = maxIterations
+      while c.code[d].opcode == opcJmp and iters > 0:
+        d = d + c.code[d].regBx
+        dec iters
+      c.finalJumpTarget(i, d - i)
+    else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
   let x = s.ast.sons[optimizedCodePos]

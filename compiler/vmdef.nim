@@ -86,6 +86,9 @@ type
     opcNWarning,
     opcNHint,
     opcNLineInfo,
+    opcEqIdent,
+    opcStrToIdent,
+    opcIdentToStr,
     
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
@@ -114,7 +117,8 @@ type
     opcLdGlobal,  # dest = globals[Bx]
     opcLdImmInt,  # dest = immediate value
     opcWrGlobal,
-    opcWrGlobalRef
+    opcWrGlobalRef,
+    opcSetType    # dest.typ = types[Bx]
 
   TBlock* = object
     label*: PSym

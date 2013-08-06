@@ -4,10 +4,9 @@ version 0.9.4
 - new VM:
   - implement opcConv
   - implement missing magics
-  - implement constructors
+  - implement overflow checking
   - implement the glue to replace evals.nim
   - implement on the fly CSE
-  - implement a jump optimizer
 
 - make 'bind' default for templates and introduce 'mixin'
 - special rule for ``[]=``
@@ -17,6 +16,7 @@ version 0.9.4
   - overloading of ``.``? Special case ``.=``?
 - built-in 'getImpl'
 - optimize 'genericReset'; 'newException' leads to code bloat
+- stack-less GC
 
 
 Bugs
