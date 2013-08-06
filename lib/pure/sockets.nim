@@ -1511,12 +1511,18 @@ proc send*(socket: TSocket, data: pointer, size: int): int {.
 
 proc send*(socket: TSocket, data: string) {.tags: [FWriteIO].} =
   ## sends data to a socket.
-  if send(socket, cstring(data), data.len) != data.len:
+  if socket.nonblocking:
+    raise newException(EInvalidValue, "This function cannot be used on non-blocking sockets.")
+  let sent = send(socket, cstring(data), data.len)
+  if sent < 0:
     when defined(ssl):
       if socket.isSSL:
         SSLError()
     
     OSError(OSLastError())
+
+  if sent != data.len:
+    raise newException(EOS, "Could not send all data.")
 
 proc sendAsync*(socket: TSocket, data: string): int {.tags: [FWriteIO].} =
   ## sends data to a non-blocking socket.
@@ -1620,7 +1626,13 @@ proc setBlocking(s: TSocket, blocking: bool) =
       if fcntl(s.fd, F_SETFL, mode) == -1:
         OSError(OSLastError())
   s.nonblocking = not blocking
-  
+
+discard """ proc setReuseAddr*(s: TSocket) =
+  var blah: int = 1
+  var mode = SO_REUSEADDR
+  if setsockopt(s.fd, SOL_SOCKET, mode, addr blah, TSOcklen(sizeof(int))) == -1:
+    OSError(OSLastError()) """
+
 proc connect*(socket: TSocket, address: string, port = TPort(0), timeout: int,
              af: TDomain = AF_INET) {.tags: [FReadIO, FWriteIO].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.

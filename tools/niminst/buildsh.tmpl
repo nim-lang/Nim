@@ -34,6 +34,16 @@ LINK_FLAGS="?{c.linker.flags}"
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`
+#  add(result, "# bin dir detection\n")
+binDir=?{firstBinPath(c)}
+
+if [ -s ../koch.nim ]; then
+  binDir="../bin"
+fi
+
+if [ ! -d $binDir ]; then
+  mkdir $binDir
+fi
 
 #  add(result, "# convert to lower case:\n")
 ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
@@ -117,12 +127,12 @@ case $myos in
   ?{c.cpus[cpuA-1]})
 #      var linkCmd = ""
 #      for f in items(c.cfiles[osA][cpuA]):
-    echo "$CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}"
-    $CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
+    echo "$CC $COMP_FLAGS -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}"
+    $CC $COMP_FLAGS -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
-#      end for    
-    echo "$LINKER -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd $LINK_FLAGS"
-    $LINKER -o ?{firstBinPath(c)/toLower(c.name)} ?linkCmd $LINK_FLAGS
+#      end for
+    echo "$LINKER -o ?{"$binDir"/toLower(c.name)} ?linkCmd $LINK_FLAGS"
+    $LINKER -o ?{"$binDir"/toLower(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)

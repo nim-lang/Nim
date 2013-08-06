@@ -448,8 +448,11 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     let a = n.sons[0]
     let op = a.typ
-    if op != nil and op.kind == tyProc:
-      InternalAssert op.n.sons[0].kind == nkEffectList
+    # XXX: in rare situations, templates and macros will reach here after
+    # calling getAst(templateOrMacro()). Currently, templates and macros
+    # are indistinguishable from normal procs (both have tyProc type) and
+    # we can detect them only by cheking for attached nkEffectList.
+    if op != nil and op.kind == tyProc and op.n.sons[0].kind == nkEffectList:
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
