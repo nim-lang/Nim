@@ -357,7 +357,10 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
     quit("Cannot open: " & f)
 
 proc buildDir(os, cpu: int): string =
-  return "build" / ($os & "_" & $cpu)
+  return "src" / ($os & "_" & $cpu)
+
+proc getOutputDir(c: var TConfigData): string =
+  if c.outdir.len > 0: c.outdir else: "build"
 
 proc writeFile(filename, content, newline: string) =
   var f: TFile
@@ -392,11 +395,14 @@ proc writeInstallScripts(c: var TConfigData) =
     writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
 
 proc srcdist(c: var TConfigData) =
+  if not existsDir(getOutputDir(c) / "src"):
+    createDir(getOutputDir(c) / "src")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    CopyFile(dest="build" / extractFilename(x), source=x)
+    echo(getOutputDir(c) / "src" / extractFilename(x))
+    CopyFile(dest=getOutputDir(c) / "src" / extractFilename(x), source=x)
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
-      var dir = buildDir(osA, cpuA)
+      var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if existsDir(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
@@ -409,14 +415,15 @@ proc srcdist(c: var TConfigData) =
         quit("Error: call to nimrod compiler failed")
       readCFiles(c, osA, cpuA)
       for i in 0 .. c.cfiles[osA][cpuA].len-1:
-        var dest = dir / extractFilename(c.cfiles[osA][cpuA][i])
+        let dest = dir / extractFilename(c.cfiles[osA][cpuA][i])
+        let relDest = buildDir(osA, cpuA) / extractFilename(c.cfiles[osA][cpuA][i])
         CopyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
-        c.cfiles[osA][cpuA][i] = dest
+        c.cfiles[osA][cpuA][i] = relDest
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
-  writeFile(buildShFile, GenerateBuildShellScript(c), "\10")
-  writeFile(buildBatFile32, GenerateBuildBatchScript(c, tWin32), "\13\10")
-  writeFile(buildBatFile64, GenerateBuildBatchScript(c, tWin64), "\13\10")
+  writeFile(getOutputDir(c) / buildShFile, GenerateBuildShellScript(c), "\10")
+  writeFile(getOutputDir(c) / buildBatFile32, GenerateBuildBatchScript(c, tWin32), "\13\10")
+  writeFile(getOutputDir(c) / buildBatFile64, GenerateBuildBatchScript(c, tWin64), "\13\10")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
@@ -467,8 +474,8 @@ when haveZipLib:
 # -- prepare build files for .deb creation
 
 proc debDist(c: var TConfigData) =
-  if not existsFile("build.sh"): quit("No build.sh found.")
-  if not existsFile("install.sh"): quit("No install.sh found.")
+  if not existsFile(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
+  if not existsFile(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
   
   if c.debOpts.shortDesc == "": quit("shortDesc must be set in the .ini file.")
   if c.debOpts.licenses.len == 0:

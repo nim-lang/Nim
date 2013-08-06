@@ -5,6 +5,11 @@ SET CC=gcc
 SET LINKER=gcc
 SET COMP_FLAGS=?{c.ccompiler.flags}
 SET LINK_FLAGS=?{c.linker.flags}
+SET BIN_DIR=?{firstBinPath(c)}
+
+if EXIST ..\koch.nim SET BIN_DIR=..\bin
+
+if NOT EXIST %BIN_DIR%\nul mkdir %BIN_DIR%
 
 REM call the compiler:
 
@@ -12,13 +17,13 @@ REM call the compiler:
 #    var linkCmd = ""
 #    for ff in items(c.cfiles[1][ord(target)]):
 #      let f = ff.replace('/', '\\')
-ECHO %CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
-%CC% %COMP_FLAGS% -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}
+ECHO %CC% %COMP_FLAGS% -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
+%CC% %COMP_FLAGS% -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
 #      linkCmd.add(" " & changeFileExt(f, "o"))
 #    end for
 
-ECHO %LINKER% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
-%LINKER% -o ?{firstBinPath(c)\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
+ECHO %LINKER% -o ?{"%BIN_DIR%"\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
+%LINKER% -o ?{"%BIN_DIR%"\toLower(c.name)}.exe ?linkCmd %LINK_FLAGS%
 
 #  end block
 

@@ -1361,7 +1361,9 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids = newSeq[PNode]()
       # this will store the generated param names
 
-  internalAssert doBlk.kind == nkDo
+  if doBlk.kind != nkDo:
+    LocalError(n.info, errXExpected, "block")
+
   processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
   
   doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
