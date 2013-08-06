@@ -12,7 +12,7 @@
 
 import
   strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps
+  parser, vmdeps, idents
 
 from semfold import leValueConv
 
@@ -86,12 +86,6 @@ template decodeBImm(k: expr) {.immediate, dirty.} =
 template decodeBx(k: expr) {.immediate, dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
-
-proc myreset(n: PNode) =
-  when defined(system.reset): 
-    var oldInfo = n.info
-    reset(n[])
-    n.info = oldInfo
 
 template move(a, b: expr) = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
@@ -666,7 +660,38 @@ proc execute(c: PCtx, start: int) =
     of opcNLineInfo:
       let rb = instr.regB
       let n = regs[rb]
-      regs[ra] = newStrNodeT(n.info.toFileLineCol, n)
+      regs[ra] = newStrNode(nkStrLit, n.info.toFileLineCol)
+      regs[ra].info = c.debug[pc]
+    of opcEqIdent:
+      decodeBC(nkIntLit)
+      if regs[rb].kind == nkIdent and regs[rc].kind == nkIdent:
+        regs[ra].intVal = ord(regs[rb].ident.id == regs[rc].ident.id)
+      else:
+        regs[ra].intVal = 0
+    of opcStrToIdent:
+      let rb = instr.regB
+      if regs[rb].kind notin {nkStrLit..nkTripleStrLit}:
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+      else:
+        regs[ra] = newNodeI(nkIdent, c.debug[pc])
+        regs[ra].ident = getIdent(regs[rb].strVal)
+    of opcIdentToStr:
+      let rb = instr.regB
+      let a = regs[rb]
+      regs[ra] = newNodeI(nkStrLit, c.debug[pc])
+      if a.kind == nkSym:
+        regs[ra].strVal = a.sym.name.s
+      elif a.kind == nkIdent:
+        regs[ra].strVal = a.ident.s
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "ident")
+    of opcSetType:
+      regs[ra].typ = c.types[instr.regBx - wordExcess]
+    of opcConv:
+      let rb = instr.regB
+      inc pc
+      let typ = c.types[c.code[pc].regBx - wordExcess]
+      opConv(regs[ra], regs[rb], typ)
     else:
       InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     inc pc

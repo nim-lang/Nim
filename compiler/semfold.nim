@@ -51,7 +51,7 @@ proc newStrNodeT(strVal: string, n: PNode): PNode =
   result.typ = n.typ
   result.info = n.info
 
-proc ordinalValToString(a: PNode): string = 
+proc ordinalValToString*(a: PNode): string = 
   # because $ has the param ordinal[T], `a` is not necessarily an enum, but an
   # ordinal
   var x = getInt(a)
