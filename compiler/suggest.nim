@@ -22,6 +22,12 @@ const
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
+proc origModuleName(m: PSym): string =
+  result = if m.position == gDirtyBufferIdx:
+             fileInfos[gDirtyOriginalIdx].shortName
+           else:
+             m.name.s
+
 proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
   result = section
   result.add(sep)
@@ -31,9 +37,9 @@ proc SymToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string =
     let ow = s.owner
     if ow.kind != skModule and ow.owner != nil:
       let ow2 = ow.owner
-      result.add(ow2.name.s)
+      result.add(ow2.origModuleName)
       result.add('.')
-    result.add(ow.name.s)
+    result.add(ow.origModuleName)
     result.add('.')
   result.add(s.name.s)
   result.add(sep)
