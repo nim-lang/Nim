@@ -2,7 +2,6 @@ version 0.9.4
 =============
 
 - new VM:
-  - implement opcConv
   - implement missing magics
   - implement overflow checking
   - implement the glue to replace evals.nim

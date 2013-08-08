@@ -78,6 +78,10 @@ type
     opcNGetType,
     opcNStrVal,
     
+    opcNSetIntVal,
+    opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
+    opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree,
+    
     opcSlurp,
     opcGorge,
     opcParseExprToAst,
