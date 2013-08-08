@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, osproc, streams, options, semfold
+import ast, types, msgs, osproc, streams, options
 
 proc readOutput(p: PProcess): string =
   result = ""
@@ -34,35 +34,6 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   except EIO:
     result = ""
     LocalError(info, errCannotOpenFile, file)
-
-proc myreset*(n: PNode) =
-  when defined(system.reset): 
-    var oldInfo = n.info
-    reset(n[])
-    n.info = oldInfo
-
-proc opConv*(dest, src: PNode, typ: PType) =
-  if typ.kind == tyString:
-    if dest.kind != nkStrLit:
-      myreset(dest)
-      dest.kind = nkStrLit
-    case src.typ.skipTypes(abstractRange).kind
-    of tyEnum: 
-      dest.strVal = ordinalValToString(src)
-    of tyInt..tyInt64, tyUInt..tyUInt64:
-      dest.strVal = $src.intVal
-    of tyBool:
-      dest.strVal = if src.intVal == 0: "false" else: "true"
-    of tyFloat..tyFloat128:
-      dest.strVal = $src.floatVal
-    of tyString, tyCString:
-      dest.strVal = src.strVal
-    of tyChar:
-      dest.strVal = $chr(src.intVal)
-    else:
-      internalError("cannot convert to string " & typ.typeToString)
-  else:
-    discard
 
 when false:
   proc opExpandToAst*(c: PEvalContext, original: PNode): PNode =

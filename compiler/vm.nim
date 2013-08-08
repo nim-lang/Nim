@@ -14,7 +14,7 @@ import
   strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
   parser, vmdeps, idents
 
-from semfold import leValueConv
+from semfold import leValueConv, ordinalValToString
 
 type
   PStackFrame* = ref TStackFrame
@@ -59,6 +59,12 @@ when not defined(nimHasInterpreterLoop):
 
 template inc(pc: ptr TInstr, diff = 1) =
   inc cast[TAddress](pc), TInstr.sizeof * diff
+
+proc myreset(n: PNode) =
+  when defined(system.reset): 
+    var oldInfo = n.info
+    reset(n[])
+    n.info = oldInfo
 
 template ensureKind(k: expr) {.immediate, dirty.} =
   if regs[ra].kind != k:
@@ -170,6 +176,57 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
       return pc
   return -1
 
+proc opConv*(dest, src: PNode, typ: PType): bool =
+  if typ.kind == tyString:
+    if dest.kind != nkStrLit:
+      myreset(dest)
+      dest.kind = nkStrLit
+    case src.typ.skipTypes(abstractRange).kind
+    of tyEnum: 
+      dest.strVal = ordinalValToString(src)
+    of tyInt..tyInt64, tyUInt..tyUInt64:
+      dest.strVal = $src.intVal
+    of tyBool:
+      dest.strVal = if src.intVal == 0: "false" else: "true"
+    of tyFloat..tyFloat128:
+      dest.strVal = $src.floatVal
+    of tyString, tyCString:
+      dest.strVal = src.strVal
+    of tyChar:
+      dest.strVal = $chr(src.intVal)
+    else:
+      internalError("cannot convert to string " & typ.typeToString)
+  else:
+    case skipTypes(typ, abstractRange).kind
+    of tyInt..tyInt64:
+      if dest.kind != nkIntLit:
+        myreset(dest); dest.kind = nkIntLit
+      case skipTypes(src.typ, abstractRange).kind
+      of tyFloat..tyFloat64:
+        dest.intVal = system.toInt(src.floatVal)
+      else:
+        dest.intVal = src.intVal
+      if dest.intVal < firstOrd(typ) or dest.intVal > lastOrd(typ):
+        return true
+    of tyUInt..tyUInt64:
+      if dest.kind != nkIntLit:
+        myreset(dest); dest.kind = nkIntLit
+      case skipTypes(src.typ, abstractRange).kind
+      of tyFloat..tyFloat64:
+        dest.intVal = system.toInt(src.floatVal)
+      else:
+        dest.intVal = src.intVal and ((1 shl typ.size)-1)
+    of tyFloat..tyFloat64:
+      if dest.kind != nkFloatLit:
+        myreset(dest); dest.kind = nkFloatLit
+      case skipTypes(src.typ, abstractRange).kind
+      of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar: 
+        dest.floatVal = toFloat(src.intVal.int)
+      else:
+        dest.floatVal = src.floatVal
+    else:
+      asgnComplex(dest, src)
+
 proc compile(c: PCtx, s: PSym): int = 
   result = vmgen.genProc(c, s)
   #c.echoCode
@@ -243,6 +300,7 @@ proc execute(c: PCtx, start: int) =
       let rb = instr.regB
       let rc = instr.regC
       # XXX this creates a wrong alias
+      #Message(c.debug[pc], warnUser, $regs[rb].len & " " & $rc)
       asgnComplex(regs[ra], regs[rb].sons[rc])
     of opcWrObj:
       # a.b = c
@@ -380,8 +438,9 @@ proc execute(c: PCtx, start: int) =
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
       decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb] == regs[rc])
-      # XXX is this correct? nope ...
+      regs[ra].intVal = ord((regs[rb].kind == nkNilLit and
+                             regs[rc].kind == nkNilLit) or
+                             regs[rb].sons == regs[rc].sons)
     of opcXor:
       decodeBC(nkIntLit)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
@@ -448,7 +507,11 @@ proc execute(c: PCtx, start: int) =
       decodeB(nkBracket)
       regs[ra].add(copyTree(regs[rb]))
     of opcEcho:
-      echo regs[ra].strVal
+      let rb = instr.regB
+      for i in ra..ra+rb-1:
+        if regs[i].kind != nkStrLit: debug regs[i]
+        write(stdout, regs[i].strVal)
+      writeln(stdout, "")
     of opcContainsSet:
       decodeBC(nkIntLit)
       regs[ra].intVal = Ord(inSet(regs[rb], regs[rc]))
@@ -691,7 +754,62 @@ proc execute(c: PCtx, start: int) =
       let rb = instr.regB
       inc pc
       let typ = c.types[c.code[pc].regBx - wordExcess]
-      opConv(regs[ra], regs[rb], typ)
+      if opConv(regs[ra], regs[rb], typ):
+        stackTrace(c, tos, pc, errGenerated,
+          msgKindToString(errIllegalConvFromXtoY) % [
+          "unknown type" , "unknown type"])
+    of opcNSetIntVal:
+      let rb = instr.regB
+      if regs[ra].kind in {nkCharLit..nkInt64Lit} and 
+         regs[rb].kind in {nkCharLit..nkInt64Lit}:
+        regs[ra].intVal = regs[rb].intVal
+      else: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
+    of opcNSetFloatVal:
+      let rb = instr.regB
+      if regs[ra].kind in {nkFloatLit..nkFloat64Lit} and 
+         regs[rb].kind in {nkFloatLit..nkFloat64Lit}:
+        regs[ra].floatVal = regs[rb].floatVal
+      else: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
+    of opcNSetSymbol:
+      let rb = instr.regB
+      if regs[ra].kind == nkSym and regs[rb].kind == nkSym:
+        regs[ra].sym = regs[rb].sym
+      else: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
+    of opcNSetIdent:
+      let rb = instr.regB
+      if regs[ra].kind == nkIdent and regs[rb].kind == nkIdent:
+        regs[ra].ident = regs[rb].ident
+      else: 
+        stackTrace(c, tos, pc, errFieldXNotFound, "ident")
+    of opcNSetType:
+      let b = regs[instr.regB]
+      InternalAssert b.kind == nkSym and b.sym.kind == skType
+      regs[ra].typ = b.sym.typ
+    of opcNSetStrVal:
+      let rb = instr.regB
+      if regs[ra].kind in {nkStrLit..nkTripleStrLit} and 
+         regs[rb].kind in {nkStrLit..nkTripleStrLit}:
+        regs[ra].strVal = regs[rb].strVal
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+    of opcNNewNimNode:
+      let rb = instr.regB
+      let rc = instr.regC
+      var k = regs[rb].intVal
+      if k < 0 or k > ord(high(TNodeKind)): 
+        internalError(c.debug[pc],
+          "request to create a NimNode with invalid kind")
+      regs[ra] = newNodeI(TNodeKind(int(k)), 
+        if regs[rc].kind == nkNilLit: c.debug[pc] else: regs[rc].info)
+    of opcNCopyNimNode:
+      let rb = instr.regB
+      regs[ra] = copyNode(regs[rb])
+    of opcNCopyNimTree:
+      let rb = instr.regB
+      regs[ra] = copyTree(regs[rb])
     else:
       InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     inc pc
