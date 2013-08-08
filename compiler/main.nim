@@ -210,7 +210,11 @@ proc CommandSuggest =
     msgs.gErrorMax = high(int)  # do not stop after first error
     semanticPasses()
     rodPass()
-    compileProject()
+    # XXX: this handles the case when the dirty buffer is the main file,
+    # but doesn't handle the case when it's imported module
+    var projFile = if gProjectMainIdx == gDirtyOriginalIdx: gDirtyBufferIdx
+                   else: gProjectMainIdx
+    compileProject(projFile)
 
 proc wantMainModule =
   if gProjectFull.len == 0:
