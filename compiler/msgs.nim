@@ -413,7 +413,7 @@ type
   TFileInfo*{.final.} = object 
     fullPath*: string          # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
-    
+    shortName*: string         # short name of the module
     quotedName*: PRope         # cached quoted short name for codegen
                                # purpoes
     
@@ -473,7 +473,9 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   #shallow(result.fullPath)
   result.projPath = projPath
   #shallow(result.projPath)
-  result.quotedName = projPath.extractFilename.makeCString
+  let fileName = projPath.extractFilename
+  result.shortName = fileName.changeFileExt("")
+  result.quotedName = fileName.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
