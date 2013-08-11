@@ -90,6 +90,8 @@ template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
       echo "[GCASSERT] ", msg
+      GC_disable()
+      writeStackTrace()
       quit 1
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
