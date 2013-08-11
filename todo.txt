@@ -2,9 +2,10 @@ version 0.9.4
 =============
 
 - new VM:
+  - implement the glue to replace evals.nim
   - implement missing magics
   - implement overflow checking
-  - implement the glue to replace evals.nim
+  - implement the FFI
   - implement on the fly CSE
 
 - make 'bind' default for templates and introduce 'mixin'
