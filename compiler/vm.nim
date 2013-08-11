@@ -242,14 +242,14 @@ proc execute(c: PCtx, start: int) =
     let ra = instr.regA
     #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
     case instr.opcode
-    of opcEof: break
+    of opcEof: return regs[ra]
     of opcRet:
       # XXX perform any cleanup actions
       pc = tos.comesFrom
       tos = tos.next
-      if tos.isNil: return
-      
       let retVal = regs[0]
+      if tos.isNil: return retVal
+      
       move(regs, tos.slots)
       assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
       if c.code[pc].opcode == opcIndCallAsgn:
@@ -637,6 +637,16 @@ proc execute(c: PCtx, start: int) =
         regs[ra] = copyTree(c.constants.sons[rb])
       else:
         asgnComplex(regs[ra], c.constants.sons[rb])
+    of opcLdGlobal:
+      let rb = instr.regBx - wordExcess
+      if regs[ra].isNil:
+        regs[ra] = copyTree(c.globals.sons[rb])
+      else:
+        asgnComplex(regs[ra], c.globals.sons[rb])
+    of opcRepr, opcSetLenStr, opcSetLenSeq,
+        opcSwap, opcIsNil, opcOf,
+        opcCast, opcQuit, opcReset:
+      internalError(c.debug[pc], "too implement")
     of opcNBindSym:
       # trivial implementation:
       let rb = instr.regB
@@ -810,19 +820,33 @@ proc execute(c: PCtx, start: int) =
     of opcNCopyNimTree:
       let rb = instr.regB
       regs[ra] = copyTree(regs[rb])
-    else:
-      InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
+    of opcNDel:
+      let rb = instr.regB
+      let rc = instr.regC
+      for i in countup(0, regs[rc].intVal.int-1):
+        delSon(regs[ra], regs[rb].intVal.int)
+    of opcGenSym:
+      let k = regs[instr.regB].intVal
+      let b = regs[instr.regC]
+      let name = if b.strVal.len == 0: ":tmp" else: b.strVal
+      if k < 0 or k > ord(high(TSymKind)):
+        internalError(c.debug[pc], "request to create symbol of invalid kind")
+      regs[ra] = newSymNode(newSym(k.TSymKind, name.getIdent, c.module,
+                            c.debug[pc]))
+      incl(regs[ra].sym.flags, sfGenSym)
     inc pc
 
-proc eval*(c: PCtx, n: PNode): PNode =
-  ## eval never returns nil! This simplifies the code a lot and
-  ## makes it faster too.
+proc evalStmt*(c: PCtx, n: PNode) =
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
   if c.code[start].opcode != opcEof:
-    execute(c, start)
-  result = emptyNode
+    discard execute(c, start)
+
+proc evalExpr*(c: PCtx, n: PNode): PNode =
+  let start = genExpr(c, n)
+  assert c.code[start].opcode != opcEof
+  result = execute(c, start)
 
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
@@ -835,10 +859,56 @@ var oldErrorCount: int
 proc myProcess(c: PPassContext, n: PNode): PNode =
   # don't eval errornous code:
   if oldErrorCount == msgs.gErrorCounter:
-    result = eval(PCtx(c), n)
+    evalStmt(PCtx(c), n)
+    result = emptyNode
   else:
     result = n
   oldErrorCount = msgs.gErrorCounter
 
 const vmPass* = makePass(myOpen, nil, myProcess, myProcess)
+
+proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
+  var p = newCtx(module)
+  var s = newStackFrame()
+  s.call = e
+  s.prc = prc
+  pushStackFrame(p, s)
+  result = tryEval(p, e)
+  if result != nil and result.kind == nkExceptBranch: result = nil
+  popStackFrame(p)
+
+proc evalConstExpr*(module: PSym, e: PNode): PNode = 
+  result = evalConstExprAux(module, nil, e, emConst)
+
+proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
+  result = evalConstExprAux(module, prc, e, emStatic)
+
+proc setupMacroParam(x: PNode): PNode =
+  result = x
+  if result.kind == nkHiddenStdConv: result = result.sons[1]
+
+proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
+  # XXX GlobalError() is ugly here, but I don't know a better solution for now
+  inc(evalTemplateCounter)
+  if evalTemplateCounter > 100:
+    GlobalError(n.info, errTemplateInstantiationTooNested)
+
+  c.callsite = nOrig
+  var s = newStackFrame()
+  s.call = n
+  s.prc = sym
+  var L = n.safeLen
+  if L == 0: L = 1
+  setlen(s.slots, L)
+  # return value:
+  s.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  # setup parameters:
+  for i in 1 .. < L: s.slots[i] = setupMacroParam(n.sons[i])
+  pushStackFrame(c, s)
+  discard eval(c, optBody(c, sym))
+  result = s.slots[0]
+  popStackFrame(c)
+  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
+  dec(evalTemplateCounter)
+  c.callsite = nil
 

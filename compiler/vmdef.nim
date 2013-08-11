@@ -80,7 +80,7 @@ type
     
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
-    opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree,
+    opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
     
     opcSlurp,
     opcGorge,
