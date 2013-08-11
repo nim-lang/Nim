@@ -143,7 +143,7 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel,
         # XXX we should use the dynamic type here too, but that is not stored
         # in the inbox at all --> use source[]'s object type? but how? we need
         # a tyRef to the object!
-        var obj = newObj(mt.base, mt.base.size)
+        var obj = newObj(mt, mt.base.size)
         unsureAsgnRef(x, obj)
       storeAux(x[], s, mt.base, t, mode)
       if mode != mStore: Dealloc(t.region, s)
