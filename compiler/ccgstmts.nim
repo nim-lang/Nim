@@ -292,6 +292,57 @@ proc genReturnStmt(p: BProc, t: PNode) =
   blockLeaveActions(p, min(1, p.nestedTryStmts.len))
   lineFF(p, cpsStmts, "goto BeforeRet;$n", "br label %BeforeRet$n", [])
 
+proc genComputedGoto(p: BProc; n: PNode) =
+  # first pass: Generate array of computed labels:
+  var casePos = -1
+  var arraySize: Int
+  for i in 0 .. <n.len:
+    let it = n.sons[i]
+    if it.kind == nkCaseStmt:
+      if lastSon(it).kind != nkOfBranch:
+        localError(it.info,
+            "case statement must be exhaustive for computed goto"); return
+      casePos = i
+      let aSize = lengthOrd(it.sons[0].typ)
+      if aSize > 10_000:
+        localError(it.info,
+            "case statement has too many cases for computed goto"); return
+      arraySize = aSize.int
+      if firstOrd(it.sons[0].typ) != 0:
+        localError(it.info,
+            "case statement has to start at 0 for computed goto"); return
+  if casePos < 0:
+    localError(n.info, "no case statement found for computed goto"); return
+  var id = p.labels+1
+  inc p.labels, arraySize+1
+  let tmp = ropef("TMP$1", id.toRope)
+  var gotoArray = ropef("static void* $#[$#] = {", tmp, arraySize.toRope)
+  for i in 1..arraySize-1:
+    gotoArray.appf("&&TMP$#, ", (id+i).toRope)
+  gotoArray.appf("&&TMP$#};$n", (id+arraySize).toRope)
+  line(p, cpsLocals, gotoArray)
+  
+  let caseStmt = n.sons[casePos]
+  var a: TLoc
+  initLocExpr(p, caseStmt.sons[0], a)
+  # first goto:
+  lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)
+  
+  for i in 1 .. <caseStmt.len:
+    let it = caseStmt.sons[i]
+    for j in 0 .. it.len-2:
+      if it.sons[j].kind == nkRange:
+        localError(it.info, "range notation not available for computed goto")
+        return
+      let val = getOrdValue(it.sons[j])
+      lineF(p, cpsStmts, "TMP$#:$n", intLiteral(val+id+1))
+    for j in 0 .. casePos-1: genStmts(p, n.sons[j])
+    genStmts(p, it.lastSon)
+    for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+    var a: TLoc
+    initLocExpr(p, caseStmt.sons[0], a)
+    lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)
+
 proc genWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce
   # significantly worse code
@@ -309,7 +360,15 @@ proc genWhileStmt(p: BProc, t: PNode) =
     if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
       let label = assignLabel(p.blocks[p.breakIdx])
       lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
-    genStmts(p, t.sons[1])
+    var loopBody = t.sons[1]
+    if loopBody.stmtsContainPragma(wComputedGoto) and
+        hasComputedGoto in CC[ccompiler].props:
+      # for closure support weird loop bodies are generated:
+      if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
+        loopBody = loopBody.sons[1]
+      genComputedGoto(p, loopBody)
+    else:
+      genStmts(p, loopBody)
 
     if optProfiler in p.options:
       # invoke at loop body exit:

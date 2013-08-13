@@ -42,7 +42,7 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop,
     wBreakpoint, wWatchpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward}
+    wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wDeprecated, wExtern, wThread, wImportcpp, wImportobjc, wNoStackFrame,
@@ -446,9 +446,6 @@ proc PragmaUnroll(c: PContext, n: PNode) =
     else: 
       invalidPragma(n)
 
-proc PragmaLinearScanEnd(c: PContext, n: PNode) =
-  noVal(n)
-
 proc PragmaLine(c: PContext, n: PNode) =
   if n.kind == nkExprColonExpr:
     n.sons[1] = c.semConstExpr(c, n.sons[1])
@@ -691,7 +688,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           else: sym.typ.callConv = wordToCallConv(k)
         of wEmit: PragmaEmit(c, it)
         of wUnroll: PragmaUnroll(c, it)
-        of wLinearScanEnd: PragmaLinearScanEnd(c, it)
+        of wLinearScanEnd, wComputedGoto: noVal(it)
         of wEffects:
           # is later processed in effect analysis:
           noVal(it)
