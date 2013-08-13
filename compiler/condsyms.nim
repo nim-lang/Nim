@@ -46,7 +46,7 @@ proc InitDefines*() =
   DefineSymbol("nimmixin")
   DefineSymbol("nimeffects")
   DefineSymbol("nimbabel")
-  DefineSymbol("nimsuperops")
+  DefineSymbol("nimcomputedgoto")
   
   # add platform specific symbols:
   case targetCPU

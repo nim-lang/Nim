@@ -774,6 +774,9 @@ proc GlobalError*(info: TLineInfo, arg: string) =
 proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
+proc LocalError*(info: TLineInfo, arg: string) =
+  liMessage(info, errGenerated, arg, doNothing)
+
 proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 

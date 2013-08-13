@@ -54,8 +54,8 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
              c.currentExceptionA.sons[2].strVal)
 
-when not defined(nimHasInterpreterLoop):
-  {.pragma: interpreterLoop.}
+when not defined(nimComputedGoto):
+  {.pragma: computedGoto.}
 
 template inc(pc: ptr TInstr, diff = 1) =
   inc cast[TAddress](pc), TInstr.sizeof * diff
@@ -237,7 +237,7 @@ proc execute(c: PCtx, start: int) =
   var tos: PStackFrame
   newSeq(regs, c.prc.maxSlots)
   while true:
-    {.interpreterLoop.}
+    {.computedGoto.}
     let instr = c.code[pc]
     let ra = instr.regA
     #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra

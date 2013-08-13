@@ -59,7 +59,7 @@ type
     wPassc, wPassl, wBorrow, wDiscardable,
     wFieldChecks, 
     wWatchPoint, wSubsChar, 
-    wAcyclic, wShallow, wUnroll, wLinearScanEnd,
+    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit, 
     wNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl,
@@ -140,7 +140,7 @@ const
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
     "watchpoint",
-    "subschar", "acyclic", "shallow", "unroll", "linearscanend",
+    "subschar", "acyclic", "shallow", "unroll", "linearscanend", "computedgoto",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "nostackframe", "implicitstatic", "global", "codegendecl",
     
