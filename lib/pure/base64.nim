@@ -16,7 +16,7 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a 
   ## `newline` is added.
   var total = ((len(s) + 2) div 3) * 4
-  var numLines = (total + (lineLen - 1)) div lineLen
+  var numLines = (total + lineLen - 1) div lineLen
   if numLines > 0: inc(total, (numLines-1) * newLine.len)
 
   result = newString(total)
@@ -47,14 +47,16 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
     result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
     result[r+2] = cb64[((b and 0x0F) shl 2)] 
     result[r+3] = '='
-    assert(r+4 == result.len)
+    if r+4 != result.len:
+      setLen(result, r+4)
   elif i < s.len:
     var a = ord(s[i])
     result[r] = cb64[a shr 2]
     result[r+1] = cb64[(a and 3) shl 4]
     result[r+2] = '='
     result[r+3] = '='
-    assert(r+4 == result.len)
+    if r+4 != result.len:
+      setLen(result, r+4)
   else:
     assert(r == result.len)
 
@@ -84,9 +86,9 @@ proc decode*(s: string): string =
       var c = s[i+2].decodeByte
       var d = s[i+3].decodeByte
       
-      result[r] = chr((a shl 2) or ((b shr 4) and 0x03))
-      result[r+1] = chr((b shl 4) or ((c shr 2) and 0x0F))
-      result[r+2] = chr((c shl 6) or (d and 0x3F))
+      result[r] = chr((a shl 2) and 0xff or ((b shr 4) and 0x03))
+      result[r+1] = chr((b shl 4) and 0xff or ((c shr 2) and 0x0F))
+      result[r+2] = chr((c shl 6) and 0xff or (d and 0x3F))
       inc(r, 3)
       inc(i, 4)
     else: break
