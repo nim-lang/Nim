@@ -792,6 +792,7 @@ const
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
+  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skMethod, skConverter}
 
   lfFullExternalName* = lfParamCopy # \
     # only used when 'gCmd == cmdPretty': Indicates that the symbol has been
@@ -1358,10 +1359,18 @@ proc getStrOrChar*(a: PNode): string =
 
 proc isGenericRoutine*(s: PSym): bool = 
   case s.kind
-  of skProc, skTemplate, skMacro, skIterator, skMethod, skConverter:
+  of skProcKinds:
     result = sfFromGeneric in s.flags or
              (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
   else: nil
+
+proc skipGenericOwner*(s: PSym): PSym =
+  InternalAssert s.kind in skProcKinds
+  ## Generic instantiations are owned by their originating generic
+  ## symbol. This proc skips such owners and goes straigh to the owner
+  ## of the generic itself (the module or the enclosing proc).
+  result = if sfFromGeneric in s.flags: s.owner.owner
+           else: s.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,

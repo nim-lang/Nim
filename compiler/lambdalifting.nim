@@ -219,8 +219,8 @@ proc getHiddenParam(routine: PSym): PSym =
   result = hidden.sym
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skMethod, skConverter} and
-    s.owner == outerProc
+  result = s.kind in {skProc, skMethod, skConverter} and 
+           s.skipGenericOwner == outerProc
   #s.typ.callConv == ccClosure
 
 proc addClosureParam(i: PInnerContext, e: PEnv) =
