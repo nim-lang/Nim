@@ -87,6 +87,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
+    inc c.InGenericInst
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
@@ -107,6 +108,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)
+    dec c.InGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, c.generics.len - 1):

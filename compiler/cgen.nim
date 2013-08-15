@@ -861,8 +861,8 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 proc genProc(m: BModule, prc: PSym) = 
   if sfBorrow in prc.flags or not isActivated(prc): return
   fillProcLoc(prc)
-  if {sfForward, sfFromGeneric} * prc.flags != {}: addForwardedProc(m, prc)
-  else: 
+  if sfForward in prc.flags: addForwardedProc(m, prc)
+  else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
         generatedHeader != nil and lfNoDecl notin prc.loc.Flags:

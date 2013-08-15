@@ -38,6 +38,7 @@ type
     proxyMatch*: bool        # to prevent instantiations
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
+    typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
   
   TTypeRelation* = enum      # order is important!
@@ -499,8 +500,11 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
+      
       result = typeRel(c, f.sons[0], x)
       if result < isGeneric: result = isNone
+    elif a.kind == tyGenericParam:
+      result = isGeneric
   of tyForward: InternalError("forward type in typeRel()")
   of tyNil:
     if a.kind == f.kind: result = isEqual
@@ -618,7 +622,24 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      result = matchTypeClass(c, f, a)
+      if c.calleeSym.kind == skType and f.kind == tyGenericParam and not c.typedescMatched:
+        # XXX: The fact that generic types currently use tyGenericParam for 
+        # their parameters is really a misnomer. tyGenericParam means "match
+        # any value" and what we need is "match any type", which can be encoded
+        # by a tyTypeDesc params. Unfortunately, this requires more substantial
+        # changes in semtypinst and elsewhere.
+        if a.kind == tyTypeDesc:
+          if f.sons == nil or f.sons.len == 0:
+            result = isGeneric
+          else:
+            InternalAssert a.sons != nil and a.sons.len > 0
+            c.typedescMatched = true
+            result = typeRel(c, f.sons[0], a.sons[0])
+        else:
+          result = isNone
+      else:
+        result = matchTypeClass(c, f, a)
+        
       if result == isGeneric:
         var concrete = concreteType(c, a)
         if concrete == nil:
