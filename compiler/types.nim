@@ -969,8 +969,8 @@ proc skipGenericAlias*(t: PType): PType =
 proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
   for i in countup(0, typeClass.sonsLen - 1):
     let req = typeClass.sons[i]
-    var match = req.kind == skipTypes(t, {tyGenericInst, tyRange}).kind or
-                req.kind == skipTypes(t, {tyGenericInst}).kind
+    var match = req.kind == skipTypes(t, {tyRange, tyGenericInst}).kind
+
     if not match:
       case req.kind
       of tyGenericBody:
@@ -979,7 +979,9 @@ proc matchTypeClass*(bindings: var TIdTable, typeClass, t: PType): bool =
           IdTablePut(bindings, typeClass, t)
       of tyTypeClass:
         match = matchTypeClass(bindings, req, t)
-      else: nil
+      elif t.kind == tyTypeClass:
+        match = matchTypeClass(bindings, t, req)
+          
     elif t.kind in {tyObject} and req.len != 0:
       # empty 'object' is fine as constraint in a type class
       match = sameType(t, req)
@@ -1046,7 +1048,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange: 
     result = skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind in
-        {tyChar, tyEnum, tyInt..tyUInt64}
+        {tyChar, tyEnum, tyInt..tyFloat128}
   of tyOpenArray, tyVarargs: 
     result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar, flags)
   of tySequence: 
