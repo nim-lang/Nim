@@ -91,17 +91,8 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     addDecl(c, result)
     pushProcCon(c, result)
     # add params to scope
-    let origFormalParams = result.typ.n
-    result.typ.n = newNodeI(nkFormalParams,
-                            origFormalParams.info,
-                            origFormalParams.len)
-    result.typ.n.sons[0] = copyNode(origFormalParams.sons[0])
-    for i in 1 .. <result.typ.len:
-      let origParam = origFormalParams[i].sym
-      var param = copySym(origParam)
-      result.typ.n.sons[i] = newSymNode(param)
-      param.typ = result.typ.sons[i]
-      param.ast = origParam.ast
+    for i in 1 .. <result.typ.n.len:
+      var param = result.typ.n.sons[i].sym
       param.owner = result
       addParamOrResult(c, param, result.kind)
     # debug result.typ.n
@@ -150,6 +141,15 @@ proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
 
 proc fixupProcType(c: PContext, genericType: PType,
                    inst: TInstantiation): PType =
+  # XXX: This is starting to look suspiciously like ReplaceTypeVarsT
+  # there are few apparent differences, but maybe the code could be
+  # moved over.
+  # * the code here uses the new genericSym.position property when
+  #   doing lookups. 
+  # * the handling of tyTypeDesc seems suspicious in ReplaceTypeVarsT
+  #   typedesc params were previously handled in the second pass of
+  #   semParamList
+  # * void (nkEmpty) params doesn't seem to be stripped in ReplaceTypeVarsT
   result = genericType
   if result == nil: return
 
@@ -167,7 +167,8 @@ proc fixupProcType(c: PContext, genericType: PType,
     if genericType.sons == nil: return
     var head = 0
     for i in 0 .. <genericType.sons.len:
-      var changed = fixupProcType(c, genericType.sons[i], inst)
+      let origType = genericType.sons[i]
+      var changed = fixupProcType(c, origType, inst)
       if changed != genericType.sons[i]:
         var changed = changed.skipIntLit
         if result == genericType:
@@ -194,7 +195,11 @@ proc fixupProcType(c: PContext, genericType: PType,
         
         if result.n != nil:
           if result.n.kind == nkRecList:
-            result.n.sons[head].typ = changed
+            for son in result.n.sons:
+              if son.typ == origType:
+                son.typ = changed
+                son.sym = copySym(son.sym, true)
+                son.sym.typ = changed
           if result.n.kind == nkFormalParams:
             if i != 0:
               let origParam = result.n.sons[head].sym
@@ -205,14 +210,14 @@ proc fixupProcType(c: PContext, genericType: PType,
 
       # won't be advanced on empty (void) nodes
       inc head
-        
+  
   of tyGenericInvokation:
     result = newTypeWithSons(c, tyGenericInvokation, genericType.sons)
     for i in 1 .. <genericType.sons.len:
       result.sons[i] = fixupProcType(c, result.sons[i], inst)
     result = instGenericContainer(c, getInfoContext(-1), result)
-  else:
-    nil
+  
+  else: nil
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =

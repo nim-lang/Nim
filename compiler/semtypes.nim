@@ -384,7 +384,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       # for ``{}`` we want to trigger the type mismatch in ``fitNode``:
       if r.kind != nkCurly or len(r) == 0:
         checkMinSonsLen(t, 1)
-        branch.sons[i] = fitNode(c, t.sons[0].typ, r)
+        branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r))
         inc(covered)
       else:
         # constant sets have special rules
