@@ -366,12 +366,8 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfInstantiated,   # XXX: used to mark generic params after instantiation.
-                      # if the concrete type happens to be an implicit generic
-                      # this can lead to invalid proc signatures in the second
-                      # pass of semProcTypeNode performed after instantiation.
-                      # this won't be needed if we don't perform this redundant
-                      # second pass (stay tuned).
+    tfUnresolved,     # marks unresolved typedesc params: e.g.
+                      # proc foo(T: typedesc, list: seq[T]): var T
     tfRetType,        # marks return types in proc (used to detect type classes 
                       # used as return types for return type inference)
     tfAll,            # type class requires all constraints to be met (default)
@@ -1053,8 +1049,8 @@ proc NewType(kind: TTypeKind, owner: PSym): PType =
   result.size = - 1
   result.align = 2            # default alignment
   result.id = getID()
-  when debugIds: 
-    RegisterId(result)        
+  when debugIds:
+    RegisterId(result)
   #if result.id < 2000 then
   #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
@@ -1091,7 +1087,6 @@ proc copyType(t: PType, owner: PSym, keepId: bool): PType =
   if keepId: 
     result.id = t.id
   else: 
-    result.id = getID()
     when debugIds: RegisterId(result)
   result.sym = t.sym          # backend-info should not be copied
   
@@ -1364,7 +1359,7 @@ proc isGenericRoutine*(s: PSym): bool =
   of skProc, skTemplate, skMacro, skIterator, skMethod, skConverter:
     result = s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty
   else: nil
-
+  
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in {skProc, skTemplate, skMacro, skIterator, skMethod,
                       skConverter}

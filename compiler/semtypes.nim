@@ -226,7 +226,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
   else:
     LocalError(n.info, errXExpectsOneTypeParam, "ordinal")
     result = newOrPrevType(tyError, prev, c)
-  
+
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym: 
     result = n.sym
@@ -245,7 +245,9 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         if result.typ.sym == nil:
           LocalError(n.info, errTypeExpected)
           return errorSym(c, n)
-        return result.typ.sym
+        result = result.typ.sym.copySym
+        result.typ = copyType(result.typ, result.typ.owner, true)
+        result.typ.flags.incl tfUnresolved
       if result.kind != skType: 
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
@@ -585,81 +587,95 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     if sfGenSym notin param.flags: addDecl(c, param)
 
-proc paramTypeClass(c: PContext, paramType: PType, procKind: TSymKind):
-  tuple[typ: PType, id: PIdent] =
-  # if typ is not-nil, the param should be turned into a generic param
-  # if id is not nil, the generic param will bind just once (see below)
-  case paramType.kind:
-  of tyExpr:
-    if paramType.sonsLen == 0:
-      # proc(a, b: expr)
-      # no constraints, treat like generic param
-      result.typ = newTypeS(tyGenericParam, c)
-    else:
-      # proc(a: expr{string}, b: expr{nkLambda})
-      # overload on compile time values and AST trees
-      result.typ = newTypeS(tyExpr, c)
-      result.typ.sons = paramType.sons
-  of tyTypeDesc:
-    if tfInstantiated notin paramType.flags:
-      result.typ = newTypeS(tyTypeDesc, c)
-      result.typ.sons = paramType.sons
-  of tyDistinct:
-    result = paramTypeClass(c, paramType.lastSon, procKind)
-    # disable the bindOnce behavior for the type class
-    result.id = nil
-    return
-  of tyGenericBody:
-    # type Foo[T] = object
-    # proc x(a: Foo, b: Foo) 
-    result.typ = newTypeS(tyTypeClass, c)
-    result.typ.addSonSkipIntLit(paramType)
-  of tyTypeClass:
-    result.typ = copyType(paramType, getCurrOwner(), false)
-  else: nil
-  # bindOnce by default
-  if paramType.sym != nil: result.id = paramType.sym.name
-
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
-                   info: TLineInfo): PType =
-  result = paramType
+                   info: TLineInfo, anon = false): PType =
   if procKind in {skMacro, skTemplate}:
     # generic param types in macros and templates affect overload
     # resolution, but don't work as generic params when it comes
     # to proc instantiation. We don't need to lift such params here.  
     return
-  ## Params having implicit generic types or pseudo types such as 'expr'
-  ## need to be added to the generic params lists. 
-  ## 'expr' is different from 'expr{string}' so we must first call 
-  ## paramTypeClass to get the actual type we are going to use.
-  var (typeClass, paramTypId) = paramTypeClass(c, paramType, procKind)
-  let isAnon = paramTypId == nil
-  if typeClass != nil:
-    if isAnon: paramTypId = getIdent(paramName & ":type")
-    if genericParams == nil:
-      # genericParams is nil when the proc is being instantiated
-      # the resolved type will be in scope then
-      let s = searchInScopes(c, paramTypId)
-      # tests/run/tinterf triggers this:
-      if s != nil: result = s.typ
-      else:
-        LocalError(info, errCannotInstantiateX, paramName)
-        result = errorType(c)
-    else:
-      block addImplicitGeneric:
-        # is this a bindOnce type class already present in the param list?
-        for i in countup(0, genericParams.len - 1):
-          if genericParams.sons[i].sym.name.id == paramTypId.id:
-            result = genericParams.sons[i].typ
-            break addImplicitGeneric
 
-        var s = newSym(skType, paramTypId, getCurrOwner(), info)
-        if isAnon: s.flags.incl(sfAnon)
-        s.linkTo(typeClass)
-        s.position = genericParams.len
-        genericParams.addSon(newSymNode(s))
-        result = typeClass
+  proc addImplicitGenericImpl(typeClass: PType, typId: PIdent): PType =
+    let finalTypId = if typId != nil: typId
+                     else: getIdent(paramName & ":type")
+    # is this a bindOnce type class already present in the param list?
+    for i in countup(0, genericParams.len - 1):
+      if genericParams.sons[i].sym.name.id == finalTypId.id:
+        return genericParams.sons[i].typ
+
+    var s = newSym(skType, finalTypId, getCurrOwner(), info)
+    if typId == nil: s.flags.incl(sfAnon)
+    s.linkTo(typeClass)
+    s.position = genericParams.len
+    genericParams.addSon(newSymNode(s))
+    result = typeClass
+
+  # XXX: There are codegen errors if this is turned into a nested proc
+  template liftingWalk(typ: PType, anonFlag = false): expr =
+    liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
+  #proc liftingWalk(paramType: PType, anon = false): PType =
+
+  var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
+                   else: nil
+
+  template addImplicitGeneric(e: expr): expr =
+    addImplicitGenericImpl(e, paramTypId)
+
+  case paramType.kind:
+  of tyExpr:
+    if paramType.sonsLen == 0:
+      # proc(a, b: expr)
+      # no constraints, treat like generic param
+      result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+    else:
+      # proc(a: expr{string}, b: expr{nkLambda})
+      # overload on compile time values and AST trees
+      result = addImplicitGeneric(c.newTypeWithSons(tyExpr, paramType.sons))
+  of tyTypeDesc:
+    if tfUnresolved notin paramType.flags:
+      result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
+  of tyDistinct:
+    if paramType.sonsLen == 1:
+      # disable the bindOnce behavior for the type class
+      result = liftingWalk(paramType.sons[0], true)
+  of tySequence, tySet, tyArray, tyOpenArray:
+    # XXX: this is a bit strange, but proc(s: seq)
+    # produces tySequence(tyGenericParam, null).
+    # This also seems to be true when creating aliases
+    # like: type myseq = distinct seq.
+    # Maybe there is another better place to associate
+    # the seq type class with the seq identifier.
+    if paramType.lastSon == nil:
+      let typ = c.newTypeWithSons(tyTypeClass, @[newTypeS(paramType.kind, c)])
+      result = addImplicitGeneric(typ)
+    else:
+      for i in 0 .. <paramType.sons.len:
+        var lifted = liftingWalk(paramType.sons[i])
+        if lifted != nil:
+          paramType.sons[i] = lifted
+          result = paramType
+  of tyGenericBody:
+    # type Foo[T] = object
+    # proc x(a: Foo, b: Foo) 
+    var typ = newTypeS(tyTypeClass, c)
+    typ.addSonSkipIntLit(paramType)
+    result = addImplicitGeneric(typ)
+  of tyGenericInst:
+    for i in 1 .. (paramType.sons.len - 2):
+      var lifted = liftingWalk(paramType.sons[i])
+      if lifted != nil:
+        paramType.sons[i] = lifted
+        result = paramType
+    
+    if result != nil:
+      result.kind = tyGenericInvokation
+      result.sons.setLen(result.sons.len - 1)
+  of tyTypeClass:
+    result = addImplicitGeneric(copyType(paramType, getCurrOwner(), false))
+  else: nil
+
+  # result = liftingWalk(paramType)
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   if n.kind == nkCurlyExpr:
@@ -698,10 +714,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       length = sonsLen(a)
       hasType = a.sons[length-2].kind != nkEmpty
       hasDefault = a.sons[length-1].kind != nkEmpty
-
     if hasType:
       typ = semParamType(c, a.sons[length-2], constraint)
-      
+
     if hasDefault:
       def = semExprWithType(c, a.sons[length-1]) 
       # check type compability between def.typ and typ:
@@ -719,8 +734,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymG(skParam, a.sons[j], c)
-      var finalType = liftParamType(c, kind, genericParams, typ, arg.name.s, 
-                                    a.sons[length-2].info).skipIntLit
+      let lifted = liftParamType(c, kind, genericParams, typ,
+                                 arg.name.s, arg.info)
+      let finalType = if lifted != nil: lifted else: typ.skipIntLit
       arg.typ = finalType
       arg.position = counter
       arg.constraint = constraint
@@ -738,11 +754,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       if r.sym == nil or sfAnon notin r.sym.flags:
-        r = liftParamType(c, kind, genericParams, r, "result", n.sons[0].info)
+        let lifted = liftParamType(c, kind, genericParams, r, "result",
+                                   n.sons[0].info)
+        if lifted != nil: r = lifted
         r.flags.incl tfRetType
       result.sons[0] = skipIntLit(r)
       res.typ = result.sons[0]
-
+ 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
   var length = sonsLen(n)
@@ -1026,6 +1044,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
   if n.kind != nkGenericParams: 
     illFormedAst(n)
     return
+  var position = 0
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)
@@ -1063,6 +1082,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       if def.kind != nkEmpty: s.ast = def
       s.typ.sym = s
       if father != nil: addSonSkipIntLit(father, s.typ)
-      s.position = i
+      s.position = position
+      inc position
       addSon(result, newSymNode(s))
       if sfGenSym notin s.flags: addDecl(c, s)
