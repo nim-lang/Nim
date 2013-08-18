@@ -89,6 +89,9 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
       #debug(formalTypeParam)
       put(c.bindings, formalTypeParam, binding[i].typ)
 
+proc newCandidate*(callee: PSym, binding: PNode, calleeScope = -1): TCandidate =
+  initCandidate(result, callee, binding, calleeScope)
+
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
   a.exactMatches = b.exactMatches
   a.subtypeMatches = b.subtypeMatches
@@ -909,16 +912,22 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         m.state = csNoMatch
         return
-  
-  var f = 1 # iterates over formal parameters
-  var a = 1 # iterates over the actual given arguments
-  m.state = csMatch           # until proven otherwise
+
+  var
+    # iterates over formal parameters
+    f = if m.callee.kind != tyGenericBody: 1
+        else: 0
+    # iterates over the actual given arguments
+    a = 1
+
+  m.state = csMatch # until proven otherwise
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
-  var formalLen = sonsLen(m.callee.n)
+  var formalLen = m.callee.n.len
   addSon(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
   var formal: PSym = nil
+
   while a < n.len:
     if n.sons[a].kind == nkExprEqExpr:
       # named param

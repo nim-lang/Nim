@@ -686,6 +686,8 @@ type
                               # for record types a nkRecord node
                               # for enum types a list of symbols
                               # for tyInt it can be the int literal
+                              # for procs and tyGenericBody, it's the
+                              # formal param list
                               # else: unused
     destructor*: PSym         # destructor. warning: nil here may not necessary
                               # mean that there is no destructor.
