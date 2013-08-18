@@ -806,29 +806,44 @@ proc semGenericParamInInvokation(c: PContext, n: PNode): PType =
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType = 
   result = newOrPrevType(tyGenericInvokation, prev, c)
-  var isConcrete = true
+  addSonSkipIntLit(result, s.typ)
+  
+  template addToResult(typ) =
+    if typ.isNil:
+      InternalAssert false
+      rawAddSon(result, typ)
+    else: addSonSkipIntLit(result, typ)
+
   if s.typ == nil:
     LocalError(n.info, errCannotInstantiateX, s.name.s)
     return newOrPrevType(tyError, prev, c)
-  elif s.typ.kind != tyGenericBody:
-    isConcrete = false
-  elif sonsLen(n) != sonsLen(s.typ): 
-    LocalError(n.info, errWrongNumberOfArguments)
-    return newOrPrevType(tyError, prev, c)
-  addSonSkipIntLit(result, s.typ)
-  # iterate over arguments:
-  for i in countup(1, sonsLen(n)-1):
-    var elem = semGenericParamInInvokation(c, n.sons[i])
-    if containsGenericType(elem): isConcrete = false
-    #if elem.kind in {tyGenericParam, tyGenericInvokation}: isConcrete = false
-    if elem.isNil: rawAddSon(result, elem)
-    else: addSonSkipIntLit(result, elem)
-  if isConcrete:
-    if s.ast == nil: 
-      LocalError(n.info, errCannotInstantiateX, s.name.s)
-      result = newOrPrevType(tyError, prev, c)
-    else:
-      result = instGenericContainer(c, n, result)
+  elif s.typ.kind == tyForward:
+    for i in countup(1, sonsLen(n)-1):
+      var elem = semGenericParamInInvokation(c, n.sons[i])
+      addToResult(elem)
+  else:
+    internalAssert s.typ.kind == tyGenericBody
+
+    var m = newCandidate(s, n)
+    matches(c, n, copyTree(n), m)
+    
+    if m.state != csMatch:
+      LocalError(n.info, errWrongNumberOfArguments)
+      return newOrPrevType(tyError, prev, c)
+
+    var isConcrete = true
+  
+    for i in 1 .. <m.call.len:
+      let typ = m.call[i].typ.skipTypes({tyTypeDesc})
+      if containsGenericType(typ): isConcrete = false
+      addToResult(typ)
+    
+    if isConcrete:
+      if s.ast == nil:
+        LocalError(n.info, errCannotInstantiateX, s.name.s)
+        result = newOrPrevType(tyError, prev, c)
+      else:
+        result = instGenericContainer(c, n, result)
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})
@@ -1032,57 +1047,61 @@ proc processMagicType(c: PContext, m: PSym) =
   of mPNimrodNode: nil
   else: LocalError(m.info, errTypeExpected)
   
-proc semGenericConstraints(c: PContext, n: PNode, result: PType) = 
-  var x = semTypeNode(c, n, nil)
+proc semGenericConstraints(c: PContext, x: PType): PType =
   if x.kind in StructuralEquivTypes and (
       sonsLen(x) == 0 or x.sons[0].kind in {tyGenericParam, tyEmpty}):
-    x = newConstraint(c, x.kind)
-  result.addSonSkipIntLit(x)
+    result = newConstraint(c, x.kind)
+  else:
+    result = newTypeWithSons(c, tyGenericParam, @[x])
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
   result = copyNode(n)
   if n.kind != nkGenericParams: 
     illFormedAst(n)
     return
-  var position = 0
-  for i in countup(0, sonsLen(n)-1): 
+  for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)
-    var L = sonsLen(a)
-    var def = a.sons[L-1]
+    let L = a.len
+    var def = a{-1}
+    let constraint = a{-2}
     var typ: PType
-    if a.sons[L-2].kind != nkEmpty: 
-      typ = newTypeS(tyGenericParam, c)
-      semGenericConstraints(c, a.sons[L-2], typ)
-      if sonsLen(typ) == 1 and typ.sons[0].kind == tyTypeDesc:
-        typ = typ.sons[0]
-    elif def.kind != nkEmpty: typ = newTypeS(tyExpr, c)
-    else: typ = nil
-    for j in countup(0, L-3): 
-      var s: PSym
-      if typ == nil:
-        s = newSymG(skType, a.sons[j], c)
-        s.typ = newTypeS(tyGenericParam, c)
-      else:
-        case typ.kind
-        of tyTypeDesc: 
-          s = newSymG(skType, a.sons[j], c)
-          s.typ = newTypeS(tyGenericParam, c)
-        of tyExpr:
-          #echo "GENERIC EXPR ", a.info.toFileLineCol
-          # not a type param, but an expression
-          # proc foo[x: expr](bar: int) what is this?
-          s = newSymG(skGenericParam, a.sons[j], c)
-          s.typ = typ
+    
+    if constraint.kind != nkEmpty:
+      typ = semTypeNode(c, constraint, nil)
+      if typ.kind != tyExpr or typ.len == 0:
+        if typ.len == 0 and typ.kind == tyTypeDesc:
+          typ = newTypeS(tyGenericParam, c)
         else:
-          # This handles cases like proc foo[t: tuple] 
-          # XXX: we want to turn that into a type class
-          s = newSymG(skType, a.sons[j], c)
-          s.typ = typ
+          typ = semGenericConstraints(c, typ)
+    
+    if def.kind != nkEmpty:
+      def = semConstExpr(c, def)
+      if typ == nil:
+        if def.typ.kind != tyTypeDesc:
+          typ = newTypeWithSons(c, tyExpr, @[def.typ])
+      else:
+        if not containsGenericType(def.typ):
+          def = fitNode(c, typ, def)
+    
+    if typ == nil:
+      typ = newTypeS(tyGenericParam, c)
+    
+    for j in countup(0, L-3):
+      let finalType = if j == 0: typ
+                      else: copyType(typ, typ.owner, false)
+                      # it's important the we create an unique
+                      # type for each generic param. the index
+                      # of the parameter will be stored in the
+                      # attached symbol.
+      var s = case finalType.kind
+        of tyExpr:
+          newSymG(skGenericParam, a.sons[j], c).linkTo(finalType)
+        else:
+          newSymG(skType, a.sons[j], c).linkTo(finalType)
       if def.kind != nkEmpty: s.ast = def
-      s.typ.sym = s
       if father != nil: addSonSkipIntLit(father, s.typ)
-      s.position = position
-      inc position
+      s.position = result.len
       addSon(result, newSymNode(s))
       if sfGenSym notin s.flags: addDecl(c, s)
+

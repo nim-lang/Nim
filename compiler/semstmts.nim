@@ -721,7 +721,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       #   TGObj[T] = object
       #   TAlias[T] = TGObj[T]
       # 
-      a.sons[1] = semGenericParamList(c, a.sons[1], s.typ)
+      s.typ.n = semGenericParamList(c, a.sons[1], s.typ)
+      a.sons[1] = s.typ.n
       s.typ.size = -1 # could not be computed properly
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
