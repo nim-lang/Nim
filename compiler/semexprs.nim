@@ -111,7 +111,11 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
   of skGenericParam:
-    if s.ast != nil: result = semExpr(c, s.ast)
+    if s.typ.kind == tyExpr:
+      result = newSymNode(s, n.info)
+      result.typ = s.typ.lastSon
+    elif s.ast != nil:
+      result = semExpr(c, s.ast)
     else:
       InternalError(n.info, "no default for")
       result = emptyNode
@@ -888,10 +892,13 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       let tbody = ty.sons[0]
       for s in countup(0, tbody.len-2):
         let tParam = tbody.sons[s]
-        assert tParam.kind == tyGenericParam
         if tParam.sym.name == i:
-          let foundTyp = makeTypeDesc(c, ty.sons[s + 1])
-          return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
+          let rawTyp = ty.sons[s + 1]
+          if rawTyp.kind == tyExpr:
+            return rawTyp.n
+          else:
+            let foundTyp = makeTypeDesc(c, rawTyp)
+            return newSymNode(copySym(tParam.sym).linkTo(foundTyp), n.info)
       return
     else:
       # echo "TYPE FIELD ACCESS"
