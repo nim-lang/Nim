@@ -1359,7 +1359,8 @@ proc getStrOrChar*(a: PNode): string =
 proc isGenericRoutine*(s: PSym): bool = 
   case s.kind
   of skProc, skTemplate, skMacro, skIterator, skMethod, skConverter:
-    result = sfFromGeneric in s.flags
+    result = sfFromGeneric in s.flags or
+             (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
   else: nil
 
 proc isRoutine*(s: PSym): bool {.inline.} =
