@@ -165,28 +165,35 @@ proc fixupProcTypeR(c: PContext, genericType: PType,
   of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
      tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
     if genericType.sons == nil: return
+    var head = 0
     for i in 0 .. <genericType.sons.len:
       let changed = fixupProcTypeR(c, genericType.sons[i], inst)
       if changed != genericType.sons[i]:
         if result == genericType:
           # the first detected change initializes the result
-          result = copyType(genericType, genericType.owner, true)
+          result = copyType(genericType, genericType.owner, false)
           if genericType.n != nil:
             result.n = copyTree(genericType.n)
-        result.sons[i] = changed
+        if changed.kind == tyEmpty:
+          result.sons[i..i] = []
+          if result.n != nil: result.n.sons[i..i] = []
+          continue
+        let changed = changed.skipIntLit
+        result.sons[head] = changed
         if result.n != nil:
           if result.n.kind == nkRecList:
-            result.n.sons[i].typ = changed
+            result.n.sons[head].typ = changed
           if result.n.kind == nkFormalParams:
             if i == 0:
               nil
             else:
-              let origParam = result.n.sons[i].sym
+              let origParam = result.n.sons[head].sym
               var param = copySym(origParam)
               param.typ = changed
               param.ast = origParam.ast
-              result.n.sons[i] = newSymNode(param)
-              
+              result.n.sons[head] = newSymNode(param)
+      inc head
+        
   of tyGenericInvokation:
     result = newTypeWithSons(c, tyGenericInvokation, genericType.sons)
     for i in 1 .. <genericType.sons.len:
@@ -198,9 +205,10 @@ proc fixupProcTypeR(c: PContext, genericType: PType,
 proc fixupProcType(c: PContext, genericType: PType,
                    inst: TInstantiation): PType =
   result = copyType(genericType, genericType.owner, false)
+  result = fixupProcTypeR(c, result, inst)
   for i in 0 .. <result.sons.len:
     result.sons[i] = fixupProcTypeR(c, result.sons[i], inst)
-  
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
@@ -230,7 +238,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var entry = TInstantiation.new
   entry.sym = result
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
-  result.typ = fixupProcType(c, fn.typ, entry[])
+  result.typ = fixupProcTypeR(c, fn.typ, entry[])
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:

@@ -1827,7 +1827,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBind:
     Message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
-  of nkTypeOfExpr:
+  of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
