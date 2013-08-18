@@ -284,6 +284,9 @@ proc genLineDir(p: BProc, t: PNode) =
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
             line.toRope, t.info.quotedFilename)
 
+proc accessThreadLocalVar(p: BProc, s: PSym)
+proc emulatedThreadVars(): bool {.inline.}
+
 include "ccgtypes.nim"
 
 # ------------------------------ Manager of temporaries ------------------
