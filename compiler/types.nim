@@ -926,11 +926,21 @@ proc commonSuperclass*(a, b: PType): PType =
     if ancestors.contains(y.id): return y
     y = y.sons[0]
 
-proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool
-proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool = 
+type
+  TTypeAllowedFlag = enum
+    taField,
+    taHeap
+
+  TTypeAllowedFlags = set[TTypeAllowedFlag]
+
+proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
+                    flags: TTypeAllowedFlags = {}): bool
+
+proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind,
+                     flags: TTypeAllowedFlags = {}): bool =
   result = true
   if n != nil: 
-    result = typeAllowedAux(marker, n.typ, kind)
+    result = typeAllowedAux(marker, n.typ, kind, flags)
     #if not result: debug(n.typ)
     if result: 
       case n.kind
@@ -938,7 +948,7 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool =
         nil
       else: 
         for i in countup(0, sonsLen(n) - 1): 
-          result = typeAllowedNode(marker, n.sons[i], kind)
+          result = typeAllowedNode(marker, n.sons[i], kind, flags)
           if not result: break
 
 proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
@@ -990,7 +1000,8 @@ proc matchTypeClass*(typeClass, typ: PType): bool =
   initIdTable(bindings)
   result = matchTypeClass(bindings, typeClass, typ)
 
-proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
+proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
+                    flags: TTypeAllowedFlags = {}): bool =
   assert(kind in {skVar, skLet, skConst, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
@@ -1004,66 +1015,70 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind): bool =
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar: 
-      result = false          # ``var var`` is always an invalid type:
+      result = taHeap in flags # ``var var`` is illegal on the heap:
     of tyOpenArray: 
-      result = kind == skParam and typeAllowedAux(marker, t2, kind)
+      result = kind == skParam and typeAllowedAux(marker, t2, kind, flags)
     else:
-      result = kind in {skParam, skResult} and typeAllowedAux(marker, t2, kind)
+      result = kind in {skParam, skResult} and
+               typeAllowedAux(marker, t2, kind, flags)
   of tyProc: 
     for i in countup(1, sonsLen(t) - 1): 
-      result = typeAllowedAux(marker, t.sons[i], skParam)
+      result = typeAllowedAux(marker, t.sons[i], skParam, flags)
       if not result: break 
     if result and t.sons[0] != nil:
-      result = typeAllowedAux(marker, t.sons[0], skResult)
+      result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyExpr, tyStmt, tyTypeDesc:
     result = true
     # XXX er ... no? these should not be allowed!
+  of tyEmpty:
+    result = taField in flags
   of tyTypeClass:
     result = true
   of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation:
     result = false
-  of tyEmpty, tyNil:
+  of tyNil:
     result = kind == skConst
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyBigNum, tyCString, tyPointer: 
     result = true
   of tyOrdinal: 
     result = kind == skParam
   of tyGenericInst, tyDistinct: 
-    result = typeAllowedAux(marker, lastSon(t), kind)
-  of tyRange:
+    result = typeAllowedAux(marker, lastSon(t), kind, flags)
+  of tyRange: 
     result = skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind in
         {tyChar, tyEnum, tyInt..tyUInt64}
   of tyOpenArray, tyVarargs: 
-    result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar)
+    result = (kind == skParam) and typeAllowedAux(marker, t.sons[0], skVar, flags)
   of tySequence: 
     result = t.sons[0].kind == tyEmpty or 
-        typeAllowedAux(marker, t.sons[0], skVar)
+        typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
   of tyArray:
     result = t.sons[1].kind == tyEmpty or
-        typeAllowedAux(marker, t.sons[1], skVar)
+        typeAllowedAux(marker, t.sons[1], skVar, flags)
   of tyRef:
     if kind == skConst: return false
-    result = typeAllowedAux(marker, t.sons[0], skVar)
+    result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.sons[0], skVar)
-  of tyArrayConstr, tyTuple, tySet, tyConst, tyMutable, tyIter:
+    result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+  of tyArrayConstr, tySet, tyConst, tyMutable, tyIter:
     for i in countup(0, sonsLen(t) - 1):
-      result = typeAllowedAux(marker, t.sons[i], kind)
+      result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if not result: break
-  of tyObject:
-    if kind == skConst: return false
+  of tyObject, tyTuple:
+    if kind == skConst and t.kind == tyObject: return false
+    let flags = flags+{taField}
     for i in countup(0, sonsLen(t) - 1): 
-      result = typeAllowedAux(marker, t.sons[i], kind)
+      result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if not result: break
-    if result and t.n != nil: result = typeAllowedNode(marker, t.n, kind)
+    if result and t.n != nil: result = typeAllowedNode(marker, t.n, kind, flags)
   of tyProxy:
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = true
-    
+
 proc typeAllowed(t: PType, kind: TSymKind): bool = 
   var marker = InitIntSet()
-  result = typeAllowedAux(marker, t, kind)
+  result = typeAllowedAux(marker, t, kind, {})
 
 proc align(address, alignment: biggestInt): biggestInt = 
   result = (address + (alignment - 1)) and not (alignment - 1)
