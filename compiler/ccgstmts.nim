@@ -322,6 +322,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   gotoArray.appf("&&TMP$#};$n", (id+arraySize).toRope)
   line(p, cpsLocals, gotoArray)
   
+  for j in 0 .. casePos-1: genStmts(p, n.sons[j])
   let caseStmt = n.sons[casePos]
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
@@ -329,6 +330,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)
   
   for i in 1 .. <caseStmt.len:
+    startBlock(p)
     let it = caseStmt.sons[i]
     for j in 0 .. it.len-2:
       if it.sons[j].kind == nkRange:
@@ -336,12 +338,13 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#:$n", intLiteral(val+id+1))
-    for j in 0 .. casePos-1: genStmts(p, n.sons[j])
     genStmts(p, it.lastSon)
     for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+    for j in 0 .. casePos-1: genStmts(p, n.sons[j])
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
     lineF(p, cpsStmts, "goto *$#[$#];$n", tmp, a.rdLoc)
+    endBlock(p)
 
 proc genWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce

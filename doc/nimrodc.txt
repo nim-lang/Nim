@@ -488,7 +488,7 @@ in C/C++).
 
 
 Nimrod idetools integration
-=======================
+===========================
 
 Nimrod provides language integration with external IDEs through the
 idetools command. See the documentation of `idetools <idetools.html>`_

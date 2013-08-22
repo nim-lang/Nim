@@ -37,6 +37,8 @@ Compiler Additions
 - The compiler now enforces the ``not nil`` constraint.
 - The compiler now supports a ``codegenDecl`` pragma for even more control
   over the generated code.
+- The compiler now supports a ``computedGoto`` pragma to support very fast
+  dispatching for interpreters and the like.
 
 
 Language Additions

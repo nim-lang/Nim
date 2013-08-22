@@ -352,7 +352,6 @@ proc execute(c: PCtx, start: int) =
       if not inSet(regs[ra], regs[rb]): addSon(regs[ra], copyTree(regs[rb]))
     of opcExcl:
       decodeB(nkCurly)
-      # XXX arg we need types here :-(
       var b = newNodeIT(nkCurly, regs[rb].info, regs[rb].typ)
       addSon(b, regs[rb])
       var r = diffSets(regs[ra], b)

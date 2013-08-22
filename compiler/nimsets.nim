@@ -117,32 +117,17 @@ proc ToTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
       e = b
     Inc(e)
 
-type 
-  TSetOP = enum 
-    soUnion, soDiff, soSymDiff, soIntersect
-
-proc nodeSetOp(a, b: PNode, op: TSetOp): PNode = 
+template nodeSetOp(a, b: PNode, op: expr) {.dirty.} = 
   var x, y: TBitSet
   toBitSet(a, x)
   toBitSet(b, y)
-  case op
-  of soUnion: BitSetUnion(x, y)
-  of soDiff: BitSetDiff(x, y)
-  of soSymDiff: BitSetSymDiff(x, y)
-  of soIntersect: BitSetIntersect(x, y)
+  op(x, y)
   result = toTreeSet(x, a.typ, a.info)
 
-proc unionSets(a, b: PNode): PNode = 
-  result = nodeSetOp(a, b, soUnion)
-
-proc diffSets(a, b: PNode): PNode = 
-  result = nodeSetOp(a, b, soDiff)
-
-proc intersectSets(a, b: PNode): PNode = 
-  result = nodeSetOp(a, b, soIntersect)
-
-proc symdiffSets(a, b: PNode): PNode = 
-  result = nodeSetOp(a, b, soSymDiff)
+proc unionSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetUnion)
+proc diffSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetDiff)
+proc intersectSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetIntersect)
+proc symdiffSets(a, b: PNode): PNode = nodeSetOp(a, b, BitSetSymDiff)
 
 proc containsSets(a, b: PNode): bool = 
   var x, y: TBitSet
