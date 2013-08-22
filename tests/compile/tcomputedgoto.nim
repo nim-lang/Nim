@@ -31,7 +31,8 @@ proc vm() =
   var pc = 0
   while true:
     {.computedGoto.}
-    case instructions[pc]
+    let instr = instructions[pc]
+    case instr
     of enumA:
       echo "yeah A"
     of enumC, enumD:
@@ -39,7 +40,7 @@ proc vm() =
     of enumB:
       echo "yeah B"
     of enumE:
-      return
+      break
     inc(pc)
   
 vm()

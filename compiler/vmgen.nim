@@ -439,6 +439,22 @@ proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp)
   c.freeTemp(tmp2)
 
+proc genSetType(c: PCtx; n: PNode; dest: TRegister) =
+  let t = skipTypes(n.typ, abstractInst)
+  if t.kind == tySet:
+    c.gABx(n, opcSetType, dest, c.genType(t))
+
+proc genBinarySet(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
+  let
+    tmp = c.genx(n.sons[1])
+    tmp2 = c.genx(n.sons[2])
+  if dest < 0: dest = c.getTemp(n.typ)
+  c.genSetType(n.sons[1], tmp)
+  c.genSetType(n.sons[2], tmp2)
+  c.gABC(n, opc, dest, tmp, tmp2)
+  c.freeTemp(tmp)
+  c.freeTemp(tmp2)
+
 proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   let
     dest = c.genx(n.sons[1])
@@ -488,6 +504,13 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   c.gABx(n, opc, 0, genType(c, n.typ))
   c.freeTemp(tmp)
 
+proc genCard(c: PCtx; n: PNode; dest: var TDest) =
+  let tmp = c.genx(n.sons[1])
+  if dest < 0: dest = c.getTemp(n.typ)
+  c.genSetType(n.sons[1], tmp)
+  c.gABC(n, opc, dest, tmp)
+  c.freeTemp(tmp)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   let m = n.sons[0].sym.magic
   case m
@@ -532,10 +555,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
     var d = c.genx(n.sons[1])
     var tmp = c.genx(n.sons[2])
+    c.genSetType(n.sons[1], d)
     c.gABC(n, if m == mIncl: opcIncl else: opcExcl, d, tmp)
     c.freeTemp(d)
     c.freeTemp(tmp)
-  of mCard: genUnaryABC(c, n, dest, opcCard)
+  of mCard: genCard(c, n, dest)
   of mMulI, mMulI64: genBinaryABC(c, n, dest, opcMulInt)
   of mDivI, mDivI64: genBinaryABC(c, n, dest, opcDivInt)
   of mModI, mModI64: genBinaryABC(c, n, dest, opcModInt)
@@ -580,15 +604,15 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mEqStr: genBinaryABC(c, n, dest, opcEqStr)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
   of mLtStr: genBinaryABC(c, n, dest, opcLtStr)
-  of mEqSet: genBinaryABC(c, n, dest, opcEqSet)
-  of mLeSet: genBinaryABC(c, n, dest, opcLeSet)
-  of mLtSet: genBinaryABC(c, n, dest, opcLtSet)
-  of mMulSet: genBinaryABC(c, n, dest, opcMulSet)
-  of mPlusSet: genBinaryABC(c, n, dest, opcPlusSet)
-  of mMinusSet: genBinaryABC(c, n, dest, opcMinusSet)
-  of mSymDiffSet: genBinaryABC(c, n, dest, opcSymdiffSet)
+  of mEqSet: genBinarySet(c, n, dest, opcEqSet)
+  of mLeSet: genBinarySet(c, n, dest, opcLeSet)
+  of mLtSet: genBinarySet(c, n, dest, opcLtSet)
+  of mMulSet: genBinarySet(c, n, dest, opcMulSet)
+  of mPlusSet: genBinarySet(c, n, dest, opcPlusSet)
+  of mMinusSet: genBinarySet(c, n, dest, opcMinusSet)
+  of mSymDiffSet: genBinarySet(c, n, dest, opcSymdiffSet)
   of mConStrStr: genVarargsABC(c, n, dest, opcConcatStr)
-  of mInSet: genBinaryABC(c, n, dest, opcContainsSet)
+  of mInSet: genBinarySet(c, n, dest, opcContainsSet)
   of mRepr: genUnaryABC(c, n, dest, opcRepr)
   of mExit:
     unused(n, dest)
