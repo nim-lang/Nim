@@ -219,8 +219,8 @@ proc getHiddenParam(routine: PSym): PSym =
   result = hidden.sym
 
 proc isInnerProc(s, outerProc: PSym): bool {.inline.} =
-  result = s.kind in {skProc, skMethod, skConverter} and
-    s.owner == outerProc and not isGenericRoutine(s)
+  result = s.kind in {skProc, skMethod, skConverter} and 
+           s.skipGenericOwner == outerProc
   #s.typ.callConv == ccClosure
 
 proc addClosureParam(i: PInnerContext, e: PEnv) =
@@ -288,6 +288,9 @@ proc interestingVar(s: PSym): bool {.inline.} =
 proc semCaptureSym*(s, owner: PSym) =
   if interestingVar(s) and owner.id != s.owner.id and s.kind != skResult:
     if owner.typ != nil and not isGenericRoutine(owner):
+      # XXX: is this really safe?
+      # if we capture a var from another generic routine,
+      # it won't be consider captured.
       owner.typ.callConv = ccClosure
     #echo "semCaptureSym ", owner.name.s, owner.id, " ", s.name.s, s.id
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'

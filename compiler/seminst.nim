@@ -38,7 +38,6 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
       #t = instGenericContainer(c, a, t)
       t = generateTypeInstance(c, pt, a, t)
       #t = ReplaceTypeVarsT(cl, t)
-    t.flags.incl tfInstantiated
     s.typ = t
     addDecl(c, s)
     entry.concreteTypes[i] = t
@@ -84,11 +83,20 @@ proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
 
+proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
+
 proc instantiateBody(c: PContext, n: PNode, result: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
+    inc c.InGenericInst
     # add it here, so that recursive generic procs are possible:
     addDecl(c, result)
     pushProcCon(c, result)
+    # add params to scope
+    for i in 1 .. <result.typ.n.len:
+      var param = result.typ.n.sons[i].sym
+      param.owner = result
+      addParamOrResult(c, param, result.kind)
+    # debug result.typ.n
     maybeAddResult(c, result, n)
     var b = n.sons[bodyPos]
     var symMap: TIdTable
@@ -100,6 +108,7 @@ proc instantiateBody(c: PContext, n: PNode, result: PSym) =
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     popProcCon(c)
+    dec c.InGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, c.generics.len - 1):
@@ -109,8 +118,6 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      if n.sons[paramsPos].kind != nkEmpty: 
-        addParams(c, oldPrc.typ.n, oldPrc.kind)
       instantiateBody(c, n, oldPrc)
       closeScope(c)
       popInfoContext()
@@ -123,7 +130,98 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
 
-proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
+proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
+  var cl: TReplTypeVars
+  InitIdTable(cl.symMap)
+  InitIdTable(cl.typeMap)
+  cl.info = info
+  cl.c = c
+  result = ReplaceTypeVarsT(cl, header)
+
+proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
+  result = instGenericContainer(c, n.info, header)
+
+proc fixupProcType(c: PContext, genericType: PType,
+                   inst: TInstantiation): PType =
+  # XXX: This is starting to look suspiciously like ReplaceTypeVarsT
+  # there are few apparent differences, but maybe the code could be
+  # moved over.
+  # * the code here uses the new genericSym.position property when
+  #   doing lookups. 
+  # * the handling of tyTypeDesc seems suspicious in ReplaceTypeVarsT
+  #   typedesc params were previously handled in the second pass of
+  #   semParamList
+  # * void (nkEmpty) params doesn't seem to be stripped in ReplaceTypeVarsT
+  result = genericType
+  if result == nil: return
+
+  case genericType.kind
+  of tyGenericParam, tyTypeClass:
+    result = inst.concreteTypes[genericType.sym.position]
+  of tyTypeDesc:
+    result = inst.concreteTypes[genericType.sym.position]
+    if tfUnresolved in genericType.flags:
+      result = result.sons[0]
+  of tyExpr:
+    result = inst.concreteTypes[genericType.sym.position]
+  of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
+     tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
+    if genericType.sons == nil: return
+    var head = 0
+    for i in 0 .. <genericType.sons.len:
+      let origType = genericType.sons[i]
+      var changed = fixupProcType(c, origType, inst)
+      if changed != genericType.sons[i]:
+        var changed = changed.skipIntLit
+        if result == genericType:
+          # the first detected change initializes the result
+          result = copyType(genericType, genericType.owner, false)
+          if genericType.n != nil:
+            result.n = copyTree(genericType.n)
+
+        # XXX: doh, we have to treat seq and arrays as special case
+        # because sometimes the `@` magic will be applied to an empty
+        # sequence having the type tySequence(tyEmpty)
+        if changed.kind == tyEmpty and
+           genericType.kind notin {tyArray, tySequence}:
+          if genericType.kind == tyProc and i == 0:
+            # return types of procs are overwritten with nil
+            changed = nil
+          else:
+            # otherwise, `empty` is just erased from the signature
+            result.sons[i..i] = []
+            if result.n != nil: result.n.sons[i..i] = []
+            continue
+        
+        result.sons[head] = changed
+        
+        if result.n != nil:
+          if result.n.kind == nkRecList:
+            for son in result.n.sons:
+              if son.typ == origType:
+                son.typ = changed
+                son.sym = copySym(son.sym, true)
+                son.sym.typ = changed
+          if result.n.kind == nkFormalParams:
+            if i != 0:
+              let origParam = result.n.sons[head].sym
+              var param = copySym(origParam)
+              param.typ = changed
+              param.ast = origParam.ast
+              result.n.sons[head] = newSymNode(param)
+
+      # won't be advanced on empty (void) nodes
+      inc head
+  
+  of tyGenericInvokation:
+    result = newTypeWithSons(c, tyGenericInvokation, genericType.sons)
+    for i in 1 .. <genericType.sons.len:
+      result.sons[i] = fixupProcType(c, result.sons[i], inst)
+    result = instGenericContainer(c, getInfoContext(-1), result)
+  
+  else: nil
+
+proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
@@ -137,11 +235,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # we set the friend module:
   var oldFriend = c.friendModule
   c.friendModule = getModule(fn)
+  #let oldScope = c.currentScope
+  #c.currentScope = fn.scope
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
-  # keep the owner if it's an inner proc (for proper closure transformations):
-  if fn.owner.kind == skModule:
-    result.owner = getCurrOwner().owner
+  result.owner = fn
   result.ast = n
   pushOwner(result)
   openScope(c)
@@ -152,16 +250,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var entry = TInstantiation.new
   entry.sym = result
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt, entry[])
+  result.typ = fixupProcType(c, fn.typ, entry[])
   n.sons[genericParamsPos] = ast.emptyNode
-  # semantic checking for the parameters:
-  if n.sons[paramsPos].kind != nkEmpty:
-    removeDefaultParamValues(n.sons[ParamsPos])
-    semParamList(c, n.sons[ParamsPos], nil, result)
-  else:
-    result.typ = newTypeS(tyProc, c)
-    rawAddSon(result.typ, nil)
-  result.typ.callConv = fn.typ.callConv
-  if result.kind == skIterator: result.typ.flags.incl(tfIterator)
   var oldPrc = GenericCacheGet(fn, entry[])
   if oldPrc == nil:
     fn.procInstCache.safeAdd(entry)
@@ -179,15 +269,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popInfoContext()
   closeScope(c)           # close scope for parameters
   popOwner()
+  #c.currentScope = oldScope
   c.friendModule = oldFriend
   dec(c.InstCounter)
   if result.kind == skMethod: finishMethod(c, result)
-  
-proc instGenericContainer(c: PContext, n: PNode, header: PType): PType = 
-  var cl: TReplTypeVars
-  InitIdTable(cl.symMap)
-  InitIdTable(cl.typeMap)
-  cl.info = n.info
-  cl.c = c
-  result = ReplaceTypeVarsT(cl, header)
+
 

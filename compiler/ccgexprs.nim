@@ -1932,12 +1932,12 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     nil
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (n.sons[genericParamsPos].kind == nkEmpty): 
+    if (n.sons[genericParamsPos].kind == nkEmpty):
       var prc = n.sons[namePos].sym
       # due to a bug/limitation in the lambda lifting, unused inner procs
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
-      if prc.owner.kind == skModule:
+      if prc.skipGenericOwner.kind == skModule:
         if (optDeadCodeElim notin gGlobalOptions and
             sfDeadCodeElim notin getModule(prc).flags) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

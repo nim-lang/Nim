@@ -100,10 +100,8 @@ type
     headerFiles*: TLinkedList # needed headers to include
     typeInfoMarker*: TIntSet  # needed for generating type information
     initProc*: BProc          # code for init procedure
+    postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
-                              # used for initialization code for
-                              # .global. variables
-                              # (or instantiated generic variables)
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     forwardedProcs*: TSymSeq  # keep forwarded procs here
