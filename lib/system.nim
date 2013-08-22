@@ -1439,6 +1439,12 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
 
+proc `==` *[I, T](x, y: array[I, T]): bool =
+  for f in low(x)..high(x):
+    if x[f] != y[f]:
+      return
+  result = true
+
 proc `@`*[T](a: openArray[T]): seq[T] = 
   ## turns an openarray into a sequence. This is not as efficient as turning
   ## a fixed length array into a sequence as it always copies every element
