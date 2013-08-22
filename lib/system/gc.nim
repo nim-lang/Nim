@@ -173,9 +173,10 @@ proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport and hasSharedHeap:
     AcquireSys(HeapLock)
-  if c.color != rcPurple:
-    c.setColor(rcPurple)
-    incl(gch.cycleRoots, c)
+  when cycleGC:
+    if c.color != rcPurple:
+      c.setColor(rcPurple)
+      incl(gch.cycleRoots, c)
   when hasThreadSupport and hasSharedHeap:
     ReleaseSys(HeapLock)
 
@@ -811,7 +812,8 @@ proc CollectZCT(gch: var TGcHeap): bool =
       # as this might be too slow.
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
-      if canBeCycleRoot(c): excl(gch.cycleRoots, c)
+      when cycleGC:
+        if canBeCycleRoot(c): excl(gch.cycleRoots, c)
       when logGC: writeCell("zct dealloc cell", c)
       gcTrace(c, csZctFreed)
       # We are about to free the object, call the finalizer BEFORE its
