@@ -113,7 +113,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of skGenericParam:
     if s.typ.kind == tyExpr:
       result = newSymNode(s, n.info)
-      result.typ = s.typ.lastSon
+      result.typ = s.typ
     elif s.ast != nil:
       result = semExpr(c, s.ast)
     else:
