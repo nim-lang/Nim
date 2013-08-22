@@ -626,6 +626,7 @@ type
     case kind*: TSymKind
     of skType:
       typeInstCache*: seq[PType]
+      typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       scope*: PScope          # the scope where the proc was defined
@@ -799,9 +800,9 @@ const
     # imported via 'importc: "fullname"' and no format string.
 
 # creator procs:
-proc NewSym*(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym*(symKind: TSymKind, Name: PIdent, owner: PSym,
              info: TLineInfo): PSym
-proc NewType*(kind: TTypeKind, owner: PSym): PType
+proc newType*(kind: TTypeKind, owner: PSym): PType
 proc newNode*(kind: TNodeKind): PNode
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode
 proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode
@@ -1111,7 +1112,7 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
   
-proc NewSym(symKind: TSymKind, Name: PIdent, owner: PSym,
+proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
             info: TLineInfo): PSym = 
   # generates a symbol and initializes the hash field too
   new(result)

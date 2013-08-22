@@ -31,7 +31,7 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
-proc searchInstTypes(key: PType): PType =
+proc searchInstTypes*(key: PType): PType =
   let genericTyp = key.sons[0]
   InternalAssert genericTyp.kind == tyGenericBody and
                  key.sons[0] == genericTyp and
@@ -55,7 +55,7 @@ proc searchInstTypes(key: PType): PType =
       
       return inst
 
-proc cacheTypeInst(inst: PType) =
+proc cacheTypeInst*(inst: PType) =
   # XXX: add to module's generics
   #      update the refcount
   let genericTyp = inst.sons[0]
