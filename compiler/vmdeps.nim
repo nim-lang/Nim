@@ -35,6 +35,21 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
     result = ""
     LocalError(info, errCannotOpenFile, file)
 
+proc opTypeTrait*(n: PNode, context: PSym): PNode =
+  ## XXX: This should be pretty much guaranteed to be true
+  # by the type traits procs' signatures, but until the
+  # code is more mature it doesn't hurt to be extra safe
+  internalAssert n.len >= 2 and n.sons[1].kind == nkSym
+
+  let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
+  case n.sons[0].sym.name.s.normalize
+  of "name":
+    result = newStrNode(nkStrLit, typ.typeToString(preferExported))
+    result.typ = newType(tyString, context)
+    result.info = n.info
+  else:
+    internalAssert false
+
 when false:
   proc opExpandToAst*(c: PEvalContext, original: PNode): PNode =
     var
@@ -63,21 +78,6 @@ when false:
       InternalError(macroCall.info,
         "ExpandToAst: expanded symbol is no macro or template")
       result = emptyNode
-
-  proc opTypeTrait*(n: PNode, context: PSym): PNode =
-    ## XXX: This should be pretty much guaranteed to be true
-    # by the type traits procs' signatures, but until the
-    # code is more mature it doesn't hurt to be extra safe
-    internalAssert n.len >= 2 and n.sons[1].kind == nkSym
-
-    let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
-    case n.sons[0].sym.name.s.normalize
-    of "name":
-      result = newStrNode(nkStrLit, typ.typeToString(preferExported))
-      result.typ = newType(tyString, context)
-      result.info = n.info
-    else:
-      internalAssert false
 
   proc opIs*(n: PNode): PNode =
     InternalAssert n.sonsLen == 3 and
