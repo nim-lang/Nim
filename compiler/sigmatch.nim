@@ -38,6 +38,7 @@ type
     proxyMatch*: bool        # to prevent instantiations
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
+    typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
   
   TTypeRelation* = enum      # order is important!
@@ -88,6 +89,9 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
       var formalTypeParam = typeParams.sons[i-1].typ
       #debug(formalTypeParam)
       put(c.bindings, formalTypeParam, binding[i].typ)
+
+proc newCandidate*(callee: PSym, binding: PNode, calleeScope = -1): TCandidate =
+  initCandidate(result, callee, binding, calleeScope)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
   a.exactMatches = b.exactMatches
@@ -177,15 +181,9 @@ proc argTypeToString(arg: PNode): string =
   else:
     result = arg.typ.typeToString
 
-proc NotFoundError*(c: PContext, n: PNode) =
-  # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
-  # only in case of an error).
-  if c.InCompilesContext > 0: 
-    # fail fast:
-    GlobalError(n.info, errTypeMismatch, "")
-  var result = msgKindToString(errTypeMismatch)
-  for i in countup(1, sonsLen(n) - 1):
+proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
+  result = ""
+  for i in countup(startIdx, n.len - 1):
     var arg = n.sons[i]
     if n.sons[i].kind == nkExprEqExpr: 
       add(result, renderTree(n.sons[i].sons[0]))
@@ -201,6 +199,16 @@ proc NotFoundError*(c: PContext, n: PNode) =
     if arg.typ.kind == tyError: return
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
+
+proc NotFoundError*(c: PContext, n: PNode) =
+  # Gives a detailed error message; this is separated from semOverloadedCall,
+  # as semOverlodedCall is already pretty slow (and we need this information
+  # only in case of an error).
+  if c.InCompilesContext > 0: 
+    # fail fast:
+    GlobalError(n.info, errTypeMismatch, "")
+  var result = msgKindToString(errTypeMismatch)
+  add(result, describeArgs(c, n))
   add(result, ')')
   var candidates = ""
   var o: TOverloadIter
@@ -492,8 +500,11 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
+      
       result = typeRel(c, f.sons[0], x)
       if result < isGeneric: result = isNone
+    elif a.kind == tyGenericParam:
+      result = isGeneric
   of tyForward: InternalError("forward type in typeRel()")
   of tyNil:
     if a.kind == f.kind: result = isEqual
@@ -611,7 +622,24 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      result = matchTypeClass(c, f, a)
+      if c.calleeSym.kind == skType and f.kind == tyGenericParam and not c.typedescMatched:
+        # XXX: The fact that generic types currently use tyGenericParam for 
+        # their parameters is really a misnomer. tyGenericParam means "match
+        # any value" and what we need is "match any type", which can be encoded
+        # by a tyTypeDesc params. Unfortunately, this requires more substantial
+        # changes in semtypinst and elsewhere.
+        if a.kind == tyTypeDesc:
+          if f.sons == nil or f.sons.len == 0:
+            result = isGeneric
+          else:
+            InternalAssert a.sons != nil and a.sons.len > 0
+            c.typedescMatched = true
+            result = typeRel(c, f.sons[0], a.sons[0])
+        else:
+          result = isNone
+      else:
+        result = matchTypeClass(c, f, a)
+        
       if result == isGeneric:
         var concrete = concreteType(c, a)
         if concrete == nil:
@@ -909,16 +937,22 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         m.state = csNoMatch
         return
-  
-  var f = 1 # iterates over formal parameters
-  var a = 1 # iterates over the actual given arguments
-  m.state = csMatch           # until proven otherwise
+
+  var
+    # iterates over formal parameters
+    f = if m.callee.kind != tyGenericBody: 1
+        else: 0
+    # iterates over the actual given arguments
+    a = 1
+
+  m.state = csMatch # until proven otherwise
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
-  var formalLen = sonsLen(m.callee.n)
+  var formalLen = m.callee.n.len
   addSon(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
   var formal: PSym = nil
+
   while a < n.len:
     if n.sons[a].kind == nkExprEqExpr:
       # named param

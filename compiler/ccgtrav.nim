@@ -127,18 +127,22 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): PRope =
   m.s[cfsProcHeaders].appf("$1;$n", header)
   m.s[cfsProcs].app(generatedProc)
 
-
 proc genTraverseProcForGlobal(m: BModule, s: PSym): PRope =
   discard genTypeInfo(m, s.loc.t)
   
   var c: TTraversalClosure
   var p = newProc(nil, m)
+  var sLoc = s.loc.r
   result = getGlobalTempName()
   
+  if sfThread in s.flags and emulatedThreadVars():
+    accessThreadLocalVar(p, s)
+    sLoc = con("NimTV->", sLoc)
+    
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
   let header = ropef("N_NIMCALL(void, $1)()", result)
-  genTraverseProc(c, s.loc.r, s.loc.t)
+  genTraverseProc(c, sLoc, s.loc.t)
   
   let generatedProc = ropef("$1 {$n$2$3$4}$n",
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
