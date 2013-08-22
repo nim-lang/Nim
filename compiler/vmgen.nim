@@ -699,8 +699,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mExpandToAst:
     InternalError(n.info, "cannot generate code for: " & $m)
   of mTypeTrait: 
-    
-    InternalError(n.info, "cannot generate code for: " & $m)
+    let tmp = c.genx(n.sons[1])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABx(n, opcSetType, tmp, c.genType(n.sons[1]))
+    c.gABC(n, opcTypeTrait, dest, tmp)
+    c.freeTemp(tmp)
   of mIs:
     InternalError(n.info, "cannot generate code for: " & $m)
   of mSlurp: genUnaryABC(c, n, dest, opcSlurp)

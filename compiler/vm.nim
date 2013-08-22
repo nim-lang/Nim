@@ -833,6 +833,12 @@ proc execute(c: PCtx, start: int) =
       regs[ra] = newSymNode(newSym(k.TSymKind, name.getIdent, c.module,
                             c.debug[pc]))
       incl(regs[ra].sym.flags, sfGenSym)
+    of opcTypeTrait:
+      # XXX only supports 'name' for now; we can use regC to encode the
+      # type trait operation
+      decodeB(nkStrLit)
+      let typ = regs[rb].sym.typ.skipTypes({tyTypeDesc})
+      regs[ra].strVal = typ.typeToString(preferExported)
     inc pc
 
 proc evalStmt*(c: PCtx, n: PNode) =
