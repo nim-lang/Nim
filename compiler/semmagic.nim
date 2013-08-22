@@ -40,7 +40,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
     (typArg.kind == skParam and typArg.typ.sonsLen > 0):
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n, GetCurrOwner())
+    result = evalTypeTrait(n[0], n[1], GetCurrOwner())
   else:
     # a typedesc variable, pass unmodified to evals
     result = n

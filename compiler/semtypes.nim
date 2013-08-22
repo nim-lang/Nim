@@ -156,7 +156,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     LocalError(n.Info, errRangeIsEmpty)
   var a = semConstExpr(c, n[1])
   var b = semConstExpr(c, n[2])
-  if not sameType(a.typ, b.typ): 
+  if not sameType(a.typ, b.typ):
     LocalError(n.info, errPureTypeMismatch)
   elif a.typ.kind notin {tyInt..tyInt64,tyEnum,tyBool,tyChar,
                          tyFloat..tyFloat128,tyUInt8..tyUInt32}:
@@ -204,8 +204,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind != tyGenericParam: 
-      if not isOrdinalType(indx): 
+    if indx.kind != tyGenericParam:
+      if not isOrdinalType(indx):
         LocalError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
         LocalError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
@@ -846,7 +846,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         LocalError(n.info, errCannotInstantiateX, s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:
-        result = instGenericContainer(c, n, result)
+        when oUseLateInstantiation:
+          result = lateInstantiateGeneric(c, result, n.info)
+        else:
+          result = instGenericContainer(c, n, result)
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})

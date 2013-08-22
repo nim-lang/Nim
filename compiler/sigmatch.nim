@@ -654,7 +654,7 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = typeRel(c, x, a) # check if it fits
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil:
+    if prev == nil or true:
       if a.kind == tyTypeDesc:
         if f.sonsLen == 0:
           result = isGeneric
@@ -768,6 +768,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         if evaluated != nil:
           r = isGeneric
           arg.typ = newTypeS(tyExpr, c)
+          arg.typ.sons = @[evaluated.typ]
           arg.typ.n = evaluated
         
     if r == isGeneric:

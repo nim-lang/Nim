@@ -904,18 +904,16 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
                        code.info.line.int)
   #result.typ = newType(tyStmt, c.module)
  
-proc evalTypeTrait*(n: PNode, context: PSym): PNode =
-  ## XXX: This should be pretty much guaranteed to be true
-  # by the type traits procs' signatures, but until the
-  # code is more mature it doesn't hurt to be extra safe
-  internalAssert n.sons.len >= 2 and n.sons[1].kind == nkSym
+proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
+  InternalAssert operand.kind == nkSym and
+                 operand.sym.typ.kind == tyTypeDesc
 
-  let typ = n.sons[1].sym.typ.skipTypes({tyTypeDesc})
-  case n.sons[0].sym.name.s.normalize
+  let typ = operand.sym.typ.skipTypes({tyTypeDesc})
+  case trait.sym.name.s.normalize
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferExported))
+    result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
-    result.info = n.info
+    result.info = trait.info
   else:
     internalAssert false
 
@@ -1037,8 +1035,8 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mParseStmtToAst: result = evalParseStmt(c, n)
   of mExpandToAst: result = evalExpandToAst(c, n)
   of mTypeTrait:
-    n.sons[1] = evalAux(c, n.sons[1], {})
-    result = evalTypeTrait(n, c.module)
+    let operand = evalAux(c, n.sons[1], {})
+    result = evalTypeTrait(n[0], operand, c.module)
   of mIs:
     n.sons[1] = evalAux(c, n.sons[1], {})
     result = evalIsOp(n)
