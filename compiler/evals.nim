@@ -905,8 +905,7 @@ proc evalParseStmt(c: PEvalContext, n: PNode): PNode =
   #result.typ = newType(tyStmt, c.module)
  
 proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
-  InternalAssert operand.kind == nkSym and
-                 operand.sym.typ.kind == tyTypeDesc
+  InternalAssert operand.kind == nkSym
 
   let typ = operand.sym.typ.skipTypes({tyTypeDesc})
   case trait.sym.name.s.normalize

@@ -156,7 +156,7 @@ var
 
 const oKeepVariableNames* = true
 
-const oUseLateInstantiation* = true
+const oUseLateInstantiation* = false
 
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse

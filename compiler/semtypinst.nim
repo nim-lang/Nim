@@ -208,6 +208,12 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   of tyInt:
     result = skipIntLit(t)
   else:
+    if t.kind == tyArray:
+      let idxt = t.sons[0]
+      if idxt.kind == tyExpr and 
+         idxt.sym != nil and idxt.sym.kind == skGenericParam:
+        let value = lookupTypeVar(cl, idxt).n
+        t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)
     if containsGenericType(t):
       result = copyType(t, t.owner, false)
       incl(result.flags, tfFromGeneric)

@@ -622,7 +622,8 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      if c.calleeSym.kind == skType and f.kind == tyGenericParam and not c.typedescMatched:
+      if c.calleeSym != nil and c.calleeSym.kind == skType and
+         f.kind == tyGenericParam and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for 
         # their parameters is really a misnomer. tyGenericParam means "match
         # any value" and what we need is "match any type", which can be encoded

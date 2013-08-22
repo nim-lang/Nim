@@ -225,14 +225,14 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.owner = getCurrOwner()
   dest.size = - 1
 
-proc makeRangeType*(c: PContext, first, last: biggestInt, 
-                    info: TLineInfo): PType = 
+proc makeRangeType*(c: PContext; first, last: biggestInt;
+                    info: TLineInfo; intType = getSysType(tyInt)): PType =
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntNode(nkIntLit, first))
-  addSon(n, newIntNode(nkIntLit, last))
+  addSon(n, newIntTypeNode(nkIntLit, first, intType))
+  addSon(n, newIntTypeNode(nkIntLit, last, intType))
   result = newTypeS(tyRange, c)
   result.n = n
-  rawAddSon(result, getSysType(tyInt)) # basetype of range
+  addSonSkipIntLit(result, intType) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skConverter, skMethod, skIterator}:

@@ -195,16 +195,18 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     else:
       let e = semExprWithType(c, n.sons[1], {efDetermineType})
       if e.kind in {nkIntLit..nkUInt64Lit}:
-        indx = newTypeS(tyRange, c)
-        indx.n = newNodeI(nkRange, n.info)
-        addSon(indx.n, newIntTypeNode(e.kind, 0, e.typ))
-        addSon(indx.n, newIntTypeNode(e.kind, e.intVal-1, e.typ))
-        addSonSkipIntLit(indx, e.typ)
+        indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
+      elif e.kind == nkSym and e.typ.kind == tyExpr:
+        if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
+        InternalAssert c.InGenericContext > 0
+        if not isOrdinalType(e.typ.lastSon):
+          localError(n[1].info, errOrdinalTypeExpected)
+        indx = e.typ
       else:
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind != tyGenericParam:
+    if indx.kind notin {tyGenericParam, tyExpr}:
       if not isOrdinalType(indx):
         LocalError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
