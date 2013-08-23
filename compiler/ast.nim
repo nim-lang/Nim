@@ -190,6 +190,7 @@ type
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
+    nkTypeClassTy,        # user-defined type class
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object

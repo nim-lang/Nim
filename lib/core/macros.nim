@@ -59,7 +59,7 @@ type
     nnkBindStmt, nnkMixinStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
-    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen,
+    nnkTupleTy, nnkTypeClassTy, nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
     nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
