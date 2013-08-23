@@ -655,7 +655,7 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = typeRel(c, x, a) # check if it fits
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil or true:
+    if prev == nil:
       if a.kind == tyTypeDesc:
         if f.sonsLen == 0:
           result = isGeneric
@@ -667,7 +667,9 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         result = isNone
     else:
       InternalAssert prev.sonsLen == 1
-      result = typeRel(c, prev.sons[0], a)
+      let toMatch = if tfUnresolved in f.flags: a
+                    else: a.sons[0]
+      result = typeRel(c, prev.sons[0], toMatch)
   of tyExpr, tyStmt:
     result = isGeneric
   of tyProxy:

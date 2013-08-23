@@ -589,6 +589,8 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     if sfGenSym notin param.flags: addDecl(c, param)
 
+let typedescId = getIdent"typedesc"
+
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
@@ -636,6 +638,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(c.newTypeWithSons(tyExpr, paramType.sons))
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
+      # naked typedescs are not bindOnce types
+      if paramType.sonsLen == 0 and paramTypId != nil and
+         paramTypId.id == typedescId.id: paramTypId = nil
       result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
   of tyDistinct:
     if paramType.sonsLen == 1:
@@ -762,7 +767,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         r.flags.incl tfRetType
       result.sons[0] = skipIntLit(r)
       res.typ = result.sons[0]
- 
+
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
   var length = sonsLen(n)
@@ -1078,8 +1083,9 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     if constraint.kind != nkEmpty:
       typ = semTypeNode(c, constraint, nil)
       if typ.kind != tyExpr or typ.len == 0:
-        if typ.len == 0 and typ.kind == tyTypeDesc:
-          typ = newTypeS(tyGenericParam, c)
+        if typ.kind == tyTypeDesc:
+          if typ.len == 0:
+            typ = newTypeS(tyTypeDesc, c)
         else:
           typ = semGenericConstraints(c, typ)
     

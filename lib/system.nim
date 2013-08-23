@@ -52,7 +52,7 @@ type
   `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
-  typeDesc* {.magic: TypeDesc.} ## meta type to denote a type description
+  typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absense of any type
   auto* = expr
   any* = distinct auto
@@ -76,6 +76,17 @@ type
   TNumber* = TInteger|TReal
     ## type class matching all number types
 
+type
+  ## helper types for writing implicitly generic procs
+  T1* = expr
+  T2* = expr
+  T3* = expr
+  T4* = expr
+  T5* = expr
+  type1* = typedesc
+  type2* = typedesc
+  type3* = typedesc
+  
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -1473,7 +1484,7 @@ when not defined(NimrodVM):
     proc seqToPtr[T](x: seq[T]): pointer {.noStackFrame, nosideeffect.} =
       asm """return `x`"""
   
-  proc `==` *[T: typeDesc](x, y: seq[T]): bool {.noSideEffect.} =
+  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     ## Generic equals operator for sequences: relies on a equals operator for
     ## the element type `T`.
     if seqToPtr(x) == seqToPtr(y):
@@ -1485,7 +1496,7 @@ when not defined(NimrodVM):
         if x[i] != y[i]: return false
       result = true
 
-proc find*[T, S: typeDesc](a: T, item: S): int {.inline.}=
+proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
   for i in items(a):
@@ -1788,7 +1799,7 @@ proc debugEcho*[T](x: varargs[T, `$`]) {.magic: "Echo", noSideEffect,
   ## to be free of side effects, so that it can be used for debugging routines
   ## marked as ``noSideEffect``.
 
-template newException*(exceptn: typeDesc, message: string): expr =
+template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   var
@@ -1801,7 +1812,7 @@ when hostOS == "standalone":
   include panicoverride
 
 when not defined(sysFatal):
-  template sysFatal(exceptn: typeDesc, message: string) =
+  template sysFatal(exceptn: typedesc, message: string) =
     when hostOS == "standalone":
       panic(message)
     else:
@@ -1810,7 +1821,7 @@ when not defined(sysFatal):
       e.msg = message
       raise e
 
-  template sysFatal(exceptn: typeDesc, message, arg: string) =
+  template sysFatal(exceptn: typedesc, message, arg: string) =
     when hostOS == "standalone":
       rawoutput(message)
       panic(arg)
