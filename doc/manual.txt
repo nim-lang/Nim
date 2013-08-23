@@ -1451,7 +1451,7 @@ But it seems all this boilerplate code needs to be repeated for the ``TEuro``
 currency. This can be solved with templates_.
 
 .. code-block:: nimrod
-  template Additive(typ: typeDesc): stmt =
+  template Additive(typ: typedesc): stmt =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
     
@@ -1459,13 +1459,13 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template Multiplicative(typ, base: typeDesc): stmt =
+  template Multiplicative(typ, base: typedesc): stmt =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template Comparable(typ: typeDesc): stmt =
+  template Comparable(typ: typedesc): stmt =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
@@ -3323,10 +3323,10 @@ The template body does not open a new scope. To open a new scope a ``block``
 statement can be used:
 
 .. code-block:: nimrod
-  template declareInScope(x: expr, t: typeDesc): stmt {.immediate.} = 
+  template declareInScope(x: expr, t: typedesc): stmt {.immediate.} = 
     var x: t
     
-  template declareInNewScope(x: expr, t: typeDesc): stmt {.immediate.} = 
+  template declareInNewScope(x: expr, t: typedesc): stmt {.immediate.} = 
     # open a new scope:
     block: 
       var x: t
@@ -3419,7 +3419,7 @@ In templates identifiers can be constructed with the backticks notation:
 
 .. code-block:: nimrod
 
-  template typedef(name: expr, typ: typeDesc) {.immediate.} = 
+  template typedef(name: expr, typ: typedesc) {.immediate.} = 
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
@@ -3480,7 +3480,7 @@ template cannot be accessed in the instantiation context:
 
 .. code-block:: nimrod
   
-  template newException*(exceptn: typeDesc, message: string): expr =
+  template newException*(exceptn: typedesc, message: string): expr =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
@@ -3727,6 +3727,25 @@ instantiation type using the param name:
 
   var n = TNode.new
   var tree = new(TBinaryTree[int])
+
+When multiple typedesc params are present, they act like a distinct type class
+(i.e. they will bind freely to different types). To force a bind-once behavior
+one can use a named alias or an explicit `typedesc` generic param:
+
+.. code-block:: nimrod
+
+  # `type1` and `type2` are aliases for typedesc available from system.nim
+  proc acceptOnlyTypePairs(A, B: type1; C, D: type2)
+  proc acceptOnlyTypePairs[T: typedesc, U: typedesc](A, B: T; C, D: U)
+
+Once bound, typedesc params can appear in the rest of the proc signature:
+
+.. code-block:: nimrod
+
+  template declareVariableWithType(T: typedesc, value: T) =
+    var x: T = value
+
+  declareVariableWithType int, 42
 
 When used with macros and .compileTime. procs on the other hand, the compiler
 does not need to instantiate the code multiple times, because types then can be
