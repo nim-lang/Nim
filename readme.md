@@ -6,8 +6,7 @@ documentation.
 Compiling the Nimrod compiler is quite straightforward. Because
 the Nimrod compiler itself is written in the Nimrod programming language
 the C source of an older version of the compiler are needed to bootstrap the
-latest version. The C sources are however included with this repository under
-the build directory.
+latest version. The C sources are available in a separate repo [here](http://github.com/nimrod-code/csources).
 
 Pre-compiled snapshots of the compiler are also available on
 [Nimbuild](http://build.nimrod-code.org/). Your platform however may not 
@@ -53,7 +52,7 @@ and you can also get help in the IRC channel
 on [Freenode](irc://irc.freenode.net/nimrod) in #nimrod.
 
 ## License
-The compiler and the standard library is licensed under the MIT license, 
+The compiler and the standard library are licensed under the MIT license, 
 except for some modules where the documentation suggests otherwise. This means 
 that you can use any license for your own programs developed with Nimrod, 
 allowing you to create commercial applications.
