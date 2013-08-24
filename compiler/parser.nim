@@ -960,6 +960,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkShared: result = parseTypeDescKAux(p, nkSharedTy, mode)
+  of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr, mode)
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
@@ -989,12 +990,6 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result = parseTypeClass(p)
     else:
       parMessage(p, errInvalidToken, p.tok)
-  of tkDistinct:
-    if mode == pmTypeDef:
-      result = parseDistinct(p)
-    else:
-      result = newNodeP(nkDistinctTy, p)
-      getTok(p)
   of tkAddr:
     result = newNodeP(nkAddr, p)
     getTokNoInd(p)
