@@ -198,6 +198,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
 
+proc IsOpImpl(c: PContext, n: PNode): PNode
+
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
                   semCheck: bool = true): PNode = 
   markUsed(n, sym)
@@ -214,6 +216,9 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
         result = newSymNode(getSysSym"void")
       else:
         result = symNodeFromType(c, e.typ, n.info)
+
+    c.evalContext.handleIsOperator = proc (n: PNode): PNode =
+      result = IsOpImpl(c, n)
 
   result = evalMacroCall(c.evalContext, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
@@ -250,6 +255,7 @@ proc myOpen(module: PSym): PPassContext =
   if c.p != nil: InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
+  c.semTryExpr = tryExpr
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall

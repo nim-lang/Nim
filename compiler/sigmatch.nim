@@ -40,7 +40,9 @@ type
                              # be instantiated
     typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
-  
+    errors*: seq[string]     # additional clarifications to be displayed to the
+                             # user if overload resolution fails
+
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
     isIntConv,
@@ -750,11 +752,55 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
+proc matchUserTypeClass*(c: PContext, m: var TCandidate,
+                         arg: PNode, f, a: PType): PNode =
+  if f.n == nil:
+    let r = typeRel(m, f, a)
+    return if r == isGeneric: arg else: nil
+ 
+  var prev = PType(idTableGet(m.bindings, f))
+  if prev != nil:
+    if sameType(prev, a): return arg
+    else: return nil
+
+  # pushInfoContext(arg.info)
+  openScope(c)
+
+  var testee = newSym(skParam, f.testeeName, f.sym, f.sym.info)
+  testee.typ = a
+  addDecl(c, testee)
+
+  for stmt in f.n:
+    var e = c.semTryExpr(c, copyTree(stmt))
+    if e == nil:
+      let expStr = renderTree(stmt, {renderNoComments})
+      m.errors.safeAdd("can't compile " & expStr & "  for " & a.typeToString)
+      return nil
+    case e.kind
+    of nkReturnStmt:
+      nil
+    of nkTypeSection: nil
+    of nkConstDef: nil
+    else:
+      if e.typ.kind == tyBool:
+        let verdict = c.semConstExpr(c, e)
+        if verdict.intVal == 0:
+          let expStr = renderTree(stmt, {renderNoComments})
+          m.errors.safeAdd(expStr & " doesn't hold for " & a.typeToString)
+          return nil
+
+  closeScope(c)
+
+  result = arg
+  put(m.bindings, f, a)
+
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
-                        arg, argOrig: PNode): PNode =
+                        argSemantized, argOrig: PNode): PNode =
+  var arg = argSemantized
   var r: TTypeRelation
   let fMaybeExpr = f.skipTypes({tyDistinct})
-  if fMaybeExpr.kind == tyExpr:
+  case fMaybeExpr.kind
+  of tyExpr:
     if fMaybeExpr.sonsLen == 0:
       r = isGeneric
     else:
@@ -776,6 +822,16 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         
     if r == isGeneric:
       put(m.bindings, f, arg.typ)
+  of tyTypeClass:
+    if fMaybeExpr.n != nil:
+      let match = matchUserTypeClass(c, m, arg, fMaybeExpr, a)
+      if match != nil:
+        r = isGeneric
+        arg = match
+      else:
+        r = isNone
+    else:
+      r = typeRel(m, f, a)
   else:
     r = typeRel(m, f, a)
   

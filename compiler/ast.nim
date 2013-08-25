@@ -689,6 +689,7 @@ type
                               # for enum types a list of symbols
                               # for tyInt it can be the int literal
                               # for procs and tyGenericBody, it's the
+                              # the body of the user-defined type class
                               # formal param list
                               # else: unused
     destructor*: PSym         # destructor. warning: nil here may not necessary
@@ -701,6 +702,7 @@ type
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
     loc*: TLoc
+    testeeName*: PIdent       # the test variable in user-defined type classes
 
   TPair*{.final.} = object 
     key*, val*: PObject
@@ -1075,6 +1077,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.destructor = src.destructor
+  dest.testeeName = src.testeeName
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:

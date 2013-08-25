@@ -871,6 +871,21 @@ proc freshType(res, prev: PType): PType {.inline.} =
   else:
     result = res
 
+proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
+  # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
+  result = newOrPrevType(tyTypeClass, prev, c)
+  result.testeeName = considerAcc(n[0])
+  result.n = n[3]
+
+  let
+    pragmas = n[1]
+    inherited = n[2]
+    
+  if inherited.kind != nkEmpty:
+    for n in inherited.sons:
+      let typ = semTypeNode(c, n, nil)
+      result.sons.safeAdd(typ)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -973,6 +988,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
+  of nkTypeClassTy: result = semTypeClass(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
