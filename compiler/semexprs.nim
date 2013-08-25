@@ -295,6 +295,39 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
+proc IsOpImpl(c: PContext, n: PNode): PNode =
+  InternalAssert n.sonsLen == 3 and
+    n[1].kind == nkSym and n[1].sym.kind == skType and
+    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
+  
+  let t1 = n[1].sym.typ.skipTypes({tyTypeDesc})
+
+  if n[2].kind in {nkStrLit..nkTripleStrLit}:
+    case n[2].strVal.normalize
+    of "closure":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure and 
+                                        tfIterator notin t.flags))
+    of "iterator":
+      let t = skipTypes(t1, abstractRange)
+      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
+                                        t.callConv == ccClosure and 
+                                        tfIterator in t.flags))
+  else:
+    var match: bool
+    let t2 = n[2].typ
+    if t2.kind == tyTypeClass:
+      var m: TCandidate
+      InitCandidate(m, t2)
+      match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
+    else:
+      match = sameType(t1, t2)
+ 
+    result = newIntNode(nkIntLit, ord(match))
+
+  result.typ = n.typ
+
 proc semIs(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 3:
     LocalError(n.info, errXExpectsTwoArguments, "is")
@@ -303,21 +336,21 @@ proc semIs(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   
   n.sons[1] = semExprWithType(c, n[1], {efDetermineType})
-  if n[1].typ.kind != tyTypeDesc:
-    LocalError(n[0].info, errTypeExpected)
-
+  
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n.sons[2] = newNodeIT(nkType, n[2].info, t2)
 
-  if n[1].typ.sonsLen == 0:
+  if n[1].typ.kind != tyTypeDesc:
+    n.sons[1] = makeTypeSymNode(c, n[1].typ, n[1].info)
+  elif n[1].typ.sonsLen == 0:
     # this is a typedesc variable, leave for evals
     return
-  else:
-    let t1 = n[1].typ.sons[0]
-    # BUGFIX: don't evaluate this too early: ``T is void``
-    if not containsGenericType(t1): result = evalIsOp(n)
-  
+
+  let t1 = n[1].typ.sons[0]
+  # BUGFIX: don't evaluate this too early: ``T is void``
+  if not containsGenericType(t1): result = IsOpImpl(c, n)
+
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
   for i in countup(1, n.sonsLen-1):
