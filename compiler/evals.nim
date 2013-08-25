@@ -1440,8 +1440,7 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
     else:
       stackTrace(c, result.info, errCannotInterpretNodeX, renderTree(n))
 
-proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
-  var p = newEvalContext(module, mode)
+proc evalConstExprAux*(p: PEvalContext, module, prc: PSym, e: PNode): PNode =
   var s = newStackFrame()
   s.call = e
   s.prc = prc
@@ -1449,12 +1448,6 @@ proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode =
   result = tryEval(p, e)
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
-
-proc evalConstExpr*(module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(module, nil, e, emConst)
-
-proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
-  result = evalConstExprAux(module, prc, e, emStatic)
 
 proc setupMacroParam(x: PNode): PNode =
   result = x
