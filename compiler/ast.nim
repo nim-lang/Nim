@@ -354,6 +354,7 @@ type
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
     nfDelegate  # the call can use a delegator
+    nfExprCall  # this is an attempt to call a regular expression
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
