@@ -50,7 +50,8 @@ proc
   if sym == nil: return
   initCandidate(best, sym, initialBinding, symScope)
   initCandidate(alt, sym, initialBinding, symScope)
-
+  best.state = csNoMatch
+  
   while sym != nil:
     if sym.kind in filter:
       determineType(c, sym)
@@ -115,7 +116,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   pickBest(f)
 
-  if result.state == csEmpty:
+  let overloadsState = result.state
+  if overloadsState != csMatch:
     if nfDelegate in n.flags:
       InternalAssert f.kind == nkIdent
       let calleeName = newStrNode(nkStrLit, f.ident.s)
@@ -127,7 +129,10 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
      
       pickBest(callOp)
 
-    if result.state == csEmpty:
+    if overloadsState == csEmpty and result.state == csEmpty:
+      LocalError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
+      return
+    elif result.state != csMatch:
       if nfExprCall in n.flags:
         if c.inCompilesContext > 0 or gErrorCounter == 0:
           LocalError(n.info, errExprXCannotBeCalled,
