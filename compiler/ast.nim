@@ -216,7 +216,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 30 flags!
+  TSymFlag* = enum    # already 32 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed 
@@ -353,6 +353,7 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
+    nfDelegate  # the call can use a delegator
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
@@ -774,7 +775,8 @@ const
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
-  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}
+  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
+                                      nfAllConst, nfDelegate}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

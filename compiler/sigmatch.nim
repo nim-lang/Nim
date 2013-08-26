@@ -202,28 +202,6 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc NotFoundError*(c: PContext, n: PNode) =
-  # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
-  # only in case of an error).
-  if c.InCompilesContext > 0: 
-    # fail fast:
-    GlobalError(n.info, errTypeMismatch, "")
-  var result = msgKindToString(errTypeMismatch)
-  add(result, describeArgs(c, n))
-  add(result, ')')
-  var candidates = ""
-  var o: TOverloadIter
-  var sym = initOverloadIter(o, c, n.sons[0])
-  while sym != nil:
-    if sym.kind in RoutineKinds:
-      add(candidates, getProcHeader(sym))
-      add(candidates, "\n")
-    sym = nextOverloadIter(o, c, n.sons[0])
-  if candidates != "":
-    add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  LocalError(n.Info, errGenerated, result)
-  
 proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind

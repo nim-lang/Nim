@@ -89,6 +89,7 @@ type
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
+    errOnlyACallOpCanBeDelegator,
     
     errXExpectsTwoArguments, 
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
@@ -316,6 +317,7 @@ const
     errCannotRenderX: "cannot render reStructuredText element \'$1\'", 
     errVarVarTypeNotAllowed: "type \'var var\' is not allowed",
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
+    errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 
