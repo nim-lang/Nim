@@ -738,6 +738,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       nOrig.sons[0] = prc
       n.flags.incl nfExprCall
       result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
+      if result == nil: return errorNode(c, n)
   #result = afterCallActions(c, result, nOrig, flags)
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
