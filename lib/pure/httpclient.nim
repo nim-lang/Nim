@@ -10,6 +10,11 @@
 ## This module implements a simple HTTP client that can be used to retrieve
 ## webpages/other data.
 ##
+##
+## **Note**: This module is not ideal, connection is not kept alive so sites with
+## many redirects are expensive. As such in the future this module may change,
+## and the current procedures will be deprecated.
+##
 ## Retrieving a website
 ## ====================
 ## 
@@ -62,8 +67,15 @@
 ## that as long as the server is sending data an exception will not be raised,
 ## if however data does not reach client within the specified timeout an ETimeout
 ## exception will then be raised.
+##
+## Proxy
+## =====
+##
+## A proxy can be specified as a param to any of these procedures, the ``newProxy``
+## constructor should be used for this purpose. However,
+## currently only basic authentication is supported.
 
-import sockets, strutils, parseurl, parseutils, strtabs
+import sockets, strutils, parseurl, parseutils, strtabs, base64
 
 type
   TResponse* = tuple[
@@ -71,6 +83,10 @@ type
     status: string, 
     headers: PStringTable,
     body: string]
+
+  PProxy* = ref object
+    url*: TUrl
+    auth*: string
 
   EInvalidProtocol* = object of ESynch ## exception that is raised when server
                                        ## does not conform to the implemented
@@ -239,23 +255,34 @@ when not defined(ssl):
 else:
   let defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
+proc newProxy*(url: string, auth = ""): PProxy =
+  ## Constructs a new ``TProxy`` object.
+  result = PProxy(url: parseUrl(url), auth: auth)
+
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "", 
               body = "",
               sslContext: PSSLContext = defaultSSLContext,
-              timeout = -1, userAgent = defUserAgent): TResponse =
+              timeout = -1, userAgent = defUserAgent,
+              proxy: PProxy = nil): TResponse =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be seperated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  var r = parseUrl(url)
+  var r = if proxy == nil: parseUrl(url) else: proxy.url
   var headers = substr($httpMethod, len("http"))
-  headers.add(" /" & r.path & r.query)
+  if proxy == nil:
+    headers.add(" /" & r.path & r.query)
+  else:
+    headers.add(" " & url)
 
   headers.add(" HTTP/1.1\c\L")
   
   add(headers, "Host: " & r.hostname & "\c\L")
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
+  if proxy != nil and proxy.auth != "":
+    let auth = base64.encode(proxy.auth, newline = "")
+    add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
   
@@ -299,30 +326,34 @@ proc getNewLocation(lastUrl: string, headers: PStringTable): string =
   
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: PSSLContext = defaultSSLContext,
-          timeout = -1, userAgent = defUserAgent): TResponse =
+          timeout = -1, userAgent = defUserAgent,
+          proxy: PProxy = nil): TResponse =
   ## | GETs the ``url`` and returns a ``TResponse`` object
   ## | This proc also handles redirection
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  result = request(url, httpGET, extraHeaders, "", sslContext, timeout, userAgent)
+  result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
+                   userAgent, proxy)
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
-                       timeout, userAgent)
+                       timeout, userAgent, proxy)
       lastUrl = redirectTo
       
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
                  sslContext: PSSLContext = defaultSSLContext,
-                 timeout = -1, userAgent = defUserAgent): string =
+                 timeout = -1, userAgent = defUserAgent,
+                 proxy: PProxy = nil): string =
   ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent)
+  var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent,
+              proxy)
   if r.status[0] in {'4','5'}:
     raise newException(EHTTPRequestErr, r.status)
   else:
@@ -331,7 +362,8 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
 proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
            sslContext: PSSLContext = defaultSSLContext,
-           timeout = -1, userAgent = defUserAgent): TResponse =
+           timeout = -1, userAgent = defUserAgent,
+           proxy: PProxy = nil): TResponse =
   ## | POSTs ``body`` to the ``url`` and returns a ``TResponse`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
@@ -339,27 +371,29 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var xh = extraHeaders & "Content-Length: " & $len(body) & "\c\L"
-  result = request(url, httpPOST, xh, body, sslContext, timeout, userAgent)
+  result = request(url, httpPOST, xh, body, sslContext, timeout, userAgent,
+                   proxy)
   var lastUrl = ""
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(redirectTo, meth, xh, body, sslContext, timeout,
-                       userAgent)
+                       userAgent, proxy)
       lastUrl = redirectTo
   
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
                   sslContext: PSSLContext = defaultSSLContext,
-                  timeout = -1, userAgent = defUserAgent): string =
+                  timeout = -1, userAgent = defUserAgent,
+                  proxy: PProxy = nil): string =
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = post(url, extraHeaders, body, maxRedirects, sslContext, timeout,
-               userAgent)
+               userAgent, proxy)
   if r.status[0] in {'4','5'}:
     raise newException(EHTTPRequestErr, r.status)
   else:
@@ -367,14 +401,15 @@ proc postContent*(url: string, extraHeaders = "", body = "",
   
 proc downloadFile*(url: string, outputFilename: string,
                    sslContext: PSSLContext = defaultSSLContext,
-                   timeout = -1, userAgent = defUserAgent) =
+                   timeout = -1, userAgent = defUserAgent,
+                   proxy: PProxy = nil) =
   ## | Downloads ``url`` and saves it to ``outputFilename``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var f: TFile
   if open(f, outputFilename, fmWrite):
     f.write(getContent(url, sslContext = sslContext, timeout = timeout,
-            userAgent = userAgent))
+            userAgent = userAgent, proxy = proxy))
     f.close()
   else:
     fileError("Unable to open file")
