@@ -682,7 +682,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n.sons[0]
       result.kind = nkCall
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
-      return semExpr(c, result, flags)
+      return semDirectOp(c, result, flags)
   else: 
     n.sons[0] = semExpr(c, n.sons[0])
   let nOrig = n.copyTree
@@ -767,11 +767,6 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if result == nil:
-    result = overloadedCallOpr(c, n)
-    if result == nil:
-      NotFoundError(c, n)
-      return errorNode(c, n)
   result = afterCallActions(c, result, nOrig, flags)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
@@ -979,20 +974,11 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, copyTree(n[0]))
   else:
     var i = considerAcc(n.sons[1])
-    var f = searchInScopes(c, i)
-    # if f != nil and f.kind == skStub: loadStub(f)
-    # ``loadStub`` is not correct here as we don't care for ``f`` really
-    if f != nil: 
-      # BUGFIX: do not check for (f.kind in {skProc, skMethod, skIterator}) here
-      # This special node kind is to merge with the call handler in `semExpr`.
-      result = newNodeI(nkDotCall, n.info)
-      addSon(result, newIdentNode(i, n[1].info))
-      addSon(result, copyTree(n[0]))
-    else:
-      if not ContainsOrIncl(c.UnknownIdents, i.id):
-        LocalError(n.Info, errUndeclaredFieldX, i.s)
-      result = errorNode(c, n)
-
+    result = newNodeI(nkDotCall, n.info)
+    result.flags.incl nfDelegate
+    addSon(result, newIdentNode(i, n[1].info))
+    addSon(result, copyTree(n[0]))
+  
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this is difficult, because the '.' is used in many different contexts
   # in Nimrod. We first allow types in the semantic checking.
@@ -1866,7 +1852,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
+    let mode = if nfDelegate in n.flags: {} else: {checkUndeclared}
+    var s = qualifiedLookup(c, n.sons[0], mode)
     if s != nil: 
       case s.kind
       of skMacro:
@@ -1899,6 +1886,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result = semIndirectOp(c, n, flags)
     elif isSymChoice(n.sons[0]) or n[0].kind == nkBracketExpr and 
         isSymChoice(n[0][0]):
+      result = semDirectOp(c, n, flags)
+    elif nfDelegate in n.flags:
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)

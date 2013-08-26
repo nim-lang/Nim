@@ -608,7 +608,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       if genericParams.sons[i].sym.name.id == finalTypId.id:
         return genericParams.sons[i].typ
 
-    var s = newSym(skType, finalTypId, getCurrOwner(), info)
+    var s = newSym(skType, finalTypId, typeClass.sym, info)
     if typId == nil: s.flags.incl(sfAnon)
     s.linkTo(typeClass)
     s.position = genericParams.len
