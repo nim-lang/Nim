@@ -134,9 +134,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
-        if c.inCompilesContext > 0 or gErrorCounter == 0:
-          LocalError(n.info, errExprXCannotBeCalled,
-                     renderTree(n, {renderNoComments}))
+        LocalError(n.info, errExprXCannotBeCalled,
+                   renderTree(n, {renderNoComments}))
       else:
         errors = @[]
         pickBest(f)
@@ -217,7 +216,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
   var r = resolveOverloads(c, n, nOrig, filter)
   if r.state == csMatch: result = semResolvedCall(c, n, r)
-  else: result = errorNode(c, n)
+  # else: result = errorNode(c, n)
     
 proc explicitGenericInstError(n: PNode): PNode =
   LocalError(n.info, errCannotInstantiateX, renderTree(n))
