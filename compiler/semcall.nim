@@ -128,9 +128,14 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if result.state == csEmpty:
-      errors = @[]
-      pickBest(f)
-      NotFoundError(c, n, errors)
+      if nfExprCall in n.flags:
+        if c.inCompilesContext > 0 or gErrorCounter == 0:
+          LocalError(n.info, errExprXCannotBeCalled,
+                     renderTree(n, {renderNoComments}))
+      else:
+        errors = @[]
+        pickBest(f)
+        NotFoundError(c, n, errors)
       return
 
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and

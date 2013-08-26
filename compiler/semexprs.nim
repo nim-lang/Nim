@@ -732,14 +732,12 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # Now that nkSym does not imply an iteration over the proc/iterator space,
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
     if result == nil: 
+      # XXX: hmm, what kind of symbols will end up here?
+      # do we really need to try the overload resolution?
       n.sons[0] = prc
       nOrig.sons[0] = prc
+      n.flags.incl nfExprCall
       result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-    if result == nil:
-      if c.inCompilesContext > 0 or gErrorCounter == 0:
-        LocalError(n.info, errExprXCannotBeCalled,
-                   renderTree(n, {renderNoComments}))
-      return errorNode(c, n)
   #result = afterCallActions(c, result, nOrig, flags)
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
