@@ -766,7 +766,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  result = afterCallActions(c, result, nOrig, flags)
+  if result != nil: result = afterCallActions(c, result, nOrig, flags)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and 
@@ -1994,4 +1994,4 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   else:
     LocalError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
-  incl(result.flags, nfSem)
+  if result != nil: incl(result.flags, nfSem)
