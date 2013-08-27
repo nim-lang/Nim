@@ -430,11 +430,14 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
     appf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     appf(result, "$N$1}", [spaces(indent)])
 
-proc debug(n: PSym) = 
-  #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
-  writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4", [
-    toRope(n.name.s), toRope(n.id), flagsToStr(n.flags), 
-    flagsToStr(n.loc.flags)])))
+proc debug(n: PSym) =
+  if n == nil:
+    writeln(stdout, "null")
+  else:
+    #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
+    writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4", [
+      toRope(n.name.s), toRope(n.id), flagsToStr(n.flags), 
+      flagsToStr(n.loc.flags)])))
 
 proc debug(n: PType) = 
   writeln(stdout, ropeToStr(debugType(n)))
