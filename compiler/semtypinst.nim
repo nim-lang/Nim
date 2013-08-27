@@ -148,12 +148,13 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   if result != nil: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
-    if x.kind == tyGenericParam: 
+    if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
       if header == nil: header = copyType(t, t.owner, false)
       header.sons[i] = x
       propagateToOwner(header, x)
-      #idTablePut(cl.typeMap, body.sons[i-1], x)
+      #idTablePut(cl.typeMap, body.sons[i-1], x)  
+
   if header != nil:
     # search again after first pass:
     result = searchInstTypes(header)
@@ -200,6 +201,9 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
     result = lookupTypeVar(cl, t)
     if result.kind == tyGenericInvokation:
       result = handleGenericInvokation(cl, result)
+  of tyExpr:
+    if t.sym != nil and t.sym.kind == skGenericParam:
+      result = lookupTypeVar(cl, t)
   of tyGenericInvokation: 
     result = handleGenericInvokation(cl, t)
   of tyGenericBody:

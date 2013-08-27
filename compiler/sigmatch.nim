@@ -619,7 +619,10 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         else:
           result = isNone
       else:
-        result = matchTypeClass(c, f, a)
+        if a.kind == tyTypeClass:
+          result = isGeneric
+        else:
+          result = matchTypeClass(c, f, a)
         
       if result == isGeneric:
         var concrete = concreteType(c, a)
@@ -782,21 +785,25 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
     if fMaybeExpr.sonsLen == 0:
       r = isGeneric
     else:
-      let match = matchTypeClass(m, fMaybeExpr, a)
-      if match != isGeneric: r = isNone
+      if a.kind == tyExpr:
+        InternalAssert a.len > 0
+        r = typeRel(m, f.lastSon, a.lastSon)
       else:
-        # XXX: Ideally, this should happen much earlier somewhere near 
-        # semOpAux, but to do that, we need to be able to query the 
-        # overload set to determine whether compile-time value is expected
-        # for the param before entering the full-blown sigmatch algorithm.
-        # This is related to the immediate pragma since querying the
-        # overload set could help there too.
-        var evaluated = c.semConstExpr(c, arg)
-        if evaluated != nil:
-          r = isGeneric
-          arg.typ = newTypeS(tyExpr, c)
-          arg.typ.sons = @[evaluated.typ]
-          arg.typ.n = evaluated
+        let match = matchTypeClass(m, fMaybeExpr, a)
+        if match != isGeneric: r = isNone
+        else:
+          # XXX: Ideally, this should happen much earlier somewhere near 
+          # semOpAux, but to do that, we need to be able to query the 
+          # overload set to determine whether compile-time value is expected
+          # for the param before entering the full-blown sigmatch algorithm.
+          # This is related to the immediate pragma since querying the
+          # overload set could help there too.
+          var evaluated = c.semConstExpr(c, arg)
+          if evaluated != nil:
+            r = isGeneric
+            arg.typ = newTypeS(tyExpr, c)
+            arg.typ.sons = @[evaluated.typ]
+            arg.typ.n = evaluated
         
     if r == isGeneric:
       put(m.bindings, f, arg.typ)
@@ -812,7 +819,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
       r = typeRel(m, f, a)
   else:
     r = typeRel(m, f, a)
-  
+
   case r
   of isConvertible: 
     inc(m.convMatches)

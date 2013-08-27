@@ -248,7 +248,11 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32: 
       # do not skip the range!
       n.typ = n.sons[1].typ.skipTypes(abstractVar)
-    else: LocalError(n.info, errInvalidArgForX, opToStr[m])
+    of tyGenericParam:
+      # leave it for now, it will be resolved in semtypinst
+      n.typ = getSysType(tyInt)
+    else:
+      LocalError(n.info, errInvalidArgForX, opToStr[m])
   result = n
 
 proc semSizeof(c: PContext, n: PNode): PNode =
