@@ -122,7 +122,8 @@ type
     opcLdImmInt,  # dest = immediate value
     opcWrGlobal,
     opcWrGlobalRef,
-    opcSetType    # dest.typ = types[Bx]
+    opcSetType,   # dest.typ = types[Bx]
+    opcTypeTrait
 
   TBlock* = object
     label*: PSym

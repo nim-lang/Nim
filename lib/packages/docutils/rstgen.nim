@@ -265,12 +265,12 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].header = tmp
     
     dispA(d.target, result,
-        "<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
+        "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2_toc\">$3</a></h$1>", 
         "\\rsth$4{$3}\\label{$2}\n", [$n.level, 
         d.tocPart[length].refname, tmp, 
         $chr(n.level - 1 + ord('A'))])
   else:
-    dispA(d.target, result, "<h$1 id=\"$2\">$3</h$1>", 
+    dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>", 
                             "\\rsth$4{$3}\\label{$2}\n", [
         $n.level, refname, tmp, 
         $chr(n.level - 1 + ord('A'))])
