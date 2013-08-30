@@ -292,10 +292,10 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
     if k == f.kind: result = isSubrange
     elif isFloatLit(ab): result = isFromIntLit
     elif isIntLit(ab): result = isConvertible
-    elif f.kind == tyFloat32:
+    elif k >= tyFloat and k <= tyFloat128:
       # conversion to "float32" is not as good:
-      result = isConvertible
-    elif k >= tyFloat and k <= tyFloat128: result = isIntConv
+      if f.kind == tyFloat32: result = isConvertible
+      else: result = isIntConv
     else: result = isNone
   
 proc isObjectSubtype(a, f: PType): int =
