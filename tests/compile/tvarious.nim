@@ -1,5 +1,8 @@
 # Test various aspects
 
+# bug #572
+var a=12345678901'u64
+
 var x = (x: 42, y: (a: 8, z: 10))
 echo x.y
 
