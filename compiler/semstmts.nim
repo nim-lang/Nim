@@ -1205,7 +1205,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
       if n.sons[i].typ == EnforceVoidContext or usesResult(n.sons[i]):
         voidContext = true
         n.typ = EnforceVoidContext
-      elif i != last or voidContext:
+      if i != last or voidContext:
         discardCheck(n.sons[i])
       else:
         n.typ = n.sons[i].typ

@@ -382,24 +382,24 @@ proc removeDuplicateFiles(c: var TConfigData) =
           for cpuB in 1..c.cpus.len:
             if osB != osA or cpuB != cpuA:
               var orig = buildDir(osB, cpuB) / f
-              if ExistsFile(orig) and ExistsFile(dup) and
+              if existsFile(orig) and existsFile(dup) and
                   sameFileContent(orig, dup):
                 # file is identical, so delete duplicate:
-                RemoveFile(dup)
+                removeFile(dup)
                 c.cfiles[osA][cpuA][i] = orig
 
 proc writeInstallScripts(c: var TConfigData) =
   if c.installScript:
-    writeFile(installShFile, GenerateInstallScript(c), "\10")
+    writeFile(installShFile, generateInstallScript(c), "\10")
   if c.uninstallScript:
-    writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
+    writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
 
 proc srcdist(c: var TConfigData) =
   if not existsDir(getOutputDir(c) / "src"):
     createDir(getOutputDir(c) / "src")
   for x in walkFiles(c.libpath / "lib/*.h"):
     echo(getOutputDir(c) / "src" / extractFilename(x))
-    CopyFile(dest=getOutputDir(c) / "src" / extractFilename(x), source=x)
+    copyFile(dest=getOutputDir(c) / "src" / extractFilename(x), source=x)
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
@@ -417,18 +417,18 @@ proc srcdist(c: var TConfigData) =
       for i in 0 .. c.cfiles[osA][cpuA].len-1:
         let dest = dir / extractFilename(c.cfiles[osA][cpuA][i])
         let relDest = buildDir(osA, cpuA) / extractFilename(c.cfiles[osA][cpuA][i])
-        CopyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
+        copyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
         c.cfiles[osA][cpuA][i] = relDest
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
-  writeFile(getOutputDir(c) / buildShFile, GenerateBuildShellScript(c), "\10")
-  writeFile(getOutputDir(c) / buildBatFile32, GenerateBuildBatchScript(c, tWin32), "\13\10")
-  writeFile(getOutputDir(c) / buildBatFile64, GenerateBuildBatchScript(c, tWin64), "\13\10")
+  writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
+  writeFile(getOutputDir(c) / buildBatFile32, generateBuildBatchScript(c, tWin32), "\13\10")
+  writeFile(getOutputDir(c) / buildBatFile64, generateBuildBatchScript(c, tWin64), "\13\10")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
-  var scrpt = GenerateInnoSetup(c)
+  var scrpt = generateInnoSetup(c)
   var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
@@ -437,7 +437,7 @@ proc setupDist(c: var TConfigData) =
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
     var cmd = "$# $# /O$# $#" % [quoteIfContainsWhite(c.innoSetup.path),
                                  c.innoSetup.flags, outcmd, n]
-    Echo(cmd)
+    echo(cmd)
     if execShellCmd(cmd) == 0:
       removeFile(n)
     else:
