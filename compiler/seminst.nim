@@ -130,13 +130,50 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
 
+proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PType =
+  InternalAssert invocation.kind == tyGenericInvokation
+  
+  let cacheHit = searchInstTypes(invocation)
+  if cacheHit != nil:
+    result = cacheHit
+  else:
+    let s = invocation.sons[0].sym
+    let oldScope = c.currentScope
+    c.currentScope = s.typScope
+    openScope(c)
+    pushInfoContext(info)
+    for i in 0 .. <s.typ.n.sons.len:
+      let genericParam = s.typ.n[i].sym
+      let symKind = if genericParam.typ.kind == tyExpr: skConst
+                    else: skType
+
+      var boundSym = newSym(symKind, s.typ.n[i].sym.name, s, info)
+      boundSym.typ = invocation.sons[i+1].skipTypes({tyExpr})
+      boundSym.ast = invocation.sons[i+1].n
+      addDecl(c, boundSym)
+    # XXX: copyTree would have been unnecessary here if semTypeNode
+    # didn't modify its input parameters. Currently, it does modify
+    # at least the record lists of the passed object and tuple types
+    var instantiated = semTypeNode(c, copyTree(s.ast[2]), nil)
+    popInfoContext()
+    closeScope(c)
+    c.currentScope = oldScope
+    if instantiated != nil:
+      result = invocation
+      result.kind = tyGenericInst
+      result.sons.add instantiated
+      cacheTypeInst result
+
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType): PType =
-  var cl: TReplTypeVars
-  InitIdTable(cl.symMap)
-  InitIdTable(cl.typeMap)
-  cl.info = info
-  cl.c = c
-  result = ReplaceTypeVarsT(cl, header)
+  when oUseLateInstantiation:
+    lateInstantiateGeneric(c, header, info)
+  else:
+    var cl: TReplTypeVars
+    InitIdTable(cl.symMap)
+    InitIdTable(cl.typeMap)
+    cl.info = info
+    cl.c = c
+    result = ReplaceTypeVarsT(cl, header)
 
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
   result = instGenericContainer(c, n.info, header)

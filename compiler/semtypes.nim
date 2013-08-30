@@ -156,7 +156,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     LocalError(n.Info, errRangeIsEmpty)
   var a = semConstExpr(c, n[1])
   var b = semConstExpr(c, n[2])
-  if not sameType(a.typ, b.typ): 
+  if not sameType(a.typ, b.typ):
     LocalError(n.info, errPureTypeMismatch)
   elif a.typ.kind notin {tyInt..tyInt64,tyEnum,tyBool,tyChar,
                          tyFloat..tyFloat128,tyUInt8..tyUInt32}:
@@ -195,17 +195,19 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     else:
       let e = semExprWithType(c, n.sons[1], {efDetermineType})
       if e.kind in {nkIntLit..nkUInt64Lit}:
-        indx = newTypeS(tyRange, c)
-        indx.n = newNodeI(nkRange, n.info)
-        addSon(indx.n, newIntTypeNode(e.kind, 0, e.typ))
-        addSon(indx.n, newIntTypeNode(e.kind, e.intVal-1, e.typ))
-        addSonSkipIntLit(indx, e.typ)
+        indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
+      elif e.kind == nkSym and e.typ.kind == tyExpr:
+        if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
+        InternalAssert c.InGenericContext > 0
+        if not isOrdinalType(e.typ.lastSon):
+          localError(n[1].info, errOrdinalTypeExpected)
+        indx = e.typ
       else:
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind != tyGenericParam: 
-      if not isOrdinalType(indx): 
+    if indx.kind notin {tyGenericParam, tyExpr}:
+      if not isOrdinalType(indx):
         LocalError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
         LocalError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
@@ -587,6 +589,8 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     if sfGenSym notin param.flags: addDecl(c, param)
 
+let typedescId = getIdent"typedesc"
+
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
@@ -634,6 +638,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(c.newTypeWithSons(tyExpr, paramType.sons))
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
+      # naked typedescs are not bindOnce types
+      if paramType.sonsLen == 0 and paramTypId != nil and
+         paramTypId.id == typedescId.id: paramTypId = nil
       result = addImplicitGeneric(c.newTypeWithSons(tyTypeDesc, paramType.sons))
   of tyDistinct:
     if paramType.sonsLen == 1:
@@ -760,7 +767,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         r.flags.incl tfRetType
       result.sons[0] = skipIntLit(r)
       res.typ = result.sons[0]
- 
+
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1)
   var length = sonsLen(n)
@@ -846,7 +853,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         LocalError(n.info, errCannotInstantiateX, s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:
-        result = instGenericContainer(c, n, result)
+        when oUseLateInstantiation:
+          result = lateInstantiateGeneric(c, result, n.info)
+        else:
+          result = instGenericContainer(c, n, result)
 
 proc semTypeExpr(c: PContext, n: PNode): PType =
   var n = semExprWithType(c, n, {efDetermineType})
@@ -1073,8 +1083,9 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     if constraint.kind != nkEmpty:
       typ = semTypeNode(c, constraint, nil)
       if typ.kind != tyExpr or typ.len == 0:
-        if typ.len == 0 and typ.kind == tyTypeDesc:
-          typ = newTypeS(tyGenericParam, c)
+        if typ.kind == tyTypeDesc:
+          if typ.len == 0:
+            typ = newTypeS(tyTypeDesc, c)
         else:
           typ = semGenericConstraints(c, typ)
     

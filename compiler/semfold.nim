@@ -561,9 +561,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   case n.kind
   of nkSym: 
     var s = n.sym
-    if s.kind == skEnumField: 
+    case s.kind
+    of skEnumField:
       result = newIntNodeT(s.position, n)
-    elif s.kind == skConst: 
+    of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
       of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
@@ -581,10 +582,17 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNegInf: result = newFloatNodeT(NegInf, n)
       else:
         if sfFakeConst notin s.flags: result = copyTree(s.ast)
-    elif s.kind in {skProc, skMethod}: # BUGFIX
+    of {skProc, skMethod}:
       result = n
-    elif s.kind in {skType, skGenericParam}:
+    of skType:
       result = newSymNodeTypeDesc(s, n.info)
+    of skGenericParam:
+      if s.typ.kind == tyExpr:
+        result = s.typ.n
+        result.typ = s.typ.sons[0]
+      else:
+        result = newSymNodeTypeDesc(s, n.info)
+    else: nil
   of nkCharLit..nkNilLit: 
     result = copyNode(n)
   of nkIfExpr: 
