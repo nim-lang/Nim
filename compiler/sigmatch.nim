@@ -626,7 +626,8 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      if c.calleeSym.kind == skType and f.kind == tyGenericParam and not c.typedescMatched:
+      if c.calleeSym != nil and c.calleeSym.kind == skType and
+         f.kind == tyGenericParam and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for 
         # their parameters is really a misnomer. tyGenericParam means "match
         # any value" and what we need is "match any type", which can be encoded
@@ -670,7 +671,9 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         result = isNone
     else:
       InternalAssert prev.sonsLen == 1
-      result = typeRel(c, prev.sons[0], a)
+      let toMatch = if tfUnresolved in f.flags: a
+                    else: a.sons[0]
+      result = typeRel(c, prev.sons[0], toMatch)
   of tyExpr, tyStmt:
     result = isGeneric
   of tyProxy:
@@ -772,6 +775,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
         if evaluated != nil:
           r = isGeneric
           arg.typ = newTypeS(tyExpr, c)
+          arg.typ.sons = @[evaluated.typ]
           arg.typ.n = evaluated
         
     if r == isGeneric:

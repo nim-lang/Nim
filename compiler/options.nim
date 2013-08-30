@@ -156,6 +156,8 @@ var
 
 const oKeepVariableNames* = true
 
+const oUseLateInstantiation* = false
+
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless
