@@ -408,12 +408,12 @@ proc GetNumber(L: var TLexer): TToken =
         (result.tokType == tkFloat64Lit): 
       result.fnumber = parseFloat(result.literal)
       if result.tokType == tkIntLit: result.tokType = tkFloatLit
-    else: 
-      result.iNumber = ParseBiggestInt(result.literal)
-      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)): 
-        if result.tokType == tkIntLit: 
+    else:
+      result.iNumber = parseBiggestInt(result.literal)
+      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
+        if result.tokType == tkIntLit:
           result.tokType = tkInt64Lit
-        elif result.tokType != tkInt64Lit: 
+        elif result.tokType in {tkInt8Lit, tkInt16Lit}:
           lexMessage(L, errInvalidNumber, result.literal)
   except EInvalidValue:
     lexMessage(L, errInvalidNumber, result.literal)
