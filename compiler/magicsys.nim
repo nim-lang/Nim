@@ -115,11 +115,16 @@ proc getIntLitType*(literal: PNode): PType =
     result = copyType(ti, ti.owner, false)
     result.n = literal
 
+proc getFloatLitType*(literal: PNode): PType =
+  # for now we do not cache these:
+  result = newSysType(tyFloat, size=8)
+  result.n = literal
+
 proc skipIntLit*(t: PType): PType {.inline.} =
-  if t.kind == tyInt and t.n != nil:
-    result = getSysType(tyInt)
-  else:
-    result = t
+  if t.n != nil:
+    if t.kind in {tyInt, tyFloat}:
+      return getSysType(t.kind)
+  result = t
 
 proc AddSonSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]

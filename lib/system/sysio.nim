@@ -91,7 +91,7 @@ proc write(f: TFile, i: biggestInt) =
 proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
-proc write(f: TFile, r: float) = fprintf(f, "%g", r)
+proc write(f: TFile, r: float32) = fprintf(f, "%g", r)
 proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
 
 proc write(f: TFile, c: Char) = putc(c, f)

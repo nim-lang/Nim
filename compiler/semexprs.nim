@@ -1808,7 +1808,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkUInt64Lit: 
     if result.typ == nil: result.typ = getSysType(tyUInt64)
   of nkFloatLit: 
-    if result.typ == nil: result.typ = getSysType(tyFloat)
+    if result.typ == nil: result.typ = getFloatLitType(result)
   of nkFloat32Lit: 
     if result.typ == nil: result.typ = getSysType(tyFloat32)
   of nkFloat64Lit: 

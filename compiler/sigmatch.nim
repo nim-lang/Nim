@@ -283,14 +283,18 @@ proc isConvertibleToRange(f, a: PType): bool =
        a.kind in {tyFloat..tyFloat128}:
     result = true
 
-proc handleFloatRange(f, a: PType): TTypeRelation = 
-  if a.kind == f.kind: 
+proc handleFloatRange(f, a: PType): TTypeRelation =
+  if a.kind == f.kind:
     result = isEqual
-  else: 
+  else:
     let ab = skipTypes(a, {tyRange})
     var k = ab.kind
     if k == f.kind: result = isSubrange
+    elif isFloatLit(ab): result = isFromIntLit
     elif isIntLit(ab): result = isConvertible
+    elif f.kind == tyFloat32:
+      # no conversion to "float32" as that might lose precision
+      result = isNone
     elif k >= tyFloat and k <= tyFloat128: result = isConvertible
     else: result = isNone
   
