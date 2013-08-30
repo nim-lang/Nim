@@ -329,7 +329,7 @@ proc atom(n: PNode): string =
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
       result = $n.floatVal & "\'f32"
     else: 
-      f = n.floatVal
+      f = n.floatVal.float32
       result = litAux(n, (cast[PInt32](addr(f)))[], 4) & "\'f32"
   of nkFloat64Lit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
@@ -407,7 +407,8 @@ proc lsub(n: PNode): int =
     result = result + lcomma(n, 1)
   of nkExprColonExpr: result = lsons(n) + 2
   of nkInfix: result = lsons(n) + 2
-  of nkPrefix: result = lsons(n) + 1
+  of nkPrefix:
+    result = lsons(n)+1+(if n.len > 0 and n.sons[1].kind == nkInfix: 2 else: 0)
   of nkPostfix: result = lsons(n)
   of nkCallStrLit: result = lsons(n)
   of nkPragmaExpr: result = lsub(n.sons[0]) + lcomma(n, 1)
@@ -939,7 +940,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n.sons[0])
     if n.len > 1:
       put(g, tkSpaces, space)
-      gsub(g, n.sons[1])
+      if n.sons[1].kind == nkInfix:
+        put(g, tkParLe, "(")
+        gsub(g, n.sons[1])
+        put(g, tkParRi, ")")
+      else:
+        gsub(g, n.sons[1])
   of nkPostfix: 
     gsub(g, n.sons[1])
     gsub(g, n.sons[0])
