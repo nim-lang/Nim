@@ -109,6 +109,9 @@ proc getOrdValue(n: PNode): biggestInt =
 proc isIntLit*(t: PType): bool {.inline.} =
   result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
 
+proc isFloatLit*(t: PType): bool {.inline.} =
+  result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
+
 proc isCompatibleToCString(a: PType): bool = 
   if a.kind == tyArray: 
     if (firstOrd(a.sons[0]) == 0) and

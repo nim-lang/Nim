@@ -21,7 +21,7 @@ proc getConstExpr*(m: PSym, n: PNode): PNode
 proc evalOp*(m: TMagic, n, a, b, c: PNode): PNode
 proc leValueConv*(a, b: PNode): bool
 proc newIntNodeT*(intVal: BiggestInt, n: PNode): PNode
-proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode): PNode
+proc newFloatNodeT(floatVal: BiggestFloat, n: PNode): PNode
 proc newStrNodeT*(strVal: string, n: PNode): PNode
 
 # implementation
@@ -43,7 +43,10 @@ proc newIntNodeT(intVal: BiggestInt, n: PNode): PNode =
 
 proc newFloatNodeT(floatVal: BiggestFloat, n: PNode): PNode = 
   result = newFloatNode(nkFloatLit, floatVal)
-  result.typ = n.typ
+  if skipTypes(n.typ, abstractVarRange).kind == tyFloat:
+    result.typ = getFloatLitType(result)
+  else:
+    result.typ = n.typ
   result.info = n.info
 
 proc newStrNodeT(strVal: string, n: PNode): PNode = 

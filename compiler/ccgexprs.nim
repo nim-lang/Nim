@@ -465,10 +465,11 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
     binArithTab: array[mAddF64..mXor, string] = [
-      "($1 + $2)",            # AddF64
-      "($1 - $2)",            # SubF64
-      "($1 * $2)",            # MulF64
-      "($1 / $2)",            # DivF64
+      "(($4)($1) + ($4)($2))", # AddF64
+      "(($4)($1) - ($4)($2))", # SubF64
+      "(($4)($1) * ($4)($2))", # MulF64
+      "(($4)($1) / ($4)($2))", # DivF64
+      
       "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
       "($4)($1 & $2)",      # BitandI
@@ -1488,8 +1489,9 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     assert(e.sons[2].typ != nil)
     InitLocExpr(p, e.sons[1], a)
     InitLocExpr(p, e.sons[2], b)
-    putIntoDest(p, d, e.typ, rfmt(nil, "($2 $1 $3)",
-                                  toRope(opr[m]), rdLoc(a), rdLoc(b)))
+    putIntoDest(p, d, e.typ, rfmt(nil, "(($4)($2) $1 ($4)($3))",
+                                  toRope(opr[m]), rdLoc(a), rdLoc(b),
+                                  getSimpleTypeDesc(p.module, e[1].typ)))
     if optNanCheck in p.options:
       linefmt(p, cpsStmts, "#nanCheck($1);$n", rdLoc(d))
     if optInfCheck in p.options:

@@ -28,7 +28,9 @@ type
   uint64* {.magic: UInt64.} ## unsigned 64 bit integer type
   float* {.magic: Float.} ## default floating point type
   float32* {.magic: Float32.} ## 32 bit floating point type
-  float64* {.magic: Float64.} ## 64 bit floating point type
+  float64* {.magic: Float.} ## 64 bit floating point type
+
+# 'float64' is now an alias to 'float'; this solves many problems
 
 type # we need to start a new type section here, so that ``0`` can have a type
   bool* {.magic: Bool.} = enum ## built-in boolean type
@@ -627,6 +629,14 @@ proc `<%` *(x, y: Int64): bool {.magic: "LtU64", noSideEffect.}
 
 
 # floating point operations:
+
+proc `+` *(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
+proc `-` *(x: float32): float32 {.magic: "UnaryMinusF64", noSideEffect.}
+proc `+` *(x, y: float32): float32 {.magic: "AddF64", noSideEffect.}
+proc `-` *(x, y: float32): float32 {.magic: "SubF64", noSideEffect.}
+proc `*` *(x, y: float32): float32 {.magic: "MulF64", noSideEffect.}
+proc `/` *(x, y: float32): float32 {.magic: "DivF64", noSideEffect.}
+
 proc `+` *(x: float): float {.magic: "UnaryPlusF64", noSideEffect.}
 proc `-` *(x: float): float {.magic: "UnaryMinusF64", noSideEffect.}
 proc `+` *(x, y: float): float {.magic: "AddF64", noSideEffect.}
@@ -634,6 +644,10 @@ proc `-` *(x, y: float): float {.magic: "SubF64", noSideEffect.}
 proc `*` *(x, y: float): float {.magic: "MulF64", noSideEffect.}
 proc `/` *(x, y: float): float {.magic: "DivF64", noSideEffect.}
   ## computes the floating point division
+
+proc `==` *(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
+proc `<=` *(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
+proc `<`  *(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
 
 proc `==` *(x, y: float): bool {.magic: "EqF64", noSideEffect.}
 proc `<=` *(x, y: float): bool {.magic: "LeF64", noSideEffect.}
@@ -1985,7 +1999,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## `content` completely to the file and closes the file afterwards.
       ## Raises an IO exception in case of an error.
 
-    proc write*(f: TFile, r: float) {.tags: [FWriteIO].}
+    proc write*(f: TFile, r: float32) {.tags: [FWriteIO].}
     proc write*(f: TFile, i: int) {.tags: [FWriteIO].}
     proc write*(f: TFile, i: biggestInt) {.tags: [FWriteIO].}
     proc write*(f: TFile, r: biggestFloat) {.tags: [FWriteIO].}
