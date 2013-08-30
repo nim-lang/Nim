@@ -74,7 +74,7 @@ proc getSysType(kind: TTypeKind): PType =
     of tyUInt64: result = sysTypeFromName("uint64")
     of tyFloat: result = sysTypeFromName("float")
     of tyFloat32: result = sysTypeFromName("float32")
-    of tyFloat64: result = sysTypeFromName("float64")
+    of tyFloat64: return sysTypeFromName("float64")
     of tyFloat128: result = sysTypeFromName("float128")
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
