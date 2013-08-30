@@ -505,7 +505,7 @@ proc setBiggestFloat*(x: TAny, y: biggestFloat) =
   ## some float.
   case skipRange(x.rawtype).kind
   of tyFloat: cast[ptr Float](x.value)[] = y
-  of tyFloat32: cast[ptr Float32](x.value)[] = y
+  of tyFloat32: cast[ptr Float32](x.value)[] = y.float32
   of tyFloat64: cast[ptr Float64](x.value)[] = y
   else: assert false
 
