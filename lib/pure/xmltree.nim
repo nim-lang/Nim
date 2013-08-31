@@ -273,7 +273,7 @@ macro `<>`*(x: expr): expr {.immediate.} =
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nimrod
-  ##   <>a(href="http://nimrod-code.org", "Nimrod rules.")
+  ##   <>a(href="http://nimrod-code.org", newText("Nimrod rules."))
   ##
   ## Produces an XML tree for::
   ##
@@ -334,3 +334,7 @@ proc findAll*(n: PXmlNode, tag: string): seq[PXmlNode] =
   ##     process(imgTag)
   newSeq(result, 0)
   findAll(n, tag, result)
+
+when isMainModule:
+  assert """<a href="http://nimrod-code.org">Nimrod rules.</a>""" ==
+    $(<>a(href="http://nimrod-code.org", newText("Nimrod rules.")))
