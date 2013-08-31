@@ -558,7 +558,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty: 
     base = skipTypes(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
-    var concreteBase = skipGenericInvokation(base)
+    var concreteBase = skipGenericInvokation(base).skipTypes(skipPtrs)
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
       addInheritedFields(c, check, pos, concreteBase)
     else:
