@@ -775,9 +775,12 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa.sons[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
-      assert s.typ.sons[0].sym == nil
-      s.typ.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"), 
-                                 getCurrOwner(), s.info)
+      var st = s.typ
+      if st.kind == tyGenericBody: st = st.lastSon
+      InternalAssert st.kind in {tyPtr, tyRef}
+      InternalAssert st.sons[0].sym == nil
+      st.sons[0].sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+                              getCurrOwner(), s.info)
 
 proc SemTypeSection(c: PContext, n: PNode): PNode =
   typeSectionLeftSidePass(c, n)
