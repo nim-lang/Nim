@@ -58,7 +58,7 @@ else:
 
 proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
   header: "<setjmp.h>", importc: "longjmp".}
-proc c_setjmp(jmpb: var C_JmpBuf): cint {.
+proc c_setjmp(jmpb: C_JmpBuf): cint {.
   header: "<setjmp.h>", importc: "setjmp".}
 
 proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
