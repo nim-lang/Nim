@@ -178,6 +178,7 @@ type
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
     nkMixinStmt,          # a mixin statement
+    nkUsingStmt,          # an using statement
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
@@ -619,6 +620,7 @@ type
   TScope* = object
     depthLevel*: int
     symbols*: TStrTable
+    usingSyms*: seq[PNode]
     parent*: PScope
 
   PScope* = ref TScope

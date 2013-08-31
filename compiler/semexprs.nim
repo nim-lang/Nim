@@ -1329,6 +1329,22 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
   result = newSym(kind, idAnon, owner, info)
   result.flags = {sfGenSym}
 
+proc semUsing(c: PContext, n: PNode): PNode =
+  result = newNodeI(nkEmpty, n.info)
+  for e in n.sons:
+    let usedSym = semExpr(c, e)
+    if usedSym.kind == nkSym:
+      case usedSym.sym.kind
+      of skLocalVars + {skConst}:
+        c.currentScope.usingSyms.safeAdd(usedSym)
+        continue
+      of skProcKinds:
+        addDeclAt(c.currentScope, usedSym.sym)
+        continue
+      else: nil
+
+    LocalError(e.info, errUsingNoSymbol, e.renderTree)
+
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]
   var expandedSym = expectMacroOrTemplateCall(c, macroCall)
@@ -1967,6 +1983,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkForStmt, nkParForStmt: result = semFor(c, n)
   of nkCaseStmt: result = semCase(c, n)
   of nkReturnStmt: result = semReturn(c, n)
+  of nkUsingStmt: result = semUsing(c, n)
   of nkAsmStmt: result = semAsm(c, n)
   of nkYieldStmt: result = semYield(c, n)
   of nkPragma: pragma(c, c.p.owner, n, stmtPragmas)
