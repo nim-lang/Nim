@@ -1030,8 +1030,8 @@ type
     ffScientific       ## use scientific notation (using ``e`` character)
 
 proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
-                         precision = 16): string {.noSideEffect, operator: 2,
-                                                  rtl, extern: "nsu$1".} =
+                         precision: range[0..32] = 16): string {.
+                         noSideEffect, operator: 2, rtl, extern: "nsu$1".} =
   ## converts a floating point value `f` to a string.
   ##
   ## If ``format == ffDecimal`` then precision is the number of digits to
@@ -1041,11 +1041,11 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nimrod's ``biggestFloat`` type.
   ## 
-  ## If ``precision == 0``, it uses the 
+  ## If ``precision == 0``, it tries to format it nicely.
   const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
   var
     frmtstr {.noinit.}: array[0..5, char]
-    buf: array[0..80, char]
+    buf {.noinit.}: array[0..2500, char]
   frmtstr[0] = '%'
   if precision > 0:
     frmtstr[1] = '#'
@@ -1061,8 +1061,8 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   result = $buf
 
 proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
-                  precision = 16): string {.noSideEffect, operator: 2,
-                                           rtl, extern: "nsu$1".} =
+                  precision: range[0..32] = 16): string {.
+                  noSideEffect, operator: 2, rtl, extern: "nsu$1".} =
   ## converts a floating point value `f` to a string.
   ##
   ## If ``format == ffDecimal`` then precision is the number of digits to
