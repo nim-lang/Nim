@@ -89,7 +89,7 @@ type
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError, 
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile, 
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitely,
-    errOnlyACallOpCanBeDelegator,
+    errOnlyACallOpCanBeDelegator, errUsingNoSymbol,
     
     errXExpectsTwoArguments, 
     errXExpectsObjectTypes, errXcanNeverBeOfThisSubtype, errTooManyIterations, 
@@ -318,6 +318,7 @@ const
     errVarVarTypeNotAllowed: "type \'var var\' is not allowed",
     errInstantiateXExplicitely: "instantiate '$1' explicitely",
     errOnlyACallOpCanBeDelegator: "only a call operator can be a delegator",
+    errUsingNoSymbol: "'$1' is not a variable, constant or a proc name",
     errXExpectsTwoArguments: "\'$1\' expects two arguments", 
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype", 

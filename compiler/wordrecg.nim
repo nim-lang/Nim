@@ -28,7 +28,7 @@ type
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wGeneric, wIf, wImport, wIn, 
     wInclude, wInterface, wIs, wIsnot, wIterator, wLambda, wLet,
-    wMacro, wMethod, wMixin, wMod, wNil, 
+    wMacro, wMethod, wMixin, wUsing, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
     wShared, wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wVar, 
     wWhen, wWhile, wWith, wWithout, wXor, wYield,
@@ -72,7 +72,7 @@ type
     wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
     wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
-    wUnion, wUnsigned, wUsing, wVirtual, wVoid, wVolatile, wWchar_t,
+    wUnion, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
     wThread_local, wStatic_assert, wChar16_t, wChar32_t,
@@ -95,7 +95,7 @@ const
   
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
-    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile}
+    wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing }
 
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
@@ -107,7 +107,7 @@ const
     "finally", "for", "from", "generic", "if", 
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "lambda", "let",
-    "macro", "method", "mixin", "mod", "nil", "not", "notin", 
+    "macro", "method", "mixin", "using", "mod", "nil", "not", "notin",
     "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return",
     "shared", "shl", "shr", "static",
@@ -154,7 +154,7 @@ const
     "private", "protected", "public", "register", "reinterpret_cast",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
     "this", "throw", "true", "typedef", "typeid",
-    "typename", "union", "unsigned", "using", "virtual", "void", "volatile",
+    "typename", "union", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
     "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",

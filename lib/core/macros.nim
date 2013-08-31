@@ -56,7 +56,7 @@ type
     nnkFromStmt,
     nnkIncludeStmt,
     
-    nnkBindStmt, nnkMixinStmt,
+    nnkBindStmt, nnkMixinStmt, nnkUsingStmt,
     nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr,
     nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy,
     nnkTupleTy, nnkTypeClassTy, nnkRecList, nnkRecCase, nnkRecWhen,

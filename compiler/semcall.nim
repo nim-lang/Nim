@@ -96,6 +96,11 @@ proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
 
   LocalError(n.Info, errGenerated, result)
 
+proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
+  for scope in walkScopes(c.currentScope):
+    if scope.usingSyms != nil:
+      for s in scope.usingSyms: usedSyms.safeAdd(s)
+
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds): TCandidate =
   var initialBinding: PNode
@@ -109,10 +114,26 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     initialBinding = nil
 
   var errors: seq[string]
-
+  var usedSyms: seq[PNode]
+ 
   template pickBest(headSymbol: expr) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors)
+
+  gatherUsedSyms(c, usedSyms)
+  if usedSyms != nil:
+    var hiddenArg = if usedSyms.len > 1: newNode(nkClosedSymChoice, n.info, usedSyms)
+                    else: usedSyms[0]
+
+    n.sons.insert(hiddenArg, 1)
+    orig.sons.insert(hiddenArg, 1)
+    
+    pickBest(f)
+ 
+    if result.state != csMatch:
+      n.sons.delete(1)
+      orig.sons.delete(1)
+    else: return
 
   pickBest(f)
 
