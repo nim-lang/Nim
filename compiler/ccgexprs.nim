@@ -303,10 +303,11 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyObject:
     # XXX: check for subtyping?
-    if needsComplexAssignment(dest.t):
-      if asgnComplexity(dest.t.n) <= 4:
-        discard getTypeDesc(p.module, dest.t)
-        genOptAsgnObject(p, dest, src, flags, dest.t.n)
+    if needsComplexAssignment(ty):
+      if asgnComplexity(ty.n) <= 4:
+        discard getTypeDesc(p.module, ty)
+        internalAssert ty.n != nil
+        genOptAsgnObject(p, dest, src, flags, ty.n)
       else:
         genGenericAsgn(p, dest, src, flags)
     else:
@@ -642,14 +643,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   case e.sons[1].kind
   of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
   else: internalError(e.info, "genTupleElem")
-  when false:
-    if ty.n != nil:
-      var field = ty.n.sons[i].sym
-      if field == nil: InternalError(e.info, "genTupleElem")
-      if field.loc.r == nil: InternalError(e.info, "genTupleElem")
-      appf(r, ".$1", [field.loc.r])
-  else:
-    appf(r, ".Field$1", [toRope(i)])
+  appf(r, ".Field$1", [toRope(i)])
   putIntoDest(p, d, ty.sons[i], r)
 
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
@@ -840,6 +834,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
+  discard lists.IncludeStr(p.module.headerFiles, "<stdio.h>")
   var args: PRope = nil
   var a: TLoc
   for i in countup(1, n.len-1):
