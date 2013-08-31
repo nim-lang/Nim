@@ -1672,6 +1672,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     var
       check: PNode = nil
       f: PSym
+    t = objType
     while true:
       check = nil
       f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
