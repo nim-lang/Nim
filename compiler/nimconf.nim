@@ -213,8 +213,11 @@ proc getUserConfigPath(filename: string): string =
 proc getSystemConfigPath(filename: string): string =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
-  result = joinPath([getPrefixDir(), "config", filename])
-  if not ExistsFile(result): result = "/etc/" & filename
+  let p = getPrefixDir()
+  result = joinPath([p, "config", filename])
+  when defined(unix):
+    if not existsFile(result): result = joinPath([p, "etc", filename])
+    if not existsFile(result): result = "/etc/" & filename
 
 proc LoadConfigs*(cfg: string) =
   # set default value (can be overwritten):
