@@ -207,11 +207,14 @@ proc SearchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
   var call = newNode(nkCall)
+  var hasDistinct = false
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
+    if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     call.add(newNodeIT(nkEmpty, fn.info, t.baseOfDistinct))
-  var resolved = semOverloadedCall(c, call, call, {fn.kind})
-  if resolved != nil:
-    result = resolved.sons[0].sym
+  if hasDistinct:
+    var resolved = semOverloadedCall(c, call, call, {fn.kind})
+    if resolved != nil:
+      result = resolved.sons[0].sym
