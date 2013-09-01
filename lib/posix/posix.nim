@@ -30,7 +30,7 @@
 from times import TTime
 
 const
-  hasSpawnH = true # should exist for every Posix system really nowadays
+  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
 when false:
@@ -842,48 +842,51 @@ var
   FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
   FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
 
-  MM_HARD* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Source of the condition is hardware.
-  MM_SOFT* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Source of the condition is software.
-  MM_FIRM* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Source of the condition is firmware.
-  MM_APPL* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Condition detected by application.
-  MM_UTIL* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Condition detected by utility.
-  MM_OPSYS* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Condition detected by operating system.
-  MM_RECOVER* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Recoverable error.
-  MM_NRECOV* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Non-recoverable error.
-  MM_HALT* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Error causing application to halt.
-  MM_ERROR* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Application has encountered a non-fatal fault.
-  MM_WARNING* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Application has detected unusual non-error condition.
-  MM_INFO* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Informative message.
-  MM_NOSEV* {.importc, header: "<fmtmsg.h>".}: cint
-    ## No severity level provided for the message.
-  MM_PRINT* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Display message on standard error.
-  MM_CONSOLE* {.importc, header: "<fmtmsg.h>".}: cint
-    ## Display message on system console. 
+when not defined(haiku):
+  var
+    MM_HARD* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Source of the condition is hardware.
+    MM_SOFT* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Source of the condition is software.
+    MM_FIRM* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Source of the condition is firmware.
+    MM_APPL* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Condition detected by application.
+    MM_UTIL* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Condition detected by utility.
+    MM_OPSYS* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Condition detected by operating system.
+    MM_RECOVER* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Recoverable error.
+    MM_NRECOV* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Non-recoverable error.
+    MM_HALT* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Error causing application to halt.
+    MM_ERROR* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Application has encountered a non-fatal fault.
+    MM_WARNING* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Application has detected unusual non-error condition.
+    MM_INFO* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Informative message.
+    MM_NOSEV* {.importc, header: "<fmtmsg.h>".}: cint
+      ## No severity level provided for the message.
+    MM_PRINT* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Display message on standard error.
+    MM_CONSOLE* {.importc, header: "<fmtmsg.h>".}: cint
+      ## Display message on system console. 
 
-  MM_OK* {.importc, header: "<fmtmsg.h>".}: cint
-    ## The function succeeded.
-  MM_NOTOK* {.importc, header: "<fmtmsg.h>".}: cint
-    ## The function failed completely.
-  MM_NOMSG* {.importc, header: "<fmtmsg.h>".}: cint
-    ## The function was unable to generate a message on standard error, 
-    ## but otherwise succeeded.
-  MM_NOCON* {.importc, header: "<fmtmsg.h>".}: cint
-    ## The function was unable to generate a console message, but 
-    ## otherwise succeeded. 
-    
+    MM_OK* {.importc, header: "<fmtmsg.h>".}: cint
+      ## The function succeeded.
+    MM_NOTOK* {.importc, header: "<fmtmsg.h>".}: cint
+      ## The function failed completely.
+    MM_NOMSG* {.importc, header: "<fmtmsg.h>".}: cint
+      ## The function was unable to generate a message on standard error, 
+      ## but otherwise succeeded.
+    MM_NOCON* {.importc, header: "<fmtmsg.h>".}: cint
+      ## The function was unable to generate a console message, but 
+      ## otherwise succeeded. 
+
+var    
   FNM_NOMATCH* {.importc, header: "<fnmatch.h>".}: cint
     ## The string does not match the specified pattern.
   FNM_PATHNAME* {.importc, header: "<fnmatch.h>".}: cint
@@ -1809,8 +1812,9 @@ proc feholdexcept*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 proc fesetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
 proc feupdateenv*(a1: ptr TFenv): cint {.importc, header: "<fenv.h>".}
 
-proc fmtmsg*(a1: int, a2: cstring, a3: cint,
-            a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
+when not defined(haiku):
+  proc fmtmsg*(a1: int, a2: cstring, a3: cint,
+              a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
             
 proc fnmatch*(a1, a2: cstring, a3: cint): cint {.importc, header: "<fnmatch.h>".}
 proc ftw*(a1: cstring, 
