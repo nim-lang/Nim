@@ -164,7 +164,7 @@ else: # UNIX-like operating system
     ScriptExt* = ""
     DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
 
-when defined(macosx) or defined(bsd):
+when defined(posix):
   var
     pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
 
@@ -674,17 +674,12 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       var L = GetFullPathNameA(filename, bufsize, result, unused)
       if L <= 0'i32 or L >= bufsize: OSError(OSLastError())
       setLen(result, L)
-  elif defined(macosx) or defined(bsd):
-    # On Mac OS X 10.5, realpath does not allocate the buffer on its own
-    var pathBuffer: cstring = newString(pathMax)
-    var resultBuffer = realpath(filename, pathBuffer)
-    if resultBuffer == nil: OSError(OSLastError())
-    result = $resultBuffer
   else:
-    var res = realpath(filename, nil)
-    if res == nil: OSError(OSLastError())
-    result = $res
-    c_free(res)
+    # careful, realpath needs to take an allocated buffer according to Posix:
+    result = newString(pathMax)
+    var r = realpath(filename, result)
+    if r.isNil: OSError(OSLastError())
+    setlen(result, c_strlen(result))
  
 proc ChangeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
