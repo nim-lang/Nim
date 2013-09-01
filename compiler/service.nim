@@ -9,10 +9,12 @@
 
 ## Implements the "compiler as a service" feature.
 
-import 
-  sockets,
+import
   times, commands, options, msgs, nimconf,
   extccomp, strutils, os, platform, parseopt
+
+when useCaas:
+  import sockets
 
 # We cache modules and the dependency graph. However, we don't check for
 # file changes but expect the client to tell us about them, otherwise the
@@ -80,19 +82,22 @@ proc serve*(action: proc (){.nimcall.}) =
       FlushFile(stdout)
 
   of "tcp", "":
-    var server = Socket()
-    let p = getConfigVar("server.port")
-    let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
-    server.bindAddr(port, getConfigVar("server.address"))
-    var inp = "".TaintedString
-    server.listen()
-    new(stdoutSocket)
-    while true:
-      accept(server, stdoutSocket)
-      stdoutSocket.readLine(inp)
-      execute inp.string
-      stdoutSocket.send("\c\L")
-      stdoutSocket.close()
+    when useCaas:
+      var server = Socket()
+      let p = getConfigVar("server.port")
+      let port = if p.len > 0: parseInt(p).TPort else: 6000.TPort
+      server.bindAddr(port, getConfigVar("server.address"))
+      var inp = "".TaintedString
+      server.listen()
+      new(stdoutSocket)
+      while true:
+        accept(server, stdoutSocket)
+        stdoutSocket.readLine(inp)
+        execute inp.string
+        stdoutSocket.send("\c\L")
+        stdoutSocket.close()
+    else:
+      quit "server.type not supported; compiler built without caas support"
   else:
     echo "Invalid server.type:", typ
     quit 1

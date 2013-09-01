@@ -52,6 +52,7 @@ Boot options:
                            (not needed on Windows)
   -d:useFFI                build Nimrod with FFI support at compile time
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
+  -d:noCaas                build Nimrod without CAAS support
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)

@@ -8,7 +8,10 @@
 #
 
 import
-  options, strutils, os, tables, sockets, ropes, platform
+  options, strutils, os, tables, ropes, platform
+
+when useCaas:
+  import sockets
 
 type 
   TMsgKind* = enum 
@@ -529,14 +532,19 @@ var
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
   gSilence*: int              # == 0 if we produce any output at all 
-  stdoutSocket*: TSocket
 
-proc SuggestWriteln*(s: string) = 
-  if gSilence == 0: 
-    if isNil(stdoutSocket): Writeln(stdout, s)
-    else: 
+when useCaas:
+  var stdoutSocket*: TSocket
+
+proc SuggestWriteln*(s: string) =
+  if gSilence == 0:
+    when useCaas:
+      if isNil(stdoutSocket): Writeln(stdout, s)
+      else:
+        Writeln(stdout, s)
+        stdoutSocket.send(s & "\c\L")
+    else:
       Writeln(stdout, s)
-      stdoutSocket.send(s & "\c\L")
 
 proc SuggestQuit*() =
   if not isServing:
