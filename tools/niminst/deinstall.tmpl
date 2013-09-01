@@ -39,10 +39,12 @@ if [ $# -eq 1 ] ; then
   esac
   echo "removing files..."
 
-#for f in items(c.cat[fcUnixBin]):
+#for ff in items(c.cat[fcUnixBin]):
+  #let f = ff.slashify
   rm -f $bindir/?f.skipRoot
 #end for
-#for f in items(c.cat[fcConfig]): 
+#for ff in items(c.cat[fcConfig]): 
+  #let f = ff.slashify
   rm -f $configdir/?f.skipRoot
 #end for
   rm -rf $docdir

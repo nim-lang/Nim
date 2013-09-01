@@ -21,7 +21,7 @@ Name: english; MessagesFile: compiler:Default.isl
 [Files] 
   #for i in low(TFileCategory)..fcWindows:
   #  for f in items(c.cat[i]):
-Source: ${expandFilename(f)}; DestDir: {app}\${splitFile(f).dir}; Flags: ignoreversion
+Source: ${expandFilename(f).slashify}; DestDir: {app}\${splitFile(f).dir.slashify}; Flags: ignoreversion
   #  end for
   #end for
 
@@ -32,7 +32,7 @@ Name: {group}\Console for $c.displayName; Filename: {cmd}
 Name: {group}\$c.displayName; Filename: {app}\${c.name}.exe
   #end if
   #for f in items(c.cat[fcDocStart]):
-Name: {group}\Documentation; Filename: {app}\$f
+Name: {group}\Documentation; Filename: {app}\${f.slashify}
   #end for
 Name: {group}\{cm:UninstallProgram,$c.displayName}; Filename: {uninstallexe}
 
@@ -65,7 +65,7 @@ begin
   setArrayLength(result, $c.binPaths.len);
     #var i = 0
     #for b in items(c.binPaths):
-  result[$i] := ExpandConstant('{app}') + '\$b';
+  result[$i] := ExpandConstant('{app}') + '\${b.slashify}';
       #inc(i)
     #end for
 end;
