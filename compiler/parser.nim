@@ -1411,7 +1411,6 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.info.line = result.info.line - int16(1) - int16(p.tok.iNumber)
   result.comment = p.tok.literal
   getTok(p)
 
