@@ -15,6 +15,7 @@ const
   useEffectSystem* = true
   hasFFI* = defined(useFFI)
   newScopeForIf* = true
+  useCaas* = not defined(noCaas)
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
