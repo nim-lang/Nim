@@ -22,6 +22,7 @@ version 0.9.4
 Bugs
 ====
 
+- compilation of niminst takes way too long. looks like a regression
 - simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead

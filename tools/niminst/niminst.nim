@@ -27,7 +27,6 @@ const
 
 type
   TAppType = enum appConsole, appGUI
-  TTarget = enum tWin32 = 1, tWin64 = 2
   TAction = enum
     actionNone,   # action not yet known
     actionCSource # action: create C sources
@@ -102,6 +101,9 @@ proc firstBinPath(c: TConfigData): string =
 
 proc `\`(a, b: string): string =
   result = if a.len == 0: b else: a & '\\' & b
+
+proc slashify(s: string): string =
+  when defined(unix): s.replace('\\', '/') else: s.replace('/', '\\')
 
 proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
@@ -400,15 +402,23 @@ proc srcdist(c: var TConfigData) =
   for x in walkFiles(c.libpath / "lib/*.h"):
     echo(getOutputDir(c) / "src" / extractFilename(x))
     copyFile(dest=getOutputDir(c) / "src" / extractFilename(x), source=x)
+  var winIndex = -1
+  var intel32Index = -1
+  var intel64Index = -1
   for osA in 1..c.oses.len:
+    let osname = c.oses[osA-1]
+    if osname.cmpIgnoreStyle("windows") == 0: winIndex = osA-1
     for cpuA in 1..c.cpus.len:
+      let cpuname = c.cpus[cpuA-1]
+      if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA-1
+      elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA-1
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if existsDir(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
-                 [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs,
+                 [osname, cpuname, c.nimrodArgs,
                  changeFileExt(c.infile, "nim")]
       echo(cmd)
       if execShellCmd(cmd) != 0:
@@ -422,8 +432,13 @@ proc srcdist(c: var TConfigData) =
   # second pass: remove duplicate files
   removeDuplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
-  writeFile(getOutputDir(c) / buildBatFile32, generateBuildBatchScript(c, tWin32), "\13\10")
-  writeFile(getOutputDir(c) / buildBatFile64, generateBuildBatchScript(c, tWin64), "\13\10")
+  if winIndex >= 0:
+    if intel32Index >= 0:
+      writeFile(getOutputDir(c) / buildBatFile32,
+                generateBuildBatchScript(c, winIndex, intel32Index), "\13\10")
+    if intel64Index >= 0:
+      writeFile(getOutputDir(c) / buildBatFile64,
+                generateBuildBatchScript(c, winIndex, intel64Index), "\13\10")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
