@@ -5311,40 +5311,55 @@ proc glClearAccum*(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat){
 proc glClearIndex*(c: GLfloat){.stdcall, importc, ogl.}
 proc glClipPlane*(plane: GLenum, equation: PGLdouble){.stdcall, importc, ogl.}
 proc glColor3b*(red: GLbyte, green: GLbyte, blue: GLbyte){.stdcall, importc, ogl.}
+proc glColor3bv*(v: PGLbyte){.stdcall, importc, ogl.}
 proc glColor3bv*(v: TGLVectorb3){.stdcall, importc, ogl.}
 proc glColor3d*(red: GLdouble, green: GLdouble, blue: GLdouble){.stdcall, importc, ogl.}
+proc glColor3dv*(v: PGLdouble){.stdcall, importc, ogl.}
 proc glColor3dv*(v: TGLVectord3){.stdcall, importc, ogl.}
 proc glColor3f*(red: GLfloat, green: GLfloat, blue: GLfloat){.stdcall, importc, ogl.}
+proc glColor3fv*(v: PGLfloat){.stdcall, importc, ogl.}
 proc glColor3fv*(v: TGLVectorf3){.stdcall, importc, ogl.}
 proc glColor3i*(red: GLint, green: GLint, blue: GLint){.stdcall, importc, ogl.}
+proc glColor3iv*(v: PGLint){.stdcall, importc, ogl.}
 proc glColor3iv*(v: TGLVectori3){.stdcall, importc, ogl.}
 proc glColor3s*(red: GLshort, green: GLshort, blue: GLshort){.stdcall, importc, ogl.}
+proc glColor3sv*(v: PGLshort){.stdcall, importc, ogl.}
 proc glColor3sv*(v: TGLVectors3){.stdcall, importc, ogl.}
 proc glColor3ub*(red: GLubyte, green: GLubyte, blue: GLubyte){.stdcall, importc, ogl.}
+proc glColor3ubv*(v: PGLubyte){.stdcall, importc, ogl.}
 proc glColor3ubv*(v: TGLVectorub3){.stdcall, importc, ogl.}
 proc glColor3ui*(red: GLuint, green: GLuint, blue: GLuint){.stdcall, importc, ogl.}
+proc glColor3uiv*(v: PGLuint){.stdcall, importc, ogl.}
 proc glColor3uiv*(v: TGLVectorui3){.stdcall, importc, ogl.}
 proc glColor3us*(red: GLushort, green: GLushort, blue: GLushort){.stdcall, importc, ogl.}
+proc glColor3usv*(v: PGLushort){.stdcall, importc, ogl.}
 proc glColor3usv*(v: TGLVectorus3){.stdcall, importc, ogl.}
 proc glColor4b*(red: GLbyte, green: GLbyte, blue: GLbyte, alpha: GLbyte){.
     stdcall, importc, ogl.}
+proc glColor4bv*(v: PGLbyte){.stdcall, importc, ogl.}
 proc glColor4bv*(v: TGLVectorb4){.stdcall, importc, ogl.}
 proc glColor4d*(red: GLdouble, green: GLdouble, blue: GLdouble, alpha: GLdouble){.
     stdcall, importc, ogl.}
+proc glColor4dv*(v: PGLdouble){.stdcall, importc, ogl.}
 proc glColor4dv*(v: TGLVectord4){.stdcall, importc, ogl.}
 proc glColor4f*(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat){.
     stdcall, importc, ogl.}
+proc glColor4fv*(v: PGLfloat){.stdcall, importc, ogl.}
 proc glColor4fv*(v: TGLVectorf4){.stdcall, importc, ogl.}
 proc glColor4i*(red: GLint, green: GLint, blue: GLint, alpha: GLint){.stdcall, importc, ogl.}
+proc glColor4iv*(v: PGLint){.stdcall, importc, ogl.}
 proc glColor4iv*(v: TGLVectori4){.stdcall, importc, ogl.}
 proc glColor4s*(red: GLshort, green: GLshort, blue: GLshort, alpha: GLshort){.
     stdcall, importc, ogl.}
+proc glColor4sv*(v: PGLshort){.stdcall, importc, ogl.}
 proc glColor4sv*(v: TGLVectors4){.stdcall, importc, ogl.}
 proc glColor4ub*(red: GLubyte, green: GLubyte, blue: GLubyte, alpha: GLubyte){.
     stdcall, importc, ogl.}
+proc glColor4ubv*(v: PGLubyte){.stdcall, importc, ogl.}
 proc glColor4ubv*(v: TGLVectorub4){.stdcall, importc, ogl.}
 proc glColor4ui*(red: GLuint, green: GLuint, blue: GLuint, alpha: GLuint){.
     stdcall, importc, ogl.}
+proc glColor4uiv*(v: PGLuint){.stdcall, importc, ogl.}
 proc glColor4uiv*(v: TGLVectorui4){.stdcall, importc, ogl.}
 proc glColor4us*(red: GLushort, green: GLushort, blue: GLushort, alpha: GLushort){.
     stdcall, importc, ogl.}
