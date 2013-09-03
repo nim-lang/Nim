@@ -13,3 +13,5 @@
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type
 
+proc arity*(t: typedesc): int {.magic: "TypeTrait".}
+  ## Returns the arity of the given type
