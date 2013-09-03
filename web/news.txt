@@ -49,6 +49,11 @@ Language Additions
 - ``macros.dumpTree`` and ``macros.dumpLisp`` have been made ``immediate``,
   ``dumpTreeImm`` and ``dumpLispImm`` are now deprecated.
 - Added ``requiresInit`` pragma to enforce explicit initialization.
+- Added ``using statement`` for better authoring domain-specific languages and
+  OOP-like syntactic sugar.
+- Added ``delegator pragma`` for handling calls to missing procs and fields at
+  compile-time.
+- Support for user-defined type classes have been added.
 
 
 2013-05-20 New website design!

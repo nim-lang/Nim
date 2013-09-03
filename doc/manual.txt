@@ -2192,6 +2192,37 @@ Instead of:
       :"a"(`a`), "c"(`b`)
     """
 
+Using statement
+---------------
+
+The using statement provides syntactic convenience for procs that heavily use a
+single contextual parameter. When applied to a variable or a constant, it will
+instruct Nimrod to automatically consider the used symbol as a hidden leading
+parameter for any procedure calls, following the using statement in the current
+scope. Thus, it behaves much like the hidden `this` parameter available in some
+object-oriented programming languages.
+
+.. code-block:: nimrod
+
+  var s = socket()
+  using s
+
+  connect(host, port)
+  send(data)
+
+  while true:
+    let line = readLine(timeout)
+    ...
+
+
+When applied to a callable symbol, it brings the designated symbol in the
+current scope. Thus, it can be used to disambiguate between imported symbols
+from different modules having the same name.
+
+.. code-block:: nimrod
+  import windows, sdl
+  using sdl.SetTimer
+
 
 If expression
 -------------
@@ -3218,14 +3249,69 @@ the dot syntax:
   proc `[]`(m: TMatrix, row, col: int): TMatrix.T = 
     m.data[col * high(TMatrix.Columns) + row]
 
-If anonymous type classes are used, the ``type`` operator can be used to 
-discover the instantiated type of each param.
+Alternatively, the `type` operator can be used over the proc params for similar
+effect when anonymous or distinct type classes are used.
+
+When a generic type is instantiated with a type class instead of a concrete
+type, this results in another more specific type class:
+
+.. code-block:: nimrod
+  seq[ref object]  # Any sequence storing references to any object type
+  
+  type T1 = auto
+  proc foo(s: seq[T1], e: T1)
+    # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
+    # to a single type, while the signature is being matched
+
+  TMatrix[Ordinal] # Any TMatrix instantiation using integer values
+
+As seen in the previous example, in such instantiations, it's not necessary to
+supply all type parameters of the generic type, because any missing ones will
+be inferred to have the equivalent of the `any` type class and thus they will
+match anything without discrimination.
 
 
 User defined type classes
 -------------------------
 
-To be written.
+The user-defined type classes are available in two flavours - declarative and
+imperative. Both are used to specify an arbitrary set of requirements that the
+matched type must satisfy.
+
+Declarative type classes are written in the following form:
+
+.. code-block:: nimrod
+  type
+    Comparable = generic x, y
+      (x < y) is bool
+
+    Container[T] = generic c
+      c.len is ordinal
+      items(c) is iterator
+      for value in c:
+        type(value) is T
+
+
+The identifiers following the `generic` keyword are treated as variables of
+the matched type and the body of the type class consists of arbitrary code that
+must be valid under these circumstances.
+
+Specifically, the type class will be matched if:
+
+a) all of the expressions within the body can be compiled for the tested type
+b) all statically evaluatable boolean expressions in the body must be true
+
+Please note that the `is` operator allows you to easily verify the precise type
+signatures of the required operations, but since type inference and default
+parameters are still applied in the provided block, it's also possible to encode
+usage protocols that doesn't reveal implementation details.
+
+.. code-block:: nimrod
+
+Much like generics, the user defined type classes will be instantiated exactly
+once for each tested type and any static code included within them will also be
+executed once.
+
 
 
 Return Type Inference
@@ -3937,7 +4023,7 @@ the ordinary AST predicates:
   template ex{a = b + c}(a: int{noalias}, b, c: int) =
     # this transformation is only valid if 'b' and 'c' do not alias 'a':
     a = b
-    inc a, b
+    inc a, c
 
 
 Pattern operators
@@ -4437,6 +4523,40 @@ A destructible context is currently only the following:
 These rules ensure that the construction is tied to a variable and can easily
 be destructed at its scope exit. Later versions of the language will improve
 the support of destructors.
+
+
+delegator pragma
+----------------
+
+The delegator pragma can be used to intercept and rewrite proc call and field
+access attempts referring to previously undeclared symbol names. It can be used
+to provide a fluent interface to objects lying outside the static confines of
+the Nimrod's type system such as values from dynamic scripting languages or
+dynamic file formats such as JSON or XML.
+
+A delegator is a special form of the `()` operator marked with the delagator
+pragma. When Nimrod encounters an expression that cannot be resolved by the
+standard overload resolution, any delegators in the current scope will be
+matched against a rewritten form of the expression following the standard
+signature matching rules. In the rewritten expression, the name of the unknown
+proc or field name is inserted as an additional static string parameter always
+appearing in the leading position:
+
+.. code-block:: nimrod
+  a.b => delegator("b", a)
+  a.b(c, d) => delegator("b", a, c)
+  a b, c, d => delegator("a", b, c, d)
+
+
+The delegators can be any callable symbol type (procs, templates, macros)
+depending on the desired effect:
+
+.. code-block:: nimrod
+  proc `()` (field: string, js: PJsonNode): JSON {.delegator.} = js[field]
+
+  var js = parseJson("{ x: 1, y: 2}")
+  echo js.x # outputs 1
+  echo js.y # outputs 2
 
 
 procvar pragma

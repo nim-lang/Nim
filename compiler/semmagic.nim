@@ -113,6 +113,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = getSysType(tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
+  of mHigh: result = semLowHigh(c, n, mHigh)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)
   of mLocals: result = semLocals(c, n)

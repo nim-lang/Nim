@@ -40,7 +40,9 @@ type
                              # be instantiated
     typedescMatched: bool
     inheritancePenalty: int  # to prefer closest father object type
-  
+    errors*: seq[string]     # additional clarifications to be displayed to the
+                             # user if overload resolution fails
+
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
     isIntConv,
@@ -200,28 +202,6 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc NotFoundError*(c: PContext, n: PNode) =
-  # Gives a detailed error message; this is separated from semOverloadedCall,
-  # as semOverlodedCall is already pretty slow (and we need this information
-  # only in case of an error).
-  if c.InCompilesContext > 0: 
-    # fail fast:
-    GlobalError(n.info, errTypeMismatch, "")
-  var result = msgKindToString(errTypeMismatch)
-  add(result, describeArgs(c, n))
-  add(result, ')')
-  var candidates = ""
-  var o: TOverloadIter
-  var sym = initOverloadIter(o, c, n.sons[0])
-  while sym != nil:
-    if sym.kind in RoutineKinds:
-      add(candidates, getProcHeader(sym))
-      add(candidates, "\n")
-    sym = nextOverloadIter(o, c, n.sons[0])
-  if candidates != "":
-    add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  LocalError(n.Info, errGenerated, result)
-  
 proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind
@@ -643,7 +623,10 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         else:
           result = isNone
       else:
-        result = matchTypeClass(c, f, a)
+        if a.kind == tyTypeClass:
+          result = isGeneric
+        else:
+          result = matchTypeClass(c, f, a)
         
       if result == isGeneric:
         var concrete = concreteType(c, a)
@@ -754,35 +737,93 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
+proc matchUserTypeClass*(c: PContext, m: var TCandidate,
+                         arg: PNode, f, a: PType): PNode =
+  if f.n == nil:
+    let r = typeRel(m, f, a)
+    return if r == isGeneric: arg else: nil
+ 
+  var prev = PType(idTableGet(m.bindings, f))
+  if prev != nil:
+    if sameType(prev, a): return arg
+    else: return nil
+
+  # pushInfoContext(arg.info)
+  openScope(c)
+
+  var testee = newSym(skParam, f.testeeName, f.sym, f.sym.info)
+  testee.typ = a
+  addDecl(c, testee)
+
+  for stmt in f.n:
+    var e = c.semTryExpr(c, copyTree(stmt))
+    if e == nil:
+      let expStr = renderTree(stmt, {renderNoComments})
+      m.errors.safeAdd("can't compile " & expStr & "  for " & a.typeToString)
+      return nil
+    case e.kind
+    of nkReturnStmt:
+      nil
+    of nkTypeSection: nil
+    of nkConstDef: nil
+    else:
+      if e.typ.kind == tyBool:
+        let verdict = c.semConstExpr(c, e)
+        if verdict.intVal == 0:
+          let expStr = renderTree(stmt, {renderNoComments})
+          m.errors.safeAdd(expStr & " doesn't hold for " & a.typeToString)
+          return nil
+
+  closeScope(c)
+
+  result = arg
+  put(m.bindings, f, a)
+
 proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
-                        arg, argOrig: PNode): PNode =
+                        argSemantized, argOrig: PNode): PNode =
+  var arg = argSemantized
   var r: TTypeRelation
   let fMaybeExpr = f.skipTypes({tyDistinct})
-  if fMaybeExpr.kind == tyExpr:
+  case fMaybeExpr.kind
+  of tyExpr:
     if fMaybeExpr.sonsLen == 0:
       r = isGeneric
     else:
-      let match = matchTypeClass(m, fMaybeExpr, a)
-      if match != isGeneric: r = isNone
+      if a.kind == tyExpr:
+        InternalAssert a.len > 0
+        r = typeRel(m, f.lastSon, a.lastSon)
       else:
-        # XXX: Ideally, this should happen much earlier somewhere near 
-        # semOpAux, but to do that, we need to be able to query the 
-        # overload set to determine whether compile-time value is expected
-        # for the param before entering the full-blown sigmatch algorithm.
-        # This is related to the immediate pragma since querying the
-        # overload set could help there too.
-        var evaluated = c.semConstExpr(c, arg)
-        if evaluated != nil:
-          r = isGeneric
-          arg.typ = newTypeS(tyExpr, c)
-          arg.typ.sons = @[evaluated.typ]
-          arg.typ.n = evaluated
+        let match = matchTypeClass(m, fMaybeExpr, a)
+        if match != isGeneric: r = isNone
+        else:
+          # XXX: Ideally, this should happen much earlier somewhere near 
+          # semOpAux, but to do that, we need to be able to query the 
+          # overload set to determine whether compile-time value is expected
+          # for the param before entering the full-blown sigmatch algorithm.
+          # This is related to the immediate pragma since querying the
+          # overload set could help there too.
+          var evaluated = c.semConstExpr(c, arg)
+          if evaluated != nil:
+            r = isGeneric
+            arg.typ = newTypeS(tyExpr, c)
+            arg.typ.sons = @[evaluated.typ]
+            arg.typ.n = evaluated
         
     if r == isGeneric:
       put(m.bindings, f, arg.typ)
+  of tyTypeClass:
+    if fMaybeExpr.n != nil:
+      let match = matchUserTypeClass(c, m, arg, fMaybeExpr, a)
+      if match != nil:
+        r = isGeneric
+        arg = match
+      else:
+        r = isNone
+    else:
+      r = typeRel(m, f, a)
   else:
     r = typeRel(m, f, a)
-  
+
   case r
   of isConvertible: 
     inc(m.convMatches)

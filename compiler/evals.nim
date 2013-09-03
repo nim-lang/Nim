@@ -53,7 +53,8 @@ type
     features: TSandboxFlags
     globals*: TIdNodeTable    # state of global vars
     getType*: proc(n: PNode): PNode {.closure.}
-  
+    handleIsOperator*: proc(n: PNode): PNode {.closure.}
+
   PEvalContext* = ref TEvalContext
 
   TEvalFlag = enum 
@@ -913,35 +914,12 @@ proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
     result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
     result.info = trait.info
+  of "arity":    
+    result = newIntNode(nkIntLit, typ.n.len-1)
+    result.typ = newType(tyInt, context)
+    result.info = trait.info
   else:
     internalAssert false
-
-proc evalIsOp*(n: PNode): PNode =
-  InternalAssert n.sonsLen == 3 and
-    n[1].kind == nkSym and n[1].sym.kind == skType and
-    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
-  
-  let t1 = n[1].sym.typ
-
-  if n[2].kind in {nkStrLit..nkTripleStrLit}:
-    case n[2].strVal.normalize
-    of "closure":
-      let t = skipTypes(t1, abstractRange)
-      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                        t.callConv == ccClosure and 
-                                        tfIterator notin t.flags))
-    of "iterator":
-      let t = skipTypes(t1, abstractRange)
-      result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                        t.callConv == ccClosure and 
-                                        tfIterator in t.flags))
-  else:
-    let t2 = n[2].typ
-    var match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
-                else: sameType(t1, t2)
-    result = newIntNode(nkIntLit, ord(match))
-
-  result.typ = n.typ
 
 proc expectString(n: PNode) =
   if n.kind notin nkStrKinds:
@@ -1038,7 +1016,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalTypeTrait(n[0], operand, c.module)
   of mIs:
     n.sons[1] = evalAux(c, n.sons[1], {})
-    result = evalIsOp(n)
+    result = c.handleIsOperator(n)
   of mSlurp: result = evalSlurp(evalAux(c, n.sons[1], {}), c.module)
   of mStaticExec:
     let cmd = evalAux(c, n.sons[1], {})
@@ -1466,8 +1444,7 @@ proc eval*(c: PEvalContext, n: PNode): PNode =
     else:
       stackTrace(c, result.info, errCannotInterpretNodeX, renderTree(n))
 
-proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
-  var p = newEvalContext(module, mode)
+proc evalConstExprAux*(p: PEvalContext, module, prc: PSym, e: PNode): PNode =
   var s = newStackFrame()
   s.call = e
   s.prc = prc
@@ -1475,12 +1452,6 @@ proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode =
   result = tryEval(p, e)
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
-
-proc evalConstExpr*(module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(module, nil, e, emConst)
-
-proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
-  result = evalConstExprAux(module, prc, e, emStatic)
 
 proc setupMacroParam(x: PNode): PNode =
   result = x

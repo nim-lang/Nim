@@ -132,14 +132,42 @@ proc ParamsTypeCheck(c: PContext, typ: PType) {.inline.} =
     LocalError(typ.n.info, errXisNoType, typeToString(typ))
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
-
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode
-
-proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym, 
-                  semCheck: bool = true): PNode
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
-
 proc semWhen(c: PContext, n: PNode, semCheck: bool = true): PNode
+proc IsOpImpl(c: PContext, n: PNode): PNode
+proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
+                  semCheck: bool = true): PNode
+
+proc symFromType(t: PType, info: TLineInfo): PSym =
+  if t.sym != nil: return t.sym
+  result = newSym(skType, getIdent"AnonType", t.owner, info)
+  result.flags.incl sfAnon
+  result.typ = t
+
+proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+  result = newSymNode(symFromType(t, info), info)
+  result.typ = makeTypeDesc(c, t)
+
+proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
+  result = newEvalContext(c.module, mode)
+  result.getType = proc (n: PNode): PNode =
+    var e = tryExpr(c, n)
+    if e == nil:
+      result = symNodeFromType(c, errorType(c), n.info)
+    elif e.typ == nil:
+      result = newSymNode(getSysSym"void")
+    else:
+      result = symNodeFromType(c, e.typ, n.info)
+
+  result.handleIsOperator = proc (n: PNode): PNode =
+    result = IsOpImpl(c, n)
+
+proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
+  result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
+
+proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
+  result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -148,7 +176,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return n
   result = getConstExpr(c.module, e)
   if result == nil:
-    result = evalConstExpr(c.module, e)
+    result = evalConstExpr(c, c.module, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
@@ -160,16 +188,6 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
       result = e
 
 include hlo, seminst, semcall
-
-proc symFromType(t: PType, info: TLineInfo): PSym =
-  if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent"AnonType", t.owner, info)
-  result.flags.incl sfAnon
-  result.typ = t
-
-proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-  result = newSymNode(symFromType(t, info), info)
-  result.typ = makeTypeDesc(c, t)
 
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   inc(evalTemplateCounter)
@@ -205,15 +223,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
 
   if c.evalContext == nil:
-    c.evalContext = newEvalContext(c.module, emStatic)
-    c.evalContext.getType = proc (n: PNode): PNode =
-      var e = tryExpr(c, n)
-      if e == nil:
-        result = symNodeFromType(c, errorType(c), n.info)
-      elif e.typ == nil:
-        result = newSymNode(getSysSym"void")
-      else:
-        result = symNodeFromType(c, e.typ, n.info)
+    c.evalContext = c.createEvalContext(emStatic)
 
   result = evalMacroCall(c.evalContext, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
@@ -250,6 +260,7 @@ proc myOpen(module: PSym): PPassContext =
   if c.p != nil: InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
+  c.semTryExpr = tryExpr
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
