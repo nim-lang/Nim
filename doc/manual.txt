@@ -2166,6 +2166,33 @@ specified in the statement's pragmas. The default special character is ``'`'``:
       theEnd:
     """
 
+If the GNU assembler is used, quotes and newlines are inserted automatically:
+
+.. code-block:: nimrod
+  proc addInt(a, b: int): int =
+    asm """
+      addl %%ecx, %%eax
+      jno 1
+      call `raiseOverflow`
+      1:
+      :"=a"(`result`)
+      :"a"(`a`), "c"(`b`)
+    """
+
+Instead of:
+
+.. code-block:: nimrod
+  proc addInt(a, b: int): int =
+    asm """
+      "addl %%ecx, %%eax\n"
+      "jno 1\n"
+      "call `raiseOverflow`\n"
+      "1: \n"
+      :"=a"(`result`)
+      :"a"(`a`), "c"(`b`)
+    """
+
+
 If expression
 -------------
 
