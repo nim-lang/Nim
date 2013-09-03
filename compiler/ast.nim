@@ -178,6 +178,7 @@ type
     nkIncludeStmt,        # an include statement
     nkBindStmt,           # a bind statement
     nkMixinStmt,          # a mixin statement
+    nkUsingStmt,          # an using statement
     nkCommentStmt,        # a comment statement
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
@@ -190,6 +191,7 @@ type
     nkTypeOfExpr,         # type(1+2)
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
+    nkTypeClassTy,        # user-defined type class
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
@@ -215,7 +217,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 30 flags!
+  TSymFlag* = enum    # already 32 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed 
@@ -352,6 +354,8 @@ type
                 # efficiency
     nfTransf,   # node has been transformed
     nfSem       # node has been checked for semantics
+    nfDelegate  # the call can use a delegator
+    nfExprCall  # this is an attempt to call a regular expression
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 23)
@@ -616,6 +620,7 @@ type
   TScope* = object
     depthLevel*: int
     symbols*: TStrTable
+    usingSyms*: seq[PNode]
     parent*: PScope
 
   PScope* = ref TScope
@@ -688,6 +693,7 @@ type
                               # for enum types a list of symbols
                               # for tyInt it can be the int literal
                               # for procs and tyGenericBody, it's the
+                              # the body of the user-defined type class
                               # formal param list
                               # else: unused
     destructor*: PSym         # destructor. warning: nil here may not necessary
@@ -700,6 +706,7 @@ type
                               # -1 means that the size is unkwown
     align*: int               # the type's alignment requirements
     loc*: TLoc
+    testeeName*: PIdent       # the test variable in user-defined type classes
 
   TPair*{.final.} = object 
     key*, val*: PObject
@@ -771,7 +778,8 @@ const
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType, skIterator, 
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub}
-  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst}
+  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
+                                      nfAllConst, nfDelegate}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1074,6 +1082,7 @@ proc assignType(dest, src: PType) =
   dest.size = src.size
   dest.align = src.align
   dest.destructor = src.destructor
+  dest.testeeName = src.testeeName
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
