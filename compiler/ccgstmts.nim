@@ -814,31 +814,47 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     exprBlock(p, t.sons[i].sons[0], d)
   linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", safePoint)
 
-proc genAsmOrEmitStmt(p: BProc, t: PNode): PRope = 
-  for i in countup(0, sonsLen(t) - 1): 
+proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
+  var res = ""
+  for i in countup(0, sonsLen(t) - 1):
     case t.sons[i].Kind
-    of nkStrLit..nkTripleStrLit: 
-      app(result, t.sons[i].strVal)
-    of nkSym: 
+    of nkStrLit..nkTripleStrLit:
+      res.add(t.sons[i].strVal)
+    of nkSym:
       var sym = t.sons[i].sym
       if sym.kind in {skProc, skIterator, skMethod}: 
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
-        app(result, rdLoc(a))
-      else: 
+        res.add(rdLoc(a).ropeToStr)
+      else:
         var r = sym.loc.r
         if r == nil: 
           # if no name has already been given,
           # it doesn't matter much:
           r = mangleName(sym)
           sym.loc.r = r       # but be consequent!
-        app(result, r)
+        res.add(r.ropeToStr)
     else: InternalError(t.sons[i].info, "genAsmOrEmitStmt()")
+  
+  if isAsmStmt and hasGnuAsm in CC[ccompiler].props:
+    for x in splitLines(res):
+      var j = 0
+      while x[j] in {' ', '\t'}: inc(j)
+      if x[j] == ':' and x[j+1] == '"' or x[j] == '"':
+        # some clobber register list:
+        app(result, x); app(result, tnl)
+      elif x[j] != '\0':
+        # ignore empty lines
+        app(result, "\"")
+        app(result, x)
+        app(result, "\\n\"\n")
+  else:
+    result = res.toRope
 
 proc genAsmStmt(p: BProc, t: PNode) = 
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
-  var s = genAsmOrEmitStmt(p, t)
+  var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
   lineF(p, cpsStmts, CC[ccompiler].asmStmtFrmt, [s])
 
 proc genEmit(p: BProc, t: PNode) = 

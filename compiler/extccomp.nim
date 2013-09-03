@@ -22,7 +22,8 @@ type
     hasComputedGoto,          # CC has computed goto (GNU C extension)
     hasCpp,                   # CC is/contains a C++ compiler
     hasAssume,                # CC has __assume (Visual C extension)
-    hasGcGuard                # CC supports GC_GUARD to keep stack roots
+    hasGcGuard,               # CC supports GC_GUARD to keep stack roots
+    hasGnuAsm                 # CC's asm uses the absurd GNU assembler syntax
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -72,7 +73,7 @@ compiler gcc:
     debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
-    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard})
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm})
     
 compiler gpp:
   result = gcc()

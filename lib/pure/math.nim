@@ -17,7 +17,7 @@
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
-when defined(Posix): 
+when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
 
 const

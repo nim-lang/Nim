@@ -27,7 +27,7 @@ proc getPA(): PA =
   return nil
 
 # bug #501
-proc f(): int = result
+proc f(): int = 54
 
 var
   global: int
