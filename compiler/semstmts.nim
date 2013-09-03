@@ -838,7 +838,14 @@ proc semProcAnnotation(c: PContext, prc: PNode): PNode =
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     let m = lookupMacro(c, key)
-    if m == nil: continue
+    if m == nil:
+      if key.kind == nkIdent and key.ident.id == ord(wDelegator):
+        if considerAcc(prc.sons[namePos]).s == "()":
+          prc.sons[namePos] = newIdentNode(idDelegator, prc.info)
+          prc.sons[pragmasPos] = copyExcept(n, i)
+        else:
+          LocalError(prc.info, errOnlyACallOpCanBeDelegator)
+      continue
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
@@ -1147,7 +1154,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   let a = semStmt(c, n.sons[0])
-  result = evalStaticExpr(c.module, a, c.p.owner)
+  result = evalStaticExpr(c, c.module, a, c.p.owner)
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode

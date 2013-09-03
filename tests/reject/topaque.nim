@@ -1,7 +1,7 @@
 discard """
   file: "topaque.nim"
   line: 16
-  errormsg: "undeclared field: \'buffer\'"
+  errormsg: "undeclared identifier: \'buffer\'"
 """
 # Test the new opaque types
 

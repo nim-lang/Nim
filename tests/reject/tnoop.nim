@@ -10,4 +10,3 @@ var
 
 a()  #ERROR_MSG expression 'a()' cannot be called
 
-

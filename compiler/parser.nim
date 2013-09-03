@@ -927,9 +927,10 @@ proc parseExpr(p: var TParser): PNode =
   of tkTry: result = parseTry(p)
   else: result = simpleExpr(p)
 
+proc parseEnum(p: var TParser): PNode
 proc parseObject(p: var TParser): PNode
 proc parseDistinct(p: var TParser): PNode
-proc parseEnum(p: var TParser): PNode
+proc parseTypeClass(p: var TParser): PNode
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode = 
   #| typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'type' | 'tuple'
@@ -959,6 +960,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkShared: result = parseTypeDescKAux(p, nkSharedTy, mode)
+  of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
   of tkType: result = parseTypeDescKAux(p, nkTypeOfExpr, mode)
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
@@ -983,12 +985,11 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
-  of tkDistinct:
+  of tkGeneric:
     if mode == pmTypeDef:
-      result = parseDistinct(p)
+      result = parseTypeClass(p)
     else:
-      result = newNodeP(nkDistinctTy, p)
-      getTok(p)
+      parMessage(p, errInvalidToken, p.tok)
   of tkAddr:
     result = newNodeP(nkAddr, p)
     getTokNoInd(p)
@@ -1612,6 +1613,32 @@ proc parseObject(p: var TParser): PNode =
     return
   addSon(result, parseObjectPart(p))
 
+proc parseTypeClass(p: var TParser): PNode =
+  result = newNodeP(nkTypeClassTy, p)
+  getTok(p)
+  addSon(result, p.parseSymbol)
+  if p.tok.tokType == tkCurlyDotLe and p.validInd:
+    addSon(result, parsePragma(p))
+  else:
+    addSon(result, ast.emptyNode)
+  if p.tok.tokType == tkOf and p.tok.indent < 0:
+    var a = newNodeP(nkOfInherit, p)
+    getTok(p)
+    while true:
+      addSon(a, parseTypeDesc(p))
+      if p.tok.tokType != tkComma: break
+      getTok(p)
+    addSon(result, a)
+  else:
+    addSon(result, ast.emptyNode)
+  if p.tok.tokType == tkComment:
+    skipComment(p, result)
+  # an initial IND{>} HAS to follow:
+  if not realInd(p):
+    addSon(result, emptyNode)
+  else:
+    addSon(result, parseStmt(p))
+
 proc parseDistinct(p: var TParser): PNode = 
   #| distinct = 'distinct' optInd typeDesc
   result = newNodeP(nkDistinctTy, p)
@@ -1747,6 +1774,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
+  of tkUsing: result = parseBind(p, nkUsingStmt)
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode =
