@@ -72,6 +72,7 @@ type
     libs*: TLinkedList         # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
+    semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -203,6 +204,11 @@ proc makeVarType(c: PContext, baseType: PType): PType =
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
   result.addSonSkipIntLit(typ.AssertNotNil)
+
+proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
+  let typedesc = makeTypeDesc(c, typ)
+  let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
+  return newSymNode(sym, info)
 
 proc newTypeS(kind: TTypeKind, c: PContext): PType = 
   result = newType(kind, getCurrOwner())

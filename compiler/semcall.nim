@@ -34,36 +34,35 @@ proc sameMethodDispatcher(a, b: PSym): bool =
   
 proc determineType(c: PContext, s: PSym)
 
-proc resolveOverloads(c: PContext, n, orig: PNode, 
-                      filter: TSymKinds): TCandidate =
-  var initialBinding: PNode
-  var f = n.sons[0]
-  if f.kind == nkBracketExpr:
-    # fill in the bindings:
-    initialBinding = f
-    f = f.sons[0]
-  else:
-    initialBinding = nil
-  
-  var
-    o: TOverloadIter
-    alt, z: TCandidate
-
-  template best: expr = result
-  #Message(n.info, warnUser, renderTree(n))
-  var sym = initOverloadIter(o, c, f)
+proc
+  pickBestCandidate(c: PContext, headSymbol: PNode,
+                    n, orig: PNode,
+                    initialBinding: PNode,
+                    filter: TSymKinds,
+                    best, alt: var TCandidate,
+                    errors: var seq[string]) =
+  var o: TOverloadIter
+  var sym = initOverloadIter(o, c, headSymbol)
   var symScope = o.lastOverloadScope
+
+  var z: TCandidate
   
   if sym == nil: return
   initCandidate(best, sym, initialBinding, symScope)
   initCandidate(alt, sym, initialBinding, symScope)
-
+  best.state = csNoMatch
+  
   while sym != nil:
     if sym.kind in filter:
       determineType(c, sym)
       initCandidate(z, sym, initialBinding, o.lastOverloadScope)
       z.calleeSym = sym
       matches(c, n, orig, z)
+      if errors != nil:
+        errors.safeAdd(getProcHeader(sym))
+        if z.errors != nil:
+          for err in z.errors:
+            errors[errors.len - 1].add("\n  " & err)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator: inc(z.exactMatches, 200)
@@ -74,17 +73,100 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
           else: nil
-    sym = nextOverloadIter(o, c, f)
+    sym = nextOverloadIter(o, c, headSymbol)
 
-  if best.state == csEmpty:
-    # no overloaded proc found
-    # do not generate an error yet; the semantic checking will check for
-    # an overloaded () operator
-  elif alt.state == csMatch and cmpCandidates(best, alt) == 0 and
-      not sameMethodDispatcher(best.calleeSym, alt.calleeSym):
-    if best.state != csMatch:
-      InternalError(n.info, "x.state is not csMatch")
-    #writeMatches(best)
+proc NotFoundError*(c: PContext, n: PNode, errors: seq[string]) =
+  # Gives a detailed error message; this is separated from semOverloadedCall,
+  # as semOverlodedCall is already pretty slow (and we need this information
+  # only in case of an error).
+  if c.InCompilesContext > 0: 
+    # fail fast:
+    GlobalError(n.info, errTypeMismatch, "")
+  var result = msgKindToString(errTypeMismatch)
+  add(result, describeArgs(c, n, 1 + ord(nfDelegate in n.flags)))
+  add(result, ')')
+  
+  var candidates = ""
+  for err in errors:
+    add(candidates, err)
+    add(candidates, "\n")
+
+  if candidates != "":
+    add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
+
+  LocalError(n.Info, errGenerated, result)
+
+proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
+  for scope in walkScopes(c.currentScope):
+    if scope.usingSyms != nil:
+      for s in scope.usingSyms: usedSyms.safeAdd(s)
+
+proc resolveOverloads(c: PContext, n, orig: PNode,
+                      filter: TSymKinds): TCandidate =
+  var initialBinding: PNode
+  var alt: TCandidate
+  var f = n.sons[0]
+  if f.kind == nkBracketExpr:
+    # fill in the bindings:
+    initialBinding = f
+    f = f.sons[0]
+  else:
+    initialBinding = nil
+
+  var errors: seq[string]
+  var usedSyms: seq[PNode]
+ 
+  template pickBest(headSymbol: expr) =
+    pickBestCandidate(c, headSymbol, n, orig, initialBinding,
+                      filter, result, alt, errors)
+
+  gatherUsedSyms(c, usedSyms)
+  if usedSyms != nil:
+    var hiddenArg = if usedSyms.len > 1: newNode(nkClosedSymChoice, n.info, usedSyms)
+                    else: usedSyms[0]
+
+    n.sons.insert(hiddenArg, 1)
+    orig.sons.insert(hiddenArg, 1)
+    
+    pickBest(f)
+ 
+    if result.state != csMatch:
+      n.sons.delete(1)
+      orig.sons.delete(1)
+    else: return
+
+  pickBest(f)
+
+  let overloadsState = result.state
+  if overloadsState != csMatch:
+    if nfDelegate in n.flags:
+      InternalAssert f.kind == nkIdent
+      let calleeName = newStrNode(nkStrLit, f.ident.s)
+      calleeName.info = n.info
+
+      let callOp = newIdentNode(idDelegator, n.info)
+      n.sons[0..0] = [callOp, calleeName]
+      orig.sons[0..0] = [callOp, calleeName]
+     
+      pickBest(callOp)
+
+    if overloadsState == csEmpty and result.state == csEmpty:
+      LocalError(n.info, errUndeclaredIdentifier, considerAcc(f).s)
+      return
+    elif result.state != csMatch:
+      if nfExprCall in n.flags:
+        LocalError(n.info, errExprXCannotBeCalled,
+                   renderTree(n, {renderNoComments}))
+      else:
+        errors = @[]
+        pickBest(f)
+        NotFoundError(c, n, errors)
+      return
+
+  if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
+      not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
+    InternalAssert result.state == csMatch
+    #writeMatches(result)
     #writeMatches(alt)
     if c.inCompilesContext > 0: 
       # quick error message for performance of 'compiles' built-in:
@@ -98,7 +180,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       add(args, ")")
 
       LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
-        getProcHeader(best.calleeSym), getProcHeader(alt.calleeSym),
+        getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
         args])
 
 
@@ -155,6 +237,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
   var r = resolveOverloads(c, n, nOrig, filter)
   if r.state == csMatch: result = semResolvedCall(c, n, r)
+  # else: result = errorNode(c, n)
     
 proc explicitGenericInstError(n: PNode): PNode =
   LocalError(n.info, errCannotInstantiateX, renderTree(n))

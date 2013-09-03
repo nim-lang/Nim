@@ -7,7 +7,7 @@ finally for from
 generic
 if import in include interface is isnot iterator
 lambda let
-macro method mixin mod
+macro method mixin using mod
 nil not notin
 object of or out
 proc ptr

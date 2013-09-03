@@ -24,13 +24,14 @@ const
     wCompilerProc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
-    wGenSym, wInject, wRaises, wTags, wOperator}
+    wGenSym, wInject, wRaises, wTags, wOperator, wDelegator}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
-  templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty}
+  templatePragmas* = {wImmediate, wDeprecated, wError, wGenSym, wInject, wDirty,
+    wDelegator}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideEffect, wCompilerProc, wDeprecated, wExtern,
-    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject}
+    wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wDelegator}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportcpp, wImportobjc, wError, wDiscardable, wGenSym, wInject, wRaises,

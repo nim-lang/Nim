@@ -103,4 +103,5 @@ proc IdentEq*(id: PIdent, name: string): bool =
   result = id.id == getIdent(name).id
 
 var idAnon* = getIdent":anonymous"
+let idDelegator* = getIdent":delegator"
 
