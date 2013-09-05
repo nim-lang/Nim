@@ -27,8 +27,6 @@ else:
   proc writeToStdErr(msg: CString) =
     discard MessageBoxA(0, msg, nil, 0)
 
-proc registerSignalHandler()
-
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
@@ -278,46 +276,46 @@ when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
 
-proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
-  template processSignal(s, action: expr) {.immediate.} =
-    if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
-    elif s == SIGSEGV: 
-      action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
-    elif s == SIGABRT:
-      when defined(endb):
-        if dbgAborting: return # the debugger wants to abort
-      action("SIGABRT: Abnormal termination.\n")
-    elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
-    elif s == SIGILL: action("SIGILL: Illegal operation.\n")
-    elif s == SIGBUS: 
-      action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
-    else: action("unknown signal\n")
-
-  # print stack trace and quit
-  when hasSomeStackTrace:
-    GC_disable()
-    var buf = newStringOfCap(2000)
-    rawWriteStackTrace(buf)
-    processSignal(sig, buf.add) # nice hu? currying a la nimrod :-)
-    writeToStdErr(buf)
-    GC_enable()
-  else:
-    var msg: cstring
-    template asgn(y: expr) = msg = y
-    processSignal(sig, asgn)
-    writeToStdErr(msg)
-  when defined(endb): dbgAborting = True
-  quit(1) # always quit when SIGABRT
-
-proc registerSignalHandler() =
-  c_signal(SIGINT, signalHandler)
-  c_signal(SIGSEGV, signalHandler)
-  c_signal(SIGABRT, signalHandler)
-  c_signal(SIGFPE, signalHandler)
-  c_signal(SIGILL, signalHandler)
-  c_signal(SIGBUS, signalHandler)
-
 when not defined(noSignalHandler):
+  proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
+    template processSignal(s, action: expr) {.immediate.} =
+      if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
+      elif s == SIGSEGV: 
+        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
+      elif s == SIGABRT:
+        when defined(endb):
+          if dbgAborting: return # the debugger wants to abort
+        action("SIGABRT: Abnormal termination.\n")
+      elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
+      elif s == SIGILL: action("SIGILL: Illegal operation.\n")
+      elif s == SIGBUS: 
+        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
+      else: action("unknown signal\n")
+
+    # print stack trace and quit
+    when hasSomeStackTrace:
+      GC_disable()
+      var buf = newStringOfCap(2000)
+      rawWriteStackTrace(buf)
+      processSignal(sig, buf.add) # nice hu? currying a la nimrod :-)
+      writeToStdErr(buf)
+      GC_enable()
+    else:
+      var msg: cstring
+      template asgn(y: expr) = msg = y
+      processSignal(sig, asgn)
+      writeToStdErr(msg)
+    when defined(endb): dbgAborting = True
+    quit(1) # always quit when SIGABRT
+
+  proc registerSignalHandler() =
+    c_signal(SIGINT, signalHandler)
+    c_signal(SIGSEGV, signalHandler)
+    c_signal(SIGABRT, signalHandler)
+    c_signal(SIGFPE, signalHandler)
+    c_signal(SIGILL, signalHandler)
+    c_signal(SIGBUS, signalHandler)
+
   registerSignalHandler() # call it in initialization section
 
 proc setControlCHook(hook: proc () {.noconv.}) =

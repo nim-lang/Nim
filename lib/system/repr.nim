@@ -117,7 +117,8 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
 type
   TReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
-    marked: TCellSet
+    when defined(TCellSet):
+      marked: TCellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
 
@@ -127,12 +128,13 @@ when not defined(useNimRtl):
     # have to do it here ...
     when hasThreadSupport and hasSharedHeap and defined(heapLock):
       AcquireSys(HeapLock)
-    Init(cl.marked)
+    when defined(TCellSet):
+      Init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
   proc deinitReprClosure(cl: var TReprClosure) =
-    Deinit(cl.marked)
+    when defined(TCellSet): Deinit(cl.marked)
     when hasThreadSupport and hasSharedHeap and defined(heapLock): 
       ReleaseSys(HeapLock)
 
@@ -195,16 +197,17 @@ when not defined(useNimRtl):
   proc reprRef(result: var string, p: pointer, typ: PNimType,
                cl: var TReprClosure) =
     # we know that p is not nil here:
-    when defined(boehmGC) or defined(nogc):
-      var cell = cast[PCell](p)
-    else:
-      var cell = usrToCell(p)
-    add result, "ref " & reprPointer(p)
-    if cell notin cl.marked:
-      # only the address is shown:
-      incl(cl.marked, cell)
-      add result, " --> "
-      reprAux(result, p, typ.base, cl)
+    when defined(TCellSet):
+      when defined(boehmGC) or defined(nogc):
+        var cell = cast[PCell](p)
+      else:
+        var cell = usrToCell(p)
+      add result, "ref " & reprPointer(p)
+      if cell notin cl.marked:
+        # only the address is shown:
+        incl(cl.marked, cell)
+        add result, " --> "
+        reprAux(result, p, typ.base, cl)
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
                cl: var TReprClosure) =
