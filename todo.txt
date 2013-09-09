@@ -22,6 +22,7 @@ version 0.9.4
 Bugs
 ====
 
+- 'quote' without 'do' doesn't work
 - compilation of niminst takes way too long. looks like a regression
 - simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice
