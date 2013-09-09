@@ -15,6 +15,7 @@ Library Additions
 -----------------
 
 - Added ``macros.genSym`` builtin for AST generation.
+- Added ``macros.newLit`` procs for easier AST generation.
 
 
 Changes affecting backwards compatibility
@@ -54,6 +55,13 @@ Language Additions
 - Added ``delegator pragma`` for handling calls to missing procs and fields at
   compile-time.
 - Support for user-defined type classes have been added.
+
+
+Tools improvements
+------------------
+
+- c2nim can deal with a subset of C++. Use the ``--cpp`` command line option
+  to activate.
 
 
 2013-05-20 New website design!

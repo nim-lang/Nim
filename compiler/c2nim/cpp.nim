@@ -26,7 +26,7 @@ proc skipLine(p: var TParser) =
 proc parseDefineBody(p: var TParser, tmplDef: PNode): string = 
   if p.tok.xkind == pxCurlyLe or 
     (p.tok.xkind == pxSymbol and (
-        declKeyword(p.tok.s) or stmtKeyword(p.tok.s))):
+        declKeyword(p, p.tok.s) or stmtKeyword(p.tok.s))):
     addSon(tmplDef, statement(p))
     result = "stmt"
   elif p.tok.xkind in {pxLineComment, pxNewLine}:

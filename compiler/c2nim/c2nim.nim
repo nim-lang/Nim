@@ -19,6 +19,7 @@ c2nim - C to Nimrod source converter
 Usage: c2nim [options] inputfile [options]
 Options:
   -o, --out:FILE         set output filename
+  --cpp                  process C++ input file
   --dynlib:SYMBOL        import from dynlib: SYMBOL will be used for the import
   --header:HEADER_FILE   import from a HEADER_FILE (discouraged!)
   --cdecl                annotate procs with ``{.cdecl.}``
@@ -31,6 +32,8 @@ Options:
   --skipinclude          do not convert ``#include`` to ``import``
   --typeprefixes         generate ``T`` and ``P`` type prefixes
   --skipcomments         do not copy comments
+  --ignoreRValueRefs     translate C++'s ``T&&`` to ``T`` instead ``of var T``
+  --keepBodies           keep C++'s method bodies
   -v, --version          write c2nim's version
   -h, --help             show this help
 """
