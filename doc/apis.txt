@@ -74,6 +74,7 @@ coordinate              coord
 rectangle               rect
 point                   point
 symbol                  sym
+literal                 lit
 string                  str
 identifier              ident
 indentation             indent

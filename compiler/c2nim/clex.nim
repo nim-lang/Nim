@@ -82,6 +82,8 @@ type
     pxParLe, pxBracketLe, pxCurlyLe, # this order is important 
     pxParRi, pxBracketRi, pxCurlyRi, # for macro argument parsing!
     pxComma, pxSemiColon, pxColon,
+    pxAngleRi                 # '>' but determined to be the end of a
+                              # template's angle bracket
   TTokKinds* = set[TTokKind]
 
 type
@@ -202,6 +204,7 @@ proc TokKindToStr*(k: TTokKind): string =
   of pxColon: result = ":"
   of pxCurlyLe: result = "{"
   of pxCurlyRi: result = "}"
+  of pxAngleRi: result = "> [end of template]"
 
 proc `$`(tok: TToken): string = 
   case tok.xkind

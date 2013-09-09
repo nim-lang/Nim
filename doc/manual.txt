@@ -4471,7 +4471,7 @@ proc with no side effects:
 destructor pragma
 -----------------
 
-The `destructor` pragma is used to mark a proc to act as a type destructor.
+The `destructor`:idx: pragma is used to mark a proc to act as a type destructor.
 The proc must have a single parameter with a concrete type (the name of a
 generic type is allowed too).
 
