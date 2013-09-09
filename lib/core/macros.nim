@@ -336,6 +336,26 @@ proc newCall*(theProc: string,
   result.add(newIdentNode(theProc))
   result.add(args)
 
+proc newLit*(c: char): PNimrodNode {.compileTime.} =
+  ## produces a new character literal node.
+  result = newNimNode(nnkCharLit)
+  result.intVal = ord(c)
+
+proc newLit*(i: biggestInt): PNimrodNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkIntLit)
+  result.intVal = i
+
+proc newLit*(f: biggestFloat): PNimrodNode {.compileTime.} =
+  ## produces a new float literal node.
+  result = newNimNode(nnkFloatLit)
+  result.floatVal = f
+
+proc newLit*(s: string): PNimrodNode {.compileTime.} =
+  ## produces a new string literal node.
+  result = newNimNode(nnkStrLit)
+  result.strVal = s
+
 proc nestList*(theProc: TNimrodIdent,
                x: PNimrodNode): PNimrodNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
@@ -677,7 +697,7 @@ proc addIdentIfAbsent*(dest: PNimrodNode, ident: string) {.compiletime.} =
     of nnkIdent:
       if ident.eqIdent($node): return
     of nnkExprColonExpr:
-      if ident.eqIdent($ node[0]): return
+      if ident.eqIdent($node[0]): return
     else: nil
   dest.add(ident(ident))
 
