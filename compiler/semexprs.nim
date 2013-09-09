@@ -686,7 +686,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n.sons[0]
       result.kind = nkCall
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
-      return semDirectOp(c, result, flags)
+      return semExpr(c, result, flags)
   else: 
     n.sons[0] = semExpr(c, n.sons[0])
   let nOrig = n.copyTree
