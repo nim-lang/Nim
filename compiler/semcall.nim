@@ -34,13 +34,12 @@ proc sameMethodDispatcher(a, b: PSym): bool =
   
 proc determineType(c: PContext, s: PSym)
 
-proc
-  pickBestCandidate(c: PContext, headSymbol: PNode,
-                    n, orig: PNode,
-                    initialBinding: PNode,
-                    filter: TSymKinds,
-                    best, alt: var TCandidate,
-                    errors: var seq[string]) =
+proc pickBestCandidate(c: PContext, headSymbol: PNode,
+                       n, orig: PNode,
+                       initialBinding: PNode,
+                       filter: TSymKinds,
+                       best, alt: var TCandidate,
+                       errors: var seq[string]) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var symScope = o.lastOverloadScope

@@ -36,7 +36,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
-  if result.kind == nkEmpty: 
+  if result.isNil or result.kind == nkEmpty: 
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
@@ -786,9 +786,11 @@ proc semEcho(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 1)
   for i in countup(1, sonsLen(n) - 1): 
     var arg = semExprWithType(c, n.sons[i])
-    n.sons[i] = semExprWithType(c, buildStringify(c, arg))
-    let t = n.sons[i].typ
-    if t == nil or t.skipTypes(abstractInst).kind != tyString:  
+    arg = semExprWithType(c, buildStringify(c, arg))
+    n.sons[i] = arg
+    let t = arg.typ
+    if (t == nil or t.skipTypes(abstractInst).kind != tyString) and 
+        arg.kind != nkEmpty:
       LocalError(n.info, errGenerated,
                  "implicitly invoked '$' does not return string")
   let t = n.sons[0].typ
@@ -807,7 +809,8 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   var arg = buildStringify(c, n)
   # problem is: implicit '$' is not checked for semantics yet. So we give up
   # and check 'arg' for semantics again:
-  addSon(result, semExpr(c, arg))
+  arg = semExpr(c, arg)
+  if arg != nil: addSon(result, arg)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
