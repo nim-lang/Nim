@@ -323,7 +323,7 @@ proc parseDir(p: var TParser): PNode =
     discard setOption(p.options, p.tok.s)
     getTok(p)
     eatNewLine(p, nil)
-  of "dynlib", "header", "prefix", "suffix": 
+  of "dynlib", "header", "prefix", "suffix", "class": 
     var key = p.tok.s
     getTok(p)
     if p.tok.xkind != pxStrLit: ExpectIdent(p)
