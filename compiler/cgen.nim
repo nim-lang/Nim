@@ -384,12 +384,6 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc initTemp(p: BProc, tmp: var TLoc) =
-  # XXX: This is still suspicious.
-  # Objects should always be constructed?
-  if containsGarbageCollectedRef(tmp.t) or isInvalidReturnType(tmp.t):
-    constructLoc(p, tmp)
-
 proc getTemp(p: BProc, t: PType, result: var TLoc) = 
   inc(p.labels)
   if gCmd == cmdCompileToLLVM: 
@@ -402,7 +396,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
-  initTemp(p, result)
+  constructLoc(p, result)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:

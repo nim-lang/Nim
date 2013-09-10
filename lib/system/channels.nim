@@ -121,6 +121,8 @@ proc storeAux(dest, src: Pointer, mt: PNimType, t: PRawChannel,
     var pint = cast[ptr PNimType](dest)
     # XXX use dynamic type here!
     pint[] = mt
+    if mt.base != nil:
+      storeAux(dest, src, mt.base, t, mode)
     storeAux(dest, src, mt.node, t, mode)
   of tyTuple:
     storeAux(dest, src, mt.node, t, mode)
