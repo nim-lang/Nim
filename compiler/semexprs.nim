@@ -1021,8 +1021,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tyArrayConstr, tySequence, tyString, 
-     tyCString: 
-    checkSonsLen(n, 2)
+     tyCString:
+    if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 
       n.sons[i] = semExprWithType(c, n.sons[i], 
