@@ -304,7 +304,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyObject:
     # XXX: check for subtyping?
     if needsComplexAssignment(ty):
-      if asgnComplexity(ty.n) <= 4:
+      if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
         discard getTypeDesc(p.module, ty)
         internalAssert ty.n != nil
         genOptAsgnObject(p, dest, src, flags, ty.n)
@@ -1017,7 +1017,6 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     rawGenNew(p, tmp, nil)
     t = t.sons[0].skipTypes(abstractInst)
     r = ropef("(*$1)", r)
-  # XXX object initialization? but not necessary for temps, is it?
   discard getTypeDesc(p.module, t)
   for i in 1 .. <e.len:
     let it = e.sons[i]

@@ -73,6 +73,8 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
     # sequence reallocations:
     var pint = cast[ptr PNimType](dest)
     pint[] = cast[ptr PNimType](src)[]
+    if mt.base != nil:
+      genericAssignAux(dest, src, mt.base, shallow)
     genericAssignAux(dest, src, mt.node, shallow)
   of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)
