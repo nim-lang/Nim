@@ -1,7 +1,7 @@
 #
 #
 #      c2nim - C to Nimrod source converter
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,9 +12,9 @@
 ## used to convert the AST to its text representation.
 
 # TODO
-# - implement handling of '::'
+# - document 'cpp' mode
+# - implement handling of '::': function declarations
 # - C++'s "operator" still needs some love
-# - ignore 'using' statements
 # - support '#if' in classes
 
 import 
@@ -46,6 +46,7 @@ type
     dynlibSym, header: string
     macros: seq[TMacro]
     toMangle: PStringTable
+    classes: PStringTable
   PParserOptions* = ref TParserOptions
   
   TParser* = object
@@ -71,6 +72,7 @@ proc newParserOptions*(): PParserOptions =
   result.dynlibSym = ""
   result.header = ""
   result.toMangle = newStringTable(modeCaseSensitive)
+  result.classes = newStringTable(modeCaseSensitive)
 
 proc setOption*(parserOptions: PParserOptions, key: string, val=""): bool = 
   result = true
@@ -88,6 +90,7 @@ proc setOption*(parserOptions: PParserOptions, key: string, val=""): bool =
   of "cpp": incl(parserOptions.flags, pfCpp)
   of "keepbodies": incl(parserOptions.flags, pfKeepBodies)
   of "ignorervaluerefs": incl(parserOptions.flags, pfIgnoreRValueRefs)
+  of "class": parserOptions.classes[val] = "true"
   else: result = false
 
 proc ParseUnit*(p: var TParser): PNode
@@ -234,22 +237,22 @@ proc getTok(p: var TParser, n: PNode) =
   getTok(p)
   skipCom(p, n)
 
-proc ExpectIdent(p: TParser) = 
+proc expectIdent(p: TParser) = 
   if p.tok.xkind != pxSymbol: parMessage(p, errIdentifierExpected, $(p.tok[]))
   
-proc Eat(p: var TParser, xkind: TTokKind, n: PNode) = 
+proc eat(p: var TParser, xkind: TTokKind, n: PNode) = 
   if p.tok.xkind == xkind: getTok(p, n)
   else: parMessage(p, errTokenExpected, TokKindToStr(xkind))
   
-proc Eat(p: var TParser, xkind: TTokKind) = 
+proc eat(p: var TParser, xkind: TTokKind) = 
   if p.tok.xkind == xkind: getTok(p)
   else: parMessage(p, errTokenExpected, TokKindToStr(xkind))
   
-proc Eat(p: var TParser, tok: string, n: PNode) = 
+proc eat(p: var TParser, tok: string, n: PNode) = 
   if p.tok.s == tok: getTok(p, n)
   else: parMessage(p, errTokenExpected, tok)
   
-proc Opt(p: var TParser, xkind: TTokKind, n: PNode) = 
+proc opt(p: var TParser, xkind: TTokKind, n: PNode) = 
   if p.tok.xkind == xkind: getTok(p, n)
   
 proc addSon(father, a, b: PNode) = 
@@ -361,11 +364,11 @@ proc fieldIdent(ident: string, p: TParser): PNode =
     addSon(result, pragmas)
     addSon(pragmas, newIdentStrLitPair("importc", ident, p))
 
-proc DoImport(ident: string, pragmas: PNode, p: TParser) = 
+proc doImport(ident: string, pragmas: PNode, p: TParser) = 
   if p.options.dynlibSym.len > 0 or p.options.header.len > 0: 
     addImportToPragma(pragmas, ident, p)
 
-proc DoImportCpp(ident: string, pragmas: PNode, p: TParser) = 
+proc doImportCpp(ident: string, pragmas: PNode, p: TParser) = 
   if p.options.dynlibSym.len > 0 or p.options.header.len > 0:
     addSon(pragmas, newIdentStrLitPair("importcpp", ident, p))
     if p.options.dynlibSym.len > 0:
@@ -505,9 +508,21 @@ proc optAngle(p: var TParser, n: PNode): PNode =
   else:
     result = n
 
+proc optScope(p: var TParser, n: PNode): PNode =
+  result = n
+  if pfCpp in p.options.flags:
+    while p.tok.xkind == pxScope:
+      let a = result
+      result = newNodeP(nkDotExpr, p)
+      result.add(a)
+      getTok(p, result)
+      expectIdent(p)
+      result.add(mangledIdent(p.tok.s, p))
+      getTok(p, result)
+
 proc typeAtom(p: var TParser): PNode = 
   skipConst(p)
-  ExpectIdent(p)
+  expectIdent(p)
   case p.tok.s
   of "void": 
     result = newNodeP(nkNilLit, p) # little hack
@@ -533,6 +548,7 @@ proc typeAtom(p: var TParser): PNode =
   else:
     result = mangledIdent(p.tok.s, p)
     getTok(p, result)
+    result = optScope(p, result)
     result = optAngle(p, result)
     
 proc newPointerTy(p: TParser, typ: PNode): PNode =
@@ -1017,6 +1033,7 @@ proc declaration(p: var TParser): PNode =
     if pfCpp in p.options.flags and p.tok.xkind == pxSymbol and
         p.tok.s == "const":
       addSon(pragmas, newIdentNodeP("noSideEffect", p))
+      getTok(p)
     if pfCDecl in p.options.flags:
       addSon(pragmas, newIdentNodeP("cdecl", p))
     elif pfStdcall in p.options.flags:
@@ -1169,6 +1186,7 @@ proc primaryExpression(p: var TParser): PNode =
     else: 
       result = mangledIdent(p.tok.s, p)
     getTok(p, result)
+    result = optScope(p, result)
   of pxIntLit: 
     result = newIntNodeP(nkIntLit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
@@ -1925,7 +1943,7 @@ proc parseClass(p: var TParser; isStruct: bool; stmtList: PNode): PNode =
       getTok(p, result)
       eat(p, pxColon, result)
       private = false
-    if p.tok.xkind == pxSymbol and p.tok.s == "friend":
+    if p.tok.xkind == pxSymbol and (p.tok.s == "friend" or p.tok.s == "using"):
       # we skip friend declarations:
       while p.tok.xkind notin {pxEof, pxSemicolon}: getTok(p)
       eat(p, pxSemicolon)
@@ -2012,7 +2030,9 @@ proc parseStandaloneClass(p: var TParser, isStruct: bool): PNode =
   else:
     p.currentClass = nil
   if p.tok.xkind in {pxCurlyLe, pxSemiColon, pxColon}:
-    if origName.len > 0: 
+    if origName.len > 0:
+      p.options.classes[origName] = "true"
+
       var typeSection = newNodeP(nkTypeSection, p)
       addSon(result, typeSection)
       
@@ -2090,6 +2110,13 @@ proc statement(p: var TParser): PNode =
       if pfCpp in p.options.flags:
         while p.tok.xkind notin {pxEof, pxCurlyLe}: getTok(p)
         result = compoundStatement(p)
+      else:
+        result = declarationOrStatement(p)
+    of "using":
+      if pfCpp in p.options.flags:
+        while p.tok.xkind notin {pxEof, pxSemicolon}: getTok(p)
+        eat(p, pxSemicolon)
+        result = newNodeP(nkNilLit, p)
       else:
         result = declarationOrStatement(p)
     else: result = declarationOrStatement(p)

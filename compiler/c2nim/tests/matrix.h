@@ -55,7 +55,7 @@ public:
 
     void operator = (const wxTransformMatrix& mat);
     bool operator == (const wxTransformMatrix& mat) const;
-    bool operator != (const wxTransformMatrix& mat) const;
+    bool operator != (const module::gah::wxTransformMatrix& mat) const;
 
     //multiply every element by t
     wxTransformMatrix&          operator*=(const double& t);
@@ -184,7 +184,7 @@ public:
 Chris Breeze reported, that
 some functions of wxTransformMatrix cannot work because it is not
 known if he matrix has been inverted. Be careful when using it.
-
+*/
 
 // Transform X value from logical to device
 // warning: this function can only be used for this purpose
@@ -236,6 +236,5 @@ inline double wxCalculateDet(double a11, double a21, double a12, double a22)
 {
     return a11 * a22 - a12 * a21;
 }
-*/
 
 #endif // _WX_MATRIXH__
