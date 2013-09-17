@@ -2268,7 +2268,9 @@ A `table constructor`:idx: is syntactic sugar for an array constructor:
   {"key1": "value1", "key2", "key3": "value2"}
   
   # is the same as:
-  [("key1", "value1"), ("key2", "value2"), ("key3", "value")]
+  [("key1", "value1"), ("key2", "value2"), ("key3", "value2")]
+
+  # the first example offers flexibility like a 'case'
 
 
 The empty table can be written ``{:}`` (in contrast to the empty set 
