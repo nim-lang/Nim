@@ -12,8 +12,6 @@ version 0.9.4
 - special rule for ``[]=``
 - ``=`` should be overloadable; requires specialization for ``=``; general
   lift mechanism in the compiler is already implemented for 'fields'
-- mocking support with ``tyProxy`` that does: fallback for ``.`` operator
-  - overloading of ``.``? Special case ``.=``?
 - built-in 'getImpl'
 - optimize 'genericReset'; 'newException' leads to code bloat
 - stack-less GC

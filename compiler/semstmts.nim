@@ -574,9 +574,14 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     fc.c = c
     semForObjectFields(fc, tupleTypeA.n, n, stmts)
   Dec(c.p.nestedLoopCounter)
-  var b = newNodeI(nkBreakStmt, n.info)
-  b.add(ast.emptyNode)
-  stmts.add(b)
+  # for TR macros this 'while true: ...; break' loop is pretty bad, so
+  # we avoid it now if we can:
+  if hasSonWith(stmts, nkBreakStmt):
+    var b = newNodeI(nkBreakStmt, n.info)
+    b.add(ast.emptyNode)
+    stmts.add(b)
+  else:
+    result = stmts
 
 proc addForVarDecl(c: PContext, v: PSym) =
   if warnShadowIdent in gNotes:

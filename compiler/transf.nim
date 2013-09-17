@@ -588,6 +588,36 @@ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkBracket} and 
       cnst.len != 0
 
+proc commonOptimizations*(c: PSym, n: PNode): PNode =
+  result = n
+  for i in 0 .. < n.safeLen:
+    result.sons[i] = commonOptimizations(c, n.sons[i])
+  var op = getMergeOp(n)
+  if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
+    result = newNodeIT(nkCall, n.info, n.typ)
+    add(result, n.sons[0])
+    var args = newNode(nkArgList)
+    flattenTreeAux(args, n, op)
+    var j = 0
+    while j < sonsLen(args):
+      var a = args.sons[j]
+      inc(j)
+      if isConstExpr(a):
+        while j < sonsLen(args):
+          let b = args.sons[j]
+          if not isConstExpr(b): break
+          a = evalOp(op.magic, result, a, b, nil)
+          inc(j)
+      add(result, a)
+    if len(result) == 2: result = result[1]
+  else:
+    var cnst = getConstExpr(c, n)
+    # we inline constants if they are not complex constants:
+    if cnst != nil and not dontInlineConstant(n, cnst):
+      result = cnst
+    else:
+      result = n
+
 proc transform(c: PTransf, n: PNode): PTransNode = 
   case n.kind
   of nkSym: 
