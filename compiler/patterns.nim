@@ -237,15 +237,6 @@ proc addToArgList(result, n: PNode) =
     else:
       for i in 0 .. <n.len: result.add(n.sons[i])
 
-when false:
-  proc procPatternMatches*(c: PContext, s: PSym, n: PNode): bool =
-    ## for AST-based overloading:
-    var ctx: TPatternContext
-    ctx.owner = s
-    ctx.c = c
-    ctx.formals = sonsLen(s.typ)-1
-    result = matches(ctx, s.ast.sons[patternPos], n)
-
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
   var ctx: TPatternContext

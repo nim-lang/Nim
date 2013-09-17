@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,8 +30,6 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   if optHints in gOptions and hintPattern in gNotes:
     Message(orig.info, hintPattern, rule & " --> '" & 
       renderTree(result, {renderNoComments}) & "'")
-  # check the resulting AST for optimization rules again:
-  result = hlo(c, result)
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
   result = n
@@ -44,11 +42,12 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
       let x = applyRule(c, pattern, result)
       if not isNil(x):
         assert x.kind in {nkStmtList, nkCall}
+        # better be safe than sorry, so check evalTemplateCounter too:
         inc(evalTemplateCounter)
         if evalTemplateCounter > 100:
           GlobalError(n.info, errTemplateInstantiationTooNested)
         # deactivate this pattern:
-        c.patterns[i] = nil
+        #c.patterns[i] = nil
         if x.kind == nkStmtList:
           assert x.len == 3
           x.sons[1] = evalPattern(c, x.sons[1], result)
@@ -57,9 +56,12 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
           result = evalPattern(c, x, result)
         dec(evalTemplateCounter)
         # activate this pattern again:
-        c.patterns[i] = pattern
+        #c.patterns[i] = pattern
 
 proc hlo(c: PContext, n: PNode): PNode =
+  inc(c.hloLoopDetector)
+  # simply stop and do not perform any further transformations:
+  if c.hloLoopDetector > 300: result = n
   case n.kind
   of nkMacroDef, nkTemplateDef, procDefs:
     # already processed (special cases in semstmts.nim)
@@ -74,18 +76,23 @@ proc hlo(c: PContext, n: PNode): PNode =
         if h != a: result.sons[i] = h
     else:
       # perform type checking, so that the replacement still fits:
-      if n.typ == nil and (result.typ == nil or 
-          result.typ.kind in {tyStmt, tyEmpty}):
+      if isEmptyType(n.typ) and isEmptyType(result.typ):
         nil
       else:
         result = fitNode(c, n.typ, result)
+      # optimization has been applied so check again:
+      result = commonOptimizations(c.module, result)
+      result = hlo(c, result)
+      result = commonOptimizations(c.module, result)
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:
   if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  c.hloLoopDetector = 0
   result = hlo(c, n)
 
 proc hloStmt(c: PContext, n: PNode): PNode =
   # fast exit:
   if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  c.hloLoopDetector = 0
   result = hlo(c, n)
