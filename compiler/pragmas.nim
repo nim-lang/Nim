@@ -569,6 +569,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         of wGlobal:
           noVal(it)
           incl(sym.flags, sfGlobal)
+          incl(sym.flags, sfPure)
         of wMerge: 
           noval(it)
           incl(sym.flags, sfMerge)

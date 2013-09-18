@@ -231,7 +231,8 @@ type
     sfVolatile,       # variable is volatile
     sfRegister,       # variable should be placed in a register
     sfPure,           # object is "pure" that means it has no type-information
-    
+                      # enum is "pure", its values need qualified access
+                      # variable is "pure"; it's an explicit "global"
     sfNoSideEffect,   # proc has no side effects
     sfSideEffect,     # proc may have side effects; cannot prove it has none
     sfMainModule,     # module is the main module
