@@ -47,7 +47,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         if evalTemplateCounter > 100:
           GlobalError(n.info, errTemplateInstantiationTooNested)
         # deactivate this pattern:
-        #c.patterns[i] = nil
+        c.patterns[i] = nil
         if x.kind == nkStmtList:
           assert x.len == 3
           x.sons[1] = evalPattern(c, x.sons[1], result)
@@ -56,17 +56,21 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
           result = evalPattern(c, x, result)
         dec(evalTemplateCounter)
         # activate this pattern again:
-        #c.patterns[i] = pattern
+        c.patterns[i] = pattern
 
 proc hlo(c: PContext, n: PNode): PNode =
   inc(c.hloLoopDetector)
   # simply stop and do not perform any further transformations:
-  if c.hloLoopDetector > 300: result = n
+  if c.hloLoopDetector > 300: return n
   case n.kind
   of nkMacroDef, nkTemplateDef, procDefs:
     # already processed (special cases in semstmts.nim)
     result = n
   else:
+    if n.kind in {nkFastAsgn, nkAsgn, nkIdentDefs, nkVarTuple} and
+        n.sons[0].kind == nkSym and sfGlobal in n.sons[0].sym.flags:
+      # do not optimize 'var g {.global} = re(...)' again!
+      return n
     result = applyPatterns(c, n)
     if result == n:
       # no optimization applied, try subtrees:
