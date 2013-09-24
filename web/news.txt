@@ -27,6 +27,7 @@ Changes affecting backwards compatibility
   name but which take different parameters have been introduced. These procs now
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
+- ``os.parentDir`` now returns "" if there is no parent dir.
 
 
 Compiler Additions

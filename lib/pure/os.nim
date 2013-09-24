@@ -544,33 +544,31 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
+proc parentDirPos(path: string): int =
+  var q = 1
+  if path[len(path)-1] in {dirsep, altsep}: q = 2
+  for i in countdown(len(path)-q, 0):
+    if path[i] in {dirsep, altsep}: return i
+  result = -1
+
 proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
   ## This is often the same as the ``head`` result of ``splitPath``.
-  ## If there is no parent, ``path`` is returned.
+  ## If there is no parent, "" is returned.
   ## | Example: ``parentDir("/usr/local/bin") == "/usr/local"``.
   ## | Example: ``parentDir("/usr/local/bin/") == "/usr/local"``.
-  var
-    sepPos = -1
-    q = 1
-  if path[len(path)-1] in {dirsep, altsep}:
-    q = 2
-  for i in countdown(len(path)-q, 0):
-    if path[i] in {dirsep, altsep}:
-      sepPos = i
-      break
+  let sepPos = parentDirPos(path)
   if sepPos >= 0:
     result = substr(path, 0, sepPos-1)
   else:
-    result = path
+    result = ""
 
 proc isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory 
-  var p = parentDir(path)
-  result = p == path or p.len == 0
+  result = parentDirPos(path) < 0
 
 iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## Walks over all parent directories of a given `path`
@@ -591,14 +589,20 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   else:
     for i in countup(0, path.len - 2): # ignore the last /
       # deal with non-normalized paths such as /foo//bar//baz
-      if path[i] in {dirsep, altsep} and (i == 0 or path[i-1] notin {dirsep, altsep}):
+      if path[i] in {dirsep, altsep} and 
+          (i == 0 or path[i-1] notin {dirsep, altsep}):
         yield path.substr(0, i)
 
     if inclusive: yield path
 
 proc `/../` * (head, tail: string): string {.noSideEffect.} =
-  ## The same as ``parentDir(head) / tail``
-  return parentDir(head) / tail
+  ## The same as ``parentDir(head) / tail`` unless there is no parent directory.
+  ## Then ``head / tail`` is performed instead.
+  let sepPos = parentDirPos(path)
+  if sepPos >= 0:
+    result = substr(path, 0, sepPos-1) / tail
+  else:
+    result = path / tail
 
 proc normExt(ext: string): string =
   if ext == "" or ext[0] == extSep: result = ext # no copy needed here
