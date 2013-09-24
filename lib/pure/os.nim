@@ -598,11 +598,11 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
 proc `/../` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``parentDir(head) / tail`` unless there is no parent directory.
   ## Then ``head / tail`` is performed instead.
-  let sepPos = parentDirPos(path)
+  let sepPos = parentDirPos(head)
   if sepPos >= 0:
-    result = substr(path, 0, sepPos-1) / tail
+    result = substr(head, 0, sepPos-1) / tail
   else:
-    result = path / tail
+    result = head / tail
 
 proc normExt(ext: string): string =
   if ext == "" or ext[0] == extSep: result = ext # no copy needed here
