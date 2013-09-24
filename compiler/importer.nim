@@ -38,12 +38,11 @@ proc getModuleName*(n: PNode): string =
     # hacky way to implement 'x / y /../ z':
     result = renderTree(n, {renderNoComments}).replace(" ")
   of nkDotExpr:
-    result = renderTree(n, {renderNoComments}).replace(".")
+    result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
     result = getModuleName(n.sons[0])
   else:
-    localError(n.info, errGenerated,
-      "invalid module name: '$1'" % renderTree(n))
+    localError(n.info, errGenerated, "invalid module name: '$1'" % n.renderTree)
     result = ""
 
 proc checkModuleName*(n: PNode): int32 =
