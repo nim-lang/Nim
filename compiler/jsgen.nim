@@ -984,7 +984,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   of skProc, skConverter, skMethod:
     discard mangleName(s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s) or
+    if lfNoDecl in s.loc.flags or s.magic != mNone or
        {sfImportc, sfInfixCall} * s.flags != {}:
       nil
     elif s.kind == skMethod and s.getBody.kind == nkEmpty:
@@ -1583,7 +1583,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n.sons[namePos].sym
     discard mangleName(s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone or isGenericRoutine(s): nil
+    if lfNoDecl in s.loc.flags or s.magic != mNone: nil
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       app(p.locals, genProc(p, s))
   of nkMetaNode: gen(p, n.sons[0], r)
