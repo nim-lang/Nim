@@ -24,10 +24,13 @@ type
     s*: string
     next*: PIdent             # for hash-table chaining
     h*: THash                 # hash value of s
-  
+
+var firstCharIsCS*: bool
 var buckets*: array[0..4096 * 2 - 1, PIdent]
 
 proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
+  if firstCharIsCS:
+    if a[0] != b[0]: return 1
   var i = 0
   var j = 0
   result = 1
