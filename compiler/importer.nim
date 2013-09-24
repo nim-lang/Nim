@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -27,12 +27,24 @@ proc getModuleName*(n: PNode): string =
     result = n.ident.s
   of nkSym:
     result = n.sym.name.s
-  else:
+  of nkInfix:
+    if n.sons[0].kind == nkIdent and n.sons[0].ident.id == getIdent("as").id:
+      # XXX hack ahead:
+      n.kind = nkImportAs
+      n.sons[0] = n.sons[1]
+      n.sons[1] = n.sons[2]
+      n.sons.setLen(2)
+      return getModuleName(n.sons[0])
     # hacky way to implement 'x / y /../ z':
     result = renderTree(n, {renderNoComments}).replace(" ")
-    #localError(n.info, errGenerated,
-    #  "invalide module name: '$1'" % renderTree(n))
-    #result = ""
+  of nkDotExpr:
+    result = renderTree(n, {renderNoComments}).replace(".")
+  of nkImportAs:
+    result = getModuleName(n.sons[0])
+  else:
+    localError(n.info, errGenerated,
+      "invalid module name: '$1'" % renderTree(n))
+    result = ""
 
 proc checkModuleName*(n: PNode): int32 =
   # This returns the full canonical path for a given module import
@@ -135,15 +147,28 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: TIntSet) =
     for i in 0 ..safeLen(n)-1:
       importForwarded(c, n.sons[i], exceptSet)
 
+proc importModuleAs(n: PNode, realModule: PSym): PSym =
+  result = realModule
+  if n.kind != nkImportAs: discard
+  elif n.len != 2 or n.sons[1].kind != nkIdent:
+    localError(n.info, errGenerated, "module alias must be an identifier")
+  elif n.sons[1].ident.id != realModule.name.id:
+    # some misguided guy will write 'import abc.foo as foo' ...
+    result = createModuleAlias(realModule, n.sons[1].ident, n.sons[1].info)
+
+proc myImportModule(c: PContext, n: PNode): PSym =
+  var f = checkModuleName(n)
+  if f != InvalidFileIDX:
+    result = importModuleAs(n, gImportModule(c.module, f))
+    if sfDeprecated in result.flags:
+      Message(n.info, warnDeprecated, result.name.s)
+
 proc evalImport(c: PContext, n: PNode): PNode = 
   result = n
   var emptySet: TIntSet
   for i in countup(0, sonsLen(n) - 1): 
-    var f = checkModuleName(n.sons[i])
-    if f != InvalidFileIDX:
-      var m = gImportModule(c.module, f)
-      if sfDeprecated in m.flags: 
-        Message(n.sons[i].info, warnDeprecated, m.name.s) 
+    var m = myImportModule(c, n.sons[i])
+    if m != nil:
       # ``addDecl`` needs to be done before ``importAllSymbols``!
       addDecl(c, m)             # add symbol to symbol table of module
       importAllSymbolsExcept(c, m, emptySet)
@@ -152,21 +177,19 @@ proc evalImport(c: PContext, n: PNode): PNode =
 proc evalFrom(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 2)
-  var f = checkModuleName(n.sons[0])
-  if f != InvalidFileIDX:
-    var m = gImportModule(c.module, f)
+  var m = myImportModule(c, n.sons[0])
+  if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
-    for i in countup(1, sonsLen(n) - 1): 
+    for i in countup(1, sonsLen(n) - 1):
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode = 
   result = n
   checkMinSonsLen(n, 2)
-  var f = checkModuleName(n.sons[0])
-  if f != InvalidFileIDX:
-    var m = gImportModule(c.module, f)
+  var m = myImportModule(c, n.sons[0])
+  if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
     var exceptSet = initIntSet()

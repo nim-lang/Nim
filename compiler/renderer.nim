@@ -448,6 +448,7 @@ proc lsub(n: PNode): int =
   of nkPragma: result = lcomma(n) + 4
   of nkCommentStmt: result = len(n.comment)
   of nkOfBranch: result = lcomma(n, 0, - 2) + lsub(lastSon(n)) + len("of_:_")
+  of nkImportAs: result = lsub(n.sons[0]) + len("_as_") + lsub(n.sons[1])
   of nkElifBranch: result = lsons(n) + len("elif_:_")
   of nkElse: result = lsub(n.sons[0]) + len("else:_")
   of nkFinally: result = lsub(n.sons[0]) + len("finally:_")
@@ -1191,6 +1192,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gcoms(g)
     gstmts(g, lastSon(n), c)
+  of nkImportAs:
+    gsub(g, n.sons[0])
+    put(g, tkSpaces, Space)
+    putWithSpace(g, tkAs, "as")
+    gsub(g, n.sons[1])
   of nkBindStmt: 
     putWithSpace(g, tkBind, "bind")
     gcomma(g, n, c)
