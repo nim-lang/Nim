@@ -11,7 +11,7 @@
 
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
-  wordrecg, parseutils, babelcmd
+  wordrecg, parseutils, babelcmd, idents
 
 proc writeCommandLineUsage*()
 
@@ -512,6 +512,13 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     gListFullPaths = true
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
+  of "cs":
+    expectArg(switch, arg, pass, info)
+    case arg
+    of "partial": idents.firstCharIsCS = true
+    of "none": idents.firstCharIsCS = false
+    else: LocalError(info, errGenerated,
+      "'partial' or 'none' expected, but found " & arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)
