@@ -208,7 +208,19 @@ proc removeTrailingDirSep*(path: string): string =
 proc getGeneratedPath: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
-  
+
+proc withPackageName*(path: string): string =
+  var x = path
+  while true:
+    x = parentDir(x)
+    if x.len == 0: break
+    case x.normalize
+    of "lib", "src", "source", "package", "pckg", "library": discard
+    else:
+      let (path, file, ext) = path.splitFile
+      return (path / (x & '_' & file)) & ext
+  result = path
+
 proc toGeneratedFile*(path, ext: string): string = 
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)

@@ -421,7 +421,8 @@ proc addStmt(w: PRodWriter, n: PNode) =
 proc writeRod(w: PRodWriter) = 
   processStacks(w, true)
   var f: TFile
-  if not open(f, completeGeneratedFilePath(changeFileExt(w.filename, "rod")),
+  if not open(f, completeGeneratedFilePath(changeFileExt(
+                      w.filename.withPackageName, RodExt)),
               fmWrite):
     #echo "couldn't write rod file for: ", w.filename
     return

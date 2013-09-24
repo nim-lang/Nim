@@ -162,10 +162,11 @@ var
   gNestedEvals: int  # count the recursive calls to ``evalAux`` to prevent
                      # endless recursion
 
-proc evalWhile(c: PEvalContext, n: PNode): PNode = 
-  while true: 
+proc evalWhile(c: PEvalContext, n: PNode): PNode =
+  while true:
     evalX(n.sons[0], {})
-    if getOrdValue(result) == 0: break
+    if getOrdValue(result) == 0:
+      result = emptyNode; break
     result = evalAux(c, n.sons[1], {})
     case result.kind
     of nkBreakStmt: 
@@ -304,7 +305,7 @@ proc allocSlot(c: PStackFrame; sym: PSym): int =
   setLen(c.slots, max(result+1, c.slots.len))
 
 proc setSlot(c: PStackFrame, sym: PSym, val: PNode) =
-  assert sym.owner == c.prc
+  assert sym.owner == c.prc or sfFromGeneric in sym.flags
   let idx = allocSlot(c, sym)
   c.slots[idx] = val
 
@@ -377,7 +378,7 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
   #result = emptyNode
 
 proc evalGlobalVar(c: PEvalContext, s: PSym, flags: TEvalFlags): PNode =
-  if sfCompileTime in s.flags or c.mode == emRepl:
+  if sfCompileTime in s.flags or c.mode == emRepl or s.kind == skForVar:
     result = IdNodeTableGet(c.globals, s)
     if result != nil: 
       if not aliasNeeded(result, flags): 
@@ -549,7 +550,9 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skProc, skConverter, skMacro, skType:
     result = n
     #result = s.getBody
-  of skVar, skLet, skForVar, skTemp, skResult:
+  of skForVar:
+    result = evalGlobalVar(c, s, flags)
+  of skVar, skLet, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
     else:
@@ -1396,7 +1399,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of nkChckRangeF, nkChckRange64, nkChckRange: result = evalRangeChck(c, n)
   of nkStringToCString: result = evalConvStrToCStr(c, n)
   of nkCStringToString: result = evalConvCStrToStr(c, n)
-  of nkStmtListExpr, nkStmtList, nkModule: 
+  of nkStmtListExpr, nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): 
       result = evalAux(c, n.sons[i], flags)
       case result.kind
@@ -1455,7 +1458,7 @@ proc evalConstExprAux*(p: PEvalContext, module, prc: PSym, e: PNode): PNode =
 
 proc setupMacroParam(x: PNode): PNode =
   result = x
-  if result.kind == nkHiddenStdConv: result = result.sons[1]
+  if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
 
 proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now

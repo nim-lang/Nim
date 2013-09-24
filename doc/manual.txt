@@ -2018,11 +2018,11 @@ Example:
 The `when`:idx: statement is almost identical to the ``if`` statement with some
 exceptions:
 
-* Each ``expr`` has to be a constant expression (of type ``bool``).
+* Each condition (``expr``) has to be a constant expression (of type ``bool``).
 * The statements do not open a new scope.
 * The statements that belong to the expression that evaluated to true are
   translated by the compiler, the other statements are not checked for
-  semantics! However, each ``expr`` is checked for semantics.
+  semantics! However, each condition is checked for semantics.
 
 The ``when`` statement enables conditional compilation techniques. As
 a special syntactic extension, the ``when`` construct is also available
@@ -2268,7 +2268,7 @@ A `table constructor`:idx: is syntactic sugar for an array constructor:
   {"key1": "value1", "key2", "key3": "value2"}
   
   # is the same as:
-  [("key1", "value1"), ("key2", "value2"), ("key3", "value")]
+  [("key1", "value1"), ("key2", "value2"), ("key3", "value2")]
 
 
 The empty table can be written ``{:}`` (in contrast to the empty set 
@@ -2565,9 +2565,6 @@ Overloading of the subscript operator
 -------------------------------------
 
 The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
-Overloading support is only possible if the first parameter has no type that
-already supports the built-in ``[]`` notation. Currently the compiler 
-does not check this restriction.
 
 
 Multi-methods
@@ -3301,12 +3298,10 @@ Specifically, the type class will be matched if:
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluatable boolean expressions in the body must be true
 
-Please note that the `is` operator allows you to easily verify the precise type
+Please note that the ``is`` operator allows you to easily verify the precise type
 signatures of the required operations, but since type inference and default
 parameters are still applied in the provided block, it's also possible to encode
 usage protocols that doesn't reveal implementation details.
-
-.. code-block:: nimrod
 
 Much like generics, the user defined type classes will be instantiated exactly
 once for each tested type and any static code included within them will also be
@@ -3327,7 +3322,7 @@ from the proc body. This is usually used with the ``auto`` type class:
 The return type will be treated as additional generic param and can be
 explicitly specified at call sites as any other generic param.
 
-Future versions of nimrod may also support overloading based on the return type
+Future versions of Nimrod may also support overloading based on the return type
 of the overloads. In such settings, the expected result type at call sites may 
 also influence the inferred return type.
 
@@ -3398,8 +3393,9 @@ templates:
 
 The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
 ``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
-description*). These are no real types, they just help the compiler parsing.
-Real types can be used too; this implies that expressions are expected.
+description*). These are "meta types", they can only be used in certain 
+contexts. Real types can be used too; this implies that expressions are 
+expected.
 
 
 Ordinary vs immediate templates
@@ -3868,7 +3864,7 @@ values inside containers and so on. For example, here is how one can create
 a type-safe wrapper for the unsafe `printf` function from C:
 
 .. code-block:: nimrod
-  macro safePrintF(formatString: string{lit}, args: vararg[expr]): expr =
+  macro safePrintF(formatString: string{lit}, args: varargs[expr]): expr =
     var i = 0
     for c in formatChars(formatString):
       var expectedType = case c
@@ -4196,10 +4192,10 @@ implemented with term rewriting:
   template optP2{p(x, y, false)}(x, y: expr): expr = x - y
 
 
-Example: hoisting
+Example: Hoisting
 -----------------
 
-The following example how some form of hoisting can be implemented:
+The following example shows how some form of hoisting can be implemented:
 
 .. code-block:: nimrod
   import pegs
@@ -4267,7 +4263,7 @@ optimization for types that have copying semantics:
 
   var t: TTable
   # overloading resolution ensures that the optimized []= is called here:
-  t["abc"] = "xyz"
+  t[f()] = g()
 
 
 
@@ -4324,6 +4320,36 @@ module name followed by an ``except`` to prevent some symbols to be imported:
 
   # doesn't work then:
   echo "$1" % "abc"
+
+
+Module names in imports
+~~~~~~~~~~~~~~~~~~~~~~~
+
+A module alias can be introduced via the ``as`` keyword:
+
+.. code-block:: nimrod
+  import strutils as su, sequtils as qu
+
+  echo su.format("$1", "lalelu")
+
+The original module name is then not accessible. The 
+notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"`` 
+can be used to refer to a module in subdirectories:
+
+.. code-block:: nimrod
+  import lib.pure.strutils, lib/pure/os, "lib/pure/times"
+
+Note that the module name is still ``strutils`` and not ``lib.pure.strutils``
+and so one **cannot** do:
+
+.. code-block:: nimrod
+  import lib.pure.strutils
+  echo lib.pure.strutils
+
+Likewise the following does not make sense as the name is ``strutils`` already:
+
+.. code-block:: nimrod
+  import lib.pure.strutils as strutils
 
 
 From import statement
@@ -5085,9 +5111,9 @@ string expressions in general:
 
   proc getDllName: string = 
     result = "mylib.dll"
-    if ExistsFile(result): return
+    if existsFile(result): return
     result = "mylib2.dll"
-    if ExistsFile(result): return
+    if existsFile(result): return
     quit("could not load dynamic library")
   
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}

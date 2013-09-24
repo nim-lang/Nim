@@ -104,11 +104,12 @@ exprStmt = simpleExpr
                           | IND{=} 'except' exprList ':' stmt
                           | IND{=} 'else' ':' stmt )*
            ))?
-importStmt = 'import' optInd expr
-              ((comma expr)*
+moduleName = expr ('as' expr)?
+importStmt = 'import' optInd moduleName
+              ((comma moduleName)*
               / 'except' optInd (expr ^+ comma))
 includeStmt = 'include' optInd expr ^+ comma
-fromStmt = 'from' expr 'import' optInd expr (comma expr)*
+fromStmt = 'from' moduleName 'import' optInd expr (comma expr)*
 returnStmt = 'return' optInd expr?
 raiseStmt = 'raise' optInd expr?
 yieldStmt = 'yield' optInd expr?

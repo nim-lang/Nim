@@ -1440,7 +1440,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
       skipComment(p, result)
       while sameInd(p):
         case p.tok.tokType
-        of tkSymbol, tkAccent: 
+        of tkSymbol, tkAccent, tkParLe: 
           var a = defparser(p)
           skipComment(p, a)
           addSon(result, a)

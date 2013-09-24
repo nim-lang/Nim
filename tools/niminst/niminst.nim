@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Installation Generator
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2013 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -52,10 +52,12 @@ type
     cat: array[TFileCategory, seq[string]]
     binPaths, authors, oses, cpus: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
+    platforms: array[1..maxOS, array[1..maxCPU, bool]]
     ccompiler, linker, innosetup: tuple[path, flags: string]
     name, displayName, version, description, license, infile, outdir: string
     libpath: string
     innoSetupFlag, installScript, uninstallScript: bool
+    explicitPlatforms: bool
     vars: PStringTable
     app: TAppType
     nimrodArgs: string
@@ -126,7 +128,7 @@ const
   Version = "0.9"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
-  (c) 2012 Andreas Rumpf
+  (c) 2013 Andreas Rumpf
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
@@ -221,6 +223,23 @@ proc yesno(p: var TCfgParser, v: string): bool =
     result = false
   else: quit(errorStr(p, "unknown value; use: yes|no"))
 
+proc incl(s: var seq[string], x: string): int =
+  for i in 0.. <s.len:
+    if cmpIgnoreStyle(s[i], x) == 0: return i
+  s.add(x)
+  result = s.len-1 
+
+proc platforms(c: var TConfigData, v: string) =
+  for line in splitLines(v):
+    let p = line.find(": ")
+    if p <= 1: continue
+    let os = line.substr(0, p-1).strip
+    let cpus = line.substr(p+1).strip
+    c.oses.add(os)
+    for cpu in cpus.split(';'):
+      let cpuIdx = c.cpus.incl(cpu)
+      c.platforms[c.oses.len][cpuIdx+1] = true
+
 proc parseIniFile(c: var TConfigData) =
   var
     p: TCfgParser
@@ -244,8 +263,19 @@ proc parseIniFile(c: var TConfigData) =
           of "name": c.name = v
           of "displayname": c.displayName = v
           of "version": c.version = v
-          of "os": c.oses = split(v, {';'})
-          of "cpu": c.cpus = split(v, {';'})
+          of "os": 
+            c.oses = split(v, {';'})
+            if c.explicitPlatforms:
+              quit(errorStr(p, "you cannot have both 'platforms' and 'os'"))
+          of "cpu": 
+            c.cpus = split(v, {';'})
+            if c.explicitPlatforms:
+              quit(errorStr(p, "you cannot have both 'platforms' and 'cpu'"))
+          of "platforms": 
+            platforms(c, v)
+            c.explicitPlatforms = true
+            if c.cpus.len > 0 or c.oses.len > 0:
+              quit(errorStr(p, "you cannot have both 'platforms' and 'os'"))
           of "authors": c.authors = split(v, {';'})
           of "description": c.description = v
           of "app":
@@ -409,6 +439,7 @@ proc srcdist(c: var TConfigData) =
     let osname = c.oses[osA-1]
     if osname.cmpIgnoreStyle("windows") == 0: winIndex = osA-1
     for cpuA in 1..c.cpus.len:
+      if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       let cpuname = c.cpus[cpuA-1]
       if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA-1
       elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA-1
