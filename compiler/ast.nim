@@ -131,7 +131,7 @@ type
     nkFormalParams,       # formal parameters
     nkOfInherit,          # inherited from symbol
 
-    nkModule,             # the syntax tree of a module
+    nkImportAs,           # a 'as' b in an import statement
     nkProcDef,            # a proc
     nkMethodDef,          # a method
     nkConverterDef,       # a converter
@@ -641,6 +641,11 @@ type
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count
       # of all previously used generics.
+      # For 'import as' we copy the module symbol but shallowCopy the 'tab'
+      # and set the 'usedGenerics' to ... XXX gah! Better set module.name
+      # instead? But this doesn't work either. --> We need an skModuleAlias?
+      # No need, just leave it as skModule but set the owner accordingly and
+      # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
     else: nil
@@ -1106,7 +1111,7 @@ proc copyType(t: PType, owner: PSym, keepId: bool): PType =
   
 proc copySym(s: PSym, keepId: bool = false): PSym = 
   result = newSym(s.kind, s.name, s.owner, s.info)
-  result.ast = nil            # BUGFIX; was: s.ast which made problems
+  #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   if keepId:
     result.id = s.id
@@ -1121,6 +1126,20 @@ proc copySym(s: PSym, keepId: bool = false): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+
+proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
+  result = newSym(s.kind, newIdent, s.owner, info)
+  # keep ID!
+  result.ast = s.ast
+  result.id = s.id
+  result.flags = s.flags
+  system.shallowCopy(result.tab, s.tab)
+  result.options = s.options
+  result.position = s.position
+  result.loc = s.loc
+  result.annex = s.annex
+  # XXX once usedGenerics is used, ensure module aliases keep working!
+  assert s.usedGenerics == nil
   
 proc newSym(symKind: TSymKind, Name: PIdent, owner: PSym,
             info: TLineInfo): PSym = 

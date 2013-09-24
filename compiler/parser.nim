@@ -1088,6 +1088,17 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(result, b)
         if b.kind == nkElse: break
 
+proc parseModuleName(p: var TParser, kind: TNodeKind): PNode =
+  result = parseExpr(p)
+  when false:
+    # parseExpr already handles 'as' syntax ...
+    if p.tok.tokType == tkAs and kind == nkImportStmt:
+      let a = result
+      result = newNodeP(nkImportAs, p)
+      getTok(p)
+      result.add(a)
+      result.add(parseExpr(p))
+
 proc parseImport(p: var TParser, kind: TNodeKind): PNode =
   #| importStmt = 'import' optInd expr
   #|               ((comma expr)*
@@ -1095,7 +1106,7 @@ proc parseImport(p: var TParser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   getTok(p)                   # skip `import` or `export`
   optInd(p, result)
-  var a = parseExpr(p)
+  var a = parseModuleName(p, kind)
   addSon(result, a)
   if p.tok.tokType in {tkComma, tkExcept}:
     if p.tok.tokType == tkExcept:
@@ -1104,10 +1115,10 @@ proc parseImport(p: var TParser, kind: TNodeKind): PNode =
     optInd(p, result)
     while true:
       # was: while p.tok.tokType notin {tkEof, tkSad, tkDed}:
-      a = parseExpr(p)
-      if a.kind == nkEmpty: break 
+      a = parseModuleName(p, kind)
+      if a.kind == nkEmpty: break
       addSon(result, a)
-      if p.tok.tokType != tkComma: break 
+      if p.tok.tokType != tkComma: break
       getTok(p)
       optInd(p, a)
   #expectNl(p)
@@ -1128,11 +1139,11 @@ proc parseIncludeStmt(p: var TParser): PNode =
   #expectNl(p)
 
 proc parseFromStmt(p: var TParser): PNode =
-  #| fromStmt = 'from' expr 'import' optInd expr (comma expr)*
+  #| fromStmt = 'from' moduleName 'import' optInd expr (comma expr)*
   result = newNodeP(nkFromStmt, p)
   getTok(p)                   # skip `from`
   optInd(p, result)
-  var a = parseExpr(p)
+  var a = parseModuleName(p, nkImportStmt)
   addSon(result, a)           #optInd(p, a);
   eat(p, tkImport)
   optInd(p, result)
