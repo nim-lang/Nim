@@ -451,6 +451,15 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = ropef(frmt, [x.rdLoc, y.rdLoc])
   r.kind = resExpr
 
+proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
+  var x, y, z: TCompRes
+  useMagic(p, magic)
+  gen(p, n.sons[1], x)
+  gen(p, n.sons[2], y)
+  gen(p, n.sons[3], z)
+  r.res = ropef(frmt, [x.rdLoc, y.rdLoc, z.rdLoc])
+  r.kind = resExpr
+
 proc unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   useMagic(p, magic)
   gen(p, n.sons[1], r)
@@ -1351,6 +1360,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEcho: genEcho(p, n, r)
   of mSlurp, mStaticExec:
     localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
+  of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2,-1))")
+  of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
+  of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
+  of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")    
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);

@@ -2,7 +2,6 @@ version 0.9.4
 =============
 
 - change search path algorithm to care about packages
-- XXX how can 'lib_system' ever be generated?
 - new VM:
   - implement the glue to replace evals.nim
   - implement missing magics
