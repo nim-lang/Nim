@@ -1,6 +1,8 @@
 version 0.9.4
 =============
 
+- change search path algorithm to care about packages
+- XXX how can 'lib_system' ever be generated?
 - new VM:
   - implement the glue to replace evals.nim
   - implement missing magics
@@ -20,7 +22,6 @@ version 0.9.4
 Bugs
 ====
 
-- 'quote' without 'do' doesn't work
 - compilation of niminst takes way too long. looks like a regression
 - simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice
@@ -46,6 +47,7 @@ version 0.9.x
   * test libffi on windows
   * test: times.format with the FFI
 - document NimMain and check whether it works for threading
+- 'quote' without 'do' doesn't work: parser/grammar issue; could be supported
 
 
 version 0.9.X
@@ -125,7 +127,7 @@ GC
 CGEN
 ====
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
-- ``restrict`` pragma + backend support; computed goto support
+- ``restrict`` pragma + backend support
 - 'const' objects including case objects
 
 

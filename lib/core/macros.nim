@@ -38,7 +38,7 @@ type
     nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange,
     nnkStringToCString, nnkCStringToString, nnkAsgn,
     nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit,
-    nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef,
+    nnkImportAs, nnkProcDef, nnkMethodDef, nnkConverterDef,
     nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch,
     nnkElifBranch, nnkExceptBranch, nnkElse,
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,

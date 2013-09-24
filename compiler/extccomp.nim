@@ -298,13 +298,13 @@ const
     gpp()]
 
 const
-  hExt* = "h"
+  hExt* = ".h"
 
 var
   cCompiler* = ccGcc # the used compiler
 
-  cExt* = "c" # extension of generated C/C++ files
-              # (can be changed to .cpp later)
+  cExt* = ".c" # extension of generated C/C++ files
+               # (can be changed to .cpp later)
   
   cIncludes*: seq[string] = @[]   # directories to search for included files
   cLibs*: seq[string] = @[]       # directories to search for lib files
@@ -518,7 +518,7 @@ proc footprint(filename: string): TCrc32 =
       getCompileCFileCmd(filename, true)
 
 proc externalFileChanged(filename: string): bool = 
-  var crcFile = toGeneratedFile(filename, "crc")
+  var crcFile = toGeneratedFile(filename.withPackageName, "crc")
   var currentCrc = int(footprint(filename))
   var f: TFile
   if open(f, crcFile, fmRead): 

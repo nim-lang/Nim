@@ -818,7 +818,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var r: PRodReader = nil
-  var rodfile = toGeneratedFile(filename, RodExt)
+  var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
   r = newRodReader(rodfile, crc, fileIdx)
   if r == nil: 
     result = (if ExistsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)

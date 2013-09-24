@@ -1210,7 +1210,7 @@ proc writeHeader(m: BModule) =
   writeRope(result, m.filename)
 
 proc getCFile(m: BModule): string =
-  result = changeFileExt(completeCFilePath(m.cfilename), cExt)
+  result = changeFileExt(completeCFilePath(m.cfilename.withPackageName), cExt)
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   assert optSymbolFiles in gGlobalOptions

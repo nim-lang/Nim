@@ -890,7 +890,7 @@ proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
 
 proc setupMacroParam(x: PNode): PNode =
   result = x
-  if result.kind == nkHiddenStdConv: result = result.sons[1]
+  if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
 
 proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
