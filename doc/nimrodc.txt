@@ -113,6 +113,30 @@ The default build of a project is a `debug build`:idx:. To compile a
   nimrod c -d:release myproject.nim
 
 
+Search path handling
+--------------------
+
+Nimrod has the concept of a global `search path`:idx: (PATH) that is queried to
+determine where to find imported modules or include files. If multiple files are
+found an ambiguity error is produced.
+
+``nimrod dump`` shows the contents of the PATH.
+
+However before the PATH is used the current directory is checked for the 
+file's existance. So if PATH contains ``$lib`` and ``$lib/bar`` and the 
+directory structure looks like this::
+
+  $lib/x.nim
+  $lib/bar/x.nim
+  foo/x.nim
+  foo/main.nim
+  other.nim
+
+And ``main`` imports ``x``, ``foo/x`` is imported. If ``other`` imports ``x``
+then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match and so the compiler
+rejects it.
+
+
 Generated C code directory
 --------------------------
 The generated files that Nimrod produces all go into a subdirectory called
@@ -485,6 +509,19 @@ The `volatile`:idx: pragma is for variables only. It declares the variable as
 in C/C++).
 
 **Note**: This pragma will not exist for the LLVM backend.
+
+
+DynlibOverride
+==============
+
+By default Nimrod's ``dynlib`` pragma causes the compiler to generate 
+``GetProcAddress`` (or their Unix counterparts)
+calls to bind to a DLL. With the `dynlibOverride`:idx: command line switch this
+can be prevented and then via ``--passL`` the static library can be linked
+against. For instance, to link statically against Lua this command might work
+on Linux::
+
+  nimrod c --dynlibOverride:lua --passL:liblua.lib program.nim
 
 
 Nimrod idetools integration
