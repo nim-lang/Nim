@@ -302,12 +302,12 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeB
     ["", "", "($1 < $2)", "($1 < $2)"], # LtB
     ["", "", "($1 == $2)", "($1 == $2)"], # EqRef
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
     ["", "", "($1 == $2)", "($1 == $2)"], # EqUntracedRef
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LePtr
     ["", "", "($1 < $2)", "($1 < $2)"], # LtPtr
     ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 != $2)", "($1 != $2)"], # Xor
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
     ["NegInt", "", "NegInt($1)", "-($1)"], # UnaryMinusI
     ["NegInt64", "", "NegInt64($1)", "-($1)"], # UnaryMinusI64
     ["AbsInt", "", "AbsInt($1)", "Math.abs($1)"], # AbsI
@@ -402,12 +402,12 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeB
     ["", "", "($1 < $2)", "($1 < $2)"], # LtB
     ["", "", "($1 == $2)", "($1 == $2)"], # EqRef
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
     ["", "", "($1 == $2)", "($1 == $2)"], # EqUntracedRef
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LePtr
     ["", "", "($1 < $2)", "($1 < $2)"], # LtPtr
     ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 != $2)", "($1 != $2)"], # Xor
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
     ["NegInt", "", "NegInt($1)", "-($1)"], # UnaryMinusI
     ["NegInt64", "", "NegInt64($1)", "-($1)"], # UnaryMinusI64
     ["AbsInt", "", "AbsInt($1)", "Math.abs($1)"], # AbsI
