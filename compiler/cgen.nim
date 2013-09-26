@@ -992,12 +992,15 @@ proc genMainProc(m: BModule) =
         gBreakpoints, mainModInit, toRope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
-  
-proc getInitName(m: PSym): PRope = 
-  result = ropeff("$1Init", "@$1Init", [toRope(m.name.s)])
 
-proc getDatInitName(m: PSym): PRope =
-  result = ropeff("$1DatInit", "@$1DatInit", [toRope(m.name.s)])
+proc getSomeInitName(m: PSym, suffix: string): PRope =
+  if {sfSystemModule, sfMainModule} * m.flags == {}:
+    result = m.info.toFullPath.getPackageName.mangle.toRope
+  result.app m.name.s
+  result.app suffix
+  
+proc getInitName(m: PSym): PRope = getSomeInitName(m, "Init")
+proc getDatInitName(m: PSym): PRope = getSomeInitName(m, "DatInit")
 
 proc registerModuleToMain(m: PSym) = 
   var
@@ -1167,7 +1170,7 @@ proc resetCgenModules* =
   for m in cgenModules(): resetModule(m)
 
 proc rawNewModule(module: PSym): BModule =
-  result = rawNewModule(module, module.filename)
+  result = rawNewModule(module, module.position.int32.toFullPath)
 
 proc newModule(module: PSym): BModule =
   # we should create only one cgen module for each module sym

@@ -48,7 +48,7 @@ proc getModuleName*(n: PNode): string =
 proc checkModuleName*(n: PNode): int32 =
   # This returns the full canonical path for a given module import
   let modulename = n.getModuleName
-  let fullPath = findModule(modulename)
+  let fullPath = findModule(modulename, n.info.toFullPath)
   if fullPath.len == 0:
     LocalError(n.info, errCannotOpenFile, modulename)
     result = InvalidFileIDX
