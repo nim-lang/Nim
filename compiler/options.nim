@@ -209,7 +209,7 @@ proc getGeneratedPath: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
 
-proc getPackageName(path: string): string =
+proc getPackageName*(path: string): string =
   var q = 1
   var b = 0
   if path[len(path)-1] in {dirsep, altsep}: q = 2
@@ -221,10 +221,11 @@ proc getPackageName(path: string): string =
         case x.normalize
         of "lib", "src", "source", "package", "pckg", "library": b = i
         else: return x
+  result = ""
 
 proc withPackageName*(path: string): string =
   let x = path.getPackageName
-  if x.isNil:
+  if x.len == 0:
     result = path
   else:
     let (p, file, ext) = path.splitFile
@@ -282,9 +283,13 @@ proc FindFile*(f: string): string {.procvar.} =
       if result.len == 0:
         result = f.toLower.rawFindFile2
 
-proc findModule*(modulename: string): string {.inline.} =
+proc findModule*(modulename, currentModule: string): string =
   # returns path to module
-  result = FindFile(AddFileExt(modulename, nimExt))
+  let m = addFileExt(modulename, nimExt)
+  let currentPath = currentModule.splitFile.dir
+  result = currentPath / m
+  if not existsFile(result):
+    result = FindFile(m)
 
 proc libCandidates*(s: string, dest: var seq[string]) = 
   var le = strutils.find(s, '(')

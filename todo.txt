@@ -1,7 +1,7 @@
 version 0.9.4
 =============
 
-- change search path algorithm to care about packages
+- add the code from the talk to examples or run tests
 - new VM:
   - implement the glue to replace evals.nim
   - implement missing magics

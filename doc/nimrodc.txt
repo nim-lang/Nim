@@ -134,7 +134,8 @@ directory structure looks like this::
 
 And ``main`` imports ``x``, ``foo/x`` is imported. If ``other`` imports ``x``
 then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match and so the compiler
-rejects it.
+should reject it. Currently however this check is not implemented and instead
+the first matching file is used.
 
 
 Generated C code directory

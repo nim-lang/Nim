@@ -34,6 +34,7 @@ type
     sstack: TSymSeq          # a stack of symbols to process
     tstack: TTypeSeq         # a stack of types to process
     files: TStringSeq
+    origFile: string
 
   PRodWriter = ref TRodWriter
 
@@ -81,6 +82,7 @@ proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter =
   result.converters = ""
   result.methods = ""
   result.init = ""
+  result.origFile = module.info.toFilename
   result.data = newStringOfCap(12_000)
   
 proc addModDep(w: PRodWriter, dep: string) =
@@ -91,7 +93,7 @@ const
   rodNL = "\x0A"
 
 proc addInclDep(w: PRodWriter, dep: string) =
-  var resolved = dep.findModule
+  var resolved = dep.findModule(w.module.info.toFullPath)
   encodeVInt(fileIdx(w, dep), w.inclDeps)
   add(w.inclDeps, " ")
   encodeVInt(crcFromFile(resolved), w.inclDeps)
@@ -433,6 +435,11 @@ proc writeRod(w: PRodWriter) =
   var id = "ID:"
   encodeVInt(w.module.id, id)
   f.write(id)
+  f.write(rodNL)
+
+  var orig = "ORIGFILE:"
+  encodeStr(w.origFile, orig)
+  f.write(orig)
   f.write(rodNL)
   
   var crc = "CRC:"

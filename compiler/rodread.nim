@@ -140,6 +140,7 @@ type
     memfile: TMemFile    # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
+    origFile: string
     inViewMode: bool
   
   PRodReader* = ref TRodReader
@@ -558,6 +559,9 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos)              # skip ':'
       r.moduleID = decodeVInt(r.s, r.pos)
       setID(r.moduleID)
+    of "ORIGFILE":
+      inc(r.pos)
+      r.origFile = decodeStr(r.s, r.pos)
     of "OPTIONS": 
       inc(r.pos)              # skip ':'
       r.options = cast[TOptions](int32(decodeVInt(r.s, r.pos)))
@@ -585,7 +589,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.line)
       while r.s[r.pos] != ')':
         let relativePath = decodeStr(r.s, r.pos)
-        let resolvedPath = relativePath.findModule
+        let resolvedPath = relativePath.findModule(r.origFile)
         let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
         r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
@@ -1036,6 +1040,10 @@ proc viewFile(rodfile: string) =
       r.moduleID = decodeVInt(r.s, r.pos)
       setID(r.moduleID)
       outf.writeln("ID:", $r.moduleID)
+    of "ORIGFILE":
+      inc(r.pos)
+      r.origFile = decodeStr(r.s, r.pos)
+      outf.writeln("ORIGFILE:", r.origFile)
     of "OPTIONS":
       inc(r.pos)              # skip ':'
       r.options = cast[TOptions](int32(decodeVInt(r.s, r.pos)))
@@ -1058,13 +1066,13 @@ proc viewFile(rodfile: string) =
         outf.write(" ", w)
         if r.s[r.pos] == ' ': inc(r.pos)
       outf.write("\n")
-    of "FILES": 
+    of "FILES":
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       outf.write("FILES(\n")
       while r.s[r.pos] != ')':
         let relativePath = decodeStr(r.s, r.pos)
-        let resolvedPath = relativePath.findModule
+        let resolvedPath = relativePath.findModule(r.origFile)
         let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
         r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
