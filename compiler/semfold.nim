@@ -315,7 +315,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mLtStr: result = newIntNodeT(ord(getStr(a) < getStr(b)), n)
   of mLeStr: result = newIntNodeT(ord(getStr(a) <= getStr(b)), n)
   of mEqStr: result = newIntNodeT(ord(getStr(a) == getStr(b)), n)
-  of mEqCString: result = newIntNodeT(ord(getStr(a) == getStr(b)), n)
   of mLtU, mLtU64: 
     result = newIntNodeT(ord(`<%`(getOrdValue(a), getOrdValue(b))), n)
   of mLeU, mLeU64: 
