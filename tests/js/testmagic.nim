@@ -5,6 +5,6 @@ discard """
 
 # This file tests some magic
 
-const foo = cstring("foo")
-const bar = cstring("foo")
+var foo = cstring("foo")
+var bar = cstring("foo")
 echo(foo == bar)
