@@ -402,6 +402,7 @@ proc main() =
     compileExample(r, "lib/pure/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/*.nim", p.cmdLineRest.string)
     compileExample(r, "examples/gtk/*.nim", p.cmdLineRest.string)
+    compileExample(r, "examples/talk/*.nim", p.cmdLineRest.string)
     compileSpecialTests(r, p.cmdLineRest.string)
     writeResults(compileJson, r)
   of "run":
