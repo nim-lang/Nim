@@ -244,6 +244,7 @@ proc parseIniFile(c: var TConfigData) =
   var
     p: TCfgParser
     section = ""
+    hasCpuOs = false
   var input = newFileStream(c.infile, fmRead)
   if input != nil:
     open(p, input, c.infile)
@@ -265,16 +266,18 @@ proc parseIniFile(c: var TConfigData) =
           of "version": c.version = v
           of "os": 
             c.oses = split(v, {';'})
+            hasCpuOs = true
             if c.explicitPlatforms:
               quit(errorStr(p, "you cannot have both 'platforms' and 'os'"))
           of "cpu": 
             c.cpus = split(v, {';'})
+            hasCpuOs = true
             if c.explicitPlatforms:
               quit(errorStr(p, "you cannot have both 'platforms' and 'cpu'"))
           of "platforms": 
             platforms(c, v)
             c.explicitPlatforms = true
-            if c.cpus.len > 0 or c.oses.len > 0:
+            if hasCpuOs:
               quit(errorStr(p, "you cannot have both 'platforms' and 'os'"))
           of "authors": c.authors = split(v, {';'})
           of "description": c.description = v
