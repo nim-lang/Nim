@@ -1,11 +1,6 @@
 version 0.9.4
 =============
 
-- fails in release mode:
-
-nimrod compile -f --symbolFiles:off --compileOnly --gen_mapping --cc:gcc
-  --skipUserCfg --os:haiku  --cpu:amd64  -d:relase  compiler/nimrod.nim
-
 - new VM:
   - implement the glue to replace evals.nim
   - implement missing magics

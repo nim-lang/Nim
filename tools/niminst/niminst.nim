@@ -410,6 +410,8 @@ proc writeFile(filename, content, newline: string) =
 proc removeDuplicateFiles(c: var TConfigData) =
   for osA in countdown(c.oses.len, 1):
     for cpuA in countdown(c.cpus.len, 1):
+      if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
+      if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       for i in 0..c.cfiles[osA][cpuA].len-1:
         var dup = c.cfiles[osA][cpuA][i]
         var f = extractFilename(dup)
@@ -440,12 +442,12 @@ proc srcdist(c: var TConfigData) =
   var intel64Index = -1
   for osA in 1..c.oses.len:
     let osname = c.oses[osA-1]
-    if osname.cmpIgnoreStyle("windows") == 0: winIndex = osA-1
+    if osname.cmpIgnoreStyle("windows") == 0: winIndex = osA
     for cpuA in 1..c.cpus.len:
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       let cpuname = c.cpus[cpuA-1]
-      if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA-1
-      elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA-1
+      if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA
+      elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if existsDir(dir): removeDir(dir)
       createDir(dir)
