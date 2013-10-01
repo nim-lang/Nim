@@ -1798,7 +1798,10 @@ proc parseStmt(p: var TParser): PNode =
         if p.tok.indent == p.currInd:
           nil
         elif p.tok.tokType == tkSemicolon:
-          while p.tok.tokType == tkSemicolon: getTok(p)
+          while p.tok.tokType == tkSemicolon:
+            getTok(p)
+            if p.tok.indent < 0 or p.tok.indent == p.currInd: discard
+            else: return
         else:
           if p.tok.indent > p.currInd:
             parMessage(p, errInvalidIndentation)
@@ -1851,7 +1854,10 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       else: parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
-    of tkSemicolon: getTok(p)
+    of tkSemicolon:
+      getTok(p)
+      if p.tok.indent <= 0: discard
+      else: parMessage(p, errInvalidIndentation)
     of tkEof: break
     else:
       result = complexOrSimpleStmt(p)
