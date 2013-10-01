@@ -46,10 +46,10 @@ const
   colorMask = 0b011
 type
   TWalkOp = enum
-    waZctDecRef, waPush, waCycleDecRef, waMarkGray, waScan, waScanBlack, 
-    waCollectWhite,
     waMarkGlobal,    # part of the backup/debug mark&sweep
     waMarkPrecise,   # part of the backup/debug mark&sweep
+    waZctDecRef, waPush, waCycleDecRef, waMarkGray, waScan, waScanBlack, 
+    waCollectWhite,
 
   TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall.}
     # A ref type can have a finalizer that is called before the object's
