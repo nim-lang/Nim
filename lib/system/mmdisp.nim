@@ -313,7 +313,7 @@ else:
     # XXX use 'compileOption' here
     include "system/gc_ms"
   elif defined(gcGenerational):
-    include "system/gc_genms"
+    include "system/gc"
   else:
     include "system/gc"
   

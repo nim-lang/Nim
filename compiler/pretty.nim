@@ -55,6 +55,10 @@ proc overwriteFiles*() =
     except EIO:
       rawMessage(errCannotOpenFile, newFile)
 
+proc `=~`(s: string, a: openArray[string]): bool =
+  for x in a:
+    if s.startsWith(x): return true
+
 proc beautifyName(s: string, k: TSymKind): string =
   result = newStringOfCap(s.len)
   var i = 0
@@ -64,7 +68,13 @@ proc beautifyName(s: string, k: TSymKind): string =
     when removeTP:
       if s[0] == 'T' and s[1] in {'A'..'Z'}:
         i = 1
-    result.add toUpper(s[i])
+    if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
+             "char", "byte", "bool", "openArray", "seq", "array", "void",
+             "pointer", "float", "csize", "cdouble", "cchar", "cschar",
+             "cshort", "cu"]:
+      result.add s[i]
+    else:
+      result.add toUpper(s[i])
   of skConst, skEnumField:
     # for 'const' we keep how it's spelt; either upper case or lower case:
     result.add s[0]

@@ -77,17 +77,6 @@ type
 
   TNumber* = TInteger|TReal
     ## type class matching all number types
-
-type
-  ## helper types for writing implicitly generic procs
-  T1* = expr
-  T2* = expr
-  T3* = expr
-  T4* = expr
-  T5* = expr
-  type1* = typedesc
-  type2* = typedesc
-  type3* = typedesc
   
 proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
   ## Special compile-time procedure that checks whether `x` is
@@ -2509,7 +2498,7 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
   
-proc InstantiationInfo*(index = -1, fullPaths = false): tuple[
+proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information.
   ##
@@ -2540,7 +2529,7 @@ proc InstantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     testException(EInvalidIndex, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
-template CurrentSourcePath*: string = InstantiationInfo(-1, true).filename
+template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
 
 proc raiseAssert*(msg: string) {.noinline.} =
@@ -2560,7 +2549,7 @@ template assert*(cond: bool, msg = "") =
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Use ``assert`` for debugging purposes only.
-  bind InstantiationInfo, hiddenRaiseAssert
+  bind instantiationInfo, hiddenRaiseAssert
   when compileOption("assertions"):
     {.line.}:
       if not cond:
@@ -2569,8 +2558,8 @@ template assert*(cond: bool, msg = "") =
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
-  bind InstantiationInfo
-  {.line: InstantiationInfo().}:
+  bind instantiationInfo
+  {.line: instantiationInfo().}:
     if not cond:
       raiseAssert(astToStr(cond) & ' ' & msg)
 
