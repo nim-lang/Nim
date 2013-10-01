@@ -25,6 +25,10 @@ const
                       # reaches this threshold
                       # this seems to be a good value
   withRealTime = defined(useRealtimeGC)
+  useMarkForDebug = defined(gcGenerational)
+  useBackupGc = false                     # use a simple M&S GC to collect
+                                          # cycles instead of the complex
+                                          # algorithm
 
 when withRealTime and not defined(getTicks):
   include "system/timers"
@@ -43,7 +47,9 @@ const
 type
   TWalkOp = enum
     waZctDecRef, waPush, waCycleDecRef, waMarkGray, waScan, waScanBlack, 
-    waCollectWhite
+    waCollectWhite,
+    waMarkGlobal,    # part of the backup/debug mark&sweep
+    waMarkPrecise,   # part of the backup/debug mark&sweep
 
   TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall.}
     # A ref type can have a finalizer that is called before the object's
@@ -71,6 +77,8 @@ type
       maxPause: TNanos       # max allowed pause in nanoseconds; active if > 0
     region: TMemRegion       # garbage collected region
     stat: TGcStat
+    when useMarkForDebug or useBackupGc:
+      marked: TCellSet
 
 var
   gch {.rtlThreadVar.}: TGcHeap
@@ -80,7 +88,7 @@ when not defined(useNimRtl):
 
 template acquire(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
-    AcquireSys(HeapLock)
+    acquireSys(HeapLock)
 
 template release(gch: TGcHeap) = 
   when hasThreadSupport and hasSharedHeap:
@@ -128,7 +136,7 @@ template setColor(c, col) =
   else:
     c.refcount = c.refCount and not colorMask or col
 
-proc writeCell(msg: CString, c: PCell) =
+proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
   if c.typ != nil: kind = ord(c.typ.kind)
   when leakDetector:
@@ -159,6 +167,8 @@ else:
   template `++`(x: expr): stmt = Inc(x, rcIncrement)
 
 proc prepareDealloc(cell: PCell) =
+  when useMarkForDebug:
+    gcAssert(cell notin gch.marked, "Cell still alive!")
   if cell.typ.finalizer != nil:
     # the finalizer could invoke something that
     # allocates memory; this could trigger a garbage
@@ -172,21 +182,21 @@ proc prepareDealloc(cell: PCell) =
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport and hasSharedHeap:
-    AcquireSys(HeapLock)
+    acquireSys(HeapLock)
   when cycleGC:
     if c.color != rcPurple:
       c.setColor(rcPurple)
       incl(gch.cycleRoots, c)
   when hasThreadSupport and hasSharedHeap:
-    ReleaseSys(HeapLock)
+    releaseSys(HeapLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport and hasSharedHeap:
-    AcquireSys(HeapLock)
+    acquireSys(HeapLock)
   addZCT(gch.zct, c)
   when hasThreadSupport and hasSharedHeap:
-    ReleaseSys(HeapLock)
+    releaseSys(HeapLock)
 
 proc decRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
@@ -249,7 +259,7 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
-  if not IsOnStack(dest):
+  if not isOnStack(dest):
     if src != nil: incRef(usrToCell(src))
     # XXX finally use assembler for the stack checking instead!
     # the test for '!= nil' is correct, but I got tired of the segfaults
@@ -277,6 +287,27 @@ proc initGC() =
     init(gch.tempStack)
     init(gch.cycleRoots)
     init(gch.decStack)
+    when useMarkForDebug or useBackupGc:
+      init(gch.marked)
+
+when useMarkForDebug or useBackupGc:
+  type
+    TGlobalMarkerProc = proc () {.nimcall.}
+  var
+    globalMarkersLen: int
+    globalMarkers: array[0.. 7_000, TGlobalMarkerProc]
+
+  proc nimRegisterGlobalMarker(markerProc: TGlobalMarkerProc) {.compilerProc.} =
+    if globalMarkersLen <= high(globalMarkers):
+      globalMarkers[globalMarkersLen] = markerProc
+      inc globalMarkersLen
+    else:
+      echo "[GC] cannot register global variable; too many global variables"
+      quit 1
+
+proc cellsetReset(s: var TCellSet) = 
+  deinit(s)
+  init(s)
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
@@ -534,7 +565,7 @@ proc collectWhite(s: PCell) =
     forAllChildren(s, waCollectWhite)
     freeCyclicCell(gch, s)
 
-proc MarkRoots(gch: var TGcHeap) =
+proc markRoots(gch: var TGcHeap) =
   var tabSize = 0
   for s in elements(gch.cycleRoots):
     #writeCell("markRoot", s)
@@ -547,6 +578,38 @@ proc MarkRoots(gch: var TGcHeap) =
       if s.refcount == 0:
         freeCyclicCell(gch, s)
   gch.stat.cycleTableSize = max(gch.stat.cycleTableSize, tabSize)
+
+when useBackupGc:
+  proc sweep(gch: var TGcHeap) =
+    for x in allObjects(gch.region):
+      if isCell(x):
+        # cast to PCell is correct here:
+        var c = cast[PCell](x)
+        if c notin gch.marked: freeCyclicCell(gch, c)
+
+when useMarkForDebug or useBackupGc:
+  proc markS(gch: var TGcHeap, c: PCell) =
+    incl(gch.marked, c)
+    gcAssert gch.tempStack.len == 0, "stack not empty!"
+    forAllChildren(c, waMarkPrecise)
+    while gch.tempStack.len > 0:
+      dec gch.tempStack.len
+      var d = gch.tempStack.d[gch.tempStack.len]
+      if not containsOrIncl(gch.marked, d):
+        forAllChildren(d, waMarkPrecise)
+
+  proc markGlobals(gch: var TGcHeap) =
+    for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+
+  proc stackMarkS(gch: var TGcHeap, p: pointer) {.inline.} =
+    # the addresses are not as cells on the stack, so turn them to cells:
+    var cell = usrToCell(p)
+    var c = cast[TAddress](cell)
+    if c >% PageSize:
+      # fast check: does it look like a cell?
+      var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
+      if objStart != nil:
+        markS(gch, objStart)
 
 proc doOperation(p: pointer, op: TWalkOp) =
   if p == nil: return
@@ -580,11 +643,25 @@ proc doOperation(p: pointer, op: TWalkOp) =
     if c.color != rcBlack:
       scanBlack(c)
   of waCollectWhite: collectWhite(c)
+  of waMarkGlobal:
+    when useMarkForDebug or useBackupGc:
+      when hasThreadSupport:
+        # could point to a cell which we don't own and don't want to touch/trace
+        if isAllocatedPtr(gch.region, c):
+          markS(gch, c)
+      else:
+        markS(gch, c)
+  of waMarkPrecise:
+    when useMarkForDebug or useBackupGc:
+      add(gch.tempStack, c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, TWalkOp(op))
 
 proc CollectZCT(gch: var TGcHeap): bool
+
+when useMarkForDebug or useBackupGc:
+  proc markStackAndRegistersForSweep(gch: var TGcHeap) {.noinline, cdecl.}
 
 proc collectRoots(gch: var TGcHeap) =
   for s in elements(gch.cycleRoots):
@@ -594,13 +671,18 @@ proc collectRoots(gch: var TGcHeap) =
 proc collectCycles(gch: var TGcHeap) =
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
-  markRoots(gch)
-  # scanRoots:
-  for s in elements(gch.cycleRoots): scan(s)
-  collectRoots(gch)
+  when useBackupGc:
+    cellsetReset(gch.marked)
+    markStackAndRegistersForSweep(gch)
+    markGlobals(gch)
+    sweep(gch)
+  else:
+    markRoots(gch)
+    # scanRoots:
+    for s in elements(gch.cycleRoots): scan(s)
+    collectRoots(gch)
 
-  Deinit(gch.cycleRoots)
-  Init(gch.cycleRoots)
+    cellsetReset(gch.cycleRoots)
   # alive cycles need to be kept in 'cycleRoots' if they are referenced
   # from the stack; otherwise the write barrier will add the cycle root again
   # anyway:
@@ -695,7 +777,7 @@ when defined(sparc): # For SPARC architecture.
     var x = cast[TAddress](p)
     result = a <=% x and x <=% b
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     when defined(sparcv9):
       asm  """"flushw \n" """
     else:
@@ -731,7 +813,7 @@ elif stackIncreases:
       # a little hack to get the size of a TJmpBuf in the generated C code
       # in a platform independant way
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     var registers: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[TAddress](gch.stackBottom)
@@ -754,7 +836,7 @@ else:
     var x = cast[TAddress](p)
     result = a <=% x and x <=% b
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     # We use a jmp_buf buffer that is in the C stack.
     # Used to traverse the stack and registers assuming
     # that 'setjmp' will save registers in the C stack.
@@ -778,12 +860,19 @@ else:
       while sp <=% max:
         gcMark(gch, cast[ppointer](sp)[])
         sp = sp +% sizeof(pointer)
+    
+proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  forEachStackSlot(gch, gcMark)
+
+when useMarkForDebug or useBackupGc:
+  proc markStackAndRegistersForSweep(gch: var TGcHeap) =
+    forEachStackSlot(gch, stackMarkS)
 
 # ----------------------------------------------------------------------------
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc CollectZCT(gch: var TGcHeap): bool =
+proc collectZCT(gch: var TGcHeap): bool =
   # Note: Freeing may add child objects to the ZCT! So essentially we do 
   # deep freeing, which is bad for incremental operation. In order to 
   # avoid a deep stack, we move objects to keep the ZCT small.
@@ -880,10 +969,19 @@ proc collectCTBody(gch: var TGcHeap) =
       if gch.maxPause > 0 and duration > gch.maxPause:
         c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
 
+when useMarkForDebug or useBackupGc:
+  proc markForDebug(gch: var TGcHeap) =
+    markStackAndRegistersForSweep(gch)
+    markGlobals(gch)
+
 proc collectCT(gch: var TGcHeap) =
   if (gch.zct.len >= ZctThreshold or (cycleGC and
       getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and 
       gch.recGcLock == 0:
+    when useMarkForDebug:
+      prepareForInteriorPointerChecking(gch.region)
+      cellsetReset(gch.marked)
+      markForDebug(gch)
     collectCTBody(gch)
 
 when withRealtime:

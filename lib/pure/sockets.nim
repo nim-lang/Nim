@@ -11,11 +11,11 @@
 ## of sockets. Sockets are buffered by default meaning that data will be
 ## received in ``BufferSize`` (4000) sized chunks, buffering
 ## behaviour can be disabled by setting the ``buffered`` parameter when calling
-## the ``socket`` function to `False`. Be aware that some functions may not yet
+## the ``socket`` function to `false`. Be aware that some functions may not yet
 ## support buffered sockets (mainly the recvFrom function).
 ##
 ## Most procedures raise EOS on error, but some may return ``-1`` or a boolean
-## ``False``.
+## ``false``.
 ##
 ## SSL is supported through the OpenSSL library. This support can be activated
 ## by compiling with the ``-d:ssl`` switch. When an SSL socket is used it will
