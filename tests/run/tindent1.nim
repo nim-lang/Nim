@@ -1,3 +1,6 @@
+discard """
+  output: '''Success'''
+"""
 
 const romanNumbers1 =
     [
@@ -22,3 +25,18 @@ const romanNumbers4 = [
     ]
 
 
+proc main =
+  var j = 0
+  while j < 10:
+    inc(j);
+
+  if j == 5: doAssert false
+
+var j = 0
+while j < 10:
+  inc(j);
+
+if j == 5: doAssert false
+
+main()
+echo "Success"
