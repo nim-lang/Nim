@@ -1798,10 +1798,9 @@ proc parseStmt(p: var TParser): PNode =
         if p.tok.indent == p.currInd:
           nil
         elif p.tok.tokType == tkSemicolon:
-          while p.tok.tokType == tkSemicolon:
-            getTok(p)
-            if p.tok.indent < 0 or p.tok.indent == p.currInd: discard
-            else: return
+          getTok(p)
+          if p.tok.indent < 0 or p.tok.indent == p.currInd: discard
+          else: break
         else:
           if p.tok.indent > p.currInd:
             parMessage(p, errInvalidIndentation)
