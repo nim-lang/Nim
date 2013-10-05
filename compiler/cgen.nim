@@ -761,6 +761,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       if skipTypes(res.typ, abstractInst).kind == tyArray: 
         incl(res.loc.flags, lfIndirect)
         res.loc.s = OnUnknown
+    
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
     var param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
@@ -768,7 +769,9 @@ proc genProcAux(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: PRope
-  if sfPure in prc.flags: 
+  if sfPure in prc.flags:
+    if hasNakedDeclspec in extccomp.CC[extccomp.ccompiler].props:
+      header = con("__declspec(naked) ", header)
     generatedProc = rfmt(nil, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
   else:
@@ -801,8 +804,11 @@ proc genProcPrototype(m: BModule, sym: PSym) =
       app(m.s[cfsVars], rfmt(nil, "extern $1 $2;$n",
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
-  elif not ContainsOrIncl(m.declaredProtos, sym.id): 
-    app(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", genProcHeader(m, sym)))
+  elif not ContainsOrIncl(m.declaredProtos, sym.id):
+    var header = genProcHeader(m, sym)
+    if sfPure in sym.flags and hasNakedAttribute in CC[ccompiler].props:
+      header.app(" __attribute__((naked))")
+    app(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) = 
   fillProcLoc(prc)

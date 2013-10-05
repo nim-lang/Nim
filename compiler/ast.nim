@@ -387,7 +387,7 @@ type
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires inititalization
     tfHasShared,      # type constains a "shared" constraint modifier somewhere
-    tfHasMeta,        # type has "typedesc" or "expr" somewhere
+    tfHasMeta,        # type has "typedesc" or "expr" somewhere; or uses '|'
     tfHasGCedMem,     # type contains GC'ed memory
 
   TTypeFlags* = set[TTypeFlag]
@@ -1210,7 +1210,7 @@ proc newSons(father: PNode, length: int) =
     setlen(father.sons, length)
 
 proc propagateToOwner*(owner, elem: PType) =
-  const HaveTheirOwnEmpty =  {tySequence, tySet}
+  const HaveTheirOwnEmpty = {tySequence, tySet}
   owner.flags = owner.flags + (elem.flags * {tfHasShared, tfHasMeta,
                                              tfHasGCedMem})
   if tfNotNil in elem.flags:

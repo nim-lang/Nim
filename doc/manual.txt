@@ -4671,8 +4671,10 @@ NoStackFrame pragma
 -------------------
 A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
-statements like ``return result;`` generated. This is useful for procs that 
-only consist of an assembler statement.
+statements like ``return result;`` generated and the generated C function is
+declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
+the used C compiler). This is useful for procs that only consist of an
+assembler statement.
 
 
 error pragma
