@@ -333,13 +333,11 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     result = toNil
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
-      case it.kind
-      of nkElifExpr:
+      if it.len == 2:
         discard analyse(c, it.sons[0])
         aggregateOwner(result, analyse(c, it.sons[1]))
-      of nkElseExpr:
+      else:
         aggregateOwner(result, analyse(c, it.sons[0]))
-      else: internalError(n.info, "analyseIfExpr()")
   of nkStmtListExpr, nkBlockExpr:
     var n = if n.kind == nkBlockExpr: n.sons[1] else: n
     var L = sonsLen(n)

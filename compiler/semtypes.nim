@@ -924,6 +924,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result.addSonSkipIntLit(t1)
           result.addSonSkipIntLit(t2)
           result.flags.incl(if op.id == ord(wAnd): tfAll else: tfAny)
+          result.flags.incl(tfHasMeta)
       elif op.id == ord(wNot):
         checkSonsLen(n, 3)
         result = semTypeNode(c, n.sons[1], prev)

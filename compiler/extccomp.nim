@@ -23,7 +23,9 @@ type
     hasCpp,                   # CC is/contains a C++ compiler
     hasAssume,                # CC has __assume (Visual C extension)
     hasGcGuard,               # CC supports GC_GUARD to keep stack roots
-    hasGnuAsm                 # CC's asm uses the absurd GNU assembler syntax
+    hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
+    hasNakedDeclspec,         # CC has __declspec(naked)
+    hasNakedAttribute         # CC has __attribute__((naked))
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -73,7 +75,8 @@ compiler gcc:
     debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
-    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm})
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
+            hasNakedAttribute})
     
 compiler gpp:
   result = gcc()
@@ -120,7 +123,7 @@ compiler vcc:
     debug: " /GZ /Zi ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
-    props: {hasCpp, hasAssume})
+    props: {hasCpp, hasAssume, hasNakedDeclspec})
 
 compiler icl:
   # Intel compilers try to imitate the native ones (gcc and msvc)

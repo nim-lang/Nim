@@ -211,6 +211,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
     result = ReplaceTypeVarsT(cl, lastSon(t))
   of tyInt:
     result = skipIntLit(t)
+    # XXX now there are also float literals
   else:
     if t.kind == tyArray:
       let idxt = t.sons[0]
