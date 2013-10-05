@@ -1001,7 +1001,7 @@ proc scale*(p:var TPoint3d,fac:float) {.inline.}=
 proc scale*(p:var TPoint3d,fac:float,org:TPoint3d){.inline.}=
   ## Scales the point in place `fac` times with `org` as origin.
   p.x=(p.x - org.x) * fac + org.x
-  p.y=(p.x - org.y) * fac + org.y
+  p.y=(p.y - org.y) * fac + org.y
   p.z=(p.z - org.z) * fac + org.z
 
 proc stretch*(p:var TPoint3d,facx,facy,facz:float){.inline.}=
