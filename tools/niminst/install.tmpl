@@ -7,7 +7,7 @@ set -e
 
 if [ $# -eq 1 ] ; then
 # if c.cat[fcUnixBin].len > 0:
-  if test -f ?{c.cat[fcUnixBin][0].slashify}
+  if test -f ?{c.cat[fcUnixBin][0].toUnix}
   then 
     echo "?c.displayName build detected"
   else
@@ -65,35 +65,35 @@ if [ $# -eq 1 ] ; then
 #      mk = unixDirVars[cat] & "/" & mk
 #      if not createdDirs.hasKey(mk):
 #        createdDirs[mk] = "true"
-  mkdir -p ?{mk.slashify}
+  mkdir -p ?{mk.toUnix}
 #      end if
 #    end if
 #  end for
 #end for
 
 #for f in items(c.cat[fcUnixBin]):
-  cp ?f.slashify $bindir/?f.skipRoot.slashify
-  chmod 755 $bindir/?f.skipRoot.slashify
+  cp ?f.toUnix $bindir/?f.skipRoot.toUnix
+  chmod 755 $bindir/?f.skipRoot.toUnix
 #end for
 #for f in items(c.cat[fcConfig]): 
-  cp ?f.slashify $configdir/?f.skipRoot.slashify
-  chmod 644 $configdir/?f.skipRoot.slashify
+  cp ?f.toUnix $configdir/?f.skipRoot.toUnix
+  chmod 644 $configdir/?f.skipRoot.toUnix
 #end for
 #for f in items(c.cat[fcData]): 
-  if [ -f ?f.slashify ]; then
-    cp ?f.slashify $datadir/?f.skipRoot.slashify
-    chmod 644 $datadir/?f.skipRoot.slashify
+  if [ -f ?f.toUnix ]; then
+    cp ?f.toUnix $datadir/?f.skipRoot.toUnix
+    chmod 644 $datadir/?f.skipRoot.toUnix
   fi
 #end for
 #for f in items(c.cat[fcDoc]):
-  if [ -f ?f.slashify ]; then
-    cp ?f.slashify $docdir/?f.skipRoot.slashify
-    chmod 644 $docdir/?f.skipRoot.slashify
+  if [ -f ?f.toUnix ]; then
+    cp ?f.toUnix $docdir/?f.skipRoot.toUnix
+    chmod 644 $docdir/?f.skipRoot.toUnix
   fi
 #end for
 #for f in items(c.cat[fcLib]):
-  cp ?f.slashify $libdir/?f.skipRoot.slashify
-  chmod 644 $libdir/?f.skipRoot.slashify
+  cp ?f.toUnix $libdir/?f.skipRoot.toUnix
+  chmod 644 $libdir/?f.skipRoot.toUnix
 #end for
   
   echo "installation successful"

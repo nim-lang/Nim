@@ -35,7 +35,7 @@ LINK_FLAGS="?{c.linker.flags}"
 ucpu=`uname -m`
 uos=`uname`
 #  add(result, "# bin dir detection\n")
-binDir=?{firstBinPath(c).slashify}
+binDir=?{firstBinPath(c).toUnix}
 
 if [ -s ../koch.nim ]; then
   binDir="../bin"
@@ -127,9 +127,9 @@ case $myos in
   ?{c.cpus[cpuA-1]})
 #      var linkCmd = ""
 #      for ff in items(c.cfiles[osA][cpuA]):
-#        let f = ff.slashify
-    echo "$CC $COMP_FLAGS -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}"
-    $CC $COMP_FLAGS -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
+#        let f = ff.toUnix
+    echo "$CC $COMP_FLAGS -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}"
+    $CC $COMP_FLAGS -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
     echo "$LINKER -o ?{"$binDir"/toLower(c.name)} ?linkCmd $LINK_FLAGS"

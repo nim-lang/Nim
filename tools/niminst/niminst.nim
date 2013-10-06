@@ -104,8 +104,8 @@ proc firstBinPath(c: TConfigData): string =
 proc `\`(a, b: string): string =
   result = if a.len == 0: b else: a & '\\' & b
 
-proc slashify(s: string): string =
-  when defined(unix): s.replace('\\', '/') else: s.replace('/', '\\')
+template toUnix(s: string): string = s.replace('\\', '/')
+template toWin(s: string): string = s.replace('/', '\\')
 
 proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
@@ -392,7 +392,7 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
     quit("Cannot open: " & f)
 
 proc buildDir(os, cpu: int): string =
-  return "src" / ($os & "_" & $cpu)
+  return "nimcache" / ($os & "_" & $cpu)
 
 proc getOutputDir(c: var TConfigData): string =
   if c.outdir.len > 0: c.outdir else: "build"
@@ -432,11 +432,11 @@ proc writeInstallScripts(c: var TConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
 
 proc srcdist(c: var TConfigData) =
-  if not existsDir(getOutputDir(c) / "src"):
-    createDir(getOutputDir(c) / "src")
+  if not existsDir(getOutputDir(c) / "nimcache"):
+    createDir(getOutputDir(c) / "nimcache")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    echo(getOutputDir(c) / "src" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "src" / extractFilename(x), source=x)
+    echo(getOutputDir(c) / "nimcache" / extractFilename(x))
+    copyFile(dest=getOutputDir(c) / "nimcache" / extractFilename(x), source=x)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
