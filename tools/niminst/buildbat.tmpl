@@ -5,7 +5,7 @@ SET CC=gcc
 SET LINKER=gcc
 SET COMP_FLAGS=?{c.ccompiler.flags}
 SET LINK_FLAGS=?{c.linker.flags}
-SET BIN_DIR=?{firstBinPath(c).slashify}
+SET BIN_DIR=?{firstBinPath(c).toWin}
 
 if EXIST ..\koch.nim SET BIN_DIR=..\bin
 
@@ -16,9 +16,9 @@ REM call the compiler:
 #  block win32:
 #    var linkCmd = ""
 #    for ff in items(c.cfiles[winIndex][cpuIndex]):
-#      let f = ff.slashify
-ECHO %CC% %COMP_FLAGS% -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
-%CC% %COMP_FLAGS% -Isrc -c ?{f} -o ?{changeFileExt(f, "o")}
+#      let f = ff.toWin
+ECHO %CC% %COMP_FLAGS% -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
+%CC% %COMP_FLAGS% -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
 #      linkCmd.add(" " & changeFileExt(f, "o"))
 #    end for
 

@@ -40,11 +40,11 @@ if [ $# -eq 1 ] ; then
   echo "removing files..."
 
 #for ff in items(c.cat[fcUnixBin]):
-  #let f = ff.slashify
+  #let f = ff.toUnix
   rm -f $bindir/?f.skipRoot
 #end for
 #for ff in items(c.cat[fcConfig]): 
-  #let f = ff.slashify
+  #let f = ff.toUnix
   rm -f $configdir/?f.skipRoot
 #end for
   rm -rf $docdir
