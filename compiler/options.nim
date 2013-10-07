@@ -219,8 +219,10 @@ proc getPackageName*(path: string): string =
       else:
         let x = path.substr(i+1, b-1)
         case x.normalize
-        of "lib", "src", "source", "package", "pckg", "library": b = i
-        else: return x
+        of "lib", "src", "source", "package", "pckg", "library", "private":
+          b = i
+        else:
+          return x.replace('.', '_')
   result = ""
 
 proc withPackageName*(path: string): string =
