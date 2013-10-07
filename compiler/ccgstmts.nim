@@ -856,7 +856,11 @@ proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
   var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
-  lineF(p, cpsStmts, CC[ccompiler].asmStmtFrmt, [s])
+  if p.prc == nil:
+    # top level asm statement?
+    appf(p.module.s[cfsProcHeaders], CC[ccompiler].asmStmtFrmt, [s])
+  else:
+    lineF(p, cpsStmts, CC[ccompiler].asmStmtFrmt, [s])
 
 proc genEmit(p: BProc, t: PNode) = 
   genLineDir(p, t)
