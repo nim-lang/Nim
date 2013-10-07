@@ -132,8 +132,8 @@ case $myos in
     $CC $COMP_FLAGS -Inimcache -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
-    echo "$LINKER -o ?{"$binDir"/toLower(c.name)} ?linkCmd $LINK_FLAGS"
-    $LINKER -o ?{"$binDir"/toLower(c.name)} ?linkCmd $LINK_FLAGS
+    echo "$LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS"
+    $LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)
