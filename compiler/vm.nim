@@ -231,11 +231,11 @@ proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   #c.echoCode
 
-proc execute(c: PCtx, start: int) =
+proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
   var pc = start
+  var tos = tos
   var regs: TNodeSeq # alias to tos.slots for performance
-  var tos: PStackFrame
-  newSeq(regs, c.prc.maxSlots)
+  move(regs, tos.slots)
   while true:
     {.computedGoto.}
     let instr = c.code[pc]
@@ -841,6 +841,13 @@ proc execute(c: PCtx, start: int) =
       regs[ra].strVal = typ.typeToString(preferExported)
     inc pc
 
+proc execute(c: PCtx, start: int) =
+  var pc = start
+  var regs: TNodeSeq # alias to tos.slots for performance
+  var tos: PStackFrame
+  newSeq(tos.slots, c.prc.maxSlots)
+  rawExecute(c, start, tos)
+
 proc evalStmt*(c: PCtx, n: PNode) =
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
@@ -891,6 +898,9 @@ proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
 proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
+
+type
+  PEvalContext* = PCtx
 
 proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
