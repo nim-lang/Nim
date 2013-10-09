@@ -842,9 +842,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
     inc pc
 
 proc execute(c: PCtx, start: int) =
-  var pc = start
-  var regs: TNodeSeq # alias to tos.slots for performance
-  var tos: PStackFrame
+  var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   rawExecute(c, start, tos)
 
@@ -899,9 +897,6 @@ proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
 
-type
-  PEvalContext* = PCtx
-
 proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
   inc(evalTemplateCounter)
@@ -909,21 +904,21 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
     GlobalError(n.info, errTemplateInstantiationTooNested)
 
   c.callsite = nOrig
-  var s = newStackFrame()
-  s.call = n
-  s.prc = sym
+  let body = optBody(c, sym)
+  let start = genStmt(c, body)
+
+  var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
+  newSeq(tos.slots, c.prc.maxSlots)
+  # setup arguments:
   var L = n.safeLen
   if L == 0: L = 1
-  setlen(s.slots, L)
+  InternalAssert tos.slots.len >= L
   # return value:
-  s.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
+  tos.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1 .. < L: s.slots[i] = setupMacroParam(n.sons[i])
-  pushStackFrame(c, s)
-  discard eval(c, optBody(c, sym))
-  result = s.slots[0]
-  popStackFrame(c)
+  for i in 1 .. < L: tos.slots[i] = setupMacroParam(n.sons[i])
+  rawExecute(c, start, tos)
+  result = tos.slots[0]
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   dec(evalTemplateCounter)
   c.callsite = nil
-
