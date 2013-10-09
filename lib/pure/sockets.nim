@@ -1605,8 +1605,8 @@ when defined(Windows):
   const
     IOCPARM_MASK = 127
     IOC_IN = int(-2147483648)
-    FIONBIO = int(IOC_IN or ((sizeof(int) and IOCPARM_MASK) shl 16) or 
-                             (102 shl 8) or 126)
+    FIONBIO = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
+                             (102 shl 8) or 126
 
   proc ioctlsocket(s: TWinSocket, cmd: clong, 
                    argptr: ptr clong): cint {.
