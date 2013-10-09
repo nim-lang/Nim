@@ -1,6 +1,6 @@
 
 import 
-  x, xlib, keysym
+  x, xlib, keysym, unsigned
 
 #const 
 #  libX11* = "libX11.so"
@@ -356,57 +356,59 @@ proc XWMGeometry*(para1: PDisplay, para2: cint, para3: cstring, para4: cstring,
     dynlib: libX11, importc.}
 proc XXorRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.cdecl, 
     dynlib: libX11, importc.}
-when defined(MACROS): 
-  proc XDestroyImage*(ximage: PXImage): cint
-  proc XGetPixel*(ximage: PXImage, x, y: cint): culong
-  proc XPutPixel*(ximage: PXImage, x, y: cint, pixel: culong): cint
-  proc XSubImage*(ximage: PXImage, x, y: cint, width, height: cuint): PXImage
-  proc XAddPixel*(ximage: PXImage, value: clong): cint
-  proc IsKeypadKey*(keysym: TKeySym): bool
-  proc IsPrivateKeypadKey*(keysym: TKeySym): bool
-  proc IsCursorKey*(keysym: TKeySym): bool
-  proc IsPFKey*(keysym: TKeySym): bool
-  proc IsFunctionKey*(keysym: TKeySym): bool
-  proc IsMiscFunctionKey*(keysym: TKeySym): bool
-  proc IsModifierKey*(keysym: TKeySym): bool
-    #function XUniqueContext : TXContext;
-    #function XStringToContext(_string : Pchar) : TXContext;
+#when defined(MACROS): 
+proc XDestroyImage*(ximage: PXImage): cint
+proc XGetPixel*(ximage: PXImage, x, y: cint): culong
+proc XPutPixel*(ximage: PXImage, x, y: cint, pixel: culong): cint
+proc XSubImage*(ximage: PXImage, x, y: cint, width, height: cuint): PXImage
+proc XAddPixel*(ximage: PXImage, value: clong): cint
+proc IsKeypadKey*(keysym: TKeySym): bool
+proc IsPrivateKeypadKey*(keysym: TKeySym): bool
+proc IsCursorKey*(keysym: TKeySym): bool
+proc IsPFKey*(keysym: TKeySym): bool
+proc IsFunctionKey*(keysym: TKeySym): bool
+proc IsMiscFunctionKey*(keysym: TKeySym): bool
+proc IsModifierKey*(keysym: TKeySym): bool
+  #function XUniqueContext : TXContext;
+  #function XStringToContext(_string : Pchar) : TXContext;
 # implementation
 
-when defined(MACROS): 
-  proc XDestroyImage(ximage: PXImage): cint = 
-    XDestroyImage = ximage[] .f.destroy_image(ximage)
+#when defined(MACROS): 
+proc XDestroyImage(ximage: PXImage): cint = 
+  ximage.f.destroy_image(ximage)
 
-  proc XGetPixel(ximage: PXImage, x, y: cint): culong = 
-    XGetPixel = ximage[] .f.get_pixel(ximage, x, y)
+proc XGetPixel(ximage: PXImage, x, y: cint): culong = 
+  ximage.f.get_pixel(ximage, x, y)
 
-  proc XPutPixel(ximage: PXImage, x, y: cint, pixel: culong): cint = 
-    XPutPixel = ximage[] .f.put_pixel(ximage, x, y, pixel)
+proc XPutPixel(ximage: PXImage, x, y: cint, pixel: culong): cint = 
+  ximage.f.put_pixel(ximage, x, y, pixel)
 
-  proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage = 
-    XSubImage = ximage[] .f.sub_image(ximage, x, y, width, height)
+proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage = 
+  ximage.f.sub_image(ximage, x, y, width, height)
 
-  proc XAddPixel(ximage: PXImage, value: clong): cint = 
-    XAddPixel = ximage[] .f.add_pixel(ximage, value)
+proc XAddPixel(ximage: PXImage, value: clong): cint = 
+  ximage.f.add_pixel(ximage, value)
 
-  proc IsKeypadKey(keysym: TKeySym): bool = 
-    IsKeypadKey = (keysym >= XK_KP_Space) and (keysym <= XK_KP_Equal)
+converter toInt (some: TKeySym): int = some.int
 
-  proc IsPrivateKeypadKey(keysym: TKeySym): bool = 
-    IsPrivateKeypadKey = (keysym >= 0x11000000) and (keysym <= 0x1100FFFF)
+proc IsKeypadKey(keysym: TKeySym): bool = 
+  (keysym >= XK_KP_Space) and (keysym <= XK_KP_Equal)
 
-  proc IsCursorKey(keysym: TKeySym): bool = 
-    IsCursorKey = (keysym >= XK_Home) and (keysym < XK_Select)
+proc IsPrivateKeypadKey(keysym: TKeySym): bool = 
+  (keysym >= 0x11000000) and (keysym <= 0x1100FFFF)
 
-  proc IsPFKey(keysym: TKeySym): bool = 
-    IsPFKey = (keysym >= XK_KP_F1) and (keysym <= XK_KP_F4)
+proc IsCursorKey(keysym: TKeySym): bool = 
+  (keysym >= XK_Home) and (keysym < XK_Select)
 
-  proc IsFunctionKey(keysym: TKeySym): bool = 
-    IsFunctionKey = (keysym >= XK_F1) and (keysym <= XK_F35)
+proc IsPFKey(keysym: TKeySym): bool = 
+  (keysym >= XK_KP_F1) and (keysym <= XK_KP_F4)
 
-  proc IsMiscFunctionKey(keysym: TKeySym): bool = 
-    IsMiscFunctionKey = (keysym >= XK_Select) and (keysym <= XK_Break)
+proc IsFunctionKey(keysym: TKeySym): bool = 
+  (keysym >= XK_F1) and (keysym <= XK_F35)
 
-  proc IsModifierKey(keysym: TKeySym): bool = 
-    IsModifierKey = ((keysym >= XK_Shift_L) And (keysym <= XK_Hyper_R)) Or
-        (keysym == XK_Mode_switch) Or (keysym == XK_Num_Lock)
+proc IsMiscFunctionKey(keysym: TKeySym): bool = 
+  (keysym >= XK_Select) and (keysym <= XK_Break)
+
+proc IsModifierKey(keysym: TKeySym): bool = 
+  ((keysym >= XK_Shift_L) And (keysym <= XK_Hyper_R)) Or
+      (keysym == XK_Mode_switch) Or (keysym == XK_Num_Lock)
