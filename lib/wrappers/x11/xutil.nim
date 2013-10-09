@@ -389,13 +389,11 @@ proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage =
 proc XAddPixel(ximage: PXImage, value: clong): cint = 
   ximage.f.add_pixel(ximage, value)
 
-converter toInt (some: TKeySym): int = some.int
-
 proc IsKeypadKey(keysym: TKeySym): bool = 
   (keysym >= XK_KP_Space) and (keysym <= XK_KP_Equal)
 
 proc IsPrivateKeypadKey(keysym: TKeySym): bool = 
-  (keysym >= 0x11000000) and (keysym <= 0x1100FFFF)
+  (keysym >= 0x11000000.TKeySym) and (keysym <= 0x1100FFFF.TKeySym)
 
 proc IsCursorKey(keysym: TKeySym): bool = 
   (keysym >= XK_Home) and (keysym < XK_Select)
