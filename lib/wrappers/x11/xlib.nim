@@ -1811,210 +1811,217 @@ proc XSetAuthorization*(para1: cstring, para2: cint, para3: cstring, para4: cint
   #  _Xmbtowc?
   #  _Xwctomb?
   #
-when defined(MACROS): 
-  proc ConnectionNumber*(dpy: PDisplay): cint
-  proc RootWindow*(dpy: PDisplay, scr: cint): TWindow
-  proc DefaultScreen*(dpy: PDisplay): cint
-  proc DefaultRootWindow*(dpy: PDisplay): TWindow
-  proc DefaultVisual*(dpy: PDisplay, scr: cint): PVisual
-  proc DefaultGC*(dpy: PDisplay, scr: cint): TGC
-  proc BlackPixel*(dpy: PDisplay, scr: cint): culong
-  proc WhitePixel*(dpy: PDisplay, scr: cint): culong
-  proc QLength*(dpy: PDisplay): cint
-  proc DisplayWidth*(dpy: PDisplay, scr: cint): cint
-  proc DisplayHeight*(dpy: PDisplay, scr: cint): cint
-  proc DisplayWidthMM*(dpy: PDisplay, scr: cint): cint
-  proc DisplayHeightMM*(dpy: PDisplay, scr: cint): cint
-  proc DisplayPlanes*(dpy: PDisplay, scr: cint): cint
-  proc DisplayCells*(dpy: PDisplay, scr: cint): cint
-  proc ScreenCount*(dpy: PDisplay): cint
-  proc ServerVendor*(dpy: PDisplay): cstring
-  proc ProtocolVersion*(dpy: PDisplay): cint
-  proc ProtocolRevision*(dpy: PDisplay): cint
-  proc VendorRelease*(dpy: PDisplay): cint
-  proc DisplayString*(dpy: PDisplay): cstring
-  proc DefaultDepth*(dpy: PDisplay, scr: cint): cint
-  proc DefaultColormap*(dpy: PDisplay, scr: cint): TColormap
-  proc BitmapUnit*(dpy: PDisplay): cint
-  proc BitmapBitOrder*(dpy: PDisplay): cint
-  proc BitmapPad*(dpy: PDisplay): cint
-  proc ImageByteOrder*(dpy: PDisplay): cint
-  proc NextRequest*(dpy: PDisplay): culong
-  proc LastKnownRequestProcessed*(dpy: PDisplay): culong
-  proc ScreenOfDisplay*(dpy: PDisplay, scr: cint): PScreen
-  proc DefaultScreenOfDisplay*(dpy: PDisplay): PScreen
-  proc DisplayOfScreen*(s: PScreen): PDisplay
-  proc RootWindowOfScreen*(s: PScreen): TWindow
-  proc BlackPixelOfScreen*(s: PScreen): culong
-  proc WhitePixelOfScreen*(s: PScreen): culong
-  proc DefaultColormapOfScreen*(s: PScreen): TColormap
-  proc DefaultDepthOfScreen*(s: PScreen): cint
-  proc DefaultGCOfScreen*(s: PScreen): TGC
-  proc DefaultVisualOfScreen*(s: PScreen): PVisual
-  proc WidthOfScreen*(s: PScreen): cint
-  proc HeightOfScreen*(s: PScreen): cint
-  proc WidthMMOfScreen*(s: PScreen): cint
-  proc HeightMMOfScreen*(s: PScreen): cint
-  proc PlanesOfScreen*(s: PScreen): cint
-  proc CellsOfScreen*(s: PScreen): cint
-  proc MinCmapsOfScreen*(s: PScreen): cint
-  proc MaxCmapsOfScreen*(s: PScreen): cint
-  proc DoesSaveUnders*(s: PScreen): TBool
-  proc DoesBackingStore*(s: PScreen): cint
-  proc EventMaskOfScreen*(s: PScreen): clong
-  proc XAllocID*(dpy: PDisplay): TXID
+#when defined(MACROS): 
+proc ConnectionNumber*(dpy: PDisplay): cint
+proc RootWindow*(dpy: PDisplay, scr: cint): TWindow
+proc DefaultScreen*(dpy: PDisplay): cint
+proc DefaultRootWindow*(dpy: PDisplay): TWindow
+proc DefaultVisual*(dpy: PDisplay, scr: cint): PVisual
+proc DefaultGC*(dpy: PDisplay, scr: cint): TGC
+proc BlackPixel*(dpy: PDisplay, scr: cint): culong
+proc WhitePixel*(dpy: PDisplay, scr: cint): culong
+proc QLength*(dpy: PDisplay): cint
+proc DisplayWidth*(dpy: PDisplay, scr: cint): cint
+proc DisplayHeight*(dpy: PDisplay, scr: cint): cint
+proc DisplayWidthMM*(dpy: PDisplay, scr: cint): cint
+proc DisplayHeightMM*(dpy: PDisplay, scr: cint): cint
+proc DisplayPlanes*(dpy: PDisplay, scr: cint): cint
+proc DisplayCells*(dpy: PDisplay, scr: cint): cint
+proc ScreenCount*(dpy: PDisplay): cint
+proc ServerVendor*(dpy: PDisplay): cstring
+proc ProtocolVersion*(dpy: PDisplay): cint
+proc ProtocolRevision*(dpy: PDisplay): cint
+proc VendorRelease*(dpy: PDisplay): cint
+proc DisplayString*(dpy: PDisplay): cstring
+proc DefaultDepth*(dpy: PDisplay, scr: cint): cint
+proc DefaultColormap*(dpy: PDisplay, scr: cint): TColormap
+proc BitmapUnit*(dpy: PDisplay): cint
+proc BitmapBitOrder*(dpy: PDisplay): cint
+proc BitmapPad*(dpy: PDisplay): cint
+proc ImageByteOrder*(dpy: PDisplay): cint
+proc NextRequest*(dpy: PDisplay): culong
+proc LastKnownRequestProcessed*(dpy: PDisplay): culong
+proc ScreenOfDisplay*(dpy: PDisplay, scr: cint): PScreen
+proc DefaultScreenOfDisplay*(dpy: PDisplay): PScreen
+proc DisplayOfScreen*(s: PScreen): PDisplay
+proc RootWindowOfScreen*(s: PScreen): TWindow
+proc BlackPixelOfScreen*(s: PScreen): culong
+proc WhitePixelOfScreen*(s: PScreen): culong
+proc DefaultColormapOfScreen*(s: PScreen): TColormap
+proc DefaultDepthOfScreen*(s: PScreen): cint
+proc DefaultGCOfScreen*(s: PScreen): TGC
+proc DefaultVisualOfScreen*(s: PScreen): PVisual
+proc WidthOfScreen*(s: PScreen): cint
+proc HeightOfScreen*(s: PScreen): cint
+proc WidthMMOfScreen*(s: PScreen): cint
+proc HeightMMOfScreen*(s: PScreen): cint
+proc PlanesOfScreen*(s: PScreen): cint
+proc CellsOfScreen*(s: PScreen): cint
+proc MinCmapsOfScreen*(s: PScreen): cint
+proc MaxCmapsOfScreen*(s: PScreen): cint
+proc DoesSaveUnders*(s: PScreen): TBool
+proc DoesBackingStore*(s: PScreen): cint
+proc EventMaskOfScreen*(s: PScreen): clong
+proc XAllocID*(dpy: PDisplay): TXID
 # implementation
 
-when defined(MACROS): 
-  proc ConnectionNumber(dpy: PDisplay): cint = 
-    ConnectionNumber = (PXPrivDisplay(dpy))[] .fd
+#when defined(MACROS):
+template privDisp : expr = cast[PXPrivDisplay](dpy)
+ 
+proc ConnectionNumber(dpy: PDisplay): cint = 
+  privDisp.fd
 
-  proc RootWindow(dpy: PDisplay, scr: cint): TWindow = 
-    RootWindow = (ScreenOfDisplay(dpy, scr))[] .root
+proc RootWindow(dpy: PDisplay, scr: cint): TWindow = 
+  ScreenOfDisplay(dpy, scr).root
 
-  proc DefaultScreen(dpy: PDisplay): cint = 
-    DefaultScreen = (PXPrivDisplay(dpy))[] .default_screen
+proc DefaultScreen(dpy: PDisplay): cint = 
+  privDisp.default_screen
 
-  proc DefaultRootWindow(dpy: PDisplay): TWindow = 
-    DefaultRootWindow = (ScreenOfDisplay(dpy, DefaultScreen(dpy)))[] .root
+proc DefaultRootWindow(dpy: PDisplay): TWindow = 
+  ScreenOfDisplay(dpy, DefaultScreen(dpy)).root
 
-  proc DefaultVisual(dpy: PDisplay, scr: cint): PVisual = 
-    DefaultVisual = (ScreenOfDisplay(dpy, scr))[] .root_visual
+proc DefaultVisual(dpy: PDisplay, scr: cint): PVisual = 
+  ScreenOfDisplay(dpy, scr).root_visual
 
-  proc DefaultGC(dpy: PDisplay, scr: cint): TGC = 
-    DefaultGC = (ScreenOfDisplay(dpy, scr))[] .default_gc
+proc DefaultGC(dpy: PDisplay, scr: cint): TGC = 
+  ScreenOfDisplay(dpy, scr).default_gc
 
-  proc BlackPixel(dpy: PDisplay, scr: cint): culong = 
-    BlackPixel = (ScreenOfDisplay(dpy, scr))[] .black_pixel
+proc BlackPixel(dpy: PDisplay, scr: cint): culong = 
+  ScreenOfDisplay(dpy, scr).black_pixel
 
-  proc WhitePixel(dpy: PDisplay, scr: cint): culong = 
-    WhitePixel = (ScreenOfDisplay(dpy, scr))[] .white_pixel
+proc WhitePixel(dpy: PDisplay, scr: cint): culong = 
+  ScreenOfDisplay(dpy, scr).white_pixel
 
-  proc QLength(dpy: PDisplay): cint = 
-    QLength = (PXPrivDisplay(dpy))[] .qlen
+proc QLength(dpy: PDisplay): cint = 
+  privDisp.qlen
 
-  proc DisplayWidth(dpy: PDisplay, scr: cint): cint = 
-    DisplayWidth = (ScreenOfDisplay(dpy, scr))[] .width
+proc DisplayWidth(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).width
 
-  proc DisplayHeight(dpy: PDisplay, scr: cint): cint = 
-    DisplayHeight = (ScreenOfDisplay(dpy, scr))[] .height
+proc DisplayHeight(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).height
 
-  proc DisplayWidthMM(dpy: PDisplay, scr: cint): cint = 
-    DisplayWidthMM = (ScreenOfDisplay(dpy, scr))[] .mwidth
+proc DisplayWidthMM(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).mwidth
 
-  proc DisplayHeightMM(dpy: PDisplay, scr: cint): cint = 
-    DisplayHeightMM = (ScreenOfDisplay(dpy, scr))[] .mheight
+proc DisplayHeightMM(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).mheight
 
-  proc DisplayPlanes(dpy: PDisplay, scr: cint): cint = 
-    DisplayPlanes = (ScreenOfDisplay(dpy, scr))[] .root_depth
+proc DisplayPlanes(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).root_depth
 
-  proc DisplayCells(dpy: PDisplay, scr: cint): cint = 
-    DisplayCells = (DefaultVisual(dpy, scr))[] .map_entries
+proc DisplayCells(dpy: PDisplay, scr: cint): cint = 
+  DefaultVisual(dpy, scr).map_entries
 
-  proc ScreenCount(dpy: PDisplay): cint = 
-    ScreenCount = (PXPrivDisplay(dpy))[] .nscreens
+proc ScreenCount(dpy: PDisplay): cint = 
+  privDisp.nscreens
 
-  proc ServerVendor(dpy: PDisplay): cstring = 
-    ServerVendor = (PXPrivDisplay(dpy))[] .vendor
+proc ServerVendor(dpy: PDisplay): cstring = 
+  privDisp.vendor
 
-  proc ProtocolVersion(dpy: PDisplay): cint = 
-    ProtocolVersion = (PXPrivDisplay(dpy))[] .proto_major_version
+proc ProtocolVersion(dpy: PDisplay): cint = 
+  privDisp.proto_major_version
 
-  proc ProtocolRevision(dpy: PDisplay): cint = 
-    ProtocolRevision = (PXPrivDisplay(dpy))[] .proto_minor_version
+proc ProtocolRevision(dpy: PDisplay): cint = 
+  privDisp.proto_minor_version
 
-  proc VendorRelease(dpy: PDisplay): cint = 
-    VendorRelease = (PXPrivDisplay(dpy))[] .release
+proc VendorRelease(dpy: PDisplay): cint = 
+  privDisp.release
 
-  proc DisplayString(dpy: PDisplay): cstring = 
-    DisplayString = (PXPrivDisplay(dpy))[] .display_name
+proc DisplayString(dpy: PDisplay): cstring = 
+  privDisp.display_name
 
-  proc DefaultDepth(dpy: PDisplay, scr: cint): cint = 
-    DefaultDepth = (ScreenOfDisplay(dpy, scr))[] .root_depth
+proc DefaultDepth(dpy: PDisplay, scr: cint): cint = 
+  ScreenOfDisplay(dpy, scr).root_depth
 
-  proc DefaultColormap(dpy: PDisplay, scr: cint): TColormap = 
-    DefaultColormap = (ScreenOfDisplay(dpy, scr))[] .cmap
+proc DefaultColormap(dpy: PDisplay, scr: cint): TColormap = 
+  ScreenOfDisplay(dpy, scr).cmap
 
-  proc BitmapUnit(dpy: PDisplay): cint = 
-    BitmapUnit = (PXPrivDisplay(dpy))[] .bitmap_unit
+proc BitmapUnit(dpy: PDisplay): cint = 
+  privDisp.bitmap_unit
 
-  proc BitmapBitOrder(dpy: PDisplay): cint = 
-    BitmapBitOrder = (PXPrivDisplay(dpy))[] .bitmap_bit_order
+proc BitmapBitOrder(dpy: PDisplay): cint = 
+  privDisp.bitmap_bit_order
 
-  proc BitmapPad(dpy: PDisplay): cint = 
-    BitmapPad = (PXPrivDisplay(dpy))[] .bitmap_pad
+proc BitmapPad(dpy: PDisplay): cint = 
+  privDisp.bitmap_pad
 
-  proc ImageByteOrder(dpy: PDisplay): cint = 
-    ImageByteOrder = (PXPrivDisplay(dpy))[] .byte_order
+proc ImageByteOrder(dpy: PDisplay): cint = 
+  privDisp.byte_order
 
-  proc NextRequest(dpy: PDisplay): culong = 
-    NextRequest = ((PXPrivDisplay(dpy))[] .request) + 1
+import unsigned
+proc NextRequest(dpy: PDisplay): culong = 
+  privDisp.request + 1.culong
 
-  proc LastKnownRequestProcessed(dpy: PDisplay): culong = 
-    LastKnownRequestProcessed = (PXPrivDisplay(dpy))[] .last_request_read
+proc LastKnownRequestProcessed(dpy: PDisplay): culong = 
+  privDisp.last_request_read
 
-  proc ScreenOfDisplay(dpy: PDisplay, scr: cint): PScreen = 
-    ScreenOfDisplay = addr((((PXPrivDisplay(dpy))[] .screens)[scr]))
+# from fowltek/pointer_arithm, required for ScreenOfDisplay()
+proc offset[A] (some: ptr A; b: int): ptr A =
+  cast[ptr A](cast[int](some) + (b * sizeof(A)))
+proc ScreenOfDisplay(dpy: PDisplay, scr: cint): PScreen =
+  #addr(((privDisp.screens)[scr])) 
+  privDisp.screens.offset(scr.int)
 
-  proc DefaultScreenOfDisplay(dpy: PDisplay): PScreen = 
-    DefaultScreenOfDisplay = ScreenOfDisplay(dpy, DefaultScreen(dpy))
+proc DefaultScreenOfDisplay(dpy: PDisplay): PScreen = 
+  ScreenOfDisplay(dpy, DefaultScreen(dpy))
 
-  proc DisplayOfScreen(s: PScreen): PDisplay = 
-    DisplayOfScreen = s[] .display
+proc DisplayOfScreen(s: PScreen): PDisplay = 
+  s.display
 
-  proc RootWindowOfScreen(s: PScreen): TWindow = 
-    RootWindowOfScreen = s[] .root
+proc RootWindowOfScreen(s: PScreen): TWindow = 
+  s.root
 
-  proc BlackPixelOfScreen(s: PScreen): culong = 
-    BlackPixelOfScreen = s[] .black_pixel
+proc BlackPixelOfScreen(s: PScreen): culong = 
+  s.black_pixel
 
-  proc WhitePixelOfScreen(s: PScreen): culong = 
-    WhitePixelOfScreen = s[] .white_pixel
+proc WhitePixelOfScreen(s: PScreen): culong = 
+  s.white_pixel
 
-  proc DefaultColormapOfScreen(s: PScreen): TColormap = 
-    DefaultColormapOfScreen = s[] .cmap
+proc DefaultColormapOfScreen(s: PScreen): TColormap = 
+  s.cmap
 
-  proc DefaultDepthOfScreen(s: PScreen): cint = 
-    DefaultDepthOfScreen = s[] .root_depth
+proc DefaultDepthOfScreen(s: PScreen): cint = 
+  s.root_depth
 
-  proc DefaultGCOfScreen(s: PScreen): TGC = 
-    DefaultGCOfScreen = s[] .default_gc
+proc DefaultGCOfScreen(s: PScreen): TGC = 
+  s.default_gc
 
-  proc DefaultVisualOfScreen(s: PScreen): PVisual = 
-    DefaultVisualOfScreen = s[] .root_visual
+proc DefaultVisualOfScreen(s: PScreen): PVisual = 
+  s.root_visual
 
-  proc WidthOfScreen(s: PScreen): cint = 
-    WidthOfScreen = s[] .width
+proc WidthOfScreen(s: PScreen): cint = 
+  s.width
 
-  proc HeightOfScreen(s: PScreen): cint = 
-    HeightOfScreen = s[] .height
+proc HeightOfScreen(s: PScreen): cint = 
+  s.height
 
-  proc WidthMMOfScreen(s: PScreen): cint = 
-    WidthMMOfScreen = s[] .mwidth
+proc WidthMMOfScreen(s: PScreen): cint = 
+  s.mwidth
 
-  proc HeightMMOfScreen(s: PScreen): cint = 
-    HeightMMOfScreen = s[] .mheight
+proc HeightMMOfScreen(s: PScreen): cint = 
+  s.mheight
 
-  proc PlanesOfScreen(s: PScreen): cint = 
-    PlanesOfScreen = s[] .root_depth
+proc PlanesOfScreen(s: PScreen): cint = 
+  s.root_depth
 
-  proc CellsOfScreen(s: PScreen): cint = 
-    CellsOfScreen = (DefaultVisualOfScreen(s))[] .map_entries
+proc CellsOfScreen(s: PScreen): cint = 
+  DefaultVisualOfScreen(s).map_entries
 
-  proc MinCmapsOfScreen(s: PScreen): cint = 
-    MinCmapsOfScreen = s[] .min_maps
+proc MinCmapsOfScreen(s: PScreen): cint = 
+  s.min_maps
 
-  proc MaxCmapsOfScreen(s: PScreen): cint = 
-    MaxCmapsOfScreen = s[] .max_maps
+proc MaxCmapsOfScreen(s: PScreen): cint = 
+  s.max_maps
 
-  proc DoesSaveUnders(s: PScreen): TBool = 
-    DoesSaveUnders = s[] .save_unders
+proc DoesSaveUnders(s: PScreen): TBool = 
+  s.save_unders
 
-  proc DoesBackingStore(s: PScreen): cint = 
-    DoesBackingStore = s[] .backing_store
+proc DoesBackingStore(s: PScreen): cint = 
+  s.backing_store
 
-  proc EventMaskOfScreen(s: PScreen): clong = 
-    EventMaskOfScreen = s[] .root_input_mask
+proc EventMaskOfScreen(s: PScreen): clong = 
+  s.root_input_mask
 
-  proc XAllocID(dpy: PDisplay): TXID = 
-    XAllocID = (PXPrivDisplay(dpy))[] .resource_alloc(dpy)
+proc XAllocID(dpy: PDisplay): TXID = 
+  privDisp.resource_alloc(dpy)
