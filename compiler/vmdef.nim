@@ -162,6 +162,9 @@ type
     callsite*: PNode
 
   TPosition* = distinct int
+
+  PEvalContext* = PCtx
+
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],

@@ -10,13 +10,7 @@
 Introduction
 ============
 
-.. raw:: html
-  <blockquote><p>
-  "Ich bin der K&ouml;nig aller Blinden. 
-  Glaubt ihr wirklich ihr selbst k&ouml;nnt sehen?
-  Kniet euch alle nieder in den Dreck,
-  bis ich befehle aufzustehen."
-  </p></blockquote>
+  "We all make choices. But in the end our choices make us."
 
 
 c2nim is a tool to translate Ansi C code to Nimrod. The output is 
