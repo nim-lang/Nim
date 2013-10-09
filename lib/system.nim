@@ -998,6 +998,13 @@ type
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependant in general.
 
+when defined(windows):
+  type clong* {.importc: "long", nodecl.} = int32
+    ## This is the same as the type ``long`` in *C*.
+else:
+  type clong* {.importc: "long", nodecl.} = int
+    ## This is the same as the type ``long`` in *C*.
+
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
     ## This is the same as the type ``char`` in *C*.
@@ -1009,8 +1016,6 @@ type # these work for most platforms:
     ## This is the same as the type ``int`` in *C*.
   csize* {.importc: "size_t", nodecl.} = int
     ## This is the same as the type ``size_t`` in *C*.
-  clong* {.importc: "long", nodecl.} = int
-    ## This is the same as the type ``long`` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
     ## This is the same as the type ``long long`` in *C*.
   cfloat* {.importc: "float", nodecl.} = float32
