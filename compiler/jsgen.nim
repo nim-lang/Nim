@@ -1413,7 +1413,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = toRope("{")
   r.kind = resExpr
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(1, sonsLen(n) - 1):
     if i > 0: app(r.res, ", ")
     var it = n.sons[i]
     InternalAssert it.kind == nkExprColonExpr
