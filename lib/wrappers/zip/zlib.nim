@@ -102,6 +102,7 @@ proc compress2*(dest: pbytef, destLen: puLongf, source: pbytef,
 proc uncompress*(dest: pbytef, destLen: puLongf, source: pbytef, 
                  sourceLen: uLong): cint{.cdecl, dynlib: libz, 
     importc: "uncompress".}
+proc compressBound*(sourceLen: uLong): uLong {.cdecl, dynlib: libz, importc.}
 proc gzopen*(path: cstring, mode: cstring): gzFile{.cdecl, dynlib: libz, 
     importc: "gzopen".}
 proc gzdopen*(fd: int32, mode: cstring): gzFile{.cdecl, dynlib: libz, 
