@@ -54,7 +54,7 @@ case $uos in
     myos="linux" 
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
-  *freebsd* ) 
+  *freebsd* | *dragonfly* ) 
     myos="freebsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
