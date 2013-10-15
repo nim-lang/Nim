@@ -45,7 +45,7 @@ proc codeListing(c: PCtx, result: var string) =
     result.add("\n")
     inc i
 
-proc echoCode*(c: PCtx) =
+proc echoCode*(c: PCtx) {.deprecated.} =
   var buf = ""
   codeListing(c, buf)
   echo buf
@@ -494,7 +494,9 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
     genBinaryABC(c, n, dest, opc)
 
 proc unused(n: PNode; x: TDest) {.inline.} =
-  if x >= 0: InternalError(n.info, "not unused")
+  if x >= 0: 
+    #debug(n)
+    InternalError(n.info, "not unused")
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =  
   let tmp = c.genx(arg)
@@ -508,7 +510,7 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   let tmp = c.genx(n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
   c.genSetType(n.sons[1], tmp)
-  c.gABC(n, opc, dest, tmp)
+  c.gABC(n, opcCard, dest, tmp)
   c.freeTemp(tmp)
 
 proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
@@ -701,7 +703,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mTypeTrait: 
     let tmp = c.genx(n.sons[1])
     if dest < 0: dest = c.getTemp(n.typ)
-    c.gABx(n, opcSetType, tmp, c.genType(n.sons[1]))
+    c.gABx(n, opcSetType, tmp, c.genType(n.sons[1].typ))
     c.gABC(n, opcTypeTrait, dest, tmp)
     c.freeTemp(tmp)
   of mIs:
@@ -1259,7 +1261,14 @@ proc optimizeJumps(c: PCtx; start: int) =
 proc genProc(c: PCtx; s: PSym): int =
   let x = s.ast.sons[optimizedCodePos]
   if x.kind == nkEmpty:
-    c.removeLastEof
+    #echo "GENERATING CODE FOR ", s.name.s
+    let last = c.code.len-1
+    var eofInstr: TInstr
+    if last >= 0 and c.code[last].opcode == opcEof:
+      eofInstr = c.code[last]
+      c.code.setLen(last)
+      c.debug.setLen(last)
+    #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
     s.ast.sons[optimizedCodePos] = newIntNode(nkIntLit, result)
     # thanks to the jmp we can add top level statements easily and also nest
@@ -1275,9 +1284,9 @@ proc genProc(c: PCtx; s: PSym): int =
     # generate final 'return' statement:
     c.gABC(body, opcRet)
     c.patch(procStart)
-    c.gABC(body, opcEof)
+    
+    c.gABC(body, opcEof, eofInstr.regA)
     s.position = c.prc.maxSlots
     c.prc = oldPrc
-    #c.echoCode
   else:
     result = x.intVal.int

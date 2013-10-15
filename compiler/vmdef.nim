@@ -165,11 +165,29 @@ type
 
   PEvalContext* = PCtx
 
+  TEvalMode* = enum           ## reason for evaluation
+    emRepl,                   ## evaluate because in REPL mode
+    emConst,                  ## evaluate for 'const' according to spec
+    emOptimize,               ## evaluate for optimization purposes (same as
+                              ## emConst?)
+    emStatic                  ## evaluate for enforced compile time eval
+                              ## ('static' context)
+
+  TSandboxFlag* = enum        ## what the evaluation engine should allow
+    allowCast,                ## allow unsafe language feature: 'cast'
+    allowFFI,                 ## allow the FFI
+    allowInfiniteLoops        ## allow endless loops
+  TSandboxFlags* = set[TSandboxFlag]
+
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module)
+
+proc refresh*(c: PCtx, module: PSym) =
+  c.module = module
+  c.prc = PProc(blocks: @[])
 
 const
   firstABxInstr* = opcTJmp

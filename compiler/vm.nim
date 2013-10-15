@@ -12,7 +12,7 @@
 
 import
   strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents
+  parser, vmdeps, idents, trees, renderer
 
 from semfold import leValueConv, ordinalValToString
 
@@ -231,13 +231,19 @@ proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   #c.echoCode
 
-proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
+proc regsContents(regs: TNodeSeq) =
+  for i in 0.. <regs.len:
+    echo "Register ", i
+    #debug regs[i]
+
+proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
   var pc = start
   var tos = tos
   var regs: TNodeSeq # alias to tos.slots for performance
   move(regs, tos.slots)
+  #echo "NEW RUN ------------------------"
   while true:
-    {.computedGoto.}
+    #{.computedGoto.}
     let instr = c.code[pc]
     let ra = instr.regA
     #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
@@ -248,12 +254,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       pc = tos.comesFrom
       tos = tos.next
       let retVal = regs[0]
-      if tos.isNil: return retVal
+      if tos.isNil: 
+        #echo "RET ", retVal.rendertree
+        return retVal
       
       move(regs, tos.slots)
       assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
       if c.code[pc].opcode == opcIndCallAsgn:
         regs[c.code[pc].regA] = retVal
+        #echo "RET2 ", retVal.rendertree, " ", c.code[pc].regA
     of opcYldYoid: assert false
     of opcYldVal: assert false
     of opcAsgnInt:
@@ -508,7 +517,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
     of opcEcho:
       let rb = instr.regB
       for i in ra..ra+rb-1:
-        if regs[i].kind != nkStrLit: debug regs[i]
+        #if regs[i].kind != nkStrLit: debug regs[i]
         write(stdout, regs[i].strVal)
       writeln(stdout, "")
     of opcContainsSet:
@@ -535,6 +544,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       let rc = instr.regC
       let prc = regs[rb].sym
       let newPc = compile(c, prc)
+      #echo "new pc ", newPc, " calling: ", prc.name.s
       var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
       newSeq(newFrame.slots, prc.position)
       if not isEmptyType(prc.typ.sons[0]):
@@ -841,10 +851,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       regs[ra].strVal = typ.typeToString(preferExported)
     inc pc
 
-proc execute(c: PCtx, start: int) =
+proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  rawExecute(c, start, tos)
+  for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  result = rawExecute(c, start, tos)
 
 proc evalStmt*(c: PCtx, n: PNode) =
   let start = genStmt(c, n)
@@ -858,11 +869,24 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
 
+# for now we share the 'globals' environment. XXX Coming soon: An API for
+# storing&loading the 'globals' environment to get what a component system
+# requires.
+var
+  globalCtx: PCtx
+
+proc setupGlobalCtx(module: PSym) =
+  if globalCtx.isNil: globalCtx = newCtx(module)
+  else: refresh(globalCtx, module)
+
 proc myOpen(module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
-  result = newCtx(module)
+
+  # XXX produce a new 'globals' environment here:
+  setupGlobalCtx(module)
+  result = globalCtx
 
 var oldErrorCount: int
 
@@ -875,17 +899,17 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   oldErrorCount = msgs.gErrorCounter
 
-const vmPass* = makePass(myOpen, nil, myProcess, myProcess)
+const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 
-proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
-  var p = newCtx(module)
-  var s = newStackFrame()
-  s.call = e
-  s.prc = prc
-  pushStackFrame(p, s)
-  result = tryEval(p, e)
-  if result != nil and result.kind == nkExceptBranch: result = nil
-  popStackFrame(p)
+proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
+  setupGlobalCtx(module)
+  var c = globalCtx
+  let start = genExpr(c, n)
+  assert c.code[start].opcode != opcEof
+  var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
+  newSeq(tos.slots, c.prc.maxSlots)
+  for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  result = rawExecute(c, start, tos)
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
   result = evalConstExprAux(module, nil, e, emConst)
@@ -897,15 +921,18 @@ proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
 
-proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
+var evalMacroCounter: int
+
+proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
+  inc(evalMacroCounter)
+  if evalMacroCounter > 100:
     GlobalError(n.info, errTemplateInstantiationTooNested)
+  setupGlobalCtx(module)
+  var c = globalCtx
 
   c.callsite = nOrig
-  let body = optBody(c, sym)
-  let start = genStmt(c, body)
+  let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
@@ -917,8 +944,9 @@ proc evalMacroCall(c: PEvalContext, n, nOrig: PNode, sym: PSym): PNode =
   tos.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
   for i in 1 .. < L: tos.slots[i] = setupMacroParam(n.sons[i])
-  rawExecute(c, start, tos)
-  result = tos.slots[0]
+  # temporary storage:
+  for i in L .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  result = rawExecute(c, start, tos)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
-  dec(evalTemplateCounter)
+  dec(evalMacroCounter)
   c.callsite = nil
