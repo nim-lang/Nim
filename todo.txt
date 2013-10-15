@@ -2,8 +2,9 @@ version 0.9.4
 =============
 
 - new VM:
-  - implement the glue to replace evals.nim
-  - implement missing magics
+  - new VM requires lambda lifting
+  - codegen for computed goto still wrong
+  - test and activate the jump optimizer
   - implement overflow checking
   - implement the FFI
 

@@ -14,7 +14,7 @@ import
   os, condsyms, rodread, rodwrite, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
-  platform, nimconf, importer, passaux, depends, evals, types, idgen,
+  platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
   pretty
 

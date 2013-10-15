@@ -32,6 +32,23 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
+ 
+proc evalTypeTrait(trait, operand: PNode, context: PSym): PNode =
+  InternalAssert operand.kind == nkSym
+
+  let typ = operand.sym.typ.skipTypes({tyTypeDesc})
+  case trait.sym.name.s.normalize
+  of "name":
+    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result.typ = newType(tyString, context)
+    result.info = trait.info
+  of "arity":    
+    result = newIntNode(nkIntLit, typ.n.len-1)
+    result.typ = newType(tyInt, context)
+    result.info = trait.info
+  else:
+    internalAssert false
+
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
   internalAssert n.sons[1].kind == nkSym

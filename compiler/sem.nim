@@ -14,7 +14,7 @@ import
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
-  semthreads, intsets, transf, evals, idgen, aliases, cgmeth, lambdalifting,
+  semthreads, intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2
 
 # implementation
@@ -149,25 +149,26 @@ proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
   result = newSymNode(symFromType(t, info), info)
   result.typ = makeTypeDesc(c, t)
 
-proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
-  result = newEvalContext(c.module, mode)
-  result.getType = proc (n: PNode): PNode =
-    var e = tryExpr(c, n)
-    if e == nil:
-      result = symNodeFromType(c, errorType(c), n.info)
-    elif e.typ == nil:
-      result = newSymNode(getSysSym"void")
-    else:
-      result = symNodeFromType(c, e.typ, n.info)
+when false:
+  proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
+    result = newEvalContext(c.module, mode)
+    result.getType = proc (n: PNode): PNode =
+      var e = tryExpr(c, n)
+      if e == nil:
+        result = symNodeFromType(c, errorType(c), n.info)
+      elif e.typ == nil:
+        result = newSymNode(getSysSym"void")
+      else:
+        result = symNodeFromType(c, e.typ, n.info)
 
-  result.handleIsOperator = proc (n: PNode): PNode =
-    result = IsOpImpl(c, n)
+    result.handleIsOperator = proc (n: PNode): PNode =
+      result = IsOpImpl(c, n)
 
-proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
-  result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
+  proc evalConstExpr(c: PContext, module: PSym, e: PNode): PNode = 
+    result = evalConstExprAux(c.createEvalContext(emConst), module, nil, e)
 
-proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
-  result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
+  proc evalStaticExpr(c: PContext, module: PSym, e: PNode, prc: PSym): PNode = 
+    result = evalConstExprAux(c.createEvalContext(emStatic), module, prc, e)
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
@@ -176,7 +177,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     return n
   result = getConstExpr(c.module, e)
   if result == nil:
-    result = evalConstExpr(c, c.module, e)
+    result = evalConstExpr(c.module, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
@@ -222,10 +223,10 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if sym == c.p.owner:
     GlobalError(n.info, errRecursiveDependencyX, sym.name.s)
 
-  if c.evalContext == nil:
-    c.evalContext = c.createEvalContext(emStatic)
+  #if c.evalContext == nil:
+  #  c.evalContext = c.createEvalContext(emStatic)
 
-  result = evalMacroCall(c.evalContext, n, nOrig, sym)
+  result = evalMacroCall(c.module, n, nOrig, sym)
   if semCheck: result = semAfterMacroCall(c, result, sym)
 
 proc forceBool(c: PContext, n: PNode): PNode = 

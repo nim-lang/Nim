@@ -1152,14 +1152,14 @@ proc setLine(n: PNode, info: TLineInfo) =
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
   let pragmaList = n.sons[0]
   pragma(c, nil, pragmaList, exprPragmas)
-  result = semStmt(c, n.sons[1])
+  result = semExpr(c, n.sons[1])
   for i in 0 .. <pragmaList.len:
     if whichPragma(pragmaList.sons[i]) == wLine:
       setLine(result, pragmaList.sons[i].info)
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   let a = semStmt(c, n.sons[0])
-  result = evalStaticExpr(c, c.module, a, c.p.owner)
+  result = evalStaticExpr(c.module, a, c.p.owner)
   if result.isNil:
     LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
