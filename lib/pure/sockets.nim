@@ -62,7 +62,7 @@ const
 
 type
   TSocketImpl = object ## socket type
-    fd: cint
+    fd: TSocketHandle
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
       buffer: array[0..BufferSize, char]
@@ -126,7 +126,7 @@ type
 
   ETimeout* = object of ESynch
 
-proc newTSocket(fd: int32, isBuff: bool): TSocket =
+proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
   new(result)
   result.fd = fd
   result.isBuffered = isBuff
@@ -1608,14 +1608,14 @@ when defined(Windows):
     FIONBIO = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
                              (102 shl 8) or 126
 
-  proc ioctlsocket(s: TWinSocket, cmd: clong, 
+  proc ioctlsocket(s: TSocketHandle, cmd: clong, 
                    argptr: ptr clong): cint {.
                    stdcall, importc:"ioctlsocket", dynlib: "ws2_32.dll".}
 
 proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
-    if ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)) == -1:
+    if ioctlsocket(TSocketHandle(s.fd), FIONBIO, addr(mode)) == -1:
       OSError(OSLastError())
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)
@@ -1656,7 +1656,7 @@ proc connect*(socket: TSocket, address: string, port = TPort(0), timeout: int,
 proc isSSL*(socket: TSocket): bool = return socket.isSSL
   ## Determines whether ``socket`` is a SSL socket.
 
-proc getFD*(socket: TSocket): cint = return socket.fd
+proc getFD*(socket: TSocket): TSocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
 when defined(Windows):
