@@ -81,6 +81,9 @@ else:
       ## A type representing a directory stream.   
   
 type
+  TSocketHandle* = cint # The type used to represent socket descripters
+                        # Should this be distinct? Is this the right place?
+
   Tdirent* {.importc: "struct dirent", 
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: TIno  ## File serial number.

@@ -89,13 +89,13 @@ import sockets, os
 ##      getSocket(s).accept(client)
 
 when defined(windows):
-  from winlean import TTimeVal, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from winlean import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
 else:
-  from posix import TTimeVal, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
+  from posix import TTimeVal, TSocketHandle, TFdSet, FD_ZERO, FD_SET, FD_ISSET, select
 
 type
   TDelegate* = object
-    fd*: cint
+    fd*: TSocketHandle
     deleVal*: PObject
 
     handleRead*: proc (h: PObject) {.nimcall.}
