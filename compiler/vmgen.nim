@@ -112,8 +112,10 @@ const
 
 proc getTemp(c: PCtx; typ: PType): TRegister =
   let c = c.prc
-  # we prefer the same slot kind here for efficiency:
-  let k = typ.getSlotKind
+  # we prefer the same slot kind here for efficiency. Unfortunately for
+  # discardable return types we may not know the desired type. This can happen
+  # for e.g. mNAdd[Multiple]:
+  let k = if typ.isNil: slotTempComplex else: typ.getSlotKind
   for i in 0 .. c.maxSlots-1:
     if c.slots[i].kind == k and not c.slots[i].inUse:
       c.slots[i].inUse = true
@@ -179,7 +181,7 @@ proc gen(c: PCtx; n: PNode; dest: TRegister) =
 proc gen(c: PCtx; n: PNode) =
   var tmp: TDest = -1
   gen(c, n, tmp)
-  InternalAssert tmp < 0
+  #if n.typ.isEmptyType: InternalAssert tmp < 0
 
 proc genx(c: PCtx; n: PNode): TRegister =
   var tmp: TDest = -1
@@ -463,7 +465,7 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.freeTemp(tmp)
 
 proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
-  let tmp = c.genx(n.sons[2])
+  let tmp = c.genx(n.sons[1])
   c.gABC(n, opc, tmp, 0, 0)
   c.freeTemp(tmp)
 
@@ -852,11 +854,13 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     else:
       c.gABC(le, whichAsgnOpc(le, opcWrArr), dest, idx, tmp)
     c.freeTemp(tmp)
-  of nkDotExpr:
-    let dest = c.genx(le.sons[0])
-    let idx = c.genx(le.sons[1])
+  of nkDotExpr, nkCheckedFieldExpr:
+    # XXX field checks here
+    let left = if le.kind == nkDotExpr: le else: le.sons[0]
+    let dest = c.genx(left.sons[0])
+    let idx = c.genx(left.sons[1])
     let tmp = c.genx(ri)
-    c.gABC(le, whichAsgnOpc(le, opcWrObj), dest, idx, tmp)
+    c.gABC(left, whichAsgnOpc(left, opcWrObj), dest, idx, tmp)
     c.freeTemp(tmp)
   of nkSym:
     let s = le.sym
@@ -909,6 +913,10 @@ proc genAccess(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
 
 proc genObjAccess(c: PCtx; n: PNode; dest: var TDest) =
   genAccess(c, n, dest, opcLdObj)
+
+proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest) =
+  # XXX implement field checks!
+  genAccess(c, n.sons[0], dest, opcLdObj)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest) =
   if n.sons[0].typ.skipTypes(abstractVarRange).kind in {tyString, tyCString}:
@@ -1023,7 +1031,7 @@ proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
   c.gABx(n, opcLdNull, tmp, c.genType(intType))
   for x in n:
     let a = c.genx(x)
-    c.gABC(n, opcWrArr, dest, a, tmp)
+    c.gABC(n, whichAsgnOpc(x, opcWrArr), dest, tmp, a)
     c.gABI(n, opcAddImmInt, tmp, tmp, 1)
     c.freeTemp(a)
   c.freeTemp(tmp)
@@ -1116,6 +1124,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
     genAsgn(c, n.sons[0], n.sons[1], n.kind == nkAsgn)
   of nkDotExpr: genObjAccess(c, n, dest)
+  of nkCheckedFieldExpr: genCheckedObjAccess(c, n, dest)
   of nkBracketExpr: genArrAccess(c, n, dest)
   of nkDerefExpr, nkHiddenDeref: genAddrDeref(c, n, dest, opcDeref)
   of nkAddr, nkHiddenAddr: genAddrDeref(c, n, dest, opcAddr)
@@ -1288,5 +1297,8 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     s.position = c.prc.maxSlots
     c.prc = oldPrc
+    #if s.name.s == "xmlConstructor":
+    #  echoCode(c)
   else:
+    c.prc.maxSlots = s.position
     result = x.intVal.int

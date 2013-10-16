@@ -129,6 +129,20 @@ type
     label*: PSym
     fixups*: seq[TPosition]
 
+  TEvalMode* = enum           ## reason for evaluation
+    emRepl,                   ## evaluate because in REPL mode
+    emConst,                  ## evaluate for 'const' according to spec
+    emOptimize,               ## evaluate for optimization purposes (same as
+                              ## emConst?)
+    emStatic                  ## evaluate for enforced compile time eval
+                              ## ('static' context)
+
+  TSandboxFlag* = enum        ## what the evaluation engine should allow
+    allowCast,                ## allow unsafe language feature: 'cast'
+    allowFFI,                 ## allow the FFI
+    allowInfiniteLoops        ## allow endless loops
+  TSandboxFlags* = set[TSandboxFlag]
+
   TSlotKind* = enum   # We try to re-use slots in a smart way to
                       # minimize allocations; however the VM supports arbitrary
                       # temporary slot usage. This is required for the parameter
@@ -160,25 +174,11 @@ type
     prc*: PProc
     module*: PSym
     callsite*: PNode
+    mode*: TEvalMode
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
-
-  TEvalMode* = enum           ## reason for evaluation
-    emRepl,                   ## evaluate because in REPL mode
-    emConst,                  ## evaluate for 'const' according to spec
-    emOptimize,               ## evaluate for optimization purposes (same as
-                              ## emConst?)
-    emStatic                  ## evaluate for enforced compile time eval
-                              ## ('static' context)
-
-  TSandboxFlag* = enum        ## what the evaluation engine should allow
-    allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
-    allowInfiniteLoops        ## allow endless loops
-  TSandboxFlags* = set[TSandboxFlag]
-
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
