@@ -96,19 +96,24 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-proc asgnRef(x, y: PNode) =
-  myreset(x)
-  x.kind = y.kind
-  x.typ = y.typ
-  case x.kind
-  of nkCharLit..nkInt64Lit: x.intVal = y.intVal
-  of nkFloatLit..nkFloat64Lit: x.floatVal = y.floatVal
-  of nkStrLit..nkTripleStrLit: x.strVal = y.strVal
-  of nkIdent: x.ident = y.ident
-  of nkSym: x.sym = y.sym
-  else:
-    if x.kind notin {nkEmpty..nkNilLit}:
-      move(x.sons, y.sons)
+when false:
+  proc asgnRef(x, y: PNode) =
+    myreset(x)
+    x.kind = y.kind
+    x.typ = y.typ
+    case x.kind
+    of nkCharLit..nkInt64Lit: x.intVal = y.intVal
+    of nkFloatLit..nkFloat64Lit: x.floatVal = y.floatVal
+    of nkStrLit..nkTripleStrLit: x.strVal = y.strVal
+    of nkIdent: x.ident = y.ident
+    of nkSym: x.sym = y.sym
+    else:
+      if x.kind notin {nkEmpty..nkNilLit}:
+        move(x.sons, y.sons)
+else:
+  # this seems to be the best way to model the reference semantics
+  # of PNimrodNode:
+  template asgnRef(x, y: expr) = x = y
 
 proc asgnComplex(x, y: PNode) =
   myreset(x)
@@ -279,7 +284,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
     of opcWrGlobalRef:
-      asgnRef(c.globals[instr.regBx-wordExcess-1], regs[ra])
+      asgnRef(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
     of opcWrGlobal:
       asgnComplex(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
     of opcLdArr:
@@ -470,24 +475,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].intVal = not regs[rb].intVal
     of opcEqStr:
       decodeBC(nkIntLit)
-      regs[ra].intVal = Ord(regs[rb].strVal == regs[rc].strVal)
+      regs[ra].intVal = ord(regs[rb].strVal == regs[rc].strVal)
     of opcLeStr:
       decodeBC(nkIntLit)
-      regs[ra].intVal = Ord(regs[rb].strVal <= regs[rc].strVal)
+      regs[ra].intVal = ord(regs[rb].strVal <= regs[rc].strVal)
     of opcLtStr:
       decodeBC(nkIntLit)
-      regs[ra].intVal = Ord(regs[rb].strVal < regs[rc].strVal)
+      regs[ra].intVal = ord(regs[rb].strVal < regs[rc].strVal)
     of opcLeSet:
       decodeBC(nkIntLit)
-      regs[ra].intVal = Ord(containsSets(regs[rb], regs[rc]))
+      regs[ra].intVal = ord(containsSets(regs[rb], regs[rc]))
     of opcEqSet: 
       decodeBC(nkIntLit)
-      regs[ra].intVal = Ord(equalSets(regs[rb], regs[rc]))
+      regs[ra].intVal = ord(equalSets(regs[rb], regs[rc]))
     of opcLtSet:
       decodeBC(nkIntLit)
       let a = regs[rb]
       let b = regs[rc]
-      regs[ra].intVal = Ord(containsSets(a, b) and not equalSets(a, b))
+      regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
     of opcMulSet:
       decodeBC(nkCurly)
       move(regs[ra].sons, nimsets.intersectSets(regs[rb], regs[rc]).sons)
@@ -652,9 +657,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         regs[ra] = copyTree(c.globals.sons[rb])
       else:
         asgnComplex(regs[ra], c.globals.sons[rb])
-    of opcRepr, opcSetLenStr, opcSetLenSeq,
+    of opcRepr:
+      decodeB(nkStrLit)
+      regs[ra].strVal = renderTree(regs[rb], {renderNoComments})
+    of opcQuit:
+      if c.mode in {emRepl, emStatic}:
+        Message(c.debug[pc], hintQuitCalled)
+        quit(int(getOrdValue(regs[ra])))
+      else:
+        return nil
+    of opcSetLenStr:
+      decodeB(nkStrLit)
+      regs[ra].strVal.setLen(regs[rb].getOrdValue.int)
+    of opcSetLenSeq,
         opcSwap, opcIsNil, opcOf,
-        opcCast, opcQuit, opcReset:
+        opcCast, opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNBindSym:
       # trivial implementation:
@@ -670,7 +687,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].sons[regs[rb].intVal.int] = regs[rc]
     of opcNAdd:
       declBC()
-      regs[rb].add(regs[rb])
+      regs[rb].add(regs[rc])
       regs[ra] = regs[rb]
     of opcNAddMultiple:
       declBC()
@@ -904,6 +921,7 @@ const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   setupGlobalCtx(module)
   var c = globalCtx
+  c.mode = mode
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
@@ -935,7 +953,8 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
-  newSeq(tos.slots, c.prc.maxSlots)
+  let maxSlots = sym.position
+  newSeq(tos.slots, maxSlots)
   # setup arguments:
   var L = n.safeLen
   if L == 0: L = 1
@@ -945,7 +964,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # setup parameters:
   for i in 1 .. < L: tos.slots[i] = setupMacroParam(n.sons[i])
   # temporary storage:
-  for i in L .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos)
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
