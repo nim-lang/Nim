@@ -652,7 +652,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       else:
         asgnComplex(regs[ra], c.constants.sons[rb])
     of opcLdGlobal:
-      let rb = instr.regBx - wordExcess
+      let rb = instr.regBx - wordExcess - 1
       if regs[ra].isNil:
         regs[ra] = copyTree(c.globals.sons[rb])
       else:
