@@ -52,6 +52,11 @@ For a release version use::
   nimrod c koch.nim
   ./koch boot -d:release
 
+And for a debug version compatible with GDB::
+
+  nimrod c koch.nim
+  ./koch boot --debuginfo --linedir:on
+
 The ``koch`` program is Nimrod's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
 
@@ -64,7 +69,7 @@ Coding Guidelines
 * Max line length is 80 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* Start types with a capital ``T``, unless they are pointers which start
+* Start types with a capital ``T``, unless they are pointers\references which start
   with ``P``. 
 
 
