@@ -1791,7 +1791,7 @@ when defined(JS):
 
 elif hostOS != "standalone":
   {.push stack_trace:off, profiler:off.}
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
