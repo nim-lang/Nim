@@ -849,7 +849,7 @@ const
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
   
-  seqShallowFlag = 1 shl (sizeof(int)*8-1)
+  seqShallowFlag = low(int)
   
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
