@@ -117,6 +117,38 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ##   assert f2 == @["yellow"]
   accumulateResult(filter(seq1, pred))
 
+proc delete*[T](s: var seq[T], first, last: int) =
+  ## Deletes in `s` the items at position `first` .. `last`. This modifies
+  ## `s` itself, it does not return a copy.
+  var i = first
+  var j = last+1
+  var newLen = len(s)-j+i
+  while i < newLen:
+    s[i].shallowCopy(s[j])
+    inc(i)
+    inc(j)
+  setlen(s, newLen)
+
+proc insert*[T](dest: var seq[T], src: openArray[T], pos: int) =
+  ## Inserts items from `src` into `dest` at position `pos`. This modifies
+  ## `dest` itself, it does not return a copy.
+  
+  var j = len(dest) - 1
+  var i = len(dest) + len(src) - 1
+  dest.setLen(i + 1)
+
+  # Move items after `pos` to the end of the sequence.
+  while j >= pos:
+    dest[i].shallowCopy(dest[j])
+    dec(i)
+    dec(j)
+  # Insert items from `dest` into `dest` at `pos`
+  inc(j)
+  for item in src:
+    dest[j] = item
+    inc(j)
+
+
 template filterIt*(seq1, pred: expr): expr {.immediate.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
@@ -311,5 +343,23 @@ when isMainModule:
     assert substraction == 7, "Substraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimrodiscool"
+
+  block: # delete tests
+    let outcome = @[1,1,1,1,1,1,1,1]
+    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    dest.delete(3, 8)
+    assert outcome == dest, """\
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1] 
+    is [1,1,1,1,1,1,1,1]"""
+
+  block: # insert tests
+    var dest = @[1,1,1,1,1,1,1,1]
+    let 
+      src = @[2,2,2,2,2,2]
+      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    dest.insert(src, 3)
+    assert dest == outcome, """\
+    Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
+    at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
 
   echo "Finished doc tests"
