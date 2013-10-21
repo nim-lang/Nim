@@ -622,6 +622,8 @@ proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
   nil
 
+
+
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = not IsNil(c.s) and c.s.contains((a.id, b.id))
   if not result:
@@ -750,9 +752,11 @@ template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
-  IfFastObjectTypeCheckFailed(a, b):
+  IfFastObjectTypeCheckFailed(a, b):     
     var c = initSameTypeClosure()
     result = sameTypeAux(a, b, c)
+ 
+    
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
@@ -837,7 +841,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
     CycleCheck()
-    if c.cmp == dcEq: result = sameDistinctTypes(a, b) and sameFlags(a, b)
+    if c.cmp == dcEq: result = sameTypeAux(a, b, c) and sameFlags(a, b)
     else: result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
