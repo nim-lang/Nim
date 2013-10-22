@@ -621,9 +621,7 @@ type
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
   nil
-
-
-
+  
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = not IsNil(c.s) and c.s.contains((a.id, b.id))
   if not result:
@@ -754,9 +752,7 @@ proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
   IfFastObjectTypeCheckFailed(a, b):     
     var c = initSameTypeClosure()
-    result = sameTypeAux(a, b, c)
- 
-    
+    result = sameTypeAux(a, b, c)    
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
