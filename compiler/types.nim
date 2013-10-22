@@ -754,9 +754,7 @@ proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
   IfFastObjectTypeCheckFailed(a, b):     
     var c = initSameTypeClosure()
-    result = sameTypeAux(a, b, c)
- 
-    
+    result = sameTypeAux(a, b, c)    
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
