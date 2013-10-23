@@ -334,6 +334,13 @@ const
 
 proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
+when hostCPU == "amd64":
+  type
+    TSocketHandle* = distinct int # on WIN64 `SOCKET` is UINT_PTR
+else:
+  type
+    TSocketHandle* = distinct cuint # on WIN32 `SOCKET` is U_INT (unsigned int)
+
 type
   TWSAData* {.pure, final, importc: "WSADATA", header: "Winsock2.h".} = object 
     wVersion, wHighVersion: int16
@@ -409,16 +416,9 @@ type
 
   Tsocklen* = cuint
 
-when hostCPU == "amd64":
-  type
-    TSocketHandle* = distinct int # on WIN64 `SOCKET` is UINT_PTR
-else:
-  type
-    TSocketHandle* = distinct cuint # on WIN32 `SOCKET` is U_INT (unsigned int)
-
 var
   SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
-  INVALID_SOCKET* {.importc, header: "Winsock2.h".}: cint
+  INVALID_SOCKET* {.importc, header: "Winsock2.h".}: TSocketHandle
 
 proc `==`*(x, y: TSocketHandle): bool {.borrow.}
 
