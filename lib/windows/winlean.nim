@@ -334,12 +334,8 @@ const
 
 proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
-when hostCPU == "amd64":
-  type
-    TSocketHandle* = distinct int # on WIN64 `SOCKET` is UINT_PTR
-else:
-  type
-    TSocketHandle* = distinct cuint # on WIN32 `SOCKET` is U_INT (unsigned int)
+type
+  TSocketHandle* = distinct int
 
 type
   TWSAData* {.pure, final, importc: "WSADATA", header: "Winsock2.h".} = object 
