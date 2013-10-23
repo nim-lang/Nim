@@ -389,8 +389,6 @@ type
     h_addrtype*: int16
     h_length*: int16
     h_addr_list*: cstringArray
-    
-  TSocketHandle* = int # Make distinct? Is this the right place for this?
   
   TFdSet* {.pure, final.} = object
     fd_count*: cint # unsigned
@@ -411,8 +409,18 @@ type
 
   Tsocklen* = cuint
 
+when hostCPU == "amd64":
+  type
+    TSocketHandle* = distinct int # on WIN64 `SOCKET` is UINT_PTR
+else:
+  type
+    TSocketHandle* = distinct cuint # on WIN32 `SOCKET` is U_INT (unsigned int)
+
 var
   SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
+  INVALID_SOCKET* {.importc, header: "Winsock2.h".}: cint
+
+proc `==`*(x, y: TSocketHandle): bool {.borrow.}
 
 proc getservbyname*(name, proto: cstring): ptr TServent {.
   stdcall, importc: "getservbyname", dynlib: ws2dll.}

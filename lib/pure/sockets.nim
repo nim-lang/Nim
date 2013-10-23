@@ -126,16 +126,25 @@ type
 
   ETimeout* = object of ESynch
 
+let
+  InvalidSocket*: TSocket = nil ## invalid socket
+
+when defined(windows):
+  const
+    OSInvalidSocket = winlean.INVALID_SOCKET
+else:
+  const
+    OSInvalidSocket = posix.INVALID_SOCKET
+
 proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
+  if fd == OSInvalidSocket:
+    return nil
   new(result)
   result.fd = fd
   result.isBuffered = isBuff
   if isBuff:
     result.currPos = 0
   result.nonblocking = false
-
-let
-  InvalidSocket*: TSocket = nil ## invalid socket
 
 proc `==`*(a, b: TPort): bool {.borrow.}
   ## ``==`` for ports.
@@ -211,7 +220,9 @@ else:
 
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP, buffered = true): TSocket =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.  
+  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  
+  # TODO: Perhaps this should just raise EOS when an error occurs.
   when defined(Windows):
     result = newTSocket(winlean.socket(ord(domain), ord(typ), ord(protocol)), buffered)
   else:
@@ -456,7 +467,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
   var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
                     addr(addrLen))
   
-  if sock < 0:
+  if sock == OSInvalidSocket:
     let err = OSLastError()
     when defined(windows):
       if err.int32 == WSAEINPROGRESS:
