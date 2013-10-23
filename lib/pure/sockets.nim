@@ -130,10 +130,10 @@ let
   InvalidSocket*: TSocket = nil ## invalid socket
 
 when defined(windows):
-  const
+  let
     OSInvalidSocket = winlean.INVALID_SOCKET
 else:
-  const
+  let
     OSInvalidSocket = posix.INVALID_SOCKET
 
 proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
