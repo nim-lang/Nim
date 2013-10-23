@@ -45,6 +45,7 @@ when defined(WINDOWS):
   const 
     DLLSSLName = "(ssleay32|libssl32).dll"
     DLLUtilName = "libeay32.dll"
+  from winlean import TSocketHandle
 else:
   const
     versions = "(|.1.0.0|.0.9.9|.0.9.8|.0.9.7|.0.9.6|.0.9.5|.0.9.4)"
@@ -56,6 +57,7 @@ else:
     const 
       DLLSSLName = "libssl.so" & versions
       DLLUtilName = "libcrypto.so" & versions
+  from posix import TSocketHandle
 
 type 
   SslStruct {.final, pure.} = object
@@ -225,7 +227,7 @@ proc SSL_CTX_use_PrivateKey_file*(ctx: PSSL_CTX,
 proc SSL_CTX_check_private_key*(ctx: PSSL_CTX): cInt{.cdecl, dynlib: DLLSSLName, 
     importc.}
 
-proc SSL_set_fd*(ssl: PSSL, fd: cint): cint{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_fd*(ssl: PSSL, fd: TSocketHandle): cint{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_shutdown*(ssl: PSSL): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_connect*(ssl: PSSL): cint{.cdecl, dynlib: DLLSSLName, importc.}
