@@ -241,7 +241,7 @@ proc asyncSockHandleWrite(h: PObject) =
         
         if PAsyncSocket(h).handleWrite != nil:
           PAsyncSocket(h).handleWrite(PAsyncSocket(h))
-      except EOS, ESSL:
+      except EOS:
         # Most likely the socket closed before the full buffer could be sent to it.
         sock.close() # TODO: Provide a handleError for users?
     else:
