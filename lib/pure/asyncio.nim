@@ -213,6 +213,7 @@ proc asyncSockHandleRead(h: PObject) =
   else:
     PAsyncSocket(h).handleAccept(PAsyncSocket(h))
 
+proc close*(sock: PAsyncSocket)
 proc asyncSockHandleWrite(h: PObject) =
   when defined(ssl):
     if PAsyncSocket(h).socket.isSSL and not
@@ -230,15 +231,19 @@ proc asyncSockHandleWrite(h: PObject) =
   else:
     if PAsyncSocket(h).sendBuffer != "":
       let sock = PAsyncSocket(h)
-      let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
-      assert bytesSent > 0
-      if bytesSent != sock.sendBuffer.len:
-        sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
-      elif bytesSent == sock.sendBuffer.len:
-        sock.sendBuffer = ""
-      
-      if PAsyncSocket(h).handleWrite != nil:
-        PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+      try:
+        let bytesSent = sock.socket.sendAsync(sock.sendBuffer)
+        assert bytesSent > 0
+        if bytesSent != sock.sendBuffer.len:
+          sock.sendBuffer = sock.sendBuffer[bytesSent .. -1]
+        elif bytesSent == sock.sendBuffer.len:
+          sock.sendBuffer = ""
+        
+        if PAsyncSocket(h).handleWrite != nil:
+          PAsyncSocket(h).handleWrite(PAsyncSocket(h))
+      except EOS, ESSL:
+        # Most likely the socket closed before the full buffer could be sent to it.
+        sock.close() # TODO: Provide a handleError for users?
     else:
       if PAsyncSocket(h).handleWrite != nil:
         PAsyncSocket(h).handleWrite(PAsyncSocket(h))
