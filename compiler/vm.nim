@@ -10,8 +10,10 @@
 ## This file implements the new evaluation engine for Nimrod code.
 ## An instruction is 1-2 int32s in memory, it is a register based VM.
 
+import ast except getstr
+
 import
-  strutils, ast, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
+  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
   parser, vmdeps, idents, trees, renderer
 
 from semfold import leValueConv, ordinalValToString
@@ -131,7 +133,7 @@ proc asgnComplex(x, y: PNode) =
       for i in countup(0, sonsLen(y) - 1): addSon(x, y.sons[i])
 
 template getstr(a: expr): expr =
-  (if a.kind == nkStrLit: a.strVal else: $chr(int(a.intVal)))
+  (if a.kind in {nkStrLit..nkTripleStrLit}: a.strVal else: $chr(int(a.intVal)))
 
 proc pushSafePoint(f: PStackFrame; pc: int) =
   if f.safePoints.isNil: f.safePoints = @[]
@@ -669,8 +671,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcSetLenStr:
       decodeB(nkStrLit)
       regs[ra].strVal.setLen(regs[rb].getOrdValue.int)
+    of opcOf:
+      decodeBC(nkIntLit)
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].typ, regs[rc].typ) >= 0)
     of opcSetLenSeq,
-        opcSwap, opcIsNil, opcOf,
+        opcSwap, opcIsNil,
         opcCast, opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNBindSym:
@@ -868,6 +873,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].strVal = typ.typeToString(preferExported)
     inc pc
 
+proc fixType(result, n: PNode) {.inline.} =
+  # XXX do it deeply for complex values
+  if result.typ.isNil: result.typ = n.typ
+
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
@@ -885,6 +894,7 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
+  fixType(result, n)
 
 # for now we share the 'globals' environment. XXX Coming soon: An API for
 # storing&loading the 'globals' environment to get what a component system
@@ -928,6 +938,7 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   newSeq(tos.slots, c.prc.maxSlots)
   for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos)
+  fixType(result, n)
 
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
   result = evalConstExprAux(module, nil, e, emConst)
