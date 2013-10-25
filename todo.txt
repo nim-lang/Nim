@@ -2,11 +2,12 @@ version 0.9.4
 =============
 
 - new VM:
+  - get rid of nkIntLit..nkUInt64Lit, 
+    nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit?
   - new VM requires lambda lifting
-  - codegen for computed goto still wrong
-  - test and activate the jump optimizer
   - implement overflow checking
   - implement the FFI
+  - test and activate the jump optimizer
 
 - make 'bind' default for templates and introduce 'mixin'
 - special rule for ``[]=``
@@ -20,6 +21,8 @@ version 0.9.4
 Bugs
 ====
 
+- bug: 'type T = ref T' not recognized as illegal recursion
+- bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression
 - simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice

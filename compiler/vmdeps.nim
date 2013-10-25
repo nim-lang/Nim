@@ -32,8 +32,8 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except EIO:
-    result = ""
     LocalError(info, errCannotOpenFile, file)
+    result = ""
 
 when false:
   proc opExpandToAst*(c: PEvalContext, original: PNode): PNode =

@@ -1,16 +1,16 @@
 discard """
-  output: '''yeah A
-yeah A
-yeah CD
-yeah CD
-yeah A
-yeah CD
-yeah CD
-yeah A
-yeah B
-yeah A
-yeah A
-yeah A'''
+  output: '''yeah A enumB
+yeah A enumB
+yeah CD enumD
+yeah CD enumE
+yeah A enumB
+yeah CD enumE
+yeah CD enumD
+yeah A enumB
+yeah B enumC
+yeah A enumB
+yeah A enumB
+yeah A enumB'''
 """
 
 type
@@ -32,13 +32,14 @@ proc vm() =
   while true:
     {.computedGoto.}
     let instr = instructions[pc]
+    let ra = instr.succ # instr.regA
     case instr
     of enumA:
-      echo "yeah A"
+      echo "yeah A ", ra
     of enumC, enumD:
-      echo "yeah CD"
+      echo "yeah CD ", ra
     of enumB:
-      echo "yeah B"
+      echo "yeah B ", ra
     of enumE:
       break
     inc(pc)
