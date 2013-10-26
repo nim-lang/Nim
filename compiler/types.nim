@@ -825,6 +825,8 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
+  if x.Kind == tyGenericInst or y.Kind == tyGenericInst: 
+    c.cmp = dcEqIgnoreDistinct    
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt:
