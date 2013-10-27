@@ -236,8 +236,8 @@ proc execProcesses*(cmds: openArray[string],
             inc(i)
             if i > high(cmds): break
     for j in 0..m-1:
-      if q[j] != nil: close(q[j])
       result = max(waitForExit(q[j]), result)
+      if q[j] != nil: close(q[j])
   else:
     for i in 0..high(cmds):
       var p = startCmd(cmds[i], options=options)
