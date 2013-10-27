@@ -117,9 +117,18 @@ proc filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): seq[T] =
   ##   assert f2 == @["yellow"]
   accumulateResult(filter(seq1, pred))
 
-proc delete*[T](s: var seq[T], first, last: int) =
+proc delete*[T](s: var seq[T], first=0, last=0) =
   ## Deletes in `s` the items at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
+  ##
+  ## Example:
+  ##
+  ##.. code-block:: nimrod
+  ##   let outcome = @[1,1,1,1,1,1,1,1]
+  ##   var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+  ##   dest.delete(3, 8)
+  ##   assert outcome == dest
+  
   var i = first
   var j = last+1
   var newLen = len(s)-j+i
@@ -129,9 +138,19 @@ proc delete*[T](s: var seq[T], first, last: int) =
     inc(j)
   setlen(s, newLen)
 
-proc insert*[T](dest: var seq[T], src: openArray[T], pos: int) =
+proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
+  ##
+  ## Example:
+  ##
+  ##.. code-block:: nimrod
+  ##   var dest = @[1,1,1,1,1,1,1,1]
+  ##   let 
+  ##     src = @[2,2,2,2,2,2]
+  ##     outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+  ##   dest.insert(src, 3)
+  ##   assert dest == outcome
   
   var j = len(dest) - 1
   var i = len(dest) + len(src) - 1
