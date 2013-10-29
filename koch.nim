@@ -271,7 +271,7 @@ proc tests(args: string) =
 
 proc temp(args: string) =
   var output = "compiler" / "nimrod".exe
-  var finalDest = "bin" / "nimrod".exe
+  var finalDest = "bin" / "nimrod_temp".exe
   exec("nimrod c compiler" / "nimrod")
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)

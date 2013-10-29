@@ -1243,12 +1243,11 @@ proc optimizeJumps(c: PCtx; start: int) =
     case opc
     of opcTJmp, opcFJmp:
       var reg = c.code[i].regA
-      var d = i + c.code[i].regBx
-      var iters = maxIterations
-      while iters > 0:
+      var d = i + c.code[i].jmpDiff
+      for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
         of opcJmp:
-          d = d + c.code[d].regBx
+          d = d + c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
           # tjmp x, 23
@@ -1256,22 +1255,26 @@ proc optimizeJumps(c: PCtx; start: int) =
           # tjmp x, 12
           # -- we know 'x' is true, and so can jump to 12+13:
           if c.code[d].opcode == opc:
-            d = d + c.code[d].regBx
+            d = d + c.code[d].jmpDiff
           else:
             # tjmp x, 23
             # fjmp x, 22
             # We know 'x' is true so skip to the next instruction:
             d = d + 1
         else: break
-        dec iters
-      c.finalJumpTarget(i, d - i)
+      if d != i + c.code[i].jmpDiff:
+        c.finalJumpTarget(i, d - i)
     of opcJmp:
-      var d = i + c.code[i].regBx
+      var d = i + c.code[i].jmpDiff
       var iters = maxIterations
       while c.code[d].opcode == opcJmp and iters > 0:
-        d = d + c.code[d].regBx
+        d = d + c.code[d].jmpDiff
         dec iters
-      c.finalJumpTarget(i, d - i)
+      if c.code[d].opcode == opcRet:
+        # optimize 'jmp to ret' to 'ret' here
+        c.code[i] = c.code[d]
+      elif d != i + c.code[i].jmpDiff:
+        c.finalJumpTarget(i, d - i)
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
@@ -1300,9 +1303,11 @@ proc genProc(c: PCtx; s: PSym): int =
     # generate final 'return' statement:
     c.gABC(body, opcRet)
     c.patch(procStart)
-    
     c.gABC(body, opcEof, eofInstr.regA)
+    c.optimizeJumps(result)
     s.position = c.prc.maxSlots
+    #if s.name.s == "temp":
+    #  c.echoCode
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.position
