@@ -277,9 +277,9 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, b
   # L1:
   if dest < 0: dest = getTemp(c, n.typ)
-  c.gen(n.sons[0], dest)
-  let L1 = c.xjmp(n, opc)
   c.gen(n.sons[1], dest)
+  let L1 = c.xjmp(n, opc, dest)
+  c.gen(n.sons[2], dest)
   c.patch(L1)
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
@@ -758,7 +758,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
-  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqRef)
+  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
   of mNLineInfo: genUnaryABC(c, n, dest, opcNLineInfo)
   of mNHint: 
     unused(n, dest)
@@ -1040,9 +1040,16 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABx(n, opcLdNull, dest, c.genType(n.typ))
   for x in n:
-    let a = c.genx(x)
-    c.gABC(n, opcIncl, dest, a)
-    c.freeTemp(a)
+    if x.kind == nkRange:
+      let a = c.genx(x.sons[0])
+      let b = c.genx(x.sons[1])
+      c.gABC(n, opcInclRange, dest, a, b)
+      c.freeTemp(b)
+      c.freeTemp(a)
+    else:
+      let a = c.genx(x)
+      c.gABC(n, opcIncl, dest, a)
+      c.freeTemp(a)
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
@@ -1297,8 +1304,6 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     s.position = c.prc.maxSlots
     c.prc = oldPrc
-    #if s.name.s == "xmlConstructor":
-    #  echoCode(c)
   else:
     c.prc.maxSlots = s.position
     result = x.intVal.int
