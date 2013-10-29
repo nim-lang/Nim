@@ -2,8 +2,8 @@ version 0.9.4
 =============
 
 - new VM:
-  - get rid of nkIntLit..nkUInt64Lit, 
-    nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit?
+   compiling htmlgen (txmlgen) makes the compiler go into an infinite loop
+   tcntseq
   - new VM requires lambda lifting
   - implement overflow checking
   - implement the FFI

@@ -51,11 +51,11 @@ type
     opcLenSeq,
     opcLenStr,
 
-    opcIncl, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
+    opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat, opcShrInt, opcShlInt,
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu, 
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat, 
-    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcXor, 
+    opcLeFloat, opcLtFloat, opcLeu, opcLtu, opcEqRef, opcEqNimrodNode, opcXor, 
     opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt, 
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
