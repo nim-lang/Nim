@@ -201,3 +201,5 @@ template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u3
 template regB*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
 template regC*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 24'u32)
 template regBx*(x: TInstr): int {.immediate.} = (x.uint32 shr 16'u32).int
+
+template jmpDiff*(x: TInstr): int {.immediate.} = regBx(x) - wordExcess
