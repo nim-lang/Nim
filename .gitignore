@@ -129,6 +129,7 @@ examples/cross_calculator/android/tags
 /lib/pure/memfiles
 /lib/pure/mimetypes
 /lib/pure/nimprof
+/lib/pure/numeric
 /lib/pure/oids
 /lib/pure/os
 /lib/pure/osproc
