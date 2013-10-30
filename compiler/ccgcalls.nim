@@ -90,12 +90,12 @@ proc openArrayLoc(p: BProc, n: PNode): PRope =
     result = ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))])
   else: InternalError("openArrayLoc: " & typeToString(a.t))
 
-proc genArgStringToCString(p: BProc, 
+proc genArgStringToCString(p: BProc,
                            n: PNode): PRope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
   result = ropef("$1->data", [a.rdLoc])
-  
+
 proc genArg(p: BProc, n: PNode, param: PSym): PRope =
   var a: TLoc
   if n.kind == nkStringToCString:
@@ -150,7 +150,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: PRope
-  
+
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
@@ -162,7 +162,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       app(pl, genArgNoParam(p, ri.sons[i]))
     if i < length - 1: app(pl, ~", ")
-  
+
   template genCallPattern {.dirty.} =
     lineF(p, cpsStmts, CallPattern & ";$n", op.r, pl, pl.addComma, rawProc)
 
@@ -194,7 +194,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
-  
+
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op, a: TLoc
   initLocExpr(p, ri.sons[0], op)
@@ -204,10 +204,10 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
-  
+
   var param = typ.n.sons[1].sym
   app(pl, genArg(p, ri.sons[1], param))
-  
+
   if skipTypes(param.typ, {tyGenericInst}).kind == tyPtr: app(pl, ~"->")
   else: app(pl, ~".")
   app(pl, op.r)
@@ -232,7 +232,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
-  
+
   if length > 1:
     app(pl, genArg(p, ri.sons[1], typ.n.sons[1].sym))
     app(pl, ~" ")

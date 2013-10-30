@@ -61,7 +61,7 @@ template inc(pc: ptr TInstr, diff = 1) =
   inc cast[TAddress](pc), TInstr.sizeof * diff
 
 proc myreset(n: PNode) =
-  when defined(system.reset): 
+  when defined(system.reset):
     var oldInfo = n.info
     reset(n[])
     n.info = oldInfo
@@ -151,7 +151,7 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame; regs: TNodeSeq): int =
       let exceptType = c.types[c.code[pc2].regBx-wordExcess].skipTypes(
                           abstractPtrs)
       if inheritanceDiff(exceptType, raisedType) <= 0:
-        # mark exception as handled but keep it in B for 
+        # mark exception as handled but keep it in B for
         # the getCurrentException() builtin:
         c.currentExceptionB = c.currentExceptionA
         c.currentExceptionA = nil
@@ -182,7 +182,7 @@ proc opConv*(dest, src: PNode, typ: PType): bool =
       myreset(dest)
       dest.kind = nkStrLit
     case src.typ.skipTypes(abstractRange).kind
-    of tyEnum: 
+    of tyEnum:
       dest.strVal = ordinalValToString(src)
     of tyInt..tyInt64, tyUInt..tyUInt64:
       dest.strVal = $src.intVal
@@ -220,14 +220,14 @@ proc opConv*(dest, src: PNode, typ: PType): bool =
       if dest.kind != nkFloatLit:
         myreset(dest); dest.kind = nkFloatLit
       case skipTypes(src.typ, abstractRange).kind
-      of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar: 
+      of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
         dest.floatVal = toFloat(src.intVal.int)
       else:
         dest.floatVal = src.floatVal
     else:
       asgnComplex(dest, src)
 
-proc compile(c: PCtx, s: PSym): int = 
+proc compile(c: PCtx, s: PSym): int =
   result = vmgen.genProc(c, s)
   #c.echoCode
 
@@ -249,7 +249,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       tos = tos.next
       let retVal = regs[0]
       if tos.isNil: return retVal
-      
+
       move(regs, tos.slots)
       assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
       if c.code[pc].opcode == opcIndCallAsgn:
@@ -402,7 +402,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
     of opcSubu:
       decodeBC(nkIntLit)
       regs[ra].intVal = regs[rb].intVal -% regs[rc].intVal
-    of opcMulu: 
+    of opcMulu:
       decodeBC(nkIntLit)
       regs[ra].intVal = regs[rb].intVal *% regs[rc].intVal
     of opcDivu:
@@ -471,7 +471,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
     of opcLeSet:
       decodeBC(nkIntLit)
       regs[ra].intVal = Ord(containsSets(regs[rb], regs[rc]))
-    of opcEqSet: 
+    of opcEqSet:
       decodeBC(nkIntLit)
       regs[ra].intVal = Ord(equalSets(regs[rb], regs[rc]))
     of opcLtSet:
@@ -482,7 +482,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
     of opcMulSet:
       decodeBC(nkCurly)
       move(regs[ra].sons, nimsets.intersectSets(regs[rb], regs[rc]).sons)
-    of opcPlusSet: 
+    of opcPlusSet:
       decodeBC(nkCurly)
       move(regs[ra].sons, nimsets.unionSets(regs[rb], regs[rc]).sons)
     of opcMinusSet:
@@ -490,7 +490,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       move(regs[ra].sons, nimsets.diffSets(regs[rb], regs[rc]).sons)
     of opcSymDiffSet:
       decodeBC(nkCurly)
-      move(regs[ra].sons, nimsets.symdiffSets(regs[rb], regs[rc]).sons)    
+      move(regs[ra].sons, nimsets.symdiffSets(regs[rb], regs[rc]).sons)
     of opcConcatStr:
       decodeBC(nkStrLit)
       regs[ra].strVal = getstr(regs[rb])
@@ -519,7 +519,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       inc pc
       assert c.code[pc].opcode == opcSubStr
       let rd = c.code[pc].regA
-      regs[ra].strVal = substr(regs[rb].strVal, regs[rc].intVal.int, 
+      regs[ra].strVal = substr(regs[rb].strVal, regs[rc].intVal.int,
                                regs[rd].intVal.int)
     of opcRangeChck:
       let rb = instr.regB
@@ -567,12 +567,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       # we know the next instruction is a 'jmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2): 
-        if overlap(regs[ra], branch.sons[j]): 
+      for j in countup(0, sonsLen(branch) - 2):
+        if overlap(regs[ra], branch.sons[j]):
           cond = true
           break
       assert c.code[pc+1].opcode == opcJmp
-      inc pc 
+      inc pc
       # we skip this instruction so that the final 'inc(pc)' skips
       # the following jump
       if cond:
@@ -593,7 +593,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       if c.currentExceptionA != nil:
         # we are in a cleanup run:
         pc = cleanupOnException(c, tos, regs)-1
-        if pc < 0: 
+        if pc < 0:
           bailOut(c, tos)
           return
     of opcRaise:
@@ -685,16 +685,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       else: stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
     of opcNSymbol:
       let rb = instr.regB
-      if regs[rb].kind != nkSym: 
+      if regs[rb].kind != nkSym:
         stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
       regs[ra] = regs[rb]
     of opcNIdent:
       let rb = instr.regB
-      if regs[rb].kind != nkIdent: 
+      if regs[rb].kind != nkIdent:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
       regs[ra] = regs[rb]
     of opcNGetType:
-      InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)      
+      InternalError(c.debug[pc], "unknown opcode " & $instr.opcode)
     of opcNStrVal:
       decodeB(nkStrLit)
       let a = regs[rb]
@@ -769,29 +769,29 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
           "unknown type" , "unknown type"])
     of opcNSetIntVal:
       let rb = instr.regB
-      if regs[ra].kind in {nkCharLit..nkInt64Lit} and 
+      if regs[ra].kind in {nkCharLit..nkInt64Lit} and
          regs[rb].kind in {nkCharLit..nkInt64Lit}:
         regs[ra].intVal = regs[rb].intVal
-      else: 
+      else:
         stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
     of opcNSetFloatVal:
       let rb = instr.regB
-      if regs[ra].kind in {nkFloatLit..nkFloat64Lit} and 
+      if regs[ra].kind in {nkFloatLit..nkFloat64Lit} and
          regs[rb].kind in {nkFloatLit..nkFloat64Lit}:
         regs[ra].floatVal = regs[rb].floatVal
-      else: 
+      else:
         stackTrace(c, tos, pc, errFieldXNotFound, "floatVal")
     of opcNSetSymbol:
       let rb = instr.regB
       if regs[ra].kind == nkSym and regs[rb].kind == nkSym:
         regs[ra].sym = regs[rb].sym
-      else: 
+      else:
         stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
     of opcNSetIdent:
       let rb = instr.regB
       if regs[ra].kind == nkIdent and regs[rb].kind == nkIdent:
         regs[ra].ident = regs[rb].ident
-      else: 
+      else:
         stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcNSetType:
       let b = regs[instr.regB]
@@ -799,7 +799,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       regs[ra].typ = b.sym.typ
     of opcNSetStrVal:
       let rb = instr.regB
-      if regs[ra].kind in {nkStrLit..nkTripleStrLit} and 
+      if regs[ra].kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {nkStrLit..nkTripleStrLit}:
         regs[ra].strVal = regs[rb].strVal
       else:
@@ -808,10 +808,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame) =
       let rb = instr.regB
       let rc = instr.regC
       var k = regs[rb].intVal
-      if k < 0 or k > ord(high(TNodeKind)): 
+      if k < 0 or k > ord(high(TNodeKind)):
         internalError(c.debug[pc],
           "request to create a NimNode with invalid kind")
-      regs[ra] = newNodeI(TNodeKind(int(k)), 
+      regs[ra] = newNodeI(TNodeKind(int(k)),
         if regs[rc].kind == nkNilLit: c.debug[pc] else: regs[rc].info)
     of opcNCopyNimNode:
       let rb = instr.regB
@@ -877,7 +877,7 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
 
 const vmPass* = makePass(myOpen, nil, myProcess, myProcess)
 
-proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode = 
+proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode =
   var p = newCtx(module)
   var s = newStackFrame()
   s.call = e
@@ -887,10 +887,10 @@ proc evalConstExprAux(module, prc: PSym, e: PNode, mode: TEvalMode): PNode =
   if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
 
-proc evalConstExpr*(module: PSym, e: PNode): PNode = 
+proc evalConstExpr*(module: PSym, e: PNode): PNode =
   result = evalConstExprAux(module, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
+proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
   result = evalConstExprAux(module, prc, e, emStatic)
 
 proc setupMacroParam(x: PNode): PNode =

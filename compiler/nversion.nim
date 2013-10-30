@@ -10,7 +10,7 @@
 # This module contains Nimrod's version. It is the only place where it needs
 # to be changed.
 
-const 
+const
   MaxSetElements* = 1 shl 16  # (2^16) to support unicode character sets?
   defaultAsmMarkerSymbol* = '!'
   VersionMajor* = 0

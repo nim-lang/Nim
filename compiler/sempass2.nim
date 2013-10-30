@@ -8,12 +8,12 @@
 #
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees, 
+  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
-# 
+#
 # * effect+exception tracking
 # * "usage before definition" checking
 # * checks for invalid usages of compiletime magics (not implemented)
@@ -23,7 +23,7 @@ import
 # Predefined effects:
 #   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
 #   side effect (accesses global), store (stores into *type*),
-#   store_unkown (performs some store) --> store(any)|store(x) 
+#   store_unkown (performs some store) --> store(any)|store(x)
 #   load (loads from *type*), recursive (recursive call), unsafe,
 #   endless (has endless loops), --> user effects are defined over *patterns*
 #   --> a TR macro can annotate the proc with user defined annotations
@@ -31,31 +31,31 @@ import
 
 # Load&Store analysis is performed on *paths*. A path is an access like
 # obj.x.y[i].z; splitting paths up causes some problems:
-# 
+#
 # var x = obj.x
 # var z = x.y[i].z
 #
 # Alias analysis is affected by this too! A good solution is *type splitting*:
-# T becomes T1 and T2 if it's known that T1 and T2 can't alias. 
-# 
+# T becomes T1 and T2 if it's known that T1 and T2 can't alias.
+#
 # An aliasing problem and a race condition are effectively the same problem.
 # Type based alias analysis is nice but not sufficient; especially splitting
 # an array and filling it in parallel should be supported but is not easily
 # done: It essentially requires a built-in 'indexSplit' operation and dependent
 # typing.
-  
+
 # ------------------------ exception and tag tracking -------------------------
 
 discard """
   exception tracking:
-  
+
   a() # raises 'x', 'e'
   try:
     b() # raises 'e'
   except e:
     # must not undo 'e' here; hrm
     c()
- 
+
  --> we need a stack of scopes for this analysis
 """
 
@@ -116,7 +116,7 @@ proc addToIntersection(inter: var TIntersection, s: int) =
 
 proc throws(tracked, n: PNode) =
   if n.typ == nil or n.typ.kind != tyError: tracked.add n
-  
+
 proc excType(n: PNode): PType =
   # reraise is like raising E_Base:
   let t = if n.kind == nkEmpty: sysTypeFromName"E_Base" else: n.typ
@@ -193,10 +193,10 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   let oldState = tracked.init.len
   var inter: TIntersection = @[]
 
-  track(tracked, n.sons[0])  
+  track(tracked, n.sons[0])
   for i in oldState.. <tracked.init.len:
     addToIntersection(inter, tracked.init[i])
-  
+
   var branches = 1
   var hasFinally = false
   for i in 1 .. < n.len:
@@ -220,7 +220,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
       hasFinally = true
-      
+
   tracked.bottom = oldBottom
   if not hasFinally:
     setLen(tracked.init, oldState)
@@ -231,7 +231,7 @@ proc isIndirectCall(n: PNode, owner: PSym): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
-  if n.kind != nkSym: 
+  if n.kind != nkSym:
     result = true
   elif n.sym.kind == skParam:
     result = owner != n.sym.owner or owner == nil
@@ -241,13 +241,13 @@ proc isIndirectCall(n: PNode, owner: PSym): bool =
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
-proc trackPragmaStmt(tracked: PEffects, n: PNode) = 
-  for i in countup(0, sonsLen(n) - 1): 
+proc trackPragmaStmt(tracked: PEffects, n: PNode) =
+  for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
       listEffects(tracked)
-      
+
 proc effectSpec(n: PNode, effectType = wRaises): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
@@ -263,12 +263,12 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
     let s = n.sons[namePos].sym
-    
+
     let actual = s.typ.n.sons[0]
     if actual.len != effectListLen: return
     let real = actual.sons[idx]
-    
-    # warning: hack ahead: 
+
+    # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, real.len)
     for i in 0 .. <real.len:
       var t = typeToString(real[i].typ)
@@ -279,7 +279,7 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int) =
 
     var pair = newNode(nkExprColonExpr, n.info, @[
       newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
-    
+
     if x.kind == nkEmpty:
       x = newNodeI(nkPragma, n.info)
       n.sons[pragmasPos] = x
@@ -294,13 +294,13 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast.sons[pragmasPos]
   let spec = effectSpec(pragma, wRaises)
   mergeEffects(tracked, spec, n)
-  
+
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
-  if paramType != nil and tfNotNil in paramType.flags and 
+  if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
@@ -310,7 +310,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
       return
     case impliesNotNil(tracked.guards, n)
     of impUnknown:
-      Message(n.info, errGenerated, 
+      Message(n.info, errGenerated,
               "cannot prove '$1' is not nil" % n.renderTree)
     of impNo:
       Message(n.info, errGenerated, "'$1' is provably nil" % n.renderTree)
@@ -338,7 +338,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
 proc breaksBlock(n: PNode): bool =
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for c in n: 
+    for c in n:
       if breaksBlock(c): return true
   of nkBreakStmt, nkReturnStmt, nkRaiseStmt:
     return true
@@ -366,7 +366,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
     if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
-    
+
   let exh = case skipTypes(n.sons[0].Typ, abstractVarRange-{tyTypeDesc}).Kind
             of tyFloat..tyFloat128, tyString:
               lastSon(n).kind == nkElse
@@ -411,7 +411,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
   setLen(tracked.guards, oldFacts)
-  
+
 proc trackBlock(tracked: PEffects, n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     var oldState = -1
@@ -466,7 +466,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
-    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, 
+    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize,
                                            mNewSeq, mShallowCopy}:
       # may not look like an assignment, but it is:
       initVarViaNew(tracked, n.sons[1])
@@ -590,7 +590,7 @@ proc trackProc*(s: PSym, body: PNode) =
   newSeq(effects.sons, effectListLen)
   effects.sons[exceptionEffects] = newNodeI(nkArgList, body.info)
   effects.sons[tagEffects] = newNodeI(nkArgList, body.info)
-  
+
   var t: TEffects
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
@@ -598,7 +598,7 @@ proc trackProc*(s: PSym, body: PNode) =
   t.init = @[]
   t.guards = @[]
   track(t, body)
-  
+
   if not isEmptyType(s.typ.sons[0]) and tfNeedsInit in s.typ.sons[0].flags and
       s.kind in {skProc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
@@ -618,4 +618,3 @@ proc trackProc*(s: PSym, body: PNode) =
                     hints=off)
     # after the check, use the formal spec:
     effects.sons[tagEffects] = tagsSpec
-    

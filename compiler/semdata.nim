@@ -9,13 +9,13 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import 
+import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
-  wordrecg, 
-  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
+  wordrecg,
+  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
   magicsys, nversion, nimsets, parser, times, passes, rodread, evals
 
-type 
+type
   TOptionEntry* = object of lists.TListEntry # entries to put on a
                                              # stack for pragma parsing
     options*: TOptions
@@ -35,12 +35,12 @@ type
     InTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
-  
+
   TInstantiationPair* = object
     genericSym*: PSym
     inst*: PInstantiation
 
-  TExprFlag* = enum 
+  TExprFlag* = enum
     efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
     efAllowDestructor
   TExprFlags* = set[TExprFlag]
@@ -56,7 +56,7 @@ type
                                # this is used so that generic instantiations
                                # can access private object fields
     InstCounter*: int          # to prevent endless instantiations
-   
+
     threadEntries*: TSymSeq    # list of thread entries to check
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
@@ -86,7 +86,7 @@ type
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     lastGenericIdx*: int      # used for the generics stack
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
-   
+
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
   result.inst = inst
@@ -118,7 +118,7 @@ proc PopOwner*()
 
 var gOwners*: seq[PSym] = @[]
 
-proc getCurrOwner(): PSym = 
+proc getCurrOwner(): PSym =
   # owner stack (used for initializing the
   # owner field of syms)
   # the documentation comment always gets
@@ -126,19 +126,19 @@ proc getCurrOwner(): PSym =
   # BUGFIX: global array is needed!
   result = gOwners[high(gOwners)]
 
-proc PushOwner(owner: PSym) = 
+proc PushOwner(owner: PSym) =
   add(gOwners, owner)
 
-proc PopOwner() = 
+proc PopOwner() =
   var length = len(gOwners)
   if length > 0: setlen(gOwners, length - 1)
   else: InternalError("popOwner")
 
-proc lastOptionEntry(c: PContext): POptionEntry = 
+proc lastOptionEntry(c: PContext): POptionEntry =
   result = POptionEntry(c.optionStack.tail)
 
-proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
-  if owner == nil: 
+proc pushProcCon*(c: PContext, owner: PSym) {.inline.} =
+  if owner == nil:
     InternalError("owner is nil")
     return
   var x: PProcCon
@@ -149,7 +149,7 @@ proc pushProcCon*(c: PContext, owner: PSym) {.inline.} =
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
-proc newOptionEntry(): POptionEntry = 
+proc newOptionEntry(): POptionEntry =
   new(result)
   result.options = gOptions
   result.defaultCC = ccDefault
@@ -174,8 +174,8 @@ proc newContext(module: PSym): PContext =
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
-  for i in countup(0, L - 1): 
-    if sq[i].id == s.id: return 
+  for i in countup(0, L - 1):
+    if sq[i].id == s.id: return
   setlen(sq, L + 1)
   sq[L] = s
 
@@ -185,20 +185,20 @@ proc addConverter*(c: PContext, conv: PSym) =
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
 
-proc newLib(kind: TLibKind): PLib = 
+proc newLib(kind: TLibKind): PLib =
   new(result)
   result.kind = kind          #initObjectSet(result.syms)
-  
+
 proc addToLib(lib: PLib, sym: PSym) =
   #if sym.annex != nil and not isGenericRoutine(sym):
   #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
-proc makePtrType(c: PContext, baseType: PType): PType = 
+proc makePtrType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.AssertNotNil)
 
-proc makeVarType(c: PContext, baseType: PType): PType = 
+proc makeVarType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyVar, c)
   addSonSkipIntLit(result, baseType.AssertNotNil)
 
@@ -211,7 +211,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
-proc newTypeS(kind: TTypeKind, c: PContext): PType = 
+proc newTypeS(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner())
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
@@ -227,7 +227,7 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) = 
+proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner()
   dest.size = - 1
@@ -249,9 +249,9 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
 proc illFormedAst*(n: PNode) =
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc checkSonsLen*(n: PNode, length: int) = 
+proc checkSonsLen*(n: PNode, length: int) =
   if sonsLen(n) != length: illFormedAst(n)
-  
-proc checkMinSonsLen*(n: PNode, length: int) = 
+
+proc checkMinSonsLen*(n: PNode, length: int) =
   if sonsLen(n) < length: illFormedAst(n)
 

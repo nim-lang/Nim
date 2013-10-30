@@ -11,7 +11,7 @@
 
 
 # special marker values that indicates that we are
-# 1) AnalyzingDestructor: currently analyzing the type for destructor 
+# 1) AnalyzingDestructor: currently analyzing the type for destructor
 # generation (needed for recursive types)
 # 2) DestructorIsTrivial: completed the analysis before and determined
 # that the type has a trivial destructor
@@ -62,7 +62,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
       if stmt != nil:
         destroyRecList.addSon(stmt)
         inc nonTrivialFields
-        
+
     case recList.kind
     of nkSym:
       addField(recList.sym)
@@ -71,17 +71,17 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
         addField(recList[j].sym)
     else:
       internalAssert false
-      
+
     caseBranch.addSon(destroyRecList)
     result.addSon(caseBranch)
   # maybe no fields were destroyed?
   if nonTrivialFields == 0:
     result = nil
- 
+
 proc generateDestructor(c: PContext, t: PType): PNode =
   ## generate a destructor for a user-defined object or tuple type
   ## returns nil if the destructor turns out to be trivial
-  
+
   template addLine(e: expr): stmt =
     if result == nil: result = newNode(nkStmtList)
     result.addSon(e)
@@ -110,12 +110,12 @@ proc instantiateDestructor(c: PContext, typ: PType): bool =
   # destructor or if the compiler generated a default
   # member-wise one
   var t = skipTypes(typ, {tyConst, tyMutable})
-  
+
   if t.destructor != nil:
     # XXX: This is not entirely correct for recursive types, but we need
     # it temporarily to hide the "destroy is already defined" problem
     return t.destructor notin [AnalyzingDestructor, DestructorIsTrivial]
-  
+
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
     if instantiateDestructor(c, t.sons[0]):
@@ -180,7 +180,7 @@ proc insertDestructors(c: PContext,
       varTyp = varId.sym.typ
       info = varId.info
 
-    if varTyp != nil and instantiateDestructor(c, varTyp) and 
+    if varTyp != nil and instantiateDestructor(c, varTyp) and
         sfGlobal notin varId.sym.flags:
       var tryStmt = newNodeI(nkTryStmt, info)
 

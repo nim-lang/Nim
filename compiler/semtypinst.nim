@@ -17,18 +17,18 @@ proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   elif t.kind == tyVar and t.sons[0].kind == tyVar:
     LocalError(info, errVarVarTypeNotAllowed)
 
-proc checkConstructedType*(info: TLineInfo, typ: PType) = 
+proc checkConstructedType*(info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in {tyTypeClass}: nil
-  elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
+  elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
     LocalError(info, errInvalidPragmaX, "acyclic")
-  elif t.kind == tyVar and t.sons[0].kind == tyVar: 
+  elif t.kind == tyVar and t.sons[0].kind == tyVar:
     LocalError(info, errVarVarTypeNotAllowed)
   elif computeSize(t) < 0:
     LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
-      if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
+      if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags:
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(key: PType): PType =
@@ -52,7 +52,7 @@ proc searchInstTypes*(key: PType): PType =
         # XXX sameType is not really correct for nested generics?
         if not sameType(inst.sons[j], key.sons[j]):
           break MatchType
-      
+
       return inst
 
 proc cacheTypeInst*(inst: PType) =
@@ -62,7 +62,7 @@ proc cacheTypeInst*(inst: PType) =
   genericTyp.sym.typeInstCache.safeAdd(inst)
 
 type
-  TReplTypeVars* {.final.} = object 
+  TReplTypeVars* {.final.} = object
     c*: PContext
     typeMap*: TIdTable        # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
@@ -76,8 +76,8 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result = copyNode(n)
   result.typ = ReplaceTypeVarsT(cl, n.typ)
   if result.kind == nkSym: result.sym = ReplaceTypeVarsS(cl, n.sym)
-  for i in 0 .. safeLen(n)-1: 
-    # XXX HACK: ``f(a, b)``, avoid to instantiate `f` 
+  for i in 0 .. safeLen(n)-1:
+    # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
     if i == 0: result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
 
@@ -117,11 +117,11 @@ proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
       newSons(result, length)
       for i in countup(0, length - 1):
         result.sons[i] = ReplaceTypeVarsN(cl, n.sons[i])
-  
-proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym = 
+
+proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   if s == nil: return nil
   result = PSym(idTableGet(cl.symMap, s))
-  if result == nil: 
+  if result == nil:
     result = copySym(s, false)
     incl(result.flags, sfFromGeneric)
     idTablePut(cl.symMap, s, result)
@@ -129,17 +129,17 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
     result.owner = s.owner
     result.ast = ReplaceTypeVarsN(cl, s.ast)
 
-proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
+proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType =
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil:
     LocalError(t.sym.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
-  elif result.kind == tyGenericParam: 
+  elif result.kind == tyGenericParam:
     InternalError(cl.info, "substitution with generic parameter")
-  
-proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType = 
+
+proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvokation[A, tyGenericInvokation[A, B]]
-  # is difficult to handle: 
+  # is difficult to handle:
   var body = t.sons[0]
   if body.kind != tyGenericBody: InternalError(cl.info, "no generic body")
   var header: PType = nil
@@ -153,7 +153,7 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
       if header == nil: header = copyType(t, t.owner, false)
       header.sons[i] = x
       propagateToOwner(header, x)
-      #idTablePut(cl.typeMap, body.sons[i-1], x)  
+      #idTablePut(cl.typeMap, body.sons[i-1], x)
 
   if header != nil:
     # search again after first pass:
@@ -174,12 +174,12 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
     header.sons[i] = x
     propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
-  
-  for i in countup(1, sonsLen(t) - 1): 
+
+  for i in countup(1, sonsLen(t) - 1):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
-  
+
   var newbody = ReplaceTypeVarsT(cl, lastSon(body))
   newbody.flags = newbody.flags + t.flags + body.flags
   result.flags = result.flags + newbody.flags
@@ -191,10 +191,10 @@ proc handleGenericInvokation(cl: var TReplTypeVars, t: PType): PType =
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
-  
-proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType = 
+
+proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = t
-  if t == nil: return 
+  if t == nil: return
   case t.kind
   of tyTypeClass: nil
   of tyGenericParam:
@@ -204,7 +204,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   of tyExpr:
     if t.sym != nil and t.sym.kind == skGenericParam:
       result = lookupTypeVar(cl, t)
-  of tyGenericInvokation: 
+  of tyGenericInvokation:
     result = handleGenericInvokation(cl, t)
   of tyGenericBody:
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
@@ -215,7 +215,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   else:
     if t.kind == tyArray:
       let idxt = t.sons[0]
-      if idxt.kind == tyExpr and 
+      if idxt.kind == tyExpr and
          idxt.sym != nil and idxt.sym.kind == skGenericParam:
         let value = lookupTypeVar(cl, idxt).n
         t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)
@@ -231,9 +231,9 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
       if result.kind == tyProc and result.sons[0] != nil:
         if result.sons[0].kind == tyEmpty:
           result.sons[0] = nil
-  
-proc generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode, 
-                           t: PType): PType = 
+
+proc generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
+                           t: PType): PType =
   var cl: TReplTypeVars
   InitIdTable(cl.symMap)
   copyIdTable(cl.typeMap, pt)

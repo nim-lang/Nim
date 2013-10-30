@@ -99,33 +99,33 @@ struct cjpeg_source_struct {
   JDIMENSION buffer_height;
 };
 
-// Test standalone structs: 
+// Test standalone structs:
 
 union myunion {
   char x, y, *z;
-  myint a, b;  
+  myint a, b;
 } u;
 
 struct mystruct {
   char x, y, *z;
   myint a, b;
-}; 
+};
 
 struct mystruct fn(i32 x, i64 y);
 
 struct mystruct {
   char x, y, *z;
   myint a, b;
-} *myvar = NULL, **myvar2 = NULL; 
+} *myvar = NULL, **myvar2 = NULL;
 
-// anonymous struct: 
+// anonymous struct:
 
 struct {
   char x, y, *z;
-  myint a, b;  
+  myint a, b;
 } varX, **varY;
 
-// empty anonymous struct: 
+// empty anonymous struct:
 
 struct {
 
@@ -138,16 +138,16 @@ struct {
 #define CAST2(x) (typ*) &x
 #define CAST3(x) ((const unsigned char**) &x)
 
-#ifndef C2NIM 
+#ifndef C2NIM
   #if someNestedCond
-    This is an invalid text that should generate a parser error, if not 
+    This is an invalid text that should generate a parser error, if not
   #endif
     skipped correctly.
 #endif
 
 #ifndef C2NIM
   #if someNestedCond
-    This is an invalid text that should generate a parser error, if not 
+    This is an invalid text that should generate a parser error, if not
   #endif
     skipped correctly.
 #else
@@ -161,7 +161,7 @@ typedef unsigned char guchar;
 int those;
 #elif abc
   #if someNestedCond
-    This is an invalid text that should generate a parser error, if not 
+    This is an invalid text that should generate a parser error, if not
   #else
     skipped correctly.
   #endif
@@ -169,18 +169,18 @@ int those;
   Another crappy input line.
 #endif
 
-point* newPoint(void) {  
+point* newPoint(void) {
   for (int i = 0; i < 89; ++i) echo("test" " string "  "concatenation");
   for (; j < 54; j++) {}
   for (;; j--) ;
   for (;;) {}
   mytype * x = y * z;
- 
+
   if (**p == ' ') {
     --p;
   } else if (**p == '\t') {
     p += 3;
-  } else { 
+  } else {
     p = 45 + (mytype*)45;
     p = 45 + ((mytype*)45);
     p = 45 + ((mytype)45);
@@ -188,9 +188,9 @@ point* newPoint(void) {
     // p = 45 + (mytype)45;
   }
 
-  while (x >= 6 && x <= 20) 
+  while (x >= 6 && x <= 20)
     --x;
-  
+
   switch (*p) {
     case 'A'...'Z':
     case 'a'...'z':
@@ -216,9 +216,9 @@ typedef enum {
   x1, x2, x3 = 8, x4, x5
 } myEnum, *pMyEnum;
 
-// Test multi-line macro: 
+// Test multi-line macro:
 
-#define MUILTILINE "abc" \ 
+#define MUILTILINE "abc" \
   "xyz" \
   "def"
 
@@ -269,7 +269,7 @@ int IupConvertXYToPos(PIhandle ih, int x, int y);
   #def EXPORT
   // does parse now!
   EXPORT int f(void);
-  EXPORT int g(void); 
+  EXPORT int g(void);
 
   static TWO_ARGS(int, x) = TWO_ARGS(56, 45);
 
@@ -373,8 +373,8 @@ RGB_to_HWB (RGBType RGB, HWBType * HWB)
 {
   HWBType* myArray[20];
   /*
-   * RGB are each on [0, 1]. W and B are returned on [0, 1] and H is  
-   * returned on [0, 6]. Exception: H is returned UNDEFINED if W == 1 - B.  
+   * RGB are each on [0, 1]. W and B are returned on [0, 1] and H is
+   * returned on [0, 6]. Exception: H is returned UNDEFINED if W == 1 - B.
    */
 
   float R = RGB.R, G = RGB.G, B = RGB.B, w, v, b, f;
@@ -396,11 +396,11 @@ clip_1d (int *x0, int *y0, int *x1, int *y1, int mindim, int maxdim)
 {
   double m;                        // gradient of line
   if (*x0 < mindim)
-    {                                // start of line is left of window 
-      if (*x1 < mindim) // as is the end, so the line never cuts the window 
+    {                                // start of line is left of window
+      if (*x1 < mindim) // as is the end, so the line never cuts the window
         return 0;
       m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of the line
-      // adjust x0 to be on the left boundary (ie to be zero), and y0 to match 
+      // adjust x0 to be on the left boundary (ie to be zero), and y0 to match
       *y0 -= m * (*x0 - mindim);
       *x0 = mindim;
       // now, perhaps, adjust the far end of the line as well
@@ -412,8 +412,8 @@ clip_1d (int *x0, int *y0, int *x1, int *y1, int mindim, int maxdim)
       return 1;
     }
   if (*x0 > maxdim)
-    { // start of line is right of window - complement of above 
-      if (*x1 > maxdim) // as is the end, so the line misses the window 
+    { // start of line is right of window - complement of above
+      if (*x1 > maxdim) // as is the end, so the line misses the window
         return 0;
       m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of the line
       *y0 += m * (maxdim - *x0);        // adjust so point is on the right
@@ -430,14 +430,14 @@ clip_1d (int *x0, int *y0, int *x1, int *y1, int mindim, int maxdim)
   // the final case - the start of the line is inside the window
   if (*x1 > maxdim)
     {                                // other end is outside to the right
-      m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of the line 
+      m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of the line
       *y1 += m * (maxdim - *x1);
       *x1 = maxdim;
       return 1;
     }
   if (*x1 < mindim)
-    {                                // other end is outside to the left 
-      m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of line 
+    {                                // other end is outside to the left
+      m = (*y1 - *y0) / (double) (*x1 - *x0); // calculate the slope of line
              *y1 -= m * (*x1 - mindim);
       *x1 = mindim;
       return 1;
@@ -500,7 +500,7 @@ gdImageBrushApply (gdImagePtr im, int x, int y)
                   int p, tc;
                   p = gdImageGetPixel (im->brush, srcx, srcy);
                   tc = gdImageGetTrueColorPixel (im->brush, srcx, srcy);
-                  // 2.0.9, Thomas Winzig: apply simple full transparency 
+                  // 2.0.9, Thomas Winzig: apply simple full transparency
                   if (p != gdImageGetTransparent (im->brush))
                     {
                       gdImageSetPixel (im, lx, ly, tc);
@@ -543,7 +543,7 @@ gdImageBrushApply (gdImagePtr im, int x, int y)
             }
           srcy++;
         }
-    } 
+    }
 }
 
 

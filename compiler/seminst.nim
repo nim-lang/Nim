@@ -11,13 +11,13 @@
 # included from sem.nim
 
 proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
-                                 entry: var TInstantiation) = 
-  if n.kind != nkGenericParams: 
+                                 entry: var TInstantiation) =
+  if n.kind != nkGenericParams:
     InternalError(n.info, "instantiateGenericParamList; no generic params")
   newSeq(entry.concreteTypes, n.len)
   for i in countup(0, n.len - 1):
     var a = n.sons[i]
-    if a.kind != nkSym: 
+    if a.kind != nkSym:
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyTypeClass, tyExpr}: continue
@@ -26,13 +26,13 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     var t = PType(IdTableGet(pt, q.typ))
     if t == nil:
       if tfRetType in q.typ.flags:
-        # keep the generic type and allow the return type to be bound 
+        # keep the generic type and allow the return type to be bound
         # later by semAsgn in return type inference scenario
         t = q.typ
       else:
         LocalError(a.info, errCannotInstantiateX, s.name.s)
         t = errorType(c)
-    elif t.kind == tyGenericParam: 
+    elif t.kind == tyGenericParam:
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
     elif t.kind == tyGenericInvokation:
       #t = instGenericContainer(c, a, t)
@@ -55,17 +55,17 @@ proc GenericCacheGet(genericSym: Psym, entry: TInstantiation): PSym =
       if sameInstantiation(entry, inst[]):
         return inst.sym
 
-proc removeDefaultParamValues(n: PNode) = 
+proc removeDefaultParamValues(n: PNode) =
   # we remove default params, because they cannot be instantiated properly
   # and they are not needed anyway for instantiation (each param is already
   # provided).
   when false:
-    for i in countup(1, sonsLen(n)-1): 
+    for i in countup(1, sonsLen(n)-1):
       var a = n.sons[i]
       if a.kind != nkIdentDefs: IllFormedAst(a)
       var L = a.len
       if a.sons[L-1].kind != nkEmpty and a.sons[L-2].kind != nkEmpty:
-        # ``param: typ = defaultVal``. 
+        # ``param: typ = defaultVal``.
         # We don't need defaultVal for semantic checking and it's wrong for
         # ``cmp: proc (a, b: T): int = cmp``. Hm, for ``cmp = cmp`` that is
         # not possible... XXX We don't solve this issue here.
@@ -122,17 +122,17 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       closeScope(c)
       popInfoContext()
 
-proc sideEffectsCheck(c: PContext, s: PSym) = 
+proc sideEffectsCheck(c: PContext, s: PSym) =
   if {sfNoSideEffect, sfSideEffect} * s.flags ==
-      {sfNoSideEffect, sfSideEffect}: 
+      {sfNoSideEffect, sfSideEffect}:
     LocalError(s.info, errXhasSideEffects, s.name.s)
-  elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and 
+  elif sfThread in s.flags and semthreads.needsGlobalAnalysis() and
       s.ast.sons[genericParamsPos].kind == nkEmpty:
     c.threadEntries.add(s)
 
 proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PType =
   InternalAssert invocation.kind == tyGenericInvokation
-  
+
   let cacheHit = searchInstTypes(invocation)
   if cacheHit != nil:
     result = cacheHit
@@ -184,7 +184,7 @@ proc fixupProcType(c: PContext, genericType: PType,
   # there are few apparent differences, but maybe the code could be
   # moved over.
   # * the code here uses the new genericSym.position property when
-  #   doing lookups. 
+  #   doing lookups.
   # * the handling of tyTypeDesc seems suspicious in ReplaceTypeVarsT
   #   typedesc params were previously handled in the second pass of
   #   semParamList
@@ -229,9 +229,9 @@ proc fixupProcType(c: PContext, genericType: PType,
             result.sons[i..i] = []
             if result.n != nil: result.n.sons[i..i] = []
             continue
-        
+
         result.sons[head] = changed
-        
+
         if result.n != nil:
           if result.n.kind == nkRecList:
             for son in result.n.sons:
@@ -249,20 +249,20 @@ proc fixupProcType(c: PContext, genericType: PType,
 
       # won't be advanced on empty (void) nodes
       inc head
-  
+
   of tyGenericInvokation:
     result = newTypeWithSons(c, tyGenericInvokation, genericType.sons)
     for i in 1 .. <genericType.sons.len:
       result.sons[i] = fixupProcType(c, result.sons[i], inst)
     result = instGenericContainer(c, getInfoContext(-1), result)
-  
+
   else: nil
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   # no need to instantiate generic templates/macros:
   if fn.kind in {skTemplate, skMacro}: return fn
-  
+
   # generates an instantiated proc
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)
@@ -280,7 +280,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(result)
   openScope(c)
-  if n.sons[genericParamsPos].kind == nkEmpty: 
+  if n.sons[genericParamsPos].kind == nkEmpty:
     InternalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)

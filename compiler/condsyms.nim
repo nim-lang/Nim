@@ -9,35 +9,35 @@
 
 # This module handles the conditional symbols.
 
-import 
+import
   strtabs, platform, strutils, idents
 
 # We need to use a PStringTable here as defined symbols are always guaranteed
 # to be style insensitive. Otherwise hell would break lose.
 var gSymbols: PStringTable
 
-proc DefineSymbol*(symbol: string) = 
+proc DefineSymbol*(symbol: string) =
   gSymbols[symbol] = "true"
 
-proc UndefSymbol*(symbol: string) = 
+proc UndefSymbol*(symbol: string) =
   gSymbols[symbol] = "false"
 
-proc isDefined*(symbol: string): bool = 
+proc isDefined*(symbol: string): bool =
   if gSymbols.hasKey(symbol):
     result = gSymbols[symbol] == "true"
-  
+
 proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
 
 iterator definedSymbolNames*: string =
   for key, val in pairs(gSymbols):
     if val == "true": yield key
 
-proc countDefinedSymbols*(): int = 
+proc countDefinedSymbols*(): int =
   result = 0
   for key, val in pairs(gSymbols):
     if val == "true": inc(result)
 
-proc InitDefines*() = 
+proc InitDefines*() =
   gSymbols = newStringTable(modeStyleInsensitive)
   DefineSymbol("nimrod") # 'nimrod' is always defined
   # for bootstrapping purposes and old code:
@@ -47,7 +47,7 @@ proc InitDefines*() =
   DefineSymbol("nimeffects")
   DefineSymbol("nimbabel")
   DefineSymbol("nimcomputedgoto")
-  
+
   # add platform specific symbols:
   case targetCPU
   of cpuI386: DefineSymbol("x86")
@@ -55,27 +55,27 @@ proc InitDefines*() =
   of cpuAmd64: DefineSymbol("x8664")
   else: discard
   case targetOS
-  of osDOS: 
+  of osDOS:
     DefineSymbol("msdos")
-  of osWindows: 
+  of osWindows:
     DefineSymbol("mswindows")
     DefineSymbol("win32")
-  of osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix, 
+  of osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix,
      osHaiku:
     # these are all 'unix-like'
     DefineSymbol("unix")
     DefineSymbol("posix")
-  of osSolaris: 
+  of osSolaris:
     DefineSymbol("sunos")
     DefineSymbol("unix")
     DefineSymbol("posix")
-  of osNetBSD, osFreeBSD, osOpenBSD: 
+  of osNetBSD, osFreeBSD, osOpenBSD:
     DefineSymbol("unix")
     DefineSymbol("bsd")
     DefineSymbol("posix")
-  of osMacOS: 
+  of osMacOS:
     DefineSymbol("macintosh")
-  of osMacOSX: 
+  of osMacOSX:
     DefineSymbol("macintosh")
     DefineSymbol("unix")
     DefineSymbol("posix")

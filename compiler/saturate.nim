@@ -72,7 +72,7 @@ proc `|*|`*(a, b: biggestInt): biggestInt =
   #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
   if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
     return result
-  
+
   if floatProd >= 0.0:
     result = high(result)
   else:
