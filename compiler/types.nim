@@ -838,11 +838,10 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyDistinct:
     CycleCheck()
     if c.cmp == dcEq:      
-      result = false      
-      if a.sym != nil and b.sym != nil:
-        if a.sym.name == b.sym.name:
-          result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)      
-    else:           
+      if sameFlags(a, b):
+        IfFastObjectTypeCheckFailed(a, b):
+          result = sameTypeAux(a.sons[0], b.sons[0], c)     
+    else: 
       result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
