@@ -1,5 +1,5 @@
 #! stdtmpl(subsChar='?') | standard
-#proc GenerateBuildShellScript(c: TConfigData): string = 
+#proc GenerateBuildShellScript(c: TConfigData): string =
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/buildsh.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
@@ -50,23 +50,23 @@ ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
 uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
 
 case $uos in
-  *linux* ) 
-    myos="linux" 
+  *linux* )
+    myos="linux"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
-  *freebsd* | *dragonfly* ) 
+  *freebsd* | *dragonfly* )
     myos="freebsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
   *openbsd* )
-    myos="openbsd" 
+    myos="openbsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
   *netbsd* )
     myos="netbsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
-  *darwin* ) 
+  *darwin* )
     myos="macosx"
     CC="clang"
     LINKER="clang"
@@ -77,41 +77,41 @@ case $uos in
     ;;
   *aix* )
     myos="aix"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"    
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
-  *solaris* | *sun* ) 
+  *solaris* | *sun* )
     myos="solaris"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
     ;;
   *haiku* )
     myos="haiku"
     ;;
-  *) 
+  *)
     echo "Error: unknown operating system: $uos"
     exit 1
     ;;
 esac
 
 case $ucpu in
-  *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* ) 
+  *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
     mycpu="i386" ;;
-  *amd*64* | *x86-64* | *x86_64* ) 
+  *amd*64* | *x86-64* | *x86_64* )
     mycpu="amd64" ;;
-  *sparc*|*sun* ) 
+  *sparc*|*sun* )
     mycpu="sparc" ;;
-  *ppc64* ) 
+  *ppc64* )
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"
       LINK_FLAGS="$LINK_FLAGS -m64"
     fi
     mycpu="powerpc64" ;;
-  *power*|*Power*|*ppc* ) 
+  *power*|*Power*|*ppc* )
     mycpu="powerpc" ;;
-  *mips* ) 
+  *mips* )
     mycpu="mips" ;;
   *arm*|*armv6l* )
     mycpu="arm" ;;
-  *) 
+  *)
     echo "Error: unknown processor: $ucpu"
     exit 1
     ;;
@@ -121,7 +121,7 @@ esac
 
 case $myos in
 #  for osA in 1..c.oses.len:
-?{c.oses[osA-1]}) 
+?{c.oses[osA-1]})
   case $mycpu in
 #    for cpuA in 1..c.cpus.len:
   ?{c.cpus[cpuA-1]})
@@ -143,7 +143,7 @@ case $myos in
   esac
   ;;
 #  end for
-*) 
+*)
   echo "Error: no C code generated for: [$myos: $mycpu]"
   exit 1
   ;;

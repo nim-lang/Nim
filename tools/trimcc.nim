@@ -6,7 +6,7 @@ proc newName(f: string): string =
   var (dir, name, ext) = splitFile(f)
   return dir / "trim_" & name & ext
 
-proc walker(dir: string) = 
+proc walker(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:

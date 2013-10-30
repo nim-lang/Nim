@@ -1,5 +1,5 @@
 #! stdtmpl | standard
-#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string = 
+#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string =
 #  result = ""
 <!doctype html>
 <html>
@@ -26,7 +26,7 @@
       #  var name = c.tabs[i].key
       #  var t = c.tabs[i].val
         #if currentTab == t:
-          <a class="active" 
+          <a class="active"
         #else:
           <a
         #end if
@@ -65,7 +65,7 @@
           </p>
           <br/>
         #end if
-      
+
         $content
       </div>
     </div>

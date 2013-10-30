@@ -18,7 +18,7 @@ ChangesEnvironment=yes
 [Languages]
 Name: english; MessagesFile: compiler:Default.isl
 
-[Files] 
+[Files]
   #for i in low(TFileCategory)..fcWindows:
   #  for f in items(c.cat[i]):
 Source: ${expandFilename(f).toWin}; DestDir: {app}\${splitFile(f).dir.toWin}; Flags: ignoreversion

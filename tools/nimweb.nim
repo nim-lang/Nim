@@ -108,10 +108,10 @@ proc parseCmdLine(c: var TConfigData) =
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": 
+      of "help", "h":
         stdout.write(Usage)
         quit(0)
-      of "version", "v": 
+      of "version", "v":
         stdout.write(Version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
