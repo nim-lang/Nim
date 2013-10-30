@@ -36,9 +36,9 @@ type
   TActor[TIn, TOut] = object{.pure, final.}
     i: TChannel[TTask[TIn, TOut]]
     t: TThread[ptr TActor[TIn, TOut]]
-    
+
   PActor*[TIn, TOut] = ptr TActor[TIn, TOut] ## an actor
-  
+
 proc spawn*[TIn, TOut](action: proc(
     self: PActor[TIn, TOut]){.thread.}): PActor[TIn, TOut] =
   ## creates an actor; that is a thread with an inbox. The caller MUST call
@@ -77,7 +77,7 @@ proc send*[TIn, TOut, X, Y](receiver: PActor[TIn, TOut], msg: TIn,
   shallowCopy(t.data, msg)
   send(receiver.i, t)
 
-proc send*[TIn, TOut](receiver: PActor[TIn, TOut], msg: TIn, 
+proc send*[TIn, TOut](receiver: PActor[TIn, TOut], msg: TIn,
                       sender: ptr TChannel[TOut] = nil) =
   ## sends a message to `receiver`'s inbox.
   var t: TTask[TIn, TOut]
@@ -131,7 +131,7 @@ proc createActorPool*[TIn, TOut](a: var TActorPool[TIn, TOut], poolSize = 4) =
 
 proc sync*[TIn, TOut](a: var TActorPool[TIn, TOut], polling=50) =
   ## waits for every actor of `a` to finish with its work. Currently this is
-  ## implemented as polling every `polling` ms and has a slight chance 
+  ## implemented as polling every `polling` ms and has a slight chance
   ## of failing since we check for every actor to be in `ready` state and not
   ## for messages still in ether. This will change in a later
   ## version, however.
@@ -139,7 +139,7 @@ proc sync*[TIn, TOut](a: var TActorPool[TIn, TOut], polling=50) =
   while true:
     var wait = false
     for i in 0..high(a.actors):
-      if not a.actors[i].i.ready: 
+      if not a.actors[i].i.ready:
         wait = true
         allReadyCount = 0
         break
@@ -215,7 +215,7 @@ proc spawn*[TIn](p: var TActorPool[TIn, void], input: TIn,
   var t: TTask[TIn, void]
   setupTask()
   schedule()
-  
+
 when isMainModule:
   var
     a: TActorPool[int, void]

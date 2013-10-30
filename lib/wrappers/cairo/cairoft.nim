@@ -1,10 +1,10 @@
 #
-# Translation of cairo-ft.h 
-# by Jeffrey Pohlmeyer 
+# Translation of cairo-ft.h
+# by Jeffrey Pohlmeyer
 # updated to version 1.4 by Luiz Américo Pereira Câmara 2007
 #
 
-import 
+import
   cairo, freetypeh
 
 include "cairo_pragma.nim"
@@ -20,7 +20,7 @@ include "cairo_pragma.nim"
 # typedef FcPattern XftPattern;
 #
 
-type 
+type
   FcPattern* = Pointer
   PFcPattern* = ptr FcPattern
 

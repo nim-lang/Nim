@@ -22,8 +22,8 @@ Path           Purpose
 ``bin``        generated binary files
 ``build``      generated C code for the installation
 ``compiler``   the Nimrod compiler itself; note that this
-               code has been translated from a bootstrapping 
-               version written in Pascal, so the code is **not** 
+               code has been translated from a bootstrapping
+               version written in Pascal, so the code is **not**
                a poster child of good Nimrod code
 ``config``     configuration files for Nimrod
 ``dist``       additional packages for the distribution
@@ -38,8 +38,8 @@ Path           Purpose
 Bootstrapping the compiler
 ==========================
 
-As of version 0.8.5 the compiler is maintained in Nimrod. (The first versions 
-have been implemented in Object Pascal.) The Python-based build system has 
+As of version 0.8.5 the compiler is maintained in Nimrod. (The first versions
+have been implemented in Object Pascal.) The Python-based build system has
 been rewritten in Nimrod too.
 
 Compiling the compiler is a simple matter of running::
@@ -70,7 +70,7 @@ Coding Guidelines
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
 * Start types with a capital ``T``, unless they are pointers/references which start
-  with ``P``. 
+  with ``P``.
 
 
 Porting to new platforms
@@ -135,7 +135,7 @@ children. Types and symbols are represented by other nodes, because they
 may contain cycles. The AST changes its shape after semantic checking. This
 is needed to make life easier for the code generators. See the "ast" module
 for the type definitions. The `macros <macros.html>`_ module contains many
-examples how the AST represents each syntactic structure. 
+examples how the AST represents each syntactic structure.
 
 
 How the RTL is compiled
@@ -157,7 +157,7 @@ Compilation cache
 =================
 
 The implementation of the `compilation cache`:idx: is tricky: There are lots
-of issues to be solved for the front- and backend. In the following 
+of issues to be solved for the front- and backend. In the following
 sections *global* means *shared between modules* or *property of the whole
 program*.
 
@@ -169,31 +169,31 @@ Methods and type converters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Nimrod contains language features that are *global*. The best example for that
-are multi methods: Introducing a new method with the same name and some 
+are multi methods: Introducing a new method with the same name and some
 compatible object parameter means that the method's dispatcher needs to take
 the new method into account. So the dispatching logic is only completely known
 after the whole program has been translated!
 
-Other features that are *implicitly* triggered cause problems for modularity 
+Other features that are *implicitly* triggered cause problems for modularity
 too. Type converters fall into this category:
 
 .. code-block:: nimrod
   # module A
   converter toBool(x: int): bool =
     result = x != 0
-    
+
 .. code-block:: nimrod
   # module B
   import A
-  
+
   if 1:
     echo "ugly, but should work"
 
 If in the above example module ``B`` is re-compiled, but ``A`` is not then
 ``B`` needs to be aware of ``toBool`` even though  ``toBool`` is not referenced
-in ``B`` *explicitely*. 
+in ``B`` *explicitely*.
 
-Both the multi method and the type converter problems are solved by storing 
+Both the multi method and the type converter problems are solved by storing
 them in special sections in the ROD file that are loaded *unconditionally*
 when the ROD file is read.
 
@@ -221,7 +221,7 @@ Backend issues
 - Emulated thread vars are global.
 
 
-However the biggest problem is that dead code elimination breaks modularity! 
+However the biggest problem is that dead code elimination breaks modularity!
 To see why, consider this scenario: The module ``G`` (for example the huge
 Gtk2 module...) is compiled with dead code elimination turned on. So none
 of ``G``'s procs is generated at all.
@@ -229,13 +229,13 @@ of ``G``'s procs is generated at all.
 Then module ``B`` is compiled that requires ``G.P1``. Ok, no problem,
 ``G.P1`` is loaded from the symbol file and ``G.c`` now contains ``G.P1``.
 
-Then module ``A`` (that depends onto ``B`` and ``G``) is compiled and ``B`` 
+Then module ``A`` (that depends onto ``B`` and ``G``) is compiled and ``B``
 and ``G`` are left unchanged. ``A`` requires ``G.P2``.
 
-So now ``G.c`` MUST contain both ``P1`` and ``P2``, but we haven't even 
-loaded ``P1`` from the symbol file, nor do we want to because we then quickly 
-would restore large parts of the whole program. But we also don't want to 
-store ``P1`` in ``B.c`` because that would mean to store every symbol where 
+So now ``G.c`` MUST contain both ``P1`` and ``P2``, but we haven't even
+loaded ``P1`` from the symbol file, nor do we want to because we then quickly
+would restore large parts of the whole program. But we also don't want to
+store ``P1`` in ``B.c`` because that would mean to store every symbol where
 it is referred from which ultimately means the main module and putting
 everything in a single C file.
 
@@ -245,7 +245,7 @@ that is implemented in the C code generator (have a look at the ``ccgmerge``
 module). The merging may lead to *cruft* (aka dead code) in generated C code
 which can only be removed by recompiling a project with the compilation cache
 turned off. Nevertheless the merge solution is way superior to the
-cheap solution "turn off dead code elimination if the compilation cache is 
+cheap solution "turn off dead code elimination if the compilation cache is
 turned on".
 
 
@@ -260,7 +260,7 @@ in mind:
   forgotten is that *stack overflow* can trigger one!
 * If an assertion in Nimrod's memory manager or GC fails, the stack trace
   keeps allocating memory! Thus a stack overflow may happen, hiding the
-  real issue. 
+  real issue.
 * What seem to be C code generation problems is often a bug resulting from
   not producing prototypes, so that some types default to ``cint``. Testing
   without the ``-w`` option helps!
@@ -351,7 +351,7 @@ Consider this example:
               # r is on the stack
     setRef(r.left) # here we should update the refcounts!
 
-We have to decide at runtime whether the reference is on the stack or not. 
+We have to decide at runtime whether the reference is on the stack or not.
 The generated code looks roughly like this:
 
 .. code-block:: C
@@ -379,7 +379,7 @@ Design
 A ``closure`` proc var can call ordinary procs of the default Nimrod calling
 convention. But not the other way round! A closure is implemented as a
 ``tuple[prc, env]``. ``env`` can be nil implying a call without a closure.
-This means that a call through a closure generates an ``if`` but the 
+This means that a call through a closure generates an ``if`` but the
 interoperability is worth the cost of the ``if``. Thunk generation would be
 possible too, but it's slightly more effort to implement.
 
@@ -387,7 +387,7 @@ Tests with GCC on Amd64 showed that it's really beneficical if the
 'environment' pointer is passed as the last argument, not as the first argument.
 
 Proper thunk generation is harder because the proc that is to wrap
-could stem from a complex expression: 
+could stem from a complex expression:
 
 .. code-block:: nimrod
   receivesClosure(returnsDefaultCC[i])
@@ -395,15 +395,15 @@ could stem from a complex expression:
 A thunk would need to call 'returnsDefaultCC[i]' somehow and that would require
 an *additional* closure generation... Ok, not really, but it requires to pass
 the function to call. So we'd end up with 2 indirect calls instead of one.
-Another much more severe problem which this solution is that it's not GC-safe 
+Another much more severe problem which this solution is that it's not GC-safe
 to pass a proc pointer around via a generic ``ref`` type.
 
 
 Example code:
 
 .. code-block:: nimrod
-  proc add(x: int): proc (y: int): int {.closure.} = 
-    return proc (y: int): int = 
+  proc add(x: int): proc (y: int): int {.closure.} =
+    return proc (y: int): int =
       return x + y
 
   var add2 = add(2)
@@ -415,16 +415,16 @@ This should produce roughly this code:
   type
     PEnv = ref object
       x: int # data
-  
-  proc anon(y: int, c: PClosure): int = 
+
+  proc anon(y: int, c: PClosure): int =
     return y + c.x
-  
+
   proc add(x: int): tuple[prc, data] =
     var env: PEnv
     new env
     env.x = x
     result = (anon, env)
-  
+
   var add2 = add(2)
   let tmp = if add2.data == nil: add2.prc(5) else: add2.prc(5, add2.data)
   echo tmp
@@ -433,9 +433,9 @@ This should produce roughly this code:
 Beware of nesting:
 
 .. code-block:: nimrod
-  proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} = 
-    return lamba (y: int): proc (z: int): int {.closure.} = 
-      return lambda (z: int): int = 
+  proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} =
+    return lamba (y: int): proc (z: int): int {.closure.} =
+      return lambda (z: int): int =
         return x + y + z
 
   var add24 = add(2)(4)
@@ -447,26 +447,26 @@ This should produce roughly this code:
   type
     PEnvX = ref object
       x: int # data
-      
+
     PEnvY = ref object
       y: int
       ex: PEnvX
-      
+
   proc lambdaZ(z: int, ey: PEnvY): int =
     return ey.ex.x + ey.y + z
-  
+
   proc lambdaY(y: int, ex: PEnvX): tuple[prc, data: PEnvY] =
     var ey: PEnvY
     new ey
     ey.y = y
     ey.ex = ex
     result = (lambdaZ, ey)
-  
+
   proc add(x: int): tuple[prc, data: PEnvX] =
     var ex: PEnvX
     ex.x = x
     result = (labmdaY, ex)
-  
+
   var tmp = add(2)
   var tmp2 = tmp.fn(4, tmp.data)
   var add24 = tmp2.fn(4, tmp2.data)
@@ -474,14 +474,14 @@ This should produce roughly this code:
 
 
 We could get rid of nesting environments by always inlining inner anon procs.
-More useful is escape analysis and stack allocation of the environment, 
+More useful is escape analysis and stack allocation of the environment,
 however.
 
 
 Alternative
 -----------
 
-Process the closure of all inner procs in one pass and accumulate the 
+Process the closure of all inner procs in one pass and accumulate the
 environments. This is however not always possible.
 
 
@@ -489,21 +489,21 @@ Accumulator
 -----------
 
 .. code-block:: nimrod
-  proc GetAccumulator(start: int): proc (): int {.closure} = 
+  proc GetAccumulator(start: int): proc (): int {.closure} =
     var i = start
-    return lambda: int = 
+    return lambda: int =
       inc i
       return i
-      
+
   proc p =
     var delta = 7
     proc accumulator(start: int): proc(): int =
       var x = start-1
-      result = proc (): int = 
+      result = proc (): int =
         x = x + delta
         inc delta
         return x
-    
+
     var a = accumulator(3)
     var b = accumulator(4)
     echo a() + b()
@@ -517,7 +517,7 @@ pass generates code to setup the environment and to pass it around. However,
 this pass does not change the types! So we have some kind of mismatch here; on
 the one hand the proc expression becomes an explicit tuple, on the other hand
 the tyProc(ccClosure) type is not changed. For C code generation it's also
-important the hidden formal param is ``void*`` and not something more 
+important the hidden formal param is ``void*`` and not something more
 specialized. However the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying ``s.ast[paramPos]`` to contain
 the formal hidden parameter, but not ``s.typ``!

@@ -1,8 +1,8 @@
 
-import 
+import
   x, xlib, keysym, unsigned
 
-#const 
+#const
 #  libX11* = "libX11.so"
 
 #
@@ -16,7 +16,7 @@ import
 #    xutil.h
 #
 
-const 
+const
   NoValue* = 0x00000000
   XValue* = 0x00000001
   YValue* = 0x00000002
@@ -26,13 +26,13 @@ const
   XNegative* = 0x00000010
   YNegative* = 0x00000020
 
-type 
-  TCPoint*{.final.} = object 
+type
+  TCPoint*{.final.} = object
     x*: cint
     y*: cint
 
   PXSizeHints* = ptr TXSizeHints
-  TXSizeHints*{.final.} = object 
+  TXSizeHints*{.final.} = object
     flags*: clong
     x*, y*: cint
     width*, height*: cint
@@ -44,7 +44,7 @@ type
     win_gravity*: cint
 
 
-const 
+const
   USPosition* = 1 shl 0
   USSize* = 1 shl 1
   PPosition* = 1 shl 2
@@ -58,9 +58,9 @@ const
   PAllHints* = PPosition or PSize or PMinSize or PMaxSize or PResizeInc or
       PAspect
 
-type 
+type
   PXWMHints* = ptr TXWMHints
-  TXWMHints*{.final.} = object 
+  TXWMHints*{.final.} = object
     flags*: clong
     input*: TBool
     initial_state*: cint
@@ -71,7 +71,7 @@ type
     window_group*: TXID
 
 
-const 
+const
   InputHint* = 1 shl 0
   StateHint* = 1 shl 1
   IconPixmapHint* = 1 shl 2
@@ -89,59 +89,59 @@ const
   ZoomState* = 2
   InactiveState* = 4
 
-type 
+type
   PXTextProperty* = ptr TXTextProperty
-  TXTextProperty*{.final.} = object 
+  TXTextProperty*{.final.} = object
     value*: pcuchar
     encoding*: TAtom
     format*: cint
     nitems*: culong
 
 
-const 
+const
   XNoMemory* = - 1
   XLocaleNotSupported* = - 2
   XConverterNotFound* = - 3
 
-type 
+type
   PXICCEncodingStyle* = ptr TXICCEncodingStyle
-  TXICCEncodingStyle* = enum 
-    XStringStyle, XCompoundTextStyle, XTextStyle, XStdICCTextStyle, 
+  TXICCEncodingStyle* = enum
+    XStringStyle, XCompoundTextStyle, XTextStyle, XStdICCTextStyle,
     XUTF8StringStyle
   PPXIconSize* = ptr PXIconSize
   PXIconSize* = ptr TXIconSize
-  TXIconSize*{.final.} = object 
+  TXIconSize*{.final.} = object
     min_width*, min_height*: cint
     max_width*, max_height*: cint
     width_inc*, height_inc*: cint
 
   PXClassHint* = ptr TXClassHint
-  TXClassHint*{.final.} = object 
+  TXClassHint*{.final.} = object
     res_name*: cstring
     res_class*: cstring
 
 
-type 
+type
   PXComposeStatus* = ptr TXComposeStatus
-  TXComposeStatus*{.final.} = object 
+  TXComposeStatus*{.final.} = object
     compose_ptr*: TXPointer
     chars_matched*: cint
 
 
-type 
+type
   PXRegion* = ptr TXRegion
-  TXRegion*{.final.} = object 
+  TXRegion*{.final.} = object
   TRegion* = PXRegion
   PRegion* = ptr TRegion
 
-const 
+const
   RectangleOut* = 0
   RectangleIn* = 1
   RectanglePart* = 2
 
-type 
+type
   PXVisualInfo* = ptr TXVisualInfo
-  TXVisualInfo*{.final.} = object 
+  TXVisualInfo*{.final.} = object
     visual*: PVisual
     visualid*: TVisualID
     screen*: cint
@@ -154,7 +154,7 @@ type
     bits_per_rgb*: cint
 
 
-const 
+const
   VisualNoMask* = 0x00000000
   VisualIDMask* = 0x00000001
   VisualScreenMask* = 0x00000002
@@ -167,10 +167,10 @@ const
   VisualBitsPerRGBMask* = 0x00000100
   VisualAllMask* = 0x000001FF
 
-type 
+type
   PPXStandardColormap* = ptr PXStandardColormap
   PXStandardColormap* = ptr TXStandardColormap
-  TXStandardColormap*{.final.} = object 
+  TXStandardColormap*{.final.} = object
     colormap*: TColormap
     red_max*: culong
     red_mult*: culong
@@ -183,7 +183,7 @@ type
     killid*: TXID
 
 
-const 
+const
   BitmapSuccess* = 0
   BitmapOpenFailed* = 1
   BitmapFileInvalid* = 2
@@ -193,17 +193,17 @@ const
   XCNOENT* = 2
   ReleaseByFreeingColormap*: TXID = TXID(1)
 
-type 
+type
   PXContext* = ptr TXContext
   TXContext* = cint
 
 proc XAllocClassHint*(): PXClassHint{.cdecl, dynlib: libX11, importc.}
 proc XAllocIconSize*(): PXIconSize{.cdecl, dynlib: libX11, importc.}
 proc XAllocSizeHints*(): PXSizeHints{.cdecl, dynlib: libX11, importc.}
-proc XAllocStandardColormap*(): PXStandardColormap{.cdecl, dynlib: libX11, 
+proc XAllocStandardColormap*(): PXStandardColormap{.cdecl, dynlib: libX11,
     importc.}
 proc XAllocWMHints*(): PXWMHints{.cdecl, dynlib: libX11, importc.}
-proc XClipBox*(para1: TRegion, para2: PXRectangle): cint{.cdecl, dynlib: libX11, 
+proc XClipBox*(para1: TRegion, para2: PXRectangle): cint{.cdecl, dynlib: libX11,
     importc.}
 proc XCreateRegion*(): TRegion{.cdecl, dynlib: libX11, importc.}
 proc XDefaultString*(): cstring{.cdecl, dynlib: libX11, importc.}
@@ -211,79 +211,79 @@ proc XDeleteContext*(para1: PDisplay, para2: TXID, para3: TXContext): cint{.
     cdecl, dynlib: libX11, importc.}
 proc XDestroyRegion*(para1: TRegion): cint{.cdecl, dynlib: libX11, importc.}
 proc XEmptyRegion*(para1: TRegion): cint{.cdecl, dynlib: libX11, importc.}
-proc XEqualRegion*(para1: TRegion, para2: TRegion): cint{.cdecl, dynlib: libX11, 
+proc XEqualRegion*(para1: TRegion, para2: TRegion): cint{.cdecl, dynlib: libX11,
     importc.}
-proc XFindContext*(para1: PDisplay, para2: TXID, para3: TXContext, 
+proc XFindContext*(para1: PDisplay, para2: TXID, para3: TXContext,
                    para4: PXPointer): cint{.cdecl, dynlib: libX11, importc.}
 proc XGetClassHint*(para1: PDisplay, para2: TWindow, para3: PXClassHint): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetIconSizes*(para1: PDisplay, para2: TWindow, para3: PPXIconSize, 
+proc XGetIconSizes*(para1: PDisplay, para2: TWindow, para3: PPXIconSize,
                     para4: Pcint): TStatus{.cdecl, dynlib: libX11, importc.}
 proc XGetNormalHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetRGBColormaps*(para1: PDisplay, para2: TWindow, 
+proc XGetRGBColormaps*(para1: PDisplay, para2: TWindow,
                        para3: PPXStandardColormap, para4: Pcint, para5: TAtom): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints, 
+proc XGetSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints,
                     para4: TAtom): TStatus{.cdecl, dynlib: libX11, importc.}
-proc XGetStandardColormap*(para1: PDisplay, para2: TWindow, 
+proc XGetStandardColormap*(para1: PDisplay, para2: TWindow,
                            para3: PXStandardColormap, para4: TAtom): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetTextProperty*(para1: PDisplay, para2: TWindow, para3: PXTextProperty, 
+proc XGetTextProperty*(para1: PDisplay, para2: TWindow, para3: PXTextProperty,
                        para4: TAtom): TStatus{.cdecl, dynlib: libX11, importc.}
-proc XGetVisualInfo*(para1: PDisplay, para2: clong, para3: PXVisualInfo, 
+proc XGetVisualInfo*(para1: PDisplay, para2: clong, para3: PXVisualInfo,
                      para4: Pcint): PXVisualInfo{.cdecl, dynlib: libX11, importc.}
 proc XGetWMClientMachine*(para1: PDisplay, para2: TWindow, para3: PXTextProperty): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetWMHints*(para1: PDisplay, para2: TWindow): PXWMHints{.cdecl, 
+proc XGetWMHints*(para1: PDisplay, para2: TWindow): PXWMHints{.cdecl,
     dynlib: libX11, importc.}
 proc XGetWMIconName*(para1: PDisplay, para2: TWindow, para3: PXTextProperty): TStatus{.
     cdecl, dynlib: libX11, importc.}
 proc XGetWMName*(para1: PDisplay, para2: TWindow, para3: PXTextProperty): TStatus{.
     cdecl, dynlib: libX11, importc.}
-proc XGetWMNormalHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints, 
+proc XGetWMNormalHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints,
                         para4: ptr int): TStatus{.cdecl, dynlib: libX11, importc.}
-proc XGetWMSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints, 
-                      para4: ptr int, para5: TAtom): TStatus{.cdecl, 
+proc XGetWMSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints,
+                      para4: ptr int, para5: TAtom): TStatus{.cdecl,
     dynlib: libX11, importc.}
 proc XGetZoomHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints): TStatus{.
     cdecl, dynlib: libX11, importc.}
 proc XIntersectRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XConvertCase*(para1: TKeySym, para2: PKeySym, para3: PKeySym){.cdecl, 
+proc XConvertCase*(para1: TKeySym, para2: PKeySym, para3: PKeySym){.cdecl,
     dynlib: libX11, importc.}
-proc XLookupString*(para1: PXKeyEvent, para2: cstring, para3: cint, 
-                    para4: PKeySym, para5: PXComposeStatus): cint{.cdecl, 
+proc XLookupString*(para1: PXKeyEvent, para2: cstring, para3: cint,
+                    para4: PKeySym, para5: PXComposeStatus): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XMatchVisualInfo*(para1: PDisplay, para2: cint, para3: cint, para4: cint, 
-                       para5: PXVisualInfo): TStatus{.cdecl, dynlib: libX11, 
+proc XMatchVisualInfo*(para1: PDisplay, para2: cint, para3: cint, para4: cint,
+                       para5: PXVisualInfo): TStatus{.cdecl, dynlib: libX11,
     importc.}
-proc XOffsetRegion*(para1: TRegion, para2: cint, para3: cint): cint{.cdecl, 
+proc XOffsetRegion*(para1: TRegion, para2: cint, para3: cint): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XPointInRegion*(para1: TRegion, para2: cint, para3: cint): TBool{.cdecl, 
+proc XPointInRegion*(para1: TRegion, para2: cint, para3: cint): TBool{.cdecl,
     dynlib: libX11, importc.}
-proc XPolygonRegion*(para1: PXPoint, para2: cint, para3: cint): TRegion{.cdecl, 
+proc XPolygonRegion*(para1: PXPoint, para2: cint, para3: cint): TRegion{.cdecl,
     dynlib: libX11, importc.}
-proc XRectInRegion*(para1: TRegion, para2: cint, para3: cint, para4: cuint, 
+proc XRectInRegion*(para1: TRegion, para2: cint, para3: cint, para4: cuint,
                     para5: cuint): cint{.cdecl, dynlib: libX11, importc.}
-proc XSaveContext*(para1: PDisplay, para2: TXID, para3: TXContext, 
+proc XSaveContext*(para1: PDisplay, para2: TXID, para3: TXContext,
                    para4: cstring): cint{.cdecl, dynlib: libX11, importc.}
 proc XSetClassHint*(para1: PDisplay, para2: TWindow, para3: PXClassHint): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XSetIconSizes*(para1: PDisplay, para2: TWindow, para3: PXIconSize, 
+proc XSetIconSizes*(para1: PDisplay, para2: TWindow, para3: PXIconSize,
                     para4: cint): cint{.cdecl, dynlib: libX11, importc.}
 proc XSetNormalHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XSetRGBColormaps*(para1: PDisplay, para2: TWindow, 
+proc XSetRGBColormaps*(para1: PDisplay, para2: TWindow,
                        para3: PXStandardColormap, para4: cint, para5: TAtom){.
     cdecl, dynlib: libX11, importc.}
-proc XSetSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints, 
+proc XSetSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints,
                     para4: TAtom): cint{.cdecl, dynlib: libX11, importc.}
-proc XSetStandardProperties*(para1: PDisplay, para2: TWindow, para3: cstring, 
-                             para4: cstring, para5: TPixmap, para6: PPchar, 
-                             para7: cint, para8: PXSizeHints): cint{.cdecl, 
+proc XSetStandardProperties*(para1: PDisplay, para2: TWindow, para3: cstring,
+                             para4: cstring, para5: TPixmap, para6: PPchar,
+                             para7: cint, para8: PXSizeHints): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XSetTextProperty*(para1: PDisplay, para2: TWindow, para3: PXTextProperty, 
+proc XSetTextProperty*(para1: PDisplay, para2: TWindow, para3: PXTextProperty,
                        para4: TAtom){.cdecl, dynlib: libX11, importc.}
 proc XSetWMClientMachine*(para1: PDisplay, para2: TWindow, para3: PXTextProperty){.
     cdecl, dynlib: libX11, importc.}
@@ -291,72 +291,72 @@ proc XSetWMHints*(para1: PDisplay, para2: TWindow, para3: PXWMHints): cint{.
     cdecl, dynlib: libX11, importc.}
 proc XSetWMIconName*(para1: PDisplay, para2: TWindow, para3: PXTextProperty){.
     cdecl, dynlib: libX11, importc.}
-proc XSetWMName*(para1: PDisplay, para2: TWindow, para3: PXTextProperty){.cdecl, 
+proc XSetWMName*(para1: PDisplay, para2: TWindow, para3: PXTextProperty){.cdecl,
     dynlib: libX11, importc.}
 proc XSetWMNormalHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints){.
     cdecl, dynlib: libX11, importc.}
-proc XSetWMProperties*(para1: PDisplay, para2: TWindow, para3: PXTextProperty, 
-                       para4: PXTextProperty, para5: PPchar, para6: cint, 
+proc XSetWMProperties*(para1: PDisplay, para2: TWindow, para3: PXTextProperty,
+                       para4: PXTextProperty, para5: PPchar, para6: cint,
                        para7: PXSizeHints, para8: PXWMHints, para9: PXClassHint){.
     cdecl, dynlib: libX11, importc.}
-proc XmbSetWMProperties*(para1: PDisplay, para2: TWindow, para3: cstring, 
-                         para4: cstring, para5: PPchar, para6: cint, 
-                         para7: PXSizeHints, para8: PXWMHints, 
+proc XmbSetWMProperties*(para1: PDisplay, para2: TWindow, para3: cstring,
+                         para4: cstring, para5: PPchar, para6: cint,
+                         para7: PXSizeHints, para8: PXWMHints,
                          para9: PXClassHint){.cdecl, dynlib: libX11, importc.}
-proc Xutf8SetWMProperties*(para1: PDisplay, para2: TWindow, para3: cstring, 
-                           para4: cstring, para5: PPchar, para6: cint, 
-                           para7: PXSizeHints, para8: PXWMHints, 
+proc Xutf8SetWMProperties*(para1: PDisplay, para2: TWindow, para3: cstring,
+                           para4: cstring, para5: PPchar, para6: cint,
+                           para7: PXSizeHints, para8: PXWMHints,
                            para9: PXClassHint){.cdecl, dynlib: libX11, importc.}
-proc XSetWMSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints, 
+proc XSetWMSizeHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints,
                       para4: TAtom){.cdecl, dynlib: libX11, importc.}
-proc XSetRegion*(para1: PDisplay, para2: TGC, para3: TRegion): cint{.cdecl, 
+proc XSetRegion*(para1: PDisplay, para2: TGC, para3: TRegion): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XSetStandardColormap*(para1: PDisplay, para2: TWindow, 
-                           para3: PXStandardColormap, para4: TAtom){.cdecl, 
+proc XSetStandardColormap*(para1: PDisplay, para2: TWindow,
+                           para3: PXStandardColormap, para4: TAtom){.cdecl,
     dynlib: libX11, importc.}
 proc XSetZoomHints*(para1: PDisplay, para2: TWindow, para3: PXSizeHints): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XShrinkRegion*(para1: TRegion, para2: cint, para3: cint): cint{.cdecl, 
+proc XShrinkRegion*(para1: TRegion, para2: cint, para3: cint): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XStringListToTextProperty*(para1: PPchar, para2: cint, 
-                                para3: PXTextProperty): TStatus{.cdecl, 
+proc XStringListToTextProperty*(para1: PPchar, para2: cint,
+                                para3: PXTextProperty): TStatus{.cdecl,
     dynlib: libX11, importc.}
 proc XSubtractRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XmbTextListToTextProperty*(para1: PDisplay, para2: PPchar, para3: cint, 
+proc XmbTextListToTextProperty*(para1: PDisplay, para2: PPchar, para3: cint,
                                 para4: TXICCEncodingStyle, para5: PXTextProperty): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XwcTextListToTextProperty*(para1: PDisplay, para2: ptr ptr int16, para3: cint, 
+proc XwcTextListToTextProperty*(para1: PDisplay, para2: ptr ptr int16, para3: cint,
                                 para4: TXICCEncodingStyle, para5: PXTextProperty): cint{.
     cdecl, dynlib: libX11, importc.}
-proc Xutf8TextListToTextProperty*(para1: PDisplay, para2: PPchar, para3: cint, 
-                                  para4: TXICCEncodingStyle, 
-                                  para5: PXTextProperty): cint{.cdecl, 
+proc Xutf8TextListToTextProperty*(para1: PDisplay, para2: PPchar, para3: cint,
+                                  para4: TXICCEncodingStyle,
+                                  para5: PXTextProperty): cint{.cdecl,
     dynlib: libX11, importc.}
 proc XwcFreeStringList*(para1: ptr ptr int16){.cdecl, dynlib: libX11, importc.}
-proc XTextPropertyToStringList*(para1: PXTextProperty, para2: PPPchar, 
-                                para3: Pcint): TStatus{.cdecl, dynlib: libX11, 
+proc XTextPropertyToStringList*(para1: PXTextProperty, para2: PPPchar,
+                                para3: Pcint): TStatus{.cdecl, dynlib: libX11,
     importc.}
-proc XmbTextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty, 
-                                para3: PPPchar, para4: Pcint): cint{.cdecl, 
+proc XmbTextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty,
+                                para3: PPPchar, para4: Pcint): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XwcTextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty, 
-                                para3: ptr ptr ptr int16, para4: Pcint): cint{.cdecl, 
+proc XwcTextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty,
+                                para3: ptr ptr ptr int16, para4: Pcint): cint{.cdecl,
     dynlib: libX11, importc.}
-proc Xutf8TextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty, 
-                                  para3: PPPchar, para4: Pcint): cint{.cdecl, 
+proc Xutf8TextPropertyToTextList*(para1: PDisplay, para2: PXTextProperty,
+                                  para3: PPPchar, para4: Pcint): cint{.cdecl,
     dynlib: libX11, importc.}
 proc XUnionRectWithRegion*(para1: PXRectangle, para2: TRegion, para3: TRegion): cint{.
     cdecl, dynlib: libX11, importc.}
-proc XUnionRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.cdecl, 
+proc XUnionRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XWMGeometry*(para1: PDisplay, para2: cint, para3: cstring, para4: cstring, 
-                  para5: cuint, para6: PXSizeHints, para7: Pcint, para8: Pcint, 
-                  para9: Pcint, para10: Pcint, para11: Pcint): cint{.cdecl, 
+proc XWMGeometry*(para1: PDisplay, para2: cint, para3: cstring, para4: cstring,
+                  para5: cuint, para6: PXSizeHints, para7: Pcint, para8: Pcint,
+                  para9: Pcint, para10: Pcint, para11: Pcint): cint{.cdecl,
     dynlib: libX11, importc.}
-proc XXorRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.cdecl, 
+proc XXorRegion*(para1: TRegion, para2: TRegion, para3: TRegion): cint{.cdecl,
     dynlib: libX11, importc.}
-#when defined(MACROS): 
+#when defined(MACROS):
 proc XDestroyImage*(ximage: PXImage): cint
 proc XGetPixel*(ximage: PXImage, x, y: cint): culong
 proc XPutPixel*(ximage: PXImage, x, y: cint, pixel: culong): cint
@@ -373,40 +373,40 @@ proc IsModifierKey*(keysym: TKeySym): bool
   #function XStringToContext(_string : Pchar) : TXContext;
 # implementation
 
-#when defined(MACROS): 
-proc XDestroyImage(ximage: PXImage): cint = 
+#when defined(MACROS):
+proc XDestroyImage(ximage: PXImage): cint =
   ximage.f.destroy_image(ximage)
 
-proc XGetPixel(ximage: PXImage, x, y: cint): culong = 
+proc XGetPixel(ximage: PXImage, x, y: cint): culong =
   ximage.f.get_pixel(ximage, x, y)
 
-proc XPutPixel(ximage: PXImage, x, y: cint, pixel: culong): cint = 
+proc XPutPixel(ximage: PXImage, x, y: cint, pixel: culong): cint =
   ximage.f.put_pixel(ximage, x, y, pixel)
 
-proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage = 
+proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage =
   ximage.f.sub_image(ximage, x, y, width, height)
 
-proc XAddPixel(ximage: PXImage, value: clong): cint = 
+proc XAddPixel(ximage: PXImage, value: clong): cint =
   ximage.f.add_pixel(ximage, value)
 
-proc IsKeypadKey(keysym: TKeySym): bool = 
+proc IsKeypadKey(keysym: TKeySym): bool =
   (keysym >= XK_KP_Space) and (keysym <= XK_KP_Equal)
 
-proc IsPrivateKeypadKey(keysym: TKeySym): bool = 
+proc IsPrivateKeypadKey(keysym: TKeySym): bool =
   (keysym >= 0x11000000.TKeySym) and (keysym <= 0x1100FFFF.TKeySym)
 
-proc IsCursorKey(keysym: TKeySym): bool = 
+proc IsCursorKey(keysym: TKeySym): bool =
   (keysym >= XK_Home) and (keysym < XK_Select)
 
-proc IsPFKey(keysym: TKeySym): bool = 
+proc IsPFKey(keysym: TKeySym): bool =
   (keysym >= XK_KP_F1) and (keysym <= XK_KP_F4)
 
-proc IsFunctionKey(keysym: TKeySym): bool = 
+proc IsFunctionKey(keysym: TKeySym): bool =
   (keysym >= XK_F1) and (keysym <= XK_F35)
 
-proc IsMiscFunctionKey(keysym: TKeySym): bool = 
+proc IsMiscFunctionKey(keysym: TKeySym): bool =
   (keysym >= XK_Select) and (keysym <= XK_Break)
 
-proc IsModifierKey(keysym: TKeySym): bool = 
+proc IsModifierKey(keysym: TKeySym): bool =
   ((keysym >= XK_Shift_L) And (keysym <= XK_Hyper_R)) Or
       (keysym == XK_Mode_switch) Or (keysym == XK_Num_Lock)

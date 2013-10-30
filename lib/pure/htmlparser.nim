@@ -9,7 +9,7 @@
 
 ## This module parses an HTML document and creates its XML tree representation.
 ## It is supposed to handle the *wild* HTML the real world uses.
-## 
+##
 ## It can be used to parse a wild HTML document and output it as valid XHTML
 ## document (well, if you are lucky):
 ##
@@ -20,7 +20,7 @@
 ##
 ## Every tag in the resulting tree is in lower case.
 ##
-## **Note:** The resulting ``PXmlNode`` already uses the ``clientData`` field, 
+## **Note:** The resulting ``PXmlNode`` already uses the ``clientData`` field,
 ## so it cannot be used by clients of this library.
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
@@ -155,24 +155,24 @@ type
 
 const
   tagToStr* = [
-    "a", "abbr", "acronym", "address", "applet", "area", "article", 
+    "a", "abbr", "acronym", "address", "applet", "area", "article",
     "aside", "audio",
-    "b", "base", "basefont", "bdi", "bdo", "big", "blockquote", "body", 
-    "br", "button", "canvas", "caption", "center", "cite", "code", 
+    "b", "base", "basefont", "bdi", "bdo", "big", "blockquote", "body",
+    "br", "button", "canvas", "caption", "center", "cite", "code",
     "col", "colgroup", "command",
-    "datalist", "dd", "del", "details", "dfn", "dialog", "div", 
-    "dir", "dl", "dt", "em", "embed", "fieldset", 
+    "datalist", "dd", "del", "details", "dfn", "dialog", "div",
+    "dir", "dl", "dt", "em", "embed", "fieldset",
     "figcaption", "figure", "font", "footer",
-    "form", "frame", "frameset", "h1", "h2", "h3", 
-    "h4", "h5", "h6", "head", "header", "hgroup", "html", "hr", 
-    "i", "iframe", "img", "input", "ins", "isindex", 
+    "form", "frame", "frameset", "h1", "h2", "h3",
+    "h4", "h5", "h6", "head", "header", "hgroup", "html", "hr",
+    "i", "iframe", "img", "input", "ins", "isindex",
     "kbd", "keygen", "label", "legend", "li", "link", "map", "mark",
-    "menu", "meta", "meter", "nav", "nobr", "noframes", "noscript", 
-    "object", "ol", 
-    "optgroup", "option", "output", "p", "param", "pre", "progress", "q", 
-    "rp", "rt", "ruby", "s", "samp", "script", "section", "select", "small", 
-    "source", "span", "strike", "strong", "style", 
-    "sub", "summary", "sup", "table", 
+    "menu", "meta", "meter", "nav", "nobr", "noframes", "noscript",
+    "object", "ol",
+    "optgroup", "option", "output", "p", "param", "pre", "progress", "q",
+    "rp", "rt", "ruby", "s", "samp", "script", "section", "select", "small",
+    "source", "span", "strike", "strong", "style",
+    "sub", "summary", "sup", "table",
     "tbody", "td", "textarea", "tfoot", "th", "thead", "time",
     "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr"]
   InlineTags* = {tagA, tagAbbr, tagAcronym, tagApplet, tagB, tagBasefont,
@@ -180,17 +180,17 @@ const
     tagEm, tagFont, tagI, tagImg, tagIns, tagInput, tagIframe, tagKbd,
     tagLabel, tagMap, tagObject, tagQ, tagSamp, tagScript, tagSelect,
     tagSmall, tagSpan, tagStrong, tagSub, tagSup, tagTextarea, tagTt,
-    tagVar, tagApplet, tagBasefont, tagFont, tagIframe, tagU, tagS, 
+    tagVar, tagApplet, tagBasefont, tagFont, tagIframe, tagU, tagS,
     tagStrike, tagWbr}
-  BlockTags* = {tagAddress, tagBlockquote, tagCenter, tagDel, tagDir, tagDiv, 
-    tagDl, tagFieldset, tagForm, tagH1, tagH2, tagH3, tagH4, 
-    tagH5, tagH6, tagHr, tagIns, tagIsindex, tagMenu, tagNoframes, tagNoscript, 
-    tagOl, tagP, tagPre, tagTable, tagUl, tagCenter, tagDir, tagIsindex, 
+  BlockTags* = {tagAddress, tagBlockquote, tagCenter, tagDel, tagDir, tagDiv,
+    tagDl, tagFieldset, tagForm, tagH1, tagH2, tagH3, tagH4,
+    tagH5, tagH6, tagHr, tagIns, tagIsindex, tagMenu, tagNoframes, tagNoscript,
+    tagOl, tagP, tagPre, tagTable, tagUl, tagCenter, tagDir, tagIsindex,
     tagMenu, tagNoframes}
-  SingleTags* = {tagArea, tagBase, tagBasefont, 
+  SingleTags* = {tagArea, tagBase, tagBasefont,
     tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
     tagLink, tagMeta, tagParam, tagWbr}
-  
+
   Entities = [
     ("nbsp", 0x00A0), ("iexcl", 0x00A1), ("cent", 0x00A2), ("pound", 0x00A3),
     ("curren", 0x00A4), ("yen", 0x00A5), ("brvbar", 0x00A6), ("sect", 0x00A7),
@@ -199,13 +199,13 @@ const
     ("deg", 0x00B0), ("plusmn", 0x00B1), ("sup2", 0x00B2), ("sup3", 0x00B3),
     ("acute", 0x00B4), ("micro", 0x00B5), ("para", 0x00B6), ("middot", 0x00B7),
     ("cedil", 0x00B8), ("sup1", 0x00B9), ("ordm", 0x00BA), ("raquo", 0x00BB),
-    ("frac14", 0x00BC), ("frac12", 0x00BD), ("frac34", 0x00BE), 
+    ("frac14", 0x00BC), ("frac12", 0x00BD), ("frac34", 0x00BE),
     ("iquest", 0x00BF), ("Agrave", 0x00C0), ("Aacute", 0x00C1),
     ("Acirc", 0x00C2), ("Atilde", 0x00C3), ("Auml", 0x00C4), ("Aring", 0x00C5),
     ("AElig", 0x00C6), ("Ccedil", 0x00C7), ("Egrave", 0x00C8),
     ("Eacute", 0x00C9), ("Ecirc", 0x00CA), ("Euml", 0x00CB), ("Igrave", 0x00CC),
     ("Iacute", 0x00CD), ("Icirc", 0x00CE), ("Iuml", 0x00CF), ("ETH", 0x00D0),
-    ("Ntilde", 0x00D1), ("Ograve", 0x00D2), ("Oacute", 0x00D3), 
+    ("Ntilde", 0x00D1), ("Ograve", 0x00D2), ("Oacute", 0x00D3),
     ("Ocirc", 0x00D4), ("Otilde", 0x00D5), ("Ouml", 0x00D6), ("times", 0x00D7),
     ("Oslash", 0x00D8), ("Ugrave", 0x00D9), ("Uacute", 0x00DA),
     ("Ucirc", 0x00DB), ("Uuml", 0x00DC), ("Yacute", 0x00DD), ("THORN", 0x00DE),
@@ -237,7 +237,7 @@ const
     ("zwnj", 0x200C), ("zwj", 0x200D), ("lrm", 0x200E), ("rlm", 0x200F),
     ("ndash", 0x2013), ("mdash", 0x2014), ("lsquo", 0x2018), ("rsquo", 0x2019),
     ("sbquo", 0x201A), ("ldquo", 0x201C), ("rdquo", 0x201D), ("bdquo", 0x201E),
-    ("dagger", 0x2020), ("Dagger", 0x2021), ("bull", 0x2022), 
+    ("dagger", 0x2020), ("Dagger", 0x2021), ("bull", 0x2022),
     ("hellip", 0x2026), ("permil", 0x2030), ("prime", 0x2032),
     ("Prime", 0x2033), ("lsaquo", 0x2039), ("rsaquo", 0x203A),
     ("oline", 0x203E), ("frasl", 0x2044), ("euro", 0x20AC),
@@ -396,7 +396,7 @@ proc toHtmlTag(s: string): THtmlTag =
   of "wbr": tagWbr
   else: tagUnknown
 
-proc htmlTag*(n: PXmlNode): THtmlTag = 
+proc htmlTag*(n: PXmlNode): THtmlTag =
   ## gets `n`'s tag as a ``THtmlTag``.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
@@ -408,7 +408,7 @@ proc htmlTag*(s: string): THtmlTag =
   let s = if allLower(s): s else: s.toLower
   result = toHtmlTag(s)
 
-proc entityToUtf8*(entity: string): string = 
+proc entityToUtf8*(entity: string): string =
   ## converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
@@ -416,7 +416,7 @@ proc entityToUtf8*(entity: string): string =
     if name == entity: return toUTF8(TRune(val))
   result = ""
 
-proc addNode(father, son: PXmlNode) = 
+proc addNode(father, son: PXmlNode) =
   if son != nil: add(father, son)
 
 proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode
@@ -426,9 +426,9 @@ proc expected(x: var TXmlParser, n: PXmlNode): string =
 
 template elemName(x: expr): expr = rawData(x)
 
-proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
+proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
                      errors: var seq[string]) =
-  # we parsed e.g. ``<br>`` and don't really expect a ``</br>``: 
+  # we parsed e.g. ``<br>`` and don't really expect a ``</br>``:
   if result.htmlTag in singleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elemName, result.tag) != 0:
       return
@@ -456,11 +456,11 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
           break
       else: nil
       result.addNode(parse(x, errors))
-    of xmlElementEnd: 
-      if cmpIgnoreCase(x.elemName, result.tag) == 0: 
+    of xmlElementEnd:
+      if cmpIgnoreCase(x.elemName, result.tag) == 0:
         next(x)
       else:
-        #echo "5; expected: ", result.htmltag, " ", x.elemName 
+        #echo "5; expected: ", result.htmltag, " ", x.elemName
         errors.add(expected(x, result))
         # do not skip it here!
       break
@@ -472,7 +472,7 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
 
 proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
   case x.kind
-  of xmlComment: 
+  of xmlComment:
     result = newComment(x.rawData)
     next(x)
   of xmlCharData, xmlWhitespace:
@@ -490,11 +490,11 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elemName))
-  of xmlElementOpen: 
+  of xmlElementOpen:
     result = newElement(x.elemName.toLower)
     next(x)
     result.attrs = newStringTable()
-    while true: 
+    while true:
       case x.kind
       of xmlAttribute:
         result.attrs[x.rawData] = x.rawData2
@@ -514,7 +514,7 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
   of xmlAttribute, xmlElementClose:
     errors.add(errorMsg(x, "<some_tag> expected"))
     next(x)
-  of xmlCData: 
+  of xmlCData:
     result = newCData(x.rawData)
     next(x)
   of xmlEntity:
@@ -523,8 +523,8 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     next(x)
   of xmlEof: nil
 
-proc parseHtml*(s: PStream, filename: string, 
-                errors: var seq[string]): PXmlNode = 
+proc parseHtml*(s: PStream, filename: string,
+                errors: var seq[string]): PXmlNode =
   ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
   ## occured parsing error is added to the `errors` sequence.
   var x: TXmlParser
@@ -532,7 +532,7 @@ proc parseHtml*(s: PStream, filename: string,
   next(x)
   # skip the DOCTYPE:
   if x.kind == xmlSpecial: next(x)
-  
+
   result = newElement("document")
   result.addNode(parse(x, errors))
   #if x.kind != xmlEof:
@@ -547,22 +547,22 @@ proc parseHtml*(s: PStream, filename: string,
   if result.len == 1:
     result = result[0]
 
-proc parseHtml*(s: PStream): PXmlNode = 
+proc parseHtml*(s: PStream): PXmlNode =
   ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
   ## errors are ignored.
   var errors: seq[string] = @[]
   result = parseHtml(s, "unknown_html_doc", errors)
 
-proc loadHtml*(path: string, errors: var seq[string]): PXmlNode = 
-  ## Loads and parses HTML from file specified by ``path``, and returns 
+proc loadHtml*(path: string, errors: var seq[string]): PXmlNode =
+  ## Loads and parses HTML from file specified by ``path``, and returns
   ## a ``PXmlNode``.  Every occured parsing error is added to
   ## the `errors` sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(EIO, "Unable to read file: " & path)
   result = parseHtml(s, path, errors)
 
-proc loadHtml*(path: string): PXmlNode = 
-  ## Loads and parses HTML from file specified by ``path``, and returns 
+proc loadHtml*(path: string): PXmlNode =
+  ## Loads and parses HTML from file specified by ``path``, and returns
   ## a ``PXmlNode``. All parsing errors are ignored.
   var errors: seq[string] = @[]
   result = loadHtml(path, errors)
@@ -570,10 +570,10 @@ proc loadHtml*(path: string): PXmlNode =
 when isMainModule:
   import os
 
-  var errors: seq[string] = @[]  
+  var errors: seq[string] = @[]
   var x = loadHtml(paramStr(1), errors)
   for e in items(errors): echo e
-  
+
   var f: TFile
   if open(f, "test.txt", fmWrite):
     f.write($x)

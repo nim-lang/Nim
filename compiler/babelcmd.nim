@@ -11,8 +11,8 @@
 
 import parseutils, strutils, strtabs, os, options, msgs, lists
 
-proc addPath*(path: string, info: TLineInfo) = 
-  if not contains(options.searchPaths, path): 
+proc addPath*(path: string, info: TLineInfo) =
+  if not contains(options.searchPaths, path):
     lists.PrependStr(options.searchPaths, path)
 
 proc versionSplitPos(s: string): int =
@@ -23,7 +23,7 @@ proc versionSplitPos(s: string): int =
 const
   latest = "head"
 
-proc `<.`(a, b: string): bool = 
+proc `<.`(a, b: string): bool =
   # wether a has a smaller version than b:
   if a == latest: return false
   var i = 0

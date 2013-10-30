@@ -13,7 +13,7 @@ const
     ("sdl/sdl_mixer", "sdl"),
     ("sdl/sdl_ttf", "sdl"),
     ("sdl/smpeg", "sdl"),
-    
+
     ("libcurl", "curl"),
     ("mysql", "mysql"),
     ("postgres", ""),
@@ -23,7 +23,7 @@ const
     ("cairo/cairoft", "cairo"),
     ("cairo/cairowin32", "cairo"),
     ("cairo/cairoxlib", "cairo"),
-    
+
     ("gtk/atk", "atk"),
     ("gtk/gdk2", "gdk"),
     ("gtk/gdk2pixbuf", "gdk"),
@@ -35,18 +35,18 @@ const
     ("gtk/libglade2", "glade"),
     ("gtk/pango", "pango"),
     ("gtk/pangoutils", "pango"),
-    
+
     ("lua/lua", "lua"),
     ("lua/lauxlib", "luaL"),
     ("lua/lualib", "lua"),
-    
+
     ("opengl/gl", ""),
     ("opengl/glext", ""),
     ("opengl/wingl", ""),
     ("opengl/glu", ""),
     ("opengl/glut", ""),
     ("opengl/glx", ""),
-    
+
     ("pcre/pcre", "pcre")
   ]
 

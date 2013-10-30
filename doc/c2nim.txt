@@ -13,29 +13,29 @@ Introduction
   "We all make choices. But in the end our choices make us."
 
 
-c2nim is a tool to translate Ansi C code to Nimrod. The output is 
-human-readable Nimrod code that is meant to be tweaked by hand after the 
+c2nim is a tool to translate Ansi C code to Nimrod. The output is
+human-readable Nimrod code that is meant to be tweaked by hand after the
 translation process. c2nim is no real compiler!
 
-c2nim is preliminary meant to translate C header files. Because of this, the 
+c2nim is preliminary meant to translate C header files. Because of this, the
 preprocessor is part of the parser. For example:
 
 .. code-block:: C
   #define abc 123
   #define xyz 789
-  
+
 Is translated into:
 
 .. code-block:: Nimrod
   const
     abc* = 123
     xyz* = 789
-    
 
-c2nim is meant to translate fragments of C code and thus does not follow 
+
+c2nim is meant to translate fragments of C code and thus does not follow
 include files. c2nim cannot parse all of Ansi C and many constructs cannot
 be represented in Nimrod: for example `duff's device`:idx: cannot be translated
-to Nimrod. 
+to Nimrod.
 
 
 Preprocessor support
@@ -44,20 +44,20 @@ Preprocessor support
 Even though the translation process is not perfect, it is often the case that
 the translated Nimrod code does not need any tweaking by hand. In other cases
 it may be preferable to modify the input file instead of the generated Nimrod
-code so that c2nim can parse it properly. c2nim's preprocessor defines the 
-symbol ``C2NIM`` that can be used to mark code sections: 
+code so that c2nim can parse it properly. c2nim's preprocessor defines the
+symbol ``C2NIM`` that can be used to mark code sections:
 
 .. code-block:: C
   #ifndef C2NIM
     // C2NIM should ignore this prototype:
     int fprintf(FILE* f, const char* frmt, ...);
   #endif
-  
-The ``C2NIM`` symbol is only recognized in ``#ifdef`` and ``#ifndef`` 
-constructs! ``#if defined(C2NIM)`` does **not** work. 
+
+The ``C2NIM`` symbol is only recognized in ``#ifdef`` and ``#ifndef``
+constructs! ``#if defined(C2NIM)`` does **not** work.
 
 c2nim *processes* ``#ifdef C2NIM`` and ``#ifndef C2NIM`` directives, but other
-``#if[def]`` directives are *translated* into Nimrod's ``when`` construct: 
+``#if[def]`` directives are *translated* into Nimrod's ``when`` construct:
 
 .. code-block:: C
   #ifdef DEBUG
@@ -65,36 +65,36 @@ c2nim *processes* ``#ifdef C2NIM`` and ``#ifndef C2NIM`` directives, but other
   #else
   #  define OUT(x)
   #endif
-  
+
 Is translated into:
 
 .. code-block:: Nimrod
   when defined(debug):
-    template OUT*(x: expr): expr = 
+    template OUT*(x: expr): expr =
       printf("%s\x0A", x)
   else:
-    template OUT*(x: expr): stmt = 
+    template OUT*(x: expr): stmt =
       nil
-  
+
 As can been seen from the example, C's macros with parameters are mapped
 to Nimrod's templates. This mapping is the best one can do, but it is of course
-not accurate: Nimrod's templates operate on syntax trees whereas C's 
+not accurate: Nimrod's templates operate on syntax trees whereas C's
 macros work on the token level. c2nim cannot translate any macro that contains
 the ``##`` token concatenation operator.
 
 c2nim's preprocessor supports special directives that affect how the output
-is generated. They should be put into a ``#ifdef C2NIM`` section so that 
+is generated. They should be put into a ``#ifdef C2NIM`` section so that
 ordinary C compilers ignore them.
 
 
 ``#skipinclude`` directive
 --------------------------
-**Note**: There is also a ``--skipinclude`` command line option that can be 
+**Note**: There is also a ``--skipinclude`` command line option that can be
 used for the same purpose.
 
-By default, c2nim translates an ``#include`` that is not followed by ``<`` 
-(like in ``#include <stdlib>``) to a Nimrod ``import`` statement. This 
-directive tells c2nim to just skip any ``#include``. 
+By default, c2nim translates an ``#include`` that is not followed by ``<``
+(like in ``#include <stdlib>``) to a Nimrod ``import`` statement. This
+directive tells c2nim to just skip any ``#include``.
 
 
 ``#stdcall`` and ``#cdecl`` directives
@@ -113,9 +113,9 @@ the same purpose.
 
 This directive tells c2nim that it should annotate every proc that resulted
 from a C function prototype with the ``dynlib`` pragma:
- 
+
 .. code-block:: C
-  
+
   #ifdef C2NIM
   #  dynlib iupdll
   #  cdecl
@@ -127,11 +127,11 @@ from a C function prototype with the ``dynlib`` pragma:
   #    define iupdll "libiup.so"
   #  endif
   #endif
-  
+
   int IupConvertXYToPos(PIhandle ih, int x, int y);
 
 Is translated to:
-  
+
 .. code-block:: Nimrod
   when defined(windows):
     const iupdll* = "iup.dll"
@@ -139,7 +139,7 @@ Is translated to:
     const iupdll* = "libiup.dylib"
   else:
     const iupdll* = "libiup.so"
-  
+
   proc IupConvertXYToPos*(ih: PIhandle, x: cint, y: cint): cint {.
     importc: "IupConvertXYToPos", cdecl, dynlib: iupdll.}
 
@@ -157,20 +157,20 @@ resulted from a C function prototype and every exported variable and type with
 the ``header`` pragma:
 
 .. code-block:: C
-  
+
   #ifdef C2NIM
   #  header "iup.h"
   #endif
-  
+
   int IupConvertXYToPos(PIhandle ih, int x, int y);
 
 Is translated to:
-  
+
 .. code-block:: Nimrod
   proc IupConvertXYToPos*(ih: PIhandle, x: cint, y: cint): cint {.
     importc: "IupConvertXYToPos", header: "iup.h".}
 
-The ``#header`` and the ``#dynlib`` directives are mutually exclusive. 
+The ``#header`` and the ``#dynlib`` directives are mutually exclusive.
 A binding that uses ``dynlib`` is much more preferable over one that uses
 ``header``! The Nimrod compiler might drop support for the ``header`` pragma
 in the future as it cannot work for backends that do not generate C code.
@@ -182,22 +182,22 @@ in the future as it cannot work for backends that do not generate C code.
 **Note**: There are also ``--prefix`` and ``--suffix`` command line options
 that can be used for the same purpose.
 
-c2nim does not do any name mangling by default. However the 
+c2nim does not do any name mangling by default. However the
 ``#prefix`` and ``#suffix`` directives can be used to strip prefixes and
-suffixes from the identifiers in the C code: 
- 
+suffixes from the identifiers in the C code:
+
 .. code-block:: C
-  
+
   #ifdef C2NIM
   #  prefix Iup
   #  dynlib dllname
   #  cdecl
   #endif
-  
+
   int IupConvertXYToPos(PIhandle ih, int x, int y);
 
 Is translated to:
-  
+
 .. code-block:: Nimrod
 
   proc ConvertXYToPos*(ih: PIhandle, x: cint, y: cint): cint {.
@@ -207,15 +207,15 @@ Is translated to:
 ``#mangle`` directive
 ---------------------
 
-Even more sophisticated name mangling can be achieved by the ``#mangle`` 
+Even more sophisticated name mangling can be achieved by the ``#mangle``
 directive: It takes a PEG pattern and format string that specify how the
-identifier should be converted: 
+identifier should be converted:
 
 .. code-block:: C
   #mangle "'GTK_'{.*}" "TGtk$1"
 
 For convenience the PEG pattern and the replacement can be single identifiers
-too, there is no need to quote them: 
+too, there is no need to quote them:
 
 .. code-block:: C
   #mangle ssize_t  int
@@ -227,13 +227,13 @@ too, there is no need to quote them:
 ----------------------
 
 By default c2nim marks every top level identifier (proc name, variable, etc.)
-as exported (the export marker is ``*`` in Nimrod). With the ``#private`` 
+as exported (the export marker is ``*`` in Nimrod). With the ``#private``
 directive identifiers can be marked as private so that the resulting Nimrod
 module does not export them. The ``#private`` directive takes a PEG pattern:
 
 .. code-block:: C
   #private "@('_'!.)" // all identifiers ending in '_' are private
-  
+
 Note: The pattern refers to the original C identifiers, not to the resulting
 identifiers after mangling!
 
@@ -267,7 +267,7 @@ prototype but confuse c2nim's parser:
   EXTERN(int) f(void);
   EXTERN(int) g(void);
 
-Instead of removing ``EXTERN()`` from the input source file (which cannot be 
+Instead of removing ``EXTERN()`` from the input source file (which cannot be
 done reliably even with a regular expression!), one can tell c2nim
 that ``EXPORT`` is a macro that should be expanded by c2nim too:
 
@@ -278,7 +278,7 @@ that ``EXPORT`` is a macro that should be expanded by c2nim too:
   // parses now!
   EXTERN(int) f(void);
   EXTERN(int) g(void);
-  
+
 ``#def`` is very similar to C's ``#define``, so in general the macro definition
 can be copied and pasted into a ``#def`` directive.
 

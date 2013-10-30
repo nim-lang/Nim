@@ -28,7 +28,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   else:
     result = semDirectOp(c, n, {})
   if optHints in gOptions and hintPattern in gNotes:
-    Message(orig.info, hintPattern, rule & " --> '" & 
+    Message(orig.info, hintPattern, rule & " --> '" &
       renderTree(result, {renderNoComments}) & "'")
 
 proc applyPatterns(c: PContext, n: PNode): PNode =

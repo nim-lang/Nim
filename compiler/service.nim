@@ -32,19 +32,19 @@ var
 proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongOption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongOption, cmdShortOption:
       # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
       # we fix this here
       var bracketLe = strutils.find(p.key, '[')
-      if bracketLe >= 0: 
+      if bracketLe >= 0:
         var key = substr(p.key, 0, bracketLe - 1)
         var val = substr(p.key, bracketLe + 1) & ':' & p.val
         ProcessSwitch(key, val, pass, gCmdLineInfo)
-      else: 
+      else:
         ProcessSwitch(p.key, p.val, pass, gCmdLineInfo)
     of cmdArgument:
       if argsCount == 0:
@@ -57,7 +57,7 @@ proc ProcessCmdLine*(pass: TCmdLinePass, cmd: string) =
           arguments = cmdLineRest(p)
           break
       inc argsCount
-          
+
   if pass == passCmd2:
     if optRun notin gGlobalOptions and arguments != "":
       rawMessage(errArgsNeedRunOption, [])

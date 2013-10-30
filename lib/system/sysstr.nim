@@ -203,7 +203,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                                GenericSeqSize))
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
-    when not defined(boehmGC) and not defined(nogc) and 
+    when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep):
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
@@ -220,7 +220,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
           forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waZctDecRef)
-      
+
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc paramter or a let variable).
     # This is a tought problem, because even if we don't zeroMem here, in the

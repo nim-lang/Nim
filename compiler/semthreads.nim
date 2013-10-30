@@ -10,19 +10,19 @@
 ## Semantic analysis that deals with threads: Possible race conditions should
 ## be reported some day.
 ##
-## 
+##
 ## ========================
 ## No heap sharing analysis
 ## ========================
 ##
 ## The only crucial operation that can violate the heap invariants is the
 ## write access. The analysis needs to distinguish between 'unknown', 'mine',
-## and 'theirs' memory and pointers. Assignments 'whatever <- unknown' are 
+## and 'theirs' memory and pointers. Assignments 'whatever <- unknown' are
 ## invalid, and so are 'theirs <- whatever' but not 'mine <- theirs'. Since
 ## strings and sequences are heap allocated they are affected too:
 ##
 ## .. code-block:: nimrod
-##   proc p() = 
+##   proc p() =
 ##     global = "alloc this string" # ugh!
 ##
 ## Thus the analysis is concerned with any type that contains a GC'ed
@@ -34,13 +34,13 @@
 ## done! Every write access to a global that contains GC'ed data needs to
 ## be prevented! Unfortunately '!ref' is not implemented yet...
 ##
-## The assignment target is essential for the algorithm: only 
+## The assignment target is essential for the algorithm: only
 ## write access to heap locations and global variables are critical and need
 ## to be checked. Access via 'var' parameters is no problem to analyse since
 ## we need the arguments' locations in the analysis.
 ##
-## However, this is tricky: 
-##  
+## However, this is tricky:
+##
 ##  var x = globalVar     # 'x' points to 'theirs'
 ##  while true:
 ##    globalVar = x       # NOT OK: 'theirs <- theirs' invalid due to
@@ -63,7 +63,7 @@ import
 
 type
   TThreadOwner = enum
-    toUndefined, # not computed yet 
+    toUndefined, # not computed yet
     toVoid,      # no return type
     toNil,       # cycle in computation or nil: can be overwritten
     toTheirs,    # some other heap
@@ -110,13 +110,13 @@ proc analyseSym(c: PProcCtx, n: PNode): TThreadOwner =
   of skVar, skForVar, skLet, skResult:
     result = toNil
     if sfGlobal in v.flags:
-      if sfThread in v.flags: 
-        result = toMine 
+      if sfThread in v.flags:
+        result = toMine
       elif containsGarbageCollectedRef(v.typ):
         result = toTheirs
   of skTemp: result = toNil
   of skConst: result = toMine
-  of skParam: 
+  of skParam:
     result = c.mapping[v.id]
     if result == toUndefined:
       InternalError(n.info, "param not set: " & v.name.s)
@@ -134,7 +134,7 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
   if owner notin {toNil, toMine, toTheirs}:
     InternalError(n.info, "writeAccess: " & $owner)
   var a = lvalueSym(n)
-  if a.kind == nkSym: 
+  if a.kind == nkSym:
     var v = a.sym
     var lastOwner = analyseSym(c, a)
     case lastOwner
@@ -144,10 +144,10 @@ proc writeAccess(c: PProcCtx, n: PNode, owner: TThreadOwner) =
       if sfGlobal in v.flags:
         newOwner = owner
       elif containsTyRef(v.typ):
-        # ``var local = gNode`` --> ok, but ``local`` is theirs! 
+        # ``var local = gNode`` --> ok, but ``local`` is theirs!
         newOwner = owner
       else:
-        # ``var local = gString`` --> string copy: ``local`` is mine! 
+        # ``var local = gString`` --> string copy: ``local`` is mine!
         newOwner = toMine
         # XXX BUG what if the tuple contains both ``tyRef`` and ``tyString``?
       c.mapping[v.id] = newOwner
@@ -185,12 +185,12 @@ proc analyseCall(c: PProcCtx, n: PNode): TThreadOwner =
   if not computed.hasKey(call):
     computed[call] = toUndefined # we are computing it
     let prctyp = skipTypes(prc.typ, abstractInst).n
-    for i in 1.. prctyp.len-1: 
-      var formal = prctyp.sons[i].sym 
+    for i in 1.. prctyp.len-1:
+      var formal = prctyp.sons[i].sym
       newCtx.mapping[formal.id] = call.args[i-1]
     pushInfoContext(n.info)
     result = analyse(newCtx, prc.getBody)
-    if prc.ast.sons[bodyPos].kind == nkEmpty and 
+    if prc.ast.sons[bodyPos].kind == nkEmpty and
        {sfNoSideEffect, sfThread, sfImportc} * prc.flags == {}:
       Message(n.info, warnAnalysisLoophole, renderTree(n))
       if result == toUndefined: result = toNil
@@ -222,11 +222,11 @@ proc analyseVarTuple(c: PProcCtx, n: PNode) =
 proc analyseSingleVar(c: PProcCtx, a: PNode) =
   if a.sons[2].kind != nkEmpty: AnalyseAssign(c, a.sons[0], a.sons[2])
 
-proc analyseVarSection(c: PProcCtx, n: PNode): TThreadOwner = 
-  for i in countup(0, sonsLen(n) - 1): 
+proc analyseVarSection(c: PProcCtx, n: PNode): TThreadOwner =
+  for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
-    if a.kind == nkCommentStmt: continue 
-    if a.kind == nkIdentDefs: 
+    if a.kind == nkCommentStmt: continue
+    if a.kind == nkIdentDefs:
       #assert(a.sons[0].kind == nkSym); also valid for after
       # closure transformation:
       analyseSingleVar(c, a)
@@ -235,9 +235,9 @@ proc analyseVarSection(c: PProcCtx, n: PNode): TThreadOwner =
   result = toVoid
 
 proc analyseConstSection(c: PProcCtx, t: PNode): TThreadOwner =
-  for i in countup(0, sonsLen(t) - 1): 
+  for i in countup(0, sonsLen(t) - 1):
     var it = t.sons[i]
-    if it.kind == nkCommentStmt: continue 
+    if it.kind == nkCommentStmt: continue
     if it.kind != nkConstDef: InternalError(t.info, "analyseConstSection")
     if sfFakeConst in it.sons[0].sym.flags: analyseSingleVar(c, it)
   result = toVoid
@@ -259,7 +259,7 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
   else:
     var prc = n[0].sym
     case prc.magic
-    of mNone: 
+    of mNone:
       if sfSystemModule in prc.owner.flags:
         # System module proc does no harm :-)
         analyseArgs(c, n)
@@ -276,11 +276,11 @@ proc analyseOp(c: PProcCtx, n: PNode): TThreadOwner =
       writeAccess(c, n[1], a)
       writeAccess(c, n[2], a)
       result = toVoid
-    of mIntToStr, mInt64ToStr, mFloatToStr, mBoolToStr, mCharToStr, 
+    of mIntToStr, mInt64ToStr, mFloatToStr, mBoolToStr, mCharToStr,
         mCStrToStr, mStrToStr, mEnumToStr,
-        mConStrStr, mConArrArr, mConArrT, 
-        mConTArr, mConTT, mSlice, 
-        mRepr, mArrToSeq, mCopyStr, mCopyStrLast, 
+        mConStrStr, mConArrArr, mConArrT,
+        mConTArr, mConTT, mSlice,
+        mRepr, mArrToSeq, mCopyStr, mCopyStrLast,
         mNewString, mNewStringOfCap:
       analyseArgs(c, n)
       result = toMine
@@ -329,7 +329,7 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     else:
       # should never really happen:
       result = analyse(c, n.sons[0])
-  of nkIfExpr: 
+  of nkIfExpr:
     result = toNil
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
@@ -344,10 +344,10 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
     for i in countup(0, L-2): discard analyse(c, n.sons[i])
     if L > 0: result = analyse(c, n.sons[L-1])
     else: result = toVoid
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast:
     result = analyse(c, n.sons[1])
   of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64,
-     nkChckRange, nkCheckedFieldExpr, nkObjDownConv, 
+     nkChckRange, nkCheckedFieldExpr, nkObjDownConv,
      nkObjUpConv:
     result = analyse(c, n.sons[0])
   of nkRaiseStmt:
@@ -357,12 +357,12 @@ proc analyse(c: PProcCtx, n: PNode): TThreadOwner =
   of nkVarSection, nkLetSection: result = analyseVarSection(c, n)
   of nkConstSection: result = analyseConstSection(c, n)
   of nkTypeSection, nkCommentStmt: result = toVoid
-  of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt, 
+  of nkIfStmt, nkWhileStmt, nkTryStmt, nkCaseStmt, nkStmtList, nkBlockStmt,
      nkElifBranch, nkElse, nkExceptBranch, nkOfBranch:
     for i in 0 .. <n.len: discard analyse(c, n[i])
     result = toVoid
   of nkBreakStmt, nkContinueStmt: result = toVoid
-  of nkReturnStmt, nkDiscardStmt: 
+  of nkReturnStmt, nkDiscardStmt:
     if n.sons[0].kind != nkEmpty: result = analyse(c, n.sons[0])
     else: result = toVoid
   of nkLambdaKinds, nkClosure:
@@ -379,11 +379,11 @@ proc analyseThreadProc*(prc: PSym) =
   var c = newProcCtx(prc)
   var formals = skipTypes(prc.typ, abstractInst).n
   for i in 1 .. formals.len-1:
-    var formal = formals.sons[i].sym 
+    var formal = formals.sons[i].sym
     c.mapping[formal.id] = toTheirs # thread receives foreign data!
   discard analyse(c, prc.getBody)
 
 proc needsGlobalAnalysis*: bool =
-  result = gGlobalOptions * {optThreads, optThreadAnalysis} == 
+  result = gGlobalOptions * {optThreads, optThreadAnalysis} ==
                             {optThreads, optThreadAnalysis}
 

@@ -49,16 +49,16 @@
 #
 #
 
-import 
+import
   X, Xlib, XKB
 
 
 include "x11pragma.nim"
 
 
-type 
+type
   PXkbAnyEvent* = ptr TXkbAnyEvent
-  TXkbAnyEvent*{.final.} = object 
+  TXkbAnyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -66,11 +66,11 @@ type
     time*: TTime              # milliseconds;
     xkb_type*: int16          # XKB event minor code
     device*: int16            # device ID
-  
 
-type 
+
+type
   PXkbNewKeyboardNotifyEvent* = ptr TXkbNewKeyboardNotifyEvent
-  TXkbNewKeyboardNotifyEvent*{.final.} = object 
+  TXkbNewKeyboardNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -86,11 +86,11 @@ type
     changed*: int16           # changed aspects of the keyboard
     req_major*: int8          # major and minor opcode of req
     req_minor*: int8          # that caused change, if applicable
-  
 
-type 
+
+type
   PXkbMapNotifyEvent* = ptr TXkbMapNotifyEvent
-  TXkbMapNotifyEvent*{.final.} = object 
+  TXkbMapNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request
@@ -117,11 +117,11 @@ type
     num_modmap_keys*: int16
     num_vmodmap_keys*: int16
     vmods*: int16             # mask of changed virtual mods
-  
 
-type 
+
+type
   PXkbStateNotifyEvent* = ptr TXkbStateNotifyEvent
-  TXkbStateNotifyEvent*{.final.} = object 
+  TXkbStateNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -148,11 +148,11 @@ type
     event_type*: int8         # KeyPress or KeyRelease
     req_major*: int8          # Major opcode of request
     req_minor*: int8          # Minor opcode of request
-  
 
-type 
+
+type
   PXkbControlsNotifyEvent* = ptr TXkbControlsNotifyEvent
-  TXkbControlsNotifyEvent*{.final.} = object 
+  TXkbControlsNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -168,11 +168,11 @@ type
     event_type*: int8         # type of event that caused change
     req_major*: int8          # if keycode==0, major and minor
     req_minor*: int8          # opcode of req that caused change
-  
 
-type 
+
+type
   PXkbIndicatorNotifyEvent* = ptr TXkbIndicatorNotifyEvent
-  TXkbIndicatorNotifyEvent*{.final.} = object 
+  TXkbIndicatorNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -182,11 +182,11 @@ type
     device*: int16            # device
     changed*: int16           # indicators with new state or map
     state*: int16             # current state of all indicators
-  
 
-type 
+
+type
   PXkbNamesNotifyEvent* = ptr TXkbNamesNotifyEvent
-  TXkbNamesNotifyEvent*{.final.} = object 
+  TXkbNamesNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -206,11 +206,11 @@ type
     changed_indicators*: int16 # indicators with new names
     first_key*: int16         # first key with new name
     num_keys*: int16          # number of keys with new names
-  
 
-type 
+
+type
   PXkbCompatMapNotifyEvent* = ptr TXkbCompatMapNotifyEvent
-  TXkbCompatMapNotifyEvent*{.final.} = object 
+  TXkbCompatMapNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -222,11 +222,11 @@ type
     first_si*: int16          # first new symbol interp
     num_si*: int16            # number of new symbol interps
     num_total_si*: int16      # total # of symbol interps
-  
 
-type 
+
+type
   PXkbBellNotifyEvent* = ptr TXkbBellNotifyEvent
-  TXkbBellNotifyEvent*{.final.} = object 
+  TXkbBellNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -242,11 +242,11 @@ type
     name*: TAtom              # "name" of requested bell
     window*: TWindow          # window associated with event
     event_only*: bool         # "event only" requested
-  
 
-type 
+
+type
   PXkbActionMessageEvent* = ptr TXkbActionMessageEvent
-  TXkbActionMessageEvent*{.final.} = object 
+  TXkbActionMessageEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -260,11 +260,11 @@ type
     group*: int16             # effective group
     mods*: int16              # effective mods
     message*: array[0..XkbActionMessageLength, Char] # message -- leave space for NUL
-  
 
-type 
+
+type
   PXkbAccessXNotifyEvent* = ptr TXkbAccessXNotifyEvent
-  TXkbAccessXNotifyEvent*{.final.} = object 
+  TXkbAccessXNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -276,11 +276,11 @@ type
     keycode*: int16           # key of event
     sk_delay*: int16          # current slow keys delay
     debounce_delay*: int16    # current debounce delay
-  
 
-type 
+
+type
   PXkbExtensionDeviceNotifyEvent* = ptr TXkbExtensionDeviceNotifyEvent
-  TXkbExtensionDeviceNotifyEvent*{.final.} = object 
+  TXkbExtensionDeviceNotifyEvent*{.final.} = object
     theType*: int16           # XkbAnyEvent
     serial*: int32            # of last req processed by server
     send_event*: bool         # is this `from` a SendEvent request?
@@ -298,11 +298,11 @@ type
     led_state*: int16         # current state of the indicators
     led_class*: int16         # feedback class for led changes
     led_id*: int16            # feedback id for led changes
-  
 
-type 
+
+type
   PXkbEvent* = ptr TXkbEvent
-  TXkbEvent*{.final.} = object 
+  TXkbEvent*{.final.} = object
     theType*: int16
     any*: TXkbAnyEvent
     new_kbd*: TXkbNewKeyboardNotifyEvent
@@ -321,16 +321,16 @@ type
 
 type
   PXkbKbdDpyStatePtr* = ptr TXkbKbdDpyStateRec
-  TXkbKbdDpyStateRec*{.final.} = object  # XkbOpenDisplay error codes 
+  TXkbKbdDpyStateRec*{.final.} = object  # XkbOpenDisplay error codes
 
-const 
+const
   XkbOD_Success* = 0
   XkbOD_BadLibraryVersion* = 1
   XkbOD_ConnectionRefused* = 2
   XkbOD_NonXkbServer* = 3
-  XkbOD_BadServerVersion* = 4 # Values for XlibFlags 
+  XkbOD_BadServerVersion* = 4 # Values for XlibFlags
 
-const 
+const
   XkbLC_ForceLatin1Lookup* = 1 shl 0
   XkbLC_ConsumeLookupMods* = 1 shl 1
   XkbLC_AlwaysConsumeShiftAndLock* = 1 shl 2
@@ -342,24 +342,24 @@ const
   XkbLC_AllComposeControls* = 0xC0000000
   XkbLC_AllControls* = 0xC000001F
 
-proc XkbIgnoreExtension*(ignore: bool): bool{.libx11c, 
+proc XkbIgnoreExtension*(ignore: bool): bool{.libx11c,
     importc: "XkbIgnoreExtension".}
-proc XkbOpenDisplay*(name: cstring, ev_rtrn, err_rtrn, major_rtrn, minor_rtrn, 
+proc XkbOpenDisplay*(name: cstring, ev_rtrn, err_rtrn, major_rtrn, minor_rtrn,
                                     reason: ptr int16): PDisplay{.libx11c, importc: "XkbOpenDisplay".}
-proc XkbQueryExtension*(dpy: PDisplay, opcodeReturn, eventBaseReturn, 
+proc XkbQueryExtension*(dpy: PDisplay, opcodeReturn, eventBaseReturn,
                                        errorBaseReturn, majorRtrn, minorRtrn: ptr int16): bool{.
     libx11c, importc: "XkbQueryExtension".}
 proc XkbUseExtension*(dpy: PDisplay, major_rtrn, minor_rtrn: ptr int16): bool{.
     libx11c, importc: "XkbUseExtension".}
 proc XkbLibraryVersion*(libMajorRtrn, libMinorRtrn: ptr int16): bool{.libx11c, importc: "XkbLibraryVersion".}
 proc XkbSetXlibControls*(dpy: PDisplay, affect, values: int16): int16{.libx11c, importc: "XkbSetXlibControls".}
-proc XkbGetXlibControls*(dpy: PDisplay): int16{.libx11c, 
+proc XkbGetXlibControls*(dpy: PDisplay): int16{.libx11c,
     importc: "XkbGetXlibControls".}
-type 
+type
   TXkbInternAtomFunc* = proc (dpy: PDisplay, name: cstring, only_if_exists: bool): TAtom{.
       cdecl.}
 
-type 
+type
   TXkbGetAtomNameFunc* = proc (dpy: PDisplay, atom: TAtom): cstring{.cdecl.}
 
 proc XkbSetAtomFuncs*(getAtom: TXkbInternAtomFunc, getName: TXkbGetAtomNameFunc){.
@@ -367,55 +367,55 @@ proc XkbSetAtomFuncs*(getAtom: TXkbInternAtomFunc, getName: TXkbGetAtomNameFunc)
 proc XkbKeycodeToKeysym*(dpy: PDisplay, kc: TKeyCode, group, level: int16): TKeySym{.
     libx11c, importc: "XkbKeycodeToKeysym".}
 proc XkbKeysymToModifiers*(dpy: PDisplay, ks: TKeySym): int16{.libx11c, importc: "XkbKeysymToModifiers".}
-proc XkbLookupKeySym*(dpy: PDisplay, keycode: TKeyCode, 
+proc XkbLookupKeySym*(dpy: PDisplay, keycode: TKeyCode,
                       modifiers, modifiers_return: int16, keysym_return: PKeySym): bool{.
     libx11c, importc: "XkbLookupKeySym".}
-proc XkbLookupKeyBinding*(dpy: PDisplay, sym_rtrn: TKeySym, mods: int16, 
+proc XkbLookupKeyBinding*(dpy: PDisplay, sym_rtrn: TKeySym, mods: int16,
                           buffer: cstring, nbytes: int16, extra_rtrn: ptr int16): int16{.
     libx11c, importc: "XkbLookupKeyBinding".}
-proc XkbTranslateKeyCode*(xkb: PXkbDescPtr, keycode: TKeyCode, 
-                          modifiers, modifiers_return: int16, 
-                          keysym_return: PKeySym): bool{.libx11c, 
+proc XkbTranslateKeyCode*(xkb: PXkbDescPtr, keycode: TKeyCode,
+                          modifiers, modifiers_return: int16,
+                          keysym_return: PKeySym): bool{.libx11c,
     importc: "XkbTranslateKeyCode".}
-proc XkbTranslateKeySym*(dpy: PDisplay, sym_return: TKeySym, modifiers: int16, 
+proc XkbTranslateKeySym*(dpy: PDisplay, sym_return: TKeySym, modifiers: int16,
                          buffer: cstring, nbytes: int16, extra_rtrn: ptr int16): int16{.
     libx11c, importc: "XkbTranslateKeySym".}
 proc XkbSetAutoRepeatRate*(dpy: PDisplay, deviceSpec, delay, interval: int16): bool{.
     libx11c, importc: "XkbSetAutoRepeatRate".}
-proc XkbGetAutoRepeatRate*(dpy: PDisplay, deviceSpec: int16, 
+proc XkbGetAutoRepeatRate*(dpy: PDisplay, deviceSpec: int16,
                            delayRtrn, intervalRtrn: PWord): bool{.libx11c, importc: "XkbGetAutoRepeatRate".}
 proc XkbChangeEnabledControls*(dpy: PDisplay, deviceSpec, affect, values: int16): bool{.
     libx11c, importc: "XkbChangeEnabledControls".}
-proc XkbDeviceBell*(dpy: PDisplay, win: TWindow, 
+proc XkbDeviceBell*(dpy: PDisplay, win: TWindow,
                     deviceSpec, bellClass, bellID, percent: int16, name: TAtom): bool{.
     libx11c, importc: "XkbDeviceBell".}
-proc XkbForceDeviceBell*(dpy: PDisplay, 
+proc XkbForceDeviceBell*(dpy: PDisplay,
                          deviceSpec, bellClass, bellID, percent: int16): bool{.
     libx11c, importc: "XkbForceDeviceBell".}
-proc XkbDeviceBellEvent*(dpy: PDisplay, win: TWindow, 
-                         deviceSpec, bellClass, bellID, percent: int16, 
-                         name: TAtom): bool{.libx11c, 
+proc XkbDeviceBellEvent*(dpy: PDisplay, win: TWindow,
+                         deviceSpec, bellClass, bellID, percent: int16,
+                         name: TAtom): bool{.libx11c,
     importc: "XkbDeviceBellEvent".}
 proc XkbBell*(dpy: PDisplay, win: TWindow, percent: int16, name: TAtom): bool{.
     libx11c, importc: "XkbBell".}
-proc XkbForceBell*(dpy: PDisplay, percent: int16): bool{.libx11c, 
+proc XkbForceBell*(dpy: PDisplay, percent: int16): bool{.libx11c,
     importc: "XkbForceBell".}
 proc XkbBellEvent*(dpy: PDisplay, win: TWindow, percent: int16, name: TAtom): bool{.
     libx11c, importc: "XkbBellEvent".}
 proc XkbSelectEvents*(dpy: PDisplay, deviceID, affect, values: int16): bool{.
     libx11c, importc: "XkbSelectEvents".}
-proc XkbSelectEventDetails*(dpy: PDisplay, deviceID, eventType: int16, 
+proc XkbSelectEventDetails*(dpy: PDisplay, deviceID, eventType: int16,
                             affect, details: int32): bool{.libx11c, importc: "XkbSelectEventDetails".}
-proc XkbNoteMapChanges*(old: PXkbMapChangesPtr, new: PXkbMapNotifyEvent, 
-                        wanted: int16){.libx11c, 
+proc XkbNoteMapChanges*(old: PXkbMapChangesPtr, new: PXkbMapNotifyEvent,
+                        wanted: int16){.libx11c,
                                         importc: "XkbNoteMapChanges".}
-proc XkbNoteNameChanges*(old: PXkbNameChangesPtr, new: PXkbNamesNotifyEvent, 
-                         wanted: int16){.libx11c, 
+proc XkbNoteNameChanges*(old: PXkbNameChangesPtr, new: PXkbNamesNotifyEvent,
+                         wanted: int16){.libx11c,
     importc: "XkbNoteNameChanges".}
 proc XkbGetIndicatorState*(dpy: PDisplay, deviceSpec: int16, pStateRtrn: PWord): TStatus{.
     libx11c, importc: "XkbGetIndicatorState".}
-proc XkbGetDeviceIndicatorState*(dpy: PDisplay, 
-                                 deviceSpec, ledClass, ledID: int16, 
+proc XkbGetDeviceIndicatorState*(dpy: PDisplay,
+                                 deviceSpec, ledClass, ledID: int16,
                                  pStateRtrn: PWord): TStatus{.libx11c, importc: "XkbGetDeviceIndicatorState".}
 proc XkbGetIndicatorMap*(dpy: PDisplay, which: int32, desc: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetIndicatorMap".}
@@ -423,27 +423,27 @@ proc XkbSetIndicatorMap*(dpy: PDisplay, which: int32, desc: PXkbDescPtr): bool{.
     libx11c, importc: "XkbSetIndicatorMap".}
 proc XkbNoteIndicatorMapChanges*(o, n: PXkbIndicatorChangesPtr, w: int16)
 proc XkbNoteIndicatorStateChanges*(o, n: PXkbIndicatorChangesPtr, w: int16)
-proc XkbGetIndicatorMapChanges*(d: PDisplay, x: PXkbDescPtr, 
+proc XkbGetIndicatorMapChanges*(d: PDisplay, x: PXkbDescPtr,
                                 c: PXkbIndicatorChangesPtr): TStatus
-proc XkbChangeIndicatorMaps*(d: PDisplay, x: PXkbDescPtr, 
+proc XkbChangeIndicatorMaps*(d: PDisplay, x: PXkbDescPtr,
                              c: PXkbIndicatorChangesPtr): bool
-proc XkbGetNamedIndicator*(dpy: PDisplay, name: TAtom, pNdxRtrn: ptr int16, 
-                           pStateRtrn: ptr bool, pMapRtrn: PXkbIndicatorMapPtr, 
-                           pRealRtrn: ptr bool): bool{.libx11c, 
+proc XkbGetNamedIndicator*(dpy: PDisplay, name: TAtom, pNdxRtrn: ptr int16,
+                           pStateRtrn: ptr bool, pMapRtrn: PXkbIndicatorMapPtr,
+                           pRealRtrn: ptr bool): bool{.libx11c,
     importc: "XkbGetNamedIndicator".}
-proc XkbGetNamedDeviceIndicator*(dpy: PDisplay, 
-                                 deviceSpec, ledClass, ledID: int16, 
-                                 name: TAtom, pNdxRtrn: ptr int16, 
-                                 pStateRtrn: ptr bool, 
-                                 pMapRtrn: PXkbIndicatorMapPtr, 
+proc XkbGetNamedDeviceIndicator*(dpy: PDisplay,
+                                 deviceSpec, ledClass, ledID: int16,
+                                 name: TAtom, pNdxRtrn: ptr int16,
+                                 pStateRtrn: ptr bool,
+                                 pMapRtrn: PXkbIndicatorMapPtr,
                                  pRealRtrn: ptr bool): bool{.libx11c, importc: "XkbGetNamedDeviceIndicator".}
-proc XkbSetNamedIndicator*(dpy: PDisplay, name: TAtom, 
-                           changeState, state, createNewMap: bool, 
+proc XkbSetNamedIndicator*(dpy: PDisplay, name: TAtom,
+                           changeState, state, createNewMap: bool,
                            pMap: PXkbIndicatorMapPtr): bool{.libx11c, importc: "XkbSetNamedIndicator".}
-proc XkbSetNamedDeviceIndicator*(dpy: PDisplay, 
-                                 deviceSpec, ledClass, ledID: int16, 
-                                 name: TAtom, 
-                                 changeState, state, createNewMap: bool, 
+proc XkbSetNamedDeviceIndicator*(dpy: PDisplay,
+                                 deviceSpec, ledClass, ledID: int16,
+                                 name: TAtom,
+                                 changeState, state, createNewMap: bool,
                                  pMap: PXkbIndicatorMapPtr): bool{.libx11c, importc: "XkbSetNamedDeviceIndicator".}
 proc XkbLockModifiers*(dpy: PDisplay, deviceSpec, affect, values: int16): bool{.
     libx11c, importc: "XkbLockModifiers".}
@@ -451,19 +451,19 @@ proc XkbLatchModifiers*(dpy: PDisplay, deviceSpec, affect, values: int16): bool{
     libx11c, importc: "XkbLatchModifiers".}
 proc XkbLockGroup*(dpy: PDisplay, deviceSpec, group: int16): bool{.libx11c, importc: "XkbLockGroup".}
 proc XkbLatchGroup*(dpy: PDisplay, deviceSpec, group: int16): bool{.libx11c, importc: "XkbLatchGroup".}
-proc XkbSetServerInternalMods*(dpy: PDisplay, deviceSpec, affectReal, 
+proc XkbSetServerInternalMods*(dpy: PDisplay, deviceSpec, affectReal,
     realValues, affectVirtual, virtualValues: int16): bool{.libx11c, importc: "XkbSetServerInternalMods".}
-proc XkbSetIgnoreLockMods*(dpy: PDisplay, deviceSpec, affectReal, realValues, 
-    affectVirtual, virtualValues: int16): bool{.libx11c, 
+proc XkbSetIgnoreLockMods*(dpy: PDisplay, deviceSpec, affectReal, realValues,
+    affectVirtual, virtualValues: int16): bool{.libx11c,
     importc: "XkbSetIgnoreLockMods".}
 proc XkbVirtualModsToReal*(dpy: PDisplay, virtual_mask: int16, mask_rtrn: PWord): bool{.
     libx11c, importc: "XkbVirtualModsToReal".}
-proc XkbComputeEffectiveMap*(xkb: PXkbDescPtr, theType: PXkbKeyTypePtr, 
-                             map_rtrn: PByte): bool{.libx11c, 
+proc XkbComputeEffectiveMap*(xkb: PXkbDescPtr, theType: PXkbKeyTypePtr,
+                             map_rtrn: PByte): bool{.libx11c,
     importc: "XkbComputeEffectiveMap".}
 proc XkbInitCanonicalKeyTypes*(xkb: PXkbDescPtr, which: int16, keypadVMod: int16): TStatus{.
     libx11c, importc: "XkbInitCanonicalKeyTypes".}
-proc XkbAllocKeyboard*(): PXkbDescPtr{.libx11c, 
+proc XkbAllocKeyboard*(): PXkbDescPtr{.libx11c,
                                        importc: "XkbAllocKeyboard".}
 proc XkbFreeKeyboard*(xkb: PXkbDescPtr, which: int16, freeDesc: bool){.libx11c, importc: "XkbFreeKeyboard".}
 proc XkbAllocClientMap*(xkb: PXkbDescPtr, which, nTypes: int16): TStatus{.libx11c, importc: "XkbAllocClientMap".}
@@ -471,17 +471,17 @@ proc XkbAllocServerMap*(xkb: PXkbDescPtr, which, nActions: int16): TStatus{.
     libx11c, importc: "XkbAllocServerMap".}
 proc XkbFreeClientMap*(xkb: PXkbDescPtr, what: int16, freeMap: bool){.libx11c, importc: "XkbFreeClientMap".}
 proc XkbFreeServerMap*(xkb: PXkbDescPtr, what: int16, freeMap: bool){.libx11c, importc: "XkbFreeServerMap".}
-proc XkbAddKeyType*(xkb: PXkbDescPtr, name: TAtom, map_count: int16, 
+proc XkbAddKeyType*(xkb: PXkbDescPtr, name: TAtom, map_count: int16,
                     want_preserve: bool, num_lvls: int16): PXkbKeyTypePtr{.
     libx11c, importc: "XkbAddKeyType".}
-proc XkbAllocIndicatorMaps*(xkb: PXkbDescPtr): TStatus{.libx11c, 
+proc XkbAllocIndicatorMaps*(xkb: PXkbDescPtr): TStatus{.libx11c,
     importc: "XkbAllocIndicatorMaps".}
-proc XkbFreeIndicatorMaps*(xkb: PXkbDescPtr){.libx11c, 
+proc XkbFreeIndicatorMaps*(xkb: PXkbDescPtr){.libx11c,
     importc: "XkbFreeIndicatorMaps".}
 proc XkbGetMap*(dpy: PDisplay, which, deviceSpec: int16): PXkbDescPtr{.libx11c, importc: "XkbGetMap".}
 proc XkbGetUpdatedMap*(dpy: PDisplay, which: int16, desc: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetUpdatedMap".}
-proc XkbGetMapChanges*(dpy: PDisplay, xkb: PXkbDescPtr, 
+proc XkbGetMapChanges*(dpy: PDisplay, xkb: PXkbDescPtr,
                        changes: PXkbMapChangesPtr): TStatus{.libx11c, importc: "XkbGetMapChanges".}
 proc XkbRefreshKeyboardMapping*(event: PXkbMapNotifyEvent): TStatus{.libx11c, importc: "XkbRefreshKeyboardMapping".}
 proc XkbGetKeyTypes*(dpy: PDisplay, first, num: int16, xkb: PXkbDescPtr): TStatus{.
@@ -490,15 +490,15 @@ proc XkbGetKeySyms*(dpy: PDisplay, first, num: int16, xkb: PXkbDescPtr): TStatus
     libx11c, importc: "XkbGetKeySyms".}
 proc XkbGetKeyActions*(dpy: PDisplay, first, num: int16, xkb: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetKeyActions".}
-proc XkbGetKeyBehaviors*(dpy: PDisplay, firstKey, nKeys: int16, 
-                         desc: PXkbDescPtr): TStatus{.libx11c, 
+proc XkbGetKeyBehaviors*(dpy: PDisplay, firstKey, nKeys: int16,
+                         desc: PXkbDescPtr): TStatus{.libx11c,
     importc: "XkbGetKeyBehaviors".}
 proc XkbGetVirtualMods*(dpy: PDisplay, which: int16, desc: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetVirtualMods".}
-proc XkbGetKeyExplicitComponents*(dpy: PDisplay, firstKey, nKeys: int16, 
+proc XkbGetKeyExplicitComponents*(dpy: PDisplay, firstKey, nKeys: int16,
                                   desc: PXkbDescPtr): TStatus{.libx11c, importc: "XkbGetKeyExplicitComponents".}
-proc XkbGetKeyModifierMap*(dpy: PDisplay, firstKey, nKeys: int16, 
-                           desc: PXkbDescPtr): TStatus{.libx11c, 
+proc XkbGetKeyModifierMap*(dpy: PDisplay, firstKey, nKeys: int16,
+                           desc: PXkbDescPtr): TStatus{.libx11c,
     importc: "XkbGetKeyModifierMap".}
 proc XkbAllocControls*(xkb: PXkbDescPtr, which: int16): TStatus{.libx11c, importc: "XkbAllocControls".}
 proc XkbFreeControls*(xkb: PXkbDescPtr, which: int16, freeMap: bool){.libx11c, importc: "XkbFreeControls".}
@@ -506,10 +506,10 @@ proc XkbGetControls*(dpy: PDisplay, which: int32, desc: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetControls".}
 proc XkbSetControls*(dpy: PDisplay, which: int32, desc: PXkbDescPtr): bool{.
     libx11c, importc: "XkbSetControls".}
-proc XkbNoteControlsChanges*(old: PXkbControlsChangesPtr, 
+proc XkbNoteControlsChanges*(old: PXkbControlsChangesPtr,
                              new: PXkbControlsNotifyEvent, wanted: int16){.
     libx11c, importc: "XkbNoteControlsChanges".}
-proc XkbGetControlsChanges*(d: PDisplay, x: PXkbDescPtr, 
+proc XkbGetControlsChanges*(d: PDisplay, x: PXkbDescPtr,
                             c: PXkbControlsChangesPtr): TStatus
 proc XkbChangeControls*(d: PDisplay, x: PXkbDescPtr, c: PXkbControlsChangesPtr): bool
 proc XkbAllocCompatMap*(xkb: PXkbDescPtr, which, nInterpret: int16): TStatus{.
@@ -517,21 +517,21 @@ proc XkbAllocCompatMap*(xkb: PXkbDescPtr, which, nInterpret: int16): TStatus{.
 proc XkbFreeCompatMap*(xkib: PXkbDescPtr, which: int16, freeMap: bool){.libx11c, importc: "XkbFreeCompatMap".}
 proc XkbGetCompatMap*(dpy: PDisplay, which: int16, xkb: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetCompatMap".}
-proc XkbSetCompatMap*(dpy: PDisplay, which: int16, xkb: PXkbDescPtr, 
-                      updateActions: bool): bool{.libx11c, 
+proc XkbSetCompatMap*(dpy: PDisplay, which: int16, xkb: PXkbDescPtr,
+                      updateActions: bool): bool{.libx11c,
     importc: "XkbSetCompatMap".}
-proc XkbAddSymInterpret*(xkb: PXkbDescPtr, si: PXkbSymInterpretPtr, 
+proc XkbAddSymInterpret*(xkb: PXkbDescPtr, si: PXkbSymInterpretPtr,
                          updateMap: bool, changes: PXkbChangesPtr): PXkbSymInterpretPtr{.
     libx11c, importc: "XkbAddSymInterpret".}
-proc XkbAllocNames*(xkb: PXkbDescPtr, which: int16, 
+proc XkbAllocNames*(xkb: PXkbDescPtr, which: int16,
                     nTotalRG, nTotalAliases: int16): TStatus{.libx11c, importc: "XkbAllocNames".}
 proc XkbGetNames*(dpy: PDisplay, which: int16, desc: PXkbDescPtr): TStatus{.
     libx11c, importc: "XkbGetNames".}
-proc XkbSetNames*(dpy: PDisplay, which, firstType, nTypes: int16, 
-                  desc: PXkbDescPtr): bool{.libx11c, 
+proc XkbSetNames*(dpy: PDisplay, which, firstType, nTypes: int16,
+                  desc: PXkbDescPtr): bool{.libx11c,
     importc: "XkbSetNames".}
-proc XkbChangeNames*(dpy: PDisplay, xkb: PXkbDescPtr, 
-                     changes: PXkbNameChangesPtr): bool{.libx11c, 
+proc XkbChangeNames*(dpy: PDisplay, xkb: PXkbDescPtr,
+                     changes: PXkbNameChangesPtr): bool{.libx11c,
     importc: "XkbChangeNames".}
 proc XkbFreeNames*(xkb: PXkbDescPtr, which: int16, freeMap: bool){.libx11c, importc: "XkbFreeNames".}
 proc XkbGetState*(dpy: PDisplay, deviceSpec: int16, rtrnState: PXkbStatePtr): TStatus{.
@@ -539,11 +539,11 @@ proc XkbGetState*(dpy: PDisplay, deviceSpec: int16, rtrnState: PXkbStatePtr): TS
 proc XkbSetMap*(dpy: PDisplay, which: int16, desc: PXkbDescPtr): bool{.libx11c, importc: "XkbSetMap".}
 proc XkbChangeMap*(dpy: PDisplay, desc: PXkbDescPtr, changes: PXkbMapChangesPtr): bool{.
     libx11c, importc: "XkbChangeMap".}
-proc XkbSetDetectableAutoRepeat*(dpy: PDisplay, detectable: bool, 
+proc XkbSetDetectableAutoRepeat*(dpy: PDisplay, detectable: bool,
                                  supported: ptr bool): bool{.libx11c, importc: "XkbSetDetectableAutoRepeat".}
 proc XkbGetDetectableAutoRepeat*(dpy: PDisplay, supported: ptr bool): bool{.
     libx11c, importc: "XkbGetDetectableAutoRepeat".}
-proc XkbSetAutoResetControls*(dpy: PDisplay, changes: int16, 
+proc XkbSetAutoResetControls*(dpy: PDisplay, changes: int16,
                               auto_ctrls, auto_values: PWord): bool{.libx11c, importc: "XkbSetAutoResetControls".}
 proc XkbGetAutoResetControls*(dpy: PDisplay, auto_ctrls, auto_ctrl_values: PWord): bool{.
     libx11c, importc: "XkbGetAutoResetControls".}
@@ -553,44 +553,44 @@ proc XkbGetPerClientControls*(dpy: PDisplay, ctrls: PWord): bool{.libx11c, impor
 proc XkbCopyKeyType*(`from`, into: PXkbKeyTypePtr): TStatus{.libx11c, importc: "XkbCopyKeyType".}
 proc XkbCopyKeyTypes*(`from`, into: PXkbKeyTypePtr, num_types: int16): TStatus{.
     libx11c, importc: "XkbCopyKeyTypes".}
-proc XkbResizeKeyType*(xkb: PXkbDescPtr, type_ndx, map_count: int16, 
+proc XkbResizeKeyType*(xkb: PXkbDescPtr, type_ndx, map_count: int16,
                        want_preserve: bool, new_num_lvls: int16): TStatus{.
     libx11c, importc: "XkbResizeKeyType".}
 proc XkbResizeKeySyms*(desc: PXkbDescPtr, forKey, symsNeeded: int16): PKeySym{.
     libx11c, importc: "XkbResizeKeySyms".}
 proc XkbResizeKeyActions*(desc: PXkbDescPtr, forKey, actsNeeded: int16): PXkbAction{.
     libx11c, importc: "XkbResizeKeyActions".}
-proc XkbChangeTypesOfKey*(xkb: PXkbDescPtr, key, num_groups: int16, 
-                          groups: int16, newTypes: ptr int16, 
+proc XkbChangeTypesOfKey*(xkb: PXkbDescPtr, key, num_groups: int16,
+                          groups: int16, newTypes: ptr int16,
                           pChanges: PXkbMapChangesPtr): TStatus{.libx11c, importc: "XkbChangeTypesOfKey".}
-    
-proc XkbListComponents*(dpy: PDisplay, deviceSpec: int16, 
+
+proc XkbListComponents*(dpy: PDisplay, deviceSpec: int16,
                         ptrns: PXkbComponentNamesPtr, max_inout: ptr int16): PXkbComponentListPtr{.
     libx11c, importc: "XkbListComponents".}
-proc XkbFreeComponentList*(list: PXkbComponentListPtr){.libx11c, 
+proc XkbFreeComponentList*(list: PXkbComponentListPtr){.libx11c,
     importc: "XkbFreeComponentList".}
 proc XkbGetKeyboard*(dpy: PDisplay, which, deviceSpec: int16): PXkbDescPtr{.
     libx11c, importc: "XkbGetKeyboard".}
-proc XkbGetKeyboardByName*(dpy: PDisplay, deviceSpec: int16, 
-                           names: PXkbComponentNamesPtr, want, need: int16, 
-                           load: bool): PXkbDescPtr{.libx11c, 
+proc XkbGetKeyboardByName*(dpy: PDisplay, deviceSpec: int16,
+                           names: PXkbComponentNamesPtr, want, need: int16,
+                           load: bool): PXkbDescPtr{.libx11c,
     importc: "XkbGetKeyboardByName".}
-    
-proc XkbKeyTypesForCoreSymbols*(xkb: PXkbDescPtr, 
+
+proc XkbKeyTypesForCoreSymbols*(xkb: PXkbDescPtr,
                                 map_width: int16,  # keyboard device
                                 core_syms: PKeySym,  # always mapWidth symbols
                                 protected: int16,  # explicit key types
                                 types_inout: ptr int16,  # always four type indices
                                 xkb_syms_rtrn: PKeySym): int16{.libx11c, importc: "XkbKeyTypesForCoreSymbols".}
   # must have enough space
-proc XkbApplyCompatMapToKey*(xkb: PXkbDescPtr,  
+proc XkbApplyCompatMapToKey*(xkb: PXkbDescPtr,
                              key: TKeyCode,  # key to be updated
                              changes: PXkbChangesPtr): bool{.libx11c, importc: "XkbApplyCompatMapToKey".}
   # resulting changes to map
-proc XkbUpdateMapFromCore*(xkb: PXkbDescPtr,  
+proc XkbUpdateMapFromCore*(xkb: PXkbDescPtr,
                            first_key: TKeyCode,  # first changed key
                            num_keys,
-                           map_width: int16, 
+                           map_width: int16,
                            core_keysyms: PKeySym,  # symbols `from` core keymap
                            changes: PXkbChangesPtr): bool{.libx11c, importc: "XkbUpdateMapFromCore".}
 
@@ -602,60 +602,60 @@ proc XkbAllocDeviceInfo*(deviceSpec, nButtons, szLeds: int16): PXkbDeviceInfoPtr
     libx11c, importc: "XkbAllocDeviceInfo".}
 proc XkbFreeDeviceInfo*(devi: PXkbDeviceInfoPtr, which: int16, freeDevI: bool){.
     libx11c, importc: "XkbFreeDeviceInfo".}
-proc XkbNoteDeviceChanges*(old: PXkbDeviceChangesPtr, 
+proc XkbNoteDeviceChanges*(old: PXkbDeviceChangesPtr,
                            new: PXkbExtensionDeviceNotifyEvent, wanted: int16){.
     libx11c, importc: "XkbNoteDeviceChanges".}
 proc XkbGetDeviceInfo*(dpy: PDisplay, which, deviceSpec, ledClass, ledID: int16): PXkbDeviceInfoPtr{.
     libx11c, importc: "XkbGetDeviceInfo".}
-proc XkbGetDeviceInfoChanges*(dpy: PDisplay, devi: PXkbDeviceInfoPtr, 
+proc XkbGetDeviceInfoChanges*(dpy: PDisplay, devi: PXkbDeviceInfoPtr,
                               changes: PXkbDeviceChangesPtr): TStatus{.libx11c, importc: "XkbGetDeviceInfoChanges".}
-proc XkbGetDeviceButtonActions*(dpy: PDisplay, devi: PXkbDeviceInfoPtr, 
+proc XkbGetDeviceButtonActions*(dpy: PDisplay, devi: PXkbDeviceInfoPtr,
                                 all: bool, first, nBtns: int16): TStatus{.libx11c, importc: "XkbGetDeviceButtonActions".}
-proc XkbGetDeviceLedInfo*(dpy: PDisplay, devi: PXkbDeviceInfoPtr, 
+proc XkbGetDeviceLedInfo*(dpy: PDisplay, devi: PXkbDeviceInfoPtr,
                           ledClass, ledId, which: int16): TStatus{.libx11c, importc: "XkbGetDeviceLedInfo".}
 proc XkbSetDeviceInfo*(dpy: PDisplay, which: int16, devi: PXkbDeviceInfoPtr): bool{.
     libx11c, importc: "XkbSetDeviceInfo".}
-proc XkbChangeDeviceInfo*(dpy: PDisplay, desc: PXkbDeviceInfoPtr, 
+proc XkbChangeDeviceInfo*(dpy: PDisplay, desc: PXkbDeviceInfoPtr,
                           changes: PXkbDeviceChangesPtr): bool{.libx11c, importc: "XkbChangeDeviceInfo".}
-proc XkbSetDeviceLedInfo*(dpy: PDisplay, devi: PXkbDeviceInfoPtr, 
+proc XkbSetDeviceLedInfo*(dpy: PDisplay, devi: PXkbDeviceInfoPtr,
                           ledClass, ledID, which: int16): bool{.libx11c, importc: "XkbSetDeviceLedInfo".}
-proc XkbSetDeviceButtonActions*(dpy: PDisplay, devi: PXkbDeviceInfoPtr, 
+proc XkbSetDeviceButtonActions*(dpy: PDisplay, devi: PXkbDeviceInfoPtr,
                                 first, nBtns: int16): bool{.libx11c, importc: "XkbSetDeviceButtonActions".}
 
-proc XkbToControl*(c: int8): int8{.libx11c, 
+proc XkbToControl*(c: int8): int8{.libx11c,
                                    importc: "XkbToControl".}
 
-proc XkbSetDebuggingFlags*(dpy: PDisplay, mask, flags: int16, msg: cstring, 
+proc XkbSetDebuggingFlags*(dpy: PDisplay, mask, flags: int16, msg: cstring,
                            ctrls_mask, ctrls, rtrn_flags, rtrn_ctrls: int16): bool{.
     libx11c, importc: "XkbSetDebuggingFlags".}
-proc XkbApplyVirtualModChanges*(xkb: PXkbDescPtr, changed: int16, 
+proc XkbApplyVirtualModChanges*(xkb: PXkbDescPtr, changed: int16,
                                 changes: PXkbChangesPtr): bool{.libx11c, importc: "XkbApplyVirtualModChanges".}
 
 # implementation
 
-proc XkbNoteIndicatorMapChanges(o, n: PXkbIndicatorChangesPtr, w: int16) = 
+proc XkbNoteIndicatorMapChanges(o, n: PXkbIndicatorChangesPtr, w: int16) =
   ##define XkbNoteIndicatorMapChanges(o,n,w) ((o)->map_changes|=((n)->map_changes&(w)))
   o.map_changes = o.map_changes or (n.map_changes and w)
 
-proc XkbNoteIndicatorStateChanges(o, n: PXkbIndicatorChangesPtr, w: int16) = 
+proc XkbNoteIndicatorStateChanges(o, n: PXkbIndicatorChangesPtr, w: int16) =
   ##define XkbNoteIndicatorStateChanges(o,n,w) ((o)->state_changes|=((n)->state_changes&(w)))
   o.state_changes = o.state_changes or (n.state_changes and (w))
 
-proc XkbGetIndicatorMapChanges(d: PDisplay, x: PXkbDescPtr, 
-                               c: PXkbIndicatorChangesPtr): TStatus = 
+proc XkbGetIndicatorMapChanges(d: PDisplay, x: PXkbDescPtr,
+                               c: PXkbIndicatorChangesPtr): TStatus =
   ##define XkbGetIndicatorMapChanges(d,x,c) (XkbGetIndicatorMap((d),(c)->map_changes,x)
   Result = XkbGetIndicatorMap(d, c.map_changes, x)
 
-proc XkbChangeIndicatorMaps(d: PDisplay, x: PXkbDescPtr, 
-                            c: PXkbIndicatorChangesPtr): bool = 
+proc XkbChangeIndicatorMaps(d: PDisplay, x: PXkbDescPtr,
+                            c: PXkbIndicatorChangesPtr): bool =
   ##define XkbChangeIndicatorMaps(d,x,c) (XkbSetIndicatorMap((d),(c)->map_changes,x))
   Result = XkbSetIndicatorMap(d, c.map_changes, x)
 
-proc XkbGetControlsChanges(d: PDisplay, x: PXkbDescPtr, 
-                           c: PXkbControlsChangesPtr): TStatus = 
+proc XkbGetControlsChanges(d: PDisplay, x: PXkbDescPtr,
+                           c: PXkbControlsChangesPtr): TStatus =
   ##define XkbGetControlsChanges(d,x,c) XkbGetControls(d,(c)->changed_ctrls,x)
   Result = XkbGetControls(d, c.changed_ctrls, x)
 
-proc XkbChangeControls(d: PDisplay, x: PXkbDescPtr, c: PXkbControlsChangesPtr): bool = 
+proc XkbChangeControls(d: PDisplay, x: PXkbDescPtr, c: PXkbControlsChangesPtr): bool =
   ##define XkbChangeControls(d,x,c) XkbSetControls(d,(c)->changed_ctrls,x)
   Result = XkbSetControls(d, c.changed_ctrls, x)

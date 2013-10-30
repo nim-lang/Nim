@@ -1,13 +1,13 @@
-# Converted from X11/Xinerama.h 
-import                        
+# Converted from X11/Xinerama.h
+import
   xlib
 
 const
   xineramaLib = "libXinerama.so"
 
-type 
+type
   PXineramaScreenInfo* = ptr TXineramaScreenInfo
-  TXineramaScreenInfo*{.final.} = object 
+  TXineramaScreenInfo*{.final.} = object
     screen_number*: cint
     x_org*: int16
     y_org*: int16

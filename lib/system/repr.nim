@@ -135,7 +135,7 @@ when not defined(useNimRtl):
 
   proc deinitReprClosure(cl: var TReprClosure) =
     when defined(TCellSet): Deinit(cl.marked)
-    when hasThreadSupport and hasSharedHeap and defined(heapLock): 
+    when hasThreadSupport and hasSharedHeap and defined(heapLock):
       ReleaseSys(HeapLock)
 
   proc reprBreak(result: var string, cl: TReprClosure) =
@@ -189,7 +189,7 @@ when not defined(useNimRtl):
     add result, "["
     let oldLen = result.len
     reprRecordAux(result, p, typ.node, cl)
-    if typ.base != nil: 
+    if typ.base != nil:
       if oldLen != result.len: add result, ",\n"
       reprRecordAux(result, p, typ.base.node, cl)
     add result, "]"
@@ -219,7 +219,7 @@ when not defined(useNimRtl):
     of tySet: reprSetAux(result, p, typ)
     of tyArray: reprArray(result, p, typ, cl)
     of tyTuple: reprRecord(result, p, typ, cl)
-    of tyObject: 
+    of tyObject:
       var t = cast[ptr PNimType](p)[]
       reprRecord(result, p, t, cl)
     of tyRef, tyPtr:
@@ -235,7 +235,7 @@ when not defined(useNimRtl):
     of tyInt64: add result, $(cast[ptr Int64](p)[])
     of tyUInt8: add result, $ze(cast[ptr Int8](p)[])
     of tyUInt16: add result, $ze(cast[ptr Int16](p)[])
-    
+
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
     of tyFloat64: add result, $(cast[ptr float64](p)[])

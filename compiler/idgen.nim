@@ -18,26 +18,26 @@ const
 
 when debugIds:
   import intsets
-  
+
   var usedIds = InitIntSet()
 
-proc registerID*(id: PIdObj) = 
-  when debugIDs: 
-    if id.id == -1 or ContainsOrIncl(usedIds, id.id): 
+proc registerID*(id: PIdObj) =
+  when debugIDs:
+    if id.id == -1 or ContainsOrIncl(usedIds, id.id):
       InternalError("ID already used: " & $id.id)
 
-proc getID*(): int {.inline.} = 
+proc getID*(): int {.inline.} =
   result = gFrontEndId
   inc(gFrontEndId)
 
-proc backendId*(): int {.inline.} = 
+proc backendId*(): int {.inline.} =
   result = gBackendId
   inc(gBackendId)
 
-proc setId*(id: int) {.inline.} = 
+proc setId*(id: int) {.inline.} =
   gFrontEndId = max(gFrontEndId, id + 1)
 
-proc IDsynchronizationPoint*(idRange: int) = 
+proc IDsynchronizationPoint*(idRange: int) =
   gFrontEndId = (gFrontEndId div IdRange + 1) * IdRange + 1
 
 proc toGid(f: string): string =
@@ -51,7 +51,7 @@ proc saveMaxIds*(project: string) =
   f.writeln($gFrontEndId)
   f.writeln($gBackEndId)
   f.close()
-  
+
 proc loadMaxIds*(project: string) =
   var f: TFile
   if open(f, project.toGid, fmRead):

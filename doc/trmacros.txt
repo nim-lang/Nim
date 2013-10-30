@@ -11,27 +11,27 @@ pipeline with user defined optimizations:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int): int = a+a
-  
+
   let x = 3
   echo x * 2
 
 The compiler now rewrites ``x * 2`` as ``x + x``. The code inside the
 curlies is the pattern to match against. The operators ``*``,  ``**``,
-``|``, ``~`` have a special meaning in patterns if they are written in infix 
+``|``, ``~`` have a special meaning in patterns if they are written in infix
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 
 
 Unfortunately optimizations are hard to get right and even the tiny example
-is **wrong**: 
+is **wrong**:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int): int = a+a
-  
+
   proc f(): int =
     echo "side effect!"
     result = 55
-  
+
   echo f() * 2
 
 We cannot duplicate 'a' if it denotes an expression that has a side effect!
@@ -39,11 +39,11 @@ Fortunately Nimrod supports side effect analysis:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
-  
+
   proc f(): int =
     echo "side effect!"
     result = 55
-  
+
   echo f() * 2 # not optimized ;-)
 
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
@@ -52,13 +52,13 @@ blindly:
 
 .. code-block:: nimrod
   template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
-  
+
 What optimizers really need to do is a *canonicalization*:
 
 .. code-block:: nimrod
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
 
-The ``int{lit}`` parameter pattern matches against an expression of 
+The ``int{lit}`` parameter pattern matches against an expression of
 type ``int``, but only if it's a literal.
 
 
@@ -66,7 +66,7 @@ type ``int``, but only if it's a literal.
 Parameter constraints
 =====================
 
-The parameter constraint expression can use the operators ``|`` (or), 
+The parameter constraint expression can use the operators ``|`` (or),
 ``&`` (and) and ``~`` (not) and the following predicates:
 
 ===================      =====================================================
@@ -74,7 +74,7 @@ Predicate                Meaning
 ===================      =====================================================
 ``atom``                 The matching node has no children.
 ``lit``                  The matching node is a literal like "abc", 12.
-``sym``                  The matching node must be a symbol (a bound 
+``sym``                  The matching node must be a symbol (a bound
                          identifier).
 ``ident``                The matching node must be an identifier (an unbound
                          identifier).
@@ -100,9 +100,9 @@ Predicate                Meaning
 ``enumfield``            A symbol which is a field in an enumeration.
 ``forvar``               A for loop variable.
 ``label``                A label (used in ``block`` statements).
-``nk*``                  The matching AST must have the specified kind. 
+``nk*``                  The matching AST must have the specified kind.
                          (Example: ``nkIfStmt`` denotes an ``if`` statement.)
-``alias``                States that the marked parameter needs to alias 
+``alias``                States that the marked parameter needs to alias
                          with *some* other parameter.
 ``noalias``              States that *every* other parameter must not alias
                          with the marked parameter.
@@ -148,14 +148,14 @@ constant folding, so the following does not work:
 The reason is that the compiler already transformed the 1 into "1" for
 the ``echo`` statement. However, a term rewriting macro should not change the
 semantics anyway. In fact they can be deactived with the ``--patterns:off``
-command line option or temporarily with the ``patterns`` pragma. 
+command line option or temporarily with the ``patterns`` pragma.
 
 
 The ``{}`` operator
 -------------------
 
 A pattern expression can be bound to a pattern parameter via the ``expr{param}``
-notation: 
+notation:
 
 .. code-block:: nimrod
   template t{(0|1|2){x}}(x: expr): expr = x+1
@@ -173,7 +173,7 @@ The ``~`` operator is the **not** operator in patterns:
   template t{x = (~x){y} and (~x){z}}(x, y, z: bool): stmt =
     x = y
     if x: x = z
-  
+
   var
     a = false
     b = true
@@ -186,12 +186,12 @@ The ``*`` operator
 ------------------
 
 The ``*`` operator can *flatten* a nested binary expression like ``a & b & c``
-to ``&(a, b, c)``: 
+to ``&(a, b, c)``:
 
 .. code-block:: nimrod
   var
     calls = 0
-    
+
   proc `&&`(s: varargs[string]): string =
     result = s[0]
     for i in 1..len(s)-1: result.add s[i]
@@ -208,8 +208,8 @@ to ``&(a, b, c)``:
 
 The second operator of `*` must be a parameter; it is used to gather all the
 arguments. The expression ``"my" && (space & "awe" && "some " ) && "concat"``
-is passed to ``optConc`` in ``a`` as a special list (of kind ``nkArgList``) 
-which is flattened into a call expression; thus the invocation of ``optConc`` 
+is passed to ``optConc`` in ``a`` as a special list (of kind ``nkArgList``)
+which is flattened into a call expression; thus the invocation of ``optConc``
 produces:
 
 .. code-block:: nimrod
@@ -242,7 +242,7 @@ all the arguments, but also the matched operators in reverse polish notation:
 
   var x, y, z: TMatrix
 
-  echo x + y * z - x 
+  echo x + y * z - x
 
 This passes the expression ``x + y * z - x`` to the ``optM`` macro as
 an ``nnkArgList`` node containing::
@@ -262,7 +262,7 @@ an ``nnkArgList`` node containing::
 Parameters
 ==========
 
-Parameters in a pattern are type checked in the matching process. If a 
+Parameters in a pattern are type checked in the matching process. If a
 parameter is of the type ``varargs`` it is treated specially and it can match
 0 or more arguments in the AST to be matched against:
 
@@ -272,4 +272,4 @@ parameter is of the type ``varargs`` it is treated specially and it can match
     ((write|writeln){w})(f, y)
   }(x, y: varargs[expr], f: TFile, w: expr) =
     w(f, x, y)
-  
+

@@ -78,7 +78,7 @@ proc FillBuffer(L: var TBaseLexer) =
   toCopy = L.BufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
-    MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
+    MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize)
     # "moveMem" handles overlapping regions
   charsRead = readData(L.input, addr(L.buf[toCopy]),
                        (L.sentinel + 1) * chrSize) div chrSize

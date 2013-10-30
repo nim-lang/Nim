@@ -22,7 +22,7 @@ const
   leakDetector = false
   overwriteFree = false
   trackAllocationSource = leakDetector
-  
+
   cycleGC = true # (de)activate the cycle GC
   reallyDealloc = true # for debugging purposes this can be set to false
   reallyOsDealloc = true
@@ -68,13 +68,13 @@ when defined(boehmgc):
     const boehmLib = "libgc.dylib"
   else:
     const boehmLib = "/usr/lib/libgc.so.1"
-    
+
   proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
-  proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.} 
-  proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.} 
+  proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.}
+  proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.}
   proc boehmGCincremental {.
-    importc: "GC_enable_incremental", dynlib: boehmLib.} 
-  proc boehmGCfullCollect {.importc: "GC_gcollect", dynlib: boehmLib.}  
+    importc: "GC_enable_incremental", dynlib: boehmLib.}
+  proc boehmGCfullCollect {.importc: "GC_gcollect", dynlib: boehmLib.}
   proc boehmAlloc(size: int): pointer {.
     importc: "GC_malloc", dynlib: boehmLib.}
   proc boehmAllocAtomic(size: int): pointer {.
@@ -82,7 +82,7 @@ when defined(boehmgc):
   proc boehmRealloc(p: pointer, size: int): pointer {.
     importc: "GC_realloc", dynlib: boehmLib.}
   proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
-  
+
   proc boehmGetHeapSize: int {.importc: "GC_get_heap_size", dynlib: boehmLib.}
     ## Return the number of bytes in the heap.  Excludes collector private
     ## data structures. Includes empty blocks and fragmentation loss.
@@ -105,7 +105,7 @@ when defined(boehmgc):
     zeroMem(result, size)
 
   when not defined(useNimRtl):
-    
+
     proc alloc(size: int): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
@@ -116,7 +116,7 @@ when defined(boehmgc):
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: Pointer) = boehmDealloc(p)
-    
+
     proc allocShared(size: int): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
@@ -137,14 +137,14 @@ when defined(boehmgc):
     proc GC_enableMarkAndSweep() = nil
     proc GC_disableMarkAndSweep() = nil
     proc GC_getStatistics(): string = return ""
-    
+
     proc getOccupiedMem(): int = return boehmGetHeapSize()-boehmGetFreeBytes()
     proc getFreeMem(): int = return boehmGetFreeBytes()
     proc getTotalMem(): int = return boehmGetHeapSize()
 
     proc setStackBottom(theStackBottom: pointer) = nil
 
-  proc initGC() = 
+  proc initGC() =
     when defined(macosx): boehmGCinit()
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
@@ -160,7 +160,7 @@ when defined(boehmgc):
 
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
-  
+
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
   proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
@@ -170,20 +170,20 @@ when defined(boehmgc):
 
   type
     TMemRegion = object {.final, pure.}
-  
+
   proc Alloc(r: var TMemRegion, size: int): pointer =
     result = boehmAlloc(size)
     if result == nil: raiseOutOfMem()
   proc Alloc0(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
-  proc Dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)  
+  proc Dealloc(r: var TMemRegion, p: Pointer) = boehmDealloc(p)
   proc deallocOsPages(r: var TMemRegion) {.inline.} = nil
   proc deallocOsPages() {.inline.} = nil
 
   include "system/cellsets"
 elif defined(nogc) and defined(useMalloc):
-  
+
   when not defined(useNimRtl):
     proc alloc(size: int): pointer =
       result = cmalloc(size)
@@ -195,7 +195,7 @@ elif defined(nogc) and defined(useMalloc):
       result = crealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: Pointer) = cfree(p)
-    
+
     proc allocShared(size: int): pointer =
       result = cmalloc(size)
       if result == nil: raiseOutOfMem()
@@ -214,11 +214,11 @@ elif defined(nogc) and defined(useMalloc):
     proc GC_enableMarkAndSweep() = nil
     proc GC_disableMarkAndSweep() = nil
     proc GC_getStatistics(): string = return ""
-    
+
     proc getOccupiedMem(): int = nil
     proc getFreeMem(): int = nil
     proc getTotalMem(): int = nil
-    
+
     proc setStackBottom(theStackBottom: pointer) = nil
 
   proc initGC() = nil
@@ -235,7 +235,7 @@ elif defined(nogc) and defined(useMalloc):
 
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
-  
+
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
   proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
@@ -245,7 +245,7 @@ elif defined(nogc) and defined(useMalloc):
 
   type
     TMemRegion = object {.final, pure.}
-  
+
   proc Alloc(r: var TMemRegion, size: int): pointer =
     result = alloc(size)
   proc Alloc0(r: var TMemRegion, size: int): pointer =
@@ -261,9 +261,9 @@ elif defined(nogc):
   # object, because C does not support this operation... Even though every
   # possible implementation has to have a way to determine the object's size.
   # C just sucks.
-  when appType == "lib": 
+  when appType == "lib":
     {.warning: "nogc in a library context may not work".}
-  
+
   include "system/alloc"
 
   proc initGC() = nil
@@ -274,8 +274,8 @@ elif defined(nogc):
   proc GC_enableMarkAndSweep() = nil
   proc GC_disableMarkAndSweep() = nil
   proc GC_getStatistics(): string = return ""
-  
-  
+
+
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
@@ -288,7 +288,7 @@ elif defined(nogc):
   proc setStackBottom(theStackBottom: pointer) = nil
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
-  
+
   proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
   proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
@@ -316,6 +316,6 @@ else:
     include "system/gc"
   else:
     include "system/gc"
-  
+
 {.pop.}
 

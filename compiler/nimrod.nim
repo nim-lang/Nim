@@ -13,8 +13,8 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/nimrod_icon.o".}
 
-import 
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
+import
+  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, platform, main, parseopt, service
 
 when hasTinyCBackend:
@@ -23,7 +23,7 @@ when hasTinyCBackend:
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
-  
+
 proc prependCurDir(f: string): string =
   when defined(unix):
     if os.isAbsolute(f): result = f

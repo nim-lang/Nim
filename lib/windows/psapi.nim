@@ -17,7 +17,7 @@ import                        # Data structure templates
 const
   psapiDll = "psapi.dll"
 
-proc EnumProcesses*(lpidProcess: ptr DWORD, cb: DWORD, 
+proc EnumProcesses*(lpidProcess: ptr DWORD, cb: DWORD,
                     cbNeeded: ptr DWORD): WINBOOL {.stdcall,
     dynlib: psapiDll, importc: "EnumProcesses".}
 proc EnumProcessModules*(hProcess: HANDLE, lphModule: ptr HMODULE, cb: DWORD, lpcbNeeded: LPDWORD): WINBOOL {.stdcall,

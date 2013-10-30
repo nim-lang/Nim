@@ -150,7 +150,7 @@ proc `[]=`*[A, B](t: var TTable[A, B], key: A, val: B) =
 proc add*[A, B](t: var TTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   AddImpl()
-  
+
 proc del*[A, B](t: var TTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   var index = RawGet(t, key)
@@ -168,7 +168,7 @@ proc initTable*[A, B](initialSize=64): TTable[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toTable*[A, B](pairs: openarray[tuple[key: A,
                     val: B]]): TTable[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
@@ -262,7 +262,7 @@ proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc RawInsert[A, B](t: var TOrderedTable[A, B], 
+proc RawInsert[A, B](t: var TOrderedTable[A, B],
                      data: var TOrderedKeyValuePairSeq[A, B],
                      key: A, val: B) =
   rawInsertImpl()
@@ -279,7 +279,7 @@ proc Enlarge[A, B](t: var TOrderedTable[A, B]) =
   t.last = -1
   while h >= 0:
     var nxt = t.data[h].next
-    if t.data[h].slot == seFilled: 
+    if t.data[h].slot == seFilled:
       RawInsert(t, n, t.data[h].key, t.data[h].val)
     h = nxt
   swap(t.data, n)
@@ -304,7 +304,7 @@ proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A, 
+proc toOrderedTable*[A, B](pairs: openarray[tuple[key: A,
                            val: B]]): TOrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](nextPowerOfTwo(pairs.len+10))
@@ -314,7 +314,7 @@ proc `$`*[A, B](t: TOrderedTable[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
-proc sort*[A, B](t: var TOrderedTable[A, B], 
+proc sort*[A, B](t: var TOrderedTable[A, B],
                  cmp: proc (x,y: tuple[key: A, val: B]): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
@@ -337,7 +337,7 @@ proc sort*[A, B](t: var TOrderedTable[A, B],
       while i < insize:
         inc(psize)
         q = t.data[q].next
-        if q < 0: break 
+        if q < 0: break
         inc(i)
       qsize = insize
       while psize > 0 or (qsize > 0 and q >= 0):
@@ -345,7 +345,7 @@ proc sort*[A, B](t: var TOrderedTable[A, B],
           e = q; q = t.data[q].next; dec(qsize)
         elif qsize == 0 or q < 0:
           e = p; p = t.data[p].next; dec(psize)
-        elif cmp((t.data[p].key, t.data[p].val), 
+        elif cmp((t.data[p].key, t.data[p].val),
                  (t.data[q].key, t.data[q].val)) <= 0:
           e = p; p = t.data[p].next; dec(psize)
         else:
@@ -461,7 +461,7 @@ proc `$`*[A](t: TCountTable[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: var TCountTable[A], key: A, val = 1) = 
+proc inc*[A](t: var TCountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = RawGet(t, key)
   if index >= 0:

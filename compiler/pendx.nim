@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-import 
+import
   llstream, lexer, parser, idents, strutils, ast, msgs
 
-proc ParseAll*(p: var TParser): PNode = 
+proc ParseAll*(p: var TParser): PNode =
   result = nil
 
-proc parseTopLevelStmt*(p: var TParser): PNode = 
+proc parseTopLevelStmt*(p: var TParser): PNode =
   result = nil
-  
+

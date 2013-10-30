@@ -15,7 +15,7 @@ type
   TQueue* {.pure, final.}[T] = object ## a queue
     data: seq[T]
     rd, wr, count, mask: int
-    
+
 proc initQueue*[T](initialSize=4): TQueue[T] =
   ## creates a new queue. `initialSize` needs to be a power of 2.
   assert IsPowerOfTwo(initialSize)
@@ -64,7 +64,7 @@ proc dequeue*[T](q: var TQueue[T]): T =
   result = q.data[q.rd]
   q.rd = (q.rd + 1) and q.mask
 
-proc `$`*[T](q: TQueue[T]): string = 
+proc `$`*[T](q: TQueue[T]): string =
   ## turns a queue into its string representation.
   result = "["
   for x in items(q):
@@ -82,7 +82,7 @@ when isMainModule:
   q.add(6)
   var second = q.dequeue
   q.add(789)
-  
+
   assert first == 123
   assert second == 9
   assert($q == "[4, 56, 6, 789]")

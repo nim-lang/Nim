@@ -29,10 +29,10 @@
 ## recognizable because they are the only ones that have documentation.
 ##
 ## Example of a client:
-## 
+##
 ## .. code-block:: nimrod
 ##   import zmq
-##   
+##
 ##   var connection = zmq.open("tcp://localhost:5555", server=false)
 ##   echo("Connecting...")
 ##   for i in 0..10:
@@ -45,7 +45,7 @@
 ## Example of a server:
 ##
 ## .. code-block:: nimrod
-##   
+##
 ##   import zmq
 ##   var connection = zmq.open("tcp://*:5555", server=true)
 ##   while True:
@@ -55,21 +55,21 @@
 ##   close(connection)
 
 {.deadCodeElim: on.}
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     zmqdll* = "zmq.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     zmqdll* = "libzmq.dylib"
 else:
-  const 
+  const
     zmqdll* = "libzmq.so"
 
-# A number random enough not to collide with different errno ranges on      
-# different OSes. The assumption is that error_t is at least 32-bit type.  
-const 
+# A number random enough not to collide with different errno ranges on
+# different OSes. The assumption is that error_t is at least 32-bit type.
+const
   HAUSNUMERO* = 156384712
-  # On Windows platform some of the standard POSIX errnos are not defined.    
+  # On Windows platform some of the standard POSIX errnos are not defined.
   ENOTSUP* = (HAUSNUMERO + 1)
   EPROTONOSUPPORT* = (HAUSNUMERO + 2)
   ENOBUFS* = (HAUSNUMERO + 3)
@@ -78,14 +78,14 @@ const
   EADDRNOTAVAIL* = (HAUSNUMERO + 6)
   ECONNREFUSED* = (HAUSNUMERO + 7)
   EINPROGRESS* = (HAUSNUMERO + 8)
-  # Native 0MQ error codes.  
+  # Native 0MQ error codes.
   EFSM* = (HAUSNUMERO + 51)
   ENOCOMPATPROTO* = (HAUSNUMERO + 52)
   ETERM* = (HAUSNUMERO + 53)
   EMTHREAD* = (HAUSNUMERO + 54)
-  #  Maximal size of "Very Small Message". VSMs are passed by value            
-  #  to avoid excessive memory allocation/deallocation.                        
-  #  If VMSs larger than 255 bytes are required, type of 'vsm_size'            
+  #  Maximal size of "Very Small Message". VSMs are passed by value
+  #  to avoid excessive memory allocation/deallocation.
+  #  If VMSs larger than 255 bytes are required, type of 'vsm_size'
   #  field in msg_t structure should be modified accordingly.
   MAX_VSM_SIZE* = 30
 
@@ -108,28 +108,28 @@ const
   PUSH* = 8
   XPUB* = 9
   XSUB* = 10
-  XREQ* = DEALER      #  Old alias, remove in 3.x               
-  XREP* = ROUTER      #  Old alias, remove in 3.x               
-  UPSTREAM* = PULL    #  Old alias, remove in 3.x               
-  DOWNSTREAM* = PUSH  #  Old alias, remove in 3.x        
+  XREQ* = DEALER      #  Old alias, remove in 3.x
+  XREP* = ROUTER      #  Old alias, remove in 3.x
+  UPSTREAM* = PULL    #  Old alias, remove in 3.x
+  DOWNSTREAM* = PUSH  #  Old alias, remove in 3.x
 
 type
-  #  Message types. These integers may be stored in 'content' member of the    
-  #  message instead of regular pointer to the data. 
+  #  Message types. These integers may be stored in 'content' member of the
+  #  message instead of regular pointer to the data.
   TMsgTypes* = enum
     DELIMITER = 31,
     VSM = 32
-  #  Message flags. MSG_SHARED is strictly speaking not a message flag     
-  #  (it has no equivalent in the wire format), however, making  it a flag     
-  #  allows us to pack the stucture tighter and thus improve performance.   
-  TMsgFlags* = enum 
+  #  Message flags. MSG_SHARED is strictly speaking not a message flag
+  #  (it has no equivalent in the wire format), however, making  it a flag
+  #  allows us to pack the stucture tighter and thus improve performance.
+  TMsgFlags* = enum
     MSG_MORE = 1,
     MSG_SHARED = 128,
-    MSG_MASK = 129         # Merges all the flags 
-  #  A message. Note that 'content' is not a pointer to the raw data.          
-  #  Rather it is pointer to zmq::msg_content_t structure                      
-  #  (see src/msg_content.hpp for its definition).    
-  TMsg*{.pure, final.} = object 
+    MSG_MASK = 129         # Merges all the flags
+  #  A message. Note that 'content' is not a pointer to the raw data.
+  #  Rather it is pointer to zmq::msg_content_t structure
+  #  (see src/msg_content.hpp for its definition).
+  TMsg*{.pure, final.} = object
     content*: pointer
     flags*: char
     vsm_size*: char
@@ -139,12 +139,12 @@ type
 
   TContext {.final, pure.} = object
   PContext* = ptr TContext
-  
+
   # Socket Types
   TSocket {.final, pure.} = object
-  PSocket* = ptr TSocket       
+  PSocket* = ptr TSocket
 
-  #  Socket options.                                                           
+  #  Socket options.
   TSockOptions* = enum
     HWM = 1,
     SWAP = 3,
@@ -164,108 +164,108 @@ type
     LINGER = 17,
     RECONNECT_IVL = 18,
     BACKLOG = 19,
-    RECOVERY_IVL_MSEC = 20, #  opt. recovery time, reconcile in 3.x   
+    RECOVERY_IVL_MSEC = 20, #  opt. recovery time, reconcile in 3.x
     RECONNECT_IVL_MAX = 21
 
-  #  Send/recv options.                                                        
+  #  Send/recv options.
   TSendRecvOptions* = enum
     NOBLOCK, SNDMORE
-  
-  TPollItem*{.pure, final.} = object 
+
+  TPollItem*{.pure, final.} = object
     socket*: PSocket
     fd*: cint
     events*: cshort
     revents*: cshort
-  
-#  Run-time API version detection                                            
 
-proc version*(major: var cint, minor: var cint, patch: var cint){.cdecl, 
+#  Run-time API version detection
+
+proc version*(major: var cint, minor: var cint, patch: var cint){.cdecl,
     importc: "zmq_version", dynlib: zmqdll.}
 #****************************************************************************
-#  0MQ errors.                                                               
+#  0MQ errors.
 #****************************************************************************
 
-#  This function retrieves the errno as it is known to 0MQ library. The goal 
-#  of this function is to make the code 100% portable, including where 0MQ   
-#  compiled with certain CRT library (on Windows) is linked to an            
-#  application that uses different CRT library.                              
+#  This function retrieves the errno as it is known to 0MQ library. The goal
+#  of this function is to make the code 100% portable, including where 0MQ
+#  compiled with certain CRT library (on Windows) is linked to an
+#  application that uses different CRT library.
 
 proc errno*(): cint{.cdecl, importc: "zmq_errno", dynlib: zmqdll.}
 #  Resolves system errors and 0MQ errors to human-readable string.
 
-proc strerror*(errnum: cint): cstring {.cdecl, importc: "zmq_strerror", 
+proc strerror*(errnum: cint): cstring {.cdecl, importc: "zmq_strerror",
     dynlib: zmqdll.}
 #****************************************************************************
-#  0MQ message definition.                                                   
+#  0MQ message definition.
 #****************************************************************************
 
-proc msg_init*(msg: var TMsg): cint{.cdecl, importc: "zmq_msg_init", 
+proc msg_init*(msg: var TMsg): cint{.cdecl, importc: "zmq_msg_init",
     dynlib: zmqdll.}
-proc msg_init*(msg: var TMsg, size: int): cint{.cdecl, 
+proc msg_init*(msg: var TMsg, size: int): cint{.cdecl,
     importc: "zmq_msg_init_size", dynlib: zmqdll.}
-proc msg_init*(msg: var TMsg, data: cstring, size: int, 
-               ffn: TFreeFn, hint: pointer): cint{.cdecl, 
+proc msg_init*(msg: var TMsg, data: cstring, size: int,
+               ffn: TFreeFn, hint: pointer): cint{.cdecl,
     importc: "zmq_msg_init_data", dynlib: zmqdll.}
-proc msg_close*(msg: var TMsg): cint {.cdecl, importc: "zmq_msg_close", 
+proc msg_close*(msg: var TMsg): cint {.cdecl, importc: "zmq_msg_close",
     dynlib: zmqdll.}
-proc msg_move*(dest, src: var TMsg): cint{.cdecl, 
+proc msg_move*(dest, src: var TMsg): cint{.cdecl,
     importc: "zmq_msg_move", dynlib: zmqdll.}
-proc msg_copy*(dest, src: var TMsg): cint{.cdecl, 
+proc msg_copy*(dest, src: var TMsg): cint{.cdecl,
     importc: "zmq_msg_copy", dynlib: zmqdll.}
-proc msg_data*(msg: var TMsg): cstring {.cdecl, importc: "zmq_msg_data", 
+proc msg_data*(msg: var TMsg): cstring {.cdecl, importc: "zmq_msg_data",
     dynlib: zmqdll.}
-proc msg_size*(msg: var TMsg): int {.cdecl, importc: "zmq_msg_size", 
+proc msg_size*(msg: var TMsg): int {.cdecl, importc: "zmq_msg_size",
     dynlib: zmqdll.}
-    
+
 #****************************************************************************
-#  0MQ infrastructure (a.k.a. context) initialisation & termination.         
+#  0MQ infrastructure (a.k.a. context) initialisation & termination.
 #****************************************************************************
 
-proc init*(io_threads: cint): PContext {.cdecl, importc: "zmq_init", 
+proc init*(io_threads: cint): PContext {.cdecl, importc: "zmq_init",
     dynlib: zmqdll.}
-proc term*(context: PContext): cint {.cdecl, importc: "zmq_term", 
+proc term*(context: PContext): cint {.cdecl, importc: "zmq_term",
                                         dynlib: zmqdll.}
 #****************************************************************************
-#  0MQ socket definition.                                                    
-#****************************************************************************                                                         
+#  0MQ socket definition.
+#****************************************************************************
 
-proc socket*(context: PContext, theType: cint): PSocket {.cdecl, 
+proc socket*(context: PContext, theType: cint): PSocket {.cdecl,
     importc: "zmq_socket", dynlib: zmqdll.}
 proc close*(s: PSocket): cint{.cdecl, importc: "zmq_close", dynlib: zmqdll.}
-proc setsockopt*(s: PSocket, option: cint, optval: pointer, 
-                     optvallen: int): cint {.cdecl, importc: "zmq_setsockopt", 
+proc setsockopt*(s: PSocket, option: cint, optval: pointer,
+                     optvallen: int): cint {.cdecl, importc: "zmq_setsockopt",
     dynlib: zmqdll.}
-proc getsockopt*(s: PSocket, option: cint, optval: pointer, 
-                 optvallen: ptr int): cint{.cdecl, 
+proc getsockopt*(s: PSocket, option: cint, optval: pointer,
+                 optvallen: ptr int): cint{.cdecl,
     importc: "zmq_getsockopt", dynlib: zmqdll.}
-proc bindAddr*(s: PSocket, address: cstring): cint{.cdecl, importc: "zmq_bind", 
+proc bindAddr*(s: PSocket, address: cstring): cint{.cdecl, importc: "zmq_bind",
     dynlib: zmqdll.}
-proc connect*(s: PSocket, address: cstring): cint{.cdecl, 
+proc connect*(s: PSocket, address: cstring): cint{.cdecl,
     importc: "zmq_connect", dynlib: zmqdll.}
-proc send*(s: PSocket, msg: var TMsg, flags: cint): cint{.cdecl, 
+proc send*(s: PSocket, msg: var TMsg, flags: cint): cint{.cdecl,
     importc: "zmq_send", dynlib: zmqdll.}
-proc recv*(s: PSocket, msg: var TMsg, flags: cint): cint{.cdecl, 
+proc recv*(s: PSocket, msg: var TMsg, flags: cint): cint{.cdecl,
     importc: "zmq_recv", dynlib: zmqdll.}
 #****************************************************************************
-#  I/O multiplexing.                                                         
+#  I/O multiplexing.
 #****************************************************************************
 
 proc poll*(items: ptr TPollItem, nitems: cint, timeout: int): cint{.
     cdecl, importc: "zmq_poll", dynlib: zmqdll.}
-    
+
 #****************************************************************************
-#  Built-in devices                                                          
+#  Built-in devices
 #****************************************************************************
 
 proc device*(device: cint, insocket, outsocket: PSocket): cint{.
     cdecl, importc: "zmq_device", dynlib: zmqdll.}
-    
+
 type
   EZmq* = object of ESynch ## exception that is raised if something fails
   TConnection* {.pure, final.} = object ## a connection
     c*: PContext  ## the embedded context
     s*: PSocket   ## the embedded socket
-  
+
   TConnectionMode* = enum ## connection mode
     conPAIR = 0,
     conPUB = 1,
@@ -278,14 +278,14 @@ type
     conPUSH = 8,
     conXPUB = 9,
     conXSUB = 10
-  
+
 proc zmqError*() {.noinline, noreturn.} =
   ## raises EZmq with error message from `zmq.strerror`.
   var e: ref EZmq
   new(e)
   e.msg = $strerror(errno())
   raise e
-  
+
 proc open*(address: string, server: bool, mode: TConnectionMode = conDEALER,
            numthreads = 4): TConnection =
   ## opens a new connection. If `server` is true, it uses `bindAddr` for the
@@ -298,12 +298,12 @@ proc open*(address: string, server: bool, mode: TConnectionMode = conDEALER,
     if bindAddr(result.s, address) != 0'i32: zmqError()
   else:
     if connect(result.s, address) != 0'i32: zmqError()
-  
+
 proc close*(c: var TConnection) =
   ## closes the connection.
   if close(c.s) != 0'i32: zmqError()
   if term(c.c) != 0'i32: zmqError()
-  
+
 proc send*(c: var TConnection, msg: string) =
   ## sends a message over the connection.
   var m: TMsg
@@ -311,7 +311,7 @@ proc send*(c: var TConnection, msg: string) =
   copyMem(msg_data(m), cstring(msg), msg.len)
   if send(c.s, m, 0'i32) != 0'i32: zmqError()
   discard msg_close(m)
-  
+
 proc receive*(c: var TConnection): string =
   ## receives a message from a connection.
   var m: TMsg
@@ -320,4 +320,4 @@ proc receive*(c: var TConnection): string =
   result = newString(msg_size(m))
   copyMem(addr(result[0]), msg_data(m), result.len)
   discard msg_close(m)
-  
+

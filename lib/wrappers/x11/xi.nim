@@ -59,7 +59,7 @@
 #        2004/10/03 - Conversion from C header to Pascal unit.
 #
 
-const 
+const
   sz_xGetExtensionVersionReq* = 8
   sz_xGetExtensionVersionReply* = 32
   sz_xListInputDevicesReq* = 4
@@ -118,10 +118,10 @@ const
   sz_xChangeDeviceControlReq* = 8
   sz_xChangeDeviceControlReply* = 32
 
-const 
+const
   INAME* = "XInputExtension"
 
-const 
+const
   XI_KEYBOARD* = "KEYBOARD"
   XI_MOUSE* = "MOUSE"
   XI_TABLET* = "TABLET"
@@ -141,60 +141,60 @@ const
   XI_CURSORKEYS* = "CURSORKEYS"
   XI_FOOTMOUSE* = "FOOTMOUSE"
 
-const 
+const
   Dont_Check* = 0
   XInput_Initial_Release* = 1
   XInput_Add_XDeviceBell* = 2
   XInput_Add_XSetDeviceValuators* = 3
   XInput_Add_XChangeDeviceControl* = 4
 
-const 
+const
   XI_Absent* = 0
   XI_Present* = 1
 
-const 
+const
   XI_Initial_Release_Major* = 1
   XI_Initial_Release_Minor* = 0
 
-const 
+const
   XI_Add_XDeviceBell_Major* = 1
   XI_Add_XDeviceBell_Minor* = 1
 
-const 
+const
   XI_Add_XSetDeviceValuators_Major* = 1
   XI_Add_XSetDeviceValuators_Minor* = 2
 
-const 
+const
   XI_Add_XChangeDeviceControl_Major* = 1
   XI_Add_XChangeDeviceControl_Minor* = 3
 
-const 
+const
   DEVICE_RESOLUTION* = 1
 
-const 
+const
   NoSuchExtension* = 1
 
-const 
+const
   COUNT* = 0
   CREATE* = 1
 
-const 
+const
   NewPointer* = 0
   NewKeyboard* = 1
 
-const 
+const
   XPOINTER* = 0
   XKEYBOARD* = 1
 
-const 
+const
   UseXKeyboard* = 0x000000FF
 
-const 
+const
   IsXPointer* = 0
   IsXKeyboard* = 1
   IsXExtensionDevice* = 2
 
-const 
+const
   AsyncThisDevice* = 0
   SyncThisDevice* = 1
   ReplayThisDevice* = 2
@@ -202,16 +202,16 @@ const
   AsyncAll* = 4
   SyncAll* = 5
 
-const 
+const
   FollowKeyboard* = 3
   RevertToFollowKeyboard* = 3
 
-const 
+const
   DvAccelNum* = int(1) shl 0
   DvAccelDenom* = int(1) shl 1
   DvThreshold* = int(1) shl 2
 
-const 
+const
   DvKeyClickPercent* = int(1) shl 0
   DvPercent* = int(1) shl 1
   DvPitch* = int(1) shl 2
@@ -221,31 +221,31 @@ const
   DvKey* = int(1) shl 6
   DvAutoRepeatMode* = 1 shl 7
 
-const 
+const
   DvString* = int(1) shl 0
 
-const 
+const
   DvInteger* = int(1) shl 0
 
-const 
+const
   DeviceMode* = int(1) shl 0
   Relative* = 0
-  Absolute* = 1               # Merged from Metrolink tree for XINPUT stuff 
+  Absolute* = 1               # Merged from Metrolink tree for XINPUT stuff
   TS_Raw* = 57
   TS_Scaled* = 58
   SendCoreEvents* = 59
-  DontSendCoreEvents* = 60    # End of merged section 
+  DontSendCoreEvents* = 60    # End of merged section
 
-const 
+const
   ProximityState* = int(1) shl 1
   InProximity* = int(0) shl 1
   OutOfProximity* = int(1) shl 1
 
-const 
+const
   AddToList* = 0
   DeleteFromList* = 1
 
-const 
+const
   KeyClass* = 0
   ButtonClass* = 1
   ValuatorClass* = 2
@@ -254,7 +254,7 @@ const
   FocusClass* = 5
   OtherClass* = 6
 
-const 
+const
   KbdFeedbackClass* = 0
   PtrFeedbackClass* = 1
   StringFeedbackClass* = 2
@@ -262,7 +262,7 @@ const
   LedFeedbackClass* = 4
   BellFeedbackClass* = 5
 
-const 
+const
   devicePointerMotionHint* = 0
   deviceButton1Motion* = 1
   deviceButton2Motion* = 2
@@ -274,7 +274,7 @@ const
   deviceOwnerGrabButton* = 8
   noExtensionEvent* = 9
 
-const 
+const
   XI_BadDevice* = 0
   XI_BadEvent* = 1
   XI_BadMode* = 2
@@ -284,21 +284,21 @@ const
                    #  See the top of X.h for more _XSERVER64 magic.
                    #
 
-when defined(XSERVER64): 
-  type 
+when defined(XSERVER64):
+  type
     XEventClass* = CARD32
-else: 
-  type 
+else:
+  type
     XEventClass* = int32
 #******************************************************************
 # *
 # * Extension version structure.
 # *
-# 
+#
 
-type 
+type
   PXExtensionVersion* = ptr TXExtensionVersion
-  TXExtensionVersion*{.final.} = object 
+  TXExtensionVersion*{.final.} = object
     present*: int16
     major_version*: int16
     minor_version*: int16

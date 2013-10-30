@@ -12,10 +12,10 @@ import
 
 {.compile: "../tinyc/libtcc.c".}
 
-proc tinyCErrorHandler(closure: pointer, msg: cstring) {.cdecl.} = 
+proc tinyCErrorHandler(closure: pointer, msg: cstring) {.cdecl.} =
   rawMessage(errGenerated, $msg)
-  
-proc initTinyCState: PccState = 
+
+proc initTinyCState: PccState =
   result = openCCState()
   setErrorFunc(result, nil, tinyCErrorHandler)
 
@@ -23,25 +23,25 @@ var
   gTinyC = initTinyCState()
   libIncluded = false
 
-proc addFile(filename: string) =  
+proc addFile(filename: string) =
   if addFile(gTinyC, filename) != 0'i32:
     rawMessage(errCannotOpenFile, filename)
 
-proc setupEnvironment = 
+proc setupEnvironment =
   when defined(amd64):
     defineSymbol(gTinyC, "__x86_64__", nil)
   elif defined(i386):
-    defineSymbol(gTinyC, "__i386__", nil)  
+    defineSymbol(gTinyC, "__i386__", nil)
   when defined(linux):
     defineSymbol(gTinyC, "__linux__", nil)
     defineSymbol(gTinyC, "__linux", nil)
   var nimrodDir = getPrefixDir()
 
   addIncludePath(gTinyC, libpath)
-  when defined(windows): 
+  when defined(windows):
     addSysincludePath(gTinyC, nimrodDir / "tinyc/win32/include")
   addSysincludePath(gTinyC, nimrodDir / "tinyc/include")
-  when defined(windows): 
+  when defined(windows):
     defineSymbol(gTinyC, "_WIN32", nil)
     # we need Mingw's headers too:
     var gccbin = getConfigVar("gcc.path") % ["nimrod", nimrodDir]
@@ -54,7 +54,7 @@ proc setupEnvironment =
     #addFile(nimrodDir / r"tinyc\win32\dllcrt1.o")
     #addFile(nimrodDir / r"tinyc\win32\dllmain.o")
     addFile(nimrodDir / r"tinyc\win32\libtcc1.o")
-    
+
     #addFile(nimrodDir / r"tinyc\win32\lib\crt1.c")
     #addFile(nimrodDir / r"tinyc\lib\libtcc1.c")
   else:
@@ -62,12 +62,12 @@ proc setupEnvironment =
     when defined(amd64):
       addSysincludePath(gTinyC, "/usr/include/x86_64-linux-gnu")
 
-proc compileCCode*(ccode: string) = 
+proc compileCCode*(ccode: string) =
   if not libIncluded:
     libIncluded = true
     setupEnvironment()
   discard compileString(gTinyC, ccode)
-  
+
 proc run*() =
   var a: array[0..1, cstring]
   a[0] = ""

@@ -33,7 +33,7 @@ var w: gtk2.PWindow
 var InputTextBuffer: PTextBuffer
 var OutputTextBuffer: PTextBuffer
 
-proc destroy(widget: PWidget, data: pgpointer){.cdecl.} = 
+proc destroy(widget: PWidget, data: pgpointer){.cdecl.} =
   main_quit()
 
 proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
@@ -47,13 +47,13 @@ proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
 
 proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToSave(w)
-  
+
   if path == "": return
   var startIter: TTextIter
   var endIter: TTextIter
   get_start_iter(InputTextBuffer, addr(startIter))
   get_end_iter(InputTextBuffer, addr(endIter))
-  var InputText = get_text(InputTextBuffer, addr(startIter), 
+  var InputText = get_text(InputTextBuffer, addr(startIter),
                            addr(endIter), False)
   var f: TFile
   if open(f, path, fmWrite):
@@ -62,22 +62,22 @@ proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   else:
     error(w, "Unable to write to file")
 
-proc inputKeyPressed(widget: PWidget, event: PEventKey, 
+proc inputKeyPressed(widget: PWidget, event: PEventKey,
                      userdata: pgpointer): bool {.cdecl.} =
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is pressed
     shiftPressed = True
-  
-proc setError(msg: string) = 
+
+proc setError(msg: string) =
   outputTextBuffer.setText(msg, msg.len.gint)
-  
-proc inputKeyReleased(widget: PWidget, event: PEventKey, 
+
+proc inputKeyReleased(widget: PWidget, event: PEventKey,
                       userdata: pgpointer): bool {.cdecl.} =
   #echo(keyval_name(event.keyval))
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
     shiftPressed = False
-    
+
   if ($keyval_name(event.keyval)).tolower() == "return":
     #echo($keyval_name(event.keyval), "Shift_L")
     # Enter pressed
@@ -86,7 +86,7 @@ proc inputKeyReleased(widget: PWidget, event: PEventKey,
       var endIter: TTextIter
       get_start_iter(InputTextBuffer, addr(startIter))
       get_end_iter(InputTextBuffer, addr(endIter))
-      var InputText = get_text(InputTextBuffer, addr(startIter), 
+      var InputText = get_text(InputTextBuffer, addr(startIter),
                                addr(endIter), False)
 
       try:
@@ -101,33 +101,33 @@ proc initControls() =
   set_default_size(w, 500, 600)
   set_title(w, "Nimrod REPL")
   discard signal_connect(w, "destroy", SIGNAL_FUNC(nimrepl.destroy), nil)
-  
+
   # MainBox (vbox)
   var MainBox = vbox_new(False, 0)
   add(w, MainBox)
-  
+
   # TopMenu (MenuBar)
   var TopMenu = menu_bar_new()
   show(TopMenu)
-  
+
   var FileMenu = menu_new()
   var OpenMenuItem = menu_item_new("Open")
   append(FileMenu, OpenMenuItem)
   show(OpenMenuItem)
-  discard signal_connect(OpenMenuItem, "activate", 
+  discard signal_connect(OpenMenuItem, "activate",
                           SIGNAL_FUNC(FileOpenClicked), nil)
   var SaveMenuItem = menu_item_new("Save...")
   append(FileMenu, SaveMenuItem)
   show(SaveMenuItem)
-  discard signal_connect(SaveMenuItem, "activate", 
+  discard signal_connect(SaveMenuItem, "activate",
                           SIGNAL_FUNC(FileSaveClicked), nil)
   var FileMenuItem = menu_item_new("File")
 
-  
+
   set_submenu(FileMenuItem, FileMenu)
   show(FileMenuItem)
   append(TopMenu, FileMenuItem)
-  
+
   pack_start(MainBox, TopMenu, False, False, 0)
 
   # VPaned - Seperates the InputTextView and the OutputTextView
@@ -148,12 +148,12 @@ proc initControls() =
   add1(paned, InputScrolledWindow)
   show(InputScrolledWindow)
   show(InputTextView)
-  
-  discard signal_connect(InputTextView, "key-release-event", 
+
+  discard signal_connect(InputTextView, "key-release-event",
                           SIGNAL_FUNC(inputKeyReleased), nil)
-  discard signal_connect(InputTextView, "key-press-event", 
+  discard signal_connect(InputTextView, "key-press-event",
                           SIGNAL_FUNC(inputKeyPressed), nil)
-  
+
   # OutputTextView (TextView)
   var OutputScrolledWindow = scrolled_window_new(nil, nil)
   set_policy(OutputScrolledWindow, POLICY_AUTOMATIC, POLICY_AUTOMATIC)
@@ -162,10 +162,10 @@ proc initControls() =
   add2(paned, OutputScrolledWindow)
   show(OutputScrolledWindow)
   show(OutputTextView)
-  
+
   show(w)
   show(MainBox)
-  
+
 nimrod_init()
 initControls()
 main()

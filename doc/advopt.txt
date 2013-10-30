@@ -79,7 +79,7 @@ Advanced options:
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
                             symbol matching is fuzzy so
-                            that --dynlibOverride:lua matches 
+                            that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build

@@ -9,8 +9,8 @@
 
 # implements the command dispatcher and several commands
 
-import 
-  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
+import
+  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
   os, condsyms, rodread, rodwrite, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
@@ -98,7 +98,7 @@ proc CommandCompileToC =
       # rodread.rodcompilerProcs
       # rodread.gTypeTable
       # rodread.gMods
-      
+
       # !! ropes.cache
       # semthreads.computed?
       #
@@ -166,7 +166,7 @@ proc commandEval(exp: string) =
 proc CommandPrettyOld =
   var projectFile = addFileExt(mainCommandArg(), NimExt)
   var module = parseFile(projectFile.fileInfoIdx)
-  if module != nil: 
+  if module != nil:
     renderModule(module, getOutFile(mainCommandArg(), "pretty." & NimExt))
 
 proc CommandPretty =
@@ -175,24 +175,24 @@ proc CommandPretty =
   registerPass(prettyPass)
   compileProject()
   pretty.overwriteFiles()
-  
+
 proc CommandScan =
   var f = addFileExt(mainCommandArg(), nimExt)
   var stream = LLStreamOpen(f, fmRead)
-  if stream != nil: 
-    var 
+  if stream != nil:
+    var
       L: TLexer
       tok: TToken
     initToken(tok)
     openLexer(L, f, stream)
-    while true: 
+    while true:
       rawGetTok(L, tok)
       PrintTok(tok)
-      if tok.tokType == tkEof: break 
+      if tok.tokType == tkEof: break
     CloseLexer(L)
-  else: 
+  else:
     rawMessage(errCannotOpenFile, f)
-  
+
 proc CommandSuggest =
   if isServing:
     # XXX: hacky work-around ahead
@@ -246,7 +246,7 @@ proc resetMemory =
   for i in low(buckets)..high(buckets):
     buckets[i] = nil
   idAnon = nil
-  
+
   # XXX: clean these global vars
   # ccgstmts.gBreakpoints
   # ccgthreadvars.nimtv
@@ -262,7 +262,7 @@ proc resetMemory =
   # rodread.rodcompilerProcs
   # rodread.gTypeTable
   # rodread.gMods
-  
+
   # !! ropes.cache
   # semthreads.computed?
   #
@@ -289,7 +289,7 @@ const
 proc MainCommand* =
   when SimiluateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
-      
+
   # In "nimrod serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()
@@ -301,7 +301,7 @@ proc MainCommand* =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
   case command.normalize
-  of "c", "cc", "compile", "compiletoc": 
+  of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     gCmd = cmdCompileToC
     wantMainModule()
@@ -325,13 +325,13 @@ proc MainCommand* =
     when hasTinyCBackend:
       extccomp.setCC("tcc")
       CommandCompileToC()
-    else: 
+    else:
       rawMessage(errInvalidCommandX, command)
-  of "js", "compiletojs": 
+  of "js", "compiletojs":
     gCmd = cmdCompileToJS
     wantMainModule()
     CommandCompileToJS()
-  of "compiletollvm": 
+  of "compiletollvm":
     gCmd = cmdCompileToLLVM
     wantMainModule()
     when has_LLVM_Backend:
@@ -353,12 +353,12 @@ proc MainCommand* =
     wantMainModule()
     DefineSymbol("nimdoc")
     CommandDoc2()
-  of "rst2html": 
+  of "rst2html":
     gCmd = cmdRst2html
     LoadConfigs(DocConfig)
     wantMainModule()
     CommandRst2Html()
-  of "rst2tex": 
+  of "rst2tex":
     gCmd = cmdRst2tex
     LoadConfigs(DocTexConfig)
     wantMainModule()
@@ -367,7 +367,7 @@ proc MainCommand* =
     gCmd = cmdDoc
     LoadConfigs(DocConfig)
     CommandBuildIndex()
-  of "gendepend": 
+  of "gendepend":
     gCmd = cmdGenDepend
     wantMainModule()
     CommandGenDepend()
@@ -400,16 +400,16 @@ proc MainCommand* =
     gCmd = cmdCheck
     wantMainModule()
     CommandCheck()
-  of "parse": 
+  of "parse":
     gCmd = cmdParse
     wantMainModule()
     discard parseFile(gProjectMainIdx)
-  of "scan": 
+  of "scan":
     gCmd = cmdScan
     wantMainModule()
     CommandScan()
     MsgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
-  of "i": 
+  of "i":
     gCmd = cmdInteractive
     CommandInteractive()
   of "e":
@@ -427,11 +427,11 @@ proc MainCommand* =
   of "serve":
     isServing = true
     gGlobalOptions.incl(optCaasEnabled)
-    msgs.gErrorMax = high(int)  # do not stop after first error     
+    msgs.gErrorMax = high(int)  # do not stop after first error
     serve(MainCommand)
   else:
     rawMessage(errInvalidCommandX, command)
-  
+
   if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun, cmdDump}:
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),

@@ -28,20 +28,20 @@ which ``(a)*`` means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and
 ``&`` is the lookahead operator; ``&a`` means that an ``a`` is expected but
 not consumed. It will be consumed in the following rule.
 
-The ``|``, ``/`` symbols are used to mark alternatives and have the lowest 
-precedence. ``/`` is the ordered choice that requires the parser to try the 
+The ``|``, ``/`` symbols are used to mark alternatives and have the lowest
+precedence. ``/`` is the ordered choice that requires the parser to try the
 alternatives in the given order. ``/`` is often used to ensure the grammar
-is not ambiguous. 
+is not ambiguous.
 
 Non-terminals start with a lowercase letter, abstract terminal symbols are in
 UPPERCASE. Verbatim terminal symbols (including keywords) are quoted
 with ``'``. An example::
 
   ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
-  
+
 The binary ``^*`` operator is used as a shorthand for 0 or more occurances
-separated by its second argument; likewise ``^+`` means 1 or more 
-occurances: ``a ^+ b`` is short for ``a (b a)*`` 
+separated by its second argument; likewise ``^+`` means 1 or more
+occurances: ``a ^+ b`` is short for ``a (b a)*``
 and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'
@@ -113,7 +113,7 @@ a separate token. This trick allows parsing of Nimrod with only 1 token of
 lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
-counting the spaces. The indentation information is queried at strategic 
+counting the spaces. The indentation information is queried at strategic
 places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
 of the stack; IND{=} an indentation that has the same number of spaces. ``DED``
@@ -124,7 +124,7 @@ With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example)::
 
   ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)* 
+           (IND{=} 'elif' expr ':' stmt)*
            (IND{=} 'else' ':' stmt)?
 
   simpleStmt = ifStmt / ...
@@ -155,7 +155,7 @@ aligned to the preceding one, it does not start a new comment:
 
 
 The alignment requirement does not hold if the preceding comment piece ends in
-a backslash (followed by optional whitespace): 
+a backslash (followed by optional whitespace):
 
 .. code-block:: nimrod
   type
@@ -235,7 +235,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nimrod may contain any 8-bit value, even embedded zeros. However 
+Strings in Nimrod may contain any 8-bit value, even embedded zeros. However
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -251,12 +251,12 @@ interpret any escape sequences.
 For convenience, when the opening ``"""`` is immediately followed by a newline,
 the newline is not included in the string. The ending of the string literal is
 defined by the pattern ``"""[^"]``, so this:
-  
-.. code-block:: nimrod 
+
+.. code-block:: nimrod
   """"long string within quotes""""
-  
+
 Produces::
-  
+
   "long string within quotes"
 
 
@@ -265,9 +265,9 @@ Raw string literals
 
 Terminal symbol in the grammar: ``RSTR_LIT``.
 
-There are also `raw string literals`:idx: that are preceded with the 
-letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
-like ordinary string literals) and do not interpret the escape sequences. 
+There are also `raw string literals`:idx: that are preceded with the
+letter ``r`` (or ``R``) and are delimited by matching double quotes (just
+like ordinary string literals) and do not interpret the escape sequences.
 This is especially convenient for regular expressions or Windows paths:
 
 .. code-block:: nimrod
@@ -279,21 +279,21 @@ To produce a single ``"`` within a raw string literal, it has to be doubled:
 .. code-block:: nimrod
 
   r"a""b"
-  
+
 Produces::
-  
+
   a"b
 
-``r""""`` is not possible with this notation, because the three leading 
-quotes introduce a triple quoted string literal. ``r"""`` is the same 
-as ``"""`` since triple quoted string literals do not interpret escape 
+``r""""`` is not possible with this notation, because the three leading
+quotes introduce a triple quoted string literal. ``r"""`` is the same
+as ``"""`` since triple quoted string literals do not interpret escape
 sequences either.
 
 
 Generalized raw string literals
 -------------------------------
 
-Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``, 
+Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``,
 ``GENERALIZED_TRIPLESTR_LIT``.
 
 The construct ``identifier"string literal"`` (without whitespace between the
@@ -334,7 +334,7 @@ Numerical constants
   DEC_LIT = digit ( ['_'] digit )*
   OCT_LIT = '0o' octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
-  
+
   INT_LIT = HEX_LIT
           | DEC_LIT
           | OCT_LIT
@@ -411,7 +411,7 @@ These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
-are used for other notational purposes. 
+are used for other notational purposes.
 
 ``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
@@ -425,8 +425,8 @@ The following strings denote other tokens::
     `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
 
 
-The `slice`:idx: operator `..`:tok: takes precedence over other tokens that 
-contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok: 
+The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
+contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 
 
@@ -460,13 +460,13 @@ Precedence
 ----------
 
 For operators that are not keywords the precedence is determined by the
-following rules: 
+following rules:
 
-If the operator ends with ``=`` and its relevant character is none of 
+If the operator ends with ``=`` and its relevant character is none of
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
 has the lowest precedence.
 
-If the operator's relevant character is ``@`` it is a `sigil-like`:idx: 
+If the operator's relevant character is ``@`` it is a `sigil-like`:idx:
 operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
 as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 
@@ -538,7 +538,7 @@ These integer types are pre-defined:
 
 ``int``
   the generic signed integer type; its size is platform dependent and has the
-  same size as a pointer. This type should be used in general. An integer 
+  same size as a pointer. This type should be used in general. An integer
   literal that has no type suffix is of this type.
 
 intXX
@@ -549,7 +549,7 @@ intXX
 
 ``uint``
   the generic `unsigned integer`:idx: type; its size is platform dependent and
-  has the same size as a pointer. An integer literal with the type 
+  has the same size as a pointer. An integer literal with the type
   suffix ``'u`` is of this type.
 
 uintXX
@@ -557,15 +557,15 @@ uintXX
   (example: uint16 is a 16 bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
-  Unsigned operations all wrap around; they cannot lead to over- or 
+  Unsigned operations all wrap around; they cannot lead to over- or
   underflow errors.
 
 
 In addition to the usual arithmetic operators for signed and unsigned integers
-(``+ - *`` etc.) there are also operators that formally work on *signed* 
-integers but treat their arguments as *unsigned*: They are mostly provided 
-for backwards compatibility with older versions of the language that lacked 
-unsigned integer types. These unsigned operations for signed integers use 
+(``+ - *`` etc.) there are also operators that formally work on *signed*
+integers but treat their arguments as *unsigned*: They are mostly provided
+for backwards compatibility with older versions of the language that lacked
+unsigned integer types. These unsigned operations for signed integers use
 the ``%`` suffix as convention:
 
 
@@ -596,7 +596,7 @@ operation                meaning
 kinds of integer types are used: the smaller type is converted to the larger.
 
 A `narrowing type conversion`:idx: converts a larger to a smaller type (for
-example ``int32 -> int16``. A `widening type conversion`:idx: converts a 
+example ``int32 -> int16``. A `widening type conversion`:idx: converts a
 smaller type to a larger type (for example ``int16 -> int32``). In Nimrod only
 widening type conversion are *implicit*:
 
@@ -609,7 +609,7 @@ widening type conversion are *implicit*:
 
 However, ``int`` literals are implicitly convertible to a smaller integer type
 if the literal's value fits this smaller type and such a conversion is less
-expensive than other implicit conversions, so ``myInt16 + 34`` produces 
+expensive than other implicit conversions, so ``myInt16 + 34`` produces
 an ``int16`` result.
 
 For further details, see `Convertible relation`_.
@@ -635,12 +635,12 @@ determined). Assignments from the base type to one of its subrange types
 A subrange type has the same size as its base type (``int`` in the example).
 
 Nimrod requires `interval arithmetic`:idx: for subrange types over a set
-of built-in operators that involve constants: ``x %% 3`` is of 
-type ``range[0..2]``. The following built-in operators for integers are 
+of built-in operators that involve constants: ``x %% 3`` is of
+type ``range[0..2]``. The following built-in operators for integers are
 affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
 ``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
 
-Bitwise ``and`` only produces a ``range`` if one of its operands is a 
+Bitwise ``and`` only produces a ``range`` if one of its operands is a
 constant *x* so that (x+1) is a number of two.
 (Bitwise ``and`` is then a ``%%`` operation.)
 
@@ -653,7 +653,7 @@ This means that the following code is accepted:
   of 9: echo "C"
   of 10: echo "D"
   # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
-  
+
 
 Pre-defined floating point types
 --------------------------------
@@ -684,16 +684,16 @@ The IEEE standard defines five types of floating-point exceptions:
   for example 0.0/0.0, sqrt(-1.0), and log(-37.8).
 * Division by zero: divisor is zero and dividend is a finite nonzero number,
   for example 1.0/0.0.
-* Overflow: operation produces a result that exceeds the range of the exponent, 
+* Overflow: operation produces a result that exceeds the range of the exponent,
   for example MAXDOUBLE+0.0000000000001e308.
-* Underflow: operation produces a result that is too small to be represented 
+* Underflow: operation produces a result that is too small to be represented
   as a normal number, for example, MINDOUBLE * MINDOUBLE.
-* Inexact: operation produces a result that cannot be represented with infinite 
+* Inexact: operation produces a result that cannot be represented with infinite
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
-The IEEE exceptions are either ignored at runtime or mapped to the 
+The IEEE exceptions are either ignored at runtime or mapped to the
 Nimrod exceptions: `EFloatInvalidOp`:idx:, `EFloatDivByZero`:idx:,
-`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:. 
+`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:.
 These exceptions inherit from the `EFloatingPoint`:idx: base class.
 
 Nimrod provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
@@ -706,9 +706,9 @@ whether the IEEE exceptions are ignored or trap a Nimrod exception:
   echo b / b # raises EFloatInvalidOp
   echo a / b # raises EFloatOverflow
 
-In the current implementation ``EFloatDivByZero`` and ``EFloatInexact`` are 
+In the current implementation ``EFloatDivByZero`` and ``EFloatInexact`` are
 never raised. ``EFloatOverflow`` is raised instead of ``EFloatDivByZero``.
-There is also a `floatChecks`:idx: pragma that is a short-cut for the 
+There is also a `floatChecks`:idx: pragma that is a short-cut for the
 combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
 turned off as default.
 
@@ -794,7 +794,7 @@ and ``pred`` are not available for them either.
 
 
 The compiler supports the built-in stringify operator ``$`` for enumerations.
-The stringify's result can be controlled by explicitly giving the string 
+The stringify's result can be controlled by explicitly giving the string
 values to use:
 
 .. code-block:: nimrod
@@ -806,12 +806,12 @@ values to use:
       valueC = 2,
       valueD = (3, "abc")
 
-As can be seen from the example, it is possible to both specify a field's 
+As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
 An enum can be marked with the ``pure`` pragma so that it's fields are not
-added to the current scope, so they always need to be accessed 
+added to the current scope, so they always need to be accessed
 via ``TMyEnum.value``:
 
 .. code-block:: nimrod
@@ -819,7 +819,7 @@ via ``TMyEnum.value``:
   type
     TMyEnum {.pure.} = enum
       valueA, valueB, valueC, valueD
-  
+
   echo valueA # error: Unknown identifier
   echo TMyEnum.valueA # works
 
@@ -855,22 +855,22 @@ CString type
 ------------
 The `cstring`:idx: type represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
-interfacing with C. The index operation ``s[i]`` means the i-th *char* of 
+interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
 index operation unsafe.
 
-A Nimrod ``string`` is implicitly convertible 
+A Nimrod ``string`` is implicitly convertible
 to ``cstring`` for convenience. If a Nimrod string is passed to a C-style
 variadic proc, it is implicitly converted to ``cstring`` too:
 
 .. code-block:: nimrod
-  proc printf(formatstr: cstring) {.importc: "printf", varargs, 
+  proc printf(formatstr: cstring) {.importc: "printf", varargs,
                                     header: "<stdio.h>".}
-  
+
   printf("This works %s", "as expected")
 
 Even though the conversion is implicit, it is not *safe*: The garbage collector
-does not consider a ``cstring`` to be a root and may collect the underlying 
+does not consider a ``cstring`` to be a root and may collect the underlying
 memory. However in practice this almost never happens as the GC considers
 stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
@@ -893,9 +893,9 @@ integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``.
 
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
-during runtime (like strings). Sequences are implemented as growable arrays, 
+during runtime (like strings). Sequences are implemented as growable arrays,
 allocating pieces of memory as items are added. A sequence ``S`` is always
-indexed by integers from 0 to ``len(S)-1`` and its bounds are checked. 
+indexed by integers from 0 to ``len(S)-1`` and its bounds are checked.
 Sequences can be constructed by the array constructor ``[]`` in conjunction
 with the array to sequence operator ``@``. Another way to allocate space for a
 sequence is to call the built-in ``newSeq`` procedure.
@@ -935,11 +935,11 @@ Open arrays
 
 Often fixed size arrays turn out to be too inflexible; procedures should
 be able to deal with arrays of different sizes. The `openarray`:idx: type
-allows this; it can only be used for parameters. Openarrays are always 
-indexed with an ``int`` starting at position 0. The ``len``, ``low`` 
-and ``high`` operations are available for open arrays too. Any array with 
-a compatible base type can be passed to an openarray parameter, the index 
-type does not matter. In addition to arrays sequences can also be passed 
+allows this; it can only be used for parameters. Openarrays are always
+indexed with an ``int`` starting at position 0. The ``len``, ``low``
+and ``high`` operations are available for open arrays too. Any array with
+a compatible base type can be passed to an openarray parameter, the index
+type does not matter. In addition to arrays sequences can also be passed
 to an open array parameter.
 
 The openarray type cannot be nested: multidimensional openarrays are not
@@ -950,7 +950,7 @@ Varargs
 -------
 
 A `varargs`:idx: parameter is an openarray parameter that additionally
-allows to pass a variable number of arguments to a procedure. The compiler 
+allows to pass a variable number of arguments to a procedure. The compiler
 converts the list of arguments to an array implicitly:
 
 .. code-block:: nimrod
@@ -977,7 +977,7 @@ type conversions in this context:
   # is transformed to:
   myWriteln(stdout, [$123, $"def", $4.0])
 
-In this example ``$`` is applied to any argument that is passed to the 
+In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. (Note that ``$`` applied to strings is a nop.)
 
 
@@ -1012,7 +1012,7 @@ in future versions of the compiler.
   person = ("Peter", 30)
 
 The implementation aligns the fields for best access performance. The alignment
-is compatible with the way the C compiler does it. 
+is compatible with the way the C compiler does it.
 
 For consistency  with ``object`` declarations, tuples in a ``type`` section
 can also be defined with indentation instead of ``[]``:
@@ -1052,7 +1052,7 @@ Object construction
 -------------------
 
 Objects can also be created with an `object construction expression`:idx: that
-has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is 
+has the syntax ``T(fieldA: valueA, fieldB: valueB, ...)`` where ``T`` is
 an ``object`` type or a ``ref object`` type:
 
 .. code-block:: nimrod
@@ -1098,10 +1098,10 @@ An example:
   # the following statement raises an `EInvalidField` exception, because
   # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
-  
+
   # invalid: would change the active object branch:
   n.kind = nkInt
-  
+
   var x = PNode(kind: nkAdd, leftOp: PNode(kind: nkInt, intVal: 4),
                              rightOp: PNode(kind: nkInt, intVal: 2))
   # valid: does not change the active object branch:
@@ -1171,8 +1171,8 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-An empty subscript ``[]`` notation can be used to derefer a reference, 
-the ``addr`` procedure returns the address of an item. An address is always 
+An empty subscript ``[]`` notation can be used to derefer a reference,
+the ``addr`` procedure returns the address of an item. An address is always
 an untraced reference.
 Thus the usage of ``addr`` is an *unsafe* feature.
 
@@ -1191,7 +1191,7 @@ dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 
+  n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
 As a syntactical extension ``object`` types can be anonymous if
@@ -1254,20 +1254,20 @@ details like this when mixing garbage collected data with unmanaged memory.
 Not nil annotation
 ------------------
 
-All types for that ``nil`` is a valid value can be annotated to 
+All types for that ``nil`` is a valid value can be annotated to
 exclude ``nil`` as a valid value with the `not nil`:idx: annotation:
 
 .. code-block:: nimrod
   type
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
-    
+
   proc p(x: PObject) =
     echo "not nil"
-  
+
   # compiler catches this:
   p(nil)
-  
+
   # but not this:
   var x: PObject
   p(x)
@@ -1296,22 +1296,22 @@ Examples:
 
   forEach(printItem)  # this will NOT work because calling conventions differ
 
-  
+
 .. code-block:: nimrod
 
   type
     TOnMouseMove = proc (x, y: int) {.closure.}
-  
+
   proc onMouseMove(mouseX, mouseY: int) =
     # has default calling convention
     echo "x: ", mouseX, " y: ", mouseY
-  
+
   proc setOnMouseMove(mouseMoveEvent: TOnMouseMove) = nil
-  
+
   # ok, 'onMouseMove' has the default calling convention, which is compatible
   # to 'closure':
   setOnMouseMove(onMouseMove)
-  
+
 
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only
@@ -1377,7 +1377,7 @@ of the following conditions hold:
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
 
-The rules' purpose is to prevent the case that extending a non-``procvar`` 
+The rules' purpose is to prevent the case that extending a non-``procvar``
 procedure with default parameters breaks client code.
 
 The default calling convention is ``nimcall``, unless it is an inner proc (
@@ -1405,7 +1405,7 @@ types are a perfect tool to model different currencies:
   type
     TDollar = distinct int
     TEuro = distinct int
-  
+
   var
     d: TDollar
     e: TEuro
@@ -1430,7 +1430,7 @@ number without unit; and the same holds for division:
 
   proc `*` (x: int, y: TDollar): TDollar =
     result = TDollar(x * int(y))
-    
+
   proc `div` ...
 
 This quickly gets tedious. The implementations are trivial and the compiler
@@ -1455,7 +1455,7 @@ currency. This can be solved with templates_.
   template Additive(typ: typedesc): stmt =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
-    
+
     # unary operators:
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
@@ -1477,7 +1477,7 @@ currency. This can be solved with templates_.
     Additive(typ)
     Multiplicative(typ, base)
     Comparable(typ)
-    
+
   DefineCurrency(TDollar, int)
   DefineCurrency(TEuro, int)
 
@@ -1485,21 +1485,21 @@ currency. This can be solved with templates_.
 Void type
 ---------
 
-The `void`:idx: type denotes the absense of any type. Parameters of 
+The `void`:idx: type denotes the absense of any type. Parameters of
 type ``void`` are treated as non-existent, ``void`` as a return type means that
 the procedure does not return a value:
 
 .. code-block:: nimrod
   proc nothing(x, y: void): void =
     echo "ha"
-  
+
   nothing() # writes "ha" to stdout
 
 The ``void`` type is particularly useful for generic code:
 
 .. code-block:: nimrod
   proc callProc[T](p: proc (x: T), x: T) =
-    when T is void: 
+    when T is void:
       p()
     else:
       p(x)
@@ -1509,13 +1509,13 @@ The ``void`` type is particularly useful for generic code:
 
   callProc[int](intProc, 12)
   callProc[void](emptyProc)
-  
+
 However, a ``void`` type cannot be inferred in generic code:
 
 .. code-block:: nimrod
-  callProc(emptyProc) 
+  callProc(emptyProc)
   # Error: type mismatch: got (proc ())
-  # but expected one of: 
+  # but expected one of:
   # callProc(p: proc (T), x: T)
 
 The ``void`` type is only valid for parameters and return types; other symbols
@@ -1542,7 +1542,7 @@ algorithm (in pseudo-code) determines type equality:
     incl(s, (a,b))
     if a.kind == b.kind:
       case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+      of int, intXX, float, floatXX, char, string, cstring, pointer,
           bool, nil, void:
         # leaf type: kinds identical; nothing more to check
         result = true
@@ -1585,7 +1585,7 @@ with an auxiliary set ``s`` is omitted:
   proc typeEqualsOrDistinct(a, b: PType): bool =
     if a.kind == b.kind:
       case a.kind
-      of int, intXX, float, floatXX, char, string, cstring, pointer, 
+      of int, intXX, float, floatXX, char, string, cstring, pointer,
           bool, nil, void:
         # leaf type: kinds identical; nothing more to check
         result = true
@@ -1614,7 +1614,7 @@ with an auxiliary set ``s`` is omitted:
       result = typeEqualsOrDistinct(a.baseType, b)
     elif b.kind == distinct:
       result = typeEqualsOrDistinct(a, b.baseType)
-      
+
 
 Subtype relation
 ----------------
@@ -1669,7 +1669,7 @@ algorithm returns true:
 
 A type ``a`` is **explicitly** convertible to type ``b`` iff the following
 algorithm returns true:
- 
+
 .. code-block:: nimrod
   proc isIntegralType(t: PType): bool =
     result = isOrdinal(t) or t.kind in {float, float32, float64}
@@ -1680,8 +1680,8 @@ algorithm returns true:
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
     return false
-    
-The convertible relation can be relaxed by a user-defined type 
+
+The convertible relation can be relaxed by a user-defined type
 `converter`:idx:.
 
 .. code-block:: nimrod
@@ -1698,7 +1698,7 @@ The convertible relation can be relaxed by a user-defined type
   x = chr.toInt
   echo x # => 97
 
-The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and 
+The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and
 ``typeEqualsOrDistinct(T, type(a))`` holds.
 
 
@@ -1719,7 +1719,7 @@ Statements and expressions
 ==========================
 
 Nimrod uses the common statement/expression paradigm: `Statements`:idx: do not
-produce a value in contrast to expressions. However, some expressions are 
+produce a value in contrast to expressions. However, some expressions are
 statements.
 
 Statements are separated into `simple statements`:idx: and
@@ -1733,9 +1733,9 @@ statements always have to be intended. The details can be found in the grammar.
 Statement list expression
 -------------------------
 
-Statements can also occur in an expression context that looks 
+Statements can also occur in an expression context that looks
 like ``(stmt1; stmt2; ...; ex)``. This is called
-an `statement list expression`:idx: or ``(;)``. The type 
+an `statement list expression`:idx: or ``(;)``. The type
 of ``(stmt1; stmt2; ...; ex)`` is the type of ``ex``. All the other statements
 must be of type ``void``. (One can use ``discard`` to produce a ``void`` type.)
 ``(;)`` does not introduce a new scope.
@@ -1747,24 +1747,24 @@ Discard statement
 Example:
 
 .. code-block:: nimrod
-  proc p(x, y: int): int = 
+  proc p(x, y: int): int =
     return x + y
 
   discard p(3, 4) # discard the return value of `p`
 
 The `discard`:idx: statement evaluates its expression for side-effects and
-throws the expression's resulting value away. 
+throws the expression's resulting value away.
 
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
 
 The return value can be ignored implicitly if the called proc/iterator has
-been declared with the `discardable`:idx: pragma: 
+been declared with the `discardable`:idx: pragma:
 
 .. code-block:: nimrod
-  proc p(x, y: int): int {.discardable.} = 
+  proc p(x, y: int): int {.discardable.} =
     return x + y
-    
+
   p(3, 4) # now valid
 
 
@@ -1806,11 +1806,11 @@ T = enum                        cast[T](0); this may be an invalid value
 
 
 The implicit initialization can be avoided for optimization reasons with the
-`noinit`:idx: pragma: 
+`noinit`:idx: pragma:
 
 .. code-block:: nimrod
   var
-    a {.noInit.}: array [0..1023, char] 
+    a {.noInit.}: array [0..1023, char]
 
 If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 ``result`` variable:
@@ -1821,13 +1821,13 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 
 The implicit initialization can be also prevented by the `requiresInit`:idx:
 type pragma. The compiler requires an explicit initialization then. However
-it does a `control flow analysis`:idx: to prove the variable has been 
+it does a `control flow analysis`:idx: to prove the variable has been
 initialized and does not rely on syntactic properties:
 
 .. code-block:: nimrod
   type
     TMyObject = object {.requiresInit.}
-    
+
   proc p() =
     # the following is valid:
     var x: TMyObject
@@ -1841,7 +1841,7 @@ let statement
 -------------
 
 A `Let`:idx: statement declares new local and global `single assignment`:idx:
-variables and binds a value to them. The syntax is the of the ``var`` 
+variables and binds a value to them. The syntax is the of the ``var``
 statement, except that the keyword ``var`` is replaced by the keyword ``let``.
 Let variables are not l-values and can thus not be passed to ``var`` parameters
 nor can their address be taken. They cannot be assigned new values.
@@ -1865,33 +1865,33 @@ have no side-effect can be used in constant expressions too:
     constEval = contains("abc", 'b') # computed at compile time!
 
 
-The rules for compile-time computability are: 
+The rules for compile-time computability are:
 
 1. Literals are compile-time computable.
 2. Type conversions are compile-time computable.
 3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_ 
-   for details) and if ``X`` is a (possibly empty) list of compile-time 
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_
+   for details) and if ``X`` is a (possibly empty) list of compile-time
    computable arguments.
 
 
-Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can 
+Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
 they contain such a type.
 
 
 Static statement/expression
 ---------------------------
 
-A `static`:idx: statement/expression can be used to enforce compile 
+A `static`:idx: statement/expression can be used to enforce compile
 time evaluation explicitly. Enforced compile time evaluation can even evaluate
-code that has side effects: 
+code that has side effects:
 
 .. code-block::
 
   static:
     echo "echo at compile time"
 
-It's a static error if the compiler cannot perform the evaluation at compile 
+It's a static error if the compiler cannot perform the evaluation at compile
 time.
 
 The current implementation poses some restrictions for compile time
@@ -1925,7 +1925,7 @@ the ``:`` are executed. This goes on until the last ``elif``. If all
 conditions fail, the ``else`` part is executed. If there is no ``else``
 part, execution continues with the statement after the ``if`` statement.
 
-The scoping for an ``if`` statement is slightly subtle to support an important 
+The scoping for an ``if`` statement is slightly subtle to support an important
 use case. A new scope starts for the ``if``/``elif`` condition and ends after
 the corresponding *then* block:
 
@@ -1937,7 +1937,7 @@ the corresponding *then* block:
   else:
     # 'm' not declared here
 
-In the example the scopes have been enclosed in ``{|  |}``. 
+In the example the scopes have been enclosed in ``{|  |}``.
 
 
 Case statement
@@ -1952,7 +1952,7 @@ Example:
     echo("permission denied")
   of "go-for-a-walk":     echo("please yourself")
   else:                   echo("unknown command")
-  
+
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
   case readline(stdin):
@@ -1960,17 +1960,17 @@ Example:
       echo("permission denied")
     of "go-for-a-walk":     echo("please yourself")
     else:                   echo("unknown command")
-  
+
 
 The `case`:idx: statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the ``of`` keyword) are executed. If the value is not in any
 given *slicelist* the ``else`` part is executed. If there is no ``else``
-part and not all possible values that ``expr`` can hold occur in a 
-``slicelist``, a static error occurs. This holds only for expressions of 
+part and not all possible values that ``expr`` can hold occur in a
+``slicelist``, a static error occurs. This holds only for expressions of
 ordinal types. "All possible values" of ``expr`` are determined by ``expr``'s
-type. 
+type.
 
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control passes after the ``case`` statement.
@@ -1979,7 +1979,7 @@ To suppress the static error in the ordinal case an ``else`` part with a ``nil``
 statement can be used.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
-statement may evaluate to a set constructor; the set is then expanded into 
+statement may evaluate to a set constructor; the set is then expanded into
 a list of its elements:
 
 .. code-block:: nimrod
@@ -1991,7 +1991,7 @@ a list of its elements:
     of SymChars, '_': echo "an identifier"
     of '0'..'9': echo "a number"
     else: echo "other"
-  
+
   # is equivalent to:
   proc classify(s: string) =
     case s[0]
@@ -2267,14 +2267,14 @@ A `table constructor`:idx: is syntactic sugar for an array constructor:
 
 .. code-block:: nimrod
   {"key1": "value1", "key2", "key3": "value2"}
-  
+
   # is the same as:
   [("key1", "value1"), ("key2", "value2"), ("key3", "value2")]
 
 
-The empty table can be written ``{:}`` (in contrast to the empty set 
+The empty table can be written ``{:}`` (in contrast to the empty set
 which is ``{}``) which is thus another way to write as the empty array
-constructor ``[]``. This slightly unusal way of supporting tables 
+constructor ``[]``. This slightly unusal way of supporting tables
 has lots of advantages:
 
 * The order of the (key,value)-pairs is preserved, thus it is easy to
@@ -2339,7 +2339,7 @@ Procedures
 What most programming languages call `methods`:idx: or `functions`:idx: are
 called `procedures`:idx: in Nimrod (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
-of code. 
+of code.
 A procedure may call itself recursively. A parameter may be given a default
 value that is used if the caller does not provide a value for this parameter.
 
@@ -2428,7 +2428,7 @@ the proc's name.
       cmp(x.len, y.len))
 
 
-Procs as expressions can appear both as nested procs and inside top level 
+Procs as expressions can appear both as nested procs and inside top level
 executable code.
 
 
@@ -2442,7 +2442,7 @@ calls can use the ``do`` keyword:
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
 
-``do`` is written after the parentheses enclosing the regular proc params. 
+``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 
 More than one ``do`` block can appear in a single call:
@@ -2457,7 +2457,7 @@ More than one ``do`` block can appear in a single call:
     # code to undo it
 
 For compatibility with ``stmt`` templates and macros, the ``do`` keyword can be
-omitted if the supplied proc doesn't have any parameters and return value. 
+omitted if the supplied proc doesn't have any parameters and return value.
 The compatibility works in the other direction too as the ``do`` syntax can be
 used with macros and templates expecting ``stmt`` blocks.
 
@@ -2468,11 +2468,11 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  defined, definedInScope, compiles, low, high, sizeOf, 
+  defined, definedInScope, compiles, low, high, sizeOf,
   is, of, echo, shallowCopy, getAst
 
-Thus they act more like keywords than like ordinary identifiers; unlike a 
-keyword however, a redefinition may `shadow`:idx: the definition in 
+Thus they act more like keywords than like ordinary identifiers; unlike a
+keyword however, a redefinition may `shadow`:idx: the definition in
 the ``system`` module.
 
 
@@ -2539,11 +2539,11 @@ returned value is an l-value and can be modified by the caller:
 
   proc WriteAccessToG(): var int =
     result = g
-  
+
   WriteAccessToG() = 6
   assert g == 6
 
-It is a compile time error if the implicitly introduced pointer could be 
+It is a compile time error if the implicitly introduced pointer could be
 used to access a location beyond its lifetime:
 
 .. code-block:: nimrod
@@ -2551,7 +2551,7 @@ used to access a location beyond its lifetime:
     var g = 0
     result = g # Error!
 
-For iterators, a component of a tuple return type can have a ``var`` type too: 
+For iterators, a component of a tuple return type can have a ``var`` type too:
 
 .. code-block:: nimrod
   iterator mpairs(a: var seq[string]): tuple[key: int, val: var string] =
@@ -2581,28 +2581,28 @@ dispatch.
       x: int
     TPlusExpr = object of TExpr
       a, b: ref TExpr
-      
+
   method eval(e: ref TExpr): int =
     # override this base method
     quit "to override!"
-  
+
   method eval(e: ref TLiteral): int = return e.x
 
   method eval(e: ref TPlusExpr): int =
     # watch out: relies on dynamic binding
     return eval(e.a) + eval(e.b)
-  
+
   proc newLit(x: int): ref TLiteral =
     new(result)
     result.x = x
-    
+
   proc newPlus(a, b: ref TExpr): ref TPlusExpr =
     new(result)
     result.a = a
     result.b = b
-  
+
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
-  
+
 In the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
 requires dynamic binding.
@@ -2615,23 +2615,23 @@ dispatching:
     TThing = object
     TUnit = object of TThing
       x: int
-      
+
   method collide(a, b: TThing) {.inline.} =
     quit "to override!"
-    
+
   method collide(a: TThing, b: TUnit) {.inline.} =
     echo "1"
-  
+
   method collide(a: TUnit, b: TThing) {.inline.} =
     echo "2"
-  
+
   var
     a, b: TUnit
   collide(a, b) # output: 2
 
 
-Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over 
-collide 1 because the resolution works from left to right. 
+Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
+collide 1 because the resolution works from left to right.
 In the example ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
 
 **Performance note**: Nimrod does not produce a virtual method table, but
@@ -2646,7 +2646,7 @@ Iterators and the for statement
 The `for`:idx: statement is an abstract mechanism to iterate over the elements
 of a container. It relies on an `iterator`:idx: to do so. Like ``while``
 statements, ``for`` statements open an `implicit block`:idx:, so that they
-can be left with a ``break`` statement. 
+can be left with a ``break`` statement.
 
 The ``for`` loop declares iteration variables - their scope reaches until the
 end of the loop body. The iteration variables' types are inferred by the
@@ -2682,7 +2682,7 @@ The compiler generates code as if the programmer would have written this:
 
 If the iterator yields a tuple, there can be as many iteration variables
 as there are components in the tuple. The i'th iteration variable's type is
-the type of the i'th component. In other words, implicit tuple unpacking in a 
+the type of the i'th component. In other words, implicit tuple unpacking in a
 for loop context is supported.
 
 
@@ -2695,11 +2695,11 @@ ie. an ``items`` iterator is implicitly invoked:
 
 .. code-block:: nimrod
   for x in [1,2,3]: echo x
-  
+
 If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitly
 invoked.
 
-Symbol lookup of the identifiers ``items``/``pairs`` is performed after 
+Symbol lookup of the identifiers ``items``/``pairs`` is performed after
 the rewriting step, so that all overloadings of ``items``/``pairs`` are taken
 into account.
 
@@ -2708,7 +2708,7 @@ First class iterators
 ---------------------
 
 There are 2 kinds of iterators in Nimrod: *inline* and *closure* iterators.
-An `inline iterator`:idx: is an iterator that's always inlined by the compiler 
+An `inline iterator`:idx: is an iterator that's always inlined by the compiler
 leading to zero overhead for the abstraction, but may result in a heavy
 increasee in code size. Inline iterators are second class
 citizens; one cannot pass them around like first class procs.
@@ -2718,7 +2718,7 @@ In contrast to that, a `closure iterator`:idx: can be passed around:
 .. code-block:: nimrod
   iterator count0(): int {.closure.} =
     yield 0
-   
+
   iterator count2(): int {.closure.} =
     var x = 1
     yield x
@@ -2744,7 +2744,7 @@ Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but that this may change in future versions of the
 implementation.
 
-The ``iterator`` type is always of the calling convention ``closure`` 
+The ``iterator`` type is always of the calling convention ``closure``
 implicitly; the following example shows how to use iterators to implement
 a `collaborative tasking`:idx: system:
 
@@ -2781,7 +2781,7 @@ a `collaborative tasking`:idx: system:
 
 The builtin ``system.finished`` can be used to determine if an iterator has
 finished its operation; no exception is raised on an attempt to invoke an
-iterator that has already finished its work. 
+iterator that has already finished its work.
 
 
 Type sections
@@ -2804,7 +2804,7 @@ Example:
 A `type`:idx: section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
 can be recursive or even mutually recursive. Mutually recursive types are only
-possible within a single ``type`` section. Nominal types like ``objects`` 
+possible within a single ``type`` section. Nominal types like ``objects``
 or ``enums`` can only be defined in a ``type`` section.
 
 
@@ -2861,7 +2861,7 @@ Except and finally statements
 -----------------------------
 
 `except`:idx: and `finally`:idx: can also be used as a stand-alone statements.
-Any statements following them in the current block will be considered to be 
+Any statements following them in the current block will be considered to be
 in an implicit try block:
 
 .. code-block:: nimrod
@@ -2877,7 +2877,7 @@ statements. Example:
 .. code-block:: nimrod
   proc test() =
     raise newException(E_base, "Hey ho")
-  
+
   proc tester() =
     finally: echo "3. Finally block"
     except: echo "2. Except block"
@@ -2910,7 +2910,7 @@ OnRaise builtin
 ---------------
 
 ``system.onRaise`` can be used to override the behaviour of ``raise`` for a
-single ``try`` statement. `onRaise`:idx: has to be called within the ``try`` 
+single ``try`` statement. `onRaise`:idx: has to be called within the ``try``
 statement that should be affected.
 
 This allows for a Lisp-like `condition system`:idx:\:
@@ -2929,7 +2929,7 @@ This allows for a Lisp-like `condition system`:idx:\:
     myFile.close()
 
 ``OnRaise`` can only *filter* raised exceptions, it cannot transform one
-exception into another. (Nor should ``onRaise`` raise an exception though 
+exception into another. (Nor should ``onRaise`` raise an exception though
 this is currently not enforced.) This restriction keeps the exception tracking
 analysis sound.
 
@@ -2941,7 +2941,7 @@ Exception tracking
 ------------------
 
 Nimrod supports `exception tracking`:idx:. The `raises`:idx: pragma can be used
-to explicitly define which exceptions a proc/iterator/method/converter is 
+to explicitly define which exceptions a proc/iterator/method/converter is
 allowed to raise. The compiler verifies this:
 
 .. code-block:: nimrod
@@ -2960,7 +2960,7 @@ An empty ``raises`` list (``raises: []``) means that no exception may be raised:
       result = false
 
 
-A ``raises`` list can also be attached to a proc type. This affects type 
+A ``raises`` list can also be attached to a proc type. This affects type
 compatibility:
 
 .. code-block:: nimrod
@@ -2971,7 +2971,7 @@ compatibility:
 
   proc p(x: string) =
     raise newException(EOS, "OS")
-  
+
   c = p # type error
 
 
@@ -2982,30 +2982,30 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
    raise ``system.E_Base`` (the base type of the exception hierarchy) and
    thus any exception unless ``T`` has an explicit ``raises`` list.
    However if the call is of the form ``f(...)`` where ``f`` is a parameter
-   of the currently analysed routine it is ignored. The call is optimistically 
+   of the currently analysed routine it is ignored. The call is optimistically
    assumed to have no effect. Rule 2 compensates for this case.
-2. Every expression of some proc type wihtin a call that is not a call 
-   itself (and not nil) is assumed to be called indirectly somehow and thus 
+2. Every expression of some proc type wihtin a call that is not a call
+   itself (and not nil) is assumed to be called indirectly somehow and thus
    its raises list is added to ``p``'s raises list.
-3. Every call to a proc ``q`` which has an unknown body (due to a forward 
-   declaration or an ``importc`` pragma) is assumed to 
+3. Every call to a proc ``q`` which has an unknown body (due to a forward
+   declaration or an ``importc`` pragma) is assumed to
    raise ``system.E_Base`` unless ``q`` has an explicit ``raises`` list.
-4. Every call to a method ``m`` is assumed to 
+4. Every call to a method ``m`` is assumed to
    raise ``system.E_Base`` unless ``m`` has an explicit ``raises`` list.
 5. For every other call the analysis can determine an exact ``raises`` list.
-6. For determining a ``raises`` list, the ``raise`` and ``try`` statements 
+6. For determining a ``raises`` list, the ``raise`` and ``try`` statements
    of ``p`` are taken into consideration.
 
-Rules 1-2 ensure the following works: 
+Rules 1-2 ensure the following works:
 
 .. code-block:: nimrod
   proc noRaise(x: proc()) {.raises: [].} =
     # unknown call that might raise anything, but valid:
     x()
-    
+
   proc doRaise() {.raises: [EIO].} =
     raise newException(EIO, "IO")
-  
+
   proc use() {.raises: [].} =
     # doesn't compile! Can raise EIO!
     noRaise(doRaise)
@@ -3018,21 +3018,21 @@ Tag tracking
 ------------
 
 The exception tracking is part of Nimrod's `effect system`:idx:. Raising an
-exception is an *effect*. Other effects can also be defined. A user defined 
+exception is an *effect*. Other effects can also be defined. A user defined
 effect is a means to *tag* a routine and to perform checks against this tag:
 
 .. code-block:: nimrod
   type IO = object ## input/output effect
   proc readLine(): string {.tags: [IO].}
-  
+
   proc no_IO_please() {.tags: [].} =
     # the compiler prevents this:
     let x = readLine()
 
-A tag has to be a type name. A ``tags`` list - like a ``raises`` list - can 
+A tag has to be a type name. A ``tags`` list - like a ``raises`` list - can
 also be attached to a proc type. This affects type compatibility.
 
-The inference for tag tracking is analogous to the inference for 
+The inference for tag tracking is analogous to the inference for
 exception tracking.
 
 
@@ -3041,7 +3041,7 @@ Read/Write tracking
 
 **Note**: Read/write tracking is not yet implemented!
 
-The inference for read/write tracking is analogous to the inference for 
+The inference for read/write tracking is analogous to the inference for
 exception tracking.
 
 
@@ -3126,7 +3126,7 @@ Is operator
 -----------
 
 The `is`:idx: operator checks for type equivalence at compile time. It is
-therefore very useful for type specialization within generic code: 
+therefore very useful for type specialization within generic code:
 
 .. code-block:: nimrod
   type
@@ -3141,7 +3141,7 @@ Type operator
 -------------
 
 The `type`:idx: (in many other languages called `typeof`:idx:) operator can
-be used to get the type of an expression: 
+be used to get the type of an expression:
 
 .. code-block:: nimrod
   var x = 0
@@ -3154,7 +3154,7 @@ other interpretations:
 
 .. code-block:: nimrod
   import strutils
-  
+
   # strutils contains both a ``split`` proc and iterator, but since an
   # an iterator is the preferred interpretation, `y` has the type ``string``:
   var y: type("a b c".split)
@@ -3164,7 +3164,7 @@ Type Classes
 ------------
 
 A `type class`:idx: is a special pseudo-type that can be used to match against
-types in the context of overload resolution or the ``is`` operator. 
+types in the context of overload resolution or the ``is`` operator.
 Nimrod supports the following built-in type classes:
 
 ==================   ===================================================
@@ -3182,7 +3182,7 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
-``auto``             any type 
+``auto``             any type
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -3200,7 +3200,7 @@ more complex type classes:
       echo key, " = ", value
 
 Procedures utilizing type classes in such manner are considered to be
-`implicitly generic`:idx:. They will be instantiated once for each unique 
+`implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
 Nimrod also allows for type classes and regular types to be specified
@@ -3208,7 +3208,7 @@ as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nimrod
   proc onlyIntOrString[T: int|string](x, y: T) = nil
-  
+
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
@@ -3218,7 +3218,7 @@ exactly one concrete type. Here is an example taken directly from the system
 module to illustrate this:
 
 .. code-block:: nimrod
-  proc `==`*(x, y: tuple): bool = 
+  proc `==`*(x, y: tuple): bool =
     ## requires `x` and `y` to be of the same tuple type
     ## generic ``==`` operator for tuples that is lifted from the components
     ## of `x` and `y`.
@@ -3226,8 +3226,8 @@ module to illustrate this:
       if a != b: return false
     return true
 
-Alternatively, the ``distinct`` type modifier can be applied to the type class 
-to allow each param matching the type class to bind to a different type. 
+Alternatively, the ``distinct`` type modifier can be applied to the type class
+to allow each param matching the type class to bind to a different type.
 
 If a proc param doesn't have a type specified, Nimrod will use the
 ``distinct auto`` type class (also known as ``any``):
@@ -3244,7 +3244,7 @@ the dot syntax:
   type TMatrix[T, Rows, Columns] = object
     ...
 
-  proc `[]`(m: TMatrix, row, col: int): TMatrix.T = 
+  proc `[]`(m: TMatrix, row, col: int): TMatrix.T =
     m.data[col * high(TMatrix.Columns) + row]
 
 Alternatively, the `type` operator can be used over the proc params for similar
@@ -3255,7 +3255,7 @@ type, this results in another more specific type class:
 
 .. code-block:: nimrod
   seq[ref object]  # Any sequence storing references to any object type
-  
+
   type T1 = auto
   proc foo(s: seq[T1], e: T1)
     # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
@@ -3324,7 +3324,7 @@ The return type will be treated as additional generic param and can be
 explicitly specified at call sites as any other generic param.
 
 Future versions of Nimrod may also support overloading based on the return type
-of the overloads. In such settings, the expected result type at call sites may 
+of the overloads. In such settings, the expected result type at call sites may
 also influence the inferred return type.
 
 
@@ -3342,12 +3342,12 @@ at definition and the context at instantiation are considered:
 .. code-block:: nimrod
   type
     TIndex = distinct int
-  
+
   proc `==` (a, b: TIndex): bool {.borrow.}
-  
+
   var a = (0, 0.TIndex)
   var b = (0, 0.TIndex)
-  
+
   echo a == b # works!
 
 In the example the generic ``==`` for tuples (as defined in the system module)
@@ -3356,7 +3356,7 @@ the ``TIndex`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
 too.
 
-A symbol can be forced to be open by a `mixin`:idx: declaration: 
+A symbol can be forced to be open by a `mixin`:idx: declaration:
 
 .. code-block:: nimrod
   proc create*[T](): ref T =
@@ -3385,17 +3385,17 @@ Example:
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
 
-The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact 
+The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact
 templates:
 
 | ``a > b`` is transformed into ``b < a``.
-| ``a in b`` is transformed into ``contains(b, a)``. 
+| ``a in b`` is transformed into ``contains(b, a)``.
 | ``notin`` and ``isnot`` have the obvious meanings.
 
-The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
-``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
-description*). These are "meta types", they can only be used in certain 
-contexts. Real types can be used too; this implies that expressions are 
+The "types" of templates can be the symbols ``expr`` (stands for *expression*),
+``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type
+description*). These are "meta types", they can only be used in certain
+contexts. Real types can be used too; this implies that expressions are
 expected.
 
 
@@ -3409,7 +3409,7 @@ So ordinary templates cannot receive undeclared identifiers:
 
 .. code-block:: nimrod
 
-  template declareInt(x: expr) = 
+  template declareInt(x: expr) =
     var x: int
 
   declareInt(x) # error: unknown identifier: 'x'
@@ -3420,7 +3420,7 @@ receive undeclared identifiers:
 
 .. code-block:: nimrod
 
-  template declareInt(x: expr) {.immediate.} = 
+  template declareInt(x: expr) {.immediate.} =
     var x: int
 
   declareInt(x) # valid
@@ -3433,17 +3433,17 @@ The template body does not open a new scope. To open a new scope a ``block``
 statement can be used:
 
 .. code-block:: nimrod
-  template declareInScope(x: expr, t: typedesc): stmt {.immediate.} = 
+  template declareInScope(x: expr, t: typedesc): stmt {.immediate.} =
     var x: t
-    
-  template declareInNewScope(x: expr, t: typedesc): stmt {.immediate.} = 
+
+  template declareInNewScope(x: expr, t: typedesc): stmt {.immediate.} =
     # open a new scope:
-    block: 
+    block:
       var x: t
 
   declareInScope(a, int)
   a = 42  # works, `a` is known here
-  
+
   declareInNewScope(b, int)
   b = 42  # does not work, `b` is unknown
 
@@ -3467,23 +3467,23 @@ special ``:`` syntax:
           close(f)
       else:
         quit("cannot open: " & fn)
-      
+
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
-  
+
 In the example the two ``writeln`` statements are bound to the ``actions``
-parameter. 
+parameter.
 
 **Note:** The symbol binding rules for templates might change!
 
-Symbol binding within templates happens after template instantiation: 
+Symbol binding within templates happens after template instantiation:
 
 .. code-block:: nimrod
   # Module A
-  var 
+  var
     lastId = 0
-  
+
   template genId*: expr =
     inc(lastId)
     lastId
@@ -3491,23 +3491,23 @@ Symbol binding within templates happens after template instantiation:
 .. code-block:: nimrod
   # Module B
   import A
-  
+
   echo genId() # Error: undeclared identifier: 'lastId'
 
 
 Bind statement
 --------------
 
-Exporting a template is a often a leaky abstraction as it can depend on 
+Exporting a template is a often a leaky abstraction as it can depend on
 symbols that are not visible from a client module. However, to compensate for
 this case, a `bind`:idx: statement can be used: It declares all identifiers
 that should be bound early (i.e. when the template is parsed):
 
 .. code-block:: nimrod
   # Module A
-  var 
+  var
     lastId = 0
-  
+
   template genId*: expr =
     bind lastId
     inc(lastId)
@@ -3516,7 +3516,7 @@ that should be bound early (i.e. when the template is parsed):
 .. code-block:: nimrod
   # Module B
   import A
-  
+
   echo genId() # Works
 
 A ``bind`` statement can also be used in generics for the same purpose.
@@ -3529,11 +3529,11 @@ In templates identifiers can be constructed with the backticks notation:
 
 .. code-block:: nimrod
 
-  template typedef(name: expr, typ: typedesc) {.immediate.} = 
+  template typedef(name: expr, typ: typedesc) {.immediate.} =
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
-      
+
   typedef(myint, int)
   var x: PMyInt
 
@@ -3562,7 +3562,7 @@ shadowed by the same argument name even when fully qualified:
 
   tstLev(levA)
   # produces: 'levA levA'
-  
+
 But the global symbol can properly be captured by a ``bind`` statement:
 
 .. code-block:: nimrod
@@ -3589,14 +3589,14 @@ Per default templates are `hygienic`:idx:\: Local identifiers declared in a
 template cannot be accessed in the instantiation context:
 
 .. code-block:: nimrod
-  
+
   template newException*(exceptn: typedesc, message: string): expr =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
     e.msg = message
     e
-    
+
   # so this works:
   let e = "message"
   raise newException(EIO, e)
@@ -3608,7 +3608,7 @@ symbols are not exposed but inject'ed are.
 
 The default for symbols of entity ``type``, ``var``, ``let`` and ``const``
 is ``gensym`` and for ``proc``, ``iterator``, ``converter``, ``template``,
-``macro`` is ``inject``. However, if the name of the entity is passed as a 
+``macro`` is ``inject``. However, if the name of the entity is passed as a
 template parameter, it is an inject'ed symbol:
 
 .. code-block:: nimrod
@@ -3616,7 +3616,7 @@ template parameter, it is an inject'ed symbol:
     block:
       var f: TFile  # since 'f' is a template param, it's injected implicitly
       ...
-      
+
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
@@ -3627,7 +3627,7 @@ no semantics outside of a template definition and cannot be abstracted over:
 
 .. code-block:: nimrod
   {.pragma myInject: inject.}
-  
+
   template t() =
     var x {.myInject.}: int # does NOT work
 
@@ -3714,9 +3714,9 @@ BindSym
 -------
 
 The above ``debug`` macro relies on the fact that ``write``, ``writeln`` and
-``stdout`` are declared in the system module and thus visible in the 
+``stdout`` are declared in the system module and thus visible in the
 instantiating context. There is a way to use bound identifiers
-(aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym`` 
+(aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym``
 builtin can be used for that:
 
 .. code-block:: nimrod
@@ -3798,8 +3798,8 @@ powerful programming construct that still suffices. So the "check list" is:
 Macros as pragmas
 -----------------
 
-Whole routines (procs, iterators etc.) can also be passed to a template or 
-a macro via the pragma notation: 
+Whole routines (procs, iterators etc.) can also be passed to a template or
+a macro via the pragma notation:
 
 .. code-block:: nimrod
   template m(s: stmt) = nil
@@ -3822,7 +3822,7 @@ typedesc
 --------
 
 `typedesc` is a special type allowing one to treat types as compile-time values
-(i.e. if types are compile-time values and all values have a type, then 
+(i.e. if types are compile-time values and all values have a type, then
 typedesc must be their type).
 
 When used as a regular proc param, typedesc acts as a type class. The proc
@@ -3861,7 +3861,7 @@ When used with macros and .compileTime. procs on the other hand, the compiler
 does not need to instantiate the code multiple times, because types then can be
 manipulated using the unified internal symbol representation. In such context
 typedesc acts as any other type. One can create variables, store typedesc
-values inside containers and so on. For example, here is how one can create 
+values inside containers and so on. For example, here is how one can create
 a type-safe wrapper for the unsafe `printf` function from C:
 
 .. code-block:: nimrod
@@ -3875,7 +3875,7 @@ a type-safe wrapper for the unsafe `printf` function from C:
         of 's': string
         of 'p': pointer
         else: EOutOfRange
-      
+
       var actualType = args[i].getType
       inc i
 
@@ -3884,7 +3884,7 @@ a type-safe wrapper for the unsafe `printf` function from C:
       elif expectedType != actualType:
         error "type mismatch for argument ", i, ". expected type: ",
               expectedType.name, ", actual type: ", actualType.name
-    
+
     # keep the original callsite, but use cprintf instead
     result = callsite()
     result[0] = newIdentNode(!"cprintf")
@@ -3910,32 +3910,32 @@ Term rewriting macros
 
 `Term rewriting macros`:idx: are macros or templates that have not only
 a *name* but also a *pattern* that is searched for after the semantic checking
-phase of the compiler: This means they provide an easy way to enhance the 
+phase of the compiler: This means they provide an easy way to enhance the
 compilation pipeline with user defined optimizations:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int): int = a+a
-  
+
   let x = 3
   echo x * 2
 
 The compiler now rewrites ``x * 2`` as ``x + x``. The code inside the
 curlies is the pattern to match against. The operators ``*``,  ``**``,
-``|``, ``~`` have a special meaning in patterns if they are written in infix 
+``|``, ``~`` have a special meaning in patterns if they are written in infix
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 
 
 Unfortunately optimizations are hard to get right and even the tiny example
-is **wrong**: 
+is **wrong**:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int): int = a+a
-  
+
   proc f(): int =
     echo "side effect!"
     result = 55
-  
+
   echo f() * 2
 
 We cannot duplicate 'a' if it denotes an expression that has a side effect!
@@ -3943,11 +3943,11 @@ Fortunately Nimrod supports side effect analysis:
 
 .. code-block:: nimrod
   template optMul{`*`(a, 2)}(a: int{noSideEffect}): int = a+a
-  
+
   proc f(): int =
     echo "side effect!"
     result = 55
-  
+
   echo f() * 2 # not optimized ;-)
 
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
@@ -3956,13 +3956,13 @@ blindly:
 
 .. code-block:: nimrod
   template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
-  
+
 What optimizers really need to do is a *canonicalization*:
 
 .. code-block:: nimrod
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
 
-The ``int{lit}`` parameter pattern matches against an expression of 
+The ``int{lit}`` parameter pattern matches against an expression of
 type ``int``, but only if it's a literal.
 
 
@@ -3970,7 +3970,7 @@ type ``int``, but only if it's a literal.
 Parameter constraints
 ---------------------
 
-The `parameter constraint`:idx: expression can use the operators ``|`` (or), 
+The `parameter constraint`:idx: expression can use the operators ``|`` (or),
 ``&`` (and) and ``~`` (not) and the following predicates:
 
 ===================      =====================================================
@@ -3978,7 +3978,7 @@ Predicate                Meaning
 ===================      =====================================================
 ``atom``                 The matching node has no children.
 ``lit``                  The matching node is a literal like "abc", 12.
-``sym``                  The matching node must be a symbol (a bound 
+``sym``                  The matching node must be a symbol (a bound
                          identifier).
 ``ident``                The matching node must be an identifier (an unbound
                          identifier).
@@ -4004,9 +4004,9 @@ Predicate                Meaning
 ``enumfield``            A symbol which is a field in an enumeration.
 ``forvar``               A for loop variable.
 ``label``                A label (used in ``block`` statements).
-``nk*``                  The matching AST must have the specified kind. 
+``nk*``                  The matching AST must have the specified kind.
                          (Example: ``nkIfStmt`` denotes an ``if`` statement.)
-``alias``                States that the marked parameter needs to alias 
+``alias``                States that the marked parameter needs to alias
                          with *some* other parameter.
 ``noalias``              States that *every* other parameter must not alias
                          with the marked parameter.
@@ -4052,14 +4052,14 @@ constant folding, so the following does not work:
 The reason is that the compiler already transformed the 1 into "1" for
 the ``echo`` statement. However, a term rewriting macro should not change the
 semantics anyway. In fact they can be deactived with the ``--patterns:off``
-command line option or temporarily with the ``patterns`` pragma. 
+command line option or temporarily with the ``patterns`` pragma.
 
 
 The ``{}`` operator
 ~~~~~~~~~~~~~~~~~~~
 
 A pattern expression can be bound to a pattern parameter via the ``expr{param}``
-notation: 
+notation:
 
 .. code-block:: nimrod
   template t{(0|1|2){x}}(x: expr): expr = x+1
@@ -4077,7 +4077,7 @@ The ``~`` operator is the **not** operator in patterns:
   template t{x = (~x){y} and (~x){z}}(x, y, z: bool): stmt =
     x = y
     if x: x = z
-  
+
   var
     a = false
     b = true
@@ -4090,12 +4090,12 @@ The ``*`` operator
 ~~~~~~~~~~~~~~~~~~
 
 The ``*`` operator can *flatten* a nested binary expression like ``a & b & c``
-to ``&(a, b, c)``: 
+to ``&(a, b, c)``:
 
 .. code-block:: nimrod
   var
     calls = 0
-    
+
   proc `&&`(s: varargs[string]): string =
     result = s[0]
     for i in 1..len(s)-1: result.add s[i]
@@ -4112,8 +4112,8 @@ to ``&(a, b, c)``:
 
 The second operator of `*` must be a parameter; it is used to gather all the
 arguments. The expression ``"my" && (space & "awe" && "some " ) && "concat"``
-is passed to ``optConc`` in ``a`` as a special list (of kind ``nkArgList``) 
-which is flattened into a call expression; thus the invocation of ``optConc`` 
+is passed to ``optConc`` in ``a`` as a special list (of kind ``nkArgList``)
+which is flattened into a call expression; thus the invocation of ``optConc``
 produces:
 
 .. code-block:: nimrod
@@ -4146,7 +4146,7 @@ all the arguments, but also the matched operators in reverse polish notation:
 
   var x, y, z: TMatrix
 
-  echo x + y * z - x 
+  echo x + y * z - x
 
 This passes the expression ``x + y * z - x`` to the ``optM`` macro as
 an ``nnkArgList`` node containing::
@@ -4166,7 +4166,7 @@ an ``nnkArgList`` node containing::
 Parameters
 ----------
 
-Parameters in a pattern are type checked in the matching process. If a 
+Parameters in a pattern are type checked in the matching process. If a
 parameter is of the type ``varargs`` it is treated specially and it can match
 0 or more arguments in the AST to be matched against:
 
@@ -4176,7 +4176,7 @@ parameter is of the type ``varargs`` it is treated specially and it can match
     ((write|writeln){w})(f, y)
   }(x, y: varargs[expr], f: TFile, w: expr) =
     w(f, x, y)
-  
+
 
 
 Example: Partial evaluation
@@ -4211,7 +4211,7 @@ The following example shows how some form of hoisting can be implemented:
 
 The ``optPeg`` template optimizes the case of a peg constructor with a string
 literal, so that the pattern will only be parsed once at program startup and
-stored in a global ``gl`` which is then re-used. This optimization is called 
+stored in a global ``gl`` which is then re-used. This optimization is called
 hoisting because it is comparable to classical loop hoisting.
 
 
@@ -4244,7 +4244,7 @@ ordinary routines.
 Move optimization
 -----------------
 
-The ``call`` constraint is particularly useful to implement a `move`:idx: 
+The ``call`` constraint is particularly useful to implement a `move`:idx:
 optimization for types that have copying semantics:
 
 .. code-block:: nimrod
@@ -4333,8 +4333,8 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The 
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"`` 
+The original module name is then not accessible. The
+notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
 can be used to refer to a module in subdirectories:
 
 .. code-block:: nimrod
@@ -4356,7 +4356,7 @@ Likewise the following does not make sense as the name is ``strutils`` already:
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
-After the `from`:idx: statement a module name follows followed by 
+After the `from`:idx: statement a module name follows followed by
 an ``import`` to list the symbols one likes to use without explict
 full qualification:
 
@@ -4367,8 +4367,8 @@ full qualification:
   # always possible: full qualification:
   echo strutils.replace("abc", "a", "z")
 
-It's also possible to use ``from module import nil`` if one wants to import 
-the module but wants to enforce fully qualified access to every symbol 
+It's also possible to use ``from module import nil`` if one wants to import
+the module but wants to enforce fully qualified access to every symbol
 in ``module``.
 
 
@@ -4386,15 +4386,15 @@ modules don't need to import a module's dependencies:
   # module A
   import B
   export B.TMyObject
-  
+
   proc `$`*(x: TMyObject): string = "my object"
 
 
 .. code-block:: nimrod
   # module C
   import A
-  
-  # B.TMyObject has been imported implicitly here: 
+
+  # B.TMyObject has been imported implicitly here:
   var x: TMyObject
   echo($x)
 
@@ -4429,8 +4429,8 @@ following places:
 Module scope
 ~~~~~~~~~~~~
 All identifiers of a module are valid from the point of declaration until
-the end of the module. Identifiers from indirectly dependent modules are *not* 
-available. The `system`:idx: module is automatically imported in every other 
+the end of the module. Identifiers from indirectly dependent modules are *not*
+available. The `system`:idx: module is automatically imported in every other
 module.
 
 If a module imports an identifier by two different modules, each occurrence of
@@ -4484,7 +4484,7 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in ``debugEcho`` pretends to be free of 
+As a special semantic rule, the built-in ``debugEcho`` pretends to be free of
 side effects, so that it can be used for debugging routines marked as
 ``noSideEffect``.
 
@@ -4502,10 +4502,10 @@ The `destructor`:idx: pragma is used to mark a proc to act as a type destructor.
 The proc must have a single parameter with a concrete type (the name of a
 generic type is allowed too).
 
-Destructors will be automatically invoked when a local stack variable goes 
+Destructors will be automatically invoked when a local stack variable goes
 out of scope.
 
-If a record type features a field with destructable type and 
+If a record type features a field with destructable type and
 the user have not provided explicit implementation, Nimrod will automatically
 generate a destructor for the record type. Nimrod will automatically insert
 calls to any base class destructors in both user-defined and generated
@@ -4519,13 +4519,13 @@ can then only be used in *destructible contexts* and as parameters:
     TMyObj = object
       x, y: int
       p: pointer
-      
+
   proc destruct(o: var TMyObj) {.destructor.} =
     if o.p != nil: dealloc o.p
-    
+
   proc open: TMyObj =
     result = TMyObj(x: 1, y: 2, p: alloc(3))
- 
+
   proc work(o: TMyObj) =
     echo o.x
     # No destructor invoked here for 'o' as 'o' is a parameter.
@@ -4535,7 +4535,7 @@ can then only be used in *destructible contexts* and as parameters:
     var x = open()
     # valid: pass 'x' to some other proc:
     work(x)
-    
+
     # Error: usage of a type with a destructor in a non destructible context
     echo open()
 
@@ -4601,7 +4601,7 @@ as helpers for macros.
 
 noReturn pragma
 ---------------
-The `noreturn`:idx: pragma is used to mark a proc that never returns. 
+The `noreturn`:idx: pragma is used to mark a proc that never returns.
 
 
 Acyclic pragma
@@ -4645,25 +4645,25 @@ shallow pragma
 --------------
 The `shallow`:idx: pragma affects the semantics of a type: The compiler is
 allowed to make a shallow copy. This can cause serious semantic issues and
-break memory safety! However, it can speed up assignments considerably, 
-because the semantics of Nimrod require deep copying of sequences and strings. 
+break memory safety! However, it can speed up assignments considerably,
+because the semantics of Nimrod require deep copying of sequences and strings.
 This can be expensive, especially if sequences are used to build a tree
-structure: 
+structure:
 
 .. code-block:: nimrod
   type
     TNodeKind = enum nkLeaf, nkInner
     TNode {.final, shallow.} = object
       case kind: TNodeKind
-      of nkLeaf: 
+      of nkLeaf:
         strVal: string
-      of nkInner: 
+      of nkInner:
         children: seq[TNode]
 
 
 Pure pragma
 -----------
-An object type can be marked with the `pure`:idx: pragma so that its type 
+An object type can be marked with the `pure`:idx: pragma so that its type
 field which is used for runtime type identification is omitted. This is
 necessary for binary compatibility with other compiled languages.
 
@@ -4683,12 +4683,12 @@ error pragma
 ------------
 The `error`:idx: pragma is used to make the compiler output an error message
 with the given content. Compilation does not necessarily abort after an error
-though. 
+though.
 
 The ``error`` pragma can also be used to
 annotate a symbol (like an iterator or proc). The *usage* of the symbol then
 triggers a compile-time error. This is especially useful to rule out that some
-operation is valid due to overloading and type conversions: 
+operation is valid due to overloading and type conversions:
 
 .. code-block:: nimrod
   ## check that underlying int values are compared and not the pointers:
@@ -4717,7 +4717,7 @@ The `line`:idx: pragma can be used to affect line information of the annotated
 statement as seen in stack backtraces:
 
 .. code-block:: nimrod
-  
+
   template myassert*(cond: expr, msg = "") =
     if not cond:
       # change run-time line information of the 'raise' statement:
@@ -4731,26 +4731,26 @@ If the ``line`` pragma is used with a parameter, the parameter needs be a
 
 linearScanEnd pragma
 --------------------
-The `linearScanEnd`:idx: pragma can be used to tell the compiler how to 
+The `linearScanEnd`:idx: pragma can be used to tell the compiler how to
 compile a Nimrod `case`:idx: statement. Syntactically it has to be used as a
 statement:
 
 .. code-block:: nimrod
   case myInt
-  of 0: 
+  of 0:
     echo "most common case"
-  of 1: 
+  of 1:
     {.linearScanEnd.}
     echo "second most common case"
   of 2: echo "unlikely: use branch table"
   else: echo "unlikely too: use branch table for ", myInt
 
-In the example, the case branches ``0`` and ``1`` are much more common than 
-the other cases. Therefore the generated assembler code should test for these 
-values first, so that the CPU's branch predictor has a good chance to succeed 
+In the example, the case branches ``0`` and ``1`` are much more common than
+the other cases. Therefore the generated assembler code should test for these
+values first, so that the CPU's branch predictor has a good chance to succeed
 (avoiding an expensive CPU pipeline stall). The other cases might be put into a
 jump table for O(1) overhead, but at the cost of a (very likely) pipeline
-stall. 
+stall.
 
 The ``linearScanEnd`` pragma should be put into the last branch that should be
 tested against via linear scanning. If put into the last branch of the
@@ -4759,8 +4759,8 @@ whole ``case`` statement, the whole ``case`` statement uses linear scanning.
 
 computedGoto pragma
 -------------------
-The `computedGoto`:idx: pragma can be used to tell the compiler how to 
-compile a Nimrod `case`:idx: in a ``while true`` statement. 
+The `computedGoto`:idx: pragma can be used to tell the compiler how to
+compile a Nimrod `case`:idx: in a ``while true`` statement.
 Syntactically it has to be used as a statement inside the loop:
 
 .. code-block:: nimrod
@@ -4794,21 +4794,21 @@ Syntactically it has to be used as a statement inside the loop:
       of enumE:
         break
       inc(pc)
-    
+
   vm()
 
 As the example shows ``computedGoto`` is mostly useful for interpreters. If
-the underlying backend (C compiler) does not support the computed goto 
+the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
 unroll pragma
 -------------
 The `unroll`:idx: pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for runtime efficiency: 
+a `for`:idx: or `while`:idx: loop for runtime efficiency:
 
 .. code-block:: nimrod
-  proc searchChar(s: string, c: char): int = 
+  proc searchChar(s: string, c: char): int =
     for i in 0 .. s.high:
       {.unroll: 4.}
       if s[i] == c: return i
@@ -4954,7 +4954,7 @@ as necessary.
 
 Please note that if a callable symbol is never used in this scenario, its body
 will never be compiled. This is the default behavior leading to best compilation
-times, but if exhaustive compilation of all definitions is required, using 
+times, but if exhaustive compilation of all definitions is required, using
 ``nimrod check`` provides this option as well.
 
 Example:
@@ -4974,9 +4974,9 @@ Example:
 Pragma pragma
 -------------
 
-The `pragma`:idx: pragma can be used to declare user defined pragmas. This is 
-useful because Nimrod's templates and macros do not affect pragmas. User 
-defined pragmas are in a different module-wide scope than all other symbols. 
+The `pragma`:idx: pragma can be used to declare user defined pragmas. This is
+useful because Nimrod's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -4986,8 +4986,8 @@ Example:
     {.pragma: rtl, exportc, dynlib, cdecl.}
   else:
     {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-    
-  proc p*(a, b: int): int {.rtl.} = 
+
+  proc p*(a, b: int): int {.rtl.} =
     return a+b
 
 In the example a new pragma named ``rtl`` is introduced that either imports
@@ -5065,8 +5065,8 @@ the compiler to pass the type by reference (hidden pointer) to procs.
 
 Varargs pragma
 --------------
-The `varargs`:idx: pragma can be applied to procedures only (and procedure 
-types). It tells Nimrod that the proc can take a variable number of parameters 
+The `varargs`:idx: pragma can be applied to procedures only (and procedure
+types). It tells Nimrod that the proc can take a variable number of parameters
 after the last specified parameter. Nimrod string values will be converted to C
 strings automatically:
 
@@ -5079,7 +5079,7 @@ strings automatically:
 Dynlib pragma for import
 ------------------------
 With the `dynlib`:idx: pragma a procedure or a variable can be imported from
-a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). 
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX).
 The non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nimrod
@@ -5090,17 +5090,17 @@ In general, importing a dynamic library does not require any special linker
 options or linking with import libraries. This also implies that no *devel*
 packages need to be installed.
 
-The ``dynlib`` import mechanism supports a versioning scheme: 
+The ``dynlib`` import mechanism supports a versioning scheme:
 
-.. code-block:: nimrod 
-  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
+.. code-block:: nimrod
+  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl,
     importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
 
 At runtime the dynamic library is searched for (in this order)::
-  
+
   libtcl.so.1
   libtcl.so.0
-  libtcl8.5.so.1  
+  libtcl8.5.so.1
   libtcl8.5.so.0
   libtcl8.4.so.1
   libtcl8.4.so.0
@@ -5113,22 +5113,22 @@ string expressions in general:
 .. code-block:: nimrod
   import os
 
-  proc getDllName: string = 
+  proc getDllName: string =
     result = "mylib.dll"
     if existsFile(result): return
     result = "mylib2.dll"
     if existsFile(result): return
     quit("could not load dynamic library")
-  
+
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
 
 **Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
 strings, because they are precompiled.
 
-**Note**: Passing variables to the ``dynlib`` pragma will fail at runtime 
+**Note**: Passing variables to the ``dynlib`` pragma will fail at runtime
 because of order of initialization problems.
 
-**Note**: A ``dynlib`` import can be overriden with 
+**Note**: A ``dynlib`` import can be overriden with
 the ``--dynlibOverride:name`` command line option. The Compiler User Guide
 contains further information.
 
@@ -5150,17 +5150,17 @@ This is only useful if the program is compiled as a dynamic library via the
 Threads
 =======
 
-Even though Nimrod's `thread`:idx: support and semantics are preliminary, 
-they should be quite usable already. To enable thread support 
+Even though Nimrod's `thread`:idx: support and semantics are preliminary,
+they should be quite usable already. To enable thread support
 the ``--threads:on`` command line switch needs to be used. The ``system``
-module then contains several threading primitives. 
-See the `threads <threads.html>`_ and `channels <channels.html>`_ modules 
+module then contains several threading primitives.
+See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the thread API.
 
 Nimrod's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage 
-collected) heap and sharing of memory is restricted to global variables. This 
-helps to prevent race conditions. GC efficiency is improved quite a lot, 
+programming languages (C, Pascal, Java): Each thread has its own (garbage
+collected) heap and sharing of memory is restricted to global variables. This
+helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 Memory allocation requires no lock at all! This design easily scales to massive
 multicore processors that will become the norm in the future.
@@ -5173,11 +5173,11 @@ Thread pragma
 A proc that is executed as a new thread of execution should be marked by the
 `thread pragma`:idx:. The compiler checks procedures marked as ``thread`` for
 violations of the `no heap sharing restriction`:idx:\: This restriction implies
-that it is invalid to construct a data structure that consists of memory 
-allocated from different (thread local) heaps. 
+that it is invalid to construct a data structure that consists of memory
+allocated from different (thread local) heaps.
 
-Since the semantic checking of threads requires whole program analysis, 
-it is quite expensive and can be turned off with ``--threadanalysis:off`` to 
+Since the semantic checking of threads requires whole program analysis,
+it is quite expensive and can be turned off with ``--threadanalysis:off`` to
 improve compile times.
 
 A thread proc is passed to ``createThread`` and invoked indirectly; so the
@@ -5187,13 +5187,13 @@ A thread proc is passed to ``createThread`` and invoked indirectly; so the
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the `threadvar`:idx: pragma; it is 
+A global variable can be marked with the `threadvar`:idx: pragma; it is
 a `thread-local`:idx: variable then:
 
 .. code-block:: nimrod
   var checkpoints* {.threadvar.}: seq[string]
 
-Due to implementation restrictions thread local variables cannot be 
+Due to implementation restrictions thread local variables cannot be
 initialized within the ``var`` section. (Every thread local variable needs to
 be replicated at thread creation.)
 
@@ -5239,52 +5239,52 @@ Nimrod supports the `actor model`:idx: of concurrency natively:
 
   echo printedLines
 
-In the actor model threads communicate only over sending messages (`send`:idx: 
-and `recv`:idx: built-ins), not by sharing memory. Every thread has 
+In the actor model threads communicate only over sending messages (`send`:idx:
+and `recv`:idx: built-ins), not by sharing memory. Every thread has
 an `inbox`:idx: that keeps incoming messages until the thread requests a new
 message via the ``recv`` operation. The inbox is an unlimited FIFO queue.
 
-In the above example the ``print`` thread also communicates with its 
-parent thread over the ``printedLines`` global variable. In general, it is 
+In the above example the ``print`` thread also communicates with its
+parent thread over the ``printedLines`` global variable. In general, it is
 highly advisable to only read from globals, but not to write to them. In fact
 a write to a global that contains GC'ed memory is always wrong, because it
 violates the *no heap sharing restriction*:
 
 .. code-block:: nimrod
-  var 
+  var
     global: string
     t: TThread[string]
-  
+
   proc horrible() {.thread.} =
     global = "string in thread local heap!"
 
   createThread(t, horrible)
   joinThread(t)
-  
+
 For the above code the compiler produces "Warning: write to foreign heap". This
 warning might become an error message in future versions of the compiler.
 
 Creating a thread is an expensive operation, because a new stack and heap needs
 to be created for the thread. It is therefore highly advisable that a thread
-handles a large amount of work. Nimrod prefers *coarse grained* 
+handles a large amount of work. Nimrod prefers *coarse grained*
 over *fine grained* concurrency.
 
 
 Threads and exceptions
 ----------------------
 
-The interaction between threads and exceptions is simple: A *handled* exception 
-in one thread cannot affect any other thread. However, an *unhandled* 
+The interaction between threads and exceptions is simple: A *handled* exception
+in one thread cannot affect any other thread. However, an *unhandled*
 exception in one thread terminates the whole *process*!
 
 Taint mode
 ==========
 
-The Nimrod compiler and most parts of the standard library support 
-a `taint mode`:idx:. Input strings are declared with the `TaintedString`:idx: 
+The Nimrod compiler and most parts of the standard library support
+a `taint mode`:idx:. Input strings are declared with the `TaintedString`:idx:
 string type declared in the ``system`` module.
 
-If the taint mode is turned on (via the ``--taintMode:on`` command line 
+If the taint mode is turned on (via the ``--taintMode:on`` command line
 option) it is a distinct string type which helps to detect input
 validation errors:
 
@@ -5292,7 +5292,7 @@ validation errors:
   echo "your name: "
   var name: TaintedString = stdin.readline
   # it is safe here to output the name without any input validation, so
-  # we simply convert `name` to string to make the compiler happy: 
+  # we simply convert `name` to string to make the compiler happy:
   echo "hi, ", name.string
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for

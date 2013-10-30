@@ -4,13 +4,13 @@
 #
 #                        All Rights Reserved
 #
-#Permission to use, copy, modify, and distribute this software and its 
-#documentation for any purpose and without fee is hereby granted, 
+#Permission to use, copy, modify, and distribute this software and its
+#documentation for any purpose and without fee is hereby granted,
 #provided that the above copyright notice appear in all copies and that
-#both that copyright notice and this permission notice appear in 
+#both that copyright notice and this permission notice appear in
 #supporting documentation, and that the names of Digital or MIT not be
 #used in advertising or publicity pertaining to distribution of the
-#software without specific, written prior permission.  
+#software without specific, written prior permission.
 #
 #DIGITAL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
 #ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
@@ -21,21 +21,21 @@
 #SOFTWARE.
 #
 #******************************************************************
-# $XFree86: xc/include/extensions/Xv.h,v 1.3 1999/05/23 06:33:22 dawes Exp $ 
+# $XFree86: xc/include/extensions/Xv.h,v 1.3 1999/05/23 06:33:22 dawes Exp $
 
-import 
+import
   x
 
-const 
+const
   XvName* = "libXVideo.so"
   XvVersion* = 2
-  XvRevision* = 2             # Symbols 
+  XvRevision* = 2             # Symbols
 
-type 
+type
   TXvPortID* = TXID
   TXvEncodingID* = TXID
 
-const 
+const
   XvNone* = 0
   XvInput* = 0
   XvOutput* = 1
@@ -43,7 +43,7 @@ const
   XvOutputMask* = 1 shl XvOutput
   XvVideoMask* = 0x00000004
   XvStillMask* = 0x00000008
-  XvImageMask* = 0x00000010   # These two are not client viewable 
+  XvImageMask* = 0x00000010   # These two are not client viewable
   XvPixmapMask* = 0x00010000
   XvWindowMask* = 0x00020000
   XvGettable* = 0x00000001
@@ -53,10 +53,10 @@ const
   XvPacked* = 0
   XvPlanar* = 1
   XvTopToBottom* = 0
-  XvBottomToTop* = 1          # Events 
+  XvBottomToTop* = 1          # Events
   XvVideoNotify* = 0
   XvPortNotify* = 1
-  XvNumEvents* = 2            # Video Notify Reasons 
+  XvNumEvents* = 2            # Video Notify Reasons
   XvStarted* = 0
   XvStopped* = 1
   XvBusy* = 2
@@ -70,11 +70,11 @@ const
   XvPreemptedMask* = 1 shl XvPreempted
   XvHardErrorMask* = 1 shl XvHardError
   XvAnyReasonMask* = (1 shl XvNumReasons) - 1
-  XvNoReasonMask* = 0         # Errors 
+  XvNoReasonMask* = 0         # Errors
   XvBadPort* = 0
   XvBadEncoding* = 1
   XvBadControl* = 2
-  XvNumErrors* = 3            # Status 
+  XvNumErrors* = 3            # Status
   XvBadExtension* = 1
   XvAlreadyGrabbed* = 2
   XvInvalidTime* = 3

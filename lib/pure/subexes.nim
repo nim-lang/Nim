@@ -70,7 +70,7 @@ proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
     result = if not negative: j-1 else: a.len-j
   of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
     var name = ""
-    while f[i] in PatternChars: 
+    while f[i] in PatternChars:
       name.add(f[i])
       inc(i)
     result = findNormalized(name, a)+1
@@ -123,7 +123,7 @@ proc scanBranch(p: var TFormatParser, a: openArray[string],
   while true:
     case f[i]
     of ']': break
-    of '|': 
+    of '|':
       inc i
       elsePart = i
       inc c
@@ -164,7 +164,7 @@ proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
   var slice = false
   var i = p.i
   var f = p.f
-  
+
   if f[i] == '{': inc i
   else: raiseInvalidFormat("'{' expected")
   if f[i] == '.' and f[i+1] == '.':
@@ -185,12 +185,12 @@ proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
   if f[i] != '}': raiseInvalidFormat("'}' expected")
   inc i
   p.i = i
-  
+
 proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
   var i = p.i
   var f = p.f
   case f[i]
-  of '$': 
+  of '$':
     emitChar p, s, '$'
     inc i
   of '{':
@@ -221,7 +221,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
       # $' '~{1..3}
       # insert space followed by 1..3 if not empty
       inc i
-      call: 
+      call:
         let (x, y) = scanSlice(p, a)
       var L = 0
       for j in x..y: inc L, a[j].len
@@ -247,7 +247,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           of 'i':
             inc i
             callNoLineLenTracking: scanQuote(p, indent, true)
-            
+
             call:
               let (x, y) = scanSlice(p, a)
             if maxLen < 1: emitStrLinear(p, s, indent)
@@ -255,7 +255,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
             emitStr p, s, a[x]
             for j in x+1..y:
               emitStr p, s, sep
-              if items >= maxLen: 
+              if items >= maxLen:
                 emitStrLinear p, s, indent
                 items = 0
               emitStr p, s, a[j]
@@ -263,7 +263,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           of 'c':
             inc i
             callNoLineLenTracking: scanQuote(p, indent, true)
-            
+
             call:
               let (x, y) = scanSlice(p, a)
             if p.lineLen + a[x].len > maxLen: emitStrLinear(p, s, indent)
@@ -272,7 +272,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
               emitStr p, s, sep
               if p.lineLen + a[j].len > maxLen: emitStrLinear(p, s, indent)
               emitStr p, s, a[j]
-            
+
           else: raiseInvalidFormat("unit 'c' (chars) or 'i' (items) expected")
           break StringJoin
 
@@ -283,7 +283,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           emitStr p, s, sep
           emitStr p, s, a[j]
   else:
-    call: 
+    call:
       var x = getFormatArg(p, a)
     emitStr p, s, a[x]
   p.i = i
@@ -362,28 +362,28 @@ when isMainModule:
   doAssert "$1($', '{2..})" % ["f", "a", "b"] == "f(a, b)"
 
   doAssert "$[$1($', '{2..})|''''|fg'$3']1" % ["7", "a", "b"] == "fg$3"
-  
+
   doAssert "$[$#($', '{#..})|''''|$3]1" % ["0", "a", "b"] == "0(a, b)"
   doAssert "$' '~{..}" % "" == ""
   doAssert "$' '~{..}" % "P0" == " P0"
   doAssert "${$1}" % "1" == "1"
   doAssert "${$$-1} $$1" % "1" == "1 $1"
-           
+
   doAssert "$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"] ==
            """doAssert(
-    longishA, 
+    longishA,
     longish)"""
-  
-  echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA", 
+
+  echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
     "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]
-  
+
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
-  
+
   doAssert subex"$1 $[files|file|files]{1} copied" % ["1"] == "1 file copied"
-  
+
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
-  
+
   echo subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
-  
-  
+
+

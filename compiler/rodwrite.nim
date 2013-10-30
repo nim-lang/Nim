@@ -11,13 +11,13 @@
 # rod files is a pass, reading of rod files is not! This is why reading and
 # writing of rod files is split into two different modules.
 
-import 
+import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
   condsyms, ropes, idents, crc, rodread, passes, importer, idgen, rodutils
 
 # implementation
 
-type 
+type
   TRodWriter = object of TPassContext
     module: PSym
     crc: TCrc32
@@ -45,15 +45,15 @@ proc addInterfaceSym(w: PRodWriter, s: PSym)
 proc addStmt(w: PRodWriter, n: PNode)
 proc writeRod(w: PRodWriter)
 
-proc getDefines(): string = 
+proc getDefines(): string =
   result = ""
   for d in definedSymbolNames():
     if result.len != 0: add(result, " ")
     add(result, d)
 
-proc fileIdx(w: PRodWriter, filename: string): int = 
-  for i in countup(0, high(w.files)): 
-    if w.files[i] == filename: 
+proc fileIdx(w: PRodWriter, filename: string): int =
+  for i in countup(0, high(w.files)):
+    if w.files[i] == filename:
       return i
   result = len(w.files)
   setlen(w.files, result + 1)
@@ -62,7 +62,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter = 
+proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter =
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -84,12 +84,12 @@ proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter =
   result.init = ""
   result.origFile = module.info.toFilename
   result.data = newStringOfCap(12_000)
-  
+
 proc addModDep(w: PRodWriter, dep: string) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
   encodeVInt(fileIdx(w, dep), w.modDeps)
 
-const 
+const
   rodNL = "\x0A"
 
 proc addInclDep(w: PRodWriter, dep: string) =
@@ -109,18 +109,18 @@ proc pushSym(w: PRodWriter, s: PSym) =
   if IiTableGet(w.index.tab, s.id) == invalidKey:
     w.sstack.add(s)
 
-proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode, 
-                result: var string) = 
-  if n == nil: 
+proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
+                result: var string) =
+  if n == nil:
     # nil nodes have to be stored too:
     result.add("()")
     return
   result.add('(')
-  encodeVInt(ord(n.kind), result) 
+  encodeVInt(ord(n.kind), result)
   # we do not write comments for now
   # Line information takes easily 20% or more of the filesize! Therefore we
   # omit line information if it is the same as the father's line information:
-  if finfo.fileIndex != n.info.fileIndex: 
+  if finfo.fileIndex != n.info.fileIndex:
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
@@ -138,7 +138,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
   # No need to output the file index, as this is the serialization of one
   # file.
   var f = n.flags * PersistentNodeFlags
-  if f != {}: 
+  if f != {}:
     result.add('$')
     encodeVInt(cast[int32](f), result)
   if n.typ != nil:
@@ -146,16 +146,16 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.typ.id, result)
     pushType(w, n.typ)
   case n.kind
-  of nkCharLit..nkInt64Lit: 
+  of nkCharLit..nkInt64Lit:
     if n.intVal != 0:
       result.add('!')
       encodeVBiggestInt(n.intVal, result)
-  of nkFloatLit..nkFloat64Lit: 
-    if n.floatVal != 0.0: 
+  of nkFloatLit..nkFloat64Lit:
+    if n.floatVal != 0.0:
       result.add('!')
       encodeStr($n.floatVal, result)
   of nkStrLit..nkTripleStrLit:
-    if n.strVal != "": 
+    if n.strVal != "":
       result.add('!')
       encodeStr(n.strVal, result)
   of nkIdent:
@@ -166,28 +166,28 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n) - 1):
       encodeNode(w, n.info, n.sons[i], result)
   add(result, ')')
 
-proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) = 
+proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s): 
+  if loc.s != low(loc.s):
     add(result, '*')
     encodeVInt(ord(loc.s), result)
-  if loc.flags != {}: 
+  if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
   if loc.t != nil:
     add(result, '^')
     encodeVInt(cast[int32](loc.t.id), result)
     pushType(w, loc.t)
-  if loc.r != nil: 
+  if loc.r != nil:
     add(result, '!')
     encodeStr(ropeToStr(loc.r), result)
-  if loc.a != 0: 
+  if loc.a != 0:
     add(result, '?')
     encodeVInt(loc.a, result)
   if oldlen + 1 == result.len:
@@ -195,9 +195,9 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
     setLen(result, oldLen)
   else:
     add(result, '>')
-  
-proc encodeType(w: PRodWriter, t: PType, result: var string) = 
-  if t == nil: 
+
+proc encodeType(w: PRodWriter, t: PType, result: var string) =
+  if t == nil:
     # nil nodes have to be stored too:
     result.add("[]")
     return
@@ -209,38 +209,38 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   encodeVInt(ord(t.kind), result)
   add(result, '+')
   encodeVInt(t.id, result)
-  if t.n != nil: 
+  if t.n != nil:
     encodeNode(w, UnknownLineInfo(), t.n, result)
-  if t.flags != {}: 
+  if t.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](t.flags), result)
-  if t.callConv != low(t.callConv): 
+  if t.callConv != low(t.callConv):
     add(result, '?')
     encodeVInt(ord(t.callConv), result)
-  if t.owner != nil: 
+  if t.owner != nil:
     add(result, '*')
     encodeVInt(t.owner.id, result)
     pushSym(w, t.owner)
-  if t.sym != nil: 
+  if t.sym != nil:
     add(result, '&')
     encodeVInt(t.sym.id, result)
     pushSym(w, t.sym)
-  if t.size != - 1: 
+  if t.size != - 1:
     add(result, '/')
     encodeVBiggestInt(t.size, result)
-  if t.align != 2: 
+  if t.align != 2:
     add(result, '=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
-  for i in countup(0, sonsLen(t) - 1): 
-    if t.sons[i] == nil: 
+  for i in countup(0, sonsLen(t) - 1):
+    if t.sons[i] == nil:
       add(result, "^()")
-    else: 
-      add(result, '^') 
+    else:
+      add(result, '^')
       encodeVInt(t.sons[i].id, result)
       pushType(w, t.sons[i])
 
-proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) = 
+proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')
   encodeVInt(ord(lib.kind), result)
   add(result, '|')
@@ -279,10 +279,10 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.magic != mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
-  if s.options != w.options: 
+  if s.options != w.options:
     result.add('!')
     encodeVInt(cast[int32](s.options), result)
-  if s.position != 0: 
+  if s.position != 0:
     result.add('%')
     encodeVInt(s.position, result)
   if s.offset != - 1:
@@ -310,7 +310,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
       if codeAst != nil:
         # resore the AST:
         s.ast.sons[codePos] = codeAst
-  
+
 proc addToIndex(w: var TIndex, key, val: int) =
   if key - w.lastIdxKey == 1:
     # we do not store a key-diff of 1 to safe space
@@ -331,7 +331,7 @@ when debugWrittenIds:
 
 proc symStack(w: PRodWriter): int =
   var i = 0
-  while i < len(w.sstack): 
+  while i < len(w.sstack):
     var s = w.sstack[i]
     if sfForward in s.flags:
       w.sstack[result] = s
@@ -339,16 +339,16 @@ proc symStack(w: PRodWriter): int =
     elif IiTableGet(w.index.tab, s.id) == invalidKey:
       var m = getModule(s)
       if m == nil: InternalError("symStack: module nil: " & s.name.s)
-      if (m.id == w.module.id) or (sfFromGeneric in s.flags): 
+      if (m.id == w.module.id) or (sfFromGeneric in s.flags):
         # put definition in here
         var L = w.data.len
-        addToIndex(w.index, s.id, L) 
+        addToIndex(w.index, s.id, L)
         when debugWrittenIds: incl(debugWritten, s.id)
         encodeSym(w, s, w.data)
         add(w.data, rodNL)
         # put into interface section if appropriate:
-        if {sfExported, sfFromGeneric} * s.flags == {sfExported} and 
-            s.kind in ExportableSymKinds: 
+        if {sfExported, sfFromGeneric} * s.flags == {sfExported} and
+            s.kind in ExportableSymKinds:
           encodeStr(s.name.s, w.interf)
           add(w.interf, ' ')
           encodeVInt(s.id, w.interf)
@@ -364,7 +364,7 @@ proc symStack(w: PRodWriter): int =
         if s.kind == skMethod and sfDispatcher notin s.flags:
           if w.methods.len != 0: add(w.methods, ' ')
           encodeVInt(s.id, w.methods)
-      elif IiTableGet(w.imports.tab, s.id) == invalidKey: 
+      elif IiTableGet(w.imports.tab, s.id) == invalidKey:
         addToIndex(w.imports, s.id, m.id)
         when debugWrittenIds:
           if not Contains(debugWritten, s.id):
@@ -376,14 +376,14 @@ proc symStack(w: PRodWriter): int =
     inc(i)
   setlen(w.sstack, result)
 
-proc typeStack(w: PRodWriter): int = 
+proc typeStack(w: PRodWriter): int =
   var i = 0
-  while i < len(w.tstack): 
+  while i < len(w.tstack):
     var t = w.tstack[i]
     if t.kind == tyForward:
       w.tstack[result] = t
       inc result
-    elif IiTableGet(w.index.tab, t.id) == invalidKey: 
+    elif IiTableGet(w.index.tab, t.id) == invalidKey:
       var L = w.data.len
       addToIndex(w.index, t.id, L)
       encodeType(w, t, w.data)
@@ -403,24 +403,24 @@ proc processStacks(w: PRodWriter, finalPass: bool) =
   if finalPass and (oldS != 0 or oldT != 0):
     InternalError("could not serialize some forwarded symbols/types")
 
-proc rawAddInterfaceSym(w: PRodWriter, s: PSym) = 
+proc rawAddInterfaceSym(w: PRodWriter, s: PSym) =
   pushSym(w, s)
   processStacks(w, false)
 
-proc addInterfaceSym(w: PRodWriter, s: PSym) = 
-  if w == nil: return 
-  if s.kind in ExportableSymKinds and 
-      {sfExported, sfCompilerProc} * s.flags != {}: 
+proc addInterfaceSym(w: PRodWriter, s: PSym) =
+  if w == nil: return
+  if s.kind in ExportableSymKinds and
+      {sfExported, sfCompilerProc} * s.flags != {}:
     rawAddInterfaceSym(w, s)
 
-proc addStmt(w: PRodWriter, n: PNode) = 
+proc addStmt(w: PRodWriter, n: PNode) =
   encodeVInt(w.data.len, w.init)
   add(w.init, rodNL)
   encodeNode(w, UnknownLineInfo(), n, w.data)
   add(w.data, rodNL)
   processStacks(w, false)
 
-proc writeRod(w: PRodWriter) = 
+proc writeRod(w: PRodWriter) =
   processStacks(w, true)
   var f: TFile
   if not open(f, completeGeneratedFilePath(changeFileExt(
@@ -441,12 +441,12 @@ proc writeRod(w: PRodWriter) =
   encodeStr(w.origFile, orig)
   f.write(orig)
   f.write(rodNL)
-  
+
   var crc = "CRC:"
   encodeVInt(w.crc, crc)
   f.write(crc)
   f.write(rodNL)
-  
+
   var options = "OPTIONS:"
   encodeVInt(cast[int32](w.options), options)
   f.write(options)
@@ -460,31 +460,31 @@ proc writeRod(w: PRodWriter) =
   var cmd = "CMD:"
   encodeVInt(cast[int32](gCmd), cmd)
   f.write(cmd)
-  f.write(rodNL)  
-  
+  f.write(rodNL)
+
   f.write("DEFINES:")
   f.write(w.defines)
   f.write(rodNL)
-  
+
   var files = "FILES(" & rodNL
-  for i in countup(0, high(w.files)): 
+  for i in countup(0, high(w.files)):
     encodeStr(w.files[i], files)
     files.add(rodNL)
   f.write(files)
   f.write(')' & rodNL)
-  
+
   f.write("INCLUDES(" & rodNL)
   f.write(w.inclDeps)
   f.write(')' & rodNL)
-  
+
   f.write("DEPS:")
   f.write(w.modDeps)
   f.write(rodNL)
-  
+
   f.write("INTERF(" & rodNL)
   f.write(w.interf)
   f.write(')' & rodNL)
-  
+
   f.write("COMPILERPROCS(" & rodNL)
   f.write(w.compilerProcs)
   f.write(')' & rodNL)
@@ -492,11 +492,11 @@ proc writeRod(w: PRodWriter) =
   f.write("INDEX(" & rodNL)
   f.write(w.index.r)
   f.write(')' & rodNL)
-  
+
   f.write("IMPORTS(" & rodNL)
   f.write(w.imports.r)
   f.write(')' & rodNL)
-  
+
   f.write("CONVERTERS:")
   f.write(w.converters)
   f.write(rodNL)
@@ -504,11 +504,11 @@ proc writeRod(w: PRodWriter) =
   f.write("METHODS:")
   f.write(w.methods)
   f.write(rodNL)
-  
+
   f.write("INIT(" & rodNL)
   f.write(w.init)
   f.write(')' & rodNL)
-  
+
   f.write("DATA(" & rodNL)
   f.write(w.data)
   f.write(')' & rodNL)
@@ -516,23 +516,23 @@ proc writeRod(w: PRodWriter) =
   # for reading:
   f.write("\0")
   f.close()
-  
+
   #echo "interf: ", w.interf.len
   #echo "index:  ", w.index.r.len
   #echo "init:   ", w.init.len
   #echo "data:   ", w.data.len
 
-proc process(c: PPassContext, n: PNode): PNode = 
+proc process(c: PPassContext, n: PNode): PNode =
   result = n
-  if c == nil: return 
+  if c == nil: return
   var w = PRodWriter(c)
   case n.kind
   of nkStmtList:
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef, 
-      nkTemplateDef, nkMacroDef: 
+  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef,
+      nkTemplateDef, nkMacroDef:
     var s = n.sons[namePos].sym
     if s == nil: InternalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
@@ -541,17 +541,17 @@ proc process(c: PPassContext, n: PNode): PNode =
         sfForward notin s.flags:
       addInterfaceSym(w, s)
   of nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       addInterfaceSym(w, a.sons[0].sym)
-  of nkTypeSection: 
-    for i in countup(0, sonsLen(n) - 1): 
+  of nkTypeSection:
+    for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
-      if a.kind == nkCommentStmt: continue 
+      if a.kind == nkCommentStmt: continue
       if a.sons[0].kind != nkSym: InternalError(a.info, "rodwrite.process")
       var s = a.sons[0].sym
-      addInterfaceSym(w, s) 
+      addInterfaceSym(w, s)
       # this takes care of enum fields too
       # Note: The check for ``s.typ.kind = tyEnum`` is wrong for enum
       # type aliasing! Otherwise the same enum symbol would be included
@@ -559,20 +559,20 @@ proc process(c: PPassContext, n: PNode): PNode =
       #
       #        if (a.sons[2] <> nil) and (a.sons[2].kind = nkEnumTy) then begin
       #          a := s.typ.n;
-      #          for j := 0 to sonsLen(a)-1 do 
-      #            addInterfaceSym(w, a.sons[j].sym);        
-      #        end 
-  of nkImportStmt: 
+      #          for j := 0 to sonsLen(a)-1 do
+      #            addInterfaceSym(w, a.sons[j].sym);
+      #        end
+  of nkImportStmt:
     for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleName(n.sons[i]))
     addStmt(w, n)
-  of nkFromStmt: 
+  of nkFromStmt:
     addModDep(w, getModuleName(n.sons[0]))
     addStmt(w, n)
-  of nkIncludeStmt: 
+  of nkIncludeStmt:
     for i in countup(0, sonsLen(n) - 1): addInclDep(w, getModuleName(n.sons[i]))
-  of nkPragma: 
+  of nkPragma:
     addStmt(w, n)
-  else: 
+  else:
     nil
 
 proc myOpen(module: PSym): PPassContext =
@@ -581,7 +581,7 @@ proc myOpen(module: PSym): PPassContext =
   rawAddInterfaceSym(w, module)
   result = w
 
-proc myClose(c: PPassContext, n: PNode): PNode = 
+proc myClose(c: PPassContext, n: PNode): PNode =
   result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)

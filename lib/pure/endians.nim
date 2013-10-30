@@ -24,7 +24,7 @@ proc swapEndian64*(outp, inp: pointer) =
   o[6] = i[1]
   o[7] = i[0]
 
-proc swapEndian32*(outp, inp: pointer) = 
+proc swapEndian32*(outp, inp: pointer) =
   ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
   ## contain at least 4 bytes.
   var i = cast[cstring](inp)
@@ -39,7 +39,7 @@ when system.cpuEndian == bigEndian:
   proc littleEndian32*(outp, inp: pointer) {.inline.} = swapEndian32(outp, inp)
   proc bigEndian64*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 8)
   proc bigEndian32*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 4)
-else: 
+else:
   proc littleEndian64*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 8)
   proc littleEndian32*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 4)
   proc bigEndian64*(outp, inp: pointer) {.inline.} = swapEndian64(outp, inp)

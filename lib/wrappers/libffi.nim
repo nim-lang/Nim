@@ -22,15 +22,15 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #   DEALINGS IN THE SOFTWARE.
 #
-#   ----------------------------------------------------------------------- 
+#   -----------------------------------------------------------------------
 
 {.deadCodeElim: on.}
 
-when defined(windows): 
+when defined(windows):
   const libffidll* = "libffi.dll"
-elif defined(macosx): 
+elif defined(macosx):
   const libffidll* = "libffi.dylib"
-else: 
+else:
   const libffidll* = "libffi.so"
 
 type
@@ -44,21 +44,21 @@ when defined(windows) and defined(x86):
 
   const DEFAULT_ABI* = SYSV
 elif defined(amd64) and defined(windows):
-  type 
-    TABI* {.size: sizeof(cint).} = enum 
+  type
+    TABI* {.size: sizeof(cint).} = enum
       FIRST_ABI, WIN64
   const DEFAULT_ABI* = WIN64
 else:
-  type 
+  type
     TABI* {.size: sizeof(cint).} = enum
       FIRST_ABI, SYSV, UNIX64
 
   when defined(i386):
     const DEFAULT_ABI* = SYSV
-  else: 
+  else:
     const DEFAULT_ABI* = UNIX64
-    
-const 
+
+const
   tkVOID* = 0
   tkINT* = 1
   tkFLOAT* = 2
@@ -102,11 +102,11 @@ var
   type_pointer* {.importc: "ffi_type_pointer", dynlib: libffidll.}: TType
   type_longdouble* {.importc: "ffi_type_longdouble", dynlib: libffidll.}: TType
 
-type 
-  Tstatus* {.size: sizeof(cint).} = enum 
+type
+  Tstatus* {.size: sizeof(cint).} = enum
     OK, BAD_TYPEDEF, BAD_ABI
   TTypeKind* = cuint
-  TCif* {.pure, final.} = object 
+  TCif* {.pure, final.} = object
     abi*: TABI
     nargs*: cuint
     arg_types*: ptr ptr TType
@@ -115,23 +115,23 @@ type
     flags*: cuint
 
 type
-  TRaw* = object 
+  TRaw* = object
     sint*: TSArg
 
-proc raw_call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
-               avalue: ptr TRaw) {.cdecl, importc: "ffi_raw_call", 
+proc raw_call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer;
+               avalue: ptr TRaw) {.cdecl, importc: "ffi_raw_call",
                                    dynlib: libffidll.}
-proc ptrarray_to_raw*(cif: var Tcif; args: ptr pointer; raw: ptr TRaw) {.cdecl, 
+proc ptrarray_to_raw*(cif: var Tcif; args: ptr pointer; raw: ptr TRaw) {.cdecl,
     importc: "ffi_ptrarray_to_raw", dynlib: libffidll.}
-proc raw_to_ptrarray*(cif: var Tcif; raw: ptr TRaw; args: ptr pointer) {.cdecl, 
+proc raw_to_ptrarray*(cif: var Tcif; raw: ptr TRaw; args: ptr pointer) {.cdecl,
     importc: "ffi_raw_to_ptrarray", dynlib: libffidll.}
-proc raw_size*(cif: var Tcif): int {.cdecl, importc: "ffi_raw_size", 
+proc raw_size*(cif: var Tcif): int {.cdecl, importc: "ffi_raw_size",
                                      dynlib: libffidll.}
 
-proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
-               atypes: ptr ptr TType): TStatus {.cdecl, importc: "ffi_prep_cif", 
+proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType;
+               atypes: ptr ptr TType): TStatus {.cdecl, importc: "ffi_prep_cif",
     dynlib: libffidll.}
-proc call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
+proc call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer;
            avalue: ptr pointer) {.cdecl, importc: "ffi_call", dynlib: libffidll.}
 
 # the same with an easier interface:
@@ -139,11 +139,11 @@ type
   TParamList* = array[0..100, ptr TType]
   TArgList* = array[0..100, pointer]
 
-proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
+proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType;
                atypes: TParamList): TStatus {.cdecl, importc: "ffi_prep_cif",
     dynlib: libffidll.}
 proc call*(cif: var Tcif; fn, rvalue: pointer;
            avalue: TArgList) {.cdecl, importc: "ffi_call", dynlib: libffidll.}
 
-# Useful for eliminating compiler warnings 
+# Useful for eliminating compiler warnings
 ##define FFI_FN(f) ((void (*)(void))f)

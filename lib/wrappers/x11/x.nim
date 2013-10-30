@@ -12,7 +12,7 @@
 # Pointers to basic pascal types, inserted by h2pas conversion program.
 import unsigned
 
-const 
+const
   X_PROTOCOL* = 11
   X_PROTOCOL_REVISION* = 0
 
@@ -51,7 +51,7 @@ type
 proc `==`*(a, b: TAtom): bool =
     return unsigned.`==`(a,b)
 
-const 
+const
   None* = 0
   ParentRelative* = 1
   CopyFromParent* = 0

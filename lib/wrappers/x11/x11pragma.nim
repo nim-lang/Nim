@@ -10,10 +10,10 @@ when defined(use_pkg_config) or defined(use_pkg_config_static):
         {.passl: gorge("pkg-config x11 --libs").}
 else:
     when defined(macosx):
-        const 
+        const
           libX11* = "libX11.dylib"
     else:
-        const 
+        const
           libX11* = "libX11.so"
 
     {.pragma: libx11, cdecl, dynlib: libX11, importc.}

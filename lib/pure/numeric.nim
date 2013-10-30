@@ -10,23 +10,23 @@
 
 type TOneVarFunction* =proc (x:float):float
 
-proc brent*(xmin,xmax:float ,function:TOneVarFunction, tol:float,maxiter=1000): 
+proc brent*(xmin,xmax:float ,function:TOneVarFunction, tol:float,maxiter=1000):
   tuple[rootx, rooty: float, success: bool]=
-  ## Searches `function` for a root between `xmin` and `xmax` 
+  ## Searches `function` for a root between `xmin` and `xmax`
   ## using brents method. If the function value at `xmin`and `xmax` has the
   ## same sign, `rootx`/`rooty` is set too the extrema value closest to x-axis
   ## and succes is set to false.
   ## Otherwise there exists at least one root and success is set to true.
   ## This root is searched for at most `maxiter` iterations.
-  ## If `tol` tolerance is reached within `maxiter` iterations 
+  ## If `tol` tolerance is reached within `maxiter` iterations
   ## the root refinement stops and success=true.
 
   # see http://en.wikipedia.org/wiki/Brent%27s_method
-  var 
+  var
     a=xmin
     b=xmax
     c=a
-    d=1.0e308 
+    d=1.0e308
     fa=function(a)
     fb=function(b)
     fc=fa
@@ -41,19 +41,19 @@ proc brent*(xmin,xmax:float ,function:TOneVarFunction, tol:float,maxiter=1000):
       return (a,fa,false)
     else:
       return (b,fb,false)
-  
+
   if abs(fa)<abs(fb):
     swap(fa,fb)
     swap(a,b)
-  
+
   while fb!=0.0 and abs(a-b)>tol:
     if fa!=fc and fb!=fc: # inverse quadratic interpolation
       s = a * fb * fc / (fa - fb) / (fa - fc) + b * fa * fc / (fb - fa) / (fb - fc) + c * fa * fb / (fc - fa) / (fc - fb)
     else: #secant rule
       s = b - fb * (b - a) / (fb - fa)
     tmp2 = (3.0 * a + b) / 4.0
-    if not((s > tmp2 and s < b) or (s < tmp2 and s > b)) or 
-      (mflag and abs(s - b) >= (abs(b - c) / 2.0)) or 
+    if not((s > tmp2 and s < b) or (s < tmp2 and s > b)) or
+      (mflag and abs(s - b) >= (abs(b - c) / 2.0)) or
       (not mflag and abs(s - b) >= abs(c - d) / 2.0):
       s=(a+b)/2.0
       mflag=true
@@ -79,5 +79,5 @@ proc brent*(xmin,xmax:float ,function:TOneVarFunction, tol:float,maxiter=1000):
     inc i
     if i>maxiter:
       break
-  
+
   return (b,fb,true)

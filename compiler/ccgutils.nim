@@ -9,31 +9,31 @@
 
 # This module declares some helpers for the C code generator.
 
-import 
-  ast, astalgo, ropes, lists, hashes, strutils, types, msgs, wordrecg, 
+import
+  ast, astalgo, ropes, lists, hashes, strutils, types, msgs, wordrecg,
   platform, trees
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
-  of nkStmtList: 
-    for i in 0 .. < n.len: 
+  of nkStmtList:
+    for i in 0 .. < n.len:
       result = getPragmaStmt(n[i], w)
       if result != nil: break
   of nkPragma:
-    for i in 0 .. < n.len: 
+    for i in 0 .. < n.len:
       if whichPragma(n[i]) == w: return n[i]
   else: nil
 
 proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
   result = getPragmaStmt(n, w) != nil
 
-proc hashString*(s: string): biggestInt = 
+proc hashString*(s: string): biggestInt =
   # has to be the same algorithm as system.hashString!
-  if CPU[targetCPU].bit == 64: 
+  if CPU[targetCPU].bit == 64:
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'i64
-    for i in countup(0, len(s) - 1): 
+    for i in countup(0, len(s) - 1):
       b = b +% Ord(s[i])
       b = b +% `shl`(b, 10)
       b = b xor `shr`(b, 6)
@@ -41,9 +41,9 @@ proc hashString*(s: string): biggestInt =
     b = b xor `shr`(b, 11)
     b = b +% `shl`(b, 15)
     result = b
-  else: 
+  else:
     var a = 0'i32
-    for i in countup(0, len(s) - 1): 
+    for i in countup(0, len(s) - 1):
       a = a +% Ord(s[i]).int32
       a = a +% `shl`(a, 10'i32)
       a = a xor `shr`(a, 6'i32)
@@ -52,11 +52,11 @@ proc hashString*(s: string): biggestInt =
     a = a +% `shl`(a, 15'i32)
     result = a
 
-var 
+var
   gTypeTable: array[TTypeKind, TIdTable]
   gCanonicalTypes: array[TTypeKind, PType]
 
-proc initTypeTables() = 
+proc initTypeTables() =
   for i in countup(low(TTypeKind), high(TTypeKind)): InitIdTable(gTypeTable[i])
 
 proc resetCaches* =
@@ -67,20 +67,20 @@ proc resetCaches* =
 
 when false:
   proc echoStats*() =
-    for i in countup(low(TTypeKind), high(TTypeKind)): 
+    for i in countup(low(TTypeKind), high(TTypeKind)):
       echo i, " ", gTypeTable[i].counter
-  
-proc GetUniqueType*(key: PType): PType = 
+
+proc GetUniqueType*(key: PType): PType =
   # this is a hotspot in the compiler!
-  if key == nil: return 
+  if key == nil: return
   var k = key.kind
   case k
-  of  tyBool, tyChar, 
+  of  tyBool, tyChar,
       tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``.
     result = key
-  of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString, 
+  of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
       tyCString, tyNone, tyBigNum:
     result = gCanonicalTypes[k]
     if result == nil:
@@ -97,15 +97,15 @@ proc GetUniqueType*(key: PType): PType =
      tyPtr, tyRef, tySequence, tyForward, tyVarargs, tyProxy, tyVar:
     # tuples are quite horrible as C does not support them directly and
     # tuple[string, string] is a (strange) subtype of
-    # tuple[nameA, nameB: string]. This bites us here, so we 
+    # tuple[nameA, nameB: string]. This bites us here, so we
     # use 'sameBackendType' instead of 'sameType'.
 
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
-    if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
-    for h in countup(0, high(gTypeTable[k].data)): 
+    if IdTableHasObjectAsKey(gTypeTable[k], key): return key
+    for h in countup(0, high(gTypeTable[k].data)):
       var t = PType(gTypeTable[k].data[h].key)
-      if t != nil and sameBackendType(t, key): 
+      if t != nil and sameBackendType(t, key):
         return t
     IdTablePut(gTypeTable[k], key, key)
     result = key
@@ -113,21 +113,21 @@ proc GetUniqueType*(key: PType): PType =
     if tfFromGeneric notin key.flags:
       # fast case; lookup per id suffices:
       result = PType(IdTableGet(gTypeTable[k], key))
-      if result == nil: 
+      if result == nil:
         IdTablePut(gTypeTable[k], key, key)
         result = key
     else:
       # ugly slow case: need to compare by structure
       if IdTableHasObjectAsKey(gTypeTable[k], key): return key
-      for h in countup(0, high(gTypeTable[k].data)): 
+      for h in countup(0, high(gTypeTable[k].data)):
         var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameType(t, key): 
+        if t != nil and sameType(t, key):
           return t
       IdTablePut(gTypeTable[k], key, key)
       result = key
   of tyEnum:
     result = PType(IdTableGet(gTypeTable[k], key))
-    if result == nil: 
+    if result == nil:
       IdTablePut(gTypeTable[k], key, key)
       result = key
   of tyProc:
@@ -136,24 +136,24 @@ proc GetUniqueType*(key: PType): PType =
       result = key
     else:
       # ugh, we need the canon here:
-      if IdTableHasObjectAsKey(gTypeTable[k], key): return key 
-      for h in countup(0, high(gTypeTable[k].data)): 
+      if IdTableHasObjectAsKey(gTypeTable[k], key): return key
+      for h in countup(0, high(gTypeTable[k].data)):
         var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameBackendType(t, key): 
+        if t != nil and sameBackendType(t, key):
           return t
       IdTablePut(gTypeTable[k], key, key)
       result = key
-      
-proc TableGetType*(tab: TIdTable, key: PType): PObject = 
+
+proc TableGetType*(tab: TIdTable, key: PType): PObject =
   # returns nil if we need to declare this type
   result = IdTableGet(tab, key)
-  if (result == nil) and (tab.counter > 0): 
+  if (result == nil) and (tab.counter > 0):
     # we have to do a slow linear search because types may need
     # to be compared by their structure:
-    for h in countup(0, high(tab.data)): 
+    for h in countup(0, high(tab.data)):
       var t = PType(tab.data[h].key)
-      if t != nil: 
-        if sameType(t, key): 
+      if t != nil:
+        if sameType(t, key):
           return tab.data[h].val
 
 proc makeSingleLineCString*(s: string): string =
@@ -162,16 +162,16 @@ proc makeSingleLineCString*(s: string): string =
     result.add(c.toCChar)
   result.add('\"')
 
-proc makeLLVMString*(s: string): PRope = 
+proc makeLLVMString*(s: string): PRope =
   const MaxLineLength = 64
   result = nil
   var res = "c\""
-  for i in countup(0, len(s) - 1): 
-    if (i + 1) mod MaxLineLength == 0: 
+  for i in countup(0, len(s) - 1):
+    if (i + 1) mod MaxLineLength == 0:
       app(result, toRope(res))
       setlen(res, 0)
     case s[i]
-    of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\': 
+    of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\':
       add(res, '\\')
       add(res, toHex(ord(s[i]), 2))
     else: add(res, s[i])

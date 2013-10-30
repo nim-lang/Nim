@@ -10,10 +10,10 @@
 # This module implements a new documentation generator that runs after
 # semantic checking.
 
-import 
+import
   os, options, ast, astalgo, msgs, ropes, idents, passes, docgen
 
-type 
+type
   TGen = object of TPassContext
     doc: PDoc
     module: PSym
@@ -29,12 +29,12 @@ proc close(p: PPassContext, n: PNode): PNode =
     except EIO:
       nil
 
-proc processNode(c: PPassContext, n: PNode): PNode = 
+proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   generateDoc(g.doc, n)
 
-proc myOpen(module: PSym): PPassContext = 
+proc myOpen(module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
@@ -45,5 +45,5 @@ proc myOpen(module: PSym): PPassContext =
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
 
-proc finishDoc2Pass*(project: string) = 
+proc finishDoc2Pass*(project: string) =
   nil

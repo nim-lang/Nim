@@ -11,7 +11,7 @@
 ## redis-server instance, send commands and receive replies.
 ##
 ## **Beware**: Most (if not all) functions that return a ``TRedisString`` may
-## return ``redisNil``, and functions which return a ``TRedisList`` 
+## return ``redisNil``, and functions which return a ``TRedisList``
 ## may return ``nil``.
 
 import sockets, os, strutils, parseutils
@@ -23,7 +23,7 @@ type
   TRedis* {.pure, final.} = object
     socket: TSocket
     connected: bool
-  
+
   TRedisStatus* = string
   TRedisInteger* = biggestInt
   TRedisString* = string ## Bulk reply
@@ -40,7 +40,7 @@ proc open*(host = "localhost", port = 6379.TPort): TRedis =
   result.socket.connect(host, port)
 
 proc raiseInvalidReply(expected, got: char) =
-  raise newException(EInvalidReply, 
+  raise newException(EInvalidReply,
           "Expected '$1' at the beginning of a status reply got '$2'" %
           [$expected, $got])
 
@@ -58,9 +58,9 @@ proc parseStatus(r: TRedis): TRedisStatus =
     raise newException(ERedis, strip(line))
   if line[0] != '+':
     raiseInvalidReply('+', line[0])
-  
+
   return line.substr(1) # Strip '+'
-  
+
 proc parseInteger(r: TRedis): TRedisInteger =
   var line = ""
   r.socket.readLine(line)
@@ -71,10 +71,10 @@ proc parseInteger(r: TRedis): TRedisInteger =
     raise newException(ERedis, strip(line))
   if line[0] != ':':
     raiseInvalidReply(':', line[0])
-  
+
   # Strip ':'
   if parseBiggestInt(line, result, 1) == 0:
-    raise newException(EInvalidReply, "Unable to parse integer.") 
+    raise newException(EInvalidReply, "Unable to parse integer.")
 
 proc recv(sock: TSocket, size: int): TaintedString =
   result = newString(size).TaintedString
@@ -84,19 +84,19 @@ proc recv(sock: TSocket, size: int): TaintedString =
 proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
   var line = ""
   r.socket.readLine(line.TaintedString)
-  
+
   # Error.
   if line[0] == '-':
     raise newException(ERedis, strip(line))
-  
+
   # Some commands return a /bulk/ value or a /multi-bulk/ nil. Odd.
   if allowMBNil:
     if line == "*-1":
        return RedisNil
-  
+
   if line[0] != '$':
     raiseInvalidReply('$', line[0])
-  
+
   var numBytes = parseInt(line.substr(1))
   if numBytes == -1:
     return RedisNil
@@ -107,10 +107,10 @@ proc parseBulk(r: TRedis, allowMBNil = False): TRedisString =
 proc parseMultiBulk(r: TRedis): TRedisList =
   var line = TaintedString""
   r.socket.readLine(line)
-    
+
   if line.string[0] != '*':
     raiseInvalidReply('*', line.string[0])
-  
+
   var numElems = parseInt(line.string.substr(1))
   if numElems == -1: return nil
   result = @[]
@@ -157,7 +157,7 @@ proc expire*(r: TRedis, key: string, seconds: int): bool =
   return r.parseInteger() == 1
 
 proc expireAt*(r: TRedis, key: string, timestamp: int): bool =
-  ## Set the expiration for a key as a UNIX timestamp. Returns `false` 
+  ## Set the expiration for a key as a UNIX timestamp. Returns `false`
   ## if the key could not be found or the timeout could not be set.
   r.sendCommand("EXPIREAT", key, $timestamp)
   return r.parseInteger() == 1
@@ -173,11 +173,11 @@ proc move*(r: TRedis, key: string, db: int): bool =
   return r.parseInteger() == 1
 
 proc persist*(r: TRedis, key: string): bool =
-  ## Remove the expiration from a key. 
+  ## Remove the expiration from a key.
   ## Returns `true` when the timeout was removed.
   r.sendCommand("PERSIST", key)
   return r.parseInteger() == 1
-  
+
 proc randomKey*(r: TRedis): TRedisString =
   ## Return a random key from the keyspace
   r.sendCommand("RANDOMKEY")
@@ -185,11 +185,11 @@ proc randomKey*(r: TRedis): TRedisString =
 
 proc rename*(r: TRedis, key, newkey: string): TRedisStatus =
   ## Rename a key.
-  ## 
+  ##
   ## **WARNING:** Overwrites `newkey` if it exists!
   r.sendCommand("RENAME", key, newkey)
   raiseNoOK(r.parseStatus())
-  
+
 proc renameNX*(r: TRedis, key, newkey: string): bool =
   ## Same as ``rename`` but doesn't continue if `newkey` exists.
   ## Returns `true` if key was renamed.
@@ -200,12 +200,12 @@ proc ttl*(r: TRedis, key: string): TRedisInteger =
   ## Get the time to live for a key
   r.sendCommand("TTL", key)
   return r.parseInteger()
-  
+
 proc keyType*(r: TRedis, key: string): TRedisStatus =
   ## Determine the type stored at key
   r.sendCommand("TYPE", key)
   return r.parseStatus()
-  
+
 
 # Strings
 
@@ -218,12 +218,12 @@ proc decr*(r: TRedis, key: string): TRedisInteger =
   ## Decrement the integer value of a key by one
   r.sendCommand("DECR", key)
   return r.parseInteger()
-  
+
 proc decrBy*(r: TRedis, key: string, decrement: int): TRedisInteger =
   ## Decrement the integer value of a key by the given number
   r.sendCommand("DECRBY", key, $decrement)
   return r.parseInteger()
-  
+
 proc get*(r: TRedis, key: string): TRedisString =
   ## Get the value of a key. Returns `redisNil` when `key` doesn't exist.
   r.sendCommand("GET", key)
@@ -255,7 +255,7 @@ proc incrBy*(r: TRedis, key: string, increment: int): TRedisInteger =
   r.sendCommand("INCRBY", key, $increment)
   return r.parseInteger()
 
-proc setk*(r: TRedis, key, value: string) = 
+proc setk*(r: TRedis, key, value: string) =
   ## Set the string value of a key.
   ##
   ## NOTE: This function had to be renamed due to a clash with the `set` type.
@@ -268,18 +268,18 @@ proc setNX*(r: TRedis, key, value: string): bool =
   r.sendCommand("SETNX", key, value)
   return r.parseInteger() == 1
 
-proc setBit*(r: TRedis, key: string, offset: int, 
+proc setBit*(r: TRedis, key: string, offset: int,
              value: string): TRedisInteger =
   ## Sets or clears the bit at offset in the string value stored at key
   r.sendCommand("SETBIT", key, $offset, value)
   return r.parseInteger()
-  
+
 proc setEx*(r: TRedis, key: string, seconds: int, value: string): TRedisStatus =
   ## Set the value and expiration of a key
   r.sendCommand("SETEX", key, $seconds, value)
   raiseNoOK(r.parseStatus())
 
-proc setRange*(r: TRedis, key: string, offset: int, 
+proc setRange*(r: TRedis, key: string, offset: int,
                value: string): TRedisInteger =
   ## Overwrite part of a string at key starting at the specified offset
   r.sendCommand("SETRANGE", key, $offset, value)
@@ -332,7 +332,7 @@ proc hMGet*(r: TRedis, key: string, fields: varargs[string]): TRedisList =
   r.sendCommand("HMGET", key, fields)
   return r.parseMultiBulk()
 
-proc hMSet*(r: TRedis, key: string, 
+proc hMSet*(r: TRedis, key: string,
             fieldValues: openarray[tuple[field, value: string]]) =
   ## Set multiple hash fields to multiple values
   var args = @[key]
@@ -346,7 +346,7 @@ proc hSet*(r: TRedis, key, field, value: string): TRedisInteger =
   ## Set the string value of a hash field
   r.sendCommand("HSET", key, field, value)
   return r.parseInteger()
-  
+
 proc hSetNX*(r: TRedis, key, field, value: string): TRedisInteger =
   ## Set the value of a hash field, only if the field does **not** exist
   r.sendCommand("HSETNX", key, field, value)
@@ -356,11 +356,11 @@ proc hVals*(r: TRedis, key: string): TRedisList =
   ## Get all the values in a hash
   r.sendCommand("HVALS", key)
   return r.parseMultiBulk()
-  
+
 # Lists
 
 proc bLPop*(r: TRedis, keys: varargs[string], timeout: int): TRedisList =
-  ## Remove and get the *first* element in a list, or block until 
+  ## Remove and get the *first* element in a list, or block until
   ## one is available
   var args: seq[string] = @[]
   for i in items(keys): args.add(i)
@@ -369,7 +369,7 @@ proc bLPop*(r: TRedis, keys: varargs[string], timeout: int): TRedisList =
   return r.parseMultiBulk()
 
 proc bRPop*(r: TRedis, keys: varargs[string], timeout: int): TRedisList =
-  ## Remove and get the *last* element in a list, or block until one 
+  ## Remove and get the *last* element in a list, or block until one
   ## is available.
   var args: seq[string] = @[]
   for i in items(keys): args.add(i)
@@ -397,7 +397,7 @@ proc lInsert*(r: TRedis, key: string, before: bool, pivot, value: string):
   var pos = if before: "BEFORE" else: "AFTER"
   r.sendCommand("LINSERT", key, pos, pivot, value)
   return r.parseInteger()
-  
+
 proc lLen*(r: TRedis, key: string): TRedisInteger =
   ## Get the length of a list
   r.sendCommand("LLEN", key)
@@ -411,7 +411,7 @@ proc lPop*(r: TRedis, key: string): TRedisString =
 proc lPush*(r: TRedis, key, value: string, create: bool = True): TRedisInteger =
   ## Prepend a value to a list. Returns the length of the list after the push.
   ## The ``create`` param specifies whether a list should be created if it
-  ## doesn't exist at ``key``. More specifically if ``create`` is True, `LPUSH` 
+  ## doesn't exist at ``key``. More specifically if ``create`` is True, `LPUSH`
   ## will be used, otherwise `LPUSHX`.
   if create:
     r.sendCommand("LPUSH", key, value)
@@ -420,7 +420,7 @@ proc lPush*(r: TRedis, key, value: string, create: bool = True): TRedisInteger =
   return r.parseInteger()
 
 proc lRange*(r: TRedis, key: string, start, stop: int): TRedisList =
-  ## Get a range of elements from a list. Returns `nil` when `key` 
+  ## Get a range of elements from a list. Returns `nil` when `key`
   ## doesn't exist.
   r.sendCommand("LRANGE", key, $start, $stop)
   return r.parseMultiBulk()
@@ -445,16 +445,16 @@ proc rPop*(r: TRedis, key: string): TRedisString =
   ## Remove and get the last element in a list
   r.sendCommand("RPOP", key)
   return r.parseBulk()
-  
+
 proc rPopLPush*(r: TRedis, source, destination: string): TRedisString =
   ## Remove the last element in a list, append it to another list and return it
   r.sendCommand("RPOPLPUSH", source, destination)
   return r.parseBulk()
-  
+
 proc rPush*(r: TRedis, key, value: string, create: bool = True): TRedisInteger =
   ## Append a value to a list. Returns the length of the list after the push.
   ## The ``create`` param specifies whether a list should be created if it
-  ## doesn't exist at ``key``. More specifically if ``create`` is True, `RPUSH` 
+  ## doesn't exist at ``key``. More specifically if ``create`` is True, `RPUSH`
   ## will be used, otherwise `RPUSHX`.
   if create:
     r.sendCommand("RPUSH", key, value)
@@ -534,7 +534,7 @@ proc sunion*(r: TRedis, keys: varargs[string]): TRedisList =
 
 proc sunionstore*(r: TRedis, destination: string,
                  key: varargs[string]): TRedisInteger =
-  ## Add multiple sets and store the resulting set in a key 
+  ## Add multiple sets and store the resulting set in a key
   r.sendCommand("SUNIONSTORE", destination, key)
   return r.parseInteger()
 
@@ -568,16 +568,16 @@ proc zinterstore*(r: TRedis, destination: string, numkeys: string,
   ## a new key
   var args = @[destination, numkeys]
   for i in items(keys): args.add(i)
-  
+
   if weights.len != 0:
     args.add("WITHSCORE")
     for i in items(weights): args.add(i)
   if aggregate.len != 0:
     args.add("AGGREGATE")
     args.add(aggregate)
-    
+
   r.sendCommand("ZINTERSTORE", args)
-  
+
   return r.parseInteger()
 
 proc zrange*(r: TRedis, key: string, start: string, stop: string,
@@ -589,18 +589,18 @@ proc zrange*(r: TRedis, key: string, start: string, stop: string,
     r.sendCommand("ZRANGE", "WITHSCORES", key, start, stop)
   return r.parseMultiBulk()
 
-proc zrangebyscore*(r: TRedis, key: string, min: string, max: string, 
+proc zrangebyscore*(r: TRedis, key: string, min: string, max: string,
                    withScore: bool = false, limit: bool = False,
                    limitOffset: int = 0, limitCount: int = 0): TRedisList =
   ## Return a range of members in a sorted set, by score
   var args = @[key, min, max]
-  
+
   if withScore: args.add("WITHSCORE")
-  if limit: 
+  if limit:
     args.add("LIMIT")
     args.add($limitOffset)
     args.add($limitCount)
-    
+
   r.sendCommand("ZRANGEBYSCORE", args)
   return r.parseMultiBulk()
 
@@ -628,26 +628,26 @@ proc zremrangebyscore*(r: TRedis, key: string, min: string,
 
 proc zrevrange*(r: TRedis, key: string, start: string, stop: string,
                withScore: bool): TRedisList =
-  ## Return a range of members in a sorted set, by index, 
+  ## Return a range of members in a sorted set, by index,
   ## with scores ordered from high to low
   if withScore:
     r.sendCommand("ZREVRANGE", "WITHSCORE", key, start, stop)
   else: r.sendCommand("ZREVRANGE", key, start, stop)
   return r.parseMultiBulk()
 
-proc zrevrangebyscore*(r: TRedis, key: string, min: string, max: string, 
+proc zrevrangebyscore*(r: TRedis, key: string, min: string, max: string,
                    withScore: bool = false, limit: bool = False,
                    limitOffset: int = 0, limitCount: int = 0): TRedisList =
   ## Return a range of members in a sorted set, by score, with
   ## scores ordered from high to low
   var args = @[key, min, max]
-  
+
   if withScore: args.add("WITHSCORE")
-  if limit: 
+  if limit:
     args.add("LIMIT")
     args.add($limitOffset)
     args.add($limitCount)
-  
+
   r.sendCommand("ZREVRANGEBYSCORE", args)
   return r.parseMultiBulk()
 
@@ -665,19 +665,19 @@ proc zscore*(r: TRedis, key: string, member: string): TRedisString =
 proc zunionstore*(r: TRedis, destination: string, numkeys: string,
                  keys: openarray[string], weights: openarray[string] = [],
                  aggregate: string = ""): TRedisInteger =
-  ## Add multiple sorted sets and store the resulting sorted set in a new key 
+  ## Add multiple sorted sets and store the resulting sorted set in a new key
   var args = @[destination, numkeys]
   for i in items(keys): args.add(i)
-  
+
   if weights.len != 0:
     args.add("WEIGHTS")
     for i in items(weights): args.add(i)
   if aggregate.len != 0:
     args.add("AGGREGATE")
     args.add(aggregate)
-    
+
   r.sendCommand("ZUNIONSTORE", args)
-  
+
   return r.parseInteger()
 
 
@@ -706,7 +706,7 @@ proc subscribe*(r: TRedis, channel: openarray[string]): ???? =
   return ???
 
 proc unsubscribe*(r: TRedis, [channel: openarray[string], : string): ???? =
-  ## Stop listening for messages posted to the given channels 
+  ## Stop listening for messages posted to the given channels
   r.socket.send("UNSUBSCRIBE $# $#\c\L" % [[channel.join(), ])
   return ???
 
@@ -735,7 +735,7 @@ proc unwatch*(r: TRedis) =
   raiseNoOK(r.parseStatus())
 
 proc watch*(r: TRedis, key: varargs[string]) =
-  ## Watch the given keys to determine execution of the MULTI/EXEC block 
+  ## Watch the given keys to determine execution of the MULTI/EXEC block
   r.sendCommand("WATCH", key)
   raiseNoOK(r.parseStatus())
 
@@ -762,7 +762,7 @@ proc quit*(r: TRedis) =
   raiseNoOK(r.parseStatus())
 
 proc select*(r: TRedis, index: int): TRedisStatus =
-  ## Change the selected database for the current connection 
+  ## Change the selected database for the current connection
   r.sendCommand("SELECT", $index)
   return r.parseStatus()
 
@@ -853,7 +853,7 @@ proc slaveof*(r: TRedis, host: string, port: string) =
 
 iterator hPairs*(r: TRedis, key: string): tuple[key, value: string] =
   ## Iterator for keys and values in a hash.
-  var 
+  var
     contents = r.hGetAll(key)
     k = ""
   for i in items(contents):
@@ -862,7 +862,7 @@ iterator hPairs*(r: TRedis, key: string): tuple[key, value: string] =
     else:
       yield (k, i)
       k = ""
-      
+
 
 when false:
   # sorry, deactivated for the test suite
@@ -872,7 +872,7 @@ when false:
   r.setk("nim:test", "Testing something.")
   r.setk("nim:utf8", "こんにちは")
   r.setk("nim:esc", "\\ths ągt\\")
-  
+
   echo r.get("nim:esc")
   echo r.incr("nim:int")
   echo r.incr("nim:int")
@@ -880,7 +880,7 @@ when false:
   echo r.get("nim:utf8")
   echo repr(r.get("blahasha"))
   echo r.randomKey()
-  
+
   var p = r.lrange("mylist", 0, -1)
   for i in items(p):
     echo("  ", i)

@@ -23,7 +23,7 @@ proc opGorge*(cmd, input: string): string =
     p.inputStream.close()
   result = p.readOutput
 
-proc opSlurp*(file: string, info: TLineInfo, module: PSym): string = 
+proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:
     let filename = file.FindFile
     result = readFile(filename)
@@ -48,7 +48,7 @@ when false:
     case expandedSym.kind
     of skTemplate:
       let genSymOwner = if c.tos != nil and c.tos.prc != nil:
-                          c.tos.prc 
+                          c.tos.prc
                         else:
                           c.module
       result = evalTemplate(macroCall, expandedSym, genSymOwner)
@@ -68,7 +68,7 @@ when false:
     InternalAssert n.sonsLen == 3 and
       n[1].kind == nkSym and n[1].sym.kind == skType and
       n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
-    
+
     let t1 = n[1].sym.typ
 
     if n[2].kind in {nkStrLit..nkTripleStrLit}:
@@ -76,12 +76,12 @@ when false:
       of "closure":
         let t = skipTypes(t1, abstractRange)
         result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                          t.callConv == ccClosure and 
+                                          t.callConv == ccClosure and
                                           tfIterator notin t.flags))
       of "iterator":
         let t = skipTypes(t1, abstractRange)
         result = newIntNode(nkIntLit, ord(t.kind == tyProc and
-                                          t.callConv == ccClosure and 
+                                          t.callConv == ccClosure and
                                           tfIterator in t.flags))
     else:
       let t2 = n[2].typ

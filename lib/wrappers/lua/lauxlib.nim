@@ -21,7 +21,7 @@
 #**   In french or in english
 #
 
-import 
+import
   lua
 
 proc pushstring*(L: PState, s: string)
@@ -30,8 +30,8 @@ proc getn*(L: PState, n: cint): cint
   # calls lua_objlen
 proc setn*(L: PState, t, n: cint)
   # does nothing!
-type 
-  Treg*{.final.} = object 
+type
+  Treg*{.final.} = object
     name*: cstring
     func*: CFunction
 
@@ -103,18 +103,18 @@ proc getmetatable*(L: PState, tname: cstring)
 const                         # note: this is just arbitrary, as it related to the BUFSIZ defined in stdio.h ...
   BUFFERSIZE* = 4096
 
-type 
-  Buffer*{.final.} = object 
-    p*: cstring               # current position in buffer 
-    lvl*: cint                 # number of strings in the stack (level) 
+type
+  Buffer*{.final.} = object
+    p*: cstring               # current position in buffer
+    lvl*: cint                 # number of strings in the stack (level)
     L*: PState
     buffer*: array[0..BUFFERSIZE - 1, Char] # warning: see note above about LUAL_BUFFERSIZE
-  
+
   PBuffer* = ptr Buffer
 
 proc addchar*(B: PBuffer, c: Char)
   # warning: see note above about LUAL_BUFFERSIZE
-  # compatibility only (alias for luaL_addchar) 
+  # compatibility only (alias for luaL_addchar)
 proc putchar*(B: PBuffer, c: Char)
   # warning: see note above about LUAL_BUFFERSIZE
 proc addsize*(B: PBuffer, n: cint)
@@ -128,11 +128,11 @@ proc addvalue*(B: PBuffer)
 proc pushresult*(B: PBuffer)
 proc gsub*(L: PState, s, p, r: cstring): cstring
 proc findtable*(L: PState, idx: cint, fname: cstring, szhint: cint): cstring
-  # compatibility with ref system 
-  # pre-defined references 
+  # compatibility with ref system
+  # pre-defined references
 {.pop.}
 
-const 
+const
   NOREF* = - 2
   REFNIL* = - 1
 
@@ -143,66 +143,66 @@ proc getref*(L: PState, theref: cint)
   #
 # implementation
 
-proc pushstring(L: PState, s: string) = 
+proc pushstring(L: PState, s: string) =
   pushlstring(L, cstring(s), s.len.cint)
 
-proc getn(L: PState, n: cint): cint = 
+proc getn(L: PState, n: cint): cint =
   Result = objlen(L, n)
 
-proc setn(L: PState, t, n: cint) = 
+proc setn(L: PState, t, n: cint) =
   # does nothing as this operation is deprecated
   nil
 
-proc open(): PState = 
+proc open(): PState =
   Result = newstate()
 
-proc dofile(L: PState, filename: cstring): cint = 
+proc dofile(L: PState, filename: cstring): cint =
   Result = loadfile(L, filename)
   if Result == 0: Result = pcall(L, 0, MULTRET, 0)
-  
-proc dostring(L: PState, str: cstring): cint = 
+
+proc dostring(L: PState, str: cstring): cint =
   Result = loadstring(L, str)
   if Result == 0: Result = pcall(L, 0, MULTRET, 0)
-  
-proc getmetatable(L: PState, tname: cstring) = 
+
+proc getmetatable(L: PState, tname: cstring) =
   getfield(L, REGISTRYINDEX, tname)
 
-proc argcheck(L: PState, cond: bool, numarg: cint, extramsg: cstring) = 
-  if not cond: 
+proc argcheck(L: PState, cond: bool, numarg: cint, extramsg: cstring) =
+  if not cond:
     discard argerror(L, numarg, extramsg)
 
-proc checkstring(L: PState, n: cint): cstring = 
+proc checkstring(L: PState, n: cint): cstring =
   Result = checklstring(L, n, nil)
 
-proc optstring(L: PState, n: cint, d: cstring): cstring = 
+proc optstring(L: PState, n: cint, d: cstring): cstring =
   Result = optlstring(L, n, d, nil)
 
-proc checkint(L: PState, n: cint): cint = 
+proc checkint(L: PState, n: cint): cint =
   Result = cint(checknumber(L, n))
 
-proc checklong(L: PState, n: cint): clong = 
+proc checklong(L: PState, n: cint): clong =
   Result = int32(ToInt(checknumber(L, n)))
 
-proc optint(L: PState, n: cint, d: float64): cint = 
+proc optint(L: PState, n: cint, d: float64): cint =
   Result = optnumber(L, n, d).cint
 
-proc optlong(L: PState, n: cint, d: float64): clong = 
+proc optlong(L: PState, n: cint, d: float64): clong =
   Result = int32(ToInt(optnumber(L, n, d)))
 
-proc addchar(B: PBuffer, c: Char) = 
-  if cast[int](addr((B.p))) < (cast[int](addr((B.buffer[0]))) + BUFFERSIZE): 
+proc addchar(B: PBuffer, c: Char) =
+  if cast[int](addr((B.p))) < (cast[int](addr((B.buffer[0]))) + BUFFERSIZE):
     discard prepbuffer(B)
   B.p[1] = c
   B.p = cast[cstring](cast[int](B.p) + 1)
 
-proc putchar(B: PBuffer, c: Char) = 
+proc putchar(B: PBuffer, c: Char) =
   addchar(B, c)
 
-proc addsize(B: PBuffer, n: cint) = 
+proc addsize(B: PBuffer, n: cint) =
   B.p = cast[cstring](cast[int](B.p) + n)
 
-proc unref(L: PState, theref: cint) = 
+proc unref(L: PState, theref: cint) =
   unref(L, REGISTRYINDEX, theref)
 
-proc getref(L: PState, theref: cint) = 
+proc getref(L: PState, theref: cint) =
   rawgeti(L, REGISTRYINDEX, theref)

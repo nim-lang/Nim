@@ -12,7 +12,7 @@ import strutils
 
 proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", nodecl, varargs.}
 
-proc ToStrMaxPrecision*(f: BiggestFloat): string = 
+proc ToStrMaxPrecision*(f: BiggestFloat): string =
   if f != f:
     result = "NAN"
   elif f == 0.0:
@@ -21,17 +21,17 @@ proc ToStrMaxPrecision*(f: BiggestFloat): string =
     if f > 0.0: result = "INF"
     else: result = "-INF"
   else:
-    var buf: array [0..80, char]    
-    c_sprintf(buf, "%#.16e", f) 
+    var buf: array [0..80, char]
+    c_sprintf(buf, "%#.16e", f)
     result = $buf
 
 proc encodeStr*(s: string, result: var string) =
-  for i in countup(0, len(s) - 1): 
+  for i in countup(0, len(s) - 1):
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
     else: add(result, '\\' & toHex(ord(s[i]), 2))
 
-proc hexChar(c: char, xi: var int) = 
+proc hexChar(c: char, xi: var int) =
   case c
   of '0'..'9': xi = (xi shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': xi = (xi shl 4) or (ord(c) - ord('a') + 10)
@@ -41,18 +41,18 @@ proc hexChar(c: char, xi: var int) =
 proc decodeStr*(s: cstring, pos: var int): string =
   var i = pos
   result = ""
-  while true: 
+  while true:
     case s[i]
-    of '\\': 
+    of '\\':
       inc(i, 3)
       var xi = 0
       hexChar(s[i-2], xi)
       hexChar(s[i-1], xi)
       add(result, chr(xi))
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': 
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_':
       add(result, s[i])
       inc(i)
-    else: break 
+    else: break
   pos = i
 
 const
@@ -68,11 +68,11 @@ template encodeIntImpl(self: expr) =
   var d: char
   var v = x
   var rem = v mod 190
-  if rem < 0: 
+  if rem < 0:
     add(result, '-')
     v = - (v div 190)
     rem = - rem
-  else: 
+  else:
     v = v div 190
   var idx = int(rem)
   if idx < 62: d = chars[idx]
@@ -89,11 +89,11 @@ proc encodeVBiggestInt*(x: BiggestInt, result: var string) =
   encodeVBiggestIntAux(x +% vintDelta, result)
   #  encodeIntImpl(encodeVBiggestInt)
 
-proc encodeVIntAux(x: int, result: var string) = 
+proc encodeVIntAux(x: int, result: var string) =
   ## encode an int as a variable length base 190 int.
   encodeIntImpl(encodeVIntAux)
-  
-proc encodeVInt*(x: int, result: var string) = 
+
+proc encodeVInt*(x: int, result: var string) =
   ## encode an int as a variable length base 190 int.
   encodeVIntAux(x +% vintDelta, result)
 
@@ -101,11 +101,11 @@ template decodeIntImpl() =
   var i = pos
   var sign = - 1
   assert(s[i] in {'a'..'z', 'A'..'Z', '0'..'9', '-', '\x80'..'\xFF'})
-  if s[i] == '-': 
+  if s[i] == '-':
     inc(i)
     sign = 1
   result = 0
-  while true: 
+  while true:
     case s[i]
     of '0'..'9': result = result * 190 - (ord(s[i]) - ord('0'))
     of 'a'..'z': result = result * 190 - (ord(s[i]) - ord('a') + 10)
@@ -116,7 +116,7 @@ template decodeIntImpl() =
   result = result * sign -% vintDelta
   pos = i
 
-proc decodeVInt*(s: cstring, pos: var int): int = 
+proc decodeVInt*(s: cstring, pos: var int): int =
   decodeIntImpl()
 
 proc decodeVBiggestInt*(s: cstring, pos: var int): biggestInt =

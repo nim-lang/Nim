@@ -17,7 +17,7 @@
 
 import
   math
- 
+
 const
   EPS = 5.0e-6 ## Epsilon used for float comparisons (should be smaller
                ## if float is really float64, but w/ the current version
@@ -199,7 +199,7 @@ proc pow*(x, y: TComplex): TComplex =
     var r     = y.re*theta + y.im*ln(rho)
     result.re = s*cos(r)
     result.im = s*sin(r)
-           
+
 
 proc sin*(z: TComplex): TComplex =
   ## Returns the sine of `z`.
@@ -264,7 +264,7 @@ when isMainModule:
   var one = (1.0,0.0)
   var tt = (10.0, 20.0)
   var ipi = (0.0, -PI)
- 
+
   assert( a         == a )
   assert( (a-a)     == z )
   assert( (a+b)     == z )
@@ -279,7 +279,7 @@ when isMainModule:
   assert( abs(oo)   == sqrt(2.0) )
   assert( sqrt(m1)  == i )
   assert( exp(ipi)  =~ m1 )
- 
+
   assert( pow(a,b)   =~ (-3.72999124927876, -1.68815826725068) )
   assert( pow(z,a)   =~ (0.0, 0.0) )
   assert( pow(z,z)   =~ (1.0, 0.0) )
@@ -299,7 +299,7 @@ when isMainModule:
   assert( arcsin(a) =~ (0.427078586392476, 1.528570919480998) )
   assert( arccos(a) =~ (1.14371774040242, -1.52857091948100) )
 
-  assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) ) 
+  assert( cosh(a) =~ (-0.642148124715520, 1.068607421382778) )
   assert( sinh(a) =~ (-0.489056259041294, 1.403119250622040) )
 
 

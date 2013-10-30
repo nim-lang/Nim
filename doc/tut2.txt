@@ -17,16 +17,16 @@ Introduction
 
 This document is a tutorial for the advanced constructs of the *Nimrod*
 programming language. **Note that this document is somewhat obsolete as
-the `manual <manual.html>`_ contains many more examples of the advanced 
+the `manual <manual.html>`_ contains many more examples of the advanced
 language features.**
 
 
 Pragmas
 =======
 Pragmas are Nimrod's method to give the compiler additional information/
-commands without introducing a massive number of new keywords. Pragmas are 
-enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial 
-does not cover pragmas. See the `manual <manual.html>`_ 
+commands without introducing a massive number of new keywords. Pragmas are
+enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial
+does not cover pragmas. See the `manual <manual.html>`_
 or `user guide <nimrodc.html>`_ for a description of the available pragmas.
 
 
@@ -76,8 +76,8 @@ section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``TObject``
-can be used as its ancestor, but this is only a convention. Objects that have 
-no ancestor are implicitely ``final``. You can use the ``inheritable`` pragma 
+can be used as its ancestor, but this is only a convention. Objects that have
+no ancestor are implicitely ``final``. You can use the ``inheritable`` pragma
 to introduce new object roots apart from ``system.TObject``. (This is used
 in the GTK wrapper for instance.)
 
@@ -198,7 +198,7 @@ This `method call syntax`:idx: is not restricted to objects, it can be used
 for any type:
 
 .. code-block:: nimrod
-  
+
   echo("abc".len) # is the same as echo(len("abc"))
   echo("abc".toUpper())
   echo({'a', 'b', 'c'}.card)
@@ -211,7 +211,7 @@ So "pure object oriented" code is easy to write:
 
 .. code-block:: nimrod
   import strutils
-  
+
   stdout.writeln("Give a list of numbers (separated by spaces): ")
   stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
   stdout.writeln(" is the maximum!")
@@ -225,7 +225,7 @@ the same. But setting a value is different; for this a special setter syntax
 is needed:
 
 .. code-block:: nimrod
-  
+
   type
     TSocket* = object of TObject
       FHost: int # cannot be accessed from the outside of the module
@@ -235,7 +235,7 @@ is needed:
   proc `host=`*(s: var TSocket, value: int) {.inline.} =
     ## setter of hostAddr
     s.FHost = value
-  
+
   proc host*(s: TSocket): int {.inline.} =
     ## getter of hostAddr
     return s.FHost
@@ -293,15 +293,15 @@ Procedures always use static dispatch. For dynamic dispatch replace the
   method eval(e: PExpr): int =
     # override this base method
     quit "to override!"
-  
+
   method eval(e: PLiteral): int = e.x
   method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
-  
+
   proc newLit(x: int): PLiteral = PLiteral(x: x)
   proc newPlus(a, b: PExpr): PPlusExpr = PPlusExpr(a: a, b: b)
-  
+
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
-  
+
 Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
 requires dynamic binding.
@@ -315,16 +315,16 @@ dispatching:
     TThing = object of TObject
     TUnit = object of TThing
       x: int
-      
+
   method collide(a, b: TThing) {.inline.} =
     quit "to override!"
-    
+
   method collide(a: TThing, b: TUnit) {.inline.} =
     echo "1"
-  
+
   method collide(a: TUnit, b: TThing) {.inline.} =
     echo "2"
-  
+
   var
     a, b: TUnit
   collide(a, b) # output: 2
@@ -566,7 +566,7 @@ containers:
         yield n.data
         add(stack, n.ri)  # push right subtree onto the stack
         n = n.le          # and follow the left pointer
-      
+
   var
     root: PBinaryTree[string] # instantiate a PBinaryTree with ``string``
   add(root, newNode("hallo")) # instantiates ``newNode`` and ``add``
@@ -618,7 +618,7 @@ simple proc for logging:
 
   proc log(msg: string) {.inline.} =
     if debug: stdout.writeln(msg)
-  
+
   var
     x = 4
   log("x has the value: " & $x)
@@ -635,7 +635,7 @@ Turning the ``log`` proc into a template solves this problem:
 
   template log(msg: string) =
     if debug: stdout.writeln(msg)
-  
+
   var
     x = 4
   log("x has the value: " & $x)
@@ -659,11 +659,11 @@ statement:
 
   declareInScope(a, int)
   a = 42  # works, `a` is known here
-  
+
   declareInNewScope(b, int)
   b = 42  # does not work, `b` is unknown
 
-(The manual explains why the ``immediate`` pragma is needed for these 
+(The manual explains why the ``immediate`` pragma is needed for these
 templates.)
 
 If there is a ``stmt`` parameter it should be the last in the template
@@ -684,11 +684,11 @@ via a special ``:`` syntax:
           close(f)
       else:
         quit("cannot open: " & fn)
-      
+
   withFile(txt, "ttempl3.txt", fmWrite):
     txt.writeln("line 1")
     txt.writeln("line 2")
-  
+
 In the example the two ``writeln`` statements are bound to the ``body``
 parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
@@ -794,5 +794,5 @@ Term rewriting macros
 ---------------------
 
 Term rewriting macros can be used to enhance the compilation process
-with user defined optimizations; see this `document <trmacros.html>`_ for 
+with user defined optimizations; see this `document <trmacros.html>`_ for
 further information.

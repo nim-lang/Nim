@@ -125,7 +125,7 @@ extern HIST_ENTRY **history_list PARAMS((void));
 /* Returns the number which says what history element we are now
    looking at.  */
 extern int where_history PARAMS((void));
-  
+
 /* Return the history entry at the current position, as determined by
    history_offset.  If there is no entry there, return a NULL pointer. */
 extern HIST_ENTRY *current_history PARAMS((void));

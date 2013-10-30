@@ -40,7 +40,7 @@ class WXDLLIMPEXP_CORE wxTransformMatrix: public wxObject<string, string<ubyte>>
 public:
     wxTransformMatrix(void);
     wxTransformMatrix(const wxTransformMatrix& mat);
-    
+
     ~wxTransformMatrix(void);
 
     //get the value in the matrix at col,row

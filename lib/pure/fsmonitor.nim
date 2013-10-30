@@ -30,7 +30,7 @@ type
     fd: cint
     handleEvent: proc (m: PFSMonitor, ev: TMonitorEvent) {.closure.}
     targets: TTable[cint, string]
-  
+
   TMonitorEventType* = enum ## Monitor event type
     MonitorAccess,       ## File was accessed.
     MonitorAttrib,       ## Metadata changed.
@@ -44,7 +44,7 @@ type
     MonitorMoved,        ## File was moved.
     MonitorOpen,         ## File was opened.
     MonitorAll           ## Filter for all event types.
-  
+
   TMonitorEvent* = object
     case kind*: TMonitorEventType  ## Type of the event.
     of MonitorMoveSelf, MonitorMoved:
@@ -74,7 +74,7 @@ proc add*(monitor: PFSMonitor, target: string,
   ## Adds ``target`` which may be a directory or a file to the list of
   ## watched paths of ``monitor``.
   ## You can specify the events to report using the ``filters`` parameter.
-  
+
   var INFilter = -1
   for f in filters:
     case f
@@ -90,7 +90,7 @@ proc add*(monitor: PFSMonitor, target: string,
     of MonitorMoved: INFilter = INFilter and IN_MOVED_FROM and IN_MOVED_TO
     of MonitorOpen: INFilter = INFilter and IN_OPEN
     of MonitorAll: INFilter = INFilter and IN_ALL_EVENTS
-  
+
   result = inotifyAddWatch(monitor.fd, target, INFilter.uint32)
   if result < 0:
     OSError()
@@ -110,7 +110,7 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
 
   let le = read(fd, addr(buffer[0]), size)
 
-  var movedFrom: TTable[cint, tuple[wd: cint, old: string]] = 
+  var movedFrom: TTable[cint, tuple[wd: cint, old: string]] =
             initTable[cint, tuple[wd: cint, old: string]]()
 
   var i = 0
@@ -123,13 +123,13 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
       copyMem(addr(mev.name[0]), addr event.name, event.len.int-1)
     else:
       mev.name = ""
-    
-    if (event.mask.int and IN_MOVED_FROM) != 0: 
+
+    if (event.mask.int and IN_MOVED_FROM) != 0:
       # Moved from event, add to m's collection
       movedFrom.add(event.cookie.cint, (mev.wd, mev.name))
       inc(i, sizeof(TINotifyEvent) + event.len.int)
       continue
-    elif (event.mask.int and IN_MOVED_TO) != 0: 
+    elif (event.mask.int and IN_MOVED_TO) != 0:
       mev.kind = MonitorMoved
       assert movedFrom.hasKey(event.cookie.cint)
       # Find the MovedFrom event.
@@ -139,23 +139,23 @@ proc getEvent(m: PFSMonitor, fd: cint): seq[TMonitorEvent] =
       movedFrom.del(event.cookie.cint)
     elif (event.mask.int and IN_ACCESS) != 0: mev.kind = MonitorAccess
     elif (event.mask.int and IN_ATTRIB) != 0: mev.kind = MonitorAttrib
-    elif (event.mask.int and IN_CLOSE_WRITE) != 0: 
+    elif (event.mask.int and IN_CLOSE_WRITE) != 0:
       mev.kind = MonitorCloseWrite
-    elif (event.mask.int and IN_CLOSE_NOWRITE) != 0: 
+    elif (event.mask.int and IN_CLOSE_NOWRITE) != 0:
       mev.kind = MonitorCloseNoWrite
     elif (event.mask.int and IN_CREATE) != 0: mev.kind = MonitorCreate
-    elif (event.mask.int and IN_DELETE) != 0: 
+    elif (event.mask.int and IN_DELETE) != 0:
       mev.kind = MonitorDelete
-    elif (event.mask.int and IN_DELETE_SELF) != 0: 
+    elif (event.mask.int and IN_DELETE_SELF) != 0:
       mev.kind = MonitorDeleteSelf
     elif (event.mask.int and IN_MODIFY) != 0: mev.kind = MonitorModify
-    elif (event.mask.int and IN_MOVE_SELF) != 0: 
+    elif (event.mask.int and IN_MOVE_SELF) != 0:
       mev.kind = MonitorMoveSelf
     elif (event.mask.int and IN_OPEN) != 0: mev.kind = MonitorOpen
-    
+
     if mev.kind != MonitorMoved:
       mev.fullname = ""
-    
+
     result.add(mev)
     inc(i, sizeof(TINotifyEvent) + event.len.int)
 
@@ -208,7 +208,6 @@ when isMainModule:
         echo("Name is ", ev.name)
       else:
         echo("Name ", ev.name, " fullname ", ev.fullName))
-      
+
   while true:
     if not disp.poll(): break
-  

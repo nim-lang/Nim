@@ -4,10 +4,10 @@
 # Do not change!  Changing this file implies a protocol change!
 #
 
-import  
+import
   X
 
-const 
+const
   XA_PRIMARY* = TAtom(1)
   XA_SECONDARY* = TAtom(2)
   XA_ARC* = TAtom(3)

@@ -47,7 +47,7 @@ proc main(infile, outfile: string, options: PParserOptions) =
   var module = parseUnit(p)
   closeParser(p)
   renderModule(module, outfile)
-  rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start), 
+  rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start),
                             formatSize(getTotalMem())])
 
 var

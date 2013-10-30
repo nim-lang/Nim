@@ -11,11 +11,11 @@ import math
 import strutils
 import numeric
 
-type 
+type
     TPoly* = object
         cofs:seq[float]
 
-  
+
 proc degree*(p:TPoly):int=
   ## Returns the degree of the polynomial,
   ## that is the number of coefficients-1
@@ -39,7 +39,7 @@ proc `[]` *(p:TPoly;idx:int):float=
   if idx<0 or idx>p.degree:
       return 0.0
   return p.cofs[idx]
-    
+
 proc `[]=` *(p:var TPoly;idx:int,v:float)=
   ## Sets an coefficient of the polynomial by index.
   ## p[2] set the quadric term, p[3] the cubic etc.
@@ -54,15 +54,15 @@ proc `[]=` *(p:var TPoly;idx:int,v:float)=
       p.cofs[q]=0.0 #new-grown coefficients set to zero
 
   p.cofs[idx]=v
-    
-      
+
+
 iterator items*(p:TPoly):float=
   ## Iterates through the corfficients of the polynomial.
   var i=p.degree
   while i>=0:
     yield p[i]
-    dec i    
-    
+    dec i
+
 proc clean*(p:var TPoly;zerotol=0.0)=
   ## Removes leading zero coefficients of the polynomial.
   ## An optional tolerance can be given for what's considered zero.
@@ -76,19 +76,19 @@ proc clean*(p:var TPoly;zerotol=0.0)=
   if relen: p.cofs.setLen(n+1)
 
 
-proc `$` *(p:TPoly):string = 
+proc `$` *(p:TPoly):string =
   ## Gets a somewhat reasonable string representation of the polynomial
   ## The format should be compatible with most online function plotters,
   ## for example directly in google search
   result=""
   var first=true #might skip + sign if first coefficient
-  
+
   for idx in countdown(p.degree,0):
     let a=p[idx]
-    
+
     if a==0.0:
       continue
-    
+
     if a>= 0.0 and not first:
       result.add('+')
     first=false
@@ -102,14 +102,14 @@ proc `$` *(p:TPoly):string =
 
   if result=="":
       result="0"
-          
+
 
 proc derivative*(p:TPoly):TPoly=
   ## Returns a new polynomial, which is the derivative of `p`
   newSeq[float](result.cofs,p.degree)
   for idx in 0..high(result.cofs):
     result.cofs[idx]=p.cofs[idx+1]*float(idx+1)
-    
+
 proc diff*(p:TPoly,x:float):float=
   ## Evaluates the differentiation of a polynomial with
   ## respect to `x` quickly using a modifed Horners method
@@ -127,7 +127,7 @@ proc integral*(p:TPoly):TPoly=
   result.cofs[0]=0.0  #constant arbitrary term, use 0.0
   for i in 1..high(result.cofs):
     result.cofs[i]=p.cofs[i-1]/float(i)
-        
+
 
 proc integrate*(p:TPoly;xmin,xmax:float):float=
   ## Computes the definite integral of `p` between `xmin` and `xmax`
@@ -144,9 +144,9 @@ proc integrate*(p:TPoly;xmin,xmax:float):float=
     s1 = s1*xmin+fac
     s2 = s2*xmax+fac
     dec n
- 
+
   result=s2*xmax-s1*xmin
-  
+
 proc initPoly*(cofs:varargs[float]):TPoly=
   ## Initializes a polynomial with given coefficients.
   ## The most significant coefficient is first, so to create x^2-2x+3:
@@ -157,7 +157,7 @@ proc initPoly*(cofs:varargs[float]):TPoly=
     # reverse order of coefficients so indexing matches degree of
     # coefficient...
     result.cofs= @[]
-    for idx in countdown(cofs.len-1,0):  
+    for idx in countdown(cofs.len-1,0):
       result.cofs.add(cofs[idx])
 
   result.clean #remove leading zero terms
@@ -166,49 +166,49 @@ proc initPoly*(cofs:varargs[float]):TPoly=
 proc divMod*(p,d:TPoly;q,r:var TPoly)=
   ## Divides `p` with `d`, and stores the quotinent in `q` and
   ## the remainder in `d`
-  var 
+  var
     pdeg=p.degree
     ddeg=d.degree
     power=p.degree-d.degree
     ratio:float
-  
+
   r.cofs = p.cofs #initial remainder=numerator
   if power<0: #denominator is larger than numerator
     q.cofs= @ [0.0] #quotinent is 0.0
     return # keep remainder as numerator
-      
+
   q.cofs=newSeq[float](power+1)
-  
+
   for i in countdown(pdeg,ddeg):
     ratio=r.cofs[i]/d.cofs[ddeg]
-    
+
     q.cofs[i-ddeg]=ratio
     r.cofs[i]=0.0
-    
+
     for j in countup(0,<ddeg):
         var idx=i-ddeg+j
         r.cofs[idx] = r.cofs[idx] - d.cofs[j]*ratio
-     
+
   r.clean # drop zero coefficients in remainder
 
 proc `+` *(p1:TPoly,p2:TPoly):TPoly=
   ## Adds two polynomials
   var n=max(p1.cofs.len,p2.cofs.len)
   newSeq(result.cofs,n)
-  
+
   for idx in countup(0,n-1):
       result[idx]=p1[idx]+p2[idx]
-      
+
   result.clean # drop zero coefficients in remainder
-    
+
 proc `*` *(p1:TPoly,p2:TPoly):TPoly=
   ## Multiplies the polynomial `p1` with `p2`
-  var 
+  var
     d1=p1.degree
     d2=p2.degree
     n=d1+d2
     idx:int
-      
+
   newSeq(result.cofs,n)
 
   for i1 in countup(0,d1):
@@ -224,38 +224,38 @@ proc `*` *(p:TPoly,f:float):TPoly=
   for i in 0..high(p.cofs):
     result[i]=p.cofs[i]*f
   result.clean
-  
+
 proc `*` *(f:float,p:TPoly):TPoly=
   ## Multiplies a real number with a polynomial
   return p*f
-    
+
 proc `-`*(p:TPoly):TPoly=
   ## Negates a polynomial
   result=p
   for i in countup(0,<result.cofs.len):
     result.cofs[i]= -result.cofs[i]
-    
+
 proc `-` *(p1:TPoly,p2:TPoly):TPoly=
   ## Subtract `p1` with `p2`
   var n=max(p1.cofs.len,p2.cofs.len)
   newSeq(result.cofs,n)
-  
+
   for idx in countup(0,n-1):
       result[idx]=p1[idx]-p2[idx]
-      
+
   result.clean # drop zero coefficients in remainder
-    
+
 proc `/`*(p:TPoly,f:float):TPoly=
   ## Divides polynomial `p` with a real number `f`
   newSeq(result.cofs,p.cofs.len)
   for i in 0..high(p.cofs):
     result[i]=p.cofs[i]/f
   result.clean
-  
+
 proc `/` *(p,q:TPoly):TPoly=
   ## Divides polynomial `p` with polynomial `q`
   var dummy:TPoly
-  p.divMod(q,result,dummy)  
+  p.divMod(q,result,dummy)
 
 proc `mod` *(p,q:TPoly):TPoly=
   ## Computes the polynomial modulo operation,
@@ -276,20 +276,20 @@ proc solveQuadric*(a,b,c:float;zerotol=0.0):seq[float]=
   ## Solves the quadric equation `ax^2+bx+c`, with a possible
   ## tolerance `zerotol` to find roots of curves just 'touching'
   ## the x axis. Returns sequence with 0,1 or 2 solutions.
-  
+
   var p,q,d:float
-  
+
   p=b/(2.0*a)
-  
+
   if p==inf or p==neginf: #linear equation..
     var linrt= -c/b
     if linrt==inf or linrt==neginf: #constant only
       return @[]
     return @[linrt]
-  
+
   q=c/a
   d=p*p-q
-  
+
   if d<0.0:
     #check for inside zerotol range for neg. roots
     var err=a*p*p-b*p+c #evaluate error at parabola center axis
@@ -308,12 +308,12 @@ proc getRangeForRoots(p:TPoly):tuple[xmin,xmax:float]=
   var deg=p.degree
   var d=p[deg]
   var bound1,bound2:float
-  
+
   for i in countup(0,deg):
       var c=abs(p.cofs[i]/d)
       bound1=max(bound1,c+1.0)
       bound2=bound2+c
-      
+
   bound2=max(1.0,bound2)
   result.xmax=min(bound1,bound2)
   result.xmin= -result.xmax
@@ -326,13 +326,13 @@ proc addRoot(p:TPoly,res:var seq[float],xp0,xp1,tol,zerotol,mergetol:float,maxit
   var br=brent(xp0,xp1, proc(x:float):float=p.eval(x),tol)
   if br.success:
     if res.len==0 or br.rootx>=res[high(res)]+mergetol: #dont add equal roots.
-      res.add(br.rootx) 
+      res.add(br.rootx)
   else:
     #this might be a 'touching' case, check function value against
     #zero tolerance
     if abs(br.rooty)<=zerotol:
       if res.len==0 or br.rootx>=res[high(res)]+mergetol: #dont add equal roots.
-        res.add(br.rootx) 
+        res.add(br.rootx)
 
 
 proc roots*(p:TPoly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq[float]=

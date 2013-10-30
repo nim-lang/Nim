@@ -10,18 +10,18 @@
 ## This module implements the code "prettifier". This is part of the toolchain
 ## to convert Nimrod code into a consistent style.
 
-import 
+import
   strutils, os, options, ast, astalgo, msgs, ropes, idents, passes,
   intsets, strtabs
-  
+
 const
   removeTP = false # when true, "nimrod pretty" converts TTyp to Typ.
 
-type 
+type
   TGen = object of TPassContext
     module*: PSym
   PGen = ref TGen
-  
+
   TSourceFile = object
     lines: seq[string]
     dirty: bool
@@ -97,7 +97,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 proc checkStyle*(info: TLineInfo, s: string, k: TSymKind) =
   let beau = beautifyName(s, k)
   if s != beau:
-    Message(info, errGenerated, 
+    Message(info, errGenerated,
       "name does not adhere to naming convention; should be: " & beau)
 
 const
@@ -119,7 +119,7 @@ proc differ(line: string, a, b: int, x: string): bool =
 
 var cannotRename = initIntSet()
 
-proc processSym(c: PPassContext, n: PNode): PNode = 
+proc processSym(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   case n.kind
@@ -129,40 +129,40 @@ proc processSym(c: PPassContext, n: PNode): PNode =
     # operators stay as they are:
     if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters: return
     if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
-    
+
     if s.id in cannotRename: return
-    
+
     let newName = if rules.hasKey(s.name.s): rules[s.name.s]
                   else: beautifyName(s.name.s, n.sym.kind)
-    
+
     loadFile(n.info)
-    
+
     let line = gSourceFiles[n.info.fileIndex].lines[n.info.line-1]
     var first = n.info.col.int
     if first < 0: return
     #inc first, skipIgnoreCase(line, "proc ", first)
     while first > 0 and line[first-1] in Letters: dec first
     if line[first] == '`': inc first
-    
+
     if {sfImportc, sfExportc} * s.flags != {}:
       # careful, we must ensure the resulting name still matches the external
       # name:
       if newName != s.name.s and newName != s.loc.r.ropeToStr and
           lfFullExternalName notin s.loc.flags:
-        Message(n.info, errGenerated, 
+        Message(n.info, errGenerated,
           "cannot rename $# to $# due to external name" % [s.name.s, newName])
         cannotRename.incl(s.id)
         return
     let last = first+identLen(line, first)-1
     if differ(line, first, last, newName):
-      # last-first+1 != newName.len or 
+      # last-first+1 != newName.len or
       var x = line.subStr(0, first-1) & newName & line.substr(last+1)
       when removeTP:
         # the WinAPI module is full of 'TX = X' which after the substitution
         # becomes 'X = X'. We remove those lines:
         if x.match(peg"\s* {\ident} \s* '=' \s* y$1 ('#' .*)?"):
           x = ""
-      
+
       system.shallowCopy(gSourceFiles[n.info.fileIndex].lines[n.info.line-1], x)
       gSourceFiles[n.info.fileIndex].dirty = true
   else:
