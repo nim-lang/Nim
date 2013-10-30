@@ -31,6 +31,7 @@ when hostos == "solaris":
 
 import os, parseutils
 from times import epochTime
+import unsigned
 
 when defined(ssl):
   import openssl
@@ -82,7 +83,7 @@ type
   
   TSocket* = ref TSocketImpl
   
-  TPort* = distinct int16  ## port type
+  TPort* = distinct uint16  ## port type
   
   TDomain* = enum   ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
@@ -540,7 +541,7 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) {.
               SSLError("Unknown error")
 
 proc setBlocking*(s: TSocket, blocking: bool) {.tags: [].}
-  ## sets blocking mode on socket
+  ## Sets blocking mode on socket
 
 when defined(ssl):
   proc acceptAddrSSL*(server: TSocket, client: var TSocket,
@@ -634,24 +635,32 @@ proc close*(socket: TSocket) =
       discard SSLShutdown(socket.sslHandle)
 
 proc getServByName*(name, proto: string): TServent {.tags: [FReadIO].} =
-  ## well-known getservbyname proc.
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the service name specified by ``name`` matches the s_name member
+  ## and the protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
   when defined(Windows):
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
-  if s == nil: OSError(OSLastError())
+  if s == nil: raise newException(EOS, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = TPort(s.s_port)
   result.proto = $s.s_proto
   
 proc getServByPort*(port: TPort, proto: string): TServent {.tags: [FReadIO].} = 
-  ## well-known getservbyport proc.
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the port specified by ``port`` matches the s_port member and the 
+  ## protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
   when defined(Windows):
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: OSError(OSLastError())
+  if s == nil: raise newException(EOS, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = TPort(s.s_port)
@@ -687,7 +696,7 @@ proc getHostByAddr*(ip: string): THostEnt {.tags: [FReadIO].} =
   result.length = int(s.h_length)
 
 proc getHostByName*(name: string): THostEnt {.tags: [FReadIO].} = 
-  ## well-known gethostbyname proc.
+  ## This function will lookup the IP address of a hostname.
   when defined(Windows):
     var s = winlean.gethostbyname(name)
   else:
@@ -877,11 +886,6 @@ proc timeValFromMilliseconds(timeout = 500): TTimeVal =
     var seconds = timeout div 1000
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
-#proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
-#               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
-
-#proc sendto*(s: TWinSocket, buf: cstring, len, flags: cint,
-#             to: ptr TSockAddr, tolen: cint): cint
 
 proc createFdSet(fd: var TFdSet, s: seq[TSocket], m: var int) = 
   FD_ZERO(fd)
@@ -1669,6 +1673,9 @@ proc isSSL*(socket: TSocket): bool = return socket.isSSL
 
 proc getFD*(socket: TSocket): TSocketHandle = return socket.fd
   ## Returns the socket's file descriptor
+
+proc isBlocking*(socket: TSocket): bool = not socket.nonblocking
+  ## Determines whether ``socket`` is blocking.
 
 when defined(Windows):
   var wsa: TWSADATA
