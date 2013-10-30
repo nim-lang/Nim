@@ -119,6 +119,10 @@ type
     length*: int
     addrList*: seq[string]
 
+  TSOBool* = enum ## Boolean socket options.
+    OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
+    OptOOBInline, OptReuseAddr
+
   TRecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
 
@@ -732,6 +736,34 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) {.
   var value = cint(optval)
   if setsockopt(socket.fd, cint(level), cint(optname), addr(value),  
                 sizeof(value).TSockLen) < 0'i32:
+    OSError(OSLastError())
+
+proc toCInt(opt: TSOBool): cint =
+  case opt
+  of OptAcceptConn: SO_ACCEPTCONN
+  of OptBroadcast: SO_BROADCAST
+  of OptDebug: SO_DEBUG
+  of OptDontRoute: SO_DONTROUTE
+  of OptKeepAlive: SO_KEEPALIVE
+  of OptOOBInline: SO_OOBINLINE
+  of OptReuseAddr: SO_REUSEADDR
+
+proc getSockOpt*(socket: TSocket, opt: TSOBool, level = SOL_SOCKET): bool {.
+  tags: [FReadIO].} =
+  ## Retrieves option ``opt`` as a boolean value.
+  var res: cint
+  var size = sizeof(res).TSockLen
+  if getsockopt(socket.fd, cint(level), toCInt(opt), 
+                addr(res), addr(size)) < 0'i32:
+    OSError(OSLastError())
+  result = res != 0
+
+proc setSockOpt*(socket: TSocket, opt: TSOBool, value: bool, level = SOL_SOCKET) {.
+  tags: [FWriteIO].} =
+  ## Sets option ``opt`` to a boolean value specified by ``value``.
+  var valuei = cint(if value: 1 else: 0)
+  if setsockopt(socket.fd, cint(level), toCInt(opt), addr(valuei),  
+                sizeof(valuei).TSockLen) < 0'i32:
     OSError(OSLastError())
 
 proc connect*(socket: TSocket, address: string, port = TPort(0), 

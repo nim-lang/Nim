@@ -415,6 +415,19 @@ type
 var
   SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
   INVALID_SOCKET* {.importc, header: "Winsock2.h".}: TSocketHandle
+  SOL_SOCKET* {.importc, header: "Winsock2.h".}: cint
+  SO_DEBUG* {.importc, header: "Winsock2.h".}: cint ## turn on debugging info recording
+  SO_ACCEPTCONN* {.importc, header: "Winsock2.h".}: cint # socket has had listen()
+  SO_REUSEADDR* {.importc, header: "Winsock2.h".}: cint # allow local address reuse
+  SO_KEEPALIVE* {.importc, header: "Winsock2.h".}: cint # keep connections alive
+  SO_DONTROUTE* {.importc, header: "Winsock2.h".}: cint # just use interface addresses
+  SO_BROADCAST* {.importc, header: "Winsock2.h".}: cint # permit sending of broadcast msgs
+  SO_USELOOPBACK* {.importc, header: "Winsock2.h".}: cint # bypass hardware when possible
+  SO_LINGER* {.importc, header: "Winsock2.h".}: cint # linger on close if data present
+  SO_OOBINLINE* {.importc, header: "Winsock2.h".}: cint # leave received OOB data in line
+
+  SO_DONTLINGER* {.importc, header: "Winsock2.h".}: cint
+  SO_EXCLUSIVEADDRUSE* {.importc, header: "Winsock2.h".}: cint # disallow local address reuse
 
 proc `==`*(x, y: TSocketHandle): bool {.borrow.}
 
