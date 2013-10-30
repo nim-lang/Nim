@@ -2,11 +2,11 @@
 Substitution Expressions (subex)
 ================================
 
-A *subex* (*Substitution Expression*) represents an advanted string 
+A *subex* (*Substitution Expression*) represents an advanted string
 substitution. In contrast to a `regex`:idx: which deals with string analysis, a
 *subex* deals with string synthesis.
 
-Thanks to its conditional construct ``$[0|1|2|else]`` it supports 
+Thanks to its conditional construct ``$[0|1|2|else]`` it supports
 `internationalization`:idx: of format string literals quite well.
 
 
@@ -34,7 +34,7 @@ Notation                meaning
 ``$[zero|one|def]1``    use ``X = parseInt(arg[1])`` to determine which
                         branch to use. If ``X == 0`` the 'zero' branch is
                         selected, if ``X == 1`` the 'one' branch is
-                        selected, etc. Otherwise the 'def' branch is 
+                        selected, etc. Otherwise the 'def' branch is
                         selected. ``$x`` is interpreted in branches too.
                         If a branch needs to contain ``|``, ``]`` put
                         them in single quotes. To produce a verbatim single
@@ -47,12 +47,12 @@ Examples
 .. code-block:: nimrod
 
   subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
-  
+
   subex"$1 $[files|file|files]{1} copied" % ["1"] == "1 file copied"
-  
+
   subex"$['''|'|''''|']']#" % "0" == "'|"
-  
+
   subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
-    
+
 

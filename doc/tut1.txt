@@ -16,9 +16,9 @@ Introduction
   </p></blockquote>
 
 
-This document is a tutorial for the programming language *Nimrod*. 
-This tutorial assumes that you are familiar with basic programming concepts 
-like variables, types or statements but is kept very basic. The manual 
+This document is a tutorial for the programming language *Nimrod*.
+This tutorial assumes that you are familiar with basic programming concepts
+like variables, types or statements but is kept very basic. The manual
 contains many more examples of the advanced language features.
 
 
@@ -51,11 +51,11 @@ Commonly used commands and switches have abbreviations, so you can also use::
   nimrod c -r greetings.nim
 
 To compile a release version use::
-  
+
   nimrod c -d:release greetings.nim
 
-By default the Nimrod compiler generates a large amount of runtime checks 
-aiming for your debugging pleasure. With ``-d:release`` these checks are 
+By default the Nimrod compiler generates a large amount of runtime checks
+aiming for your debugging pleasure. With ``-d:release`` these checks are
 turned off and optimizations are turned on.
 
 Though it should be pretty obvious what the program does, I will explain the
@@ -203,7 +203,7 @@ constant declaration at compile time:
 
 .. code-block:: nimrod
   const x = "abc" # the constant x contains the string "abc"
-  
+
 Indentation can be used after the ``const`` keyword to list a whole section of
 constants:
 
@@ -217,7 +217,7 @@ constants:
 
 The let statement
 =================
-The ``let`` statement works like the ``var`` statement but the declared 
+The ``let`` statement works like the ``var`` statement but the declared
 symbols are *single assignment* variables: After the initialization their
 value cannot change:
 
@@ -231,7 +231,7 @@ and put it into a data section":
 
 .. code-block::
   const input = readline(stdin) # Error: constant expression expected
-  
+
 .. code-block::
   let input = readline(stdin)   # works
 
@@ -407,7 +407,7 @@ The block's *label* (``myblock`` in the example) is optional.
 Break statement
 ---------------
 A block can be left prematurely with a ``break`` statement. The break statement
-can leave a ``while``, ``for``, or a ``block`` statement. It leaves the 
+can leave a ``while``, ``for``, or a ``block`` statement. It leaves the
 innermost construct, unless a label of a block is given:
 
 .. code-block:: nimrod
@@ -462,7 +462,7 @@ differences:
 * The statements within a branch do not open a new scope.
 * The compiler checks the semantics and produces code *only* for the statements
   that belong to the first condition that evaluates to ``true``.
-  
+
 The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
 
@@ -487,14 +487,14 @@ to be indented, but single simple statements do not:
 .. code-block:: nimrod
   # no indentation needed for single assignment statement:
   if x: x = false
-  
+
   # indentation needed for nested if statement:
   if x:
     if y:
       y = false
     else:
       y = true
-  
+
   # indentation needed, because two statements follow the condition:
   if x:
     x = false
@@ -515,7 +515,7 @@ contain indentation at certain places for better readability:
 As a rule of thumb, indentation within expressions is allowed after operators,
 an open parenthesis and after commas.
 
-With parenthesis and semicolons ``(;)`` you can use statements where only 
+With parenthesis and semicolons ``(;)`` you can use statements where only
 an expression is allowed:
 
 .. code-block:: nimrod
@@ -611,12 +611,12 @@ allow to silently throw away a return value:
 
 
 The return value can be ignored implicitely if the called proc/iterator has
-been declared with the ``discardable`` pragma: 
+been declared with the ``discardable`` pragma:
 
 .. code-block:: nimrod
-  proc p(x, y: int): int {.discardable.} = 
+  proc p(x, y: int): int {.discardable.} =
     return x + y
-    
+
   p(3, 4) # now valid
 
 
@@ -871,7 +871,7 @@ object on the heap, so there is a trade-off to be made here.
 
 Integers
 --------
-Nimrod has these integer types built-in: 
+Nimrod has these integer types built-in:
 ``int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64``.
 
 The default integer type is ``int``. Integer literals can have a *type suffix*
@@ -1111,7 +1111,7 @@ Arrays
 An `array`:idx: is a simple fixed length container. Each element in
 the array has the same type. The array's index type can be any ordinal type.
 
-Arrays can be constructed via ``[]``: 
+Arrays can be constructed via ``[]``:
 
 .. code-block:: nimrod
 
@@ -1298,7 +1298,7 @@ type conversions in this context:
   # is transformed by the compiler to:
   myWriteln(stdout, [$123, $"def", $4.0])
 
-In this example ``$`` is applied to any argument that is passed to the 
+In this example ``$`` is applied to any argument that is passed to the
 parameter ``a``. Note that ``$`` applied to strings is a nop.
 
 
@@ -1338,12 +1338,12 @@ integer.
   var building: tuple[street: string, number: int]
   building = ("Rue del Percebe", 13)
   echo(building.street)
-  
+
   # The following line does not compile, they are different tuples!
   #person = building
   # --> Error: type mismatch: got (tuple[street: string, number: int])
   #     but expected 'TPerson'
-  
+
   # The following works because the field names and types are the same.
   var teacher: tuple[name: string, age: int] = ("Mark", 42)
   person = teacher
@@ -1382,7 +1382,7 @@ operators perform implicit dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 
+  n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
 (As a convention, reference types use a 'P' prefix.)
@@ -1491,9 +1491,9 @@ This is best illustrated by an example:
 
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. If
-the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous 
-if it is defined in two (or more) different modules and both modules are 
-imported by a third one: 
+the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous
+if it is defined in two (or more) different modules and both modules are
+imported by a third one:
 
 .. code-block:: nimrod
   # Module A
