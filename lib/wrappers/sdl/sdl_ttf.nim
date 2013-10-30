@@ -3,87 +3,87 @@
 #
 #
 #******************************************************************************
-#                                                                              
-#          JEDI-SDL : Pascal units for SDL - Simple DirectMedia Layer          
-#       Conversion of the Simple DirectMedia Layer Headers                     
-#                                                                              
-# Portions created by Sam Lantinga <slouken@devolution.com> are                
-# Copyright (C) 1997, 1998, 1999, 2000, 2001  Sam Lantinga                     
-# 5635-34 Springhouse Dr.                                                      
-# Pleasanton, CA 94588 (USA)                                                   
-#                                                                              
-# All Rights Reserved.                                                         
-#                                                                              
-# The original files are : SDL_ttf.h                                           
-#                                                                              
-# The initial developer of this Pascal code was :                              
-# Dominqiue Louis <Dominique@SavageSoftware.com.au>                            
-#                                                                              
-# Portions created by Dominqiue Louis are                                      
-# Copyright (C) 2000 - 2001 Dominqiue Louis.                                   
-#                                                                              
-#                                                                              
-# Contributor(s)                                                               
-# --------------                                                               
-# Tom Jones <tigertomjones@gmx.de>  His Project inspired this conversion       
-#                                                                              
-# Obtained through:                                                            
-# Joint Endeavour of Delphi Innovators ( Project JEDI )                        
-#                                                                              
-# You may retrieve the latest version of this file at the Project              
-# JEDI home page, located at http://delphi-jedi.org                            
-#                                                                              
-# The contents of this file are used with permission, subject to               
-# the Mozilla Public License Version 1.1 (the "License"); you may              
-# not use this file except in compliance with the License. You may             
-# obtain a copy of the License at                                              
-# http://www.mozilla.org/MPL/MPL-1.1.html                                      
-#                                                                              
-# Software distributed under the License is distributed on an                  
-# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or               
-# implied. See the License for the specific language governing                 
-# rights and limitations under the License.                                    
-#                                                                              
-# Description                                                                  
-# -----------                                                                  
-#                                                                              
-#                                                                              
-#                                                                              
-#                                                                              
-#                                                                              
-#                                                                              
-#                                                                              
-# Requires                                                                     
-# --------                                                                     
-#   The SDL Runtime libraris on Win32  : SDL.dll on Linux : libSDL.so          
-#   They are available from...                                                 
-#   http://www.libsdl.org .                                                    
-#                                                                              
-# Programming Notes                                                            
-# -----------------                                                            
-#                                                                              
-#                                                                              
-#                                                                              
-#                                                                              
-# Revision History                                                             
-# ----------------                                                             
-#   December 08 2002 - DL : Fixed definition of TTF_RenderUnicode_Solid        
-#                                                                              
-#   April   03 2003 - DL : Added jedi-sdl.inc include file to support more     
-#                          Pascal compilers. Initial support is now included   
-#                          for GnuPascal, VirtualPascal, TMT and obviously     
-#                          continue support for Delphi Kylix and FreePascal.   
-#                                                                              
+#
+#          JEDI-SDL : Pascal units for SDL - Simple DirectMedia Layer
+#       Conversion of the Simple DirectMedia Layer Headers
+#
+# Portions created by Sam Lantinga <slouken@devolution.com> are
+# Copyright (C) 1997, 1998, 1999, 2000, 2001  Sam Lantinga
+# 5635-34 Springhouse Dr.
+# Pleasanton, CA 94588 (USA)
+#
+# All Rights Reserved.
+#
+# The original files are : SDL_ttf.h
+#
+# The initial developer of this Pascal code was :
+# Dominqiue Louis <Dominique@SavageSoftware.com.au>
+#
+# Portions created by Dominqiue Louis are
+# Copyright (C) 2000 - 2001 Dominqiue Louis.
+#
+#
+# Contributor(s)
+# --------------
+# Tom Jones <tigertomjones@gmx.de>  His Project inspired this conversion
+#
+# Obtained through:
+# Joint Endeavour of Delphi Innovators ( Project JEDI )
+#
+# You may retrieve the latest version of this file at the Project
+# JEDI home page, located at http://delphi-jedi.org
+#
+# The contents of this file are used with permission, subject to
+# the Mozilla Public License Version 1.1 (the "License"); you may
+# not use this file except in compliance with the License. You may
+# obtain a copy of the License at
+# http://www.mozilla.org/MPL/MPL-1.1.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# Description
+# -----------
+#
+#
+#
+#
+#
+#
+#
+# Requires
+# --------
+#   The SDL Runtime libraris on Win32  : SDL.dll on Linux : libSDL.so
+#   They are available from...
+#   http://www.libsdl.org .
+#
+# Programming Notes
+# -----------------
+#
+#
+#
+#
+# Revision History
+# ----------------
+#   December 08 2002 - DL : Fixed definition of TTF_RenderUnicode_Solid
+#
+#   April   03 2003 - DL : Added jedi-sdl.inc include file to support more
+#                          Pascal compilers. Initial support is now included
+#                          for GnuPascal, VirtualPascal, TMT and obviously
+#                          continue support for Delphi Kylix and FreePascal.
+#
 #   April   24 2003 - DL : under instruction from Alexey Barkovoy, I have added
-#                          better TMT Pascal support and under instruction     
+#                          better TMT Pascal support and under instruction
 #                          from Prof. Abimbola Olowofoyeku (The African Chief),
-#                          I have added better Gnu Pascal support              
-#                                                                              
-#   April   30 2003 - DL : under instruction from David Mears AKA              
-#                          Jason Siletto, I have added FPC Linux support.      
-#                          This was compiled with fpc 1.1, so remember to set  
-#                          include file path. ie. -Fi/usr/share/fpcsrc/rtl/*   
-#                                                                              
+#                          I have added better Gnu Pascal support
+#
+#   April   30 2003 - DL : under instruction from David Mears AKA
+#                          Jason Siletto, I have added FPC Linux support.
+#                          This was compiled with fpc 1.1, so remember to set
+#                          include file path. ie. -Fi/usr/share/fpcsrc/rtl/*
+#
 #
 #  $Log: sdl_ttf.pas,v $
 #  Revision 1.18  2007/06/01 11:16:33  savage
@@ -141,7 +141,7 @@
 #  Revision 1.1  2004/02/16 22:16:40  savage
 #  v1.0 changes
 #
-#  
+#
 #
 #******************************************************************************
 #
@@ -152,19 +152,19 @@
 #  See [http://lists.libsdl.org/pipermail/sdl-libsdl.org/2007-March/060459.html]
 #
 
-import 
+import
   sdl
 
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     ttfLibName = "SDL_ttf.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     ttfLibName = "libSDL_ttf-2.0.0.dylib"
-else: 
-  const 
+else:
+  const
     ttfLibName = "libSDL_ttf.so(|.1|.0)"
-const 
+const
   MAJOR_VERSION* = 2
   MINOR_VERSION* = 0
   PATCHLEVEL* = 8      # Backwards compatibility
@@ -176,21 +176,21 @@ const
   UNICODE_BOM_NATIVE* = 0x0000FEFF
   UNICODE_BOM_SWAPPED* = 0x0000FFFE
 
-type 
+type
   PFont* = ptr Tfont
-  TFont{.final.} = object  
-  
-  
-# This macro can be used to fill a version structure with the compile-time
-# version of the SDL_ttf library. 
+  TFont{.final.} = object
 
-proc Linked_Version*(): sdl.Pversion{.cdecl, importc: "TTF_Linked_Version", 
+
+# This macro can be used to fill a version structure with the compile-time
+# version of the SDL_ttf library.
+
+proc Linked_Version*(): sdl.Pversion{.cdecl, importc: "TTF_Linked_Version",
                                       dynlib: ttfLibName.}
   # This function tells the library whether UNICODE text is generally
   #   byteswapped.  A UNICODE BOM character in a string will override
   #   this setting for the remainder of that string.
   #
-proc ByteSwappedUNICODE*(swapped: cint){.cdecl, 
+proc ByteSwappedUNICODE*(swapped: cint){.cdecl,
     importc: "TTF_ByteSwappedUNICODE", dynlib: ttfLibName.}
   #returns 0 on succes, -1 if error occurs
 proc Init*(): cint{.cdecl, importc: "TTF_Init", dynlib: ttfLibName.}
@@ -200,50 +200,50 @@ proc Init*(): cint{.cdecl, importc: "TTF_Init", dynlib: ttfLibName.}
   # point size becomes the index of choosing which size.  If the value
   # is too high, the last indexed size will be the default.
   #
-proc OpenFont*(filename: cstring, ptsize: cint): PFont{.cdecl, 
+proc OpenFont*(filename: cstring, ptsize: cint): PFont{.cdecl,
     importc: "TTF_OpenFont", dynlib: ttfLibName.}
 proc OpenFontIndex*(filename: cstring, ptsize: cint, index: int32): PFont{.
     cdecl, importc: "TTF_OpenFontIndex", dynlib: ttfLibName.}
-proc OpenFontRW*(src: PRWops, freesrc: cint, ptsize: cint): PFont{.cdecl, 
+proc OpenFontRW*(src: PRWops, freesrc: cint, ptsize: cint): PFont{.cdecl,
     importc: "TTF_OpenFontRW", dynlib: ttfLibName.}
 proc OpenFontIndexRW*(src: PRWops, freesrc: cint, ptsize: cint, index: int32): PFont{.
     cdecl, importc: "TTF_OpenFontIndexRW", dynlib: ttfLibName.}
-proc GetFontStyle*(font: PFont): cint{.cdecl, 
+proc GetFontStyle*(font: PFont): cint{.cdecl,
     importc: "TTF_GetFontStyle", dynlib: ttfLibName.}
-proc SetFontStyle*(font: PFont, style: cint){.cdecl, 
+proc SetFontStyle*(font: PFont, style: cint){.cdecl,
     importc: "TTF_SetFontStyle", dynlib: ttfLibName.}
-  # Get the total height of the font - usually equal to point size 
-proc FontHeight*(font: PFont): cint{.cdecl, importc: "TTF_FontHeight", 
+  # Get the total height of the font - usually equal to point size
+proc FontHeight*(font: PFont): cint{.cdecl, importc: "TTF_FontHeight",
     dynlib: ttfLibName.}
   # Get the offset from the baseline to the top of the font
   #   This is a positive value, relative to the baseline.
   #
-proc FontAscent*(font: PFont): cint{.cdecl, importc: "TTF_FontAscent", 
+proc FontAscent*(font: PFont): cint{.cdecl, importc: "TTF_FontAscent",
     dynlib: ttfLibName.}
   # Get the offset from the baseline to the bottom of the font
   #   This is a negative value, relative to the baseline.
   #
-proc FontDescent*(font: PFont): cint{.cdecl, importc: "TTF_FontDescent", 
+proc FontDescent*(font: PFont): cint{.cdecl, importc: "TTF_FontDescent",
     dynlib: ttfLibName.}
-  # Get the recommended spacing between lines of text for this font 
-proc FontLineSkip*(font: PFont): cint{.cdecl, 
+  # Get the recommended spacing between lines of text for this font
+proc FontLineSkip*(font: PFont): cint{.cdecl,
     importc: "TTF_FontLineSkip", dynlib: ttfLibName.}
-  # Get the number of faces of the font 
-proc FontFaces*(font: PFont): int32{.cdecl, importc: "TTF_FontFaces", 
+  # Get the number of faces of the font
+proc FontFaces*(font: PFont): int32{.cdecl, importc: "TTF_FontFaces",
     dynlib: ttfLibName.}
-  # Get the font face attributes, if any 
-proc FontFaceIsFixedWidth*(font: PFont): cint{.cdecl, 
+  # Get the font face attributes, if any
+proc FontFaceIsFixedWidth*(font: PFont): cint{.cdecl,
     importc: "TTF_FontFaceIsFixedWidth", dynlib: ttfLibName.}
-proc FontFaceFamilyName*(font: PFont): cstring{.cdecl, 
+proc FontFaceFamilyName*(font: PFont): cstring{.cdecl,
     importc: "TTF_FontFaceFamilyName", dynlib: ttfLibName.}
-proc FontFaceStyleName*(font: PFont): cstring{.cdecl, 
+proc FontFaceStyleName*(font: PFont): cstring{.cdecl,
     importc: "TTF_FontFaceStyleName", dynlib: ttfLibName.}
-  # Get the metrics (dimensions) of a glyph 
-proc GlyphMetrics*(font: PFont, ch: Uint16, minx: var cint, 
-                       maxx: var cint, miny: var cint, maxy: var cint, 
-                       advance: var cint): cint{.cdecl, 
+  # Get the metrics (dimensions) of a glyph
+proc GlyphMetrics*(font: PFont, ch: Uint16, minx: var cint,
+                       maxx: var cint, miny: var cint, maxy: var cint,
+                       advance: var cint): cint{.cdecl,
     importc: "TTF_GlyphMetrics", dynlib: ttfLibName.}
-  # Get the dimensions of a rendered string of text 
+  # Get the dimensions of a rendered string of text
 proc SizeText*(font: PFont, text: cstring, w: var cint, y: var cint): cint{.
     cdecl, importc: "TTF_SizeText", dynlib: ttfLibName.}
 proc SizeUTF8*(font: PFont, text: cstring, w: var cint, y: var cint): cint{.
@@ -275,14 +275,14 @@ proc RenderGlyph_Solid*(font: PFont, ch: Uint16, fg: TColor): PSurface{.
   #   while other pixels have varying degrees of the foreground color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc RenderText_Shaded*(font: PFont, text: cstring, fg: TColor, 
-                            bg: TColor): PSurface{.cdecl, 
+proc RenderText_Shaded*(font: PFont, text: cstring, fg: TColor,
+                            bg: TColor): PSurface{.cdecl,
     importc: "TTF_RenderText_Shaded", dynlib: ttfLibName.}
-proc RenderUTF8_Shaded*(font: PFont, text: cstring, fg: TColor, 
-                            bg: TColor): PSurface{.cdecl, 
+proc RenderUTF8_Shaded*(font: PFont, text: cstring, fg: TColor,
+                            bg: TColor): PSurface{.cdecl,
     importc: "TTF_RenderUTF8_Shaded", dynlib: ttfLibName.}
-proc RenderUNICODE_Shaded*(font: PFont, text: PUint16, fg: TColor, 
-                               bg: TColor): PSurface{.cdecl, 
+proc RenderUNICODE_Shaded*(font: PFont, text: PUint16, fg: TColor,
+                               bg: TColor): PSurface{.cdecl,
     importc: "TTF_RenderUNICODE_Shaded", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given glyph at
   #   high quality with the given font and colors.  The 0 pixel is background,
@@ -311,15 +311,15 @@ proc RenderUNICODE_Blended*(font: PFont, text: PUint16, fg: TColor): PSurface{.
   #
 proc RenderGlyph_Blended*(font: PFont, ch: Uint16, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Blended", dynlib: ttfLibName.}
-  # For compatibility with previous versions, here are the old functions 
+  # For compatibility with previous versions, here are the old functions
   ##define TTF_RenderText(font, text, fg, bg)
   #	TTF_RenderText_Shaded(font, text, fg, bg)
-  ##define TTF_RenderUTF8(font, text, fg, bg)	
+  ##define TTF_RenderUTF8(font, text, fg, bg)
   #	TTF_RenderUTF8_Shaded(font, text, fg, bg)
-  ##define TTF_RenderUNICODE(font, text, fg, bg)	
+  ##define TTF_RenderUNICODE(font, text, fg, bg)
   #	TTF_RenderUNICODE_Shaded(font, text, fg, bg)
-  # Close an opened font file 
-proc CloseFont*(font: PFont){.cdecl, importc: "TTF_CloseFont", 
+  # Close an opened font file
+proc CloseFont*(font: PFont){.cdecl, importc: "TTF_CloseFont",
                                       dynlib: ttfLibName.}
   #De-initialize TTF engine
 proc Quit*(){.cdecl, importc: "TTF_Quit", dynlib: ttfLibName.}
@@ -327,17 +327,17 @@ proc Quit*(){.cdecl, importc: "TTF_Quit", dynlib: ttfLibName.}
 proc WasInit*(): cint{.cdecl, importc: "TTF_WasInit", dynlib: ttfLibName.}
 
 
-proc VERSION*(X: var sdl.Tversion) = 
+proc VERSION*(X: var sdl.Tversion) =
   X.major = MAJOR_VERSION
   X.minor = MINOR_VERSION
   X.patch = PATCHLEVEL
 
 
-when not (defined(Workaround_RenderText_Solid)): 
+when not (defined(Workaround_RenderText_Solid)):
   proc RenderText_Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
       cdecl, importc: "TTF_RenderText_Solid", dynlib: ttfLibName.}
-else: 
-  proc RenderText_Solid(font: PFont, text: cstring, fg: TColor): PSurface = 
+else:
+  proc RenderText_Solid(font: PFont, text: cstring, fg: TColor): PSurface =
     var Black: TColor         # initialized to zero
     result = RenderText_Shaded(font, text, fg, Black)
 

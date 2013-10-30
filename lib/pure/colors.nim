@@ -6,7 +6,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements color handling for Nimrod. It is used by 
+## This module implements color handling for Nimrod. It is used by
 ## the ``graphics`` module.
 
 import strutils
@@ -16,15 +16,15 @@ type
 
 proc `==` *(a, b: TColor): bool {.borrow.}
   ## compares two colors.
-  
+
 template extract(a: TColor, r, g, b: expr) {.immediate.}=
   var r = a.int shr 16 and 0xff
   var g = a.int shr 8 and 0xff
   var b = a.int and 0xff
-  
+
 template rawRGB(r, g, b: int): expr =
   TColor(r shl 16 or g shl 8 or b)
-  
+
 template colorOp(op: expr) {.immediate.} =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
@@ -37,24 +37,24 @@ proc satPlus(a, b: int): int {.inline.} =
 proc satMinus(a, b: int): int {.inline.} =
   result = a -% b
   if result < 0: result = 0
-  
+
 proc `+`*(a, b: TColor): TColor =
   ## adds two colors: This uses saturated artithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   colorOp(satPlus)
-  
+
 proc `-`*(a, b: TColor): TColor =
   ## substracts two colors: This uses saturated artithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   colorOp(satMinus)
-  
+
 proc extractRGB*(a: TColor): tuple[r, g, b: range[0..255]] =
   ## extracts the red/green/blue components of the color `a`.
   result.r = a.int shr 16 and 0xff
   result.g = a.int shr 8 and 0xff
   result.b = a.int and 0xff
-  
-proc intensity*(a: TColor, f: float): TColor = 
+
+proc intensity*(a: TColor, f: float): TColor =
   ## returns `a` with intensity `f`. `f` should be a float from 0.0 (completely
   ## dark) to 1.0 (full color intensity).
   var r = toInt(toFloat(a.int shr 16 and 0xff) * f)
@@ -64,7 +64,7 @@ proc intensity*(a: TColor, f: float): TColor =
   if g >% 255: g = 255
   if b >% 255: b = 255
   result = rawRGB(r, g, b)
-  
+
 template mix*(a, b: TColor, fn: expr): expr =
   ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component
   ## R, G, and B. This is a template because `fn` should be inlined and the
@@ -77,7 +77,7 @@ template mix*(a, b: TColor, fn: expr): expr =
       if y >% 255:
         y = if y < 0: 0 else: 255
       y
-  
+
   (bind extract)(a, ar, ag, ab)
   (bind extract)(b, br, bg, bb)
   (bind rawRGB)(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
@@ -224,7 +224,7 @@ const
   colWhiteSmoke* = TColor(0xF5F5F5)
   colYellow* = TColor(0xFFFF00)
   colYellowGreen* = TColor(0x9ACD32)
-  
+
   colorNames = [
     ("aliceblue", colAliceBlue),
     ("antiquewhite", colAntiqueWhite),
@@ -367,24 +367,24 @@ const
     ("yellow", colYellow),
     ("yellowgreen", colYellowGreen)]
 
-proc `$`*(c: TColor): string = 
+proc `$`*(c: TColor): string =
   ## converts a color into its textual representation. Example: ``#00FF00``.
   result = '#' & toHex(int(c), 6)
 
-proc binaryStrSearch(x: openarray[tuple[name: string, col: TColor]], 
-                     y: string): int = 
+proc binaryStrSearch(x: openarray[tuple[name: string, col: TColor]],
+                     y: string): int =
   var a = 0
   var b = len(x) - 1
-  while a <= b: 
+  while a <= b:
     var mid = (a + b) div 2
     var c = cmp(x[mid].name, y)
     if c < 0: a = mid + 1
     elif c > 0: b = mid - 1
     else: return mid
   result = - 1
-  
-proc parseColor*(name: string): TColor = 
-  ## parses `name` to a color value. If no valid color could be 
+
+proc parseColor*(name: string): TColor =
+  ## parses `name` to a color value. If no valid color could be
   ## parsed ``EInvalidValue`` is raised.
   if name[0] == '#':
     result = TColor(parseHexInt(name))
@@ -394,10 +394,10 @@ proc parseColor*(name: string): TColor =
     result = colorNames[idx][1]
 
 proc isColor*(name: string): bool =
-  ## returns true if `name` is a known color name or a hexadecimal color 
+  ## returns true if `name` is a known color name or a hexadecimal color
   ## prefixed with ``#``.
-  if name[0] == '#': 
-    for i in 1 .. name.len-1: 
+  if name[0] == '#':
+    for i in 1 .. name.len-1:
       if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
     result = true
   else:

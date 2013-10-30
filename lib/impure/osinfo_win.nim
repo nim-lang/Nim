@@ -16,7 +16,7 @@ type
     ullTotalVirtual: int64
     ullAvailVirtual: int64
     ullAvailExtendedVirtual: int64
-    
+
   SYSTEM_INFO* {.final, pure.} = object
     wProcessorArchitecture*: int16
     wReserved*: int16
@@ -37,12 +37,12 @@ type
     MemoryLoad*: int ## occupied memory, in percent
     TotalPhysMem*: int64 ## Total Physical memory, in bytes
     AvailablePhysMem*: int64 ## Available physical memory, in bytes
-    TotalPageFile*: int64 ## The current committed memory limit 
+    TotalPageFile*: int64 ## The current committed memory limit
                           ## for the system or the current process, whichever is smaller, in bytes.
     AvailablePageFile*: int64 ## The maximum amount of memory the current process can commit, in bytes.
     TotalVirtualMem*: int64 ## Total virtual memory, in bytes
     AvailableVirtualMem*: int64 ## Available virtual memory, in bytes
-    
+
   TOSVERSIONINFOEX {.final, pure.} = object
     dwOSVersionInfoSize: int32
     dwMajorVersion: int32
@@ -55,7 +55,7 @@ type
     wSuiteMask: int16
     wProductType: int8
     wReserved: char
-    
+
   TVersionInfo* = object
     majorVersion*: int
     minorVersion*: int
@@ -66,9 +66,9 @@ type
     SPMinor*: int ## Minor service pack version
     SuiteMask*: int
     ProductType*: int
-    
+
   TPartitionInfo* = tuple[FreeSpace, TotalSpace: Tfiletime]
-  
+
 const
   # SuiteMask - VersionInfo.SuiteMask
   VER_SUITE_BACKOFFICE* = 0x00000004
@@ -89,9 +89,9 @@ const
   VER_NT_DOMAIN_CONTROLLER* = 0x0000002
   VER_NT_SERVER* = 0x0000003
   VER_NT_WORKSTATION* = 0x0000001
-  
+
   VER_PLATFORM_WIN32_NT* = 2
-  
+
   # Product Info - getProductInfo() - (Remove unused ones ?)
   PRODUCT_BUSINESS* = 0x00000006
   PRODUCT_BUSINESS_N* = 0x00000010
@@ -142,18 +142,18 @@ const
   PRODUCT_ULTIMATE_N* = 0x0000001C
   PRODUCT_WEB_SERVER* = 0x00000011
   PRODUCT_WEB_SERVER_CORE* = 0x0000001D
-  
+
   PROCESSOR_ARCHITECTURE_AMD64* = 9 ## x64 (AMD or Intel)
   PROCESSOR_ARCHITECTURE_IA64* = 6 ## Intel Itanium Processor Family (IPF)
   PROCESSOR_ARCHITECTURE_INTEL* = 0 ## x86
   PROCESSOR_ARCHITECTURE_UNKNOWN* = 0xffff ## Unknown architecture.
-  
+
   # GetSystemMetrics
-  SM_SERVERR2 = 89 
-  
+  SM_SERVERR2 = 89
+
 proc GlobalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatusEx".}
-    
+
 proc getMemoryInfo*(): TMemoryInfo =
   ## Retrieves memory info
   var statex: TMEMORYSTATUSEX
@@ -192,14 +192,14 @@ proc getVersionInfo*(): TVersionInfo =
   result.SuiteMask = osvi.wSuiteMask
   result.ProductType = osvi.wProductType
 
-proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion, 
+proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion,
                      SPMinorVersion: int): int =
   ## Retrieves Windows' ProductInfo, this function only works in Vista and 7
 
-  var pGPI = cast[proc (dwOSMajorVersion, dwOSMinorVersion, 
+  var pGPI = cast[proc (dwOSMajorVersion, dwOSMinorVersion,
               dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32)](GetProcAddress(
                 GetModuleHandleA("kernel32.dll"), "GetProductInfo"))
-                
+
   if pGPI != nil:
     var dwType: int32
     pGPI(int32(majorVersion), int32(minorVersion), int32(SPMajorVersion), int32(SPMinorVersion), addr(dwType))
@@ -209,15 +209,15 @@ proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion,
 
 proc GetSystemInfo*(lpSystemInfo: LPSYSTEM_INFO){.stdcall, dynlib: "kernel32",
     importc: "GetSystemInfo".}
-    
+
 proc getSystemInfo*(): TSYSTEM_INFO =
   ## Returns the SystemInfo
 
   # Use GetNativeSystemInfo if it's available
   var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO)](GetProcAddress(
                 GetModuleHandleA("kernel32.dll"), "GetNativeSystemInfo"))
-                
-  var systemi: TSYSTEM_INFO              
+
+  var systemi: TSYSTEM_INFO
   if pGNSI != nil:
     pGNSI(addr(systemi))
   else:
@@ -233,7 +233,7 @@ proc `$`*(osvi: TVersionInfo): string =
 
   if osvi.platformID == VER_PLATFORM_WIN32_NT and osvi.majorVersion > 4:
     result = "Microsoft "
-    
+
     var si = getSystemInfo()
     # Test for the specific product
     if osvi.majorVersion == 6:
@@ -245,7 +245,7 @@ proc `$`*(osvi: TVersionInfo): string =
         if osvi.ProductType == VER_NT_WORKSTATION:
           result.add("Windows 7 ")
         else: result.add("Windows Server 2008 R2 ")
-    
+
       var dwType = getProductInfo(osvi.majorVersion, osvi.minorVersion, 0, 0)
       case dwType
       of PRODUCT_ULTIMATE:
@@ -293,12 +293,12 @@ proc `$`*(osvi: TVersionInfo): string =
         result.add("Windows Storage Server 2003")
       elif (osvi.SuiteMask and VER_SUITE_WH_SERVER) != 0:
         result.add("Windows Home Server")
-      elif osvi.ProductType == VER_NT_WORKSTATION and 
+      elif osvi.ProductType == VER_NT_WORKSTATION and
           si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64:
         result.add("Windows XP Professional x64 Edition")
       else:
         result.add("Windows Server 2003, ")
-      
+
       # Test for the specific product
       if osvi.ProductType != VER_NT_WORKSTATION:
         if ze(si.wProcessorArchitecture) == PROCESSOR_ARCHITECTURE_IA64:
@@ -325,7 +325,7 @@ proc `$`*(osvi: TVersionInfo): string =
           else:
             result.add("Standard Edition")
     # End of 5.2
-    
+
     if osvi.majorVersion == 5 and osvi.minorVersion == 1:
       result.add("Windows XP ")
       if (osvi.SuiteMask and VER_SUITE_PERSONAL) != 0:
@@ -333,7 +333,7 @@ proc `$`*(osvi: TVersionInfo): string =
       else:
         result.add("Professional")
     # End of 5.1
-    
+
     if osvi.majorVersion == 5 and osvi.minorVersion == 0:
       result.add("Windows 2000 ")
       if osvi.ProductType == VER_NT_WORKSTATION:
@@ -346,24 +346,24 @@ proc `$`*(osvi: TVersionInfo): string =
         else:
           result.add("Server")
     # End of 5.0
-    
+
     # Include service pack (if any) and build number.
     if len(osvi.SPVersion) > 0:
       result.add(" ")
       result.add(osvi.SPVersion)
-    
+
     result.add(" (build " & $osvi.buildNumber & ")")
-    
+
     if osvi.majorVersion >= 6:
       if ze(si.wProcessorArchitecture) == PROCESSOR_ARCHITECTURE_AMD64:
         result.add(", 64-bit")
       elif ze(si.wProcessorArchitecture) == PROCESSOR_ARCHITECTURE_INTEL:
         result.add(", 32-bit")
-    
+
   else:
     # Windows 98 etc...
     result = "Unknown version of windows[Kernel version <= 4]"
-    
+
 
 proc getFileSize*(file: string): biggestInt =
   var fileData: TWIN32_FIND_DATA
@@ -373,10 +373,10 @@ proc getFileSize*(file: string): biggestInt =
     var hFile = FindFirstFileW(aa, fileData)
   else:
     var hFile = FindFirstFileA(file, fileData)
-  
+
   if hFile == INVALID_HANDLE_VALUE:
     raise newException(EIO, $GetLastError())
-  
+
   return fileData.nFileSizeLow
 
 proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
@@ -386,19 +386,19 @@ proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
 
 proc getPartitionInfo*(partition: string): TPartitionInfo =
   ## Retrieves partition info, for example ``partition`` may be ``"C:\"``
-  var FreeBytes, TotalBytes, TotalFreeBytes: TFiletime 
-  var res = GetDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes, 
+  var FreeBytes, TotalBytes, TotalFreeBytes: TFiletime
+  var res = GetDiskFreeSpaceEx(r"C:\", FreeBytes, TotalBytes,
                                TotalFreeBytes)
   return (FreeBytes, TotalBytes)
 
 when isMainModule:
   var r = getMemoryInfo()
   echo("Memory load: ", r.MemoryLoad, "%")
-  
+
   var osvi = getVersionInfo()
-  
+
   echo($osvi)
 
   echo(getFileSize(r"osinfo_win.nim") div 1024 div 1024)
-  
+
   echo(rdFileTime(getPartitionInfo(r"C:\")[0]))

@@ -18,15 +18,15 @@ include "system/inclrtl"
 import parseutils, strutils
 
 proc validEmailAddress*(s: string): bool {.noSideEffect,
-  rtl, extern: "nsuValidEmailAddress".} = 
-  ## returns true if `s` seems to be a valid e-mail address. 
+  rtl, extern: "nsuValidEmailAddress".} =
+  ## returns true if `s` seems to be a valid e-mail address.
   ## The checking also uses a domain list.
   const
     chars = Letters + Digits + {'!','#','$','%','&',
       '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
   var i = 0
   if s[i] notin chars or s[i] == '.': return false
-  while s[i] in chars: 
+  while s[i] in chars:
     if s[i] == '.' and s[i+1] == '.': return false
     inc(i)
   if s[i] != '@': return false
@@ -34,9 +34,9 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
   if s[j] notin letters: return false
   while j >= i and s[j] in letters: dec(j)
   inc(i) # skip '@'
-  while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
+  while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i)
   if s[i] != '\0': return false
-  
+
   var x = substr(s, j+1)
   if len(x) == 2 and x[0] in Letters and x[1] in Letters: return true
   case toLower(x)
@@ -59,6 +59,6 @@ proc parseInt*(s: string, value: var int, validRange: TSlice[int]) {.
 
 when isMainModule:
   doAssert "wuseldusel@codehome.com".validEmailAddress
-  
+
 {.pop.}
 

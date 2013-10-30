@@ -65,7 +65,7 @@ proc distnct*[T](seq1: seq[T]): seq[T] =
   result = @[]
   for itm in items(seq1):
     if not result.contains(itm): result.add(itm)
-    
+
 proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input sequences.
   ##
@@ -128,7 +128,7 @@ proc delete*[T](s: var seq[T], first=0, last=0) =
   ##   var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
   ##   dest.delete(3, 8)
   ##   assert outcome == dest
-  
+
   var i = first
   var j = last+1
   var newLen = len(s)-j+i
@@ -146,12 +146,12 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ##
   ##.. code-block:: nimrod
   ##   var dest = @[1,1,1,1,1,1,1,1]
-  ##   let 
+  ##   let
   ##     src = @[2,2,2,2,2,2]
   ##     outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
   ##   dest.insert(src, 3)
   ##   assert dest == outcome
-  
+
   var j = len(dest) - 1
   var i = len(dest) + len(src) - 1
   dest.setLen(i + 1)
@@ -368,12 +368,12 @@ when isMainModule:
     var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     dest.delete(3, 8)
     assert outcome == dest, """\
-    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1] 
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
 
   block: # insert tests
     var dest = @[1,1,1,1,1,1,1,1]
-    let 
+    let
       src = @[2,2,2,2,2,2]
       outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     dest.insert(src, 3)

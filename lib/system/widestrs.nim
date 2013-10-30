@@ -124,7 +124,7 @@ proc `$`*(w: wideCString, estimate: int): string =
         ch = ((ch -% UNI_SUR_HIGH_START) shr halfShift) +%
               (ch2 -% UNI_SUR_LOW_START) +% halfBase
         inc i
-        
+
     if ch <=% 127:
       result.add chr(ch)
     elif ch <=% 0x07FF:

@@ -8,18 +8,18 @@
 #
 
 ## This module implements the ability to access symbols from shared
-## libraries. On POSIX this uses the ``dlsym`` mechanism, on 
-## Windows ``LoadLibrary``. 
+## libraries. On POSIX this uses the ``dlsym`` mechanism, on
+## Windows ``LoadLibrary``.
 
 type
   TLibHandle* = pointer ## a handle to a dynamically loaded library
 
 proc LoadLib*(path: string): TLibHandle
-  ## loads a library from `path`. Returns nil if the library could not 
+  ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
 proc LoadLib*(): TLibHandle
-  ## gets the handle from the current executable. Returns nil if the 
+  ## gets the handle from the current executable. Returns nil if the
   ## library could not be loaded.
 
 proc UnloadLib*(lib: TLibHandle)
@@ -63,7 +63,7 @@ when defined(posix):
   proc LoadLib(path: string): TLibHandle = return dlopen(path, RTLD_NOW)
   proc LoadLib(): TLibHandle = return dlopen(nil, RTLD_NOW)
   proc UnloadLib(lib: TLibHandle) = dlclose(lib)
-  proc symAddr(lib: TLibHandle, name: cstring): pointer = 
+  proc symAddr(lib: TLibHandle, name: cstring): pointer =
     return dlsym(lib, name)
 
 elif defined(windows) or defined(dos):

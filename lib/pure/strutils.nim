@@ -404,7 +404,7 @@ proc parseBool*(s: string): bool =
   else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
 
 proc parseEnum*[T: enum](s: string): T =
-  ## parses an enum ``T``. Raises ``EInvalidValue`` for an invalid value in 
+  ## parses an enum ``T``. Raises ``EInvalidValue`` for an invalid value in
   ## `s`. The comparison is done in a style insensitive way.
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
@@ -412,7 +412,7 @@ proc parseEnum*[T: enum](s: string): T =
   raise newException(EInvalidValue, "invalid enum value: " & s)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
-  ## parses an enum ``T``. Uses `default` for an invalid value in 
+  ## parses an enum ``T``. Uses `default` for an invalid value in
   ## `s`. The comparison is done in a style insensitive way.
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
@@ -769,7 +769,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     var j = findAux(s, sub, i, a)
     if j < 0: break
     # word boundary?
-    if (j == 0 or s[j-1] notin wordChars) and 
+    if (j == 0 or s[j-1] notin wordChars) and
         (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
       add result, substr(s, i, j - 1)
       add result, by
@@ -931,7 +931,7 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
 
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuEditDistance".} =
-  ## returns the edit distance between `a` and `b`. This uses the 
+  ## returns the edit distance between `a` and `b`. This uses the
   ## `Levenshtein`:idx: distance algorithm with only a linear memory overhead.
   ## This implementation is highly optimized!
   var len1 = a.len
@@ -1040,7 +1040,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nimrod's ``biggestFloat`` type.
-  ## 
+  ##
   ## If ``precision == 0``, it tries to format it nicely.
   const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
   var
@@ -1105,7 +1105,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   return -1
 
 proc invalidFormatString() {.noinline.} =
-  raise newException(EInvalidValue, "invalid format string")  
+  raise newException(EInvalidValue, "invalid format string")
 
 proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
@@ -1233,7 +1233,7 @@ when isMainModule:
 
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-  
+
   type TMyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[TMyEnum]("enu_D") == enuD
 

@@ -177,7 +177,7 @@ proc contains*[A](s: TOrderedSet[A], key: A): bool =
   var index = RawGet(s, key)
   result = index >= 0
 
-proc RawInsert[A](s: var TOrderedSet[A], 
+proc RawInsert[A](s: var TOrderedSet[A],
                   data: var TOrderedKeyValuePairSeq[A], key: A) =
   rawInsertImpl()
   data[h].next = -1
@@ -193,7 +193,7 @@ proc Enlarge[A](s: var TOrderedSet[A]) =
   s.last = -1
   while h >= 0:
     var nxt = s.data[h].next
-    if s.data[h].slot == seFilled: 
+    if s.data[h].slot == seFilled:
       RawInsert(s, n, s.data[h].key)
     h = nxt
   swap(s.data, n)

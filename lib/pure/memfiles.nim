@@ -30,7 +30,7 @@ type
 
     when defined(windows):
       fHandle: int
-      mapHandle: int 
+      mapHandle: int
     else:
       handle: cint
 
@@ -77,7 +77,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       fail(OSLastError(), "error opening file")
 
     if newFileSize != -1:
-      var 
+      var
         sizeHigh = int32(newFileSize shr 32)
         sizeLow  = int32(newFileSize and 0xffffffff)
 
@@ -123,7 +123,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
       rollback()
       if result.handle != 0: discard close(result.handle)
       OSError(errCode)
-  
+
     var flags = if readonly: O_RDONLY else: O_RDWR
 
     if newFileSize != -1:
@@ -164,7 +164,7 @@ proc open*(filename: string, mode: TFileMode = fmRead,
 proc close*(f: var TMemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
-  
+
   var error = false
   var lastErr: TOSErrorCode
 
@@ -188,6 +188,6 @@ proc close*(f: var TMemFile) =
     f.mapHandle = 0
   else:
     f.handle = 0
-  
+
   if error: OSError(lastErr)
 

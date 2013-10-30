@@ -8,13 +8,13 @@
 #
 
 ## This module implements helper procs for SCGI applications. Example:
-## 
+##
 ## .. code-block:: Nimrod
 ##
 ##    import strtabs, sockets, scgi
 ##
 ##    var counter = 0
-##    proc handleRequest(client: TSocket, input: string, 
+##    proc handleRequest(client: TSocket, input: string,
 ##                       headers: PStringTable): bool {.procvar.} =
 ##      inc(counter)
 ##      client.writeStatusOkTextContent()
@@ -31,19 +31,19 @@ import sockets, strutils, os, strtabs, asyncio
 type
   EScgi* = object of EIO ## the exception that is raised, if a SCGI error occurs
 
-proc scgiError*(msg: string) {.noreturn.} = 
+proc scgiError*(msg: string) {.noreturn.} =
   ## raises an EScgi exception with message `msg`.
   var e: ref EScgi
   new(e)
   e.msg = msg
   raise e
 
-proc parseWord(inp: string, outp: var string, start: int): int = 
+proc parseWord(inp: string, outp: var string, start: int): int =
   result = start
   while inp[result] != '\0': inc(result)
   outp = substr(inp, start, result-1)
 
-proc parseHeaders(s: string, L: int): PStringTable = 
+proc parseHeaders(s: string, L: int): PStringTable =
   result = newStringTable()
   var i = 0
   while i < L:
@@ -53,12 +53,12 @@ proc parseHeaders(s: string, L: int): PStringTable =
     result[key] = val
   if s[i] == ',': inc(i)
   else: scgiError("',' after netstring expected")
-  
-proc recvChar(s: TSocket): char = 
+
+proc recvChar(s: TSocket): char =
   var c: char
-  if recv(s, addr(c), sizeof(c)) == sizeof(c): 
+  if recv(s, addr(c), sizeof(c)) == sizeof(c):
     result = c
-  
+
 type
   TScgiState* = object of TObject ## SCGI state object
     server: TSocket
@@ -66,41 +66,41 @@ type
     client*: TSocket ## the client socket to send data to
     headers*: PStringTable ## the parsed headers
     input*: string  ## the input buffer
-  
-  
+
+
   # Async
-  
+
   TClientMode = enum
     ClientReadChar, ClientReadHeaders, ClientReadContent
-  
+
   PAsyncClient = ref object
     c: PAsyncSocket
     mode: TClientMode
     dataLen: int
     headers: PStringTable ## the parsed headers
     input: string  ## the input buffer
-  
+
   TAsyncScgiState = object
-    handleRequest: proc (client: PAsyncSocket, 
+    handleRequest: proc (client: PAsyncSocket,
                          input: string, headers: PStringTable) {.closure.}
     asyncServer: PAsyncSocket
     disp: PDispatcher
   PAsyncScgiState* = ref TAsyncScgiState
-    
+
 proc recvBuffer(s: var TScgiState, L: int) =
-  if L > s.bufLen: 
+  if L > s.bufLen:
     s.bufLen = L
     s.input = newString(L)
-  if L > 0 and recv(s.client, cstring(s.input), L) != L: 
+  if L > 0 and recv(s.client, cstring(s.input), L) != L:
     scgiError("could not read all data")
   setLen(s.input, L)
-  
+
 proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1",
-  reuseAddr = False) = 
+  reuseAddr = False) =
   ## opens a connection.
   s.bufLen = 4000
   s.input = newString(s.buflen) # will be reused
-  
+
   s.server = socket()
   new(s.client) # Initialise s.client for `next`
   if s.server == InvalidSocket: scgiError("could not open socket")
@@ -109,12 +109,12 @@ proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1",
     s.server.setSockOpt(OptReuseAddr, True)
   bindAddr(s.server, port, address)
   listen(s.server)
-  
-proc close*(s: var TScgiState) = 
+
+proc close*(s: var TScgiState) =
   ## closes the connection.
   s.server.close()
 
-proc next*(s: var TScgistate, timeout: int = -1): bool = 
+proc next*(s: var TScgistate, timeout: int = -1): bool =
   ## proceed to the first/next request. Waits ``timeout`` miliseconds for a
   ## request, if ``timeout`` is `-1` then this function will never time out.
   ## Returns `True` if a new request has been processed.
@@ -128,18 +128,18 @@ proc next*(s: var TScgistate, timeout: int = -1): bool =
       if d == '\0':
         s.client.close()
         return false
-      if d notin strutils.digits: 
+      if d notin strutils.digits:
         if d != ':': scgiError("':' after length expected")
         break
-      L = L * 10 + ord(d) - ord('0')  
+      L = L * 10 + ord(d) - ord('0')
     recvBuffer(s, L+1)
     s.headers = parseHeaders(s.input, L)
     if s.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
     L = parseInt(s.headers["CONTENT_LENGTH"])
     recvBuffer(s, L)
     return True
-  
-proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") = 
+
+proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") =
   ## sends the following string to the socket `c`::
   ##
   ##   Status: 200 OK\r\LContent-Type: text/html\r\L\r\L
@@ -148,9 +148,9 @@ proc writeStatusOkTextContent*(c: TSocket, contentType = "text/html") =
   c.send("Status: 200 OK\r\L" &
          "Content-Type: $1\r\L\r\L" % contentType)
 
-proc run*(handleRequest: proc (client: TSocket, input: string, 
+proc run*(handleRequest: proc (client: TSocket, input: string,
                                headers: PStringTable): bool {.nimcall.},
-          port = TPort(4000)) = 
+          port = TPort(4000)) =
   ## encapsulates the SCGI object and main loop.
   var s: TScgiState
   s.open(port)
@@ -186,7 +186,7 @@ proc checkCloseSocket(client: PAsyncClient) =
           s.close()
           s.delHandleWrite()
     else: client.c.close()
-    
+
 proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
   case client.mode
   of ClientReadChar:
@@ -212,7 +212,7 @@ proc handleClientRead(client: PAsyncClient, s: PAsyncScgiState) =
       client.headers = parseHeaders(client.input, client.input.len-1)
       if client.headers["SCGI"] != "1": scgiError("SCGI Version 1 expected")
       client.input = "" # For next part
-      
+
       let contentLen = parseInt(client.headers["CONTENT_LENGTH"])
       if contentLen > 0:
         client.mode = ClientReadContent
@@ -239,12 +239,12 @@ proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
   accept(s.asyncServer, client)
   var asyncClient = PAsyncClient(c: client, mode: ClientReadChar, dataLen: 0,
                                  headers: newStringTable(), input: "")
-  client.handleRead = 
+  client.handleRead =
     proc (sock: PAsyncSocket) =
       handleClientRead(asyncClient, s)
   s.disp.register(client)
 
-proc open*(handleRequest: proc (client: PAsyncSocket, 
+proc open*(handleRequest: proc (client: PAsyncSocket,
                                 input: string, headers: PStringTable) {.closure.},
            port = TPort(4000), address = "127.0.0.1",
            reuseAddr = false): PAsyncScgiState =
@@ -274,7 +274,7 @@ proc close*(s: PAsyncScgiState) =
 
 when false:
   var counter = 0
-  proc handleRequest(client: TSocket, input: string, 
+  proc handleRequest(client: TSocket, input: string,
                      headers: PStringTable): bool {.procvar.} =
     inc(counter)
     client.writeStatusOkTextContent()

@@ -58,17 +58,17 @@ else:
       NAME* = "liblua(|5.1|5.0).so(|.0)"
       LIB_NAME* = "liblua(|5.1|5.0).so(|.0)"
   else:
-    const 
+    const
       NAME* = "lua(|5.1|5.0).dll"
       LIB_NAME* = "lua(|5.1|5.0).dll"
 
-const 
+const
   VERSION* = "Lua 5.1"
   RELEASE* = "Lua 5.1.1"
   VERSION_NUM* = 501
   COPYRIGHT* = "Copyright (C) 1994-2006 Lua.org, PUC-Rio"
   AUTHORS* = "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
-  # option for multiple returns in `lua_pcall' and `lua_call' 
+  # option for multiple returns in `lua_pcall' and `lua_call'
   MULTRET* = - 1              #
                               #** pseudo-indices
                               #
@@ -77,14 +77,14 @@ const
   GLOBALSINDEX* = - 10002
 
 proc upvalueindex*(I: cint): cint
-const                         # thread status; 0 is OK 
+const                         # thread status; 0 is OK
   constYIELD* = 1
   ERRRUN* = 2
   ERRSYNTAX* = 3
   ERRMEM* = 4
   ERRERR* = 5
 
-type 
+type
   PState* = Pointer
   CFunction* = proc (L: PState): cint{.cdecl.}
 
@@ -92,12 +92,12 @@ type
 #** functions that read/write blocks when loading/dumping Lua chunks
 #
 
-type 
+type
   Reader* = proc (L: PState, ud: Pointer, sz: ptr cint): cstring{.cdecl.}
   Writer* = proc (L: PState, p: Pointer, sz: cint, ud: Pointer): cint{.cdecl.}
   Alloc* = proc (ud, theptr: Pointer, osize, nsize: cint){.cdecl.}
 
-const 
+const
   TNONE* = - 1
   TNIL* = 0
   TBOOLEAN* = 1
@@ -107,10 +107,10 @@ const
   TTABLE* = 5
   TFUNCTION* = 6
   TUSERDATA* = 7
-  TTHREAD* = 8                # minimum Lua stack available to a C function 
+  TTHREAD* = 8                # minimum Lua stack available to a C function
   MINSTACK* = 20
 
-type                          # Type of Numbers in Lua 
+type                          # Type of Numbers in Lua
   Number* = float
   Integer* = cint
 
@@ -196,7 +196,7 @@ proc setallocf*(L: PState, f: Alloc, ud: Pointer){.ilua.}
 #** Garbage-collection functions and options
 #
 
-const 
+const
   GCSTOP* = 0
   GCRESTART* = 1
   GCCOLLECT* = 2
@@ -235,7 +235,7 @@ proc tostring*(L: PState, i: cint): cstring
 
 proc getregistry*(L: PState)
 proc getgccount*(L: PState): cint
-type 
+type
   Chunkreader* = Reader
   Chunkwriter* = Writer
 
@@ -245,37 +245,37 @@ type
 #** ======================================================================
 #
 
-const 
+const
   HOOKCALL* = 0
   HOOKRET* = 1
   HOOKLINE* = 2
   HOOKCOUNT* = 3
   HOOKTAILRET* = 4
 
-const 
+const
   MASKCALL* = 1 shl Ord(HOOKCALL)
   MASKRET* = 1 shl Ord(HOOKRET)
   MASKLINE* = 1 shl Ord(HOOKLINE)
   MASKCOUNT* = 1 shl Ord(HOOKCOUNT)
 
-const 
+const
   IDSIZE* = 60
 
-type 
-  TDebug*{.final.} = object    # activation record 
+type
+  TDebug*{.final.} = object    # activation record
     event*: cint
-    name*: cstring            # (n) 
-    namewhat*: cstring        # (n) `global', `local', `field', `method' 
+    name*: cstring            # (n)
+    namewhat*: cstring        # (n) `global', `local', `field', `method'
     what*: cstring            # (S) `Lua', `C', `main', `tail'
-    source*: cstring          # (S) 
-    currentline*: cint         # (l) 
-    nups*: cint                # (u) number of upvalues 
-    linedefined*: cint         # (S) 
-    lastlinedefined*: cint     # (S) 
-    short_src*: array[0.. <IDSIZE, Char] # (S) \ 
-                               # private part 
-    i_ci*: cint                # active function 
-  
+    source*: cstring          # (S)
+    currentline*: cint         # (l)
+    nups*: cint                # (u) number of upvalues
+    linedefined*: cint         # (S)
+    lastlinedefined*: cint     # (S)
+    short_src*: array[0.. <IDSIZE, Char] # (S) \
+                               # private part
+    i_ci*: cint                # active function
+
   PDebug* = ptr TDebug
   Hook* = proc (L: PState, ar: PDebug){.cdecl.}
 
@@ -302,63 +302,63 @@ proc gethookcount*(L: PState): cint{.ilua.}
 
 # implementation
 
-proc upvalueindex(I: cint): cint = 
+proc upvalueindex(I: cint): cint =
   Result = GLOBALSINDEX - i
 
-proc pop(L: PState, n: cint) = 
+proc pop(L: PState, n: cint) =
   settop(L, - n - 1)
 
-proc newtable(L: PState) = 
+proc newtable(L: PState) =
   createtable(L, 0, 0)
 
-proc register(L: PState, n: cstring, f: CFunction) = 
+proc register(L: PState, n: cstring, f: CFunction) =
   pushcfunction(L, f)
   setglobal(L, n)
 
-proc pushcfunction(L: PState, f: CFunction) = 
+proc pushcfunction(L: PState, f: CFunction) =
   pushcclosure(L, f, 0)
 
-proc strlen(L: PState, i: cint): cint = 
+proc strlen(L: PState, i: cint): cint =
   Result = objlen(L, i)
 
-proc isfunction(L: PState, n: cint): bool = 
+proc isfunction(L: PState, n: cint): bool =
   Result = luatype(L, n) == TFUNCTION
 
-proc istable(L: PState, n: cint): bool = 
+proc istable(L: PState, n: cint): bool =
   Result = luatype(L, n) == TTABLE
 
-proc islightuserdata(L: PState, n: cint): bool = 
+proc islightuserdata(L: PState, n: cint): bool =
   Result = luatype(L, n) == TLIGHTUSERDATA
 
-proc isnil(L: PState, n: cint): bool = 
+proc isnil(L: PState, n: cint): bool =
   Result = luatype(L, n) == TNIL
 
-proc isboolean(L: PState, n: cint): bool = 
+proc isboolean(L: PState, n: cint): bool =
   Result = luatype(L, n) == TBOOLEAN
 
-proc isthread(L: PState, n: cint): bool = 
+proc isthread(L: PState, n: cint): bool =
   Result = luatype(L, n) == TTHREAD
 
-proc isnone(L: PState, n: cint): bool = 
+proc isnone(L: PState, n: cint): bool =
   Result = luatype(L, n) == TNONE
 
-proc isnoneornil(L: PState, n: cint): bool = 
+proc isnoneornil(L: PState, n: cint): bool =
   Result = luatype(L, n) <= 0
 
-proc pushliteral(L: PState, s: cstring) = 
+proc pushliteral(L: PState, s: cstring) =
   pushlstring(L, s, s.len.cint)
 
-proc setglobal(L: PState, s: cstring) = 
+proc setglobal(L: PState, s: cstring) =
   setfield(L, GLOBALSINDEX, s)
 
-proc getglobal(L: PState, s: cstring) = 
+proc getglobal(L: PState, s: cstring) =
   getfield(L, GLOBALSINDEX, s)
 
-proc tostring(L: PState, i: cint): cstring = 
+proc tostring(L: PState, i: cint): cstring =
   Result = tolstring(L, i, nil)
 
-proc getregistry(L: PState) = 
+proc getregistry(L: PState) =
   pushvalue(L, REGISTRYINDEX)
 
-proc getgccount(L: PState): cint = 
+proc getgccount(L: PState): cint =
   Result = gc(L, GCCOUNT, 0)

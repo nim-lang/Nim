@@ -16,7 +16,7 @@
                        # of the standard library!
 
 
-proc fputs(c: cstring, f: TFile) {.importc: "fputs", header: "<stdio.h>", 
+proc fputs(c: cstring, f: TFile) {.importc: "fputs", header: "<stdio.h>",
   tags: [FWriteIO].}
 proc fgets(c: cstring, n: int, f: TFile): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [FReadIO].}
@@ -26,7 +26,7 @@ proc ungetc(c: cint, f: TFile) {.importc: "ungetc", header: "<stdio.h>",
   tags: [].}
 proc putc(c: Char, stream: TFile) {.importc: "putc", header: "<stdio.h>",
   tags: [FWriteIO].}
-proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", 
+proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf",
   header: "<stdio.h>", varargs, tags: [FWriteIO].}
 proc strlen(c: cstring): int {.
   importc: "strlen", header: "<string.h>", tags: [].}
@@ -76,18 +76,18 @@ proc readLine(f: TFile): TaintedString =
   result = TaintedString(newStringOfCap(80))
   if not readLine(f, result): raiseEIO("EOF reached")
 
-proc write(f: TFile, i: int) = 
+proc write(f: TFile, i: int) =
   when sizeof(int) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
 
-proc write(f: TFile, i: biggestInt) = 
+proc write(f: TFile, i: biggestInt) =
   when sizeof(biggestint) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
-    
+
 proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
@@ -98,7 +98,7 @@ proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
-proc readAllBuffer(file: TFile): string = 
+proc readAllBuffer(file: TFile): string =
   # This proc is for TFile we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
   result = ""
@@ -107,8 +107,8 @@ proc readAllBuffer(file: TFile): string =
   while bytesRead == buf_size:
     bytesRead = readBuffer(file, addr(buffer[0]), buf_size)
     result.add(buffer)
-  
-proc rawFileSize(file: TFile): int = 
+
+proc rawFileSize(file: TFile): int =
   # this does not raise an error opposed to `getFileSize`
   var oldPos = ftell(file)
   discard fseek(file, 0, 2) # seek the end of the file
@@ -125,8 +125,8 @@ proc readAllFile(file: TFile, len: int): string =
 proc readAllFile(file: TFile): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
-  
-proc readAll(file: TFile): TaintedString = 
+
+proc readAll(file: TFile): TaintedString =
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the TFile.
   var len = rawFileSize(file)
@@ -134,7 +134,7 @@ proc readAll(file: TFile): TaintedString =
     result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
-  
+
 proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
@@ -166,7 +166,7 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 
 when defined(windows) and not defined(useWinAnsi):
   include "system/widestrs"
-  
+
   proc wfopen(filename, mode: widecstring): pointer {.
     importc: "_wfopen", nodecl.}
   proc wfreopen(filename, mode: widecstring, stream: TFile): TFile {.
@@ -206,7 +206,7 @@ proc Open(f: var TFile, filename: string,
   elif bufSize == 0:
     discard setvbuf(f, nil, IONBF, 0)
 
-proc reopen(f: TFile, filename: string, mode: TFileMode = fmRead): bool = 
+proc reopen(f: TFile, filename: string, mode: TFileMode = fmRead): bool =
   var p: pointer = freopen(filename, FormatOpen[mode], f)
   result = p != nil
 

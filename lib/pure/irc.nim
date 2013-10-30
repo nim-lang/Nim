@@ -7,12 +7,12 @@
 #
 
 ## This module implements an asynchronous IRC client.
-## 
+##
 ## Currently this module requires at least some knowledge of the IRC protocol.
 ## It provides a function for sending raw messages to the IRC server, together
-## with some basic functions like sending a message to a channel. 
+## with some basic functions like sending a message to a channel.
 ## It automizes the process of keeping the connection alive, so you don't
-## need to reply to PING messages. In fact, the server is also PING'ed to check 
+## need to reply to PING messages. In fact, the server is also PING'ed to check
 ## the amount of lag.
 ##
 ## .. code-block:: Nimrod
@@ -28,7 +28,7 @@
 ##         client.reconnect()
 ##       of EvMsg:
 ##         # Write your message reading code here.
-## 
+##
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
@@ -79,7 +79,7 @@ type
     MPing,
     MPong,
     MError
-  
+
   TIRCEventType* = enum
     EvMsg, EvConnected, EvDisconnected
   TIRCEvent* = object ## IRC Event
@@ -88,7 +88,7 @@ type
       ## Connected to server.
       ## Only occurs with AsyncIRC.
       nil
-    of EvDisconnected: 
+    of EvDisconnected:
       ## Disconnected from the server
       nil
     of EvMsg:              ## Message from the server
@@ -98,7 +98,7 @@ type
       params*: seq[string] ## Parameters of the IRC message
       origin*: string      ## The channel/user that this msg originated from
       raw*: string         ## Raw IRC message
-  
+
 proc send*(irc: PIRC, message: string, sendImmediately = false) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.
   var sendMsg = true
@@ -126,12 +126,12 @@ proc privmsg*(irc: PIRC, target, message: string) =
   irc.send("PRIVMSG $1 :$2" % [target, message])
 
 proc notice*(irc: PIRC, target, message: string) =
-  ## Sends ``notice`` to ``target``. ``Target`` can be a channel, or a user. 
+  ## Sends ``notice`` to ``target``. ``Target`` can be a channel, or a user.
   irc.send("NOTICE $1 :$2" % [target, message])
 
 proc join*(irc: PIRC, channel: string, key = "") =
   ## Joins ``channel``.
-  ## 
+  ##
   ## If key is not ``""``, then channel is assumed to be key protected and this
   ## function will join the channel using ``key``.
   if key == "":
@@ -181,7 +181,7 @@ proc parseMessage(msg: string): TIRCEvent =
     else:
       result.serverName = nick
       inc(i) # Skip ` `
-  
+
   # Process command
   var cmd = ""
   i.inc msg.parseUntil(cmd, {' '}, i)
@@ -205,9 +205,9 @@ proc parseMessage(msg: string): TIRCEvent =
     of "NOTICE": result.cmd = MNotice
     of "ERROR": result.cmd = MError
     else: result.cmd = MUnknown
-  
+
   # Don't skip space here. It is skipped in the following While loop.
-  
+
   # Params
   result.params = @[]
   var param = ""
@@ -217,7 +217,7 @@ proc parseMessage(msg: string): TIRCEvent =
     if param != "":
       result.params.add(param)
       param.setlen(0)
-  
+
   if msg[i] == ':':
     inc(i) # Skip `:`.
     result.params.add(msg[i..msg.len-1])
@@ -226,11 +226,11 @@ proc connect*(irc: PIRC) =
   ## Connects to an IRC server as specified by ``irc``.
   assert(irc.address != "")
   assert(irc.port != TPort(0))
-  
+
   irc.sock.connect(irc.address, irc.port)
- 
+
   irc.status = SockConnected
-  
+
   # Greet the server :)
   if irc.serverPass != "": irc.send("PASS " & irc.serverPass, true)
   irc.send("NICK " & irc.nick, true)
@@ -305,7 +305,7 @@ proc processLine(irc: PIRC, line: string): TIRCEvent =
     if result.cmd == MNick:
       if result.nick == irc.nick:
         irc.nick = result.params[0]
-    
+
 proc processOther(irc: PIRC, ev: var TIRCEvent): bool =
   result = false
   if epochTime() - irc.lastPing >= 20.0:
@@ -316,7 +316,7 @@ proc processOther(irc: PIRC, ev: var TIRCEvent): bool =
     irc.close()
     ev.typ = EvDisconnected # TODO: EvTimeout?
     return true
-  
+
   for i in 0..irc.messageBuffer.len-1:
     if epochTime() >= irc.messageBuffer[0][0]:
       irc.send(irc.messageBuffer[0].m, true)
@@ -327,7 +327,7 @@ proc processOther(irc: PIRC, ev: var TIRCEvent): bool =
 
 proc poll*(irc: PIRC, ev: var TIRCEvent,
            timeout: int = 500): bool =
-  ## This function parses a single message from the IRC server and returns 
+  ## This function parses a single message from the IRC server and returns
   ## a TIRCEvent.
   ##
   ## This function should be called often as it also handles pinging
@@ -337,7 +337,7 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
   ## it should only be used for simple things for example an IRC bot which does
   ## not need to be running many time critical tasks in the background. If you
   ## require this, use the asyncio implementation.
-  
+
   if not (irc.status == SockConnected):
     # Do not close the socket here, it is already closed!
     ev.typ = EvDisconnected
@@ -353,7 +353,7 @@ proc poll*(irc: PIRC, ev: var TIRCEvent,
 
 proc getLag*(irc: PIRC): float =
   ## Returns the latency between this client and the IRC server in seconds.
-  ## 
+  ##
   ## If latency is unknown, returns -1.0.
   return irc.lag
 
@@ -367,13 +367,13 @@ proc getNick*(irc: PIRC): string =
 
 # -- Asyncio dispatcher
 
-proc handleConnect(s: PAsyncSocket, irc: PAsyncIRC) =  
+proc handleConnect(s: PAsyncSocket, irc: PAsyncIRC) =
   # Greet the server :)
   if irc.serverPass != "": irc.send("PASS " & irc.serverPass, true)
   irc.send("NICK " & irc.nick, true)
   irc.send("USER $1 * 0 :$2" % [irc.user, irc.realname], true)
   irc.status = SockConnected
-  
+
   var ev: TIRCEvent
   ev.typ = EvConnected
   irc.handleEvent(irc, ev)
@@ -390,7 +390,7 @@ proc handleRead(s: PAsyncSocket, irc: PAsyncIRC) =
     else:
       var ev = irc.processLine(line.string)
       irc.handleEvent(irc, ev)
-  
+
 proc handleTask(s: PAsyncSocket, irc: PAsyncIRC) =
   var ev: TIRCEvent
   if irc.processOther(ev):
@@ -414,7 +414,7 @@ proc connect*(irc: PAsyncIRC) =
   ## Equivalent of connect for ``TIRC`` but specifically created for asyncio.
   assert(irc.address != "")
   assert(irc.port != TPort(0))
-  
+
   irc.asyncSock.connect(irc.address, irc.port)
 
 proc reconnect*(irc: PAsyncIRC, timeout = 5000) =
@@ -443,11 +443,11 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
               ircEvent: proc (irc: PAsyncIRC, ev: TIRCEvent) {.closure.}
               ): PAsyncIRC =
   ## Use this function if you want to use asyncio's dispatcher.
-  ## 
+  ##
   ## **Note:** Do **NOT** use this if you're writing a simple IRC bot which only
   ## requires one task to be run, i.e. this should not be used if you want a
   ## synchronous IRC client implementation, use ``irc`` for that.
-  
+
   new(result)
   result.isAsync = true
   result.address = address
@@ -464,13 +464,13 @@ proc asyncIRC*(address: string, port: TPort = 6667.TPort,
   result.messageBuffer = @[]
   result.handleEvent = ircEvent
   result.asyncSock = AsyncSocket()
-  
+
 when isMainModule:
   #var m = parseMessage("ERROR :Closing Link: dom96.co.cc (Ping timeout: 252 seconds)")
   #echo(repr(m))
 
 
-  
+
   var client = irc("amber.tenthbit.net", nick="TestBot1234",
                    joinChans = @["#flood"])
   client.connect()
@@ -492,5 +492,5 @@ when isMainModule:
 
         #echo( repr(event) )
       #echo("Lag: ", formatFloat(client.getLag()))
-  
-    
+
+

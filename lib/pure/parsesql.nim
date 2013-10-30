@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsesql`` module implements a high performance SQL file 
+## The ``parsesql`` module implements a high performance SQL file
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 
-import 
+import
   hashes, strutils, lexbase, streams
 
 # ------------------- scanner -------------------------------------------------
@@ -37,11 +37,11 @@ type
     tkBracketLe,            ## '['
     tkBracketRi,            ## ']'
     tkDot                   ## '.'
-  
+
   TToken {.final.} = object  # a token
     kind: TTokKind           # the type of the token
     literal: string          # the parsed (string) literal
-  
+
   TSqlLexer* = object of TBaseLexer ## the parser object.
     filename: string
 
@@ -53,82 +53,82 @@ const
     ";", ":", ",", "(", ")", "[", "]", "."
   ]
 
-proc open(L: var TSqlLexer, input: PStream, filename: string) = 
+proc open(L: var TSqlLexer, input: PStream, filename: string) =
   lexbase.open(L, input)
   L.filename = filename
-  
-proc close(L: var TSqlLexer) = 
+
+proc close(L: var TSqlLexer) =
   lexbase.close(L)
 
-proc getColumn(L: TSqlLexer): int = 
+proc getColumn(L: TSqlLexer): int =
   ## get the current column the parser has arrived at.
   result = getColNumber(L, L.bufPos)
 
-proc getLine(L: TSqlLexer): int = 
+proc getLine(L: TSqlLexer): int =
   result = L.linenumber
 
-proc handleHexChar(c: var TSqlLexer, xi: var int) = 
+proc handleHexChar(c: var TSqlLexer, xi: var int) =
   case c.buf[c.bufpos]
-  of '0'..'9': 
+  of '0'..'9':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
-  of 'a'..'f': 
+  of 'a'..'f':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
     inc(c.bufpos)
-  of 'A'..'F': 
+  of 'A'..'F':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
-  else: 
+  else:
     nil
 
-proc handleOctChar(c: var TSqlLexer, xi: var int) = 
+proc handleOctChar(c: var TSqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:
     xi = (xi shl 3) or (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var TSqlLexer, tok: var TToken) = 
+proc getEscapedChar(c: var TSqlLexer, tok: var TToken) =
   inc(c.bufpos)
   case c.buf[c.bufpos]
-  of 'n', 'N': 
+  of 'n', 'N':
     add(tok.literal, '\L')
     Inc(c.bufpos)
-  of 'r', 'R', 'c', 'C': 
+  of 'r', 'R', 'c', 'C':
     add(tok.literal, '\c')
     Inc(c.bufpos)
-  of 'l', 'L': 
+  of 'l', 'L':
     add(tok.literal, '\L')
     Inc(c.bufpos)
-  of 'f', 'F': 
+  of 'f', 'F':
     add(tok.literal, '\f')
     inc(c.bufpos)
-  of 'e', 'E': 
+  of 'e', 'E':
     add(tok.literal, '\e')
     Inc(c.bufpos)
-  of 'a', 'A': 
+  of 'a', 'A':
     add(tok.literal, '\a')
     Inc(c.bufpos)
-  of 'b', 'B': 
+  of 'b', 'B':
     add(tok.literal, '\b')
     Inc(c.bufpos)
-  of 'v', 'V': 
+  of 'v', 'V':
     add(tok.literal, '\v')
     Inc(c.bufpos)
-  of 't', 'T': 
+  of 't', 'T':
     add(tok.literal, '\t')
     Inc(c.bufpos)
-  of '\'', '\"': 
+  of '\'', '\"':
     add(tok.literal, c.buf[c.bufpos])
     Inc(c.bufpos)
-  of '\\': 
+  of '\\':
     add(tok.literal, '\\')
     Inc(c.bufpos)
-  of 'x', 'X': 
+  of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
     add(tok.literal, Chr(xi))
-  of '0'..'7': 
+  of '0'..'7':
     var xi = 0
     handleOctChar(c, xi)
     handleOctChar(c, xi)
@@ -136,20 +136,20 @@ proc getEscapedChar(c: var TSqlLexer, tok: var TToken) =
     if (xi <= 255): add(tok.literal, Chr(xi))
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
-  
-proc HandleCRLF(c: var TSqlLexer, pos: int): int = 
+
+proc HandleCRLF(c: var TSqlLexer, pos: int): int =
   case c.buf[pos]
   of '\c': result = lexbase.HandleCR(c, pos)
   of '\L': result = lexbase.HandleLF(c, pos)
   else: result = pos
 
-proc skip(c: var TSqlLexer) = 
+proc skip(c: var TSqlLexer) =
   var pos = c.bufpos
   var buf = c.buf
   var nested = 0
-  while true: 
+  while true:
     case buf[pos]
-    of ' ', '\t': 
+    of ' ', '\t':
       Inc(pos)
     of '-':
       if buf[pos+1] == '-':
@@ -162,7 +162,7 @@ proc skip(c: var TSqlLexer) =
         while true:
           case buf[pos]
           of '\0': break
-          of '\c', '\L': 
+          of '\c', '\L':
             pos = HandleCRLF(c, pos)
             buf = c.buf
           of '*':
@@ -180,20 +180,20 @@ proc skip(c: var TSqlLexer) =
               inc(pos)
           else: inc(pos)
       else: break
-    of '\c', '\L': 
+    of '\c', '\L':
       pos = HandleCRLF(c, pos)
       buf = c.buf
-    else: 
+    else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
-  
-proc getString(c: var TSqlLexer, tok: var TToken, kind: TTokKind) = 
+
+proc getString(c: var TSqlLexer, tok: var TToken, kind: TTokKind) =
   var pos = c.bufPos + 1
   var buf = c.buf
   tok.kind = kind
   block parseLoop:
     while true:
-      while true: 
+      while true:
         var ch = buf[pos]
         if ch == '\'':
           if buf[pos+1] == '\'':
@@ -201,15 +201,15 @@ proc getString(c: var TSqlLexer, tok: var TToken, kind: TTokKind) =
             add(tok.literal, '\'')
           else:
             inc(pos)
-            break 
-        elif ch in {'\c', '\L', lexbase.EndOfFile}: 
+            break
+        elif ch in {'\c', '\L', lexbase.EndOfFile}:
           tok.kind = tkInvalid
           break parseLoop
-        elif (ch == '\\') and kind == tkEscapeConstant: 
+        elif (ch == '\\') and kind == tkEscapeConstant:
           c.bufPos = pos
           getEscapedChar(c, tok)
           pos = c.bufPos
-        else: 
+        else:
           add(tok.literal, ch)
           Inc(pos)
       c.bufpos = pos
@@ -225,7 +225,7 @@ proc getString(c: var TSqlLexer, tok: var TToken, kind: TTokKind) =
       else: break parseLoop
   c.bufpos = pos
 
-proc getDollarString(c: var TSqlLexer, tok: var TToken) = 
+proc getDollarString(c: var TSqlLexer, tok: var TToken) =
   var pos = c.bufPos + 1
   var buf = c.buf
   tok.kind = tkDollarQuotedConstant
@@ -239,7 +239,7 @@ proc getDollarString(c: var TSqlLexer, tok: var TToken) =
     return
   while true:
     case buf[pos]
-    of '\c', '\L': 
+    of '\c', '\L':
       pos = HandleCRLF(c, pos)
       buf = c.buf
       add(tok.literal, "\L")
@@ -261,10 +261,10 @@ proc getDollarString(c: var TSqlLexer, tok: var TToken) =
       inc(pos)
   c.bufpos = pos
 
-proc getSymbol(c: var TSqlLexer, tok: var TToken) = 
+proc getSymbol(c: var TSqlLexer, tok: var TToken) =
   var pos = c.bufpos
   var buf = c.buf
-  while true: 
+  while true:
     add(tok.literal, buf[pos])
     Inc(pos)
     if not (buf[pos] in {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}):
@@ -272,7 +272,7 @@ proc getSymbol(c: var TSqlLexer, tok: var TToken) =
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var TSqlLexer, tok: var TToken) = 
+proc getQuotedIdentifier(c: var TSqlLexer, tok: var TToken) =
   var pos = c.bufPos + 1
   var buf = c.buf
   tok.kind = tkQuotedIdentifier
@@ -285,7 +285,7 @@ proc getQuotedIdentifier(c: var TSqlLexer, tok: var TToken) =
       else:
         inc(pos)
         break
-    elif ch in {'\c', '\L', lexbase.EndOfFile}: 
+    elif ch in {'\c', '\L', lexbase.EndOfFile}:
       tok.kind = tkInvalid
       break
     else:
@@ -298,15 +298,15 @@ proc getBitHexString(c: var TSqlLexer, tok: var TToken, validChars: TCharSet) =
   var buf = c.buf
   block parseLoop:
     while true:
-      while true: 
+      while true:
         var ch = buf[pos]
         if ch in validChars:
           add(tok.literal, ch)
-          Inc(pos)          
+          Inc(pos)
         elif ch == '\'':
           inc(pos)
           break
-        else: 
+        else:
           tok.kind = tkInvalid
           break parseLoop
       c.bufpos = pos
@@ -351,7 +351,7 @@ proc getNumeric(c: var TSqlLexer, tok: var TToken) =
         inc(pos)
     else:
       tok.kind = tkInvalid
-  c.bufpos = pos  
+  c.bufpos = pos
 
 proc getOperator(c: var TSqlLexer, tok: var TToken) =
   const operators = {'+', '-', '*', '/', '<', '>', '=', '~', '!', '@', '#', '%',
@@ -379,12 +379,12 @@ proc getOperator(c: var TSqlLexer, tok: var TToken) =
     inc(pos)
   c.bufpos = pos
 
-proc getTok(c: var TSqlLexer, tok: var TToken) = 
+proc getTok(c: var TSqlLexer, tok: var TToken) =
   tok.kind = tkInvalid
   setlen(tok.literal, 0)
   skip(c)
   case c.buf[c.bufpos]
-  of ';': 
+  of ';':
     tok.kind = tkSemiColon
     inc(c.bufPos)
     add(tok.literal, ';')
@@ -392,15 +392,15 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     tok.kind = tkComma
     inc(c.bufpos)
     add(tok.literal, ',')
-  of ':': 
+  of ':':
     tok.kind = tkColon
     inc(c.bufpos)
     add(tok.literal, ':')
-  of 'e', 'E': 
-    if c.buf[c.bufPos + 1] == '\'': 
+  of 'e', 'E':
+    if c.buf[c.bufPos + 1] == '\'':
       Inc(c.bufPos)
       getString(c, tok, tkEscapeConstant)
-    else: 
+    else:
       getSymbol(c, tok)
   of 'b', 'B':
     if c.buf[c.bufPos + 1] == '\'':
@@ -415,11 +415,11 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     else:
       getSymbol(c, tok)
   of '$': getDollarString(c, tok)
-  of '[': 
+  of '[':
     tok.kind = tkBracketLe
     inc(c.bufpos)
     add(tok.literal, '[')
-  of ']': 
+  of ']':
     tok.kind = tkBracketRi
     Inc(c.bufpos)
     add(tok.literal, ']')
@@ -431,7 +431,7 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
     tok.kind = tkParRi
     Inc(c.bufpos)
     add(tok.literal, ')')
-  of '.': 
+  of '.':
     if c.buf[c.bufPos + 1] in Digits:
       getNumeric(c, tok)
     else:
@@ -441,7 +441,7 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
   of '0'..'9': getNumeric(c, tok)
   of '\'': getString(c, tok, tkStringConstant)
   of '"': getQuotedIdentifier(c, tok)
-  of lexbase.EndOfFile: 
+  of lexbase.EndOfFile:
     tok.kind = tkEof
     tok.literal = "[EOF]"
   of 'a', 'c', 'd', 'f'..'w', 'y', 'z', 'A', 'C', 'D', 'F'..'W', 'Y', 'Z', '_',
@@ -453,8 +453,8 @@ proc getTok(c: var TSqlLexer, tok: var TToken) =
   else:
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
-  
-proc errorStr(L: TSqlLexer, msg: string): string = 
+
+proc errorStr(L: TSqlLexer, msg: string): string =
   result = "$1($2, $3) Error: $4" % [L.filename, $getLine(L), $getColumn(L), msg]
 
 
@@ -494,7 +494,7 @@ type
     nkPrimaryKey,
     nkForeignKey,
     nkNotNull,
-    
+
     nkStmtList,
     nkDot,
     nkDotDot,
@@ -528,13 +528,13 @@ type
     nkValueList,
     nkWhere,
     nkCreateTable,
-    nkCreateTableIfNotExists, 
+    nkCreateTableIfNotExists,
     nkCreateType,
     nkCreateTypeIfNotExists,
     nkCreateIndex,
     nkCreateIndexIfNotExists,
     nkEnumDef
-    
+
 type
   EInvalidSql* = object of EInvalidValue ## Invalid SQL encountered
   PSqlNode* = ref TSqlNode        ## an SQL abstract syntax tree node
@@ -558,11 +558,11 @@ proc newNode(k: TSqlNodeKind, s: string): PSqlNode =
   new(result)
   result.kind = k
   result.strVal = s
-  
+
 proc len*(n: PSqlNode): int =
   if isNil(n.sons): result = 0
   else: result = n.sons.len
-  
+
 proc add*(father, n: PSqlNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, n)
@@ -636,11 +636,11 @@ proc parseDataType(p: var TSqlParser): PSqlNode =
         getTok(p)
       eat(p, tkParRi)
 
-proc getPrecedence(p: TSqlParser): int = 
+proc getPrecedence(p: TSqlParser): int =
   if isOpr(p, "*") or isOpr(p, "/") or isOpr(p, "%"):
     result = 6
   elif isOpr(p, "+") or isOpr(p, "-"):
-    result = 5  
+    result = 5
   elif isOpr(p, "=") or isOpr(p, "<") or isOpr(p, ">") or isOpr(p, ">=") or
        isOpr(p, "<=") or isOpr(p, "<>") or isOpr(p, "!=") or isKeyw(p, "is") or
        isKeyw(p, "like"):
@@ -657,9 +657,9 @@ proc getPrecedence(p: TSqlParser): int =
 
 proc parseExpr(p: var TSqlParser): PSqlNode
 
-proc identOrLiteral(p: var TSqlParser): PSqlNode = 
+proc identOrLiteral(p: var TSqlParser): PSqlNode =
   case p.tok.kind
-  of tkIdentifier, tkQuotedIdentifier: 
+  of tkIdentifier, tkQuotedIdentifier:
     result = newNode(nkIdent, p.tok.literal)
     getTok(p)
   of tkStringConstant, tkEscapeConstant, tkDollarQuotedConstant:
@@ -681,21 +681,21 @@ proc identOrLiteral(p: var TSqlParser): PSqlNode =
     getTok(p)
     result = parseExpr(p)
     eat(p, tkParRi)
-  else: 
+  else:
     sqlError(p, "expression expected")
     getTok(p) # we must consume a token here to prevend endless loops!
 
-proc primary(p: var TSqlParser): PSqlNode = 
-  if p.tok.kind == tkOperator or isKeyw(p, "not"): 
+proc primary(p: var TSqlParser): PSqlNode =
+  if p.tok.kind == tkOperator or isKeyw(p, "not"):
     result = newNode(nkPrefix)
     result.add(newNode(nkIdent, p.tok.literal))
     getTok(p)
     result.add(primary(p))
     return
   result = identOrLiteral(p)
-  while true: 
+  while true:
     case p.tok.kind
-    of tkParLe: 
+    of tkParLe:
       var a = result
       result = newNode(nkCall)
       result.add(a)
@@ -705,7 +705,7 @@ proc primary(p: var TSqlParser): PSqlNode =
         if p.tok.kind == tkComma: getTok(p)
         else: break
       eat(p, tkParRi)
-    of tkDot: 
+    of tkDot:
       getTok(p)
       var a = result
       if p.tok.kind == tkDot:
@@ -722,14 +722,14 @@ proc primary(p: var TSqlParser): PSqlNode =
         sqlError(p, "identifier expected")
       getTok(p)
     else: break
-  
-proc lowestExprAux(p: var TSqlParser, v: var PSqlNode, limit: int): int = 
+
+proc lowestExprAux(p: var TSqlParser, v: var PSqlNode, limit: int): int =
   var
     v2, node, opNode: PSqlNode
   v = primary(p) # expand while operators have priorities higher than 'limit'
   var opPred = getPrecedence(p)
   result = opPred
-  while opPred > limit: 
+  while opPred > limit:
     node = newNode(nkInfix)
     opNode = newNode(nkIdent, p.tok.literal)
     getTok(p)
@@ -739,8 +739,8 @@ proc lowestExprAux(p: var TSqlParser, v: var PSqlNode, limit: int): int =
     node.add(v2)
     v = node
     opPred = getPrecedence(p)
-  
-proc parseExpr(p: var TSqlParser): PSqlNode = 
+
+proc parseExpr(p: var TSqlParser): PSqlNode =
   discard lowestExprAux(p, result, - 1)
 
 proc parseTableName(p: var TSqlParser): PSqlNode =
@@ -760,7 +760,7 @@ proc parseColumnReference(p: var TSqlParser): PSqlNode =
       result.add(parseTableName(p))
     eat(p, tkParRi)
 
-proc parseCheck(p: var TSqlParser): PSqlNode = 
+proc parseCheck(p: var TSqlParser): PSqlNode =
   getTok(p)
   result = newNode(nkCheck)
   result.add(parseExpr(p))
@@ -812,9 +812,9 @@ proc parseColumnDef(p: var TSqlParser): PSqlNode =
   result.add(newNode(nkIdent, p.tok.literal))
   getTok(p)
   result.add(parseDataType(p))
-  parseColumnConstraints(p, result)  
+  parseColumnConstraints(p, result)
 
-proc parseIfNotExists(p: var TSqlParser, k: TSqlNodeKind): PSqlNode = 
+proc parseIfNotExists(p: var TSqlParser, k: TSqlNodeKind): PSqlNode =
   getTok(p)
   if isKeyw(p, "if"):
     getTok(p)
@@ -875,7 +875,7 @@ proc parseTableDef(p: var TSqlParser): PSqlNode =
         result.add(parseTableConstraint(p))
       if p.tok.kind != tkComma: break
     eat(p, tkParRi)
-  
+
 proc parseTypeDef(p: var TSqlParser): PSqlNode =
   result = parseIfNotExists(p, nkCreateType)
   expectIdent(p)
@@ -961,7 +961,7 @@ proc parseUpdate(p: var TSqlParser): PSqlNode =
     result.add(parseWhere(p))
   else:
     result.add(nil)
-    
+
 proc parseDelete(p: var TSqlParser): PSqlNode =
   getTok(p)
   result = newNode(nkDelete)
@@ -1013,14 +1013,14 @@ proc parseSelect(p: var TSqlParser): PSqlNode =
     while true:
       getTok(p)
       h.add(parseExpr(p))
-      if p.tok.kind != tkComma: break    
+      if p.tok.kind != tkComma: break
     result.add(h)
   if isKeyw(p, "union"):
     result.add(newNode(nkUnion))
     getTok(p)
   elif isKeyw(p, "intersect"):
     result.add(newNode(nkIntersect))
-    getTok(p)  
+    getTok(p)
   elif isKeyw(p, "except"):
     result.add(newNode(nkExcept))
     getTok(p)
@@ -1078,7 +1078,7 @@ proc open(p: var TSqlParser, input: PStream, filename: string) =
   p.tok.kind = tkInvalid
   p.tok.literal = ""
   getTok(p)
-  
+
 proc parse(p: var TSqlParser): PSqlNode =
   ## parses the content of `p`'s input stream and returns the SQL AST.
   ## Syntax errors raise an `EInvalidSql` exception.
@@ -1089,13 +1089,13 @@ proc parse(p: var TSqlParser): PSqlNode =
     result.add(s)
   if result.len == 1:
     result = result.sons[0]
-  
+
 proc close(p: var TSqlParser) =
   ## closes the parser `p`. The associated input stream is closed too.
   close(TSqlLexer(p))
 
 proc parseSQL*(input: PStream, filename: string): PSqlNode =
-  ## parses the SQL from `input` into an AST and returns the AST. 
+  ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `EInvalidSql` exception.
   var p: TSqlParser
@@ -1109,7 +1109,7 @@ proc ra(n: PSqlNode, s: var string, indent: int)
 
 proc rs(n: PSqlNode, s: var string, indent: int,
         prefix = "(", suffix = ")",
-        sep = ", ") = 
+        sep = ", ") =
   if n.len > 0:
     s.add(prefix)
     for i in 0 .. n.len-1:
@@ -1157,7 +1157,7 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
     ra(n.sons[1], s, indent)
     s.add(')')
   of nkInfix:
-    s.add('(')    
+    s.add('(')
     ra(n.sons[1], s, indent)
     s.add(' ')
     ra(n.sons[0], s, indent)
@@ -1202,13 +1202,13 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
     s.add("insert into ")
     ra(n.sons[0], s, indent)
     ra(n.sons[1], s, indent)
-    if n.sons[2].kind == nkDefault: 
+    if n.sons[2].kind == nkDefault:
       s.add("default values")
     else:
       s.add("\nvalues ")
       ra(n.sons[2], s, indent)
     s.add(';')
-  of nkUpdate: 
+  of nkUpdate:
     s.add("update ")
     ra(n.sons[0], s, indent)
     s.add(" set ")
@@ -1220,7 +1220,7 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
       ra(it, s, indent)
     ra(n.sons[L-1], s, indent)
     s.add(';')
-  of nkDelete: 
+  of nkDelete:
     s.add("delete from ")
     ra(n.sons[0], s, indent)
     ra(n.sons[1], s, indent)
@@ -1232,12 +1232,12 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
     rs(n.sons[0], s, indent, "", "", ", ")
     for i in 1 .. n.len-1: ra(n.sons[i], s, indent)
     s.add(';')
-  of nkSelectColumns: 
+  of nkSelectColumns:
     assert(false)
   of nkAsgn:
     ra(n.sons[0], s, indent)
     s.add(" = ")
-    ra(n.sons[1], s, indent)  
+    ra(n.sons[1], s, indent)
   of nkFrom:
     s.add("\nfrom ")
     rs(n, s, indent, "", "", ", ")
@@ -1301,23 +1301,23 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
     s.add("enum ")
     rs(n, s, indent)
 
-# What I want: 
+# What I want:
 #
-#select(columns = [T1.all, T2.name], 
+#select(columns = [T1.all, T2.name],
 #       fromm = [T1, T2],
 #       where = T1.name ==. T2.name,
 #       orderby = [name]):
-#  
-#for row in dbQuery(db, """select x, y, z 
-#                          from a, b 
+#
+#for row in dbQuery(db, """select x, y, z
+#                          from a, b
 #                          where a.name = b.name"""):
-#  
+#
 
 #select x, y, z:
 #  fromm: Table1, Table2
 #  where: x.name == y.name
 #db.select(fromm = [t1, t2], where = t1.name == t2.name):
-#for x, y, z in db.select(fromm = a, b where = a.name == b.name): 
+#for x, y, z in db.select(fromm = a, b where = a.name == b.name):
 #  writeln x, y, z
 
 proc renderSQL*(n: PSqlNode): string =
@@ -1333,7 +1333,7 @@ when isMainModule:
          happiness happiness
       );
       CREATE INDEX table1_attr1 ON table1(attr1);
-      
+
       SELECT * FROM myTab WHERE col1 = 'happy';
   """), "stdin")))
 

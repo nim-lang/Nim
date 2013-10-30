@@ -136,7 +136,7 @@ type
     fs_event_init* {.importc: "fs_event_init".}: uint64
 
   TLoop* {.pure, final, importc: "uv_loop_t", header: "uv.h".} = object
-    # ares_handles_* {.importc: "uv_ares_handles_".}: pointer # XXX: This seems to be a private field? 
+    # ares_handles_* {.importc: "uv_ares_handles_".}: pointer # XXX: This seems to be a private field?
     eio_want_poll_notifier* {.importc: "uv_eio_want_poll_notifier".}: TAsync
     eio_done_poll_notifier* {.importc: "uv_eio_done_poll_notifier".}: TAsync
     eio_poller* {.importc: "uv_eio_poller".}: TIdle

@@ -8,7 +8,7 @@
 #
 
 ##   Constructive mathematics is naturally typed. -- Simon Thompson
-## 
+##
 ## Basic math routines for Nimrod.
 ## This module is available for the JavaScript target.
 
@@ -30,9 +30,9 @@ const
   MaxFloat32Precision* = 8  ## maximum number of meaningful digits
                             ## after the decimal point for Nimrod's
                             ## ``float32`` type.
-  MaxFloatPrecision* = MaxFloat64Precision ## maximum number of 
+  MaxFloatPrecision* = MaxFloat64Precision ## maximum number of
                                            ## meaningful digits
-                                           ## after the decimal point 
+                                           ## after the decimal point
                                            ## for Nimrod's ``float`` type.
 
 type
@@ -46,10 +46,10 @@ type
     fcInf,       ## value is positive infinity
     fcNegInf     ## value is negative infinity
 
-proc classify*(x: float): TFloatClass = 
+proc classify*(x: float): TFloatClass =
   ## classifies a floating point value. Returns `x`'s class as specified by
   ## `TFloatClass`.
-    
+
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
     if 1.0/x == Inf:
@@ -64,15 +64,15 @@ proc classify*(x: float): TFloatClass =
   # XXX: fcSubnormal is not detected!
 
 
-proc binom*(n, k: int): int {.noSideEffect.} = 
+proc binom*(n, k: int): int {.noSideEffect.} =
   ## computes the binomial coefficient
   if k <= 0: return 1
   if 2*k > n: return binom(n, n-k)
   result = n
   for i in countup(2, k):
     result = (result * (n + 1 - i)) div i
-    
-proc fac*(n: int): int {.noSideEffect.} = 
+
+proc fac*(n: int): int {.noSideEffect.} =
   ## computes the faculty function
   result = 1
   for i in countup(2, n):
@@ -103,18 +103,18 @@ proc countBits32*(n: int32): int {.noSideEffect.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
-proc sum*[T](x: openarray[T]): T {.noSideEffect.} = 
-  ## computes the sum of the elements in `x`. 
+proc sum*[T](x: openarray[T]): T {.noSideEffect.} =
+  ## computes the sum of the elements in `x`.
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openarray[float]): float {.noSideEffect.} = 
-  ## computes the mean of the elements in `x`. 
+proc mean*(x: openarray[float]): float {.noSideEffect.} =
+  ## computes the mean of the elements in `x`.
   ## If `x` is empty, NaN is returned.
   result = sum(x) / toFloat(len(x))
 
-proc variance*(x: openarray[float]): float {.noSideEffect.} = 
-  ## computes the variance of the elements in `x`. 
+proc variance*(x: openarray[float]): float {.noSideEffect.} =
+  ## computes the variance of the elements in `x`.
   ## If `x` is empty, NaN is returned.
   result = 0.0
   var m = mean(x)
@@ -140,7 +140,7 @@ proc randomize*()
   ## initializes the random number generator with a "random"
   ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
-  
+
 proc randomize*(seed: int)
   ## initializes the random number generator with a specific seed.
   ## Note: Does nothing for the JavaScript target,
@@ -149,14 +149,14 @@ proc randomize*(seed: int)
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
-  
+
   proc ln*(x: float): float {.importc: "log", header: "<math.h>".}
     ## computes ln(x).
   proc log10*(x: float): float {.importc: "log10", header: "<math.h>".}
   proc log2*(x: float): float = return ln(x) / ln(2.0)
   proc exp*(x: float): float {.importc: "exp", header: "<math.h>".}
     ## computes e**x.
-  
+
   proc frexp*(x: float, exponent: var int): float {.
     importc: "frexp", header: "<math.h>".}
     ## Split a number into mantissa and exponent.
@@ -164,10 +164,10 @@ when not defined(JS):
     ## and less than 1) and the integer value n such that `x` (the original
     ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
     ## m.
-  
+
   proc round*(x: float): int {.importc: "lrint", header: "<math.h>".}
-    ## converts a float to an int by rounding.  
-  
+    ## converts a float to an int by rounding.
+
   proc arccos*(x: float): float {.importc: "acos", header: "<math.h>".}
   proc arcsin*(x: float): float {.importc: "asin", header: "<math.h>".}
   proc arctan*(x: float): float {.importc: "atan", header: "<math.h>".}
@@ -176,30 +176,30 @@ when not defined(JS):
     ## `atan2` returns the arc tangent of `y` / `x`; it produces correct
     ## results even when the resulting angle is near pi/2 or -pi/2
     ## (`x` near 0).
-  
+
   proc cos*(x: float): float {.importc: "cos", header: "<math.h>".}
   proc cosh*(x: float): float {.importc: "cosh", header: "<math.h>".}
   proc hypot*(x, y: float): float {.importc: "hypot", header: "<math.h>".}
     ## same as ``sqrt(x*x + y*y)``.
-  
+
   proc sinh*(x: float): float {.importc: "sinh", header: "<math.h>".}
   proc sin*(x: float): float {.importc: "sin", header: "<math.h>".}
   proc tan*(x: float): float {.importc: "tan", header: "<math.h>".}
   proc tanh*(x: float): float {.importc: "tanh", header: "<math.h>".}
   proc pow*(x, y: float): float {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
-    
+
   # C procs:
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
-  
+
   when not defined(windows):
     proc srand48(seed: clong) {.importc: "srand48", header: "<stdlib.h>".}
     proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
     proc random(max: float): float =
       result = drand48() * max
-    
+
   proc randomize() =
     randomize(gettime(nil))
 
@@ -225,7 +225,7 @@ else:
     result = float(mathrandom() * float(max))
   proc randomize() = nil
   proc randomize(seed: int) = nil
-  
+
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float): float {.importc: "Math.log", nodecl.}
   proc log10*(x: float): float = return ln(x) / ln(10.0)
@@ -234,7 +234,7 @@ else:
   proc exp*(x: float): float {.importc: "Math.exp", nodecl.}
   proc round*(x: float): int {.importc: "Math.round", nodecl.}
   proc pow*(x, y: float): float {.importc: "Math.pow", nodecl.}
-  
+
   proc frexp*(x: float, exponent: var int): float =
     if x == 0.0:
       exponent = 0
@@ -250,7 +250,7 @@ else:
   proc arcsin*(x: float): float {.importc: "Math.asin", nodecl.}
   proc arctan*(x: float): float {.importc: "Math.atan", nodecl.}
   proc arctan2*(y, x: float): float {.importc: "Math.atan2", nodecl.}
-  
+
   proc cos*(x: float): float {.importc: "Math.cos", nodecl.}
   proc cosh*(x: float): float = return (exp(x)+exp(-x))*0.5
   proc hypot*(x, y: float): float = return sqrt(x*x + y*y)
@@ -266,14 +266,14 @@ proc `mod`*(x, y: float): float =
 
 proc random*[T](x: TSlice[T]): T =
   result = random(x.b - x.a) + x.a
-  
+
 type
   TRunningStat* {.pure,final.} = object  ## an accumulator for statistical data
     n*: int                              ## number of pushed data
     sum*, min*, max*, mean*: float       ## self-explaining
     oldM, oldS, newS: float
 
-proc push*(s: var TRunningStat, x: float) = 
+proc push*(s: var TRunningStat, x: float) =
   ## pushes a value `x` for processing
   inc(s.n)
   # See Knuth TAOCP vol 2, 3rd edition, page 232
@@ -293,17 +293,17 @@ proc push*(s: var TRunningStat, x: float) =
     s.oldM = s.mean
     s.oldS = s.newS
   s.sum = s.sum + x
-  
-proc push*(s: var TRunningStat, x: int) = 
+
+proc push*(s: var TRunningStat, x: int) =
   ## pushes a value `x` for processing. `x` is simply converted to ``float``
   ## and the other push operation is called.
   push(s, toFloat(x))
-  
-proc variance*(s: TRunningStat): float = 
+
+proc variance*(s: TRunningStat): float =
   ## computes the current variance of `s`
   if s.n > 1: result = s.newS / (toFloat(s.n - 1))
 
-proc standardDeviation*(s: TRunningStat): float = 
+proc standardDeviation*(s: TRunningStat): float =
   ## computes the current standard deviation of `s`
   result = sqrt(variance(s))
 

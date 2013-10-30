@@ -1,17 +1,17 @@
 {.deadCodeElim: on.}
-import 
+import
   Glib2, gdk2
 
-when defined(WIN32): 
-  const 
+when defined(WIN32):
+  const
     GLExtLib = "libgdkglext-win32-1.0-0.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     GLExtLib = "libgdkglext-x11-1.0.dylib"
-else: 
-  const 
+else:
+  const
     GLExtLib = "libgdkglext-x11-1.0.so"
-type 
+type
   TGLConfigAttrib* = int32
   TGLConfigCaveat* = int32
   TGLVisualType* = int32
@@ -46,16 +46,16 @@ type
   TGLDrawable* = object of TGObject
   PGLDrawableClass* = ptr TGLDrawableClass
   TGLDrawableClass* = object of TGTypeInterface
-    create_new_context*: proc (gldrawable: PGLDrawable, share_list: PGLContext, 
+    create_new_context*: proc (gldrawable: PGLDrawable, share_list: PGLContext,
                                direct: gboolean, render_type: int32): PGLContext{.
         cdecl.}
-    make_context_current*: proc (draw: PGLDrawable, a_read: PGLDrawable, 
+    make_context_current*: proc (draw: PGLDrawable, a_read: PGLDrawable,
                                  glcontext: PGLContext): gboolean{.cdecl.}
     is_double_buffered*: proc (gldrawable: PGLDrawable): gboolean{.cdecl.}
     swap_buffers*: proc (gldrawable: PGLDrawable){.cdecl.}
     wait_gl*: proc (gldrawable: PGLDrawable){.cdecl.}
     wait_gdk*: proc (gldrawable: PGLDrawable){.cdecl.}
-    gl_begin*: proc (draw: PGLDrawable, a_read: PGLDrawable, 
+    gl_begin*: proc (draw: PGLDrawable, a_read: PGLDrawable,
                      glcontext: PGLContext): gboolean{.cdecl.}
     gl_end*: proc (gldrawable: PGLDrawable){.cdecl.}
     get_gl_config*: proc (gldrawable: PGLDrawable): PGLConfig{.cdecl.}
@@ -72,7 +72,7 @@ type
   PGLWindowClass* = ptr TGLWindowClass
   TGLWindowClass* = object of TGObjectClass
 
-const 
+const
   HEADER_GDKGLEXT_MAJOR_VERSION* = 1
   HEADER_GDKGLEXT_MINOR_VERSION* = 0
   HEADER_GDKGLEXT_MICRO_VERSION* = 6
@@ -80,14 +80,14 @@ const
   HEADER_GDKGLEXT_BINARY_AGE* = 6
 
 proc HEADER_GDKGLEXT_CHECK_VERSION*(major, minor, micro: guint): bool
-var 
+var
   glext_major_version*{.importc, dynlib: GLExtLib.}: guint
   glext_minor_version*{.importc, dynlib: GLExtLib.}: guint
   glext_micro_version*{.importc, dynlib: GLExtLib.}: guint
   glext_interface_age*{.importc, dynlib: GLExtLib.}: guint
   glext_binary_age*{.importc, dynlib: GLExtLib.}: guint
 
-const 
+const
   GL_SUCCESS* = 0
   GL_ATTRIB_LIST_NONE* = 0
   GL_USE_GL* = 1
@@ -179,75 +179,75 @@ const
   GL_WINDOW_VALUE* = 0x00008022
   GL_PBUFFER* = 0x00008023
 
-proc gl_config_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_config_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_config_attrib_get_type".}
-proc TYPE_GL_CONFIG_ATTRIB*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_CONFIG_ATTRIB*(): GType{.cdecl, dynlib: GLExtLib,
                                       importc: "gdk_gl_config_attrib_get_type".}
-proc gl_config_caveat_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_config_caveat_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_config_caveat_get_type".}
-proc TYPE_GL_CONFIG_CAVEAT*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_CONFIG_CAVEAT*(): GType{.cdecl, dynlib: GLExtLib,
                                       importc: "gdk_gl_config_caveat_get_type".}
-proc gl_visual_type_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_visual_type_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                         importc: "gdk_gl_visual_type_get_type".}
-proc TYPE_GL_VISUAL_TYPE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_VISUAL_TYPE*(): GType{.cdecl, dynlib: GLExtLib,
                                     importc: "gdk_gl_visual_type_get_type".}
-proc gl_transparent_type_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_transparent_type_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_transparent_type_get_type".}
-proc TYPE_GL_TRANSPARENT_TYPE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_TRANSPARENT_TYPE*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_transparent_type_get_type".}
-proc gl_drawable_type_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_drawable_type_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_type_mask_get_type".}
-proc TYPE_GL_DRAWABLE_TYPE_MASK*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_DRAWABLE_TYPE_MASK*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_type_mask_get_type".}
-proc gl_render_type_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_render_type_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_render_type_mask_get_type".}
-proc TYPE_GL_RENDER_TYPE_MASK*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_RENDER_TYPE_MASK*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_render_type_mask_get_type".}
-proc gl_buffer_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_buffer_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                         importc: "gdk_gl_buffer_mask_get_type".}
-proc TYPE_GL_BUFFER_MASK*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_BUFFER_MASK*(): GType{.cdecl, dynlib: GLExtLib,
                                     importc: "gdk_gl_buffer_mask_get_type".}
-proc gl_config_error_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_config_error_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_config_error_get_type".}
-proc TYPE_GL_CONFIG_ERROR*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_CONFIG_ERROR*(): GType{.cdecl, dynlib: GLExtLib,
                                      importc: "gdk_gl_config_error_get_type".}
-proc gl_render_type_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_render_type_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                         importc: "gdk_gl_render_type_get_type".}
-proc TYPE_GL_RENDER_TYPE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_RENDER_TYPE*(): GType{.cdecl, dynlib: GLExtLib,
                                     importc: "gdk_gl_render_type_get_type".}
-proc gl_drawable_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_drawable_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_attrib_get_type".}
 proc TYPE_GL_DRAWABLE_ATTRIB*(): GType{.cdecl, dynlib: GLExtLib, importc: "gdk_gl_drawable_attrib_get_type".}
-proc gl_pbuffer_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_pbuffer_attrib_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_pbuffer_attrib_get_type".}
 proc TYPE_GL_PBUFFER_ATTRIB*(): GType{.cdecl, dynlib: GLExtLib, importc: "gdk_gl_pbuffer_attrib_get_type".}
-proc gl_event_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_event_mask_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                        importc: "gdk_gl_event_mask_get_type".}
-proc TYPE_GL_EVENT_MASK*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_EVENT_MASK*(): GType{.cdecl, dynlib: GLExtLib,
                                    importc: "gdk_gl_event_mask_get_type".}
-proc gl_event_type_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_event_type_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                        importc: "gdk_gl_event_type_get_type".}
-proc TYPE_GL_EVENT_TYPE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_EVENT_TYPE*(): GType{.cdecl, dynlib: GLExtLib,
                                    importc: "gdk_gl_event_type_get_type".}
-proc gl_drawable_type_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_drawable_type_get_type*(): GType{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_type_get_type".}
-proc TYPE_GL_DRAWABLE_TYPE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_DRAWABLE_TYPE*(): GType{.cdecl, dynlib: GLExtLib,
                                       importc: "gdk_gl_drawable_type_get_type".}
-proc gl_config_mode_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_config_mode_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                         importc: "gdk_gl_config_mode_get_type".}
-proc TYPE_GL_CONFIG_MODE*(): GType{.cdecl, dynlib: GLExtLib, 
+proc TYPE_GL_CONFIG_MODE*(): GType{.cdecl, dynlib: GLExtLib,
                                     importc: "gdk_gl_config_mode_get_type".}
-proc gl_parse_args*(argc: var int32, argv: ptr cstringArray): gboolean{.cdecl, 
+proc gl_parse_args*(argc: var int32, argv: ptr cstringArray): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_parse_args".}
-proc gl_init_check*(argc: var int32, argv: ptr cstringArray): gboolean{.cdecl, 
+proc gl_init_check*(argc: var int32, argv: ptr cstringArray): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_init_check".}
-proc gl_init*(argc: var int32, argv: ptr cstringArray){.cdecl, dynlib: GLExtLib, 
+proc gl_init*(argc: var int32, argv: ptr cstringArray){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_init".}
-proc gl_query_gl_extension*(extension: cstring): gboolean{.cdecl, 
+proc gl_query_gl_extension*(extension: cstring): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_query_gl_extension".}
-proc gl_get_proc_address*(proc_name: cstring): TGLProc{.cdecl, dynlib: GLExtLib, 
+proc gl_get_proc_address*(proc_name: cstring): TGLProc{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_get_proc_address".}
-const 
+const
   bm_TGdkGLConfig_is_rgba* = 1 shl 0
   bp_TGdkGLConfig_is_rgba* = 0
   bm_TGdkGLConfig_is_double_buffered* = 1 shl 1
@@ -265,7 +265,7 @@ const
   bm_TGdkGLConfig_has_accum_buffer* = 1 shl 7
   bp_TGdkGLConfig_has_accum_buffer* = 7
 
-const 
+const
   GL_MODE_RGB* = 0
   GL_MODE_RGBA* = 0
   GL_MODE_INDEX* = 1 shl 0
@@ -278,7 +278,7 @@ const
   GL_MODE_ACCUM* = 1 shl 6
   GL_MODE_MULTISAMPLE* = 1 shl 7
 
-type 
+type
   TGLConfigMode* = int32
   PGLConfigMode* = ptr TGLConfigMode
 
@@ -288,37 +288,37 @@ proc GL_CONFIG_CLASS*(klass: Pointer): PGLConfigClass
 proc IS_GL_CONFIG*(anObject: Pointer): bool
 proc IS_GL_CONFIG_CLASS*(klass: Pointer): bool
 proc GL_CONFIG_GET_CLASS*(obj: Pointer): PGLConfigClass
-proc gl_config_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_config_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                    importc: "gdk_gl_config_get_type".}
-proc get_screen*(glconfig: PGLConfig): PScreen{.cdecl, 
+proc get_screen*(glconfig: PGLConfig): PScreen{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_screen".}
 proc get_attrib*(glconfig: PGLConfig, attribute: int, value: var cint): gboolean{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_config_get_attrib".}
-proc get_colormap*(glconfig: PGLConfig): PColormap{.cdecl, 
+proc get_colormap*(glconfig: PGLConfig): PColormap{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_colormap".}
-proc get_visual*(glconfig: PGLConfig): PVisual{.cdecl, 
+proc get_visual*(glconfig: PGLConfig): PVisual{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_visual".}
-proc get_depth*(glconfig: PGLConfig): gint{.cdecl, dynlib: GLExtLib, 
+proc get_depth*(glconfig: PGLConfig): gint{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_config_get_depth".}
-proc get_layer_plane*(glconfig: PGLConfig): gint{.cdecl, 
+proc get_layer_plane*(glconfig: PGLConfig): gint{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_layer_plane".}
-proc get_n_aux_buffers*(glconfig: PGLConfig): gint{.cdecl, 
+proc get_n_aux_buffers*(glconfig: PGLConfig): gint{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_n_aux_buffers".}
-proc get_n_sample_buffers*(glconfig: PGLConfig): gint{.cdecl, 
+proc get_n_sample_buffers*(glconfig: PGLConfig): gint{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_get_n_sample_buffers".}
-proc is_rgba*(glconfig: PGLConfig): gboolean{.cdecl, dynlib: GLExtLib, 
+proc is_rgba*(glconfig: PGLConfig): gboolean{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_config_is_rgba".}
-proc is_double_buffered*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc is_double_buffered*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_is_double_buffered".}
-proc is_stereo*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc is_stereo*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_is_stereo".}
-proc has_alpha*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc has_alpha*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_has_alpha".}
-proc has_depth_buffer*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc has_depth_buffer*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_has_depth_buffer".}
-proc has_stencil_buffer*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc has_stencil_buffer*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_has_stencil_buffer".}
-proc has_accum_buffer*(glconfig: PGLConfig): gboolean{.cdecl, 
+proc has_accum_buffer*(glconfig: PGLConfig): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_config_has_accum_buffer".}
 proc TYPE_GL_CONTEXT*(): GType
 proc GL_CONTEXT*(anObject: Pointer): PGLContext
@@ -326,26 +326,26 @@ proc GL_CONTEXT_CLASS*(klass: Pointer): PGLContextClass
 proc IS_GL_CONTEXT*(anObject: Pointer): bool
 proc IS_GL_CONTEXT_CLASS*(klass: Pointer): bool
 proc GL_CONTEXT_GET_CLASS*(obj: Pointer): PGLContextClass
-proc gl_context_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_context_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                     importc: "gdk_gl_context_get_type".}
-proc context_new*(gldrawable: PGLDrawable, share_list: PGLContext, 
-                     direct: gboolean, render_type: int32): PGLContext{.cdecl, 
+proc context_new*(gldrawable: PGLDrawable, share_list: PGLContext,
+                     direct: gboolean, render_type: int32): PGLContext{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_new".}
-proc destroy*(glcontext: PGLContext){.cdecl, dynlib: GLExtLib, 
+proc destroy*(glcontext: PGLContext){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_context_destroy".}
 proc copy*(glcontext: PGLContext, src: PGLContext, mask: int32): gboolean{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_context_copy".}
-proc get_gl_drawable*(glcontext: PGLContext): PGLDrawable{.cdecl, 
+proc get_gl_drawable*(glcontext: PGLContext): PGLDrawable{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_get_gl_drawable".}
-proc get_gl_config*(glcontext: PGLContext): PGLConfig{.cdecl, 
+proc get_gl_config*(glcontext: PGLContext): PGLConfig{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_get_gl_config".}
-proc get_share_list*(glcontext: PGLContext): PGLContext{.cdecl, 
+proc get_share_list*(glcontext: PGLContext): PGLContext{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_get_share_list".}
-proc is_direct*(glcontext: PGLContext): gboolean{.cdecl, 
+proc is_direct*(glcontext: PGLContext): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_is_direct".}
-proc get_render_type*(glcontext: PGLContext): int32{.cdecl, 
+proc get_render_type*(glcontext: PGLContext): int32{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_context_get_render_type".}
-proc gl_context_get_current*(): PGLContext{.cdecl, dynlib: GLExtLib, 
+proc gl_context_get_current*(): PGLContext{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_context_get_current".}
 proc TYPE_GL_DRAWABLE*(): GType
 proc GL_DRAWABLE*(inst: Pointer): PGLDrawable
@@ -353,27 +353,27 @@ proc GL_DRAWABLE_CLASS*(vtable: Pointer): PGLDrawableClass
 proc IS_GL_DRAWABLE*(inst: Pointer): bool
 proc IS_GL_DRAWABLE_CLASS*(vtable: Pointer): bool
 proc GL_DRAWABLE_GET_CLASS*(inst: Pointer): PGLDrawableClass
-proc gl_drawable_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_drawable_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                      importc: "gdk_gl_drawable_get_type".}
 proc make_current*(gldrawable: PGLDrawable, glcontext: PGLContext): gboolean{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_drawable_make_current".}
-proc is_double_buffered*(gldrawable: PGLDrawable): gboolean{.cdecl, 
+proc is_double_buffered*(gldrawable: PGLDrawable): gboolean{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_drawable_is_double_buffered".}
-proc swap_buffers*(gldrawable: PGLDrawable){.cdecl, 
+proc swap_buffers*(gldrawable: PGLDrawable){.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_drawable_swap_buffers".}
-proc wait_gl*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib, 
+proc wait_gl*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_wait_gl".}
-proc wait_gdk*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib, 
+proc wait_gdk*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_wait_gdk".}
 proc gl_begin*(gldrawable: PGLDrawable, glcontext: PGLContext): gboolean{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_drawable_gl_begin".}
-proc gl_end*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib, 
+proc gl_end*(gldrawable: PGLDrawable){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_gl_end".}
-proc get_gl_config*(gldrawable: PGLDrawable): PGLConfig{.cdecl, 
+proc get_gl_config*(gldrawable: PGLDrawable): PGLConfig{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_drawable_get_gl_config".}
 proc get_size*(gldrawable: PGLDrawable, width, height: PGInt){.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_drawable_get_size".}
-proc gl_drawable_get_current*(): PGLDrawable{.cdecl, dynlib: GLExtLib, 
+proc gl_drawable_get_current*(): PGLDrawable{.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_drawable_get_current".}
 proc TYPE_GL_PIXMAP*(): GType
 proc GL_PIXMAP*(anObject: Pointer): PGLPixmap
@@ -381,22 +381,22 @@ proc GL_PIXMAP_CLASS*(klass: Pointer): PGLPixmapClass
 proc IS_GL_PIXMAP*(anObject: Pointer): bool
 proc IS_GL_PIXMAP_CLASS*(klass: Pointer): bool
 proc GL_PIXMAP_GET_CLASS*(obj: Pointer): PGLPixmapClass
-proc gl_pixmap_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_pixmap_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                    importc: "gdk_gl_pixmap_get_type".}
 proc pixmap_new*(glconfig: PGLConfig, pixmap: PPixmap, attrib_list: ptr int32): PGLPixmap{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_pixmap_new".}
-proc destroy*(glpixmap: PGLPixmap){.cdecl, dynlib: GLExtLib, 
+proc destroy*(glpixmap: PGLPixmap){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_pixmap_destroy".}
-proc get_pixmap*(glpixmap: PGLPixmap): PPixmap{.cdecl, 
+proc get_pixmap*(glpixmap: PGLPixmap): PPixmap{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_pixmap_get_pixmap".}
-proc set_gl_capability*(pixmap: PPixmap, glconfig: PGLConfig, 
-                               attrib_list: ptr int32): PGLPixmap{.cdecl, 
+proc set_gl_capability*(pixmap: PPixmap, glconfig: PGLConfig,
+                               attrib_list: ptr int32): PGLPixmap{.cdecl,
     dynlib: GLExtLib, importc: "gdk_pixmap_set_gl_capability".}
-proc unset_gl_capability*(pixmap: PPixmap){.cdecl, dynlib: GLExtLib, 
+proc unset_gl_capability*(pixmap: PPixmap){.cdecl, dynlib: GLExtLib,
     importc: "gdk_pixmap_unset_gl_capability".}
-proc is_gl_capable*(pixmap: PPixmap): gboolean{.cdecl, dynlib: GLExtLib, 
+proc is_gl_capable*(pixmap: PPixmap): gboolean{.cdecl, dynlib: GLExtLib,
     importc: "gdk_pixmap_is_gl_capable".}
-proc get_gl_pixmap*(pixmap: PPixmap): PGLPixmap{.cdecl, dynlib: GLExtLib, 
+proc get_gl_pixmap*(pixmap: PPixmap): PGLPixmap{.cdecl, dynlib: GLExtLib,
     importc: "gdk_pixmap_get_gl_pixmap".}
 proc get_gl_drawable*(pixmap: PPixmap): PGLDrawable
 proc TYPE_GL_WINDOW*(): GType
@@ -405,46 +405,46 @@ proc GL_WINDOW_CLASS*(klass: Pointer): PGLWindowClass
 proc IS_GL_WINDOW*(anObject: Pointer): bool
 proc IS_GL_WINDOW_CLASS*(klass: Pointer): bool
 proc GL_WINDOW_GET_CLASS*(obj: Pointer): PGLWindowClass
-proc gl_window_get_type*(): GType{.cdecl, dynlib: GLExtLib, 
+proc gl_window_get_type*(): GType{.cdecl, dynlib: GLExtLib,
                                    importc: "gdk_gl_window_get_type".}
 proc window_new*(glconfig: PGLConfig, window: PWindow, attrib_list: ptr int32): PGLWindow{.
     cdecl, dynlib: GLExtLib, importc: "gdk_gl_window_new".}
-proc destroy*(glwindow: PGLWindow){.cdecl, dynlib: GLExtLib, 
+proc destroy*(glwindow: PGLWindow){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_window_destroy".}
-proc get_window*(glwindow: PGLWindow): PWindow{.cdecl, 
+proc get_window*(glwindow: PGLWindow): PWindow{.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_window_get_window".}
-proc set_gl_capability*(window: PWindow, glconfig: PGLConfig, 
-                               attrib_list: ptr int32): PGLWindow{.cdecl, 
+proc set_gl_capability*(window: PWindow, glconfig: PGLConfig,
+                               attrib_list: ptr int32): PGLWindow{.cdecl,
     dynlib: GLExtLib, importc: "gdk_window_set_gl_capability".}
-proc unset_gl_capability*(window: PWindow){.cdecl, dynlib: GLExtLib, 
+proc unset_gl_capability*(window: PWindow){.cdecl, dynlib: GLExtLib,
     importc: "gdk_window_unset_gl_capability".}
-proc is_gl_capable*(window: PWindow): gboolean{.cdecl, dynlib: GLExtLib, 
+proc is_gl_capable*(window: PWindow): gboolean{.cdecl, dynlib: GLExtLib,
     importc: "gdk_window_is_gl_capable".}
-proc get_gl_window*(window: PWindow): PGLWindow{.cdecl, dynlib: GLExtLib, 
+proc get_gl_window*(window: PWindow): PGLWindow{.cdecl, dynlib: GLExtLib,
     importc: "gdk_window_get_gl_window".}
 proc get_gl_drawable*(window: PWindow): PGLDrawable
-proc gl_draw_cube*(solid: gboolean, size: float64){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_cube*(solid: gboolean, size: float64){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_cube".}
-proc gl_draw_sphere*(solid: gboolean, radius: float64, slices: int32, 
-                     stacks: int32){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_sphere*(solid: gboolean, radius: float64, slices: int32,
+                     stacks: int32){.cdecl, dynlib: GLExtLib,
                                      importc: "gdk_gl_draw_sphere".}
-proc gl_draw_cone*(solid: gboolean, base: float64, height: float64, 
-                   slices: int32, stacks: int32){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_cone*(solid: gboolean, base: float64, height: float64,
+                   slices: int32, stacks: int32){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_cone".}
-proc gl_draw_torus*(solid: gboolean, inner_radius: float64, 
-                    outer_radius: float64, nsides: int32, rings: int32){.cdecl, 
+proc gl_draw_torus*(solid: gboolean, inner_radius: float64,
+                    outer_radius: float64, nsides: int32, rings: int32){.cdecl,
     dynlib: GLExtLib, importc: "gdk_gl_draw_torus".}
-proc gl_draw_tetrahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_tetrahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_tetrahedron".}
-proc gl_draw_octahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_octahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_octahedron".}
-proc gl_draw_dodecahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_dodecahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_dodecahedron".}
-proc gl_draw_icosahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_icosahedron*(solid: gboolean){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_icosahedron".}
-proc gl_draw_teapot*(solid: gboolean, scale: float64){.cdecl, dynlib: GLExtLib, 
+proc gl_draw_teapot*(solid: gboolean, scale: float64){.cdecl, dynlib: GLExtLib,
     importc: "gdk_gl_draw_teapot".}
-proc HEADER_GDKGLEXT_CHECK_VERSION*(major, minor, micro: guint): bool = 
+proc HEADER_GDKGLEXT_CHECK_VERSION*(major, minor, micro: guint): bool =
   result = (HEADER_GDKGLEXT_MAJOR_VERSION > major) or
       ((HEADER_GDKGLEXT_MAJOR_VERSION == major) and
       (HEADER_GDKGLEXT_MINOR_VERSION > minor)) or
@@ -452,103 +452,103 @@ proc HEADER_GDKGLEXT_CHECK_VERSION*(major, minor, micro: guint): bool =
       (HEADER_GDKGLEXT_MINOR_VERSION == minor) and
       (HEADER_GDKGLEXT_MICRO_VERSION >= micro))
 
-proc TYPE_GL_CONFIG*(): GType = 
+proc TYPE_GL_CONFIG*(): GType =
   result = gl_config_get_type()
 
-proc GL_CONFIG*(anObject: Pointer): PGLConfig = 
+proc GL_CONFIG*(anObject: Pointer): PGLConfig =
   result = cast[PGLConfig](G_TYPE_CHECK_INSTANCE_CAST(anObject, TYPE_GL_CONFIG()))
 
-proc GL_CONFIG_CLASS*(klass: Pointer): PGLConfigClass = 
+proc GL_CONFIG_CLASS*(klass: Pointer): PGLConfigClass =
   result = cast[PGLConfigClass](G_TYPE_CHECK_CLASS_CAST(klass, TYPE_GL_CONFIG()))
 
-proc IS_GL_CONFIG*(anObject: Pointer): bool = 
+proc IS_GL_CONFIG*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, TYPE_GL_CONFIG())
 
-proc IS_GL_CONFIG_CLASS*(klass: Pointer): bool = 
+proc IS_GL_CONFIG_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_GL_CONFIG())
 
-proc GL_CONFIG_GET_CLASS*(obj: Pointer): PGLConfigClass = 
+proc GL_CONFIG_GET_CLASS*(obj: Pointer): PGLConfigClass =
   result = cast[PGLConfigClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_GL_CONFIG()))
 
-proc TYPE_GL_CONTEXT*(): GType = 
+proc TYPE_GL_CONTEXT*(): GType =
   result = gl_context_get_type()
 
-proc GL_CONTEXT*(anObject: Pointer): PGLContext = 
-  result = cast[PGLContext](G_TYPE_CHECK_INSTANCE_CAST(anObject, 
+proc GL_CONTEXT*(anObject: Pointer): PGLContext =
+  result = cast[PGLContext](G_TYPE_CHECK_INSTANCE_CAST(anObject,
       TYPE_GL_CONTEXT()))
 
-proc GL_CONTEXT_CLASS*(klass: Pointer): PGLContextClass = 
-  result = cast[PGLContextClass](G_TYPE_CHECK_CLASS_CAST(klass, 
+proc GL_CONTEXT_CLASS*(klass: Pointer): PGLContextClass =
+  result = cast[PGLContextClass](G_TYPE_CHECK_CLASS_CAST(klass,
       TYPE_GL_CONTEXT()))
 
-proc IS_GL_CONTEXT*(anObject: Pointer): bool = 
+proc IS_GL_CONTEXT*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, TYPE_GL_CONTEXT())
 
-proc IS_GL_CONTEXT_CLASS*(klass: Pointer): bool = 
+proc IS_GL_CONTEXT_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_GL_CONTEXT())
 
-proc GL_CONTEXT_GET_CLASS*(obj: Pointer): PGLContextClass = 
-  result = cast[PGLContextClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
+proc GL_CONTEXT_GET_CLASS*(obj: Pointer): PGLContextClass =
+  result = cast[PGLContextClass](G_TYPE_INSTANCE_GET_CLASS(obj,
       TYPE_GL_CONTEXT()))
 
-proc TYPE_GL_DRAWABLE*(): GType = 
+proc TYPE_GL_DRAWABLE*(): GType =
   result = gl_drawable_get_type()
 
-proc GL_DRAWABLE*(inst: Pointer): PGLDrawable = 
+proc GL_DRAWABLE*(inst: Pointer): PGLDrawable =
   result = cast[PGLDrawable](G_TYPE_CHECK_INSTANCE_CAST(inst, TYPE_GL_DRAWABLE()))
 
-proc GL_DRAWABLE_CLASS*(vtable: Pointer): PGLDrawableClass = 
-  result = cast[PGLDrawableClass](G_TYPE_CHECK_CLASS_CAST(vtable, 
+proc GL_DRAWABLE_CLASS*(vtable: Pointer): PGLDrawableClass =
+  result = cast[PGLDrawableClass](G_TYPE_CHECK_CLASS_CAST(vtable,
       TYPE_GL_DRAWABLE()))
 
-proc IS_GL_DRAWABLE*(inst: Pointer): bool = 
+proc IS_GL_DRAWABLE*(inst: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(inst, TYPE_GL_DRAWABLE())
 
-proc IS_GL_DRAWABLE_CLASS*(vtable: Pointer): bool = 
+proc IS_GL_DRAWABLE_CLASS*(vtable: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(vtable, TYPE_GL_DRAWABLE())
 
-proc GL_DRAWABLE_GET_CLASS*(inst: Pointer): PGLDrawableClass = 
-  result = cast[PGLDrawableClass](G_TYPE_INSTANCE_GET_INTERFACE(inst, 
+proc GL_DRAWABLE_GET_CLASS*(inst: Pointer): PGLDrawableClass =
+  result = cast[PGLDrawableClass](G_TYPE_INSTANCE_GET_INTERFACE(inst,
       TYPE_GL_DRAWABLE()))
 
-proc TYPE_GL_PIXMAP*(): GType = 
+proc TYPE_GL_PIXMAP*(): GType =
   result = gl_pixmap_get_type()
 
-proc GL_PIXMAP*(anObject: Pointer): PGLPixmap = 
+proc GL_PIXMAP*(anObject: Pointer): PGLPixmap =
   result = cast[PGLPixmap](G_TYPE_CHECK_INSTANCE_CAST(anObject, TYPE_GL_PIXMAP()))
 
-proc GL_PIXMAP_CLASS*(klass: Pointer): PGLPixmapClass = 
+proc GL_PIXMAP_CLASS*(klass: Pointer): PGLPixmapClass =
   result = cast[PGLPixmapClass](G_TYPE_CHECK_CLASS_CAST(klass, TYPE_GL_PIXMAP()))
 
-proc IS_GL_PIXMAP*(anObject: Pointer): bool = 
+proc IS_GL_PIXMAP*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, TYPE_GL_PIXMAP())
 
-proc IS_GL_PIXMAP_CLASS*(klass: Pointer): bool = 
+proc IS_GL_PIXMAP_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_GL_PIXMAP())
 
-proc GL_PIXMAP_GET_CLASS*(obj: Pointer): PGLPixmapClass = 
+proc GL_PIXMAP_GET_CLASS*(obj: Pointer): PGLPixmapClass =
   result = cast[PGLPixmapClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_GL_PIXMAP()))
 
-proc get_gl_drawable*(pixmap: PPixmap): PGLDrawable = 
+proc get_gl_drawable*(pixmap: PPixmap): PGLDrawable =
   result = GL_DRAWABLE(get_gl_pixmap(pixmap))
 
-proc TYPE_GL_WINDOW*(): GType = 
+proc TYPE_GL_WINDOW*(): GType =
   result = gl_window_get_type()
 
-proc GL_WINDOW*(anObject: Pointer): PGLWindow = 
+proc GL_WINDOW*(anObject: Pointer): PGLWindow =
   result = cast[PGLWindow](G_TYPE_CHECK_INSTANCE_CAST(anObject, TYPE_GL_WINDOW()))
 
-proc GL_WINDOW_CLASS*(klass: Pointer): PGLWindowClass = 
+proc GL_WINDOW_CLASS*(klass: Pointer): PGLWindowClass =
   result = cast[PGLWindowClass](G_TYPE_CHECK_CLASS_CAST(klass, TYPE_GL_WINDOW()))
 
-proc IS_GL_WINDOW*(anObject: Pointer): bool = 
+proc IS_GL_WINDOW*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, TYPE_GL_WINDOW())
 
-proc IS_GL_WINDOW_CLASS*(klass: Pointer): bool = 
+proc IS_GL_WINDOW_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_GL_WINDOW())
 
-proc GL_WINDOW_GET_CLASS*(obj: Pointer): PGLWindowClass = 
+proc GL_WINDOW_GET_CLASS*(obj: Pointer): PGLWindowClass =
   result = cast[PGLWindowClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_GL_WINDOW()))
 
-proc get_gl_drawable*(window: PWindow): PGLDrawable = 
+proc get_gl_drawable*(window: PWindow): PGLDrawable =
   result = GL_DRAWABLE(get_gl_window(window))

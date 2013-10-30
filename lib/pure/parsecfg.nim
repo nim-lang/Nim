@@ -7,43 +7,43 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsecfg`` module implements a high performance configuration file 
-## parser. The configuration file's syntax is similar to the Windows ``.ini`` 
-## format, but much more powerful, as it is not a line based parser. String 
-## literals, raw string literals and triple quoted string literals are supported 
+## The ``parsecfg`` module implements a high performance configuration file
+## parser. The configuration file's syntax is similar to the Windows ``.ini``
+## format, but much more powerful, as it is not a line based parser. String
+## literals, raw string literals and triple quoted string literals are supported
 ## as in the Nimrod programming language.
 
 ## This is an example of how a configuration file may look like:
 ##
 ## .. include:: doc/mytest.cfg
 ##     :literal:
-## The file ``examples/parsecfgex.nim`` demonstrates how to use the 
+## The file ``examples/parsecfgex.nim`` demonstrates how to use the
 ## configuration file parser:
 ##
 ## .. code-block:: nimrod
 ##     :file: examples/parsecfgex.nim
 
 
-import 
+import
   hashes, strutils, lexbase, streams
 
 include "system/inclrtl"
 
-type 
+type
   TCfgEventKind* = enum ## enumeration of all events that may occur when parsing
     cfgEof,             ## end of file reached
     cfgSectionStart,    ## a ``[section]`` has been parsed
     cfgKeyValuePair,    ## a ``key=value`` pair has been detected
     cfgOption,          ## a ``--key=value`` command line option
     cfgError            ## an error ocurred during parsing
-    
+
   TCfgEvent* = object of TObject ## describes a parsing event
     case kind*: TCfgEventKind    ## the kind of the event
     of cfgEof: nil
-    of cfgSectionStart: 
-      section*: string           ## `section` contains the name of the 
+    of cfgSectionStart:
+      section*: string           ## `section` contains the name of the
                                  ## parsed section start (syntax: ``[section]``)
-    of cfgKeyValuePair, cfgOption: 
+    of cfgKeyValuePair, cfgOption:
       key*, value*: string       ## contains the (key, value) pair if an option
                                  ## of the form ``--key: value`` or an ordinary
                                  ## ``key= value`` pair has been parsed.
@@ -52,27 +52,27 @@ type
     of cfgError:                 ## the parser encountered an error: `msg`
       msg*: string               ## contains the error message. No exceptions
                                  ## are thrown if a parse error occurs.
-  
-  TTokKind = enum 
-    tkInvalid, tkEof,        
+
+  TTokKind = enum
+    tkInvalid, tkEof,
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
   TToken {.final.} = object  # a token
     kind: TTokKind           # the type of the token
     literal: string          # the parsed (string) literal
-  
+
   TCfgParser* = object of TBaseLexer ## the parser object.
     tok: TToken
     filename: string
 
 # implementation
 
-const 
+const
   SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.',
-                        '/', '\\'} 
-  
+                        '/', '\\'}
+
 proc rawGetTok(c: var TCfgParser, tok: var TToken)
 
-proc open*(c: var TCfgParser, input: PStream, filename: string, 
+proc open*(c: var TCfgParser, input: PStream, filename: string,
            lineOffset = 0) {.
   rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
@@ -84,7 +84,7 @@ proc open*(c: var TCfgParser, input: PStream, filename: string,
   c.tok.literal = ""
   inc(c.linenumber, lineOffset)
   rawGetTok(c, c.tok)
-  
+
 proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
   ## closes the parser `c` and its associated input stream.
   lexbase.close(c)
@@ -101,259 +101,259 @@ proc getFilename*(c: TCfgParser): string {.rtl, extern: "npc$1".} =
   ## get the filename of the file that the parser processes.
   result = c.filename
 
-proc handleHexChar(c: var TCfgParser, xi: var int) = 
+proc handleHexChar(c: var TCfgParser, xi: var int) =
   case c.buf[c.bufpos]
-  of '0'..'9': 
+  of '0'..'9':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
-  of 'a'..'f': 
+  of 'a'..'f':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
     inc(c.bufpos)
-  of 'A'..'F': 
+  of 'A'..'F':
     xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
     inc(c.bufpos)
-  else: 
+  else:
     nil
 
-proc handleDecChars(c: var TCfgParser, xi: var int) = 
-  while c.buf[c.bufpos] in {'0'..'9'}: 
+proc handleDecChars(c: var TCfgParser, xi: var int) =
+  while c.buf[c.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var TCfgParser, tok: var TToken) = 
+proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
-  of 'n', 'N': 
+  of 'n', 'N':
     add(tok.literal, "\n")
     Inc(c.bufpos)
-  of 'r', 'R', 'c', 'C': 
+  of 'r', 'R', 'c', 'C':
     add(tok.literal, '\c')
     Inc(c.bufpos)
-  of 'l', 'L': 
+  of 'l', 'L':
     add(tok.literal, '\L')
     Inc(c.bufpos)
-  of 'f', 'F': 
+  of 'f', 'F':
     add(tok.literal, '\f')
     inc(c.bufpos)
-  of 'e', 'E': 
+  of 'e', 'E':
     add(tok.literal, '\e')
     Inc(c.bufpos)
-  of 'a', 'A': 
+  of 'a', 'A':
     add(tok.literal, '\a')
     Inc(c.bufpos)
-  of 'b', 'B': 
+  of 'b', 'B':
     add(tok.literal, '\b')
     Inc(c.bufpos)
-  of 'v', 'V': 
+  of 'v', 'V':
     add(tok.literal, '\v')
     Inc(c.bufpos)
-  of 't', 'T': 
+  of 't', 'T':
     add(tok.literal, '\t')
     Inc(c.bufpos)
-  of '\'', '"': 
+  of '\'', '"':
     add(tok.literal, c.buf[c.bufpos])
     Inc(c.bufpos)
-  of '\\': 
+  of '\\':
     add(tok.literal, '\\')
     Inc(c.bufpos)
-  of 'x', 'X': 
+  of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
     add(tok.literal, Chr(xi))
-  of '0'..'9': 
+  of '0'..'9':
     var xi = 0
     handleDecChars(c, xi)
     if (xi <= 255): add(tok.literal, Chr(xi))
     else: tok.kind = tkInvalid
   else: tok.kind = tkInvalid
-  
-proc HandleCRLF(c: var TCfgParser, pos: int): int = 
+
+proc HandleCRLF(c: var TCfgParser, pos: int): int =
   case c.buf[pos]
   of '\c': result = lexbase.HandleCR(c, pos)
   of '\L': result = lexbase.HandleLF(c, pos)
   else: result = pos
-  
-proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) = 
+
+proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
   var pos = c.bufPos + 1          # skip "
   var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
-  if (buf[pos] == '"') and (buf[pos + 1] == '"'): 
+  if (buf[pos] == '"') and (buf[pos + 1] == '"'):
     # long string literal:
     inc(pos, 2)               # skip ""
                               # skip leading newline:
     pos = HandleCRLF(c, pos)
     buf = c.buf
-    while true: 
+    while true:
       case buf[pos]
-      of '"': 
-        if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break 
+      of '"':
+        if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break
         add(tok.literal, '"')
         Inc(pos)
-      of '\c', '\L': 
+      of '\c', '\L':
         pos = HandleCRLF(c, pos)
         buf = c.buf
         add(tok.literal, "\n")
-      of lexbase.EndOfFile: 
+      of lexbase.EndOfFile:
         tok.kind = tkInvalid
-        break 
-      else: 
+        break
+      else:
         add(tok.literal, buf[pos])
         Inc(pos)
     c.bufpos = pos + 3       # skip the three """
-  else: 
+  else:
     # ordinary string literal
-    while true: 
+    while true:
       var ch = buf[pos]
-      if ch == '"': 
+      if ch == '"':
         inc(pos)              # skip '"'
-        break 
-      if ch in {'\c', '\L', lexbase.EndOfFile}: 
+        break
+      if ch in {'\c', '\L', lexbase.EndOfFile}:
         tok.kind = tkInvalid
-        break 
-      if (ch == '\\') and not rawMode: 
+        break
+      if (ch == '\\') and not rawMode:
         c.bufPos = pos
         getEscapedChar(c, tok)
         pos = c.bufPos
-      else: 
+      else:
         add(tok.literal, ch)
         Inc(pos)
     c.bufpos = pos
 
-proc getSymbol(c: var TCfgParser, tok: var TToken) = 
+proc getSymbol(c: var TCfgParser, tok: var TToken) =
   var pos = c.bufpos
   var buf = c.buf
-  while true: 
+  while true:
     add(tok.literal, buf[pos])
     Inc(pos)
-    if not (buf[pos] in SymChars): break 
+    if not (buf[pos] in SymChars): break
   c.bufpos = pos
   tok.kind = tkSymbol
 
-proc skip(c: var TCfgParser) = 
+proc skip(c: var TCfgParser) =
   var pos = c.bufpos
   var buf = c.buf
-  while true: 
+  while true:
     case buf[pos]
-    of ' ', '\t': 
+    of ' ', '\t':
       Inc(pos)
-    of '#', ';': 
+    of '#', ';':
       while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
-    of '\c', '\L': 
+    of '\c', '\L':
       pos = HandleCRLF(c, pos)
       buf = c.buf
-    else: 
+    else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
 
-proc rawGetTok(c: var TCfgParser, tok: var TToken) = 
+proc rawGetTok(c: var TCfgParser, tok: var TToken) =
   tok.kind = tkInvalid
   setlen(tok.literal, 0)
   skip(c)
   case c.buf[c.bufpos]
-  of '=': 
+  of '=':
     tok.kind = tkEquals
     inc(c.bufpos)
     tok.literal = "="
-  of '-': 
+  of '-':
     inc(c.bufPos)
     if c.buf[c.bufPos] == '-': inc(c.bufPos)
     tok.kind = tkDashDash
     tok.literal = "--"
-  of ':': 
+  of ':':
     tok.kind = tkColon
     inc(c.bufpos)
     tok.literal = ":"
-  of 'r', 'R': 
-    if c.buf[c.bufPos + 1] == '\"': 
+  of 'r', 'R':
+    if c.buf[c.bufPos + 1] == '\"':
       Inc(c.bufPos)
       getString(c, tok, true)
-    else: 
+    else:
       getSymbol(c, tok)
-  of '[': 
+  of '[':
     tok.kind = tkBracketLe
     inc(c.bufpos)
     tok.literal = "]"
-  of ']': 
+  of ']':
     tok.kind = tkBracketRi
     Inc(c.bufpos)
     tok.literal = "]"
-  of '"': 
+  of '"':
     getString(c, tok, false)
-  of lexbase.EndOfFile: 
+  of lexbase.EndOfFile:
     tok.kind = tkEof
     tok.literal = "[EOF]"
   else: getSymbol(c, tok)
-  
+
 proc errorStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated error message containing current line and
   ## column information.
-  result = `%`("$1($2, $3) Error: $4", 
+  result = `%`("$1($2, $3) Error: $4",
                [c.filename, $getLine(c), $getColumn(c), msg])
-  
+
 proc warningStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated warning message containing current line and
   ## column information.
-  result = `%`("$1($2, $3) Warning: $4", 
+  result = `%`("$1($2, $3) Warning: $4",
                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc ignoreMsg*(c: TCfgParser, e: TCfgEvent): string {.rtl, extern: "npc$1".} =
   ## returns a properly formated warning message containing that
   ## an entry is ignored.
-  case e.kind 
+  case e.kind
   of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)
   of cfgKeyValuePair: result = c.warningStr("key ignored: " & e.key)
-  of cfgOption: 
+  of cfgOption:
     result = c.warningStr("command ignored: " & e.key & ": " & e.value)
   of cfgError: result = e.msg
   of cfgEof: result = ""
 
-proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent = 
-  if c.tok.kind == tkSymbol: 
+proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent =
+  if c.tok.kind == tkSymbol:
     result.kind = kind
     result.key = c.tok.literal
     result.value = ""
     rawGetTok(c, c.tok)
-    if c.tok.kind in {tkEquals, tkColon}: 
+    if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
-      if c.tok.kind == tkSymbol: 
+      if c.tok.kind == tkSymbol:
         result.value = c.tok.literal
-      else: 
+      else:
         reset result
         result.kind = cfgError
         result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
       rawGetTok(c, c.tok)
-  else: 
+  else:
     result.kind = cfgError
     result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
     rawGetTok(c, c.tok)
 
 proc next*(c: var TCfgParser): TCfgEvent {.rtl, extern: "npc$1".} =
   ## retrieves the first/next event. This controls the parser.
-  case c.tok.kind  
-  of tkEof: 
+  case c.tok.kind
+  of tkEof:
     result.kind = cfgEof
-  of tkDashDash: 
+  of tkDashDash:
     rawGetTok(c, c.tok)
     result = getKeyValPair(c, cfgOption)
-  of tkSymbol: 
+  of tkSymbol:
     result = getKeyValPair(c, cfgKeyValuePair)
-  of tkBracketLe: 
+  of tkBracketLe:
     rawGetTok(c, c.tok)
-    if c.tok.kind == tkSymbol: 
+    if c.tok.kind == tkSymbol:
       result.kind = cfgSectionStart
       result.section = c.tok.literal
-    else: 
+    else:
       result.kind = cfgError
       result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
     rawGetTok(c, c.tok)
-    if c.tok.kind == tkBracketRi: 
+    if c.tok.kind == tkBracketRi:
       rawGetTok(c, c.tok)
-    else: 
+    else:
       result.kind = cfgError
       result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
-  of tkInvalid, tkEquals, tkColon, tkBracketRi: 
+  of tkInvalid, tkEquals, tkColon, tkBracketRi:
     result.kind = cfgError
     result.msg = errorStr(c, "invalid token: " & c.tok.literal)
     rawGetTok(c, c.tok)

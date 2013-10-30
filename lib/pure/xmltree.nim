@@ -12,60 +12,60 @@
 import macros, strtabs
 
 type
-  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s. 
-  
+  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s.
+
   TXmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
     xnEntity,           ## an entity (like ``&thing;``)
     xnComment           ## an XML comment
-  
+
   PXmlAttributes* = PStringTable ## an alias for a string to string mapping
-  
-  TXmlNode {.pure, final, acyclic.} = object 
+
+  TXmlNode {.pure, final, acyclic.} = object
     case k: TXmlNodeKind # private, use the kind() proc to read this field.
-    of xnText, xnComment, xnCData, xnEntity: 
+    of xnText, xnComment, xnCData, xnEntity:
       fText: string
     of xnElement:
       fTag: string
       s: seq[PXmlNode]
       fAttr: PXmlAttributes
     fClientData: int              ## for other clients
-  
-proc newXmlNode(kind: TXmlNodeKind): PXmlNode = 
+
+proc newXmlNode(kind: TXmlNodeKind): PXmlNode =
   ## creates a new ``PXmlNode``.
   new(result)
   result.k = kind
 
-proc newElement*(tag: string): PXmlNode = 
+proc newElement*(tag: string): PXmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnText`` with the given `tag`.
   result = newXmlNode(xnElement)
   result.fTag = tag
   result.s = @[]
   # init attributes lazily to safe memory
 
-proc newText*(text: string): PXmlNode = 
+proc newText*(text: string): PXmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnText`` with the text `text`.
   result = newXmlNode(xnText)
   result.fText = text
 
-proc newComment*(comment: string): PXmlNode = 
+proc newComment*(comment: string): PXmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnComment`` with the text `comment`.
   result = newXmlNode(xnComment)
   result.fText = comment
 
-proc newCData*(cdata: string): PXmlNode = 
+proc newCData*(cdata: string): PXmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnComment`` with the text `cdata`.
   result = newXmlNode(xnCData)
   result.fText = cdata
 
-proc newEntity*(entity: string): PXmlNode = 
+proc newEntity*(entity: string): PXmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnEntity`` with the text `entity`.
   result = newXmlNode(xnCData)
   result.fText = entity
 
-proc text*(n: PXmlNode): string {.inline.} = 
+proc text*(n: PXmlNode): string {.inline.} =
   ## gets the associated text with the node `n`. `n` can be a CDATA, Text,
   ## comment, or entity node.
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
@@ -90,16 +90,16 @@ proc innerText*(n: PXmlNode): string =
   for i in 0 .. n.s.len-1:
     if n.s[i].k in {xnText, xnEntity}: result.add(n.s[i].fText)
 
-proc tag*(n: PXmlNode): string {.inline.} = 
+proc tag*(n: PXmlNode): string {.inline.} =
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
   assert n.k == xnElement
   result = n.fTag
-    
-proc add*(father, son: PXmlNode) {.inline.} = 
+
+proc add*(father, son: PXmlNode) {.inline.} =
   ## adds the child `son` to `father`.
   add(father.s, son)
-  
-proc len*(n: PXmlNode): int {.inline.} = 
+
+proc len*(n: PXmlNode): int {.inline.} =
   ## returns the number `n`'s children.
   if n.k == xnElement: result = len(n.s)
 
@@ -107,28 +107,28 @@ proc kind*(n: PXmlNode): TXmlNodeKind {.inline.} =
   ## returns `n`'s kind.
   result = n.k
 
-proc `[]`* (n: PXmlNode, i: int): PXmlNode {.inline.} = 
+proc `[]`* (n: PXmlNode, i: int): PXmlNode {.inline.} =
   ## returns the `i`'th child of `n`.
   assert n.k == xnElement
   result = n.s[i]
 
-iterator items*(n: PXmlNode): PXmlNode {.inline.} = 
+iterator items*(n: PXmlNode): PXmlNode {.inline.} =
   ## iterates over any child of `n`.
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
-proc attrs*(n: PXmlNode): PXmlAttributes {.inline.} = 
+proc attrs*(n: PXmlNode): PXmlAttributes {.inline.} =
   ## gets the attributes belonging to `n`.
   ## Returns `nil` if attributes have not been initialised for this node.
   assert n.k == xnElement
   result = n.fAttr
-  
-proc `attrs=`*(n: PXmlNode, attr: PXmlAttributes) {.inline.} = 
+
+proc `attrs=`*(n: PXmlNode, attr: PXmlAttributes) {.inline.} =
   ## sets the attributes belonging to `n`.
   assert n.k == xnElement
   n.fAttr = attr
 
-proc attrsLen*(n: PXmlNode): int {.inline.} = 
+proc attrsLen*(n: PXmlNode): int {.inline.} =
   ## returns the number of `n`'s attributes.
   assert n.k == xnElement
   if not isNil(n.fAttr): result = len(n.fAttr)
@@ -138,12 +138,12 @@ proc clientData*(n: PXmlNode): int {.inline.} =
   ## parser and generator.
   result = n.fClientData
 
-proc `clientData=`*(n: PXmlNode, data: int) {.inline.} = 
+proc `clientData=`*(n: PXmlNode, data: int) {.inline.} =
   ## sets the client data of `n`. The client data field is used by the HTML
   ## parser and generator.
   n.fClientData = data
 
-proc addEscaped*(result: var string, s: string) = 
+proc addEscaped*(result: var string, s: string) =
   ## same as ``result.add(escape(s))``, but more efficient.
   for c in items(s):
     case c
@@ -153,8 +153,8 @@ proc addEscaped*(result: var string, s: string) =
     of '"': result.add("&quot;")
     else: result.add(c)
 
-proc escape*(s: string): string = 
-  ## escapes `s` for inclusion into an XML document. 
+proc escape*(s: string): string =
+  ## escapes `s` for inclusion into an XML document.
   ## Escapes these characters:
   ##
   ## ------------    -------------------
@@ -167,26 +167,26 @@ proc escape*(s: string): string =
   ## ------------    -------------------
   result = newStringOfCap(s.len)
   addEscaped(result, s)
-  
-proc addIndent(result: var string, indent: int) = 
+
+proc addIndent(result: var string, indent: int) =
   result.add("\n")
   for i in 1..indent: result.add(' ')
-  
+
 proc noWhitespace(n: PXmlNode): bool =
   #for i in 1..n.len-1:
   #  if n[i].kind != n[0].kind: return true
   for i in 0..n.len-1:
     if n[i].kind in {xnText, xnEntity}: return true
-  
-proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) = 
+
+proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
   ## adds the textual representation of `n` to `result`.
   if n == nil: return
   case n.k
   of xnElement:
     result.add('<')
     result.add(n.fTag)
-    if not isNil(n.fAttr): 
-      for key, val in pairs(n.fAttr): 
+    if not isNil(n.fAttr):
+      for key, val in pairs(n.fAttr):
         result.add(' ')
         result.add(key)
         result.add("=\"")
@@ -200,7 +200,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
           # because this would be wrong. For example: ``a<b>b</b>`` is
           # different from ``a <b>b</b>``.
           for i in 0..n.len-1: result.add(n[i], indent+indWidth, indWidth)
-        else: 
+        else:
           for i in 0..n.len-1:
             result.addIndent(indent+indWidth)
             result.add(n[i], indent+indWidth, indWidth)
@@ -210,7 +210,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
       result.add("</")
       result.add(n.fTag)
       result.add(">")
-    else: 
+    else:
       result.add(" />")
   of xnText:
     result.addEscaped(n.fText)
@@ -228,7 +228,7 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
     result.add(';')
 
 const
-  xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" 
+  xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
     ## header to use for complete XML output
 
 proc `$`*(n: PXmlNode): string =
@@ -238,21 +238,21 @@ proc `$`*(n: PXmlNode): string =
   result.add(n)
 
 proc newXmlTree*(tag: string, children: openArray[PXmlNode],
-                 attributes: PXmlAttributes = nil): PXmlNode = 
+                 attributes: PXmlAttributes = nil): PXmlNode =
   ## creates a new XML tree with `tag`, `children` and `attributes`
   result = newXmlNode(xnElement)
   result.fTag = tag
   newSeq(result.s, children.len)
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
-  
+
 proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
   expectLen(e, 2)
   var a = e[1]
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)
-    var newStringTabCall = newCall("newStringTable", attrs, 
+    var newStringTabCall = newCall("newStringTable", attrs,
                                    newIdentNode("modeCaseSensitive"))
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
@@ -263,13 +263,13 @@ proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
       else:
         elements.add(a[i])
     result.add(elements)
-    if attrs.len > 1: 
+    if attrs.len > 1:
       #echo repr(newStringTabCall)
       result.add(newStringTabCall)
   else:
     result = newCall("newXmlTree", toStrLit(a))
 
-macro `<>`*(x: expr): expr {.immediate.} = 
+macro `<>`*(x: expr): expr {.immediate.} =
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nimrod

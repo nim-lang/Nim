@@ -67,7 +67,7 @@ __clang__
 #endif
 
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#  define NIM_THREADVAR __declspec(thread) 
+#  define NIM_THREADVAR __declspec(thread)
 #else
 #  define NIM_THREADVAR __thread
 #endif
@@ -339,7 +339,7 @@ struct TFrame {
 #define nimln(n, file) \
   F.line = n; F.filename = file;
 
-#define NIM_POSIX_INIT  __attribute__((constructor)) 
+#define NIM_POSIX_INIT  __attribute__((constructor))
 
 #if defined(_MSCVER) && defined(__i386__)
 __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {

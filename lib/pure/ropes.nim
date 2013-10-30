@@ -29,7 +29,7 @@ const
 var
   cacheEnabled = false
 
-type 
+type
   PRope* = ref TRope ## empty rope is represented by nil
   TRope {.acyclic, final, pure.} = object
     left, right: PRope
@@ -50,51 +50,51 @@ proc len*(a: PRope): int {.rtl, extern: "nro$1".} =
   ## the rope's length
   if a == nil: result = 0
   else: result = a.length
-  
+
 proc newRope(): PRope = new(result)
-proc newRope(data: string): PRope = 
+proc newRope(data: string): PRope =
   new(result)
   result.length = len(data)
   result.data = data
 
-var 
+var
   cache: PRope                # the root of the cache tree
   N: PRope                    # dummy rope needed for splay algorithm
 
 when countCacheMisses:
   var misses, hits: int
-  
-proc splay(s: string, tree: PRope, cmpres: var int): PRope = 
+
+proc splay(s: string, tree: PRope, cmpres: var int): PRope =
   var c: int
   var t = tree
   N.left = nil
   N.right = nil               # reset to nil
   var le = N
   var r = N
-  while true: 
+  while true:
     c = cmp(s, t.data)
-    if c < 0: 
-      if (t.left != nil) and (s < t.left.data): 
+    if c < 0:
+      if (t.left != nil) and (s < t.left.data):
         var y = t.left
         t.left = y.right
         y.right = t
         t = y
-      if t.left == nil: break 
+      if t.left == nil: break
       r.left = t
       r = t
       t = t.left
-    elif c > 0: 
-      if (t.right != nil) and (s > t.right.data): 
+    elif c > 0:
+      if (t.right != nil) and (s > t.right.data):
         var y = t.right
         t.right = y.left
         y.left = t
         t = y
-      if t.right == nil: break 
+      if t.right == nil: break
       le.right = t
       le = t
       t = t.right
-    else: 
-      break 
+    else:
+      break
   cmpres = c
   le.right = t.left
   r.left = t.right
@@ -102,50 +102,50 @@ proc splay(s: string, tree: PRope, cmpres: var int): PRope =
   t.right = N.left
   result = t
 
-proc insertInCache(s: string, tree: PRope): PRope = 
+proc insertInCache(s: string, tree: PRope): PRope =
   var t = tree
-  if t == nil: 
+  if t == nil:
     result = newRope(s)
     when countCacheMisses: inc(misses)
-    return 
+    return
   var cmp: int
   t = splay(s, t, cmp)
-  if cmp == 0: 
+  if cmp == 0:
     # We get here if it's already in the Tree
     # Don't add it again
     result = t
     when countCacheMisses: inc(hits)
-  else: 
+  else:
     when countCacheMisses: inc(misses)
     result = newRope(s)
-    if cmp < 0: 
+    if cmp < 0:
       result.left = t.left
       result.right = t
       t.left = nil
-    else: 
+    else:
       # i > t.item:
       result.right = t.right
       result.left = t
       t.right = nil
 
 proc rope*(s: string): PRope {.rtl, extern: "nro$1Str".} =
-  ## Converts a string to a rope. 
-  if s.len == 0: 
+  ## Converts a string to a rope.
+  if s.len == 0:
     result = nil
-  elif cacheEnabled: 
+  elif cacheEnabled:
     result = insertInCache(s, cache)
     cache = result
-  else: 
+  else:
     result = newRope(s)
-  
-proc rope*(i: BiggestInt): PRope {.rtl, extern: "nro$1BiggestInt".} = 
-  ## Converts an int to a rope. 
+
+proc rope*(i: BiggestInt): PRope {.rtl, extern: "nro$1BiggestInt".} =
+  ## Converts an int to a rope.
   result = rope($i)
 
 proc rope*(f: BiggestFloat): PRope {.rtl, extern: "nro$1BiggestFloat".} =
-  ## Converts a float to a rope. 
+  ## Converts a float to a rope.
   result = rope($f)
-  
+
 proc enableCache*() {.rtl, extern: "nro$1".} =
   ## Enables the caching of leaves. This reduces the memory footprint at
   ## the cost of runtime efficiency.
@@ -158,9 +158,9 @@ proc disableCache*() {.rtl, extern: "nro$1".} =
 
 proc `&`*(a, b: PRope): PRope {.rtl, extern: "nroConcRopeRope".} =
   ## the concatenation operator for ropes.
-  if a == nil: 
+  if a == nil:
     result = b
-  elif b == nil: 
+  elif b == nil:
     result = a
   else:
     result = newRope()
@@ -175,16 +175,16 @@ proc `&`*(a, b: PRope): PRope {.rtl, extern: "nroConcRopeRope".} =
     else:
       result.left = a
       result.right = b
-  
-proc `&`*(a: PRope, b: string): PRope {.rtl, extern: "nroConcRopeStr".} = 
+
+proc `&`*(a: PRope, b: string): PRope {.rtl, extern: "nroConcRopeStr".} =
   ## the concatenation operator for ropes.
   result = a & rope(b)
-  
-proc `&`*(a: string, b: PRope): PRope {.rtl, extern: "nroConcStrRope".} = 
+
+proc `&`*(a: string, b: PRope): PRope {.rtl, extern: "nroConcStrRope".} =
   ## the concatenation operator for ropes.
   result = rope(a) & b
-  
-proc `&`*(a: openarray[PRope]): PRope {.rtl, extern: "nroConcOpenArray".} = 
+
+proc `&`*(a: openarray[PRope]): PRope {.rtl, extern: "nroConcOpenArray".} =
   ## the concatenation operator for an openarray of ropes.
   for i in countup(0, high(a)): result = result & a[i]
 
@@ -195,7 +195,7 @@ proc add*(a: var PRope, b: PRope) {.rtl, extern: "nro$1Rope".} =
 proc add*(a: var PRope, b: string) {.rtl, extern: "nro$1Str".} =
   ## adds `b` to the rope `a`.
   a = a & b
-  
+
 proc `[]`*(r: PRope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If ``i >= r.len``, ``\0`` is returned.
@@ -217,7 +217,7 @@ iterator leaves*(r: PRope): string =
   ## iterates over any leaf string in the rope `r`.
   if r != nil:
     var stack = @[r]
-    while stack.len > 0: 
+    while stack.len > 0:
       var it = stack.pop
       while isConc(it):
         stack.add(it.right)
@@ -225,7 +225,7 @@ iterator leaves*(r: PRope): string =
         assert(it != nil)
       assert(it.data != nil)
       yield it.data
-  
+
 iterator items*(r: PRope): char =
   ## iterates over any character in the rope `r`.
   for s in leaves(r):
@@ -235,7 +235,7 @@ proc write*(f: TFile, r: PRope) {.rtl, extern: "nro$1".} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc `$`*(r: PRope): string  {.rtl, extern: "nroToString".}= 
+proc `$`*(r: PRope): string  {.rtl, extern: "nroToString".}=
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)
@@ -248,29 +248,29 @@ when false:
   proc compiledArg(idx: int): PRope =
     new(result)
     result.length = -idx
-  
-  proc compileFrmt(frmt: string): PRope = 
+
+  proc compileFrmt(frmt: string): PRope =
     var i = 0
     var length = len(frmt)
     result = nil
     var num = 0
-    while i < length: 
-      if frmt[i] == '$': 
+    while i < length:
+      if frmt[i] == '$':
         inc(i)
         case frmt[i]
-        of '$': 
+        of '$':
           add(result, "$")
           inc(i)
-        of '#': 
+        of '#':
           inc(i)
           add(result, compiledArg(num+1))
           inc(num)
-        of '0'..'9': 
+        of '0'..'9':
           var j = 0
-          while true: 
+          while true:
             j = j * 10 + ord(frmt[i]) - ord('0')
             inc(i)
-            if frmt[i] notin {'0'..'9'}: break 
+            if frmt[i] notin {'0'..'9'}: break
           add(s, compiledArg(j))
         of '{':
           inc(i)
@@ -283,13 +283,13 @@ when false:
           add(s, compiledArg(j))
         else: raise newException(EInvalidValue, "invalid format string")
       var start = i
-      while i < length: 
+      while i < length:
         if frmt[i] != '$': inc(i)
-        else: break 
-      if i - 1 >= start: 
+        else: break
+      if i - 1 >= start:
         add(result, substr(frmt, start, i-1))
-  
-proc `%`*(frmt: string, args: openarray[PRope]): PRope {. 
+
+proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
   rtl, extern: "nroFormat".} =
   ## `%` substitution operator for ropes. Does not support the ``$identifier``
   ## nor ``${identifier}`` notations.
@@ -297,23 +297,23 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
   var length = len(frmt)
   result = nil
   var num = 0
-  while i < length: 
-    if frmt[i] == '$': 
+  while i < length:
+    if frmt[i] == '$':
       inc(i)
       case frmt[i]
-      of '$': 
+      of '$':
         add(result, "$")
         inc(i)
-      of '#': 
+      of '#':
         inc(i)
         add(result, args[num])
         inc(num)
-      of '0'..'9': 
+      of '0'..'9':
         var j = 0
-        while true: 
+        while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break 
+          if frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)
@@ -326,10 +326,10 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
         add(result, args[j-1])
       else: raise newException(EInvalidValue, "invalid format string")
     var start = i
-    while i < length: 
+    while i < length:
       if frmt[i] != '$': inc(i)
-      else: break 
-    if i - 1 >= start: 
+      else: break
+    if i - 1 >= start:
       add(result, substr(frmt, start, i - 1))
 
 proc addf*(c: var PRope, frmt: string, args: openarray[PRope]) {.

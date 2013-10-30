@@ -23,19 +23,19 @@
 #  Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 
-import 
+import
   X, XLib, XUtil, gl
 
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     dllname = "GL.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     dllname = "/usr/X11R6/lib/libGL.dylib"
-else: 
-  const 
+else:
+  const
     dllname = "libGL.so"
-const 
+const
   GLX_USE_GL* = 1'i32
   GLX_BUFFER_SIZE* = 2'i32
   GLX_LEVEL* = 3'i32
@@ -98,55 +98,55 @@ type                          # From XLib:
 
 proc glXChooseVisual*(dpy: PDisplay, screen: int, attribList: ptr int32): PXVisualInfo{.
     cdecl, dynlib: dllname, importc: "glXChooseVisual".}
-proc glXCreateContext*(dpy: PDisplay, vis: PXVisualInfo, shareList: GLXContext, 
-                       direct: bool): GLXContext{.cdecl, dynlib: dllname, 
+proc glXCreateContext*(dpy: PDisplay, vis: PXVisualInfo, shareList: GLXContext,
+                       direct: bool): GLXContext{.cdecl, dynlib: dllname,
     importc: "glXCreateContext".}
-proc glXDestroyContext*(dpy: PDisplay, ctx: GLXContext){.cdecl, dynlib: dllname, 
+proc glXDestroyContext*(dpy: PDisplay, ctx: GLXContext){.cdecl, dynlib: dllname,
     importc: "glXDestroyContext".}
 proc glXMakeCurrent*(dpy: PDisplay, drawable: GLXDrawable, ctx: GLXContext): bool{.
     cdecl, dynlib: dllname, importc: "glXMakeCurrent".}
-proc glXCopyContext*(dpy: PDisplay, src, dst: GLXContext, mask: int32){.cdecl, 
+proc glXCopyContext*(dpy: PDisplay, src, dst: GLXContext, mask: int32){.cdecl,
     dynlib: dllname, importc: "glXCopyContext".}
-proc glXSwapBuffers*(dpy: PDisplay, drawable: GLXDrawable){.cdecl, 
+proc glXSwapBuffers*(dpy: PDisplay, drawable: GLXDrawable){.cdecl,
     dynlib: dllname, importc: "glXSwapBuffers".}
 proc glXCreateGLXPixmap*(dpy: PDisplay, visual: PXVisualInfo, pixmap: XPixmap): GLXPixmap{.
     cdecl, dynlib: dllname, importc: "glXCreateGLXPixmap".}
-proc glXDestroyGLXPixmap*(dpy: PDisplay, pixmap: GLXPixmap){.cdecl, 
+proc glXDestroyGLXPixmap*(dpy: PDisplay, pixmap: GLXPixmap){.cdecl,
     dynlib: dllname, importc: "glXDestroyGLXPixmap".}
-proc glXQueryExtension*(dpy: PDisplay, errorb, event: var int): bool{.cdecl, 
+proc glXQueryExtension*(dpy: PDisplay, errorb, event: var int): bool{.cdecl,
     dynlib: dllname, importc: "glXQueryExtension".}
-proc glXQueryVersion*(dpy: PDisplay, maj, min: var int): bool{.cdecl, 
+proc glXQueryVersion*(dpy: PDisplay, maj, min: var int): bool{.cdecl,
     dynlib: dllname, importc: "glXQueryVersion".}
-proc glXIsDirect*(dpy: PDisplay, ctx: GLXContext): bool{.cdecl, dynlib: dllname, 
+proc glXIsDirect*(dpy: PDisplay, ctx: GLXContext): bool{.cdecl, dynlib: dllname,
     importc: "glXIsDirect".}
-proc glXGetConfig*(dpy: PDisplay, visual: PXVisualInfo, attrib: int, 
-                   value: var int): int{.cdecl, dynlib: dllname, 
+proc glXGetConfig*(dpy: PDisplay, visual: PXVisualInfo, attrib: int,
+                   value: var int): int{.cdecl, dynlib: dllname,
     importc: "glXGetConfig".}
-proc glXGetCurrentContext*(): GLXContext{.cdecl, dynlib: dllname, 
+proc glXGetCurrentContext*(): GLXContext{.cdecl, dynlib: dllname,
     importc: "glXGetCurrentContext".}
-proc glXGetCurrentDrawable*(): GLXDrawable{.cdecl, dynlib: dllname, 
+proc glXGetCurrentDrawable*(): GLXDrawable{.cdecl, dynlib: dllname,
     importc: "glXGetCurrentDrawable".}
 proc glXWaitGL*(){.cdecl, dynlib: dllname, importc: "glXWaitGL".}
 proc glXWaitX*(){.cdecl, dynlib: dllname, importc: "glXWaitX".}
-proc glXUseXFont*(font: XFont, first, count, list: int){.cdecl, dynlib: dllname, 
+proc glXUseXFont*(font: XFont, first, count, list: int){.cdecl, dynlib: dllname,
     importc: "glXUseXFont".}
   # GLX 1.1 and later
-proc glXQueryExtensionsString*(dpy: PDisplay, screen: int): cstring{.cdecl, 
+proc glXQueryExtensionsString*(dpy: PDisplay, screen: int): cstring{.cdecl,
     dynlib: dllname, importc: "glXQueryExtensionsString".}
-proc glXQueryServerString*(dpy: PDisplay, screen, name: int): cstring{.cdecl, 
+proc glXQueryServerString*(dpy: PDisplay, screen, name: int): cstring{.cdecl,
     dynlib: dllname, importc: "glXQueryServerString".}
-proc glXGetClientString*(dpy: PDisplay, name: int): cstring{.cdecl, 
+proc glXGetClientString*(dpy: PDisplay, name: int): cstring{.cdecl,
     dynlib: dllname, importc: "glXGetClientString".}
   # Mesa GLX Extensions
-proc glXCreateGLXPixmapMESA*(dpy: PDisplay, visual: PXVisualInfo, 
+proc glXCreateGLXPixmapMESA*(dpy: PDisplay, visual: PXVisualInfo,
                              pixmap: XPixmap, cmap: XColormap): GLXPixmap{.
     cdecl, dynlib: dllname, importc: "glXCreateGLXPixmapMESA".}
-proc glXReleaseBufferMESA*(dpy: PDisplay, d: GLXDrawable): bool{.cdecl, 
+proc glXReleaseBufferMESA*(dpy: PDisplay, d: GLXDrawable): bool{.cdecl,
     dynlib: dllname, importc: "glXReleaseBufferMESA".}
-proc glXCopySubBufferMESA*(dpy: PDisplay, drawbale: GLXDrawable, 
-                           x, y, width, height: int){.cdecl, dynlib: dllname, 
+proc glXCopySubBufferMESA*(dpy: PDisplay, drawbale: GLXDrawable,
+                           x, y, width, height: int){.cdecl, dynlib: dllname,
     importc: "glXCopySubBufferMESA".}
-proc glXGetVideoSyncSGI*(counter: var int32): int{.cdecl, dynlib: dllname, 
+proc glXGetVideoSyncSGI*(counter: var int32): int{.cdecl, dynlib: dllname,
     importc: "glXGetVideoSyncSGI".}
 proc glXWaitVideoSyncSGI*(divisor, remainder: int, count: var int32): int{.
     cdecl, dynlib: dllname, importc: "glXWaitVideoSyncSGI".}

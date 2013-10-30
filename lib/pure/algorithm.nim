@@ -11,12 +11,12 @@
 
 type
   TSortOrder* = enum   ## sort order
-    Descending, Ascending 
+    Descending, Ascending
 
-proc `*`*(x: int, order: TSortOrder): int {.inline.} = 
+proc `*`*(x: int, order: TSortOrder): int {.inline.} =
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
-  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for 
+  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for
   ## *less than*, ``== 0`` for *equal*, ``> 0`` for *greater than*.
   var y = order.ord - 1
   result = (x xor y) - y
@@ -55,9 +55,9 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc merge[T](a, b: var openArray[T], lo, m, hi: int, 
+proc merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: TSortOrder) =
-  template `<-` (a, b: expr) = 
+  template `<-` (a, b: expr) =
     when false:
       a = b
     elif onlySafeCode:
@@ -104,10 +104,10 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = TSortOrder.Ascending) =
-  ## Default Nimrod sort. The sorting is guaranteed to be stable and 
+  ## Default Nimrod sort. The sorting is guaranteed to be stable and
   ## the worst case is guaranteed to be O(n log n).
   ## The current implementation uses an iterative
-  ## mergesort to achieve this. It uses a temporary sequence of 
+  ## mergesort to achieve this. It uses a temporary sequence of
   ## length ``a.len div 2``. Currently Nimrod does not support a
   ## sensible default argument for ``cmp``, so you have to provide one
   ## of your own. However, the ``system.cmp`` procs can be used:

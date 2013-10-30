@@ -308,10 +308,10 @@ when defined(kwin):
       }
       print(buf);
     """
-    
+
 elif defined(nodejs):
   proc ewriteln(x: cstring) = log(x)
-  
+
   proc rawEcho {.compilerproc, nostackframe.} =
     asm """
       var buf = "";
@@ -325,12 +325,12 @@ else:
   var
     document {.importc, nodecl.}: ref TDocument
 
-  proc ewriteln(x: cstring) = 
+  proc ewriteln(x: cstring) =
     var node = document.getElementsByTagName("body")[0]
-    if node != nil: 
+    if node != nil:
       node.appendChild(document.createTextNode(x))
       node.appendChild(document.createElement("br"))
-    else: 
+    else:
       raise newException(EInvalidValue, "<body> element does not exist yet!")
 
   proc rawEcho {.compilerproc.} =

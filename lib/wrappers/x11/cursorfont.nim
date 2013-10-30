@@ -1,4 +1,4 @@
-# $Xorg: cursorfont.h,v 1.4 2001/02/09 02:03:39 xorgcvs Exp $ 
+# $Xorg: cursorfont.h,v 1.4 2001/02/09 02:03:39 xorgcvs Exp $
 #
 #
 #Copyright 1987, 1998  The Open Group
@@ -27,7 +27,7 @@
 #
 #
 
-const 
+const
   XC_num_glyphs* = 154
   XC_X_cursor* = 0
   XC_arrow* = 2

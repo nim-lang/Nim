@@ -19,7 +19,7 @@ import
 type
   TBitScalar = int
 
-const 
+const
   InitIntSetSize = 8         # must be a power of two!
   TrunkShift = 9
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
@@ -31,11 +31,11 @@ const
 
 type
   PTrunk = ref TTrunk
-  TTrunk {.final.} = object 
+  TTrunk {.final.} = object
     next: PTrunk             # all nodes are connected with this pointer
     key: int                 # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, TBitScalar] # a bit vector
-  
+
   TTrunkSeq = seq[PTrunk]
   TIntSet* {.final.} = object ## an efficient set of 'int' implemented as a
                               ## sparse bit set
@@ -43,42 +43,42 @@ type
     head: PTrunk
     data: TTrunkSeq
 
-proc mustRehash(length, counter: int): bool {.inline.} = 
+proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} = 
-  result = ((5 * h) + 1) and maxHash 
+proc nextTry(h, maxHash: THash): THash {.inline.} =
+  result = ((5 * h) + 1) and maxHash
 
-proc IntSetGet(t: TIntSet, key: int): PTrunk = 
+proc IntSetGet(t: TIntSet, key: int): PTrunk =
   var h = key and t.max
-  while t.data[h] != nil: 
-    if t.data[h].key == key: 
+  while t.data[h] != nil:
+    if t.data[h].key == key:
       return t.data[h]
     h = nextTry(h, t.max)
   result = nil
 
-proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
+proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
-  while data[h] != nil: 
+  while data[h] != nil:
     assert(data[h] != desc)
     h = nextTry(h, t.max)
   assert(data[h] == nil)
   data[h] = desc
 
-proc IntSetEnlarge(t: var TIntSet) = 
+proc IntSetEnlarge(t: var TIntSet) =
   var n: TTrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
   newSeq(n, t.max + 1)
-  for i in countup(0, oldmax): 
+  for i in countup(0, oldmax):
     if t.data[i] != nil: IntSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
+proc IntSetPut(t: var TIntSet, key: int): PTrunk =
   var h = key and t.max
-  while t.data[h] != nil: 
-    if t.data[h].key == key: 
+  while t.data[h] != nil:
+    if t.data[h].key == key:
       return t.data[h]
     h = nextTry(h, t.max)
   if mustRehash(t.max + 1, t.counter): IntSetEnlarge(t)
@@ -93,43 +93,43 @@ proc IntSetPut(t: var TIntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc contains*(s: TIntSet, key: int): bool =
-  ## returns true iff `key` is in `s`.  
+  ## returns true iff `key` is in `s`.
   var t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
+  if t != nil:
     var u = key and TrunkMask
     result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
-  else: 
+  else:
     result = false
-  
-proc incl*(s: var TIntSet, key: int) = 
+
+proc incl*(s: var TIntSet, key: int) =
   ## includes an element `key` in `s`.
   var t = IntSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
       `shl`(1, u and IntMask)
 
-proc excl*(s: var TIntSet, key: int) = 
+proc excl*(s: var TIntSet, key: int) =
   ## excludes `key` from the set `s`.
   var t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
+  if t != nil:
     var u = key and TrunkMask
     t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
         not `shl`(1, u and IntMask)
 
-proc containsOrIncl*(s: var TIntSet, key: int): bool = 
+proc containsOrIncl*(s: var TIntSet, key: int): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
   var t = IntSetGet(s, `shr`(key, TrunkShift))
-  if t != nil: 
+  if t != nil:
     var u = key and TrunkMask
     result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
-    if not result: 
+    if not result:
       t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
           `shl`(1, u and IntMask)
-  else: 
+  else:
     incl(s, key)
     result = false
-    
+
 proc initIntSet*: TIntSet =
   ## creates a new int set that is empty.
   newSeq(result.data, InitIntSetSize)
@@ -139,14 +139,14 @@ proc initIntSet*: TIntSet =
 
 proc assign*(dest: var TIntSet, src: TIntSet) =
   ## copies `src` to `dest`. `dest` does not need to be initialized by
-  ## `initIntSet`. 
+  ## `initIntSet`.
   dest.counter = src.counter
   dest.max = src.max
   newSeq(dest.data, src.data.len)
-  
+
   var it = src.head
   while it != nil:
-    
+
     var h = it.key and dest.max
     while dest.data[h] != nil: h = nextTry(h, dest.max)
     assert(dest.data[h] == nil)
@@ -167,7 +167,7 @@ iterator items*(s: TIntSet): int {.inline.} =
   while r != nil:
     var i = 0
     while i <= high(r.bits):
-      var w = r.bits[i] 
+      var w = r.bits[i]
       # taking a copy of r.bits[i] here is correct, because
       # modifying operations are not allowed during traversation
       var j = 0
