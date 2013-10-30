@@ -808,11 +808,11 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if containsOrIncl(c, a, b): return true
 
   proc sameFlags(a, b: PType): bool {.inline.} =
-    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
-    
+    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags   
+
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst})
-  var b = skipTypes(y, {tyGenericInst})
+  var b = skipTypes(y, {tyGenericInst})  
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
@@ -824,9 +824,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
-      if a.kind != b.kind: return false
-  if x.Kind == tyGenericInst or y.Kind == tyGenericInst: 
-    c.cmp = dcEqIgnoreDistinct    
+      if a.kind != b.kind: return false  
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt:
@@ -839,15 +837,20 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
     CycleCheck()
-    if c.cmp == dcEq: result = sameTypeAux(a, b, c) and sameFlags(a, b)
-    else: result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
+    if c.cmp == dcEq:      
+      result = false      
+      if a.sym != nil and b.sym != nil:
+        if a.sym.name == b.sym.name:
+          result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)      
+    else:           
+      result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
   of tyTuple:
     CycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
-  of tyGenericInst:
+  of tyGenericInst:    
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
@@ -860,7 +863,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClass:
-    CycleCheck()
+    CycleCheck()    
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and (a.kind == tyProc):
       result = a.callConv == b.callConv
@@ -869,7 +872,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         SameValue(a.n.sons[0], b.n.sons[0]) and
         SameValue(a.n.sons[1], b.n.sons[1])
-  of tyNone: result = false
+  of tyNone: result = false  
 
 proc sameType*(x, y: PType): bool =
   var c = initSameTypeClosure()
