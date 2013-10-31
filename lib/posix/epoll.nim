@@ -31,13 +31,14 @@ const
   EPOLL_CTL_MOD* = 3          # Change file descriptor epoll_event structure.  
 
 type 
-  epoll_data* {.pure, final.} = object 
-    thePtr*: pointer
-    fd*: cint
-    u32*: uint32
-    u64*: uint64
+  epoll_data* {.importc: "union epoll_data", 
+      header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
+    thePtr* {.importc: "ptr".}: pointer # \
+    #fd*: cint
+    #u32*: uint32
+    #u64*: uint64
 
-  epoll_event* {.pure, final.} = object 
+  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object 
     events*: uint32 # Epoll events 
     data*: epoll_data # User data variable 
 
