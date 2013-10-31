@@ -29,7 +29,7 @@ type
   PSelector* = ref object of PObject ## Selector interface.
     fds*: TTable[cint, TSelectorKey]
     registerImpl*: proc (s: PSelector, fd: cint, events: set[TEvent],
-                    data: var PObject): TSelectorKey {.nimcall, tags: [FWriteIO].}
+                    data: PObject): TSelectorKey {.nimcall, tags: [FWriteIO].}
     unregisterImpl*: proc (s: PSelector, fd: cint): TSelectorKey {.nimcall, tags: [FWriteIO].}
     selectImpl*: proc (s: PSelector, timeout: int): seq[TReadyInfo] {.nimcall, tags: [FReadIO].}
     closeImpl*: proc (s: PSelector) {.nimcall.}
@@ -38,7 +38,7 @@ template initSelector(r: expr) =
   new r
   r.fds = initTable[cint, TSelectorKey]()
 
-proc register*(s: PSelector, fd: cint, events: set[TEvent], data: var PObject):
+proc register*(s: PSelector, fd: cint, events: set[TEvent], data: PObject):
     TSelectorKey =
   if not s.registerImpl.isNil: result = s.registerImpl(s, fd, events, data)
 
@@ -51,10 +51,10 @@ proc unregister*(s: PSelector, fd: cint): TSelectorKey =
 
 proc select*(s: PSelector, timeout = 500): seq[TReadyInfo] =
   ##
-  ## **Note:** For the ``epoll`` implementation the resulting
-  ## ``TSelectorKey.events`` will not contain the original events.
-  ## TODO: This breaks what TSelectorKey means... it's not a key anymore.
-  ## Rename to TSelectorInfo?
+  ## The ``events`` field of the returned ``key`` contains the original events
+  ## for which the ``fd`` was bound. This is contrary to the ``events`` field
+  ## of the ``TReadyInfo`` tuple which determines which events are ready
+  ## on the ``fd``.
 
   if not s.selectImpl.isNil: result = s.selectImpl(s, timeout)
 
@@ -67,7 +67,7 @@ type
   PSelectSelector* = ref object of PSelector ## Implementation of select()
 
 proc ssRegister(s: PSelector, fd: cint, events: set[TEvent],
-    data: var PObject): TSelectorKey =
+    data: PObject): TSelectorKey =
   if s.fds.hasKey(fd):
     raise newException(EInvalidValue, "FD already exists in selector.")
   var sk = TSelectorKey(fd: fd, events: events, data: data)
@@ -144,19 +144,29 @@ proc newSelectSelector*(): PSelectSelector =
 when defined(linux):
   import epoll
   type
-    PEpollSelector = ref object of PSelector
+    PEpollSelector* = ref object of PSelector
       epollFD: cint
+      events: array[64, ptr epoll_event]
+  
+    TDataWrapper = object
+      fd: cint
+      boundEvents: set[TEvent] ## The events which ``fd`` listens for.
+      data: PObject ## User object.
   
   proc esRegister(s: PSelector, fd: cint, events: set[TEvent],
-      data: var PObject): TSelectorKey =
+      data: PObject): TSelectorKey =
     var es = PEpollSelector(s)
     var event: epoll_event
     if EvRead in events:
       event.events = EPOLLIN
     if EvWrite in events:
       event.events = event.events or EPOLLOUT
-    event.data.fd = fd
-    event.data.thePtr = addr(data)
+    
+    var dw = cast[ptr TDataWrapper](alloc0(sizeof(TDataWrapper))) # TODO: This needs to be dealloc'd
+    dw.fd = fd
+    dw.boundEvents = events
+    dw.data = data
+    event.data.thePtr = dw
     
     if epoll_ctl(es.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
       OSError(OSLastError())
@@ -176,47 +186,58 @@ when defined(linux):
   proc esClose(s: PSelector) =
     var es = PEpollSelector(s)
     if es.epollFD.close() != 0: OSError(OSLastError())
+    dealloc(addr es.events) # TODO: Test this
   
   proc esSelect(s: PSelector, timeout: int): seq[TReadyInfo] =
     result = @[]
     var es = PEpollSelector(s)
     
-    var events: array[64, epoll_event]
-    let evNum = epoll_wait(es.epollFD, addr events[0], 64.cint, timeout.cint)
+    let evNum = epoll_wait(es.epollFD, es.events[0], 64.cint, timeout.cint)
     if evNum < 0: OSError(OSLastError())
-    for i in 0 .. 63:
+    if evNum == 0: return @[]
+    for i in 0 .. <evNum:
       var evSet: set[TEvent] = {}
-      if (events[i].events and EPOLLIN) == 1: evSet = evSet + {EvRead}
-      if (events[i].events and EPOLLOUT) == 1: evSet = evSet + {EvWrite}
-      let selectorKey = TSelectorKey(fd: events[i].data.fd, events: evSet, 
-          data: cast[PObject](events[i].data.thePtr))
+      if (es.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
+      if (es.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
+      let dw = cast[ptr TDataWrapper](es.events[i].data.thePtr)
+      
+      let selectorKey = TSelectorKey(fd: dw.fd, events: dw.boundEvents, 
+          data: dw.data)
       result.add((selectorKey, evSet))
-
+  
   proc newEpollSelector*(): PEpollSelector =
     new result
     result.epollFD = epoll_create(64)
+    result.events = cast[array[64, ptr epoll_event]](alloc0(sizeof(epoll_event)*64))
     if result.epollFD < 0:
       OSError(OSLastError())
+    result.registerImpl = esRegister
+    result.unregisterImpl = esUnregister
+    result.closeImpl = esClose
+    result.selectImpl = esSelect
 
 when isMainModule:
   # Select()
   import sockets
   type
     PSockWrapper = ref object of PObject
-      sock: TSocket 
-  
+      sock: TSocket
   
   var sock = socket()
   sock.connect("irc.freenode.net", TPort(6667))
   
-  var selector = newSelectSelector()
+  var selector = newEpollSelector()
   var data = PSockWrapper(sock: sock)
-  let key = selector.register(sock.getFD.cint, {EvRead, EvWrite}, data)
+  let key = selector.register(sock.getFD.cint, {EvRead}, data)
+  var i = 0
   while true:
-    let ready = selector.select()
+    let ready = selector.select(1000)
     echo ready.len
-    if ready.len > 0: echo ready[0].repr
-  
+    if ready.len > 0: echo ready[0].events
+    i.inc
+    if i == 6:
+      selector.close()
+      break
   
   
   
