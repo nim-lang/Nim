@@ -893,11 +893,12 @@ integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``.
 
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
-during runtime (like strings). A sequence ``S`` is always indexed by integers
-from 0 to ``len(S)-1`` and its bounds are checked. Sequences can be
-constructed by the array constructor ``[]`` in conjunction with the array to
-sequence operator ``@``. Another way to allocate space for a sequence is to
-call the built-in ``newSeq`` procedure.
+during runtime (like strings). Sequences are implemented as growable arrays, 
+allocating pieces of memory as items are added. A sequence ``S`` is always
+indexed by integers from 0 to ``len(S)-1`` and its bounds are checked. 
+Sequences can be constructed by the array constructor ``[]`` in conjunction
+with the array to sequence operator ``@``. Another way to allocate space for a
+sequence is to call the built-in ``newSeq`` procedure.
 
 A sequence may be passed to a parameter that is of type *open array*.
 
@@ -4673,9 +4674,10 @@ A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
-the used C compiler). This is useful for procs that only consist of an
-assembler statement.
+the used C compiler).
 
+**Note**: This pragma should only be used by procs which consist solely of assembler
+statements.
 
 error pragma
 ------------

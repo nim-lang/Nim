@@ -224,11 +224,13 @@ type
   TAsyncHTTPServer = object of TServer
     asyncSocket: PAsyncSocket
   
-proc open*(s: var TServer, port = TPort(80)) =
+proc open*(s: var TServer, port = TPort(80), reuseAddr = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
   if s.socket == InvalidSocket: OSError(OSLastError())
+  if reuseAddr:
+    s.socket.setSockOpt(OptReuseAddr, True)
   bindAddr(s.socket, port)
   listen(s.socket)
 
@@ -475,7 +477,8 @@ proc nextAsync(s: PAsyncHTTPServer) =
 
 proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSocket, 
                         path, query: string): bool {.closure.},
-                     port = TPort(80), address = ""): PAsyncHTTPServer =
+                     port = TPort(80), address = "",
+                     reuseAddr = false): PAsyncHTTPServer =
   ## Creates an Asynchronous HTTP server at ``port``.
   var capturedRet: PAsyncHTTPServer
   new(capturedRet)
@@ -486,6 +489,8 @@ proc asyncHTTPServer*(handleRequest: proc (server: PAsyncHTTPServer, client: TSo
       let quit = handleRequest(capturedRet, capturedRet.client, capturedRet.path,
                                capturedRet.query)
       if quit: capturedRet.asyncSocket.close()
+  if reuseAddr:
+    capturedRet.asyncSocket.setSockOpt(OptReuseAddr, True)
   
   capturedRet.asyncSocket.bindAddr(port, address)
   capturedRet.asyncSocket.listen()
