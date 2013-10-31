@@ -621,7 +621,7 @@ type
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
   nil
-
+  
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = not IsNil(c.s) and c.s.contains((a.id, b.id))
   if not result:
@@ -750,9 +750,9 @@ template IfFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
-  IfFastObjectTypeCheckFailed(a, b):
+  IfFastObjectTypeCheckFailed(a, b):     
     var c = initSameTypeClosure()
-    result = sameTypeAux(a, b, c)
+    result = sameTypeAux(a, b, c)    
 
 proc sameDistinctTypes*(a, b: PType): bool {.inline.} =
   result = sameObjectTypes(a, b)
@@ -808,11 +808,11 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if containsOrIncl(c, a, b): return true
 
   proc sameFlags(a, b: PType): bool {.inline.} =
-    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
-    
+    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags   
+
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst})
-  var b = skipTypes(y, {tyGenericInst})
+  var b = skipTypes(y, {tyGenericInst})  
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
@@ -824,7 +824,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false
     of dcEqOrDistinctOf:
       while a.kind == tyDistinct: a = a.sons[0]
-      if a.kind != b.kind: return false
+      if a.kind != b.kind: return false  
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
      tyInt..tyBigNum, tyStmt:
@@ -837,15 +837,19 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = sameObjectStructures(a, b, c) and sameFlags(a, b)
   of tyDistinct:
     CycleCheck()
-    if c.cmp == dcEq: result = sameDistinctTypes(a, b) and sameFlags(a, b)
-    else: result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
+    if c.cmp == dcEq:      
+      if sameFlags(a, b):
+        IfFastObjectTypeCheckFailed(a, b):
+          result = sameTypeAux(a.sons[0], b.sons[0], c)     
+    else: 
+      result = sameTypeAux(a.sons[0], b.sons[0], c) and sameFlags(a, b)
   of tyEnum, tyForward, tyProxy:
     # XXX generic enums do not make much sense, but require structural checking
     result = a.id == b.id and sameFlags(a, b)
   of tyTuple:
     CycleCheck()
     result = sameTuple(a, b, c) and sameFlags(a, b)
-  of tyGenericInst:
+  of tyGenericInst:    
     result = sameTypeAux(lastSon(a), lastSon(b), c)
   of tyTypeDesc:
     if c.cmp == dcEqIgnoreDistinct: result = false
@@ -858,7 +862,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
      tyOrdinal, tyTypeClass:
-    CycleCheck()
+    CycleCheck()    
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and (a.kind == tyProc):
       result = a.callConv == b.callConv
@@ -867,7 +871,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = SameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         SameValue(a.n.sons[0], b.n.sons[0]) and
         SameValue(a.n.sons[1], b.n.sons[1])
-  of tyNone: result = false
+  of tyNone: result = false  
 
 proc sameType*(x, y: PType): bool =
   var c = initSameTypeClosure()

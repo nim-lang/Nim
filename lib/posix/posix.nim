@@ -81,6 +81,8 @@ else:
       ## A type representing a directory stream.   
   
 type
+  TSocketHandle* = distinct cint # The type used to represent socket descriptors
+
   Tdirent* {.importc: "struct dirent", 
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: TIno  ## File serial number.
@@ -1791,7 +1793,7 @@ proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>".}
 proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>".}
 
 proc creat*(a1: cstring, a2: Tmode): cint {.importc, header: "<fcntl.h>".}
-proc fcntl*(a1: cint, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
+proc fcntl*(a1: cint | TSocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
 proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
 proc posix_fadvise*(a1: cint, a2, a3: Toff, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
@@ -2068,7 +2070,7 @@ proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
 proc chown*(a1: cstring, a2: Tuid, a3: Tgid): cint {.importc, header: "<unistd.h>".}
-proc close*(a1: cint): cint {.importc, header: "<unistd.h>".}
+proc close*(a1: cint | TSocketHandle): cint {.importc, header: "<unistd.h>".}
 proc confstr*(a1: cint, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
 proc crypt*(a1, a2: cstring): cstring {.importc, header: "<unistd.h>".}
 proc ctermid*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
@@ -2346,9 +2348,9 @@ proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var Tfd_set) {.importc, header: "<sys/select.h>".}
-proc FD_ISSET*(a1: cint, a2: var Tfd_set): cint {.
+proc FD_ISSET*(a1: cint | TSocketHandle, a2: var Tfd_set): cint {.
   importc, header: "<sys/select.h>".}
-proc FD_SET*(a1: cint, a2: var Tfd_set) {.importc, header: "<sys/select.h>".}
+proc FD_SET*(a1: cint | TSocketHandle, a2: var Tfd_set) {.importc, header: "<sys/select.h>".}
 proc FD_ZERO*(a1: var Tfd_set) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr Tfd_set, a5: ptr ttimespec,
@@ -2428,44 +2430,49 @@ proc CMSG_NXTHDR*(mhdr: ptr TMsgHdr, cmsg: ptr TCMsgHdr): ptr TCmsgHdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr TMsgHdr): ptr TCMsgHdr {.
   importc, header: "<sys/socket.h>".}
 
-proc accept*(a1: cint, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
+const
+  INVALID_SOCKET* = TSocketHandle(-1)
+
+proc `==`*(x, y: TSocketHandle): bool {.borrow.}
+
+proc accept*(a1: TSocketHandle, a2: ptr Tsockaddr, a3: ptr Tsocklen): TSocketHandle {.
   importc, header: "<sys/socket.h>".}
 
-proc bindSocket*(a1: cint, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
+proc bindSocket*(a1: TSocketHandle, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
   
-proc connect*(a1: cint, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
+proc connect*(a1: TSocketHandle, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getpeername*(a1: cint, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
+proc getpeername*(a1: TSocketHandle, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getsockname*(a1: cint, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
-  importc, header: "<sys/socket.h>".}
-
-proc getsockopt*(a1, a2, a3: cint, a4: pointer, a5: ptr Tsocklen): cint {.
+proc getsockname*(a1: TSocketHandle, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
 
-proc listen*(a1, a2: cint): cint {.
+proc getsockopt*(a1: TSocketHandle, a2, a3: cint, a4: pointer, a5: ptr Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc recv*(a1: cint, a2: pointer, a3: int, a4: cint): int {.
+
+proc listen*(a1: TSocketHandle, a2: cint): cint {.
   importc, header: "<sys/socket.h>".}
-proc recvfrom*(a1: cint, a2: pointer, a3: int, a4: cint,
+proc recv*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint): int {.
+  importc, header: "<sys/socket.h>".}
+proc recvfrom*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint,
         a5: ptr Tsockaddr, a6: ptr Tsocklen): int {.
   importc, header: "<sys/socket.h>".}
-proc recvmsg*(a1: cint, a2: ptr Tmsghdr, a3: cint): int {.
+proc recvmsg*(a1: TSocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc send*(a1: cint, a2: pointer, a3: int, a4: cint): int {.
+proc send*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc sendmsg*(a1: cint, a2: ptr Tmsghdr, a3: cint): int {.
+proc sendmsg*(a1: TSocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
-proc sendto*(a1: cint, a2: pointer, a3: int, a4: cint, a5: ptr Tsockaddr,
+proc sendto*(a1: TSocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr Tsockaddr,
              a6: Tsocklen): int {.
   importc, header: "<sys/socket.h>".}
-proc setsockopt*(a1, a2, a3: cint, a4: pointer, a5: Tsocklen): cint {.
+proc setsockopt*(a1: TSocketHandle, a2, a3: cint, a4: pointer, a5: Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
-proc shutdown*(a1, a2: cint): cint {.
+proc shutdown*(a1: TSocketHandle, a2: cint): cint {.
   importc, header: "<sys/socket.h>".}
-proc socket*(a1, a2, a3: cint): cint {.
+proc socket*(a1, a2, a3: cint): TSocketHandle {.
   importc, header: "<sys/socket.h>".}
 proc sockatmark*(a1: cint): cint {.
   importc, header: "<sys/socket.h>".}
