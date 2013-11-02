@@ -298,7 +298,7 @@ proc getLines(ftp: PFTPClient, async: bool = false): bool =
     var readSocks: seq[TSocket] = @[ftp.getCSock()]
     # This is only needed here. Asyncio gets this socket...
     blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() notin readSocks:
+      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
@@ -434,7 +434,7 @@ proc getFile(ftp: PFTPClient, async = false): bool =
   if not async:
     var readSocks: seq[TSocket] = @[ftp.getCSock()]
     blockingOperation(ftp.getCSock()):
-      if readSocks.select(1) != 0 and ftp.getCSock() notin readSocks:
+      if readSocks.select(1) != 0 and ftp.getCSock() in readSocks:
         assertReply ftp.expectReply(), "226"
         return true
 
