@@ -47,9 +47,11 @@ The above steps can be performed on Windows in a similar fashion, the
 instead of ``build.sh``.
 
 ## Getting help
-A [forum](http://forum.nimrod-code.org/) is available if you have any questions,
-and you can also get help in the IRC channel
-on [Freenode](irc://irc.freenode.net/nimrod) in #nimrod.
+A [forum](http://forum.nimrod-code.org/) is available if you have any
+questions, and you can also get help in the IRC channel on
+[Freenode](irc://irc.freenode.net/nimrod) in #nimrod. If you ask questions on
+[StackOverflow use the nimrod
+tag](http://stackoverflow.com/questions/tagged/nimrod).
 
 ## License
 The compiler and the standard library are licensed under the MIT license, 
