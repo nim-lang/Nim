@@ -610,7 +610,7 @@ allow to silently throw away a return value:
   discard yes("May I ask a pointless question?")
 
 
-The return value can be ignored implicitely if the called proc/iterator has
+The return value can be ignored implicitly if the called proc/iterator has
 been declared with the ``discardable`` pragma: 
 
 .. code-block:: nimrod
@@ -1077,7 +1077,7 @@ can also be used to include elements (and ranges of elements):
     TCharSet = set[char]
   var
     x: TCharSet
-  x = {'a'..'z', '0'..'9'} # This constructs a set that conains the
+  x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
                            # letters from 'a' to 'z' and the digits
                            # from '0' to '9'
 
@@ -1201,7 +1201,7 @@ to specify a range from zero to the specified index minus one:
 Sequences
 ---------
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
-during runtime (like strings). Since sequences are resizeable they are always
+during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
 Sequences are always indexed with an ``int`` starting at position 0.
@@ -1547,7 +1547,7 @@ exported symbols. An alternative that only imports listed symbols is the
 
 Include statement
 -----------------
-The `include`:idx: statement does something fundametally different than
+The `include`:idx: statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
 
