@@ -222,6 +222,7 @@ iterator split*(s: string, sep: char, maxSplit=high(int)): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
   ## Unlike the version of the iterator which accepts a set of separator
   ## characters, this proc will not coalesce groups of the
   ## separator, returning a string for each found character. The code:

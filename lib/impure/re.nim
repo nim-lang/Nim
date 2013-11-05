@@ -358,6 +358,7 @@ iterator split*(s: string, sep: TRegEx, maxSplit=high(int)): string =
   ## Splits the string `s` into substrings.
   ##
   ## Substrings are separated by the regular expression `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
   ## Examples:
   ##
   ## .. code-block:: nimrod
