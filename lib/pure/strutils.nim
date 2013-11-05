@@ -218,7 +218,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
     if first <= last-1:
       yield substr(s, first, last-1)
 
-iterator split*(s: string, sep: char): string =
+iterator split*(s: string, sep: char, maxSplit=high(int)): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
@@ -247,12 +247,17 @@ iterator split*(s: string, sep: char): string =
   var last = 0
   assert('\0' != sep)
   if len(s) > 0:
+    var numSplits = 0
     # `<=` is correct here for the edge cases!
-    while last <= len(s):
+    while last <= len(s) and numSplits < maxSplit:
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
+      inc(numSplits)
       yield substr(s, first, last-1)
       inc(last)
+
+    if last < len(s):
+      yield substr(s, last, len(s)-1)
 
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines. Every newline
@@ -313,11 +318,25 @@ proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
   ## sequence of substrings.
   accumulateResult(split(s, seps))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+proc split*(s: string, sep: char, maxSplit=high(int)): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split` iterator, but is a proc that returns a sequence
   ## of substrings.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxSplit))
+
+proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
+  noSideEffect, rtl, extern: "nsuPartition".} =
+  ## Split a string at the first occurrence of 'sep' and return a 3 element 
+  ## tuple containing the part before the separator, the separator itself (as a 
+  ## string) and the part after the separator. If the separator is not found, 
+  ## return a 3 element tuple containing the string itself, followed by two 
+  ## empty strings.
+  let parts = split(s, sep, maxSplit=1)
+
+  if len(parts) > 1:
+    result = (parts[0], $sep, parts[1])
+  else:
+    result = (s, "", "")
 
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
