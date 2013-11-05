@@ -26,6 +26,10 @@ else:
   else:
     echo("Bug!")
 
+  # test split
+  assert(split("test:test:test", re":") == @["test", "test", "test"])
+  assert(split("test:test:test:", re":") == @["test", "test", "test"])
+  assert(split("test:test:test", re":", maxsplit=1) == @["test", "test:test"])
+  assert(split("test:test:test:", re":", maxsplit=3) == @["test", "test", "test"])
+
   #OUT key: keyAYes!
-
-
