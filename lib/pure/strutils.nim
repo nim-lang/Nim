@@ -260,6 +260,28 @@ iterator split*(s: string, sep: char, maxSplit=high(int)): string =
     if last < len(s):
       yield substr(s, last, len(s)-1)
 
+iterator split*(s: string, sep: string, maxSplit=high(int)): string =
+  var last = 0
+  assert("" != sep)
+  if len(s) > 0:
+    var numSplits = 0
+    while last < len(s):
+      if substr(s, last, last+len(sep)-1) == sep: inc(last, len(sep))
+      if numSplits >= maxSplit: break
+
+      var first = last
+      while last < len(s):
+        inc(last)
+        if substr(s, last, last+len(sep)-1) == sep: break
+
+      if first < last:
+        inc(numSplits)
+        yield substr(s, first, last-1)
+
+    if last < len(s):
+      yield substr(s, last, len(s)-1)
+
+
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines. Every newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain
@@ -325,6 +347,10 @@ proc split*(s: string, sep: char, maxSplit=high(int)): seq[string] {.noSideEffec
   ## of substrings.
   accumulateResult(split(s, sep, maxSplit))
 
+proc split*(s: string, sep: string, maxSplit=high(int)): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitCharString".} =
+  accumulateResult(split(s, sep, maxSplit))
+
 proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
   noSideEffect, rtl, extern: "nsuPartition".} =
   ## Split a string at the first occurrence of 'sep' and return a 3 element 
@@ -336,6 +362,16 @@ proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
 
   if len(parts) > 1:
     result = (parts[0], $sep, parts[1])
+  else:
+    result = (s, "", "")
+
+proc partition*(s: string, sep: string): tuple[pre, sep, post: string] {.
+  noSideEffect, rtl, extern: "nsuPartitionString".} =
+  
+  let parts = split(s, sep, maxSplit=1)
+
+  if len(parts) > 1:
+    result = (parts[0], sep, parts[1])
   else:
     result = (s, "", "")
 
@@ -1258,3 +1294,14 @@ when isMainModule:
   doAssert parseEnum[TMyEnum]("enu_D") == enuD
 
   doAssert parseEnum("invalid enum value", enC) == enC
+
+  assert(split("test:test", ':') == @["test", "test"])
+  assert(split("test:test", ';') == @["test:test"])
+  assert(split("test:test:", ':') == @["test", "test", ""])
+  assert(split("test:test", ":") == @["test", "test"])
+  assert(split("test  test", "  ") == @["test", "test"])
+  assert(split("test:test:test", ':', maxsplit=1) == @["test", "test:test"])
+
+  assert(partition("test: test test", ':') == ("test", ":", " test test"))
+  assert(partition("test: test:test", ":") == ("test", ":", " test:test"))
+  assert(partition("test  test something", "  ") == ("test", "  ", "test something"))

@@ -396,7 +396,7 @@ iterator split*(s: string, sep: TRegEx, maxSplit=high(int)): string =
 proc split*(s: string, sep: TRegEx, maxSplit=high(int)): seq[string] =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep, maxSplit))
-  
+
 proc escapeRe*(s: string): string = 
   ## escapes `s` so that it is matched verbatim when used as a regular 
   ## expression.
@@ -475,3 +475,4 @@ when isMainModule:
   assert(split("test:test:test", re":", maxsplit=2) == @["test", "test", "test"])
   assert(split("test:test:test:", re":", maxsplit=3) == @["test", "test", "test"])
   assert(split("test:test:test", re";") == @["test:test:test"])
+
