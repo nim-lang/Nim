@@ -187,6 +187,11 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
         LocalError(e.info, errConstExprExpected)
       # error correction:
       result = e
+    else:
+      # recompute the types as 'eval' isn't guaranteed to construct types nor
+      # that the types are sound:
+      result = semExprWithType(c, result)
+      result = fitNode(c, e.typ, result)
 
 include hlo, seminst, semcall
 
