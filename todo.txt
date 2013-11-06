@@ -3,7 +3,6 @@ version 0.9.4
 
 - new VM:
   - tcntseq fails
-  - new VM requires lambda lifting
   - implement overflow checking
   - implement the FFI
 

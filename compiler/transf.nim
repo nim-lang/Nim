@@ -735,12 +735,9 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
   else:
-    #when useEffectSystem: trackProc(prc, n)
     var c = openTransf(module, "")
     result = processTransf(c, n, prc)
-    if prc.kind != skMacro:
-      # XXX no closures yet for macros:
-      result = liftLambdas(prc, result)
+    result = liftLambdas(prc, result)
     if prc.kind == skIterator and prc.typ.callConv == ccClosure:
       result = lambdalifting.liftIterator(prc, result)
     incl(result.flags, nfTransf)
