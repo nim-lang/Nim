@@ -261,6 +261,26 @@ iterator split*(s: string, sep: char, maxSplit=high(int)): string =
       yield substr(s, last, len(s)-1)
 
 iterator split*(s: string, sep: string, maxSplit=high(int)): string =
+  ## Splits the string `s` into substrings using a single string separator.
+  ##
+  ## Substrings are separated by the string `sep`.
+  ## MaxSplit determines the maximum number of splits this performs.
+  ## Unlike the versions of the iterator which accept character(s) this
+  ## takes a string and only matches a separator if the whole `sep` string
+  ## matches it. Like the char set iterator this proc coalesces groups of
+  ## the separator.
+  ##
+  ## .. code-block:: nimrod
+  ##   for word in split(";;this;;is;an;;;example;;", ";;"):
+  ##     writeln(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is;an"
+  ##   ";example"
+  ##
   var last = 0
   assert("" != sep)
   if len(s) > 0:
@@ -348,7 +368,9 @@ proc split*(s: string, sep: char, maxSplit=high(int)): seq[string] {.noSideEffec
   accumulateResult(split(s, sep, maxSplit))
 
 proc split*(s: string, sep: string, maxSplit=high(int)): seq[string] {.noSideEffect,
-  rtl, extern: "nsuSplitCharString".} =
+  rtl, extern: "nsuSplitString".} =
+  ## The same as the `split` iterator, but is a proc that return as sequence
+  ## of substrings.
   accumulateResult(split(s, sep, maxSplit))
 
 proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
@@ -367,7 +389,11 @@ proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
 
 proc partition*(s: string, sep: string): tuple[pre, sep, post: string] {.
   noSideEffect, rtl, extern: "nsuPartitionString".} =
-  
+  ## Split a string at the first occurrence of 'sep' and return a 3 element
+  ## tuple containing the part before the separator, the separator itself (as a
+  ## string) and the part after the separator. If the separator is not found,
+  ## return a 3 element tuple containing the string itself, followed by two
+  ## empty strings.
   let parts = split(s, sep, maxSplit=1)
 
   if len(parts) > 1:
