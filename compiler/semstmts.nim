@@ -421,7 +421,9 @@ proc semConst(c: PContext, n: PNode): PNode =
       def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
-    if typ == nil: continue
+    if typ == nil:
+      LocalError(a.sons[2].info, errConstExprExpected)
+      continue
     if not typeAllowed(typ, skConst):
       LocalError(a.info, errXisNoType, typeToString(typ))
       continue

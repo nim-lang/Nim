@@ -207,6 +207,8 @@ proc newCall(a, b: PSym): PNode =
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
+  # -1 is correct here as param.position is 0 based but we have at position 0
+  # some nkEffect node:
   param.position = params.len-1
   addSon(params, newSymNode(param))
   incl(routine.typ.flags, tfCapturesEnv)

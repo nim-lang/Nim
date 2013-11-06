@@ -959,7 +959,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
 
 proc fixType(result, n: PNode) {.inline.} =
   # XXX do it deeply for complex values
-  if result.typ.isNil: result.typ = n.typ
+  #if result.typ.isNil: result.typ = n.typ
 
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
