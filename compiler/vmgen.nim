@@ -948,8 +948,15 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyFloat..tyFloat128: 
     result = newNodeIt(nkFloatLit, info, t)
   of tyVar, tyPointer, tyPtr, tyCString, tySequence, tyString, tyExpr, 
-     tyStmt, tyTypeDesc, tyProc, tyRef:
+     tyStmt, tyTypeDesc, tyRef:
     result = newNodeIT(nkNilLit, info, t)
+  of tyProc:
+    if t.callConv != ccClosure:
+      result = newNodeIT(nkNilLit, info, t)
+    else:
+      result = newNodeIT(nkPar, info, t)
+      result.add(newNodeIT(nkNilLit, info, t))
+      result.add(newNodeIT(nkNilLit, info, t))
   of tyObject: 
     result = newNodeIT(nkPar, info, t)
     getNullValueAux(t.n, result)
@@ -1071,7 +1078,8 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  var idx = getTemp(c, getSysType(tyInt))
+  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
   for i in 0.. <n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr:
@@ -1082,10 +1090,8 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
       c.freeTemp(idx)
     else:
       let tmp = c.genx(it)
-      c.gABx(it, opcLdImmInt, idx, i)
-      c.gABC(it, whichAsgnOpc(it, opcWrObj), dest, idx, tmp)
+      c.gABC(it, whichAsgnOpc(it, opcWrObj), dest, i.TRegister, tmp)
       c.freeTemp(tmp)
-  c.freeTemp(idx)
 
 proc genProc*(c: PCtx; s: PSym): int
 
@@ -1280,7 +1286,8 @@ proc optimizeJumps(c: PCtx; start: int) =
 proc genProc(c: PCtx; s: PSym): int =
   let x = s.ast.sons[optimizedCodePos]
   if x.kind == nkEmpty:
-    #echo "GENERATING CODE FOR ", s.name.s
+    #if s.name.s == "outterMacro" or s.name.s == "innerProc":
+    #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
     var eofInstr: TInstr
     if last >= 0 and c.code[last].opcode == opcEof:
@@ -1299,6 +1306,11 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
+    if tfCapturesEnv in s.typ.flags:
+      #let env = s.ast.sons[paramsPos].lastSon.sym
+      #assert env.position == 2
+      c.prc.slots[c.prc.maxSlots] = (inUse: true, kind: slotFixedLet)
+      inc c.prc.maxSlots
     gen(c, body)
     # generate final 'return' statement:
     c.gABC(body, opcRet)
@@ -1306,8 +1318,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.position = c.prc.maxSlots
-    #if s.name.s == "temp":
+    #if s.name.s == "innerProc":
     #  c.echoCode
+    #  echo renderTree(body)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.position

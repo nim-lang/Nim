@@ -133,6 +133,27 @@ proc moveConst(x, y: PNode) =
 # of PNimrodNode:
 template asgnRef(x, y: expr) = moveConst(x, y)
 
+proc copyValue(src: PNode): PNode =
+  if src == nil or nfIsRef in src.flags:
+    return src
+  result = newNode(src.kind)
+  result.info = src.info
+  result.typ = src.typ
+  result.flags = src.flags * PersistentNodeFlags
+  when defined(useNodeIds):
+    if result.id == nodeIdToDebug:
+      echo "COMES FROM ", src.id
+  case src.Kind
+  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
+  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkSym: result.sym = src.sym
+  of nkIdent: result.ident = src.ident
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  else:
+    newSeq(result.sons, sonsLen(src))
+    for i in countup(0, sonsLen(src) - 1):
+      result.sons[i] = copyValue(src.sons[i])
+
 proc asgnComplex(x, y: PNode) =
   if x.kind != y.kind:
     myreset(x)
@@ -149,7 +170,7 @@ proc asgnComplex(x, y: PNode) =
     else: x.sons[0] = y.sons[0]
   else:
     if x.kind notin {nkEmpty..nkNilLit}:
-      let y = y.copyTree
+      let y = y.copyValue
       for i in countup(0, sonsLen(y) - 1): addSon(x, y.sons[i])
 
 template getstr(a: expr): expr =
@@ -306,9 +327,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
     of opcWrGlobalRef:
-      asgnRef(c.globals.sons[instr.regBx-wordExcess-1], regs[ra].skipMeta)
+      asgnRef(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
     of opcWrGlobal:
-      asgnComplex(c.globals.sons[instr.regBx-wordExcess-1], regs[ra].skipMeta)
+      asgnComplex(c.globals.sons[instr.regBx-wordExcess-1], regs[ra])
     of opcLdArr:
       # a = b[c]
       let rb = instr.regB
@@ -326,12 +347,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       let rb = instr.regB
       let rc = instr.regC
       let idx = regs[rb].intVal
-      asgnComplex(regs[ra].sons[idx.int], regs[rc].skipMeta)
+      asgnComplex(regs[ra].sons[idx.int], regs[rc])
     of opcWrArrRef:
       let rb = instr.regB
       let rc = instr.regC
       let idx = regs[rb].intVal
-      asgnRef(regs[ra].sons[idx.int], regs[rc].skipMeta)
+      asgnRef(regs[ra].sons[idx.int], regs[rc])
     of opcLdObj:
       # a = b.c
       let rb = instr.regB
@@ -343,11 +364,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # a.b = c
       let rb = instr.regB
       let rc = instr.regC
-      asgnComplex(regs[ra].sons[rb], regs[rc].skipMeta)
+      #if regs[ra].isNil or regs[ra].sons.isNil or rb >= len(regs[ra]):
+      #  debug regs[ra]
+      #  debug regs[rc]
+      #  echo "RB ", rb
+      #  internalError(c.debug[pc], "argl")
+      asgnComplex(regs[ra].sons[rb], regs[rc])
     of opcWrObjRef:
       let rb = instr.regB
       let rc = instr.regC
-      asgnRef(regs[ra].sons[rb], regs[rc].skipMeta)
+      asgnRef(regs[ra].sons[rb], regs[rc])
     of opcWrStrIdx:
       decodeBC(nkStrLit)
       let idx = regs[rb].intVal.int
@@ -580,7 +606,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
       let rc = instr.regC
-      let prc = regs[rb].sym
+      let isClosure = regs[rb].kind == nkPar
+      let prc = if not isClosure: regs[rb].sym else: regs[rb].sons[0].sym
       let newPc = compile(c, prc)
       #echo "new pc ", newPc, " calling: ", prc.name.s
       var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
@@ -590,8 +617,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # pass every parameter by var (the language definition allows this):
       for i in 1 .. rc-1:
         newFrame.slots[i] = regs[rb+i]
+      if isClosure:
+        newFrame.slots[rc] = regs[rb].sons[1]
       # allocate the temporaries:
-      for i in rc .. <prc.position:
+      for i in rc+ord(isClosure) .. <prc.position:
         newFrame.slots[i] = newNode(nkEmpty)
       tos = newFrame
       move(regs, newFrame.slots)
@@ -656,6 +685,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcNew:
       let typ = c.types[instr.regBx - wordExcess]
       regs[ra] = getNullValue(typ, regs[ra].info)
+      regs[ra].flags.incl nfIsRef
     of opcNewSeq:
       let typ = c.types[instr.regBx - wordExcess]
       inc pc
@@ -724,6 +754,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       setMeta(regs[ra], regs[rb].skipMeta.sons[1])
     of opcNChild:
       decodeBC(nkMetaNode)
+      if regs[rb].kind != nkMetaNode:
+        internalError(c.debug[pc], "no MetaNode")
       setMeta(regs[ra], regs[rb].uast.sons[regs[rc].intVal.int])
     of opcNSetChild:
       decodeBC(nkMetaNode)
@@ -886,19 +918,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
          regs[rb].kind in {nkStrLit..nkTripleStrLit}:
         dest.strVal = regs[rb].strVal
       else:
-        #c.echoCode
-        #debug regs[ra]
-        #debug regs[rb]
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
       decodeBC(nkMetaNode)
       var k = regs[rb].intVal
-      if k < 0 or k > ord(high(TNodeKind)): 
+      if k < 0 or k > ord(high(TNodeKind)) or k == ord(nkMetaNode):
         internalError(c.debug[pc],
           "request to create a NimNode of invalid kind")
       let cc = regs[rc].skipMeta
       setMeta(regs[ra], newNodeI(TNodeKind(int(k)), 
         if cc.kind == nkNilLit: c.debug[pc] else: cc.info))
+      regs[ra].sons[0].flags.incl nfIsRef
     of opcNCopyNimNode:
       decodeB(nkMetaNode)
       setMeta(regs[ra], copyNode(regs[rb]))
@@ -1006,6 +1036,7 @@ proc setupMacroParam(x: PNode): PNode =
   result = x
   if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
   let y = result
+  y.flags.incl nfIsRef
   result = newNode(nkMetaNode)
   result.add y
 
@@ -1039,6 +1070,5 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
   if result != nil:
-    internalAssert result.kind == nkMetaNode
-    result = result.sons[0]
+    result = result.skipMeta
   c.callsite = nil
