@@ -367,7 +367,7 @@ proc split*(s: string, sep: char, maxSplit=high(int)): seq[string] {.noSideEffec
   ## of substrings.
   accumulateResult(split(s, sep, maxSplit))
 
-proc split*(s: string, sep: string, maxSplit=high(int)): seq[string] {.noSideEffect,
+proc split*(s, sep: string, maxSplit=high(int)): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
   ## The same as the `split` iterator, but is a proc that return as sequence
   ## of substrings.
@@ -387,7 +387,7 @@ proc partition*(s: string, sep: char): tuple[pre, sep, post: string] {.
   else:
     result = (s, "", "")
 
-proc partition*(s: string, sep: string): tuple[pre, sep, post: string] {.
+proc partition*(s, sep: string): tuple[pre, sep, post: string] {.
   noSideEffect, rtl, extern: "nsuPartitionString".} =
   ## Split a string at the first occurrence of 'sep' and return a 3 element
   ## tuple containing the part before the separator, the separator itself (as a
@@ -1331,3 +1331,5 @@ when isMainModule:
   assert(partition("test: test test", ':') == ("test", ":", " test test"))
   assert(partition("test: test:test", ":") == ("test", ":", " test:test"))
   assert(partition("test  test something", "  ") == ("test", "  ", "test something"))
+  assert(partition("--option", "=") == ("--option", "", ""))
+  assert(partition("", " ") == ("", "", ""))
