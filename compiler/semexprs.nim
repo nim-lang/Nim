@@ -299,7 +299,7 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
-proc IsOpImpl(c: PContext, n: PNode): PNode =
+proc isOpImpl(c: PContext, n: PNode): PNode =
   InternalAssert n.sonsLen == 3 and
     n[1].kind == nkSym and n[1].sym.kind == skType and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
@@ -353,7 +353,7 @@ proc semIs(c: PContext, n: PNode): PNode =
 
   let t1 = n[1].typ.sons[0]
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not containsGenericType(t1): result = IsOpImpl(c, n)
+  if not containsGenericType(t1): result = isOpImpl(c, n)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
