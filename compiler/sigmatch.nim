@@ -751,11 +751,24 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   # pushInfoContext(arg.info)
   openScope(c)
 
-  var testee = newSym(skParam, f.testeeName, f.sym, f.sym.info)
-  testee.typ = a
-  addDecl(c, testee)
+  for param in f.n[0]:
+    var
+      dummyName: PNode
+      dummyType: PType
+    
+    if param.kind == nkVarTy:
+      dummyName = param[0]
+      dummyType = makeVarType(c, a)
+    else:
+      dummyName = param
+      dummyType = a
 
-  for stmt in f.n:
+    InternalAssert dummyName.kind == nkIdent
+    var dummyParam = newSym(skParam, dummyName.ident, f.sym, f.sym.info)
+    dummyParam.typ = dummyType
+    addDecl(c, dummyParam)
+
+  for stmt in f.n[3]:
     var e = c.semTryExpr(c, copyTree(stmt))
     if e == nil:
       let expStr = renderTree(stmt, {renderNoComments})
