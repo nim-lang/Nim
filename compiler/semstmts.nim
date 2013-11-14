@@ -879,8 +879,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   if n.sons[genericParamsPos].kind != nkEmpty:
     illFormedAst(n)           # process parameters:
-  if n.sons[paramsPos].kind != nkEmpty: 
-    semParamList(c, n.sons[ParamsPos], nil, s)
+  if n.sons[paramsPos].kind != nkEmpty:
+    var gp = newNodeI(nkGenericParams, n.info)
+    semParamList(c, n.sons[ParamsPos], gp, s)
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
