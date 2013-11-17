@@ -3289,25 +3289,34 @@ Declarative type classes are written in the following form:
       for value in c:
         type(value) is T
 
-
-The identifiers following the `generic` keyword are treated as variables of
-the matched type and the body of the type class consists of arbitrary code that
-must be valid under these circumstances.
-
-Specifically, the type class will be matched if:
+The type class will be matched if:
 
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluatable boolean expressions in the body must be true
 
-Please note that the ``is`` operator allows you to easily verify the precise type
-signatures of the required operations, but since type inference and default
-parameters are still applied in the provided block, it's also possible to encode
-usage protocols that doesn't reveal implementation details.
+The identifiers following the `generic` keyword represent instances of the
+currently matched type. These instances can act both as variables of the type,
+when used in contexts, where a value is expected, and as the type itself, when
+used in a contexts, where a type is expected.
+
+Please note that the ``is`` operator allows you to easily verify the precise
+type signatures of the required operations, but since type inference and
+default parameters are still applied in the provided block, it's also possible
+to encode usage protocols that doesn't reveal implementation details.
+
+As a special rule providing further convenience when writing type classes, any
+type value appearing in a callable expression will be treated as a variable of
+the designated type for overload resolution purposes, unless the type value was
+passed in its explicit ``typedesc[T]`` form:
+
+.. code-block:: nimrod
+  type
+    OutputStream = generic S
+      write(var S, string)
 
 Much like generics, the user defined type classes will be instantiated exactly
 once for each tested type and any static code included within them will also be
 executed once.
-
 
 
 Return Type Inference

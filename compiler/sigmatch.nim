@@ -85,6 +85,7 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
   c.calleeSym = callee
   c.calleeScope = calleeScope
   initIdTable(c.bindings)
+  c.errors = nil
   if binding != nil and callee.kind in RoutineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
@@ -774,23 +775,16 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     addDecl(c, dummyParam)
 
   for stmt in f.n[3]:
-    var e = c.semTryExpr(c, copyTree(stmt))
-    if e == nil:
-      let expStr = renderTree(stmt, {renderNoComments})
-      m.errors.safeAdd("can't compile " & expStr & "  for " & a.typeToString)
-      return nil
+    var e = c.semTryExpr(c, copyTree(stmt), bufferErrors = false)
+    m.errors = bufferedMsgs
+    clearBufferedMsgs()
+    if e == nil: return nil
+
     case e.kind
-    of nkReturnStmt:
-      nil
+    of nkReturnStmt: nil
     of nkTypeSection: nil
     of nkConstDef: nil
-    else:
-      if e.typ != nil and e.typ.kind == tyBool:
-        let verdict = c.semConstExpr(c, e)
-        if verdict.intVal == 0:
-          let expStr = renderTree(stmt, {renderNoComments})
-          m.errors.safeAdd(expStr & " doesn't hold for " & a.typeToString)
-          return nil
+    else: nil
   
   result = arg
   put(m.bindings, f, a)
