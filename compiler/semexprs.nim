@@ -824,7 +824,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
-  discardCheck(result)
+  discardCheck(c, result)
   
 proc isTypeExpr(n: PNode): bool = 
   case n.kind
@@ -1218,7 +1218,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    discardCheck(result)
+    discardCheck(c, result)
   closeScope(c)
 
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
@@ -1439,12 +1439,12 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     newNode(nkCall, n.info, quotes)])
   result = semExpandToAst(c, result)
 
-proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc tryExpr(c: PContext, n: PNode,
+             flags: TExprFlags = {}, bufferErrors = false): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
   inc c.InCompilesContext
-  inc msgs.gSilence
   # do not halt after first error:
   msgs.gErrorMax = high(int)
   
@@ -1453,6 +1453,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
+  let oldErrorOutputs = errorOutputs
+  errorOutputs = if bufferErrors: {eInMemory} else: {}
   let oldContextLen = msgs.getInfoContextLen()
   
   let oldInGenericContext = c.InGenericContext
@@ -1475,7 +1477,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   setlen(gOwners, oldOwnerLen)
   c.currentScope = oldScope
   dec c.InCompilesContext
-  dec msgs.gSilence
+  errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
 

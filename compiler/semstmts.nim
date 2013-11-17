@@ -132,7 +132,7 @@ proc fixNilType(n: PNode) =
     for it in n: fixNilType(it)
   n.typ = nil
 
-proc discardCheck(result: PNode) =
+proc discardCheck(c: PContext, result: PNode) =
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -142,6 +142,10 @@ proc discardCheck(result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
+    elif c.InTypeClass > 0 and result.typ.kind == tyBool:
+      let verdict = semConstExpr(c, result)
+      if verdict.intVal == 0:
+        localError(result.info, "type class predicate failed.")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
@@ -169,7 +173,7 @@ proc semIf(c: PContext, n: PNode): PNode =
       typ = commonType(typ, it.sons[0].typ)
     else: illFormedAst(it)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for it in n: discardCheck(it.lastSon)
+    for it in n: discardCheck(c, it.lastSon)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == EnforceVoidContext: result.typ = EnforceVoidContext
@@ -230,7 +234,7 @@ proc semCase(c: PContext, n: PNode): PNode =
       localError(n.info, errNotAllCasesCovered)
   closeScope(c)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     # propagate any enforced VoidContext:
     if typ == EnforceVoidContext:
       result.typ = EnforceVoidContext
@@ -275,8 +279,8 @@ proc semTry(c: PContext, n: PNode): PNode =
     typ = commonType(typ, a.sons[length-1].typ)
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind == tyNil:
-    discardCheck(n.sons[0])
-    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    discardCheck(c, n.sons[0])
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     if typ == EnforceVoidContext:
       result.typ = EnforceVoidContext
   else:
@@ -1221,7 +1225,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
         voidContext = true
         n.typ = EnforceVoidContext
       if i != last or voidContext:
-        discardCheck(n.sons[i])
+        discardCheck(c, n.sons[i])
       else:
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ):
