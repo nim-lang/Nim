@@ -60,6 +60,7 @@ type
     threadEntries*: TSymSeq    # list of thread entries to check
     AmbiguousSymbols*: TIntSet # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
+    InTypeClass*: int          # > 0 if we are in a user-defined type class
     InGenericContext*: int     # > 0 if we are in a generic type
     InUnrolledContext*: int    # > 0 if we are unrolling a loop
     InCompilesContext*: int    # > 0 if we are in a ``compiles`` magic

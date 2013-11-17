@@ -321,10 +321,19 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
   else:
     var match: bool
     let t2 = n[2].typ
-    if t2.kind == tyTypeClass:
+    case t2.kind
+    of tyTypeClass:
       var m: TCandidate
       InitCandidate(m, t2)
       match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
+    of tyOrdinal:
+      var m: TCandidate
+      InitCandidate(m, t2)
+      match = isOrdinalType(t1)
+    of tySequence, tyArray, tySet:
+      var m: TCandidate
+      InitCandidate(m, t2)
+      match = typeRel(m, t2, t1) != isNone
     else:
       match = sameType(t1, t2)
  
@@ -763,7 +772,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  result = evalAtCompileTime(c, result)
+  if c.InTypeClass == 0:
+    result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
