@@ -202,7 +202,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation
+proc typeRel*(c: var TCandidate, f, a: PType): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind
   of tyArrayConstr: 
@@ -750,6 +750,11 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
   # pushInfoContext(arg.info)
   openScope(c)
+  inc c.InTypeClass
+
+  finally:
+    dec c.InTypeClass
+    closeScope(c)
 
   for param in f.n[0]:
     var
@@ -764,7 +769,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       dummyType = a
 
     InternalAssert dummyName.kind == nkIdent
-    var dummyParam = newSym(skParam, dummyName.ident, f.sym, f.sym.info)
+    var dummyParam = newSym(skType, dummyName.ident, f.sym, f.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
@@ -780,23 +785,27 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     of nkTypeSection: nil
     of nkConstDef: nil
     else:
-      if e.typ.kind == tyBool:
+      if e.typ != nil and e.typ.kind == tyBool:
         let verdict = c.semConstExpr(c, e)
         if verdict.intVal == 0:
           let expStr = renderTree(stmt, {renderNoComments})
           m.errors.safeAdd(expStr & " doesn't hold for " & a.typeToString)
           return nil
-
-  closeScope(c)
-
+  
   result = arg
   put(m.bindings, f, a)
 
-proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
+proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
-  var arg = argSemantized
-  var r: TTypeRelation
-  let fMaybeExpr = f.skipTypes({tyDistinct})
+  var
+    r: TTypeRelation
+    arg = argSemantized
+
+  let
+    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+        else: argType
+    fMaybeExpr = f.skipTypes({tyDistinct})
+
   case fMaybeExpr.kind
   of tyExpr:
     if fMaybeExpr.sonsLen == 0:
