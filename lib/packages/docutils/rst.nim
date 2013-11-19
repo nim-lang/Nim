@@ -868,6 +868,12 @@ proc parseLine(p: var TRstParser, father: PRstNode) =
     case p.tok[p.idx].kind
     of tkWhite, tkWord, tkOther, tkPunct: parseInline(p, father)
     else: break 
+
+proc parseUntilNewline(p: var TRstParser, father: PRstNode) = 
+  while True: 
+    case p.tok[p.idx].kind
+    of tkWhite, tkWord, tkAdornment, tkOther, tkPunct: parseInline(p, father)
+    of tkEof, tkIndent: break
   
 proc parseSection(p: var TRstParser, result: PRstNode)
 proc parseField(p: var TRstParser): PRstNode = 
@@ -1078,7 +1084,7 @@ proc parseParagraph(p: var TRstParser, result: PRstNode) =
 
 proc parseHeadline(p: var TRstParser): PRstNode = 
   result = newRstNode(rnHeadline)
-  parseLine(p, result)
+  parseUntilNewLine(p, result)
   assert(p.tok[p.idx].kind == tkIndent)
   assert(p.tok[p.idx + 1].kind == tkAdornment)
   var c = p.tok[p.idx + 1].symbol[0]
@@ -1172,7 +1178,7 @@ proc parseOverline(p: var TRstParser): PRstNode =
   inc(p.idx, 2)
   result = newRstNode(rnOverline)
   while true: 
-    parseLine(p, result)
+    parseUntilNewline(p, result)
     if p.tok[p.idx].kind == tkIndent: 
       inc(p.idx)
       if p.tok[p.idx - 1].ival > currInd(p): 
