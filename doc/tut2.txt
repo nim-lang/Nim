@@ -820,11 +820,12 @@ use the following snippet of code as the starting point:
     let
       inputString = readFile(cfgFilename)
     var
-      rawLines = split(inputString, {char(0x0a), char(0x0d)})
       source = ""
 
     result = initTable[string, string]()
-    for line in rawLines:
+    for line in inputString.splitLines:
+      # Ignore empty lines
+      if line.len < 1: continue
       var chunks = split(line, ',')
       if chunks.len != 2:
         quit("Input needs comma split values, got: " & line)
@@ -882,10 +883,11 @@ modified source code implementing the macro:
     let
       inputString = slurp(cfgFilename.strVal)
     var
-      rawLines = split(inputString, {char(0x0a), char(0x0d)})
       source = ""
 
-    for line in rawLines:
+    for line in inputString.splitLines:
+      # Ignore empty lines
+      if line.len < 1: continue
       var chunks = split(line, ',')
       if chunks.len != 2:
         error("Input needs comma split values, got: " & line)
@@ -1001,11 +1003,11 @@ macro:
   macro readCfgAndBuildAST(cfgFilename: string): stmt =
     let
       inputString = slurp(cfgFilename.strVal)
-    var
-      rawLines = split(inputString, {char(0x0a), char(0x0d)})
 
     result = newNimNode(nnkStmtList)
-    for line in rawLines:
+    for line in inputString.splitLines:
+      # Ignore empty lines
+      if line.len < 1: continue
       var chunks = split(line, ',')
       if chunks.len != 2:
         error("Input needs comma split values, got: " & line)
