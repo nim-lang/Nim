@@ -861,7 +861,7 @@ rid of the ``data.cfg`` file we would need to distribute along the binary, plus
 if the information is really constant, it doesn't make from a logical point of
 view to have it *mutable* in a global variable, it would be better if it was a
 constant. Finally, and likely the most valuable feature, we can implement some
-verification at compile time. You could think if this as a better *unit
+verification at compile time. You could think of this as a *better unit
 testing*, since it is impossible to obtain a binary unless everything is
 correct, preventing you to ship to users a broken program which won't start
 because a small critical file is missing or its contents changed by mistake to
