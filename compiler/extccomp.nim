@@ -583,7 +583,7 @@ proc CallCCompiler*(projectfile: string) =
       else:
         rawMessage(errGenerated, " execution of an external program failed; " &
                    "rerun with --parallelBuild:1 to see the error message")
-  if optNoLinking notin gGlobalOptions and cmds.len > 0:
+  if optNoLinking notin gGlobalOptions:
     # call the linker:
     var it = PStrEntry(toLink.head)
     var objfiles = ""
