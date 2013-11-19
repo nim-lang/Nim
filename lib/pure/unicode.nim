@@ -55,31 +55,31 @@ template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
     result = TRune(ord(s[i]))
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
+    # assert(ord(s[i+1]) shr 6 == 0b10)
     result = TRune((ord(s[i]) and (ones(5))) shl 6 or 
                    (ord(s[i+1]) and ones(6)))
     when doInc: inc(i, 2)
   elif ord(s[i]) shr 4 == 0b1110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
+    # assert(ord(s[i+1]) shr 6 == 0b10)
+    # assert(ord(s[i+2]) shr 6 == 0b10)
     result = TRune((ord(s[i]) and ones(4)) shl 12 or
              (ord(s[i+1]) and ones(6)) shl 6 or
              (ord(s[i+2]) and ones(6)))
     when doInc: inc(i, 3)
   elif ord(s[i]) shr 3 == 0b11110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    assert(ord(s[i+3]) shr 6 == 0b10)
+    # assert(ord(s[i+1]) shr 6 == 0b10)
+    # assert(ord(s[i+2]) shr 6 == 0b10)
+    # assert(ord(s[i+3]) shr 6 == 0b10)
     result = TRune((ord(s[i]) and ones(3)) shl 18 or
              (ord(s[i+1]) and ones(6)) shl 12 or
              (ord(s[i+2]) and ones(6)) shl 6 or
              (ord(s[i+3]) and ones(6)))
     when doInc: inc(i, 4)
   elif ord(s[i]) shr 2 == 0b111110: 
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    assert(ord(s[i+3]) shr 6 == 0b10)
-    assert(ord(s[i+4]) shr 6 == 0b10)
+    # assert(ord(s[i+1]) shr 6 == 0b10)
+    # assert(ord(s[i+2]) shr 6 == 0b10)
+    # assert(ord(s[i+3]) shr 6 == 0b10)
+    # assert(ord(s[i+4]) shr 6 == 0b10)
     result = TRune((ord(s[i]) and ones(2)) shl 24 or
              (ord(s[i+1]) and ones(6)) shl 18 or
              (ord(s[i+2]) and ones(6)) shl 12 or
@@ -87,11 +87,11 @@ template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
              (ord(s[i+4]) and ones(6)))
     when doInc: inc(i, 5)
   elif ord(s[i]) shr 1 == 0b1111110: 
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    assert(ord(s[i+3]) shr 6 == 0b10)
-    assert(ord(s[i+4]) shr 6 == 0b10)
-    assert(ord(s[i+5]) shr 6 == 0b10)
+    # assert(ord(s[i+1]) shr 6 == 0b10)
+    # assert(ord(s[i+2]) shr 6 == 0b10)
+    # assert(ord(s[i+3]) shr 6 == 0b10)
+    # assert(ord(s[i+4]) shr 6 == 0b10)
+    # assert(ord(s[i+5]) shr 6 == 0b10)
     result = TRune((ord(s[i]) and ones(1)) shl 30 or
              (ord(s[i+1]) and ones(6)) shl 24 or
              (ord(s[i+2]) and ones(6)) shl 18 or
