@@ -154,9 +154,8 @@ proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
 proc `==`*(a, b: TPort): bool {.borrow.}
   ## ``==`` for ports.
 
-proc `$`*(p: TPort): string = 
+proc `$`*(p: TPort): string {.borrow.}
   ## returns the port number as a string
-  result = $ze(int16(p))
 
 proc ntohl*(x: int32): int32 = 
   ## Converts 32-bit integers from network to host byte order.
