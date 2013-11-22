@@ -374,10 +374,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings : seq[string]
@@ -390,10 +390,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings = newSeq[string](3)
