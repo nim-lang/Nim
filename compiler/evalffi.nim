@@ -441,3 +441,46 @@ proc callForeignFunction*(call: PNode): PNode =
   for i in 1 .. call.len-1:
     call.sons[i] = unpack(args[i-1], typ.sons[i], call[i])
     dealloc args[i-1]
+
+proc callForeignFunction*(fn: PNode, fntyp: PType,
+                          args: var TNodeSeq, start, len: int,
+                          info: TLineInfo): PNode =
+  internalAssert fn.kind == nkPtrLit
+  
+  var cif: TCif
+  var sig: TParamList
+  for i in 0..len-1:
+    var aTyp = args[i+start].typ
+    if aTyp.isNil:
+      internalAssert i+1 < fntyp.len
+      aTyp = fntyp.sons[i+1]
+      args[i+start].typ = aTyp
+    sig[i] = mapType(aTyp)
+    if sig[i].isNil: globalError(info, "cannot map FFI type")
+  
+  if prep_cif(cif, mapCallConv(fntyp.callConv, info), cuint(len),
+              mapType(fntyp.sons[0]), sig) != OK:
+    globalError(info, "error in FFI call")
+  
+  var cargs: TArgList
+  let fn = cast[pointer](fn.intVal)
+  for i in 0 .. len-1:
+    let t = args[i+start].typ
+    cargs[i] = alloc0(packSize(args[i+start], t))
+    pack(args[i+start], t, cargs[i])
+  let retVal = if isEmptyType(fntyp.sons[0]): pointer(nil)
+               else: alloc(fntyp.sons[0].getSize.int)
+
+  libffi.call(cif, fn, retVal, cargs)
+  
+  if retVal.isNil: 
+    result = emptyNode
+  else:
+    result = unpack(retVal, fntyp.sons[0], nil)
+    result.info = info
+
+  if retVal != nil: dealloc retVal
+  for i in 0 .. len-1:
+    let t = args[i+start].typ
+    args[i+start] = unpack(cargs[i], t, args[i+start])
+    dealloc cargs[i]

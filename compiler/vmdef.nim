@@ -175,6 +175,7 @@ type
     module*: PSym
     callsite*: PNode
     mode*: TEvalMode
+    features*: TSandboxFlags
 
   TPosition* = distinct int
 

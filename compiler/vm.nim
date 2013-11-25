@@ -14,9 +14,12 @@ import ast except getstr
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents, trees, renderer
+  parser, vmdeps, idents, trees, renderer, options
 
 from semfold import leValueConv, ordinalValToString
+
+when hasFFI:
+  import evalffi
 
 type
   PStackFrame* = ref TStackFrame
@@ -608,24 +611,39 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       let rc = instr.regC
       let isClosure = regs[rb].kind == nkPar
       let prc = if not isClosure: regs[rb].sym else: regs[rb].sons[0].sym
-      let newPc = compile(c, prc)
-      #echo "new pc ", newPc, " calling: ", prc.name.s
-      var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
-      newSeq(newFrame.slots, prc.position)
-      if not isEmptyType(prc.typ.sons[0]):
-        newFrame.slots[0] = getNullValue(prc.typ.sons[0], prc.info)
-      # pass every parameter by var (the language definition allows this):
-      for i in 1 .. rc-1:
-        newFrame.slots[i] = regs[rb+i]
-      if isClosure:
-        newFrame.slots[rc] = regs[rb].sons[1]
-      # allocate the temporaries:
-      for i in rc+ord(isClosure) .. <prc.position:
-        newFrame.slots[i] = newNode(nkEmpty)
-      tos = newFrame
-      move(regs, newFrame.slots)
-      # -1 for the following 'inc pc'
-      pc = newPc-1
+      if sfImportc in prc.flags:
+        if allowFFI notin c.features:
+          globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
+        # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
+        # 'regs' in a register:
+        when hasFFI:
+          let newValue = callForeignFunction(c.globals.sons[prc.position-1],
+                                             prc.typ, tos.slots,
+                                             rb+1, rc-1, c.debug[pc])
+          if newValue.kind != nkEmpty:
+            assert instr.opcode == opcIndCallAsgn
+            regs[ra] = newValue
+        else:
+          globalError(c.debug[pc], errGenerated, "VM not built with FFI support")
+      else:
+        let newPc = compile(c, prc)
+        #echo "new pc ", newPc, " calling: ", prc.name.s
+        var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
+        newSeq(newFrame.slots, prc.offset)
+        if not isEmptyType(prc.typ.sons[0]):
+          newFrame.slots[0] = getNullValue(prc.typ.sons[0], prc.info)
+        # pass every parameter by var (the language definition allows this):
+        for i in 1 .. rc-1:
+          newFrame.slots[i] = regs[rb+i]
+        if isClosure:
+          newFrame.slots[rc] = regs[rb].sons[1]
+        # allocate the temporaries:
+        for i in rc+ord(isClosure) .. <prc.offset:
+          newFrame.slots[i] = newNode(nkEmpty)
+        tos = newFrame
+        move(regs, newFrame.slots)
+        # -1 for the following 'inc pc'
+        pc = newPc-1
     of opcTJmp:
       # jump Bx if A != 0
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
@@ -1054,7 +1072,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
-  let maxSlots = sym.position
+  let maxSlots = sym.offset
   newSeq(tos.slots, maxSlots)
   # setup arguments:
   var L = n.safeLen
