@@ -876,8 +876,7 @@ proc freshType(res, prev: PType): PType {.inline.} =
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   result = newOrPrevType(tyTypeClass, prev, c)
-  result.testeeName = considerAcc(n[0])
-  result.n = n[3]
+  result.n = n
 
   let
     pragmas = n[1]

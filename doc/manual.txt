@@ -893,11 +893,12 @@ integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``.
 
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
-during runtime (like strings). A sequence ``S`` is always indexed by integers
-from 0 to ``len(S)-1`` and its bounds are checked. Sequences can be
-constructed by the array constructor ``[]`` in conjunction with the array to
-sequence operator ``@``. Another way to allocate space for a sequence is to
-call the built-in ``newSeq`` procedure.
+during runtime (like strings). Sequences are implemented as growable arrays, 
+allocating pieces of memory as items are added. A sequence ``S`` is always
+indexed by integers from 0 to ``len(S)-1`` and its bounds are checked. 
+Sequences can be constructed by the array constructor ``[]`` in conjunction
+with the array to sequence operator ``@``. Another way to allocate space for a
+sequence is to call the built-in ``newSeq`` procedure.
 
 A sequence may be passed to a parameter that is of type *open array*.
 
@@ -3288,25 +3289,34 @@ Declarative type classes are written in the following form:
       for value in c:
         type(value) is T
 
-
-The identifiers following the `generic` keyword are treated as variables of
-the matched type and the body of the type class consists of arbitrary code that
-must be valid under these circumstances.
-
-Specifically, the type class will be matched if:
+The type class will be matched if:
 
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluatable boolean expressions in the body must be true
 
-Please note that the ``is`` operator allows you to easily verify the precise type
-signatures of the required operations, but since type inference and default
-parameters are still applied in the provided block, it's also possible to encode
-usage protocols that doesn't reveal implementation details.
+The identifiers following the `generic` keyword represent instances of the
+currently matched type. These instances can act both as variables of the type,
+when used in contexts, where a value is expected, and as the type itself, when
+used in a contexts, where a type is expected.
+
+Please note that the ``is`` operator allows you to easily verify the precise
+type signatures of the required operations, but since type inference and
+default parameters are still applied in the provided block, it's also possible
+to encode usage protocols that doesn't reveal implementation details.
+
+As a special rule providing further convenience when writing type classes, any
+type value appearing in a callable expression will be treated as a variable of
+the designated type for overload resolution purposes, unless the type value was
+passed in its explicit ``typedesc[T]`` form:
+
+.. code-block:: nimrod
+  type
+    OutputStream = generic S
+      write(var S, string)
 
 Much like generics, the user defined type classes will be instantiated exactly
 once for each tested type and any static code included within them will also be
 executed once.
-
 
 
 Return Type Inference
@@ -4673,9 +4683,10 @@ A proc can be marked with the `noStackFrame`:idx: pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
-the used C compiler). This is useful for procs that only consist of an
-assembler statement.
+the used C compiler).
 
+**Note**: This pragma should only be used by procs which consist solely of assembler
+statements.
 
 error pragma
 ------------
