@@ -11,7 +11,10 @@
 
 import
   unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef, 
-  trees, intsets, rodread, magicsys
+  trees, intsets, rodread, magicsys, options
+
+when hasFFI:
+  import evalffi
 
 proc codeListing(c: PCtx, result: var string) =
   # first iteration: compute all necessary labels:
@@ -395,9 +398,14 @@ proc genReturn(c: PCtx; n: PNode) =
 proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   let x = c.getTempRange(n.len, slotTempUnknown)
-  for i in 0.. <n.len: 
+  # varargs need 'opcSetType' for the FFI support:
+  let fntyp = n.sons[0].typ
+  for i in 0.. <n.len:
     var r: TRegister = x+i
     c.gen(n.sons[i], r)
+    if i >= fntyp.len:
+      internalAssert tfVarargs in fntyp.flags
+      c.gABx(n, opcSetType, r, c.genType(n.sons[i].typ))
   if dest < 0:
     c.gABC(n, opcIndCall, 0, x, n.len)
   else:
@@ -884,13 +892,26 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
   let lit = genLiteral(c, n)
   c.gABx(n, opc, dest, lit)
 
+proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
+  when hasFFI:
+    if allowFFI in c.features:
+      c.globals.add(importcSymbol(s))
+      s.position = c.globals.len
+    else:
+      localError(info, errGenerated, "VM is not allowed to 'importc'")
+  else:
+    localError(info, errGenerated,
+               "cannot 'importc' variable at compile time")
+
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
   let s = n.sym
   if sfGlobal in s.flags:
     if dest < 0: dest = c.getTemp(s.typ)
     if s.position == 0:
-      c.globals.add(s.ast)
-      s.position = c.globals.len
+      if sfImportc in s.flags: c.importcSym(n.info, s)
+      else:
+        c.globals.add(s.ast)
+        s.position = c.globals.len
       # XXX var g = codeHere() ?
     c.gABx(n, opcLdGlobal, dest, s.position)
   else:
@@ -1003,9 +1024,11 @@ proc genVarSection(c: PCtx; n: PNode) =
       let s = a.sons[0].sym
       if sfGlobal in s.flags:
         if s.position == 0:
-          let sa = if s.ast.isNil: getNullValue(s.typ, a.info) else: s.ast
-          c.globals.add(sa)
-          s.position = c.globals.len
+          if sfImportc in s.flags: c.importcSym(a.info, s)
+          else:
+            let sa = if s.ast.isNil: getNullValue(s.typ, a.info) else: s.ast
+            c.globals.add(sa)
+            s.position = c.globals.len
         if a.sons[2].kind == nkEmpty:
           when false:
             withTemp(tmp, s.typ):
@@ -1103,6 +1126,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest)
     of skProc, skConverter, skMacro, skMethod, skIterator:
+      if sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       gen(c, s.ast, dest)
@@ -1317,11 +1341,11 @@ proc genProc(c: PCtx; s: PSym): int =
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
-    s.position = c.prc.maxSlots
+    s.offset = c.prc.maxSlots
     #if s.name.s == "innerProc":
     #  c.echoCode
     #  echo renderTree(body)
     c.prc = oldPrc
   else:
-    c.prc.maxSlots = s.position
+    c.prc.maxSlots = s.offset
     result = x.intVal.int

@@ -1020,8 +1020,8 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 # floating point formating:
 
-proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
-                                     noSideEffect.}
+proc c_sprintf(buf, frmt: CString) {.header: "<stdio.h>", importc: "sprintf",
+                                     varargs, noSideEffect.}
 
 type
   TFloatFormat* = enum ## the different modes of floating point formating
