@@ -849,7 +849,7 @@ const
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
   
-  seqShallowFlag = 1 shl (sizeof(int)*8-1)
+  seqShallowFlag = low(int)
   
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1795,7 +1795,7 @@ when defined(JS):
 
 elif hostOS != "standalone":
   {.push stack_trace:off, profiler:off.}
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])

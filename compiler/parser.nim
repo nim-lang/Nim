@@ -1624,10 +1624,23 @@ proc parseObject(p: var TParser): PNode =
     return
   addSon(result, parseObjectPart(p))
 
+proc parseTypeClassParam(p: var TParser): PNode =
+  if p.tok.tokType == tkVar:
+    getTok(p)
+    result = newNode(nkVarTy)
+    result.addSon(p.parseSymbol)
+  else:
+    result = p.parseSymbol
+
 proc parseTypeClass(p: var TParser): PNode =
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
-  addSon(result, p.parseSymbol)
+  var args = newNode(nkArgList)
+  addSon(result, args)
+  addSon(args, p.parseTypeClassParam)
+  while p.tok.TokType == tkComma:
+    getTok(p)
+    addSon(args, p.parseTypeClassParam)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     addSon(result, parsePragma(p))
   else:

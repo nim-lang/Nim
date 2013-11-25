@@ -98,6 +98,7 @@ type
       params*: seq[string] ## Parameters of the IRC message
       origin*: string      ## The channel/user that this msg originated from
       raw*: string         ## Raw IRC message
+      timestamp*: TTime    ## UNIX epoch time the message was received
   
 proc send*(irc: PIRC, message: string, sendImmediately = false) =
   ## Sends ``message`` as a raw command. It adds ``\c\L`` for you.
@@ -160,9 +161,10 @@ proc isNumber(s: string): bool =
   result = i == s.len and s.len > 0
 
 proc parseMessage(msg: string): TIRCEvent =
-  result.typ = EvMsg
-  result.cmd = MUnknown
-  result.raw = msg
+  result.typ       = EvMsg
+  result.cmd       = MUnknown
+  result.raw       = msg
+  result.timestamp = times.getTime()
   var i = 0
   # Process the prefix
   if msg[i] == ':':

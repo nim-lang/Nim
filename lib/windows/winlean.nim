@@ -335,6 +335,9 @@ const
 proc WSAGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
+  TSocketHandle* = distinct int
+
+type
   TWSAData* {.pure, final, importc: "WSADATA", header: "Winsock2.h".} = object 
     wVersion, wHighVersion: int16
     szDescription: array[0..WSADESCRIPTION_LEN, char]
@@ -389,12 +392,10 @@ type
     h_addrtype*: int16
     h_length*: int16
     h_addr_list*: cstringArray
-    
-  TWinSocket* = cint
   
   TFdSet* {.pure, final.} = object
     fd_count*: cint # unsigned
-    fd_array*: array[0..FD_SETSIZE-1, TWinSocket]
+    fd_array*: array[0..FD_SETSIZE-1, TSocketHandle]
     
   TTimeval* {.pure, final.} = object
     tv_sec*, tv_usec*: int32
@@ -413,6 +414,22 @@ type
 
 var
   SOMAXCONN* {.importc, header: "Winsock2.h".}: cint
+  INVALID_SOCKET* {.importc, header: "Winsock2.h".}: TSocketHandle
+  SOL_SOCKET* {.importc, header: "Winsock2.h".}: cint
+  SO_DEBUG* {.importc, header: "Winsock2.h".}: cint ## turn on debugging info recording
+  SO_ACCEPTCONN* {.importc, header: "Winsock2.h".}: cint # socket has had listen()
+  SO_REUSEADDR* {.importc, header: "Winsock2.h".}: cint # allow local address reuse
+  SO_KEEPALIVE* {.importc, header: "Winsock2.h".}: cint # keep connections alive
+  SO_DONTROUTE* {.importc, header: "Winsock2.h".}: cint # just use interface addresses
+  SO_BROADCAST* {.importc, header: "Winsock2.h".}: cint # permit sending of broadcast msgs
+  SO_USELOOPBACK* {.importc, header: "Winsock2.h".}: cint # bypass hardware when possible
+  SO_LINGER* {.importc, header: "Winsock2.h".}: cint # linger on close if data present
+  SO_OOBINLINE* {.importc, header: "Winsock2.h".}: cint # leave received OOB data in line
+
+  SO_DONTLINGER* {.importc, header: "Winsock2.h".}: cint
+  SO_EXCLUSIVEADDRUSE* {.importc, header: "Winsock2.h".}: cint # disallow local address reuse
+
+proc `==`*(x, y: TSocketHandle): bool {.borrow.}
 
 proc getservbyname*(name, proto: cstring): ptr TServent {.
   stdcall, importc: "getservbyname", dynlib: ws2dll.}
@@ -426,45 +443,45 @@ proc gethostbyaddr*(ip: ptr TInAddr, len: cuint, theType: cint): ptr THostEnt {.
 proc gethostbyname*(name: cstring): ptr THostEnt {.
   stdcall, importc: "gethostbyname", dynlib: ws2dll.}
 
-proc socket*(af, typ, protocol: cint): TWinSocket {.
+proc socket*(af, typ, protocol: cint): TSocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}
 
-proc closesocket*(s: TWinSocket): cint {.
+proc closesocket*(s: TSocketHandle): cint {.
   stdcall, importc: "closesocket", dynlib: ws2dll.}
 
-proc accept*(s: TWinSocket, a: ptr TSockAddr, addrlen: ptr TSockLen): TWinSocket {.
+proc accept*(s: TSocketHandle, a: ptr TSockAddr, addrlen: ptr TSockLen): TSocketHandle {.
   stdcall, importc: "accept", dynlib: ws2dll.}
-proc bindSocket*(s: TWinSocket, name: ptr TSockAddr, namelen: TSockLen): cint {.
+proc bindSocket*(s: TSocketHandle, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "bind", dynlib: ws2dll.}
-proc connect*(s: TWinSocket, name: ptr TSockAddr, namelen: TSockLen): cint {.
+proc connect*(s: TSocketHandle, name: ptr TSockAddr, namelen: TSockLen): cint {.
   stdcall, importc: "connect", dynlib: ws2dll.}
-proc getsockname*(s: TWinSocket, name: ptr TSockAddr, 
+proc getsockname*(s: TSocketHandle, name: ptr TSockAddr, 
                   namelen: ptr TSockLen): cint {.
   stdcall, importc: "getsockname", dynlib: ws2dll.}
-proc getsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
+proc getsockopt*(s: TSocketHandle, level, optname: cint, optval: pointer,
                  optlen: ptr TSockLen): cint {.
   stdcall, importc: "getsockopt", dynlib: ws2dll.}
-proc setsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
+proc setsockopt*(s: TSocketHandle, level, optname: cint, optval: pointer,
                  optlen: TSockLen): cint {.
   stdcall, importc: "setsockopt", dynlib: ws2dll.}
 
-proc listen*(s: TWinSocket, backlog: cint): cint {.
+proc listen*(s: TSocketHandle, backlog: cint): cint {.
   stdcall, importc: "listen", dynlib: ws2dll.}
-proc recv*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
+proc recv*(s: TSocketHandle, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "recv", dynlib: ws2dll.}
-proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
+proc recvfrom*(s: TSocketHandle, buf: cstring, len, flags: cint, 
                fromm: ptr TSockAddr, fromlen: ptr Tsocklen): cint {.
   stdcall, importc: "recvfrom", dynlib: ws2dll.}
 proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
              timeout: ptr TTimeval): cint {.
   stdcall, importc: "select", dynlib: ws2dll.}
-proc send*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
+proc send*(s: TSocketHandle, buf: pointer, len, flags: cint): cint {.
   stdcall, importc: "send", dynlib: ws2dll.}
-proc sendto*(s: TWinSocket, buf: pointer, len, flags: cint,
+proc sendto*(s: TSocketHandle, buf: pointer, len, flags: cint,
              to: ptr TSockAddr, tolen: Tsocklen): cint {.
   stdcall, importc: "sendto", dynlib: ws2dll.}
 
-proc shutdown*(s: TWinSocket, how: cint): cint {.
+proc shutdown*(s: TSocketHandle, how: cint): cint {.
   stdcall, importc: "shutdown", dynlib: ws2dll.}
   
 proc getnameinfo*(a1: ptr Tsockaddr, a2: Tsocklen,
@@ -475,13 +492,13 @@ proc getnameinfo*(a1: ptr Tsockaddr, a2: Tsocklen,
 proc inet_addr*(cp: cstring): int32 {.
   stdcall, importc: "inet_addr", dynlib: ws2dll.} 
 
-proc WSAFDIsSet(s: TWinSocket, FDSet: var TFDSet): bool {.
+proc WSAFDIsSet(s: TSocketHandle, FDSet: var TFDSet): bool {.
   stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll.}
 
-proc FD_ISSET*(Socket: TWinSocket, FDSet: var TFDSet): cint = 
+proc FD_ISSET*(Socket: TSocketHandle, FDSet: var TFDSet): cint = 
   result = if WSAFDIsSet(Socket, FDSet): 1'i32 else: 0'i32
 
-proc FD_SET*(Socket: TWinSocket, FDSet: var TFDSet) = 
+proc FD_SET*(Socket: TSocketHandle, FDSet: var TFDSet) = 
   if FDSet.fd_count < FD_SETSIZE:
     FDSet.fd_array[int(FDSet.fd_count)] = Socket
     inc(FDSet.fd_count)

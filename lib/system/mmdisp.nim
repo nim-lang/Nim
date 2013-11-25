@@ -28,6 +28,7 @@ const
   reallyOsDealloc = true
   coalescRight = true
   coalescLeft = true
+  logAlloc = false
 
 type
   PPointer = ptr pointer

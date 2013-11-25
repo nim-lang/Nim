@@ -520,11 +520,18 @@ proc allocInv(a: TMemRegion): bool =
   for s in low(a.freeSmallChunks)..high(a.freeSmallChunks):
     var c = a.freeSmallChunks[s]
     while c != nil:
-      if c.next == c: return false
-      if c.size != s * MemAlign: return false
+      if c.next == c: 
+        echo "[SYSASSERT] c.next == c"
+        return false
+      if c.size != s * MemAlign: 
+        echo "[SYSASSERT] c.size != s * MemAlign"
+        return false
       var it = c.freeList
       while it != nil:
-        if it.zeroField != 0: return false
+        if it.zeroField != 0: 
+          echo "[SYSASSERT] it.zeroField != 0"
+          cprintf("%ld %p\n", it.zeroField, it)
+          return false
         it = it.next
       c = c.next
   result = true
@@ -591,6 +598,7 @@ proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
     add(a, a.root, cast[TAddress](result), cast[TAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
+  when logAlloc: cprintf("rawAlloc: %ld %p\n", requestedSize, result)
 
 proc rawAlloc0(a: var TMemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
@@ -638,6 +646,7 @@ proc rawDealloc(a: var TMemRegion, p: pointer) =
     del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
+  when logAlloc: cprintf("rawDealloc: %p\n", p)
 
 proc isAllocatedPtr(a: TMemRegion, p: pointer): bool = 
   if isAccessible(a, p):
