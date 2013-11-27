@@ -2619,12 +2619,13 @@ type
   PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
     ## represents a Nimrod AST node. Macros operate on this type.
 
-template eval*(blk: stmt): stmt =
-  ## executes a block of code at compile time just as if it was a macro
-  ## optionally, the block can return an AST tree that will replace the 
-  ## eval expression
-  macro payload: stmt {.gensym.} = blk
-  payload()
+when false:
+  template eval*(blk: stmt): stmt =
+    ## executes a block of code at compile time just as if it was a macro
+    ## optionally, the block can return an AST tree that will replace the 
+    ## eval expression
+    macro payload: stmt {.gensym.} = blk
+    payload()
 
 when hostOS != "standalone":
   proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
