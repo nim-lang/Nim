@@ -140,26 +140,27 @@ proc IsOpImpl(c: PContext, n: PNode): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode
 
-proc symFromType(t: PType, info: TLineInfo): PSym =
-  if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent"AnonType", t.owner, info)
-  result.flags.incl sfAnon
-  result.typ = t
+when false:
+  proc symFromType(t: PType, info: TLineInfo): PSym =
+    if t.sym != nil: return t.sym
+    result = newSym(skType, getIdent"AnonType", t.owner, info)
+    result.flags.incl sfAnon
+    result.typ = t
 
-proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-  result = newSymNode(symFromType(t, info), info)
-  result.typ = makeTypeDesc(c, t)
+  proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+    result = newSymNode(symFromType(t, info), info)
+    result.typ = makeTypeDesc(c, t)
 
 proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
   result = newEvalContext(c.module, mode)
   result.getType = proc (n: PNode): PNode =
-    var e = tryExpr(c, n)
-    if e == nil:
-      result = symNodeFromType(c, errorType(c), n.info)
-    elif e.typ == nil:
+    result = tryExpr(c, n)
+    if result == nil:
+      result = newSymNode(errorSym(c, n))
+    elif result.typ == nil:
       result = newSymNode(getSysSym"void")
     else:
-      result = symNodeFromType(c, e.typ, n.info)
+      result.typ = makeTypeDesc(c, result.typ)
 
   result.handleIsOperator = proc (n: PNode): PNode =
     result = IsOpImpl(c, n)
@@ -210,7 +211,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     of tyTypeDesc:
       if n.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
-      result = symNodeFromType(c, typ, n.info)
+      result.typ = makeTypeDesc(c, typ)
+      #result = symNodeFromType(c, typ, n.info)
     else:
       result = semExpr(c, result)
       result = fitNode(c, s.typ.sons[0], result)
