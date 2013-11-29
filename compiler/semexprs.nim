@@ -191,7 +191,7 @@ proc isCastable(dst, src: PType): bool =
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
 
-proc semConv(c: PContext, n: PNode, s: PSym): PNode =
+proc semConv(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     LocalError(n.info, errConvNeedsOneArg)
     return n
@@ -738,8 +738,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
     let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
-    result = semConv(c, n, symFromType(destType, n.info))
-    return
+    return semConv(c, n)
   else:
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -1048,7 +1047,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # The result so far is a tyTypeDesc bound 
     # a tyGenericBody. The line below will substitute
     # it with the instantiated type.
-    result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+    result = n
+    result.typ = makeTypeDesc(c, semTypeNode(c, n, nil))
+    #result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
   of tyTuple: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
@@ -1883,7 +1884,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
-    result = symNodeFromType(c, typ, n.info)
+    result.typ = makeTypeDesc(c, typ)
+    #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
@@ -1906,7 +1908,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:
-          result = semConv(c, n, s)
+          result = semConv(c, n)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
         elif Contains(c.AmbiguousSymbols, s.id): 
