@@ -17,11 +17,37 @@
 ##
 ##   echo loadHtml("mydirty.html")
 ##
-##
 ## Every tag in the resulting tree is in lower case.
 ##
 ## **Note:** The resulting ``PXmlNode`` already uses the ``clientData`` field, 
 ## so it cannot be used by clients of this library.
+##
+## Example: Transforming hyperlinks
+## ================================
+##
+## This code demonstrates how you can iterate over all the tags in an HTML file
+## and write back the modified version. In this case we look for hyperlinks
+## ending with the extension ``.rst`` and convert them to ``.html``.
+##
+## .. code-block:: nimrod
+##
+##   import htmlparser
+##   import xmltree  # To use '$' for PXmlNode
+##   import strtabs  # To access PXmlAttributes
+##   import os       # To use splitFile
+##   import strutils # To use cmpIgnoreCase
+##
+##   proc transformHyperlinks() =
+##     let html = loadHTML("input.html")
+##
+##     for a in html.findAll("a"):
+##       let href = a.attrs["href"]
+##       if not href.isNil:
+##         let (dir, filename, ext) = splitFile(href)
+##         if cmpIgnoreCase(ext, ".rst") == 0:
+##           a.attrs["href"] = dir / filename & ".html"
+##
+##     writeFile("output.html", $html)
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
