@@ -2,7 +2,8 @@ discard """
   file: "tlenopenarray.nim"
   output: '''1
 0
-Whopie'''
+Whopie
+12'''
 """
 
 echo len([1_000_000]) #OUT 1
@@ -27,3 +28,14 @@ var w = TWidget(names: initQueue[string]())
 add(w.names, "Whopie")
 
 for n in w.names: echo(n)
+
+# bug #681
+
+type TSomeRange = object
+  hour: range[0..23]
+
+var value: string
+var val12 = TSomeRange(hour: 12)
+
+value = $(if val12.hour > 12: val12.hour - 12 else: val12.hour)
+echo value
