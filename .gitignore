@@ -6,6 +6,7 @@
 nimcache
 lib/nimcache
 tools/nimcache
+tools/niminst/niminst
 tools/nimweb
 tests/nimcache
 tests/accept/run/nimcache
