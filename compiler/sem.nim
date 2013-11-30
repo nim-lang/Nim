@@ -90,6 +90,24 @@ proc commonType*(x, y: PType): PType =
     let idx = ord(b.kind in {tyArray, tyArrayConstr})
     if a.sons[idx].kind == tyEmpty: return y
     #elif b.sons[idx].kind == tyEmpty: return x
+  elif a.kind == tyRange and b.kind == tyRange:
+    # consider:  (range[0..3], range[0..4]) here. We should make that
+    # range[0..4]. But then why is (range[0..4], 6) not range[0..6]?
+    # But then why is (2,4) not range[2..4]? But I think this would break
+    # too much code. So ... it's the same range or the base type. This means
+    #  type(if b: 0 else 1) == int and not range[0..1]. For now. In the long
+    # run people expect ranges to work properly within a tuple.
+    if not sameType(a, b):
+      result = skipTypes(a, {tyRange}).skipIntLit
+    when false:
+      if a.kind != tyRange and b.kind == tyRange:
+        # XXX This really needs a better solution, but a proper fix now breaks
+        # code.
+        result = a #.skipIntLit
+      elif a.kind == tyRange and b.kind != tyRange:
+        result = b #.skipIntLit
+      elif a.kind in IntegralTypes and a.n != nil:
+        result = a #.skipIntLit
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:
@@ -103,7 +121,7 @@ proc commonType*(x, y: PType): PType =
       if result.isNil: return x
       if k != tyNone:
         let r = result
-        result = NewType(k, r.owner)
+        result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
