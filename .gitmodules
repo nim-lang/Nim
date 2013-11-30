@@ -1,0 +1,3 @@
+[submodule "csources"]
+	path = csources
+	url = git://github.com/nimrod-code/csources
