@@ -39,6 +39,9 @@
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
   
+when not defined(NimString): 
+  {.error: "You must not import this module explicitly".}
+
 const
   maxRegisters = 256 # don't think there is an arch with more registers
   useStackMaskHack = false ## use the stack mask hack for better performance
