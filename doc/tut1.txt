@@ -1361,13 +1361,13 @@ Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
 having the same field types.
 
-Tuples can be *unpacked* during variable assignment. This can be handy to
-assign directly the fields of the tuples to individually named variables. An
-example of this is the ``splitFile`` proc from the `os module <os.html>`_ which
-returns the directory, name and extension of a path at the same time. For tuple
-unpacking to work you have to use parenthesis around the values you want to
-assign the unpacking to, otherwise you will be assigning the same value to all
-the individual variables! Example:
+Tuples can be *unpacked* during variable assignment (and only then!). This can
+be handy to assign directly the fields of the tuples to individually named
+variables. An example of this is the ``splitFile`` proc from the `os module
+<os.html>`_ which returns the directory, name and extension of a path at the
+same time. For tuple unpacking to work you have to use parenthesis around the
+values you want to assign the unpacking to, otherwise you will be assigning the
+same value to all the individual variables! Example:
 
 .. code-block:: nimrod
 
@@ -1385,6 +1385,20 @@ the individual variables! Example:
   echo baddir
   echo badname
   echo badext
+
+Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
+won't compile:
+
+.. code-block:: nimrod
+
+  import os
+
+  var
+    path = "usr/local/nimrodc.html"
+    dir, name, ext = ""
+
+  (dir, name, ext) = splitFile(path)
+  # --> Error: '(dir, name, ext)' cannot be assigned to
 
 
 Reference and pointer types
