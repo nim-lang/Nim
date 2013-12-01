@@ -1087,6 +1087,8 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # -- at least for 0.9.2.
   if s.typ.callConv == ccClosure:
     incl(s.typ.flags, tfCapturesEnv)
+  else:
+    s.typ.callConv = ccInline
   when false:
     if s.typ.callConv != ccInline: 
       s.typ.callConv = ccClosure
