@@ -189,9 +189,18 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-``=`` is the *assignment operator*. The assignment operator cannot
-be overloaded, overwritten or forbidden, but this might change in a future
-version of Nimrod.
+``=`` is the *assignment operator*. The assignment operator cannot be
+overloaded, overwritten or forbidden, but this might change in a future version
+of Nimrod. You can declare multiple variables with a single assignment
+statement and all the variables will have the same value:
+
+.. code-block::
+  var x, y = 3  # assigns 3 to the variables `x` and `y`
+  echo "x ", x  # outputs "x 3"
+  echo "y ", y  # outputs "y 3"
+  x = 42        # changes `x` to 42 without changing `y`
+  echo "x ", x  # outputs "x 42"
+  echo "y ", y  # outputs "y 3"
 
 
 Constants
@@ -1351,6 +1360,45 @@ integer.
 Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
 having the same field types.
+
+Tuples can be *unpacked* during variable assignment (and only then!). This can
+be handy to assign directly the fields of the tuples to individually named
+variables. An example of this is the ``splitFile`` proc from the `os module
+<os.html>`_ which returns the directory, name and extension of a path at the
+same time. For tuple unpacking to work you have to use parenthesis around the
+values you want to assign the unpacking to, otherwise you will be assigning the
+same value to all the individual variables! Example:
+
+.. code-block:: nimrod
+
+  import os
+
+  let
+    path = "usr/local/nimrodc.html"
+    (dir, name, ext) = splitFile(path)
+    baddir, badname, badext = splitFile(path)
+  echo dir      # outputs `usr/local`
+  echo name     # outputs `nimrodc`
+  echo ext      # outputs `.html`
+  # All the following output the same line:
+  # `(dir: usr/local, name: nimrodc, ext: .html)`
+  echo baddir
+  echo badname
+  echo badext
+
+Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
+won't compile:
+
+.. code-block:: nimrod
+
+  import os
+
+  var
+    path = "usr/local/nimrodc.html"
+    dir, name, ext = ""
+
+  (dir, name, ext) = splitFile(path)
+  # --> Error: '(dir, name, ext)' cannot be assigned to
 
 
 Reference and pointer types
