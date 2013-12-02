@@ -28,6 +28,8 @@ Changes affecting backwards compatibility
   require an error code to be passed to them. This error code can be retrieved
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
+- ``quoteIfContainsWhite`` now escapes argument in such way that it can be safely
+  passed to shell, instead of just adding double quotes.
 
 
 Compiler Additions
