@@ -528,7 +528,7 @@ proc parseHtml*(s: PStream, filename: string,
   ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
   ## occured parsing error is added to the `errors` sequence.
   var x: TXmlParser
-  open(x, s, filename, {reportComments})
+  open(x, s, filename, {reportComments, reportWhitespace})
   next(x)
   # skip the DOCTYPE:
   if x.kind == xmlSpecial: next(x)
