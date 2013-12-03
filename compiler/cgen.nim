@@ -72,6 +72,11 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
+proc useStringh(m: BModule) =
+  if not m.includesStringh:
+    m.includesStringh = true
+    discard lists.IncludeStr(m.headerFiles, "<string.h>")
+
 proc useHeader(m: BModule, sym: PSym) = 
   if lfHeader in sym.loc.Flags: 
     assert(sym.annex != nil)
@@ -358,6 +363,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
               addrLoc(loc), rdLoc(loc))
       # XXX: We can be extra clever here and call memset only 
@@ -368,6 +374,7 @@ proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
   if not isComplexValueType(skipTypes(loc.t, abstractRange)):
     linefmt(p, section, "$1 = 0;$n", rdLoc(loc))
   else:
+    useStringh(p.module)
     linefmt(p, section, "memset((void*)$1, 0, sizeof($2));$n",
             addrLoc(loc), rdLoc(loc))
     genObjectInit(p, section, loc.t, loc, true)
@@ -418,6 +425,7 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
