@@ -370,14 +370,17 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
-proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
+proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   if not isComplexValueType(skipTypes(loc.t, abstractRange)):
-    linefmt(p, section, "$1 = 0;$n", rdLoc(loc))
+    linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
-    useStringh(p.module)
-    linefmt(p, section, "memset((void*)$1, 0, sizeof($2));$n",
-            addrLoc(loc), rdLoc(loc))
-    genObjectInit(p, section, loc.t, loc, true)
+    if not isTemp or containsGarbageCollectedRef(loc.t):
+      # don't use memset for temporary values for performance if we can
+      # avoid it:
+      useStringh(p.module)
+      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+              addrLoc(loc), rdLoc(loc))
+    genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
   if sfNoInit notin v.flags:
@@ -403,7 +406,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
-  constructLoc(p, result)
+  constructLoc(p, result, isTemp=true)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:
