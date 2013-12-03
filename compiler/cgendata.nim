@@ -91,6 +91,7 @@ type
     FrameDeclared*: bool      # hack for ROD support so that we don't declare
                               # a frame var twice in an init proc
     isHeaderFile*: bool       # C source file is the header file
+    includesStringh*: bool    # C source file already includes ``<string.h>``
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types
