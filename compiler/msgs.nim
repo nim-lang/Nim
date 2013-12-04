@@ -436,7 +436,14 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
-    
+  
+  TErrorOutput* = enum
+    eStdOut
+    eStdErr
+    eInMemory
+
+  TErrorOutputs* = set[TErrorOutput]
+
   ERecoverableError* = object of EInvalidValue
   ESuggestDone* = object of EBase
 
@@ -534,13 +541,27 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
-  gSilence*: int              # == 0 if we produce any output at all 
 
 when useCaas:
   var stdoutSocket*: TSocket
 
+proc UnknownLineInfo*(): TLineInfo =
+  result.line = int16(-1)
+  result.col = int16(-1)
+  result.fileIndex = -1
+
+var 
+  msgContext: seq[TLineInfo] = @[]
+  lastError = UnknownLineInfo()
+  bufferedMsgs*: seq[string]
+
+  errorOutputs* = {eStdOut, eStdErr}
+
+proc clearBufferedMsgs* =
+  bufferedMsgs = nil
+
 proc SuggestWriteln*(s: string) =
-  if gSilence == 0:
+  if eStdOut in errorOutputs:
     when useCaas:
       if isNil(stdoutSocket): Writeln(stdout, s)
       else:
@@ -548,6 +569,9 @@ proc SuggestWriteln*(s: string) =
         stdoutSocket.send(s & "\c\L")
     else:
       Writeln(stdout, s)
+  
+  if eInMemory in errorOutputs:
+    bufferedMsgs.safeAdd(s)
 
 proc SuggestQuit*() =
   if not isServing:
@@ -569,14 +593,6 @@ const
   RawErrorFormat* = "Error: $1"
   RawWarningFormat* = "Warning: $1"
   RawHintFormat* = "Hint: $1"
-
-proc UnknownLineInfo*(): TLineInfo = 
-  result.line = int16(-1)
-  result.col = int16(-1)
-  result.fileIndex = -1
-
-var 
-  msgContext: seq[TLineInfo] = @[]
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
@@ -642,14 +658,18 @@ proc addCheckpoint*(filename: string, line: int) =
 
 proc OutWriteln*(s: string) = 
   ## Writes to stdout. Always.
-  if gSilence == 0: Writeln(stdout, s)
+  if eStdOut in errorOutputs: Writeln(stdout, s)
  
 proc MsgWriteln*(s: string) = 
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
-  if gSilence == 0:
-    if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
-    if optStdout in gGlobalOptions: Writeln(stderr, s)
-    else: Writeln(stdout, s)
+  if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+
+  if optStdout in gGlobalOptions:
+    if eStdErr in errorOutputs: Writeln(stderr, s)
+  else:
+    if eStdOut in errorOutputs: Writeln(stdout, s)
+  
+  if eInMemory in errorOutputs: bufferedMsgs.safeAdd(s)
 
 proc coordToStr(coord: int): string = 
   if coord == -1: result = "???"
@@ -735,9 +755,6 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
   rawMessage(msg, [arg])
-
-var
-  lastError = UnknownLineInfo()
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "

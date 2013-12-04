@@ -85,6 +85,7 @@ proc initCandidate*(c: var TCandidate, callee: PSym, binding: PNode,
   c.calleeSym = callee
   c.calleeScope = calleeScope
   initIdTable(c.bindings)
+  c.errors = nil
   if binding != nil and callee.kind in RoutineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
@@ -202,7 +203,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation
+proc typeRel*(c: var TCandidate, f, a: PType): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind
   of tyArrayConstr: 
@@ -750,40 +751,55 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
   # pushInfoContext(arg.info)
   openScope(c)
+  inc c.InTypeClass
 
-  var testee = newSym(skParam, f.testeeName, f.sym, f.sym.info)
-  testee.typ = a
-  addDecl(c, testee)
+  finally:
+    dec c.InTypeClass
+    closeScope(c)
 
-  for stmt in f.n:
-    var e = c.semTryExpr(c, copyTree(stmt))
-    if e == nil:
-      let expStr = renderTree(stmt, {renderNoComments})
-      m.errors.safeAdd("can't compile " & expStr & "  for " & a.typeToString)
-      return nil
+  for param in f.n[0]:
+    var
+      dummyName: PNode
+      dummyType: PType
+    
+    if param.kind == nkVarTy:
+      dummyName = param[0]
+      dummyType = makeVarType(c, a)
+    else:
+      dummyName = param
+      dummyType = a
+
+    InternalAssert dummyName.kind == nkIdent
+    var dummyParam = newSym(skType, dummyName.ident, f.sym, f.sym.info)
+    dummyParam.typ = dummyType
+    addDecl(c, dummyParam)
+
+  for stmt in f.n[3]:
+    var e = c.semTryExpr(c, copyTree(stmt), bufferErrors = false)
+    m.errors = bufferedMsgs
+    clearBufferedMsgs()
+    if e == nil: return nil
+
     case e.kind
-    of nkReturnStmt:
-      nil
+    of nkReturnStmt: nil
     of nkTypeSection: nil
     of nkConstDef: nil
-    else:
-      if e.typ.kind == tyBool:
-        let verdict = c.semConstExpr(c, e)
-        if verdict.intVal == 0:
-          let expStr = renderTree(stmt, {renderNoComments})
-          m.errors.safeAdd(expStr & " doesn't hold for " & a.typeToString)
-          return nil
-
-  closeScope(c)
-
+    else: nil
+  
   result = arg
   put(m.bindings, f, a)
 
-proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType, 
+proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
-  var arg = argSemantized
-  var r: TTypeRelation
-  let fMaybeExpr = f.skipTypes({tyDistinct})
+  var
+    r: TTypeRelation
+    arg = argSemantized
+
+  let
+    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+        else: argType
+    fMaybeExpr = f.skipTypes({tyDistinct})
+
   case fMaybeExpr.kind
   of tyExpr:
     if fMaybeExpr.sonsLen == 0:

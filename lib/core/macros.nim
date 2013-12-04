@@ -500,7 +500,7 @@ const
 
 from strutils import cmpIgnoreStyle, format
 
-proc ExpectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
+proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
 proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  

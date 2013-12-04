@@ -387,8 +387,7 @@ template `--`(rc: TRefCount): expr =
   rc <% rcIncrement
 
 template `--` (rc: TRefCount, heapType: THeapType): expr =
-  (when heapType == SharedHeap: atomicDec(rc, rcIncrement) <% rcIncrement
-   else: --rc)
+  (when heapType == SharedHeap: atomicDec(rc, rcIncrement) <% rcIncrement else: --rc)
 
 template doDecRef(cc: PCell,
                   heapType = LocalHeap,

@@ -13,7 +13,7 @@ Introduction
 This document describes how the GC works and how to tune it for
 (soft) `realtime systems`:idx:.
 
-The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+The basic algorithm is *Deferred Reference Counting* with cycle detection.
 References on the stack are not counted for better performance (and easier C
 code generation). The GC **never** scans the whole heap but it may scan the
 delta-subgraph of the heap that changed since its last run.

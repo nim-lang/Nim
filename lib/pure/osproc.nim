@@ -24,10 +24,10 @@ type
   TProcess = object of TObject
     when defined(windows):
       FProcessHandle: Thandle
-      inputHandle, outputHandle, errorHandle: TFileHandle
+      inHandle, outHandle, errHandle: TFileHandle
       id: THandle
     else:
-      inputHandle, outputHandle, errorHandle: TFileHandle
+      inHandle, outHandle, errHandle: TFileHandle
       inStream, outStream, errStream: PStream
       id: TPid
     exitCode: cint
@@ -113,22 +113,46 @@ proc peekExitCode*(p: PProcess): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
 
 proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s input stream for writing to
+  ## returns ``p``'s input stream for writing to.
   ##
   ## **Warning**: The returned `PStream` should not be closed manually as it 
   ## is closed when closing the PProcess ``p``.
 
 proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s output stream for reading from
+  ## returns ``p``'s output stream for reading from.
   ##
   ## **Warning**: The returned `PStream` should not be closed manually as it 
   ## is closed when closing the PProcess ``p``.
 
 proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s output stream for reading from
+  ## returns ``p``'s error stream for reading from.
   ##
   ## **Warning**: The returned `PStream` should not be closed manually as it 
   ## is closed when closing the PProcess ``p``.
+
+proc inputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+  tags: [].} =
+  ## returns ``p``'s input file handle for writing to.
+  ##
+  ## **Warning**: The returned `TFileHandle` should not be closed manually as
+  ## it is closed when closing the PProcess ``p``.
+  result = p.inHandle
+
+proc outputHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+  tags: [].} =
+  ## returns ``p``'s output file handle for reading from.
+  ##
+  ## **Warning**: The returned `TFileHandle` should not be closed manually as
+  ## it is closed when closing the PProcess ``p``.
+  result = p.outHandle
+
+proc errorHandle*(p: PProcess): TFileHandle {.rtl, extern: "nosp$1",
+  tags: [].} =
+  ## returns ``p``'s error file handle for reading from.
+  ##
+  ## **Warning**: The returned `TFileHandle` should not be closed manually as
+  ## it is closed when closing the PProcess ``p``.
+  result = p.errHandle
 
 when defined(macosx) or defined(bsd):
   const
@@ -212,8 +236,8 @@ proc execProcesses*(cmds: openArray[string],
             inc(i)
             if i > high(cmds): break
     for j in 0..m-1:
-      if q[j] != nil: close(q[j])
       result = max(waitForExit(q[j]), result)
+      if q[j] != nil: close(q[j])
   else:
     for i in 0..high(cmds):
       var p = startCmd(cmds[i], options=options)
@@ -339,16 +363,16 @@ when defined(Windows) and not defined(useNimRtl):
         HE = HO
       else:
         CreatePipeHandles(HE, Si.hStdError)
-      result.inputHandle = TFileHandle(hi)
-      result.outputHandle = TFileHandle(ho)
-      result.errorHandle = TFileHandle(he)
+      result.inHandle = TFileHandle(hi)
+      result.outHandle = TFileHandle(ho)
+      result.errHandle = TFileHandle(he)
     else:
       SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
       SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
       SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
-      result.inputHandle = TFileHandle(si.hStdInput)
-      result.outputHandle = TFileHandle(si.hStdOutput)
-      result.errorHandle = TFileHandle(si.hStdError)
+      result.inHandle = TFileHandle(si.hStdInput)
+      result.outHandle = TFileHandle(si.hStdOutput)
+      result.errHandle = TFileHandle(si.hStdError)
 
     var cmdl: cstring
     when false: # poUseShell in options:
@@ -389,9 +413,9 @@ when defined(Windows) and not defined(useNimRtl):
   proc close(p: PProcess) =
     when false:
       # somehow this does not work on Windows:
-      discard CloseHandle(p.inputHandle)
-      discard CloseHandle(p.outputHandle)
-      discard CloseHandle(p.errorHandle)
+      discard CloseHandle(p.inHandle)
+      discard CloseHandle(p.outHandle)
+      discard CloseHandle(p.errHandle)
       discard CloseHandle(p.FProcessHandle)
 
   proc suspend(p: PProcess) =
@@ -425,13 +449,13 @@ when defined(Windows) and not defined(useNimRtl):
       return res
 
   proc inputStream(p: PProcess): PStream =
-    result = newFileHandleStream(p.inputHandle)
+    result = newFileHandleStream(p.inHandle)
 
   proc outputStream(p: PProcess): PStream =
-    result = newFileHandleStream(p.outputHandle)
+    result = newFileHandleStream(p.outHandle)
 
   proc errorStream(p: PProcess): PStream =
-    result = newFileHandleStream(p.errorHandle)
+    result = newFileHandleStream(p.errHandle)
 
   proc execCmd(command: string): int =
     var
@@ -626,20 +650,20 @@ elif not defined(useNimRtl):
 
     if poParentStreams in options:
       # does not make much sense, but better than nothing:
-      result.inputHandle = 0
-      result.outputHandle = 1
+      result.inHandle = 0
+      result.outHandle = 1
       if poStdErrToStdOut in options:
-        result.errorHandle = result.outputHandle
+        result.errHandle = result.outHandle
       else:
-        result.errorHandle = 2
+        result.errHandle = 2
     else:
-      result.inputHandle = p_stdin[writeIdx]
-      result.outputHandle = p_stdout[readIdx]
+      result.inHandle = p_stdin[writeIdx]
+      result.outHandle = p_stdout[readIdx]
       if poStdErrToStdOut in options:
-        result.errorHandle = result.outputHandle
+        result.errHandle = result.outHandle
         discard close(p_stderr[readIdx])
       else:
-        result.errorHandle = p_stderr[readIdx]
+        result.errHandle = p_stderr[readIdx]
       discard close(p_stderr[writeIdx])
       discard close(p_stdin[readIdx])
       discard close(p_stdout[writeIdx])
@@ -648,9 +672,9 @@ elif not defined(useNimRtl):
     if p.inStream != nil: close(p.inStream)
     if p.outStream != nil: close(p.outStream)
     if p.errStream != nil: close(p.errStream)
-    discard close(p.inputHandle)
-    discard close(p.outputHandle)
-    discard close(p.errorHandle)
+    discard close(p.inHandle)
+    discard close(p.outHandle)
+    discard close(p.errHandle)
 
   proc suspend(p: PProcess) =
     if kill(-p.id, SIGSTOP) != 0'i32: OSError(OSLastError())
@@ -696,17 +720,17 @@ elif not defined(useNimRtl):
 
   proc inputStream(p: PProcess): PStream =
     if p.inStream == nil:
-      createStream(p.inStream, p.inputHandle, fmWrite)
+      createStream(p.inStream, p.inHandle, fmWrite)
     return p.inStream
 
   proc outputStream(p: PProcess): PStream =
     if p.outStream == nil:
-      createStream(p.outStream, p.outputHandle, fmRead)
+      createStream(p.outStream, p.outHandle, fmRead)
     return p.outStream
 
   proc errorStream(p: PProcess): PStream =
     if p.errStream == nil:
-      createStream(p.errStream, p.errorHandle, fmRead)
+      createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
@@ -717,14 +741,14 @@ elif not defined(useNimRtl):
   proc createFdSet(fd: var TFdSet, s: seq[PProcess], m: var int) = 
     FD_ZERO(fd)
     for i in items(s): 
-      m = max(m, int(i.outputHandle))
-      FD_SET(cint(i.outputHandle), fd)
+      m = max(m, int(i.outHandle))
+      FD_SET(cint(i.outHandle), fd)
      
   proc pruneProcessSet(s: var seq[PProcess], fd: var TFdSet) = 
     var i = 0
     var L = s.len
     while i < L:
-      if FD_ISSET(cint(s[i].outputHandle), fd) != 0'i32:
+      if FD_ISSET(cint(s[i].outHandle), fd) != 0'i32:
         s[i] = s[L-1]
         dec(L)
       else:

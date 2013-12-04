@@ -132,7 +132,7 @@ proc fixNilType(n: PNode) =
     for it in n: fixNilType(it)
   n.typ = nil
 
-proc discardCheck(result: PNode) =
+proc discardCheck(c: PContext, result: PNode) =
   if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -142,6 +142,10 @@ proc discardCheck(result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
+    elif c.InTypeClass > 0 and result.typ.kind == tyBool:
+      let verdict = semConstExpr(c, result)
+      if verdict.intVal == 0:
+        localError(result.info, "type class predicate failed.")
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
         fixNilType(result)
@@ -169,7 +173,7 @@ proc semIf(c: PContext, n: PNode): PNode =
       typ = commonType(typ, it.sons[0].typ)
     else: illFormedAst(it)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for it in n: discardCheck(it.lastSon)
+    for it in n: discardCheck(c, it.lastSon)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == EnforceVoidContext: result.typ = EnforceVoidContext
@@ -230,7 +234,7 @@ proc semCase(c: PContext, n: PNode): PNode =
       localError(n.info, errNotAllCasesCovered)
   closeScope(c)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     # propagate any enforced VoidContext:
     if typ == EnforceVoidContext:
       result.typ = EnforceVoidContext
@@ -275,8 +279,8 @@ proc semTry(c: PContext, n: PNode): PNode =
     typ = commonType(typ, a.sons[length-1].typ)
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind == tyNil:
-    discardCheck(n.sons[0])
-    for i in 1..n.len-1: discardCheck(n.sons[i].lastSon)
+    discardCheck(c, n.sons[0])
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     if typ == EnforceVoidContext:
       result.typ = EnforceVoidContext
   else:
@@ -881,8 +885,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   if n.sons[genericParamsPos].kind != nkEmpty:
     illFormedAst(n)           # process parameters:
-  if n.sons[paramsPos].kind != nkEmpty: 
-    semParamList(c, n.sons[ParamsPos], nil, s)
+  if n.sons[paramsPos].kind != nkEmpty:
+    var gp = newNodeI(nkGenericParams, n.info)
+    semParamList(c, n.sons[ParamsPos], gp, s)
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
@@ -1084,6 +1089,8 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # -- at least for 0.9.2.
   if s.typ.callConv == ccClosure:
     incl(s.typ.flags, tfCapturesEnv)
+  else:
+    s.typ.callConv = ccInline
   when false:
     if s.typ.callConv != ccInline: 
       s.typ.callConv = ccClosure
@@ -1106,24 +1113,24 @@ proc finishMethod(c: PContext, s: PSym) =
     methodDef(s, false)
 
 proc semMethod(c: PContext, n: PNode): PNode = 
-  if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "method")
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
   
   var s = result.sons[namePos].sym
-  if not isGenericRoutine(s):
+  if not isGenericRoutine(s) and result.sons[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
-      methodDef(s, false)
+      methodDef(s, fromCache=false)
     else:
-      LocalError(n.info, errXNeedsParamObjectType, "method")
+      localError(n.info, errXNeedsParamObjectType, "method")
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
-  if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "converter")
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skConverter, converterPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "converter")
-  if sonsLen(t) != 2: LocalError(n.info, errXRequiresOneArgument, "converter")
+  if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
+  if sonsLen(t) != 2: localError(n.info, errXRequiresOneArgument, "converter")
   addConverter(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode = 
@@ -1131,9 +1138,9 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "macro")
+  if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
-    LocalError(n.info, errImplOfXexpected, s.name.s)
+    localError(n.info, errImplOfXexpected, s.name.s)
   
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
@@ -1223,7 +1230,7 @@ proc semStmtList(c: PContext, n: PNode): PNode =
         voidContext = true
         n.typ = EnforceVoidContext
       if i != last or voidContext:
-        discardCheck(n.sons[i])
+        discardCheck(c, n.sons[i])
       else:
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ):

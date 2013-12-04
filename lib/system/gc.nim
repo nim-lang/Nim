@@ -9,7 +9,7 @@
 
 #            Garbage Collector
 #
-# The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+# The basic algorithm is *Deferred Reference Counting* with cycle detection.
 # This is achieved by combining a Deutsch-Bobrow garbage collector
 # together with Christoper's partial mark-sweep garbage collector.
 #
@@ -407,12 +407,17 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
         return
     add(gch.zct, res)
 
+{.push stackTrace: off, profiler:off.}
+proc gcInvariant*(msg: string) =
+  sysAssert(allocInv(gch.region), msg)
+{.pop.}
+
 proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
   # generates a new object and sets its reference counter to 0
+  sysAssert(allocInv(gch.region), "rawNewObj begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  sysAssert(allocInv(gch.region), "rawNewObj begin")
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
   gcAssert((cast[TAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -517,7 +522,9 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
     writeCell("growObj new cell", res)
   gcTrace(ol, csZctFreed)
   gcTrace(res, csAllocated)
-  when reallyDealloc: rawDealloc(gch.region, ol)
+  when reallyDealloc: 
+    sysAssert(allocInv(gch.region), "growObj before dealloc")
+    rawDealloc(gch.region, ol)
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
     zeroMem(ol, sizeof(TCell))
@@ -537,7 +544,9 @@ proc freeCyclicCell(gch: var TGcHeap, c: PCell) =
   prepareDealloc(c)
   gcTrace(c, csCycFreed)
   when logGC: writeCell("cycle collector dealloc cell", c)
-  when reallyDealloc: rawDealloc(gch.region, c)
+  when reallyDealloc: 
+    sysAssert(allocInv(gch.region), "free cyclic cell")
+    rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(TCell))
@@ -620,8 +629,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  return
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c) 
+    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -910,7 +918,9 @@ proc collectZCT(gch: var TGcHeap): bool =
       # access invalid memory. This is done by prepareDealloc():
       prepareDealloc(c)
       forAllChildren(c, waZctDecRef)
-      when reallyDealloc: rawDealloc(gch.region, c)
+      when reallyDealloc: 
+        sysAssert(allocInv(gch.region), "collectZCT: rawDealloc")
+        rawDealloc(gch.region, c)
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(TCell))

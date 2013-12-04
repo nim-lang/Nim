@@ -240,6 +240,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if needToCopy notin flags or 
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if dest.s == OnStack or not usesNativeGC():
+      useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(dest), addrLoc(src), rdLoc(dest))
@@ -316,6 +317,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needsComplexAssignment(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
            rdLoc(dest), rdLoc(src))
@@ -327,11 +329,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len0);$n",
            rdLoc(dest), rdLoc(src))
   of tySet:
     if mapType(ty) == ctArray:
+      useStringh(p.module)
       linefmt(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
               rdLoc(dest), rdLoc(src), toRope(getSize(dest.t)))
     else:
@@ -1361,6 +1365,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       lineF(p, cpsStmts, lookupOpr[op],
            [rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
     of mEqSet:
+      useStringh(p.module)
       binaryExprChar(p, e, d, "(memcmp($1, $2, " & $(size) & ")==0)")
     of mMulSet, mPlusSet, mMinusSet, mSymDiffSet:
       # we inline the simple for loop for better code generation:
@@ -1612,6 +1617,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     if d.k == locNone: getTemp(p, e.typ, d)
     if getSize(e.typ) > 8:
       # big set:
+      useStringh(p.module)
       lineF(p, cpsStmts, "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
