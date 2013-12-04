@@ -31,6 +31,7 @@ when hostos == "solaris":
 
 import os, parseutils
 from times import epochTime
+import unsigned
 
 when defined(ssl):
   import openssl
@@ -62,7 +63,7 @@ const
 
 type
   TSocketImpl = object ## socket type
-    fd: cint
+    fd: TSocketHandle
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
       buffer: array[0..BufferSize, char]
@@ -82,7 +83,7 @@ type
   
   TSocket* = ref TSocketImpl
   
-  TPort* = distinct int16  ## port type
+  TPort* = distinct uint16  ## port type
   
   TDomain* = enum   ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
@@ -118,6 +119,10 @@ type
     length*: int
     addrList*: seq[string]
 
+  TSOBool* = enum ## Boolean socket options.
+    OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
+    OptOOBInline, OptReuseAddr
+
   TRecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
 
@@ -126,7 +131,19 @@ type
 
   ETimeout* = object of ESynch
 
-proc newTSocket(fd: int32, isBuff: bool): TSocket =
+let
+  InvalidSocket*: TSocket = nil ## invalid socket
+
+when defined(windows):
+  let
+    OSInvalidSocket = winlean.INVALID_SOCKET
+else:
+  let
+    OSInvalidSocket = posix.INVALID_SOCKET
+
+proc newTSocket(fd: TSocketHandle, isBuff: bool): TSocket =
+  if fd == OSInvalidSocket:
+    return nil
   new(result)
   result.fd = fd
   result.isBuffered = isBuff
@@ -134,15 +151,11 @@ proc newTSocket(fd: int32, isBuff: bool): TSocket =
     result.currPos = 0
   result.nonblocking = false
 
-let
-  InvalidSocket*: TSocket = nil ## invalid socket
-
 proc `==`*(a, b: TPort): bool {.borrow.}
   ## ``==`` for ports.
 
-proc `$`*(p: TPort): string = 
+proc `$`*(p: TPort): string {.borrow.}
   ## returns the port number as a string
-  result = $ze(int16(p))
 
 proc ntohl*(x: int32): int32 = 
   ## Converts 32-bit integers from network to host byte order.
@@ -211,7 +224,9 @@ else:
 
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP, buffered = true): TSocket =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.  
+  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  
+  # TODO: Perhaps this should just raise EOS when an error occurs.
   when defined(Windows):
     result = newTSocket(winlean.socket(ord(domain), ord(typ), ord(protocol)), buffered)
   else:
@@ -456,7 +471,7 @@ template acceptAddrPlain(noClientRet, successRet: expr,
   var sock = accept(server.fd, cast[ptr TSockAddr](addr(sockAddress)),
                     addr(addrLen))
   
-  if sock < 0:
+  if sock == OSInvalidSocket:
     let err = OSLastError()
     when defined(windows):
       if err.int32 == WSAEINPROGRESS:
@@ -529,7 +544,7 @@ proc acceptAddr*(server: TSocket, client: var TSocket, address: var string) {.
               SSLError("Unknown error")
 
 proc setBlocking*(s: TSocket, blocking: bool) {.tags: [].}
-  ## sets blocking mode on socket
+  ## Sets blocking mode on socket
 
 when defined(ssl):
   proc acceptAddrSSL*(server: TSocket, client: var TSocket,
@@ -623,24 +638,32 @@ proc close*(socket: TSocket) =
       discard SSLShutdown(socket.sslHandle)
 
 proc getServByName*(name, proto: string): TServent {.tags: [FReadIO].} =
-  ## well-known getservbyname proc.
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the service name specified by ``name`` matches the s_name member
+  ## and the protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
   when defined(Windows):
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
-  if s == nil: OSError(OSLastError())
+  if s == nil: raise newException(EOS, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = TPort(s.s_port)
   result.proto = $s.s_proto
   
 proc getServByPort*(port: TPort, proto: string): TServent {.tags: [FReadIO].} = 
-  ## well-known getservbyport proc.
+  ## Searches the database from the beginning and finds the first entry for 
+  ## which the port specified by ``port`` matches the s_port member and the 
+  ## protocol name specified by ``proto`` matches the s_proto member.
+  ##
+  ## On posix this will search through the ``/etc/services`` file.
   when defined(Windows):
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: OSError(OSLastError())
+  if s == nil: raise newException(EOS, "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = TPort(s.s_port)
@@ -676,7 +699,7 @@ proc getHostByAddr*(ip: string): THostEnt {.tags: [FReadIO].} =
   result.length = int(s.h_length)
 
 proc getHostByName*(name: string): THostEnt {.tags: [FReadIO].} = 
-  ## well-known gethostbyname proc.
+  ## This function will lookup the IP address of a hostname.
   when defined(Windows):
     var s = winlean.gethostbyname(name)
   else:
@@ -712,6 +735,34 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) {.
   var value = cint(optval)
   if setsockopt(socket.fd, cint(level), cint(optname), addr(value),  
                 sizeof(value).TSockLen) < 0'i32:
+    OSError(OSLastError())
+
+proc toCInt(opt: TSOBool): cint =
+  case opt
+  of OptAcceptConn: SO_ACCEPTCONN
+  of OptBroadcast: SO_BROADCAST
+  of OptDebug: SO_DEBUG
+  of OptDontRoute: SO_DONTROUTE
+  of OptKeepAlive: SO_KEEPALIVE
+  of OptOOBInline: SO_OOBINLINE
+  of OptReuseAddr: SO_REUSEADDR
+
+proc getSockOpt*(socket: TSocket, opt: TSOBool, level = SOL_SOCKET): bool {.
+  tags: [FReadIO].} =
+  ## Retrieves option ``opt`` as a boolean value.
+  var res: cint
+  var size = sizeof(res).TSockLen
+  if getsockopt(socket.fd, cint(level), toCInt(opt), 
+                addr(res), addr(size)) < 0'i32:
+    OSError(OSLastError())
+  result = res != 0
+
+proc setSockOpt*(socket: TSocket, opt: TSOBool, value: bool, level = SOL_SOCKET) {.
+  tags: [FWriteIO].} =
+  ## Sets option ``opt`` to a boolean value specified by ``value``.
+  var valuei = cint(if value: 1 else: 0)
+  if setsockopt(socket.fd, cint(level), toCInt(opt), addr(valuei),  
+                sizeof(valuei).TSockLen) < 0'i32:
     OSError(OSLastError())
 
 proc connect*(socket: TSocket, address: string, port = TPort(0), 
@@ -866,11 +917,6 @@ proc timeValFromMilliseconds(timeout = 500): TTimeVal =
     var seconds = timeout div 1000
     result.tv_sec = seconds.int32
     result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
-#proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
-#               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
-
-#proc sendto*(s: TWinSocket, buf: cstring, len, flags: cint,
-#             to: ptr TSockAddr, tolen: cint): cint
 
 proc createFdSet(fd: var TFdSet, s: seq[TSocket], m: var int) = 
   FD_ZERO(fd)
@@ -1608,14 +1654,14 @@ when defined(Windows):
     FIONBIO = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
                              (102 shl 8) or 126
 
-  proc ioctlsocket(s: TWinSocket, cmd: clong, 
+  proc ioctlsocket(s: TSocketHandle, cmd: clong, 
                    argptr: ptr clong): cint {.
                    stdcall, importc:"ioctlsocket", dynlib: "ws2_32.dll".}
 
 proc setBlocking(s: TSocket, blocking: bool) =
   when defined(Windows):
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
-    if ioctlsocket(TWinSocket(s.fd), FIONBIO, addr(mode)) == -1:
+    if ioctlsocket(TSocketHandle(s.fd), FIONBIO, addr(mode)) == -1:
       OSError(OSLastError())
   else: # BSD sockets
     var x: int = fcntl(s.fd, F_GETFL, 0)
@@ -1656,8 +1702,11 @@ proc connect*(socket: TSocket, address: string, port = TPort(0), timeout: int,
 proc isSSL*(socket: TSocket): bool = return socket.isSSL
   ## Determines whether ``socket`` is a SSL socket.
 
-proc getFD*(socket: TSocket): cint = return socket.fd
+proc getFD*(socket: TSocket): TSocketHandle = return socket.fd
   ## Returns the socket's file descriptor
+
+proc isBlocking*(socket: TSocket): bool = not socket.nonblocking
+  ## Determines whether ``socket`` is blocking.
 
 when defined(Windows):
   var wsa: TWSADATA

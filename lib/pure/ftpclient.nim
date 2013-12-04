@@ -129,7 +129,8 @@ proc expectReply(ftp: PFTPClient): TaintedString =
 proc send*(ftp: PFTPClient, m: string): TaintedString =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
-  ftp.getCSock().send(m & "\c\L")
+  blockingOperation(ftp.getCSock()):
+    ftp.getCSock().send(m & "\c\L")
   return ftp.expectReply()
 
 proc assertReply(received: TaintedString, expected: string) =

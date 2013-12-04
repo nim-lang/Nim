@@ -95,7 +95,8 @@ proc recvBuffer(s: var TScgiState, L: int) =
     scgiError("could not read all data")
   setLen(s.input, L)
   
-proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1") = 
+proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1",
+  reuseAddr = False) = 
   ## opens a connection.
   s.bufLen = 4000
   s.input = newString(s.buflen) # will be reused
@@ -104,6 +105,8 @@ proc open*(s: var TScgiState, port = TPort(4000), address = "127.0.0.1") =
   new(s.client) # Initialise s.client for `next`
   if s.server == InvalidSocket: scgiError("could not open socket")
   #s.server.connect(connectionName, port)
+  if reuseAddr:
+    s.server.setSockOpt(OptReuseAddr, True)
   bindAddr(s.server, port, address)
   listen(s.server)
   
@@ -243,7 +246,8 @@ proc handleAccept(sock: PAsyncSocket, s: PAsyncScgiState) =
 
 proc open*(handleRequest: proc (client: PAsyncSocket, 
                                 input: string, headers: PStringTable) {.closure.},
-           port = TPort(4000), address = "127.0.0.1"): PAsyncScgiState =
+           port = TPort(4000), address = "127.0.0.1",
+           reuseAddr = false): PAsyncScgiState =
   ## Creates an ``PAsyncScgiState`` object which serves as a SCGI server.
   ##
   ## After the execution of ``handleRequest`` the client socket will be closed
@@ -252,6 +256,8 @@ proc open*(handleRequest: proc (client: PAsyncSocket,
   new(cres)
   cres.asyncServer = AsyncSocket()
   cres.asyncServer.handleAccept = proc (s: PAsyncSocket) = handleAccept(s, cres)
+  if reuseAddr:
+    cres.asyncServer.setSockOpt(OptReuseAddr, True)
   bindAddr(cres.asyncServer, port, address)
   listen(cres.asyncServer)
   cres.handleRequest = handleRequest

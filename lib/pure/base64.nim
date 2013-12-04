@@ -12,7 +12,7 @@
 const 
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-proc encode*(s: string, lineLen = 75, newLine="\13\10"): string = 
+template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediate.} = 
   ## encodes `s` into base64 representation. After `lineLen` characters, a 
   ## `newline` is added.
   var total = ((len(s) + 2) div 3) * 4
@@ -60,6 +60,16 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   else:
     assert(r == result.len)
 
+proc encode*[T:TInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string = 
+  ## encodes `s` into base64 representation. After `lineLen` characters, a 
+  ## `newline` is added.
+  encodeInternal(s, lineLen, newLine)
+    
+proc encode*(s: string, lineLen = 75, newLine="\13\10"): string = 
+  ## encodes `s` into base64 representation. After `lineLen` characters, a 
+  ## `newline` is added.
+  encodeInternal(s, lineLen, newLine)
+  
 proc decodeByte(b: char): int {.inline.} = 
   case b
   of '+': result = ord('>')

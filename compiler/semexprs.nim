@@ -191,7 +191,7 @@ proc isCastable(dst, src: PType): bool =
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
 
-proc semConv(c: PContext, n: PNode, s: PSym): PNode =
+proc semConv(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     LocalError(n.info, errConvNeedsOneArg)
     return n
@@ -299,7 +299,7 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
-proc IsOpImpl(c: PContext, n: PNode): PNode =
+proc isOpImpl(c: PContext, n: PNode): PNode =
   InternalAssert n.sonsLen == 3 and
     n[1].kind == nkSym and n[1].sym.kind == skType and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
@@ -321,10 +321,19 @@ proc IsOpImpl(c: PContext, n: PNode): PNode =
   else:
     var match: bool
     let t2 = n[2].typ
-    if t2.kind == tyTypeClass:
+    case t2.kind
+    of tyTypeClass:
       var m: TCandidate
       InitCandidate(m, t2)
       match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil
+    of tyOrdinal:
+      var m: TCandidate
+      InitCandidate(m, t2)
+      match = isOrdinalType(t1)
+    of tySequence, tyArray, tySet:
+      var m: TCandidate
+      InitCandidate(m, t2)
+      match = typeRel(m, t2, t1) != isNone
     else:
       match = sameType(t1, t2)
  
@@ -353,7 +362,7 @@ proc semIs(c: PContext, n: PNode): PNode =
 
   let t1 = n[1].typ.sons[0]
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not containsGenericType(t1): result = IsOpImpl(c, n)
+  if not containsGenericType(t1): result = isOpImpl(c, n)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
@@ -729,8 +738,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
     let destType = t.skipTypes({tyTypeDesc, tyGenericInst})
-    result = semConv(c, n, symFromType(destType, n.info))
-    return
+    return semConv(c, n)
   else:
     result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
@@ -763,7 +771,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  result = evalAtCompileTime(c, result)
+  if c.InTypeClass == 0:
+    result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode = 
   # this seems to be a hotspot in the compiler!
@@ -814,7 +823,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
-  discardCheck(result)
+  discardCheck(c, result)
   
 proc isTypeExpr(n: PNode): bool = 
   case n.kind
@@ -1038,7 +1047,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # The result so far is a tyTypeDesc bound 
     # a tyGenericBody. The line below will substitute
     # it with the instantiated type.
-    result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+    result = n
+    result.typ = makeTypeDesc(c, semTypeNode(c, n, nil))
+    #result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
   of tyTuple: 
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
@@ -1208,7 +1219,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    discardCheck(result)
+    discardCheck(c, result)
   closeScope(c)
 
 proc SemYieldVarResult(c: PContext, n: PNode, restype: PType) =
@@ -1429,12 +1440,12 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     newNode(nkCall, n.info, quotes)])
   result = semExpandToAst(c, result)
 
-proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc tryExpr(c: PContext, n: PNode,
+             flags: TExprFlags = {}, bufferErrors = false): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
   inc c.InCompilesContext
-  inc msgs.gSilence
   # do not halt after first error:
   msgs.gErrorMax = high(int)
   
@@ -1443,6 +1454,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = len(gOwners)
   let oldGenerics = c.generics
+  let oldErrorOutputs = errorOutputs
+  errorOutputs = if bufferErrors: {eInMemory} else: {}
   let oldContextLen = msgs.getInfoContextLen()
   
   let oldInGenericContext = c.InGenericContext
@@ -1465,7 +1478,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   setlen(gOwners, oldOwnerLen)
   c.currentScope = oldScope
   dec c.InCompilesContext
-  dec msgs.gSilence
+  errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
 
@@ -1871,7 +1884,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
-    result = symNodeFromType(c, typ, n.info)
+    result.typ = makeTypeDesc(c, typ)
+    #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
@@ -1894,7 +1908,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skType:
         # XXX think about this more (``set`` procs)
         if n.len == 2:
-          result = semConv(c, n, s)
+          result = semConv(c, n)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
         elif Contains(c.AmbiguousSymbols, s.id): 

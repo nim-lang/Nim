@@ -36,7 +36,8 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
-proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc tryExpr(c: PContext, n: PNode,
+             flags: TExprFlags = {}, bufferErrors = false): PNode
 proc fixImmediateParams(n: PNode): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
@@ -89,6 +90,24 @@ proc commonType*(x, y: PType): PType =
     let idx = ord(b.kind in {tyArray, tyArrayConstr})
     if a.sons[idx].kind == tyEmpty: return y
     #elif b.sons[idx].kind == tyEmpty: return x
+  elif a.kind == tyRange and b.kind == tyRange:
+    # consider:  (range[0..3], range[0..4]) here. We should make that
+    # range[0..4]. But then why is (range[0..4], 6) not range[0..6]?
+    # But then why is (2,4) not range[2..4]? But I think this would break
+    # too much code. So ... it's the same range or the base type. This means
+    #  type(if b: 0 else 1) == int and not range[0..1]. For now. In the long
+    # run people expect ranges to work properly within a tuple.
+    if not sameType(a, b):
+      result = skipTypes(a, {tyRange}).skipIntLit
+    when false:
+      if a.kind != tyRange and b.kind == tyRange:
+        # XXX This really needs a better solution, but a proper fix now breaks
+        # code.
+        result = a #.skipIntLit
+      elif a.kind == tyRange and b.kind != tyRange:
+        result = b #.skipIntLit
+      elif a.kind in IntegralTypes and a.n != nil:
+        result = a #.skipIntLit
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:
@@ -102,7 +121,7 @@ proc commonType*(x, y: PType): PType =
       if result.isNil: return x
       if k != tyNone:
         let r = result
-        result = NewType(k, r.owner)
+        result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
@@ -139,27 +158,28 @@ proc IsOpImpl(c: PContext, n: PNode): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   semCheck: bool = true): PNode
 
-proc symFromType(t: PType, info: TLineInfo): PSym =
-  if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent"AnonType", t.owner, info)
-  result.flags.incl sfAnon
-  result.typ = t
+when false:
+  proc symFromType(t: PType, info: TLineInfo): PSym =
+    if t.sym != nil: return t.sym
+    result = newSym(skType, getIdent"AnonType", t.owner, info)
+    result.flags.incl sfAnon
+    result.typ = t
 
-proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-  result = newSymNode(symFromType(t, info), info)
-  result.typ = makeTypeDesc(c, t)
+  proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
+    result = newSymNode(symFromType(t, info), info)
+    result.typ = makeTypeDesc(c, t)
 
 when false:
   proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
     result = newEvalContext(c.module, mode)
     result.getType = proc (n: PNode): PNode =
-      var e = tryExpr(c, n)
-      if e == nil:
-        result = symNodeFromType(c, errorType(c), n.info)
-      elif e.typ == nil:
+      result = tryExpr(c, n)
+      if result == nil:
+        result = newSymNode(errorSym(c, n))
+      elif result.typ == nil:
         result = newSymNode(getSysSym"void")
       else:
-        result = symNodeFromType(c, e.typ, n.info)
+        result.typ = makeTypeDesc(c, result.typ)
 
     result.handleIsOperator = proc (n: PNode): PNode =
       result = IsOpImpl(c, n)
@@ -215,7 +235,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     of tyTypeDesc:
       if n.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
-      result = symNodeFromType(c, typ, n.info)
+      result.typ = makeTypeDesc(c, typ)
+      #result = symNodeFromType(c, typ, n.info)
     else:
       result = semExpr(c, result)
       result = fitNode(c, s.typ.sons[0], result)

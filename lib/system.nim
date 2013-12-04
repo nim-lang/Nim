@@ -374,10 +374,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings : seq[string]
@@ -390,10 +390,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings = newSeq[string](3)
@@ -849,7 +849,7 @@ const
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
   
-  seqShallowFlag = 1 shl (sizeof(int)*8-1)
+  seqShallowFlag = low(int)
   
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1795,7 +1795,7 @@ when defined(JS):
 
 elif hostOS != "standalone":
   {.push stack_trace:off, profiler:off.}
-  proc add*(x: var string, y: cstring) {.noStackFrame.} =
+  proc add*(x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
@@ -2619,12 +2619,13 @@ type
   PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
     ## represents a Nimrod AST node. Macros operate on this type.
 
-template eval*(blk: stmt): stmt =
-  ## executes a block of code at compile time just as if it was a macro
-  ## optionally, the block can return an AST tree that will replace the 
-  ## eval expression
-  macro payload: stmt {.gensym.} = blk
-  payload()
+when false:
+  template eval*(blk: stmt): stmt =
+    ## executes a block of code at compile time just as if it was a macro
+    ## optionally, the block can return an AST tree that will replace the 
+    ## eval expression
+    macro payload: stmt {.gensym.} = blk
+    payload()
 
 when hostOS != "standalone":
   proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 
