@@ -4560,6 +4560,9 @@ These rules ensure that the construction is tied to a variable and can easily
 be destructed at its scope exit. Later versions of the language will improve
 the support of destructors.
 
+Be aware that destructors are not called for objects allocated with ``new``.
+This may change in future versions of language, but for now use ``finalizer``
+parameter to ``new``.
 
 delegator pragma
 ----------------
@@ -5306,4 +5309,3 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
-
