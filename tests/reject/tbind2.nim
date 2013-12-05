@@ -1,6 +1,6 @@
 discard """
   file: "tbind2.nim"
-  line: 12
+  line: 14
   errormsg: "ambiguous call"
 """
 # Test the new ``bind`` keyword for templates

@@ -1,7 +1,7 @@
 discard """
   file: "t99bott.nim"
   line: 26
-  errormsg: "constant expression expected"
+  errormsg: "cannot evaluate at compile time: bn"
   disabled: false
 """
 ## 99 Bottles of Beer
