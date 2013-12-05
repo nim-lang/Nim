@@ -53,7 +53,7 @@ const
     "interface", "is", "isnot", "iterator", "lambda", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
     "ptr", "raise", "ref", "return", "shared", "shl", "shr", "static",
-    "template", "try", "tuple", "type", "var", "when", "while", "with",
+    "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
     "without", "xor", "yield"]
 
 proc getSourceLanguage*(name: string): TSourceLanguage = 
