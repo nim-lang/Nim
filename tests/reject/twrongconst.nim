@@ -1,6 +1,6 @@
 discard """
-  output: "Error: constant expression expected"
-  line: 7
+  output: "Error: cannot evaluate at compile time: x"
+  line: 10
 """
 
 var x: array[100, char] 

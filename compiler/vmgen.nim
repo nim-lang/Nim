@@ -851,6 +851,8 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   gABC(c, ri, whichAsgnOpc(ri), dest, tmp)
   c.freeTemp(tmp)
 
+template isGlobal(s: PSym): bool = sfGlobal in s.flags and s.kind != skForVar
+
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
@@ -872,7 +874,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     c.freeTemp(tmp)
   of nkSym:
     let s = le.sym
-    if sfGlobal in s.flags:
+    if s.isGlobal:
       withTemp(tmp, le.typ):
         gen(c, ri, tmp)
         c.gABx(le, whichAsgnOpc(le, opcWrGlobal), tmp, s.position)
@@ -903,9 +905,17 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
     localError(info, errGenerated,
                "cannot 'importc' variable at compile time")
 
+proc cannotEval(n: PNode) {.noinline.} =
+  globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
+    n.renderTree)
+
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
   let s = n.sym
-  if sfGlobal in s.flags:
+  if s.isGlobal:
+    if sfCompileTime in s.flags or c.mode == emRepl:
+      discard
+    else:
+      cannotEval(n)
     if dest < 0: dest = c.getTemp(s.typ)
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
@@ -922,7 +932,9 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
         # we need to generate an assignment:
         genAsgn(c, dest, n, c.prc.slots[dest].kind >= slotSomeTemp)
     else:
-      InternalError(n.info, s.name.s & " " & $s.position)
+      # see tests/t99bott for an example that triggers it:
+      cannotEval(n)
+      #InternalError(n.info, s.name.s & " " & $s.position)
 
 proc genAccess(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   let a = c.genx(n.sons[0])
@@ -1022,7 +1034,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       c.freeTemp(tmp)
     elif a.sons[0].kind == nkSym:
       let s = a.sons[0].sym
-      if sfGlobal in s.flags:
+      if s.isGlobal:
         if s.position == 0:
           if sfImportc in s.flags: c.importcSym(a.info, s)
           else:
