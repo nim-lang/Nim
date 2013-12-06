@@ -711,8 +711,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     genUnaryABC(c, n, dest, opcParseExprToAst)
   of mParseStmtToAst:
     genUnaryABC(c, n, dest, opcParseStmtToAst)
-  of mExpandToAst:
-    InternalError(n.info, "cannot generate code for: " & $m)
   of mTypeTrait: 
     let tmp = c.genx(n.sons[1])
     if dest < 0: dest = c.getTemp(n.typ)
@@ -786,6 +784,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
   of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI, mAbsI64:
     c.genCall(n, dest)
+  of mExpandToAst:
+    if n.len != 2:
+      globalError(n.info, errGenerated, "expandToAst requires 1 argument")
+    let arg = n.sons[1]
+    if arg.kind in nkCallKinds:
+      #if arg[0].kind != nkSym or arg[0].sym.kind notin {skTemplate, skMacro}:
+      #      "ExpandToAst: expanded symbol is no macro or template"
+      c.genCall(arg, dest)
+    else:
+      globalError(n.info, "expandToAst requires a call expression")
   else:
     # mGCref, mGCunref, 
     InternalError(n.info, "cannot generate code for: " & $m)
@@ -1140,7 +1148,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest)
-    of skProc, skConverter, skMacro, skMethod, skIterator:
+    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
+      # 'skTemplate' is only allowed for 'getAst' support:
       if sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:

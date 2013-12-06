@@ -17,6 +17,7 @@ import
   parser, vmdeps, idents, trees, renderer, options
 
 from semfold import leValueConv, ordinalValToString
+from evaltempl import evalTemplate
 
 when hasFFI:
   import evalffi
@@ -625,7 +626,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
             regs[ra] = newValue
         else:
           globalError(c.debug[pc], errGenerated, "VM not built with FFI support")
-      else:
+      elif prc.kind != skTemplate:
         let newPc = compile(c, prc)
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
@@ -644,6 +645,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
         pc = newPc-1
+      else:
+        # for 'getAst' support we need to support template expansion here:
+        let genSymOwner = if tos.next != nil and tos.next.prc != nil:
+                            tos.next.prc
+                          else:
+                            c.module
+        var macroCall = newNodeI(nkCall, c.debug[pc])
+        macroCall.add(newSymNode(prc))
+        for i in 1 .. rc-1: macroCall.add(regs[rb+i].skipMeta)
+        let a = evalTemplate(macroCall, prc, genSymOwner)
+        ensureKind(nkMetaNode)
+        setMeta(regs[ra], a)
     of opcTJmp:
       # jump Bx if A != 0
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
