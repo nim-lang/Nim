@@ -134,8 +134,9 @@ type
     emConst,                  ## evaluate for 'const' according to spec
     emOptimize,               ## evaluate for optimization purposes (same as
                               ## emConst?)
-    emStatic                  ## evaluate for enforced compile time eval
+    emStaticExpr,             ## evaluate for enforced compile time eval
                               ## ('static' context)
+    emStaticStmt              ## 'static' as an expression
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'

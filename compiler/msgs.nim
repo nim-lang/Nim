@@ -700,11 +700,9 @@ type
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template maybeTrace =
-    if defined(debug) or gVerbosity >= 3:
+    if defined(debug) or gVerbosity >= 3 or msg == errInternal:
       writeStackTrace()
 
-  if msg == errInternal:
-    writeStackTrace() # we always want a stack trace here
   if msg >= fatalMin and msg <= fatalMax: 
     maybeTrace()
     quit(1)

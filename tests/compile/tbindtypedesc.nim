@@ -44,6 +44,10 @@ good(genericParamOnce(TFoo, TFoo))
 bad(genericParamOnce(string, int))
 bad(genericParamOnce(TFoo, float))
 
+type
+  type1 = typedesc
+  type2 = typedesc
+
 proc typePairs(A, B: type1; C, D: type2) = nil
 
 good(typePairs(int, int, TFoo, TFOO))

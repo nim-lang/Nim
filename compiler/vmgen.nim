@@ -314,6 +314,11 @@ proc genLiteral(c: PCtx; n: PNode): int =
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)
 
+proc unused(n: PNode; x: TDest) {.inline.} =
+  if x >= 0: 
+    #debug(n)
+    InternalError(n.info, "not unused")
+
 proc genCase(c: PCtx; n: PNode; dest: var TDest) =
   #  if (!expr1) goto L1;
   #    thenPart
@@ -325,7 +330,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
   #  L2:
   #    elsePart
   #  Lend:
-  if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
+  if not isEmptyType(n.typ):
+    if dest < 0: dest = getTemp(c, n.typ)
+  else:
+    unused(n, dest)
   var endings: seq[TPosition] = @[]
   withTemp(tmp, n.sons[0].typ):
     c.gen(n.sons[0], tmp)
@@ -502,11 +510,6 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
     c.freeTemp(tmp)
   else:
     genBinaryABC(c, n, dest, opc)
-
-proc unused(n: PNode; x: TDest) {.inline.} =
-  if x >= 0: 
-    #debug(n)
-    InternalError(n.info, "not unused")
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =  
   let tmp = c.genx(arg)
@@ -1168,7 +1171,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
       c.gABx(n, opcLdImmInt, dest, n.intVal.int)
     else:
       genLit(c, n, dest)
-  of nkUIntLit..nkNilLit: genLit(c, n, dest)
+  of nkUIntLit..pred(nkNilLit): genLit(c, n, dest)
+  of nkNilLit:
+    if not n.typ.isEmptyType: genLit(c, n, dest)
+    else: unused(n, dest)
   of nkAsgn, nkFastAsgn: 
     unused(n, dest)
     genAsgn(c, n.sons[0], n.sons[1], n.kind == nkAsgn)
@@ -1253,14 +1259,16 @@ proc genStmt*(c: PCtx; n: PNode): int =
   var d: TDest = -1
   c.gen(n, d)
   c.gABC(n, opcEof)
-  InternalAssert d < 0
+  if d >= 0: internalError(n.info, "some destination set")
 
-proc genExpr*(c: PCtx; n: PNode): int =
+proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.removeLastEof
   result = c.code.len
   var d: TDest = -1
   c.gen(n, d)
-  InternalAssert d >= 0
+  if d < 0:
+    if requiresValue: internalError(n.info, "no destination set")
+    d = 0
   c.gABC(n, opcEof, d)
 
 proc genParams(c: PCtx; params: PNode) =
