@@ -515,7 +515,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
                              regs[rb].sons == regs[rc].sons)
     of opcEqNimrodNode:
       decodeBC(nkIntLit)
-      regs[ra].intVal = ord(regs[rb].uast == regs[rc].uast)
+      regs[ra].intVal = ord(regs[rb].skipMeta == regs[rc].skipMeta)
     of opcXor:
       decodeBC(nkIntLit)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
@@ -746,7 +746,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeB(nkStrLit)
       regs[ra].strVal = renderTree(regs[rb].skipMeta, {renderNoComments})
     of opcQuit:
-      if c.mode in {emRepl, emStatic}:
+      if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         Message(c.debug[pc], hintQuitCalled)
         quit(int(getOrdValue(regs[ra])))
       else:
@@ -1036,7 +1036,7 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   setupGlobalCtx(module)
   var c = globalCtx
   c.mode = mode
-  let start = genExpr(c, n)
+  let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   assert c.code[start].opcode != opcEof
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
@@ -1047,8 +1047,11 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
 proc evalConstExpr*(module: PSym, e: PNode): PNode = 
   result = evalConstExprAux(module, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode = 
-  result = evalConstExprAux(module, prc, e, emStatic)
+proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
+  result = evalConstExprAux(module, prc, e, emStaticExpr)
+
+proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
+  discard evalConstExprAux(module, prc, e, emStaticStmt)
 
 proc setupMacroParam(x: PNode): PNode =
   result = x
