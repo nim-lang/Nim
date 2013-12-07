@@ -18,7 +18,7 @@ template stackTraceNL: expr =
   (if IsNil(stackTraceNewLine): "\n" else: stackTraceNewLine)
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: CString) = write(stdout, msg)
+  proc writeToStdErr(msg: CString) = write(stderr, msg)
 
 else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
