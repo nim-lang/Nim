@@ -76,5 +76,7 @@ when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 condsyms.InitDefines()
-HandleCmdLine()
-quit(int8(msgs.gErrorCounter > 0))
+
+when not defined(selftest):
+  HandleCmdLine()
+  quit(int8(msgs.gErrorCounter > 0))
