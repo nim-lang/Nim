@@ -1130,7 +1130,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   var f = 1
   while f < sonsLen(m.callee.n):
     var formal = m.callee.n.sons[f].sym
-    if not ContainsOrIncl(marker, formal.position): 
+    if not ContainsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
           var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
@@ -1145,7 +1145,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
 
-proc argtypeMatches*(c: PContext, f, a: PType): bool = 
+proc argtypeMatches*(c: PContext, f, a: PType): bool =
   var m: TCandidate
   initCandidate(m, f)
   let res = paramTypesMatch(c, m, f, a, ast.emptyNode, nil)
@@ -1155,3 +1155,16 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   result = res != nil
 
 include suggest
+
+
+
+tests:
+  suite "typerel":
+    test "ordinals":
+      # var owner = newSym(skModule, getIdent("dummy"), nil, UnknownLineInfo())
+      var m: TCandidate
+      InitCandidate(m, f)
+
+      # let f = newType(tyOrdinal, owner)
+      # let a = getSysType(tyInt)
+      # check typerel(m, f, a) == isGeneric

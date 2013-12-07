@@ -98,8 +98,12 @@ template fail* =
 
   when not defined(ECMAScript):
     if AbortOnError: quit(1)
-  
-  TestStatusIMPL = FAILED
+ 
+  when defined(TestStatusIMPL):
+    TestStatusIMPL = FAILED
+  else:
+    program_result += 1
+
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
