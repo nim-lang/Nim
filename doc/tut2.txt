@@ -852,7 +852,7 @@ to be included along the program containing the license information::
 The ``readCfgAtRuntime`` proc will open the given filename and return a
 ``TTable`` from the `tables module <tables.html>`_. The parsing of the file is
 done (without much care for handling invalid data or corner cases) using the
-``split`` proc from the `strutils module <strutils.html>`_. There are many
+``splitLines`` proc from the `strutils module <strutils.html>`_. There are many
 things which can fail; mind the purpose is explaining how to make this run at
 compile time, not how to properly implement a DRM scheme.
 
