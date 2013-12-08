@@ -16,9 +16,9 @@ Introduction
 
 
 This document is a tutorial for the advanced constructs of the *Nimrod*
-programming language. **Note that this document is somewhat obsolete as
-the `manual <manual.html>`_ contains many more examples of the advanced 
-language features.**
+programming language. **Note that this document is somewhat obsolete as the**
+`manual <manual.html>`_ **contains many more examples of the advanced language
+features.**
 
 
 Pragmas
