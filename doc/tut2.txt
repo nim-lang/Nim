@@ -16,9 +16,9 @@ Introduction
 
 
 This document is a tutorial for the advanced constructs of the *Nimrod*
-programming language. **Note that this document is somewhat obsolete as
-the `manual <manual.html>`_ contains many more examples of the advanced 
-language features.**
+programming language. **Note that this document is somewhat obsolete as the**
+`manual <manual.html>`_ **contains many more examples of the advanced language
+features.**
 
 
 Pragmas
@@ -948,7 +948,7 @@ Generating AST by hand
 
 To generate an AST we would need to intimately know the structures used by the
 Nimrod compiler exposed in the `macros module <macros.html>`_, which at first
-look seems a daunting task. But we can use a helper shortcut the ``dumpTree``
+look seems a daunting task. But we can use as helper shortcut the ``dumpTree``
 macro, which is used as a statement macro instead of an expression macro.
 Since we know that we want to generate a bunch of ``const`` symbols we can
 create the following source file and compile it to see what the compiler
