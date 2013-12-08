@@ -130,7 +130,7 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation, tyNone, 
-     tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc, tyTypeClass: 
+     tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc, tyTypeClasses: 
     result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
