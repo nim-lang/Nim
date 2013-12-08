@@ -180,6 +180,21 @@ proc Open*(connection, user, password, database: string): TDbConn {.
   tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
+  ##
+  ## Clients can also use Postgres keyword/value connection strings to
+  ## connect.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##      con = Open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##
+  ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+  ## for more information.
+  ##
+  ## Note that the connection parameter is not used but exists to maintain
+  ## the nimrod db api.
   result = PQsetdbLogin(nil, nil, nil, nil, database, user, password)
   if PQStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
