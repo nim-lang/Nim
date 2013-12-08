@@ -780,6 +780,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
+  else: result = errorNode(c, n)
 
 proc buildStringify(c: PContext, arg: PNode): PNode = 
   if arg.typ != nil and 
@@ -1839,7 +1840,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
   of nkEmpty, nkNone, nkCommentStmt: 
-    nil
+    discard
   of nkNilLit: 
     result.typ = getSysType(tyNil)
   of nkIntLit:

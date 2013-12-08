@@ -16,17 +16,17 @@ import
 when hasFFI:
   import evalffi
 
-proc codeListing(c: PCtx, result: var string) =
+proc codeListing(c: PCtx, result: var string, start=0) =
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
   
-  for i in 0.. < c.code.len:
+  for i in start.. < c.code.len:
     let x = c.code[i]
     if x.opcode in relativeJumps:
       jumpTargets.incl(i+x.regBx-wordExcess)
 
   # for debugging purposes
-  var i = 0
+  var i = start
   while i < c.code.len:
     if i in jumpTargets: result.addf("L$1:\n", i)
     let x = c.code[i]
@@ -48,9 +48,9 @@ proc codeListing(c: PCtx, result: var string) =
     result.add("\n")
     inc i
 
-proc echoCode*(c: PCtx) {.deprecated.} =
+proc echoCode*(c: PCtx, start=0) {.deprecated.} =
   var buf = ""
-  codeListing(c, buf)
+  codeListing(c, buf, start)
   echo buf
 
 proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
@@ -846,7 +846,7 @@ proc whichAsgnOpc(n: PNode): TOpcode =
     opcAsgnStr
   of tyFloat..tyFloat128:
     opcAsgnFloat
-  of tyRef, tyNil:
+  of tyRef, tyNil, tyVar:
     opcAsgnRef
   else:
     opcAsgnComplex
@@ -1371,8 +1371,8 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "innerProc":
-    #  c.echoCode
+    #if s.name.s == "treeRepr" or s.name.s == "traverse":
+    #  c.echoCode(result)
     #  echo renderTree(body)
     c.prc = oldPrc
   else:

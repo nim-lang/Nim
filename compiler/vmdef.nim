@@ -60,7 +60,7 @@ type
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
-    opcSwap, opcIsNil, opcOf,
+    opcSwap, opcIsNil, opcOf, 
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
     
     opcAddStrCh,
