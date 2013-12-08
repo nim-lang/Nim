@@ -91,13 +91,17 @@ proc Remove*(list: var TLinkedList, entry: PListEntry) =
   if entry.prev != nil: entry.prev.next = entry.next
 
 proc bringToFront*(list: var TLinkedList, entry: PListEntry) =
-  if entry == list.head: return
-  if entry == list.tail: list.tail = entry.prev
-  if entry.next != nil: entry.next.prev = entry.prev
-  if entry.prev != nil: entry.prev.next = entry.next
-  entry.prev = nil
-  entry.next = list.head
-  list.head = entry
+  when true:
+    list.remove entry
+    list.prepend entry
+  else:
+    if entry == list.head: return
+    if entry == list.tail: list.tail = entry.prev
+    if entry.next != nil: entry.next.prev = entry.prev
+    if entry.prev != nil: entry.prev.next = entry.next
+    entry.prev = nil
+    entry.next = list.head
+    list.head = entry
 
 proc ExcludeStr*(list: var TLinkedList, data: string) =
   var it = list.head

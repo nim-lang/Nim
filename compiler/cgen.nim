@@ -72,6 +72,11 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
+proc useStringh(m: BModule) =
+  if not m.includesStringh:
+    m.includesStringh = true
+    discard lists.IncludeStr(m.headerFiles, "<string.h>")
+
 proc useHeader(m: BModule, sym: PSym) = 
   if lfHeader in sym.loc.Flags: 
     assert(sym.annex != nil)
@@ -358,19 +363,24 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
               addrLoc(loc), rdLoc(loc))
       # XXX: We can be extra clever here and call memset only 
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
-proc constructLoc(p: BProc, loc: TLoc, section = cpsStmts) =
+proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   if not isComplexValueType(skipTypes(loc.t, abstractRange)):
-    linefmt(p, section, "$1 = 0;$n", rdLoc(loc))
+    linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
-    linefmt(p, section, "memset((void*)$1, 0, sizeof($2));$n",
-            addrLoc(loc), rdLoc(loc))
-    genObjectInit(p, section, loc.t, loc, true)
+    if not isTemp or containsGarbageCollectedRef(loc.t):
+      # don't use memset for temporary values for performance if we can
+      # avoid it:
+      useStringh(p.module)
+      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+              addrLoc(loc), rdLoc(loc))
+    genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
   if sfNoInit notin v.flags:
@@ -396,7 +406,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
-  constructLoc(p, result)
+  constructLoc(p, result, isTemp=true)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:
@@ -418,6 +428,7 @@ proc keepAlive(p: BProc, toKeepAlive: TLoc) =
     if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
     else:
+      useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))

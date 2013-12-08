@@ -401,8 +401,9 @@ proc nextAsync(s: PAsyncHTTPServer) =
       var value = ""
       i = header.parseUntil(key, ':')
       inc(i) # skip :
-      i += header.skipWhiteSpace(i)
-      i += header.parseUntil(value, {'\c', '\L'}, i)
+      if i < header.len:
+        i += header.skipWhiteSpace(i)
+        i += header.parseUntil(value, {'\c', '\L'}, i)
       s.headers[key] = value
     else:
       s.client.close()
