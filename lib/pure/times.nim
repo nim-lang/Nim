@@ -246,7 +246,8 @@ proc toSeconds(a: TTimeInfo, interval: TTimeInterval): float =
     else:
       curMonth.inc()
   result += float(newinterv.days * 24 * 60 * 60)
-  result += float(newinterv.minutes * 60 * 60)
+  result += float(newinterv.hours * 60 * 60)
+  result += float(newinterv.minutes * 60)
   result += float(newinterv.seconds)
   result += newinterv.miliseconds / 1000
 

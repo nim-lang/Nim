@@ -883,8 +883,9 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   if n.sons[genericParamsPos].kind != nkEmpty:
     illFormedAst(n)           # process parameters:
-  if n.sons[paramsPos].kind != nkEmpty: 
-    semParamList(c, n.sons[ParamsPos], nil, s)
+  if n.sons[paramsPos].kind != nkEmpty:
+    var gp = newNodeI(nkGenericParams, n.info)
+    semParamList(c, n.sons[ParamsPos], gp, s)
     ParamsTypeCheck(c, s.typ)
   else:
     s.typ = newTypeS(tyProc, c)
@@ -1086,6 +1087,8 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # -- at least for 0.9.2.
   if s.typ.callConv == ccClosure:
     incl(s.typ.flags, tfCapturesEnv)
+  else:
+    s.typ.callConv = ccInline
   when false:
     if s.typ.callConv != ccInline: 
       s.typ.callConv = ccClosure
@@ -1108,24 +1111,24 @@ proc finishMethod(c: PContext, s: PSym) =
     methodDef(s, false)
 
 proc semMethod(c: PContext, n: PNode): PNode = 
-  if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "method")
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
   
   var s = result.sons[namePos].sym
-  if not isGenericRoutine(s):
+  if not isGenericRoutine(s) and result.sons[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
-      methodDef(s, false)
+      methodDef(s, fromCache=false)
     else:
-      LocalError(n.info, errXNeedsParamObjectType, "method")
+      localError(n.info, errXNeedsParamObjectType, "method")
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
-  if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "converter")
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skConverter, converterPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "converter")
-  if sonsLen(t) != 2: LocalError(n.info, errXRequiresOneArgument, "converter")
+  if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
+  if sonsLen(t) != 2: localError(n.info, errXRequiresOneArgument, "converter")
   addConverter(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode = 
@@ -1133,9 +1136,9 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
-  if t.sons[0] == nil: LocalError(n.info, errXNeedsReturnType, "macro")
+  if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
-    LocalError(n.info, errImplOfXexpected, s.name.s)
+    localError(n.info, errImplOfXexpected, s.name.s)
   
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)

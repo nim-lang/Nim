@@ -374,10 +374,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings : seq[string]
@@ -390,10 +390,10 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
 proc newSeq*[T](len = 0): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
-  ## Note that the sequence will be filled with uninitialized entries, which
-  ## can be a problem for sequences containing strings. After the creation of
-  ## the sequence you should assign entries to the sequence instead of adding
-  ## them. Example:
+  ## Note that the sequence will be filled with zeroed entries, which can be a
+  ## problem for sequences containing strings since their value will be
+  ## ``nil``. After the creation of the sequence you should assign entries to
+  ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: nimrod
   ##   var inputStrings = newSeq[string](3)
@@ -999,11 +999,17 @@ type
     ## platform-dependant in general.
 
 when defined(windows):
-  type clong* {.importc: "long", nodecl.} = int32
-    ## This is the same as the type ``long`` in *C*.
+  type
+    clong* {.importc: "long", nodecl.} = int32
+      ## This is the same as the type ``long`` in *C*.
+    culong* {.importc: "unsigned long", nodecl.} = uint32
+      ## This is the same as the type ``unsigned long`` in *C*.
 else:
-  type clong* {.importc: "long", nodecl.} = int
-    ## This is the same as the type ``long`` in *C*.
+  type
+    clong* {.importc: "long", nodecl.} = int
+      ## This is the same as the type ``long`` in *C*.
+    culong* {.importc: "unsigned long", nodecl.} = uint
+      ## This is the same as the type ``unsigned long`` in *C*.
 
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
@@ -1032,8 +1038,6 @@ type # these work for most platforms:
     ## This is the same as the type ``unsigned short`` in *C*.
   cuint* {.importc: "int", nodecl.} = uint32
     ## This is the same as the type ``unsigned int`` in *C*.
-  culong* {.importc: "unsigned long", nodecl.} = uint
-    ## This is the same as the type ``unsigned long`` in *C*.
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
@@ -1042,10 +1046,10 @@ type # these work for most platforms:
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
   
-  PFloat32* = ptr Float32 ## an alias for ``ptr float32``
-  PFloat64* = ptr Float64 ## an alias for ``ptr float64``
-  PInt64* = ptr Int64 ## an alias for ``ptr int64``
-  PInt32* = ptr Int32 ## an alias for ``ptr int32``
+  PFloat32* = ptr float32 ## an alias for ``ptr float32``
+  PFloat64* = ptr float64 ## an alias for ``ptr float64``
+  PInt64* = ptr int64 ## an alias for ``ptr int64``
+  PInt32* = ptr int32 ## an alias for ``ptr int32``
 
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
@@ -2615,12 +2619,13 @@ type
   PNimrodNode* {.magic: "PNimrodNode".} = ref TNimrodNode
     ## represents a Nimrod AST node. Macros operate on this type.
 
-template eval*(blk: stmt): stmt =
-  ## executes a block of code at compile time just as if it was a macro
-  ## optionally, the block can return an AST tree that will replace the 
-  ## eval expression
-  macro payload: stmt {.gensym.} = blk
-  payload()
+when false:
+  template eval*(blk: stmt): stmt =
+    ## executes a block of code at compile time just as if it was a macro
+    ## optionally, the block can return an AST tree that will replace the 
+    ## eval expression
+    macro payload: stmt {.gensym.} = blk
+    payload()
 
 when hostOS != "standalone":
   proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} = 

@@ -64,6 +64,8 @@ Core
 Collections and algorithms
 --------------------------
 
+* `algorithm <algorithm.html>`_
+  Implements some common generic algorithms like sort or binary search.
 * `tables <tables.html>`_
   Nimrod hash table support. Contains tables, ordered tables and count tables.
 * `sets <sets.html>`_

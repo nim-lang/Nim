@@ -629,8 +629,7 @@ proc doOperation(p: pointer, op: TWalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  return
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c) 
+    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
