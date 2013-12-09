@@ -432,7 +432,9 @@ proc MainCommand* =
   else:
     rawMessage(errInvalidCommandX, command)
   
-  if msgs.gErrorCounter == 0 and gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+  if (msgs.gErrorCounter == 0 and
+      gCmd notin {cmdInterpret, cmdRun, cmdDump} and
+      gVerbosity > 0):
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem())])
