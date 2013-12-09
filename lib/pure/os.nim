@@ -1481,6 +1481,12 @@ elif not defined(createNimRtl):
 
   proc paramCount*(): int {.tags: [FReadIO].} = return cmdCount-1
 
+when defined(paramCount):
+  proc commandLineParams*(): seq[TaintedString] =
+    result = @[]
+    for i in 1..paramCount():
+      result.add(paramStr(i))
+
 when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
   proc getApplAux(procPath: string): string =
     result = newString(256)
