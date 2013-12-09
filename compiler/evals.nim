@@ -550,9 +550,7 @@ proc evalSym(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   of skProc, skConverter, skMacro, skType:
     result = n
     #result = s.getBody
-  of skForVar:
-    result = evalGlobalVar(c, s, flags)
-  of skVar, skLet, skTemp, skResult:
+  of skVar, skLet, skForVar, skTemp, skResult:
     if sfGlobal notin s.flags:
       result = evalVariable(c.tos, s, flags)
     else:

@@ -322,7 +322,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     var match: bool
     let t2 = n[2].typ
     case t2.kind
-    of tyTypeClass:
+    of tyTypeClasses:
       var m: TCandidate
       InitCandidate(m, t2)
       match = matchUserTypeClass(c, m, emptyNode, t2, t1) != nil

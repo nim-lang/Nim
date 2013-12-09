@@ -98,8 +98,12 @@ template fail* =
 
   when not defined(ECMAScript):
     if AbortOnError: quit(1)
-  
-  TestStatusIMPL = FAILED
+ 
+  when defined(TestStatusIMPL):
+    TestStatusIMPL = FAILED
+  else:
+    program_result += 1
+
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
@@ -111,7 +115,8 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     counter = 0
 
   template asgn(a, value: expr): stmt =
-    let a = value
+    var a = value # XXX: we need "var: var" here in order to
+                  # preserve the semantics of var params
   
   template print(name, value: expr): stmt =
     when compiles(string($value)):
@@ -146,7 +151,8 @@ macro check*(conditions: stmt): stmt {.immediate.} =
   of nnkStmtList:
     result = newNimNode(nnkStmtList)
     for i in countup(0, checked.len - 1):
-      result.add(newCall(!"check", checked[i]))
+      if checked[i].kind != nnkCommentStmt:
+        result.add(newCall(!"check", checked[i]))
 
   else:
     template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
