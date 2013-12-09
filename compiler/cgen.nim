@@ -944,9 +944,9 @@ proc genMainProc(m: BModule) =
   const 
     CommonMainBody =
         "\tsystemDatInit();$n" &
+        "\tsystemInit();$n" &
         "$1" &
         "$2" &
-        "\tsystemInit();$n" &
         "$3" &
         "$4"
     PosixNimMain = 

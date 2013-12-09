@@ -676,8 +676,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       if lifted != nil:
         paramType.sons[i] = lifted
         result = paramType
-    
-    if result != nil:
+
+    if paramType.lastSon.kind == tyTypeClass:
+      result = paramType
+      result.kind = tyParametricTypeClass
+      result = addImplicitGeneric(copyType(result,
+                                           getCurrOwner(), false))
+    elif result != nil:
       result.kind = tyGenericInvokation
       result.sons.setLen(result.sons.len - 1)
   of tyTypeClass:
