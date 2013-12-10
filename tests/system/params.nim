@@ -1,6 +1,6 @@
 import os
 import osproc
-import parseopt
+import parseopt2
 import sequtils
 
 let argv = commandLineParams()
