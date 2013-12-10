@@ -71,7 +71,7 @@ when not defined(createNimRtl):
 proc next*(p: var TOptParser) {.rtl, extern: "npo$1".}
 
 proc nextOption(p: var TOptParser, token: string, allowEmpty: bool) =
-  for splitchar in ['=', ':']:
+  for splitchar in [':', '=']:
     if splitchar in token:
       let pos = token.find(splitchar)
       p.key = token[0..pos-1]
