@@ -342,7 +342,14 @@ when defined(windows):
     template getCommandLine(): expr = getCommandLineW()
 
     proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
-      result = f.cFilename[0].int == ord('.')
+      let 
+        nul = 0
+        dot = ord('.')
+      result = (f.cFilename[0].int == dot)
+      if result:
+        result = (f.cFilename[1].int in {dot, nul})
+        if result:
+          result = (f.cFilename[2].int == nul)
 
     template getFilename(f: expr): expr =
       $cast[WideCString](addr(f.cFilename[0]))
@@ -352,7 +359,14 @@ when defined(windows):
     template getCommandLine(): expr = getCommandLineA()
 
     proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
-      result = f.cFilename[0] == '.'
+      let 
+        nul = '\0'
+        dot = '.'
+      result = (f.cFilename[0] == dot)
+      if result:
+        result = (f.cFilename[1] in {dot, nul})
+        if result:
+          result = (f.cFilename[2] == nul)
 
     template getFilename(f: expr): expr = $f.cFilename
     
@@ -829,6 +843,86 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   close(a)
   close(b)
 
+type
+  TFilePermission* = enum  ## file access permission; modelled after UNIX
+    fpUserExec,            ## execute access for the file owner
+    fpUserWrite,           ## write access for the file owner
+    fpUserRead,            ## read access for the file owner
+    fpGroupExec,           ## execute access for the group
+    fpGroupWrite,          ## write access for the group
+    fpGroupRead,           ## read access for the group
+    fpOthersExec,          ## execute access for others
+    fpOthersWrite,         ## write access for others
+    fpOthersRead           ## read access for others
+
+proc getFilePermissions*(filename: string): set[TFilePermission] {.
+  rtl, extern: "nos$1", tags: [FReadDir].} =
+  ## retrieves file permissions for `filename`. `OSError` is raised in case of
+  ## an error. On Windows, only the ``readonly`` flag is checked, every other
+  ## permission is available in any case.
+  when defined(posix):
+    var a: TStat
+    if stat(filename, a) < 0'i32: OSError(OSLastError())
+    result = {}
+    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
+    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
+    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
+
+    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
+    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
+    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
+
+    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
+    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
+    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+  else:
+    when useWinUnicode:
+      wrapUnary(res, GetFileAttributesW, filename)
+    else:
+      var res = GetFileAttributesA(filename)
+    if res == -1'i32: OSError(OSLastError())
+    if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
+      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
+                fpOthersExec, fpOthersRead}
+    else:
+      result = {fpUserExec..fpOthersRead}
+  
+proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
+  rtl, extern: "nos$1", tags: [FWriteDir].} =
+  ## sets the file permissions for `filename`. `OSError` is raised in case of
+  ## an error. On Windows, only the ``readonly`` flag is changed, depending on
+  ## ``fpUserWrite``.
+  when defined(posix):
+    var p = 0'i32
+    if fpUserRead in permissions: p = p or S_IRUSR
+    if fpUserWrite in permissions: p = p or S_IWUSR
+    if fpUserExec in permissions: p = p or S_IXUSR
+    
+    if fpGroupRead in permissions: p = p or S_IRGRP
+    if fpGroupWrite in permissions: p = p or S_IWGRP
+    if fpGroupExec in permissions: p = p or S_IXGRP
+    
+    if fpOthersRead in permissions: p = p or S_IROTH
+    if fpOthersWrite in permissions: p = p or S_IWOTH
+    if fpOthersExec in permissions: p = p or S_IXOTH
+    
+    if chmod(filename, p) != 0: OSError(OSLastError())
+  else:
+    when useWinUnicode:
+      wrapUnary(res, GetFileAttributesW, filename)
+    else:
+      var res = GetFileAttributesA(filename)
+    if res == -1'i32: OSError(OSLastError())
+    if fpUserWrite in permissions: 
+      res = res and not FILE_ATTRIBUTE_READONLY
+    else:
+      res = res or FILE_ATTRIBUTE_READONLY
+    when useWinUnicode:
+      wrapBinary(res2, SetFileAttributesW, filename, res)
+    else:
+      var res2 = SetFileAttributesA(filename, res)
+    if res2 == - 1'i32: OSError(OSLastError())
+
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1", 
   tags: [FReadIO, FWriteIO].} =
   ## Copies a file from `source` to `dest`.
@@ -882,6 +976,9 @@ when not defined(ENOENT):
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
+  ## On Windows, ignores the read-only attribute.
+  when defined(Windows):
+    setFilePermissions(file, {fpUserWrite})
   if cremove(file) != 0'i32 and errno != ENOENT:
     raise newException(EOS, $strerror(errno))
 
@@ -1306,86 +1403,6 @@ proc parseCmdLine*(c: string): seq[string] {.
           add(a, c[i])
           inc(i)
     add(result, a)
-
-type
-  TFilePermission* = enum  ## file access permission; modelled after UNIX
-    fpUserExec,            ## execute access for the file owner
-    fpUserWrite,           ## write access for the file owner
-    fpUserRead,            ## read access for the file owner
-    fpGroupExec,           ## execute access for the group
-    fpGroupWrite,          ## write access for the group
-    fpGroupRead,           ## read access for the group
-    fpOthersExec,          ## execute access for others
-    fpOthersWrite,         ## write access for others
-    fpOthersRead           ## read access for others
-
-proc getFilePermissions*(filename: string): set[TFilePermission] {.
-  rtl, extern: "nos$1", tags: [FReadDir].} =
-  ## retrieves file permissions for `filename`. `OSError` is raised in case of
-  ## an error. On Windows, only the ``readonly`` flag is checked, every other
-  ## permission is available in any case.
-  when defined(posix):
-    var a: TStat
-    if stat(filename, a) < 0'i32: OSError(OSLastError())
-    result = {}
-    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
-    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
-    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
-
-    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
-    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
-    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
-
-    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
-    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
-    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
-  else:
-    when useWinUnicode:
-      wrapUnary(res, GetFileAttributesW, filename)
-    else:
-      var res = GetFileAttributesA(filename)
-    if res == -1'i32: OSError(OSLastError())
-    if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
-                fpOthersExec, fpOthersRead}
-    else:
-      result = {fpUserExec..fpOthersRead}
-  
-proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
-  rtl, extern: "nos$1", tags: [FWriteDir].} =
-  ## sets the file permissions for `filename`. `OSError` is raised in case of
-  ## an error. On Windows, only the ``readonly`` flag is changed, depending on
-  ## ``fpUserWrite``.
-  when defined(posix):
-    var p = 0'i32
-    if fpUserRead in permissions: p = p or S_IRUSR
-    if fpUserWrite in permissions: p = p or S_IWUSR
-    if fpUserExec in permissions: p = p or S_IXUSR
-    
-    if fpGroupRead in permissions: p = p or S_IRGRP
-    if fpGroupWrite in permissions: p = p or S_IWGRP
-    if fpGroupExec in permissions: p = p or S_IXGRP
-    
-    if fpOthersRead in permissions: p = p or S_IROTH
-    if fpOthersWrite in permissions: p = p or S_IWOTH
-    if fpOthersExec in permissions: p = p or S_IXOTH
-    
-    if chmod(filename, p) != 0: OSError(OSLastError())
-  else:
-    when useWinUnicode:
-      wrapUnary(res, GetFileAttributesW, filename)
-    else:
-      var res = GetFileAttributesA(filename)
-    if res == -1'i32: OSError(OSLastError())
-    if fpUserWrite in permissions: 
-      res = res and not FILE_ATTRIBUTE_READONLY
-    else:
-      res = res or FILE_ATTRIBUTE_READONLY
-    when useWinUnicode:
-      wrapBinary(res2, SetFileAttributesW, filename, res)
-    else:
-      var res2 = SetFileAttributesA(filename, res)
-    if res2 == - 1'i32: OSError(OSLastError())
   
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
