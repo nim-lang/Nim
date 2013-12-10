@@ -10,7 +10,10 @@
 ## This module provides the standard Nimrod command line parser.
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
-
+##
+## DEPRECATED. Use parseopt2 instead as this version has issues with spaces
+## in arguments.
+{.deprecated.}
 {.push debugger: off.}
 
 include "system/inclrtl"

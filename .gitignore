@@ -180,3 +180,4 @@ examples/cross_calculator/android/tags
 /tests/caas/main
 /tests/caasdriver
 /tools/nimgrep
+/tests/system/params
