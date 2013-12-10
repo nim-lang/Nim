@@ -709,6 +709,14 @@ proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
     if result != -1: return
   return -1
 
+proc quoteIfContainsWhite*(s: string): string =
+  ## returns ``'"' & s & '"'`` if `s` contains a space and does not
+  ## start with a quote, else returns `s`
+  if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
+    result = '"' & s & '"'
+  else:
+    result = s
+
 proc contains*(s: string, c: char): bool {.noSideEffect.} =
   ## Same as ``find(s, c) >= 0``.
   return find(s, c) >= 0
@@ -771,49 +779,6 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
       i = j + 1
   # copy the rest:
   add result, substr(s, i)
-
-proc quoteIfContainsWhite*(s: string): string {.noSideEffect.} =
-  ## Quote s, so it can be safely passed to shell.
-  when defined(Windows):
-    # based on Python's subprocess.list2cmdline
-    # see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
-    let needQuote = {' ', '\t'} in s or s.len == 0
-
-    result = ""
-    var backslashBuff = ""
-    if needQuote:
-      result.add("\"")
-
-    for c in s:
-      if c == '\\':
-        backslashBuff.add(c)
-      elif c == '\"':
-        result.add(backslashBuff)
-        result.add(backslashBuff)
-        backslashBuff.setLen(0)
-        result.add("\\\"")
-      else:
-        if backslashBuff.len != 0:
-          result.add(backslashBuff)
-          backslashBuff.setLen(0)
-        result.add(c)
-
-    if needQuote:
-      result.add("\"")
-
-  else:
-    # based on Python's pipes.quote
-    const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
-                         '0'..'9', 'A'..'Z', 'a'..'z'}
-    if s.len == 0:
-      return "''"
-
-    let safe = s.allCharsInSet(safeUnixChars)
-
-    if safe:
-      return s
-    else:
-      return "'" & s.replace("'", "'\"'\"'") & "'"
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
