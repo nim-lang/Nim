@@ -359,10 +359,10 @@ when defined(Windows) and not defined(useNimRtl):
     result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openarray[string]): cstring =
-    var res = quoteIfContainsWhite(a)
+    var res = quoteShell(a)
     for i in 0..high(args):
       res.add(' ')
-      res.add(quoteIfContainsWhite(args[i]))
+      res.add(quoteShell(args[i]))
     result = cast[cstring](alloc0(res.len+1))
     copyMem(result, cstring(res), res.len)
 
@@ -562,10 +562,10 @@ elif not defined(useNimRtl):
     writeIdx = 1
 
   proc addCmdArgs(command: string, args: openarray[string]): string =
-    result = quoteIfContainsWhite(command)
+    result = quoteShell(command)
     for i in 0 .. high(args):
       add(result, " ")
-      add(result, quoteIfContainsWhite(args[i]))
+      add(result, quoteShell(args[i]))
 
   proc toCStringArray(b, a: openarray[string]): cstringArray =
     result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
