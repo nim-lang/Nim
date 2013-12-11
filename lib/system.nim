@@ -923,6 +923,10 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## The proc ``quit(QuitSuccess)`` is called implicitly when your nimrod
   ## program finishes without incident. A raised unhandled exception is
   ## equivalent to calling ``quit(QuitFailure)``.
+  ##
+  ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
+  ## have any compile time effect. If you need to stop the compiler inside a
+  ## macro, use the ``error`` or ``fatal`` pragmas.
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
