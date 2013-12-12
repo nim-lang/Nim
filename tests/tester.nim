@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers, json,
-  marshal, cgi, parseopt, caasdriver
+  marshal, cgi, parseopt #, caas
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
@@ -364,10 +364,10 @@ proc outputJSON(reject, compile, run: TResults) =
   var s = pretty(doc)
   writeFile(jsonFile, s)
 
-proc runCaasTests(r: var TResults) =
-  for test, output, status, mode in caasTestsRunner():
-    r.addResult(test, "", output & "-> " & $mode,
-                if status: reSuccess else: reOutputsDiffer)
+# proc runCaasTests(r: var TResults) =
+#   for test, output, status, mode in caasTestsRunner():
+#     r.addResult(test, "", output & "-> " & $mode,
+#                 if status: reSuccess else: reOutputsDiffer)
 
 proc main() =
   os.putenv "NIMTEST_NO_COLOR", "1"
@@ -411,7 +411,7 @@ proc main() =
     writeResults(runJson, r)
   of "special":
     runSpecialTests(r, p.cmdLineRest.string)
-    runCaasTests(r)
+    # runCaasTests(r)
     writeResults(runJson, r)
   of "rodfiles":
     runRodFiles(r, p.cmdLineRest.string)
