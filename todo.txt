@@ -20,7 +20,6 @@ Bugs
 - bug: 'type T = ref T' not recognized as illegal recursion
 - bug: type conversions concerning proc types are weird
 - compilation of niminst takes way too long. looks like a regression
-- simple closure iterator doesn't work
 - docgen: sometimes effects are listed twice
 - 'result' is not properly cleaned for NRVO --> use uninit checking instead
 - sneaking with qualifiedLookup() is really broken!

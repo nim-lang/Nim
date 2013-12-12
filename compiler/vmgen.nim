@@ -301,7 +301,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkEmpty, nkNilLit, nkType: result = true
+    of nkType: result = a.typ == b.typ
+    of nkEmpty, nkNilLit: result = true
     else: 
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
@@ -674,12 +675,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     unused(n, dest)
     var d = c.genx(n.sons[1])
     c.gABC(n, opcReset, d)
-  of mOf: 
+  of mOf, mIs:
     if dest < 0: dest = c.getTemp(n.typ)
     var tmp = c.genx(n.sons[1])
-    c.gABC(n, opcOf, dest, tmp)
-    c.gABx(n, opcOf, 0, c.genType(n.sons[2].typ.skipTypes(abstractPtrs)))
+    var idx = c.getTemp(getSysType(tyInt))
+    var typ = n.sons[2].typ
+    if m == mOf: typ = typ.skipTypes(abstractPtrs)
+    c.gABx(n, opcLdImmInt, idx, c.genType(typ))
+    c.gABC(n, if m == mOf: opcOf else: opcIs, dest, tmp, idx)
     c.freeTemp(tmp)
+    c.freeTemp(idx)
   of mSizeOf:
     GlobalError(n.info, errCannotInterpretNodeX, renderTree(n))
   of mHigh:
@@ -717,8 +722,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.gABx(n, opcSetType, tmp, c.genType(n.sons[1].typ))
     c.gABC(n, opcTypeTrait, dest, tmp)
     c.freeTemp(tmp)
-  of mIs:
-    InternalError(n.info, "cannot generate code for: " & $m)
   of mSlurp: genUnaryABC(c, n, dest, opcSlurp)
   of mStaticExec: genBinaryABC(c, n, dest, opcGorge)
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq)
@@ -905,6 +908,11 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
   let lit = genLiteral(c, n)
   c.gABx(n, opc, dest, lit)
 
+proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
+  var n = newNode(nkType)
+  n.typ = t
+  genLit(c, n, dest)
+
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if allowFFI in c.features:
@@ -920,6 +928,17 @@ proc cannotEval(n: PNode) {.noinline.} =
   globalError(n.info, errGenerated, "cannot evaluate at compile time: " &
     n.renderTree)
 
+proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
+  c.globals.add(emptyNode)
+  s.position = c.globals.len
+  # This is rather hard to support, due to the laziness of the VM code
+  # generator. See tests/compile/tmacro2 for why this is necesary:
+  #   var decls{.compileTime.}: seq[PNimrodNode] = @[]
+  c.gABx(n, opcGlobalOnce, 0, s.position)
+  let tmp = c.genx(s.ast)
+  c.gABx(n, whichAsgnOpc(n, opcWrGlobal), tmp, s.position)
+  c.freeTemp(tmp)
+
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
   let s = n.sym
   if s.isGlobal:
@@ -930,10 +949,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(s.typ)
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
-      else:
-        c.globals.add(s.ast)
-        s.position = c.globals.len
-      # XXX var g = codeHere() ?
+      else: genGlobalInit(c, n, s)
     c.gABx(n, opcLdGlobal, dest, s.position)
   else:
     if s.position > 0 or (s.position == 0 and s.kind in {skParam, skResult}):
@@ -1052,6 +1068,7 @@ proc genVarSection(c: PCtx; n: PNode) =
             let sa = if s.ast.isNil: getNullValue(s.typ, a.info) else: s.ast
             c.globals.add(sa)
             s.position = c.globals.len
+            # "Once support" is unnecessary here
         if a.sons[2].kind == nkEmpty:
           when false:
             withTemp(tmp, s.typ):
@@ -1079,15 +1096,16 @@ proc genVarSection(c: PCtx; n: PNode) =
 proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-  let intType = getSysType(tyInt)
-  var tmp = getTemp(c, intType)
-  c.gABx(n, opcLdNull, tmp, c.genType(intType))
-  for x in n:
-    let a = c.genx(x)
-    c.gABC(n, whichAsgnOpc(x, opcWrArr), dest, tmp, a)
-    c.gABI(n, opcAddImmInt, tmp, tmp, 1)
-    c.freeTemp(a)
-  c.freeTemp(tmp)
+  if n.len > 0:
+    let intType = getSysType(tyInt)
+    var tmp = getTemp(c, intType)
+    c.gABx(n, opcLdNull, tmp, c.genType(intType))
+    for x in n:
+      let a = c.genx(x)
+      c.gABC(n, whichAsgnOpc(x, opcWrArr), dest, tmp, a)
+      c.gABI(n, opcAddImmInt, tmp, tmp, 1)
+      c.freeTemp(a)
+    c.freeTemp(tmp)
 
 proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
@@ -1167,6 +1185,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest) =
         InternalError(n.info, 
           "too large offset! cannot generate code for: " & s.name.s)
       dest = s.position
+    of skType:
+      genTypeLit(c, s.typ, dest)
     else:
       InternalError(n.info, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
@@ -1371,7 +1391,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "treeRepr" or s.name.s == "traverse":
+    #if s.name.s == "importImpl_forward" or s.name.s == "importImpl":
     #  c.echoCode(result)
     #  echo renderTree(body)
     c.prc = oldPrc

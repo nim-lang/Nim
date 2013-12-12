@@ -300,11 +300,11 @@ proc semOf(c: PContext, n: PNode): PNode =
   result = n
 
 proc isOpImpl(c: PContext, n: PNode): PNode =
-  InternalAssert n.sonsLen == 3 and
-    n[1].kind == nkSym and n[1].sym.kind == skType and
+  internalAssert n.sonsLen == 3 and
+    n[1].typ != nil and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
   
-  let t1 = n[1].sym.typ.skipTypes({tyTypeDesc})
+  let t1 = n[1].typ.skipTypes({tyTypeDesc})
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
     case n[2].strVal.normalize

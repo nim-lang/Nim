@@ -60,7 +60,7 @@ type
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
-    opcSwap, opcIsNil, opcOf, 
+    opcSwap, opcIsNil, opcOf, opcIs,
     opcSubStr, opcConv, opcCast, opcQuit, opcReset,
     
     opcAddStrCh,
@@ -122,6 +122,7 @@ type
     opcLdImmInt,  # dest = immediate value
     opcWrGlobal,
     opcWrGlobalRef,
+    opcGlobalOnce,  # used to introduce an assignment to a global once
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait
 
