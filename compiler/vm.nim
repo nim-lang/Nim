@@ -52,9 +52,9 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int) =
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                 msg: TMsgKind, arg = "") =
-  MsgWriteln("stack trace: (most recent call last)")
+  msgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
-  LocalError(c.debug[pc], msg, arg)
+  localError(c.debug[pc], msg, arg)
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
@@ -62,9 +62,6 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
-
-template inc(pc: ptr TInstr, diff = 1) =
-  inc cast[TAddress](pc), TInstr.sizeof * diff
 
 proc myreset(n: PNode) =
   when defined(system.reset): 
@@ -299,6 +296,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     let instr = c.code[pc]
     let ra = instr.regA
     #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
+    #message(c.debug[pc], warnUser, "gah")
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -338,25 +336,38 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       # a = b[c]
       let rb = instr.regB
       let rc = instr.regC
-      let idx = regs[rc].intVal
+      let idx = regs[rc].intVal.int
       # XXX what if the array is not 0-based? -> codegen should insert a sub
       assert regs[rb].kind != nkMetaNode
-      asgnComplex(regs[ra], regs[rb].sons[idx.int])
+      let src = regs[rb]
+      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
+        asgnComplex(regs[ra], src.sons[idx])
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdStrIdx:
       decodeBC(nkIntLit)
-      let idx = regs[rc].intVal
-      regs[ra].intVal = regs[rb].strVal[idx.int].ord
+      let idx = regs[rc].intVal.int
+      if idx <=% regs[rb].strVal.len:
+        regs[ra].intVal = regs[rb].strVal[idx].ord
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:
       # a[b] = c
       let rb = instr.regB
       let rc = instr.regC
-      let idx = regs[rb].intVal
-      asgnComplex(regs[ra].sons[idx.int], regs[rc])
+      let idx = regs[rb].intVal.int
+      if idx <% regs[ra].len:
+        asgnComplex(regs[ra].sons[idx], regs[rc])
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArrRef:
       let rb = instr.regB
       let rc = instr.regC
-      let idx = regs[rb].intVal
-      asgnRef(regs[ra].sons[idx.int], regs[rc])
+      let idx = regs[rb].intVal.int
+      if idx <% regs[ra].len:
+        asgnRef(regs[ra].sons[idx], regs[rc])
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdObj:
       # a = b.c
       let rb = instr.regB
@@ -381,7 +392,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
     of opcWrStrIdx:
       decodeBC(nkStrLit)
       let idx = regs[rb].intVal.int
-      regs[ra].strVal[idx] = chr(regs[rc].intVal)
+      if idx <% regs[ra].strVal.len:
+        regs[ra].strVal[idx] = chr(regs[rc].intVal)
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcAddr:
       decodeB(nkRefTy)
       if regs[ra].len == 0: regs[ra].add regs[rb]
@@ -631,7 +645,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset)
-        if not isEmptyType(prc.typ.sons[0]):
+        if not isEmptyType(prc.typ.sons[0]) or prc.kind == skMacro:
           newFrame.slots[0] = getNullValue(prc.typ.sons[0], prc.info)
         # pass every parameter by var (the language definition allows this):
         for i in 1 .. rc-1:
@@ -769,7 +783,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       regs[ra].strVal.setLen(regs[rb].getOrdValue.int)
     of opcOf:
       decodeBC(nkIntLit)
-      regs[ra].intVal = ord(inheritanceDiff(regs[rb].typ, regs[rc].typ) >= 0)
+      let typ = c.types[regs[rc].intVal.int]
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].typ, typ) >= 0)
+    of opcIs:
+      decodeBC(nkIntLit)
+      let t1 = regs[rb].typ.skipTypes({tyTypeDesc})
+      let t2 = c.types[regs[rc].intVal.int]
+      let match = if t2.kind == tyTypeClass: matchTypeClass(t2, t1)
+                  else: sameType(t1, t2)
+      regs[ra].intVal = ord(match)
     of opcSetLenSeq:
       decodeB(nkBracket)
       let newLen = regs[rb].getOrdValue.int
@@ -787,10 +809,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeBC(nkMetaNode)
       if regs[rb].kind != nkMetaNode:
         internalError(c.debug[pc], "no MetaNode")
-      setMeta(regs[ra], regs[rb].uast.sons[regs[rc].intVal.int])
+      let idx = regs[rc].intVal.int
+      let src = regs[rb].uast
+      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
+        setMeta(regs[ra], src.sons[idx])
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNSetChild:
       decodeBC(nkMetaNode)
-      regs[ra].uast.sons[regs[rb].intVal.int] = regs[rc].uast
+      let idx = regs[rb].intVal.int
+      var dest = regs[ra].uast
+      if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
+        dest.sons[idx] = regs[rc].uast
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNAdd:
       decodeBC(nkMetaNode)
       var u = regs[rb].uast
@@ -986,6 +1018,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeB(nkStrLit)
       let typ = regs[rb].sym.typ.skipTypes({tyTypeDesc})
       regs[ra].strVal = typ.typeToString(preferExported)
+    of opcGlobalOnce:
+      let rb = instr.regBx
+      if c.globals.sons[rb - wordExcess - 1].kind != nkEmpty:
+        # skip initialization instructions:
+        while true:
+          inc pc
+          if c.code[pc].opcode in {opcWrGlobal, opcWrGlobalRef} and
+             c.code[pc].regBx == rb:
+            break
     inc pc
 
 proc fixType(result, n: PNode) {.inline.} =
@@ -1073,6 +1114,7 @@ proc setupMacroParam(x: PNode): PNode =
   y.flags.incl nfIsRef
   result = newNode(nkMetaNode)
   result.add y
+  result.typ = x.typ
 
 var evalMacroCounter: int
 
