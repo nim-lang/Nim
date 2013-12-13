@@ -557,7 +557,7 @@ proc longMode(n: PNode, start: int = 0, theEnd: int = - 1): bool =
 
 proc gstmts(g: var TSrcGen, n: PNode, c: TContext) = 
   if n.kind == nkEmpty: return 
-  if (n.kind == nkStmtList) or (n.kind == nkStmtListExpr): 
+  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
     indentNL(g)
     for i in countup(0, sonsLen(n) - 1): 
       optNL(g)
@@ -1069,7 +1069,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n.sons[1])
-  of nkStmtList, nkStmtListExpr: gstmts(g, n, emptyContext)
+  of nkStmtList, nkStmtListExpr, nkStmtListType: gstmts(g, n, emptyContext)
   of nkIfStmt: 
     putWithSpace(g, tkIf, "if")
     gif(g, n)
@@ -1246,8 +1246,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n)
       put(g, tkBracketRi, "]")
+  of nkMetaNode:
+    put(g, tkParLe, "(META|")
+    gsub(g, n.sons[0])
+    put(g, tkParRi, ")")
   else: 
-    #nkNone, nkMetaNode, nkExplicitTypeListCall: 
+    #nkNone, nkExplicitTypeListCall: 
     InternalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string = 

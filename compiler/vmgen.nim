@@ -134,6 +134,21 @@ proc getTemp(c: PCtx; typ: PType): TRegister =
   c.slots[c.maxSlots] = (inUse: true, kind: k)
   inc c.maxSlots
 
+proc getGlobalSlot(c: PCtx; n: PNode; s: PSym): TRegister =
+  let p = c.prc
+  for i in 0 .. p.maxSlots-1:
+    if p.globals[i] == s.id: return TRegister(i)
+
+  result = TRegister(p.maxSlots)
+  p.slots[p.maxSlots] = (inUse: true, kind: slotFixedVar)
+  p.globals[p.maxSlots] = s.id
+  inc p.maxSlots
+  # XXX this is still not correct! We need to load the global in a proc init
+  # section, otherwise control flow could lead to a usage before it's been
+  # loaded.
+  c.gABx(n, opcGlobalAlias, result, s.position)
+  # XXX add some internal asserts here
+
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
   if c.slots[r].kind >= slotSomeTemp: c.slots[r].inUse = false
@@ -929,7 +944,7 @@ proc cannotEval(n: PNode) {.noinline.} =
     n.renderTree)
 
 proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
-  c.globals.add(emptyNode)
+  c.globals.add(emptyNode.copyNode)
   s.position = c.globals.len
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necesary:
@@ -946,11 +961,14 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest) =
       discard
     else:
       cannotEval(n)
-    if dest < 0: dest = c.getTemp(s.typ)
     if s.position == 0:
       if sfImportc in s.flags: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
-    c.gABx(n, opcLdGlobal, dest, s.position)
+    if dest < 0:
+      dest = c.getGlobalSlot(n, s)
+      #c.gABx(n, opcAliasGlobal, dest, s.position)
+    else:
+      c.gABx(n, opcLdGlobal, dest, s.position)
   else:
     if s.position > 0 or (s.position == 0 and s.kind in {skParam, skResult}):
       if dest < 0:

@@ -26,7 +26,7 @@ macro importImpl_forward(name, returns): stmt {.immediate.} =
   p2.add newIdentNode("errors")
   p2.add newNimNode(nnkVarTy)
   p2.add newNimNode(nnkEmpty)
-  p2[1].add newNimNOde(nnkBracketExpr)
+  p2[1].add newNimNode(nnkBracketExpr)
   p2[1][0].add newIdentNode("seq")
   p2[1][0].add newIdentNode("string")
   res[3].add p2

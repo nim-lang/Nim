@@ -51,7 +51,9 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
   let t = n.sons[1].typ
   internalAssert t != nil
-  if not containsGenericType(t):
+  if t.kind == tyTypeDesc and t.len == 0:
+    result = n
+  elif not containsGenericType(t):
     result = evalTypeTrait(n[0], t, GetCurrOwner())
   else:
     # a typedesc variable, pass unmodified to evals
