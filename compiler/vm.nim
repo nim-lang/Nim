@@ -802,9 +802,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
       decodeB(nkIntLit)
       regs[ra].intVal = ord(regs[rb].skipMeta.kind == nkNilLit)
     of opcNBindSym:
-      # trivial implementation:
-      decodeB(nkMetaNode)
-      setMeta(regs[ra], regs[rb].skipMeta.sons[1])
+      decodeBx(nkMetaNode)
+      setMeta(regs[ra], copyTree(c.constants.sons[rbx]))
     of opcNChild:
       decodeBC(nkMetaNode)
       if regs[rb].kind != nkMetaNode:
