@@ -203,7 +203,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1): string =
     add(result, argTypeToString(arg))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc typeRel*(c: var TCandidate, f, a: PType): TTypeRelation
+proc typeRel*(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType = 
   case t.kind
   of tyArrayConstr: 
@@ -213,7 +213,7 @@ proc concreteType(c: TCandidate, t: PType): PType =
     addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
-  of tyGenericParam: 
+  of tyGenericParam, tyAnything:
     result = t
     while true: 
       result = PType(idTableGet(c.bindings, t))
@@ -385,8 +385,23 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   else:
     result = isNone
 
-proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation = 
-  # is a subtype of f?
+proc typeRel(c: var TCandidate, f, a: PType, doBind = true): TTypeRelation =
+  # typeRel can be used to establish various relationships between types:
+  #
+  # 1) When used with concrete types, it will check for type equivalence
+  # or a subtype relationship. 
+  #
+  # 2) When used with a concrete type against a type class (such as generic
+  # signature of a proc), it will check whether the concrete type is a member
+  # of the designated type class.
+  #
+  # 3) When used with two type classes, it will check whether the types
+  # matching the first type class are a strict subset of the types matching
+  # the other. This allows us to compare the signatures of generic procs in
+  # order to give preferrence to the most specific one:
+  #
+  # seq[seq[any]] is a strict subset of seq[any] and hence more specific.
+  
   result = isNone
   assert(f != nil)
   assert(a != nil)
@@ -397,6 +412,50 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     return typeRel(c, f, lastSon(a))
   if a.kind == tyVar and f.kind != tyVar:
     return typeRel(c, f, a.sons[0])
+  
+  template bindingRet(res) =
+    when res == isGeneric: put(c.bindings, f, a)
+    return res
+ 
+  case a.kind
+  of tyOr:
+    # seq[int|string] vs seq[number]
+    # both int and string must match against number
+    for branch in a.sons:
+      if typeRel(c, f, branch, false) == isNone:
+        return isNone
+
+    return isGeneric
+
+  of tyAnd:
+    # seq[Sortable and Iterable] vs seq[Sortable]
+    # only one match is enough
+    for branch in a.sons:
+      if typeRel(c, f, branch, false) != isNone:
+        return isGeneric
+
+    return isNone
+
+  of tyNot:
+    case f.kind
+    of tyNot:
+      # seq[!int] vs seq[!number]
+      # seq[float] matches the first, but not the second
+      # we must turn the problem around:
+      # is number a subset of int? 
+      return typeRel(c, a.lastSon, f.lastSon)
+ 
+    else:
+      # negative type classes are essentially infinite,
+      # so only the `any` type class is their superset
+      return if f.kind == tyAnything: isGeneric
+             else: isNone
+
+  of tyAnything:
+    return if f.kind == tyAnything: isGeneric
+           else: isNone
+  else: nil
+
   case f.kind
   of tyEnum: 
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -485,9 +544,12 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.sons[0] else: a
-      
-      result = typeRel(c, f.sons[0], x)
-      if result < isGeneric: result = isNone
+     
+      if f.sonsLen == 0:
+        result = isGeneric
+      else:
+        result = typeRel(c, f.sons[0], x)
+        if result < isGeneric: result = isNone
     elif a.kind == tyGenericParam:
       result = isGeneric
   of tyForward: InternalError("forward type in typeRel()")
@@ -574,13 +636,17 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
           (a.sons[1].kind == tyChar): 
         result = isConvertible
     else: nil
-  of tyEmpty: 
+
+  of tyEmpty:
     if a.kind == tyEmpty: result = isEqual
-  of tyGenericInst: 
+
+  of tyGenericInst:
     result = typeRel(c, lastSon(f), a)
-  of tyGenericBody: 
+
+  of tyGenericBody:
     let ff = lastSon(f)
     if ff != nil: result = typeRel(c, ff, a)
+
   of tyGenericInvokation:
     var x = a.skipGenericAlias
     if x.kind == tyGenericInvokation or f.sons[0].kind != tyGenericBody:
@@ -604,6 +670,38 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
           if x == nil or x.kind in {tyGenericInvokation, tyGenericParam}:
             InternalError("wrong instantiated type!")
           put(c.bindings, f.sons[i], x)
+  
+  of tyAnd:
+    for branch in f.sons:
+      if typeRel(c, branch, a) == isNone:
+        return isNone
+
+    bindingRet isGeneric
+
+  of tyOr:
+    for branch in f.sons:
+      if typeRel(c, branch, a) != isNone:
+        bindingRet isGeneric
+
+    return isNone
+
+  of tyNot:
+    for branch in f.sons:
+      if typeRel(c, branch, a) != isNone:
+        return isNone
+    
+    bindingRet isGeneric
+
+  of tyAnything:
+    var prev = PType(idTableGet(c.bindings, f))
+    if prev == nil:
+      var concrete = concreteType(c, a)
+      if concrete != nil and doBind:
+        put(c.bindings, f, concrete)
+      return isGeneric
+    else:
+      return typeRel(c, prev, a)
+    
   of tyGenericParam, tyTypeClass:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
@@ -634,7 +732,7 @@ proc typeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         if concrete == nil:
           result = isNone
         else:
-          put(c.bindings, f, concrete)
+          if doBind: put(c.bindings, f, concrete)
     elif a.kind == tyEmpty:
       result = isGeneric
     elif x.kind == tyGenericParam:
@@ -809,8 +907,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         InternalAssert a.len > 0
         r = typeRel(m, f.lastSon, a.lastSon)
       else:
-        let match = matchTypeClass(m, fMaybeExpr, a)
-        if match != isGeneric: r = isNone
+        let match = matchTypeClass(m.bindings, fMaybeExpr, a)
+        if not match: r = isNone
         else:
           # XXX: Ideally, this should happen much earlier somewhere near 
           # semOpAux, but to do that, we need to be able to query the 
@@ -827,7 +925,7 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         
     if r == isGeneric:
       put(m.bindings, f, arg.typ)
-  of tyTypeClass:
+  of tyTypeClass, tyParametricTypeClass:
     if fMaybeExpr.n != nil:
       let match = matchUserTypeClass(c, m, arg, fMaybeExpr, a)
       if match != nil:
@@ -1130,7 +1228,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   var f = 1
   while f < sonsLen(m.callee.n):
     var formal = m.callee.n.sons[f].sym
-    if not ContainsOrIncl(marker, formal.position): 
+    if not ContainsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
           var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
@@ -1145,7 +1243,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         setSon(m.call, formal.position + 1, copyTree(formal.ast))
     inc(f)
 
-proc argtypeMatches*(c: PContext, f, a: PType): bool = 
+proc argtypeMatches*(c: PContext, f, a: PType): bool =
   var m: TCandidate
   initCandidate(m, f)
   let res = paramTypesMatch(c, m, f, a, ast.emptyNode, nil)
@@ -1155,3 +1253,121 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   result = res != nil
 
 include suggest
+
+tests:
+  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
+  
+  proc `|` (t1, t2: PType): PType =
+    result = newType(tyOr, dummyOwner)
+    result.rawAddSon(t1)
+    result.rawAddSon(t2)
+
+  proc `&` (t1, t2: PType): PType =
+    result = newType(tyAnd, dummyOwner)
+    result.rawAddSon(t1)
+    result.rawAddSon(t2)
+
+  proc `!` (t: PType): PType =
+    result = newType(tyNot, dummyOwner)
+    result.rawAddSon(t)
+
+  proc seq(t: PType): PType =
+    result = newType(tySequence, dummyOwner)
+    result.rawAddSon(t)
+
+  proc array(x: int, t: PType): PType =
+    result = newType(tyArray, dummyOwner)
+    
+    var n = newNodeI(nkRange, UnknownLineInfo())
+    addSon(n, newIntNode(nkIntLit, 0))
+    addSon(n, newIntNode(nkIntLit, x))
+    let range = newType(tyRange, dummyOwner)
+    
+    result.rawAddSon(range)
+    result.rawAddSon(t)
+
+  suite "type classes":
+    let
+      int = newType(tyInt, dummyOwner)
+      float = newType(tyFloat, dummyOwner)
+      string = newType(tyString, dummyOwner)
+      ordinal = newType(tyOrdinal, dummyOwner)
+      any = newType(tyAnything, dummyOwner)
+      number = int | float
+
+    var TFoo = newType(tyObject, dummyOwner)
+    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, UnknownLineInfo())
+
+    var T1 = newType(tyGenericParam, dummyOwner)
+    T1.sym = newSym(skType, getIdent"T1", dummyOwner, UnknownLineInfo())
+    T1.sym.position = 0
+
+    var T2 = newType(tyGenericParam, dummyOwner)
+    T2.sym = newSym(skType, getIdent"T2", dummyOwner, UnknownLineInfo())
+    T2.sym.position = 1
+
+    setup:
+      var c: TCandidate
+      InitCandidate(c, nil)
+
+    template yes(x, y) =
+      test astToStr(x) & " is " & astToStr(y):
+        check typeRel(c, y, x) == isGeneric
+
+    template no(x, y) =
+      test astToStr(x) & " is not " & astToStr(y):
+        check typeRel(c, y, x) == isNone
+    
+    yes seq(any), array(10, int) | seq(any)
+    # Sure, seq[any] is directly included
+
+    yes seq(int), seq(any)
+    yes seq(int), seq(number)
+    # Sure, the int sequence is certainly
+    # part of the number sequences (and all sequences)
+    
+    no seq(any), seq(float)
+    # Nope, seq[any] includes types that are not seq[float] (e.g. seq[int])
+
+    yes seq(int|string), seq(any)
+    # Sure
+ 
+    yes seq(int&string), seq(any)
+    # Again
+    
+    yes seq(int&string), seq(int)
+    # A bit more complicated
+    # seq[int&string] is not a real type, but it's analogous to
+    # seq[Sortable and Iterable], which is certainly a subset of seq[Sortable]
+
+    no seq(int|string), seq(int|float)
+    # Nope, seq[string] is not included in not included in
+    # the seq[int|float] set
+    
+    no seq(!(int|string)), seq(string)
+    # A sequence that is neither seq[int] or seq[string]
+    # is obviously not seq[string]
+     
+    no seq(!int), seq(number)
+    # Now your head should start to hurt a bit
+    # A sequence that is not seq[int] is not necessarily a number sequence
+    # it could well be seq[string] for example
+    
+    yes seq(!(int|string)), seq(!string)
+    # all sequnece types besides seq[int] and seq[string]
+    # are subset of all sequence types that are not seq[string]
+
+    no seq(!(int|string)), seq(!(string|TFoo))
+    # Nope, seq[TFoo] is included in the first set, but not in the second
+    
+    no seq(!string), seq(!number)
+    # Nope, seq[int] in included in the first set, but not in the second
+
+    yes seq(!number), seq(any)
+    yes seq(!int), seq(any)
+    no seq(any), seq(!any)
+    no seq(!int), seq(!any)
+    
+    yes int, ordinal
+    no  string, ordinal
+

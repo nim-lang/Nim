@@ -335,12 +335,19 @@ type
     tyConst, tyMutable, tyVarargs, 
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
-    tyTypeClass,
+    tyTypeClass
+    tyAnd
+    tyOr
+    tyNot
+    tyAnything
+    tyParametricTypeClass # structured similarly to tyGenericInst
+                          # lastSon is the body of the type class
 
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
   tyError* = tyProxy # as an errornous node should match everything
+  tyTypeClasses* = {tyTypeClass, tyParametricTypeClass, tyAnd, tyOr, tyNot, tyAnything}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -378,6 +385,7 @@ type
                       # used as return types for return type inference)
     tfAll,            # type class requires all constraints to be met (default)
     tfAny,            # type class requires any constraint to be met
+    tfNot,            # type class with a negative check
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
@@ -1417,3 +1425,4 @@ proc isAtom*(n: PNode): bool {.inline.} =
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyEmpty, tyStmt}
+
