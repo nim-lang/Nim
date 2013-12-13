@@ -1027,6 +1027,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): PNode =
           if c.code[pc].opcode in {opcWrGlobal, opcWrGlobalRef} and
              c.code[pc].regBx == rb:
             break
+    of opcGlobalAlias:
+      let rb = instr.regBx - wordExcess - 1
+      regs[ra] = c.globals.sons[rb]
     inc pc
 
 proc fixType(result, n: PNode) {.inline.} =
@@ -1135,11 +1138,14 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # setup arguments:
   var L = n.safeLen
   if L == 0: L = 1
-  InternalAssert tos.slots.len >= L
+  # This is wrong for tests/reject/tind1.nim where the passed 'else' part
+  # doesn't end up in the parameter:
+  #InternalAssert tos.slots.len >= L
   # return value:
   tos.slots[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
   # setup parameters:
-  for i in 1 .. < L: tos.slots[i] = setupMacroParam(n.sons[i])
+  for i in 1 .. < min(tos.slots.len, L):
+    tos.slots[i] = setupMacroParam(n.sons[i])
   # temporary storage:
   for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos)

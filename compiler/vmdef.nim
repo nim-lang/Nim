@@ -122,6 +122,7 @@ type
     opcLdImmInt,  # dest = immediate value
     opcWrGlobal,
     opcWrGlobalRef,
+    opcGlobalAlias, # load an alias to a global into a register
     opcGlobalOnce,  # used to introduce an assignment to a global once
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait
@@ -162,6 +163,8 @@ type
     blocks*: seq[TBlock]    # blocks; temp data structure
     slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
     maxSlots*: int
+    globals*: array[TRegister, int] # hack: to support passing globals byref
+                                    # we map a slot persistently to a global
     
   PCtx* = ref TCtx
   TCtx* = object of passes.TPassContext # code gen context
@@ -185,7 +188,7 @@ type
   
 proc newCtx*(module: PSym): PCtx =
   PCtx(code: @[], debug: @[],
-    globals: newNode(nkStmtList), constants: newNode(nkStmtList), types: @[],
+    globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module)
 
 proc refresh*(c: PCtx, module: PSym) =
