@@ -20,7 +20,8 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     if a.kind != nkSym: 
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyTypeClass, tyExpr}: continue
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyExpr}+tyTypeClasses:
+      continue
     var s = newSym(skType, q.name, getCurrOwner(), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(IdTableGet(pt, q.typ))
@@ -193,7 +194,7 @@ proc fixupProcType(c: PContext, genericType: PType,
   if result == nil: return
 
   case genericType.kind
-  of tyGenericParam, tyTypeClass:
+  of tyGenericParam, tyTypeClasses:
     result = inst.concreteTypes[genericType.sym.position]
   of tyTypeDesc:
     result = inst.concreteTypes[genericType.sym.position]

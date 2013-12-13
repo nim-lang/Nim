@@ -382,33 +382,34 @@ proc mutateTypeAux(marker: var TIntSet, t: PType, iter: TTypeMutator,
     if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
   assert(result != nil)
 
-proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType = 
+proc mutateType(t: PType, iter: TTypeMutator, closure: PObject): PType =
   var marker = InitIntSet()
   result = mutateTypeAux(marker, t, iter, closure)
 
-proc ValueToString(a: PNode): string = 
+proc ValueToString(a: PNode): string =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = $(a.intVal)
   of nkFloatLit..nkFloat128Lit: result = $(a.floatVal)
   of nkStrLit..nkTripleStrLit: result = a.strVal
   else: result = "<invalid value>"
 
-proc rangeToStr(n: PNode): string = 
+proc rangeToStr(n: PNode): string =
   assert(n.kind == nkRange)
   result = ValueToString(n.sons[0]) & ".." & ValueToString(n.sons[1])
 
 const 
-  typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty", 
-    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc", 
-    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam", 
-    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple", 
-    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc", 
+  typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
+    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
+    "GenericInvokation", "GenericBody", "GenericInst", "GenericParam",
+    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
+    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
     "pointer", "OpenArray[$1]", "string", "CString", "Forward",
     "int", "int8", "int16", "int32", "int64",
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
-    "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass"]
+    "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
+    "ParametricTypeClass", "and", "or", "not", "any"]
 
 proc consToStr(t: PType): string =
   if t.len > 0: result = t.typeToString
@@ -421,7 +422,7 @@ proc constraintsToStr(t: PType): string =
     if i > 0: result.add(sep)
     result.add(t.sons[i].consToStr)
 
-proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string = 
+proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
   if t == nil: return 
@@ -861,7 +862,7 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
      tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
-     tyOrdinal, tyTypeClass:
+     tyOrdinal, tyTypeClasses:
     CycleCheck()    
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and (a.kind == tyProc):
@@ -1042,7 +1043,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
     # XXX er ... no? these should not be allowed!
   of tyEmpty:
     result = taField in flags
-  of tyTypeClass:
+  of tyTypeClasses:
     result = true
   of tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation:
     result = false

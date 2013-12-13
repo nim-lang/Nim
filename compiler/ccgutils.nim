@@ -86,7 +86,7 @@ proc GetUniqueType*(key: PType): PType =
     if result == nil:
       gCanonicalTypes[k] = key
       result = key
-  of tyTypeDesc, tyTypeClass:
+  of tyTypeDesc, tyTypeClasses:
     InternalError("value expected, but got a type")
   of tyGenericParam:
     InternalError("GetUniqueType")
