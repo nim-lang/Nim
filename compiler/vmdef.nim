@@ -101,7 +101,6 @@ type
     opcRaise,
     opcNChild,
     opcNSetChild,
-    opcNBindSym, # opcodes for the AST manipulation following
     opcCallSite,
     opcNewStr,
   
@@ -120,6 +119,7 @@ type
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
     opcLdImmInt,  # dest = immediate value
+    opcNBindSym,
     opcWrGlobal,
     opcWrGlobalRef,
     opcGlobalAlias, # load an alias to a global into a register
