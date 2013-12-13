@@ -977,10 +977,13 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
-  when defined(Windows):
-    setFilePermissions(file, {fpUserWrite})
   if cremove(file) != 0'i32 and errno != ENOENT:
-    raise newException(EOS, $strerror(errno))
+    when defined(Windows):
+      setFilePermissions(file, {fpUserWrite})
+      if cremove(file) != 0'i32 and errno != ENOENT:
+        raise newException(EOS, $strerror(errno))
+    else:
+      raise newException(EOS, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [FExecIO].} =
