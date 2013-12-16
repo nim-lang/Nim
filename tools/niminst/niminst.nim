@@ -14,7 +14,7 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation
+  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation
 
 const
   maxOS = 20 # max number of OSes
@@ -486,7 +486,7 @@ proc setupDist(c: var TConfigData) =
     if c.innoSetup.path.len == 0:
       c.innoSetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$# $# /O$# $#" % [quoteIfContainsWhite(c.innoSetup.path),
+    var cmd = "$# $# /O$# $#" % [quoteShell(c.innoSetup.path),
                                  c.innoSetup.flags, outcmd, n]
     echo(cmd)
     if execShellCmd(cmd) == 0:
@@ -587,4 +587,3 @@ if actionZip in c.actions:
     quit("libzip is not installed")
 if actionDeb in c.actions:
   debDist(c)
-

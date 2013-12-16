@@ -41,6 +41,58 @@ type
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams      ## use the parent's streams
 
+proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote s, so it can be safely passed to Windows API.
+  ## Based on Python's subprocess.list2cmdline
+  ## See http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
+  let needQuote = {' ', '\t'} in s or s.len == 0
+
+  result = ""
+  var backslashBuff = ""
+  if needQuote:
+    result.add("\"")
+
+  for c in s:
+    if c == '\\':
+      backslashBuff.add(c)
+    elif c == '\"':
+      result.add(backslashBuff)
+      result.add(backslashBuff)
+      backslashBuff.setLen(0)
+      result.add("\\\"")
+    else:
+      if backslashBuff.len != 0:
+        result.add(backslashBuff)
+        backslashBuff.setLen(0)
+      result.add(c)
+
+  if needQuote:
+    result.add("\"")
+
+proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote s, so it can be safely passed to POSIX shell.
+  ## Based on Python's pipes.quote
+  const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
+                         '0'..'9', 'A'..'Z', 'a'..'z'}
+  if s.len == 0:
+    return "''"
+
+  let safe = s.allCharsInSet(safeUnixChars)
+
+  if safe:
+    return s
+  else:
+    return "'" & s.replace("'", "'\"'\"'") & "'"
+
+proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote s, so it can be safely passed to shell.
+  when defined(Windows):
+    return quoteShellWindows(s)
+  elif defined(posix):
+    return quoteShellPosix(s)
+  else:
+    {.error:"quoteShell is not supported on your system".}
+
 proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
                                                   poUseShell}): TaintedString {.
@@ -307,10 +359,10 @@ when defined(Windows) and not defined(useNimRtl):
     result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openarray[string]): cstring =
-    var res = quoteIfContainsWhite(a)
+    var res = quoteShell(a)
     for i in 0..high(args):
       res.add(' ')
-      res.add(quoteIfContainsWhite(args[i]))
+      res.add(quoteShell(args[i]))
     result = cast[cstring](alloc0(res.len+1))
     copyMem(result, cstring(res), res.len)
 
@@ -510,10 +562,10 @@ elif not defined(useNimRtl):
     writeIdx = 1
 
   proc addCmdArgs(command: string, args: openarray[string]): string =
-    result = quoteIfContainsWhite(command)
+    result = quoteShell(command)
     for i in 0 .. high(args):
       add(result, " ")
-      add(result, quoteIfContainsWhite(args[i]))
+      add(result, quoteShell(args[i]))
 
   proc toCStringArray(b, a: openarray[string]): cstringArray =
     result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
@@ -792,5 +844,14 @@ proc execCmdEx*(command: string, options: set[TProcessOption] = {
   close(p)
 
 when isMainModule:
-  var x = execProcess("gcc -v")
-  echo "ECHO ", x
+  assert quoteShellWindows("aaa") == "aaa"
+  assert quoteShellWindows("aaa\"") == "aaa\\\""
+  assert quoteShellWindows("") == "\"\""
+
+  assert quoteShellPosix("aaa") == "aaa"
+  assert quoteShellPosix("aaa a") == "'aaa a'"
+  assert quoteShellPosix("") == "''"
+  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+
+  when defined(posix):
+    assert quoteShell("") == "''"
