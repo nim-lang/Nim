@@ -13,9 +13,9 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/nimrod_icon.o".}
 
-import 
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
-  extccomp, strutils, os, platform, main, parseopt, service
+import
+  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
+  extccomp, strutils, os, osproc, platform, main, parseopt, service
 
 when hasTinyCBackend:
   import tccgen
@@ -23,7 +23,7 @@ when hasTinyCBackend:
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
-  
+
 proc prependCurDir(f: string): string =
   when defined(unix):
     if os.isAbsolute(f): result = f
@@ -61,11 +61,11 @@ proc HandleCmdLine() =
           tccgen.run()
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
-          var ex = quoteIfContainsWhite(
+          var ex = quoteShell(
             completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram("node " & ex & ' ' & service.arguments)
         else:
-          var ex = quoteIfContainsWhite(
+          var ex = quoteShell(
             changeFileExt(gProjectFull, exeExt).prependCurDir)
           execExternalProgram(ex & ' ' & service.arguments)
 

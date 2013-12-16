@@ -463,9 +463,9 @@ proc getCompileOptions: string =
 proc getLinkOptions: string =
   result = linkOptions
   for linkedLib in items(cLinkedLibs):
-    result.add(cc[ccompiler].linkLibCmd % linkedLib.quoteIfContainsWhite)
+    result.add(cc[ccompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(cLibs):
-    result.add([cc[ccompiler].linkDirCmd, libDir.quoteIfContainsWhite])
+    result.add([cc[ccompiler].linkDirCmd, libDir.quoteShell])
 
 proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
@@ -485,10 +485,10 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
   var includeCmd, compilePattern: string
   if not noAbsolutePaths(): 
     # compute include paths:
-    includeCmd = cc[c].includeCmd & quoteIfContainsWhite(libpath)
+    includeCmd = cc[c].includeCmd & quoteShell(libpath)
 
     for includeDir in items(cIncludes):
-      includeCmd.add([cc[c].includeCmd, includeDir.quoteIfContainsWhite])
+      includeCmd.add([cc[c].includeCmd, includeDir.quoteShell])
 
     compilePattern = JoinPath(ccompilerpath, exe)
   else: 
@@ -501,17 +501,17 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
                   toObjFile(cfile) 
                 else: 
                   completeCFilePath(toObjFile(cfile))
-  cfile = quoteIfContainsWhite(AddFileExt(cfile, cExt))
-  objfile = quoteIfContainsWhite(objfile)
-  result = quoteIfContainsWhite(compilePattern % [
+  cfile = quoteShell(AddFileExt(cfile, cExt))
+  objfile = quoteShell(objfile)
+  result = quoteShell(compilePattern % [
     "file", cfile, "objfile", objfile, "options", options, 
     "include", includeCmd, "nimrod", getPrefixDir(), "lib", libpath])
   add(result, ' ')
   addf(result, cc[c].compileTmpl, [
     "file", cfile, "objfile", objfile, 
     "options", options, "include", includeCmd, 
-    "nimrod", quoteIfContainsWhite(getPrefixDir()), 
-    "lib", quoteIfContainsWhite(libpath)])
+    "nimrod", quoteShell(getPrefixDir()), 
+    "lib", quoteShell(libpath)])
 
 proc footprint(filename: string): TCrc32 =
   result = crcFromFile(filename) ><
@@ -590,7 +590,7 @@ proc CallCCompiler*(projectfile: string) =
     while it != nil:
       let objFile = if noAbsolutePaths(): it.data.extractFilename else: it.data
       add(objfiles, ' ')
-      add(objfiles, quoteIfContainsWhite(
+      add(objfiles, quoteShell(
           addFileExt(objFile, cc[ccompiler].objExt)))
       it = PStrEntry(it.next)
 
@@ -602,8 +602,8 @@ proc CallCCompiler*(projectfile: string) =
       var linkerExe = getConfigVar(c, ".linkerexe")
       if len(linkerExe) == 0: linkerExe = cc[c].linkerExe
       if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
-      if noAbsolutePaths(): linkCmd = quoteIfContainsWhite(linkerExe)
-      else: linkCmd = quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe))
+      if noAbsolutePaths(): linkCmd = quoteShell(linkerExe)
+      else: linkCmd = quoteShell(JoinPath(ccompilerpath, linkerExe))
       if optGenGuiApp in gGlobalOptions: buildGui = cc[c].buildGui
       else: buildGui = ""
       var exefile: string
@@ -617,17 +617,17 @@ proc CallCCompiler*(projectfile: string) =
         exefile = options.outFile
       if not noAbsolutePaths():
         exefile = joinPath(splitFile(projectFile).dir, exefile)
-      exefile = quoteIfContainsWhite(exefile)
+      exefile = quoteShell(exefile)
       let linkOptions = getLinkOptions()
-      linkCmd = quoteIfContainsWhite(linkCmd % ["builddll", builddll,
+      linkCmd = quoteShell(linkCmd % ["builddll", builddll,
           "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
           "exefile", exefile, "nimrod", getPrefixDir(), "lib", libpath])
       linkCmd.add ' '
       addf(linkCmd, cc[c].linkTmpl, ["builddll", builddll,
           "buildgui", buildgui, "options", linkOptions,
           "objfiles", objfiles, "exefile", exefile,
-          "nimrod", quoteIfContainsWhite(getPrefixDir()),
-          "lib", quoteIfContainsWhite(libpath)])
+          "nimrod", quoteShell(getPrefixDir()),
+          "lib", quoteShell(libpath)])
       if optCompileOnly notin gGlobalOptions: execExternalProgram(linkCmd)
   else:
     linkCmd = ""
