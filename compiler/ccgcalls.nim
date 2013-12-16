@@ -290,6 +290,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
     genNamedParamCall(p, e, d)
   else:
     genPrefixCall(p, nil, e, d)
+  postStmtActions(p)
   when false:
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
@@ -303,6 +304,7 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genNamedParamCall(p, ri, d)
   else:
     genPrefixCall(p, le, ri, d)
+  postStmtActions(p)
   when false:
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 

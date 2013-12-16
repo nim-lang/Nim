@@ -111,6 +111,7 @@ type
     labels*: natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', PRope] # special procs for the
                                               # OpenGL wrapper
+    injectStmt*: PRope
 
 var
   mainModProcs*, mainModInit*, mainDatInit*: PRope # parts of the main module

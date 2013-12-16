@@ -470,6 +470,19 @@ proc is declared in the generated code:
     echo "realistic interrupt handler"
 
 
+InjectStmt pragma
+-----------------
+
+The `injectStmt`:idx: pragma can be used to inject a statement before every
+other statement in the current module. It is only supposed to be used for
+debugging:
+
+.. code-block:: nimrod
+  {.injectStmt: gcInvariants().}
+  
+  # ... complex code here that produces crashes ...
+
+
 LineDir option
 --------------
 The `lineDir`:idx: option can be turned on or off. If turned on the

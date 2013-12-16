@@ -289,6 +289,9 @@ proc genLineDir(p: BProc, t: PNode) =
     linefmt(p, cpsStmts, "nimln($1, $2);$n",
             line.toRope, t.info.quotedFilename)
 
+proc postStmtActions(p: BProc) {.inline.} =
+  app(p.s(cpsStmts), p.module.injectStmt)
+
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
 
