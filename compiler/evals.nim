@@ -915,8 +915,8 @@ proc evalTypeTrait*(trait, operand: PNode, context: PSym): PNode =
     result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
     result.info = trait.info
-  of "arity":    
-    result = newIntNode(nkIntLit, typ.n.len-1)
+  of "arity":
+    result = newIntNode(nkIntLit, typ.n.len)
     result.typ = newType(tyInt, context)
     result.info = trait.info
   else:
