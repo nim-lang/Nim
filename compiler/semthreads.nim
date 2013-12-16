@@ -380,7 +380,8 @@ proc analyseThreadProc*(prc: PSym) =
   var formals = skipTypes(prc.typ, abstractInst).n
   for i in 1 .. formals.len-1:
     var formal = formals.sons[i].sym 
-    c.mapping[formal.id] = toTheirs # thread receives foreign data!
+    # the input is copied and belongs to the thread:
+    c.mapping[formal.id] = toMine
   discard analyse(c, prc.getBody)
 
 proc needsGlobalAnalysis*: bool =

@@ -5053,6 +5053,18 @@ Note that this pragma is somewhat of a misnomer: Other backends will provide
 the same feature under the same name.
 
 
+Extern pragma
+-------------
+Like ``exportc`` or ``importc`` the `extern`:idx: pragma affects name
+mangling. The string literal passed to ``extern`` can be a format string:
+
+.. code-block:: Nimrod
+  proc p(s: string) {.extern: "prefix$1".} =
+    echo s
+
+In the example the external name of ``p`` is set to ``prefixp``.
+
+
 Bycopy pragma
 -------------
 

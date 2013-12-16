@@ -18,7 +18,8 @@ const
   logGC = false
   traceGC = false # extensive debugging
   alwaysCycleGC = false
-  alwaysGC = false # collect after every memory allocation (for debugging)
+  alwaysGC = defined(fulldebug) # collect after every memory
+                                # allocation (for debugging)
   leakDetector = false
   overwriteFree = false
   trackAllocationSource = leakDetector

@@ -345,8 +345,9 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
 
 proc forAllChildren(cell: PCell, op: TWalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
-  gcAssert(cell.typ != nil, "forAllChildren: 2")
-  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
+  gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: 2")
+  gcAssert(cell.typ != nil, "forAllChildren: 3")
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 4"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
@@ -361,7 +362,7 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
         for i in 0..s.len-1:
           forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
             GenericSeqSize), cell.typ.base, op)
-    else: nil
+    else: discard
 
 proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
   # we check the last 8 entries (cache line) for a slot that could be reused.
@@ -408,8 +409,10 @@ proc addNewObjToZCT(res: PCell, gch: var TGcHeap) {.inline.} =
     add(gch.zct, res)
 
 {.push stackTrace: off, profiler:off.}
-proc gcInvariant*(msg: string) =
-  sysAssert(allocInv(gch.region), msg)
+proc gcInvariant*() =
+  sysAssert(allocInv(gch.region), "injected")
+  when defined(markForDebug):
+    markForDebug(gch)
 {.pop.}
 
 proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
