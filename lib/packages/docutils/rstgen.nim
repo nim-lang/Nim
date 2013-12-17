@@ -40,7 +40,7 @@ type
     filename*: string
     meta*: array[TMetaEnum, string]
   
-  PDoc = var TRstGenerator
+  PDoc = var TRstGenerator ## Alias to type less.
 
 proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        config: PStringTable, filename: string,
@@ -147,7 +147,7 @@ proc dispA(target: TOutputTarget, dest: var string,
   if target != outLatex: addf(dest, xml, args)
   else: addf(dest, tex, args)
   
-proc renderRstToOut*(d: PDoc, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -162,7 +162,7 @@ proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
 
 # ---------------- index handling --------------------------------------------
 
-proc setIndexTerm*(d: PDoc, id, term: string) =
+proc setIndexTerm*(d: var TRstGenerator, id, term: string) =
   d.theIndex.add(term)
   d.theIndex.add('\t')
   let htmlFile = changeFileExt(extractFilename(d.filename), HtmlExt)
@@ -295,7 +295,7 @@ proc renderTocEntry(d: PDoc, e: TTocEntry, result: var string) =
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n", 
     "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
 
-proc renderTocEntries*(d: PDoc, j: var int, lvl: int, result: var string) = 
+proc renderTocEntries*(d: var TRstGenerator, j: var int, lvl: int, result: var string) =
   var tmp = ""
   while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
