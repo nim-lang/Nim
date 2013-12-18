@@ -478,6 +478,34 @@ proc newDotExpr*(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
 
 proc newIdentDefs*(name, kind: PNimrodNode; 
                    default = newEmptyNode()): PNimrodNode {.compileTime.} = 
+  ## Creates a new ``nnkIdentDefs`` node of a specific kind and value.
+  ##
+  ## ``nnkIdentDefs`` need to have at least three children, but they can have
+  ## more: first comes a list of identifiers followed by a type and value
+  ## nodes. This helper proc creates a three node subtree, the first subnode
+  ## being a single identifier name. Both the ``kind`` node and ``default``
+  ## (value) nodes may be empty depending on where the ``nnkIdentDefs``
+  ## appears: tuple or object definitions will have an empty ``default`` node,
+  ## ``let`` or ``var`` blocks may have an empty ``kind`` node if the
+  ## identifier is being assigned a value. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   var varSection = newNimNode(nnkVarSection).add(
+  ##     newIdentDefs(ident("a"), ident("string")),
+  ##     newIdentDefs(ident("b"), newEmptyNode(), newLit(3)))
+  ##   # --> var
+  ##   #       a: string
+  ##   #       b = 3
+  ##
+  ## If you need to create multiple identifiers you need to use the lower level
+  ## ``newNimNode``:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   result = newNimNode(nnkIdentDefs).add(
+  ##     ident("a"), ident("b"), ident("c"), ident("string"),
+  ##       newStrLitNode("Hello"))
   newNimNode(nnkIdentDefs).add(name, kind, default)
 
 proc newNilLit*(): PNimrodNode {.compileTime.} =
