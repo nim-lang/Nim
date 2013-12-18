@@ -201,7 +201,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
     result = lookupTypeVar(cl, t)
     if result.kind == tyGenericInvokation:
       result = handleGenericInvokation(cl, result)
-  of tyExpr:
+  of tyStatic:
     if t.sym != nil and t.sym.kind == skGenericParam:
       result = lookupTypeVar(cl, t)
   of tyGenericInvokation: 
@@ -215,7 +215,7 @@ proc ReplaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   else:
     if t.kind == tyArray:
       let idxt = t.sons[0]
-      if idxt.kind == tyExpr and 
+      if idxt.kind == tyStatic and 
          idxt.sym != nil and idxt.sym.kind == skGenericParam:
         let value = lookupTypeVar(cl, idxt).n
         t.sons[0] = makeRangeType(cl.c, 0, value.intVal - 1, value.info)

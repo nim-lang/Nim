@@ -409,7 +409,7 @@ const
     "uint", "uint8", "uint16", "uint32", "uint64",
     "bignum", "const ",
     "!", "varargs[$1]", "iter[$1]", "Error Type", "TypeClass",
-    "ParametricTypeClass", "and", "or", "not", "any"]
+    "ParametricTypeClass", "and", "or", "not", "any", "static"]
 
 proc consToStr(t: PType): string =
   if t.len > 0: result = t.typeToString
@@ -445,6 +445,9 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyTypeDesc:
     if t.len == 0: result = "typedesc"
     else: result = "typedesc[" & constraintsToStr(t) & "]"
+  of tyStatic:
+    InternalAssert t.len > 0
+    result = "static[" & constraintsToStr(t) & "]"
   of tyTypeClass:
     if t.n != nil: return t.sym.owner.name.s
     case t.len
@@ -828,9 +831,9 @@ proc SameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if a.kind != b.kind: return false  
   case a.Kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyStmt:
+     tyInt..tyBigNum, tyStmt, tyExpr:
     result = sameFlags(a, b)
-  of tyExpr:
+  of tyStatic:
     result = ExprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
   of tyObject:
     IfFastObjectTypeCheckFailed(a, b):
@@ -1038,7 +1041,7 @@ proc typeAllowedAux(marker: var TIntSet, typ: PType, kind: TSymKind,
       if not result: break 
     if result and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
-  of tyExpr, tyStmt, tyTypeDesc:
+  of tyExpr, tyStmt, tyTypeDesc, tyStatic:
     result = true
     # XXX er ... no? these should not be allowed!
   of tyEmpty:
@@ -1314,7 +1317,7 @@ proc compatibleEffects*(formal, actual: PType): bool =
   result = true
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypedesc, tyExpr}
+  result = t.kind in {tyTypedesc, tyStatic}
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true

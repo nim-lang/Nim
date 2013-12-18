@@ -78,7 +78,7 @@ proc mapType(t: ast.PType): ptr libffi.TType =
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
-     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyNil:
+     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct:
     result = mapType(t.sons[0])

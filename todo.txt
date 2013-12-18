@@ -38,7 +38,6 @@ version 0.9.x
 - macros as type pragmas
 - implicit deref for parameter matching
 - lazy overloading resolution:
-  * get rid of ``expr[typ]``, use perhaps ``static[typ]`` instead
   * special case ``tyStmt``
 - FFI:
   * test libffi on windows

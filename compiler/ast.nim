@@ -192,6 +192,7 @@ type
     nkObjectTy,           # object body
     nkTupleTy,            # tuple body
     nkTypeClassTy,        # user-defined type class
+    nkStaticTy,           # ``static[T]``
     nkRecList,            # list of object parts
     nkRecCase,            # case section of object
     nkRecWhen,            # when section of object
@@ -336,12 +337,13 @@ type
     tyIter, # unused
     tyProxy # used as errornous type (for idetools)
     tyTypeClass
+    tyParametricTypeClass # structured similarly to tyGenericInst
+                          # lastSon is the body of the type class
     tyAnd
     tyOr
     tyNot
     tyAnything
-    tyParametricTypeClass # structured similarly to tyGenericInst
-                          # lastSon is the body of the type class
+    tyStatic
 
 const
   tyPureObject* = tyTuple
@@ -1232,7 +1234,7 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfShared in elem.flags:
     owner.flags.incl tfHasShared
   
-  if elem.kind in {tyExpr, tyTypeDesc}:
+  if elem.kind in {tyExpr, tyStatic, tyTypeDesc}:
     owner.flags.incl tfHasMeta
   elif elem.kind in {tyString, tyRef, tySequence} or
       elem.kind == tyProc and elem.callConv == ccClosure:

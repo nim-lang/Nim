@@ -102,7 +102,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags:
       incl(c.p.owner.flags, sfSideEffect)
-    elif s.kind == skParam and s.typ.kind == tyExpr and s.typ.n != nil:
+    elif s.kind == skParam and s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     result = newSymNode(s, n.info)
@@ -111,7 +111,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
   of skGenericParam:
-    if s.typ.kind == tyExpr:
+    if s.typ.kind == tyStatic:
       result = newSymNode(s, n.info)
       result.typ = s.typ
     elif s.ast != nil:
@@ -668,6 +668,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
   else:
     result = semOverloadedCall(c, n, nOrig, 
       {skProc, skMethod, skConverter, skMacro, skTemplate})
+ 
   if result != nil:
     if result.sons[0].kind != nkSym: 
       InternalError("semOverloadedCallAnalyseEffects")
@@ -937,7 +938,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let tParam = tbody.sons[s]
         if tParam.sym.name == i:
           let rawTyp = ty.sons[s + 1]
-          if rawTyp.kind == tyExpr:
+          if rawTyp.kind == tyStatic:
             return rawTyp.n
           else:
             let foundTyp = makeTypeDesc(c, rawTyp)
@@ -1882,7 +1883,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBind:
     Message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
-  of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy:
+  of nkTypeOfExpr, nkTupleTy, nkRefTy..nkEnumTy, nkStaticTy:
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
     #result = symNodeFromType(c, typ, n.info)

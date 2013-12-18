@@ -20,7 +20,7 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable,
     if a.kind != nkSym: 
       InternalError(a.info, "instantiateGenericParamList; no symbol")
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyExpr}+tyTypeClasses:
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     var s = newSym(skType, q.name, getCurrOwner(), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
@@ -145,11 +145,11 @@ proc lateInstantiateGeneric(c: PContext, invocation: PType, info: TLineInfo): PT
     pushInfoContext(info)
     for i in 0 .. <s.typ.n.sons.len:
       let genericParam = s.typ.n[i].sym
-      let symKind = if genericParam.typ.kind == tyExpr: skConst
+      let symKind = if genericParam.typ.kind == tyStatic: skConst
                     else: skType
 
       var boundSym = newSym(symKind, s.typ.n[i].sym.name, s, info)
-      boundSym.typ = invocation.sons[i+1].skipTypes({tyExpr})
+      boundSym.typ = invocation.sons[i+1].skipTypes({tyStatic})
       boundSym.ast = invocation.sons[i+1].n
       addDecl(c, boundSym)
     # XXX: copyTree would have been unnecessary here if semTypeNode
@@ -200,7 +200,7 @@ proc fixupProcType(c: PContext, genericType: PType,
     result = inst.concreteTypes[genericType.sym.position]
     if tfUnresolved in genericType.flags:
       result = result.sons[0]
-  of tyExpr:
+  of tyStatic:
     result = inst.concreteTypes[genericType.sym.position]
   of tyOpenArray, tyArray, tySet, tySequence, tyTuple, tyProc,
      tyPtr, tyVar, tyRef, tyOrdinal, tyRange, tyVarargs:
