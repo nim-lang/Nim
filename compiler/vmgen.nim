@@ -206,6 +206,9 @@ proc genx(c: PCtx; n: PNode): TRegister =
   gen(c, n, tmp)
   result = TRegister(tmp)
 
+proc clearDest(n: PNode; dest: var TDest) {.inline.} =
+  if isEmptyType(n.typ): dest = -1
+
 proc isNotOpr(n: PNode): bool =
   n.kind in nkCallKinds and n.sons[0].kind == nkSym and
     n.sons[0].sym.magic == mNot
@@ -244,6 +247,7 @@ proc genWhile(c: PCtx; n: PNode) =
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   withBlock(n.sons[0].sym):
     c.gen(n.sons[1], dest)
+  clearDest(n, dest)
 
 proc genBreak(c: PCtx; n: PNode) =
   let L1 = c.xjmp(n, opcJmp)
@@ -288,6 +292,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
     else:
       c.gen(it.sons[0], dest)
   for endPos in endings: c.patch(endPos)
+  clearDest(n, dest)
 
 proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, a
@@ -369,6 +374,7 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
           endings.add(c.xjmp(it.lastSon, opcJmp, 0))
         c.patch(elsePos)
   for endPos in endings: c.patch(endPos)
+  clearDest(n, dest)
 
 proc genType(c: PCtx; typ: PType): int =
   for i, t in c.types:
@@ -408,6 +414,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if fin.kind == nkFinally:
     c.gen(fin.sons[0], dest)
   c.gABx(fin, opcFinallyEnd, 0, 0)
+  clearDest(n, dest)
 
 proc genRaise(c: PCtx; n: PNode) =
   let dest = genx(c, n.sons[0])
@@ -435,6 +442,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   else:
     c.gABC(n, opcIndCallAsgn, dest, x, n.len)
   c.freeTempRange(x, n.len)
+  clearDest(n, dest)
 
 proc genNew(c: PCtx; n: PNode) =
   let dest = c.genx(n.sons[1])
