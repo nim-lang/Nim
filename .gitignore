@@ -63,6 +63,8 @@ examples/cross_calculator/android/tags
 /examples/allany
 /examples/cairoex
 /examples/cgiex
+/examples/cgi/cgi_stacktrace
+/examples/cgi/example
 /examples/curlex
 /examples/docstrings
 /examples/filterex
