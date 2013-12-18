@@ -553,18 +553,26 @@ const
 
   FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
 
+# Error Constants
+const
+  ERROR_ACCESS_DENIED* = 5
+
 when useWinUnicode:
   proc CreateFileW*(lpFileName: widecstring, dwDesiredAccess, dwShareMode: DWORD,
                     lpSecurityAttributes: pointer,
                     dwCreationDisposition, dwFlagsAndAttributes: DWORD,
                     hTemplateFile: THANDLE): THANDLE {.
       stdcall, dynlib: "kernel32", importc: "CreateFileW".}
+  proc DeleteFileW*(pathName: widecstring): int32 {.
+    importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
 else:
   proc CreateFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
                     lpSecurityAttributes: pointer,
                     dwCreationDisposition, dwFlagsAndAttributes: DWORD,
                     hTemplateFile: THANDLE): THANDLE {.
       stdcall, dynlib: "kernel32", importc: "CreateFileA".}
+  proc DeleteFileA*(pathName: cstring): int32 {.
+    importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
 
 proc SetEndOfFile*(hFile: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "SetEndOfFile".}
