@@ -7,7 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a generator of HTML/Latex from `reStructuredText`:idx:.
+## This module implements a generator of HTML/Latex from
+## `reStructuredText`:idx: (see http://docutils.sourceforge.net/rst.html for
+## information on this markup syntax). You can generate HTML output through the
+## convenience proc ``rstToHtml``, which provided an input string with rst
+## markup returns a string with the generated HTML. The final output is meant
+## to be embedded inside a full document you provide yourself, so it won't
+## contain the usual ``<header>`` or ``<body>`` parts.
+##
+## You can also create a ``TRstGenerator`` structure and populate it with the
+## other lower level methods to finally build complete documents. This requires
+## many options and tweaking, but you are not limited to snippets and can
+## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite
 
@@ -47,6 +58,44 @@ proc initRstGenerator*(g: var TRstGenerator, target: TOutputTarget,
                        options: TRstParseOptions,
                        findFile: TFindFileHandler,
                        msgHandler: TMsgHandler) =
+  ## Initializes a ``TRstGenerator``.
+  ##
+  ## You need to call this before using a ``TRstGenerator`` with any other
+  ## procs in this module. Pass a non ``nil`` ``PStringTable`` value as
+  ## ``config`` with parameters used by the HTML output generator.  If you
+  ## don't know what to use, pass the results of the ``defaultConfig()`` proc.
+  ## The ``filename`` is symbolic and used only for error reporting, you can
+  ## pass any non ``nil`` string here.
+  ##
+  ## The ``TRstParseOptions``, ``TFindFileHandler`` and ``TMsgHandler`` types
+  ## are defined in the the `packages/docutils/rst module <rst.html>`_.
+  ## ``options`` selects the behaviour of the rst parser.
+  ##
+  ## ``findFile`` is a proc used by the rst ``include`` directive among others.
+  ## The purpose of this proc is to mangle or filter paths. It receives paths
+  ## specified in the rst document and has to return a valid path to existing
+  ## files or the empty string otherwise.  If you pass ``nil``, a default proc
+  ## will be used which given a path returns the input path only if the file
+  ## exists. One use for this proc is to transform relative paths found in the
+  ## document to absolute path, useful if the rst file and the resources it
+  ## references are not in the same directory as the current working directory.
+  ##
+  ## The ``msgHandler`` is a proc used for user error reporting. It will be
+  ## called with the filename, line, col, and type of any error found during
+  ## parsing. If you pass ``nil``, a default message handler will be used which
+  ## writes the messages to the standard output.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   import packages/docutils/rstgen
+  ##
+  ##   var gen: TRstGenerator
+  ##
+  ##   gen.initRstGenerator(outHtml, defaultConfig(),
+  ##     "filename", {}, nil, nil)
+
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -148,6 +197,18 @@ proc dispA(target: TOutputTarget, dest: var string,
   else: addf(dest, tex, args)
   
 proc renderRstToOut*(d: var TRstGenerator, n: PRstNode, result: var string)
+  ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
+  ##
+  ## Before using this proc you need to initialise a ``TRstGenerator`` with
+  ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
+  ## `packages/docutils/rst module <rst.html>`_. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ##   # ...configure gen and rst vars...
+  ##   var generatedHTML = ""
+  ##   renderRstToOut(gen, rst, generatedHTML)
+  ##   echo generatedHTML
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) = 
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -678,8 +739,26 @@ $content
 
 proc rstToHtml*(s: string, options: TRstParseOptions, 
                 config: PStringTable): string =
-  ## exported for *nimforum*.
-  
+  ## Converts an input rst string into embeddable HTML.
+  ##
+  ## This convenience proc parses any input string using rst markup (it doesn't
+  ## have to be a full document!) and returns an embeddable piece of HTML. The
+  ## proc is meant to be used in *online* environments without access to a
+  ## meaningful filesystem, and therefore rst ``include`` like directives won't
+  ## work. For an explanation of the ``config`` parameter see the
+  ## ``initRstGenerator`` proc. Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   import packages/docutils/rstgen, strtabs
+  ##
+  ##   echo rstToHtml("*Hello* **world**!", {},
+  ##     newStringTable(modeStyleInsensitive))
+  ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##
+  ## If you need to allow the rst ``include`` directive or tweak the generated
+  ## output you have to create your own ``TRstGenerator`` with
+  ## ``initRstGenerator`` and related procs.
+
   proc myFindFile(filename: string): string = 
     # we don't find any files in online mode:
     result = ""
@@ -692,4 +771,8 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
-  
+
+
+when isMainModule:
+  echo rstToHtml("*Hello* **world**!", {},
+    newStringTable(modeStyleInsensitive))
