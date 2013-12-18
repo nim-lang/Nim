@@ -11,11 +11,10 @@
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  stackTraceNewLine*: string ## undocumented feature; it is replaced by ``<br>``
-                             ## for CGI applications
-
-template stackTraceNL: expr =
-  (if IsNil(stackTraceNewLine): "\n" else: stackTraceNewLine)
+  errorMessageWriter*: (proc(msg: string): void {.tags: [FWriteIO].})
+    ## Function that will be called
+    ## instead of stdmsg.write when printing stacktrace.
+    ## Unstable API.
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: CString) = write(stdmsg, msg)
@@ -26,6 +25,12 @@ else:
 
   proc writeToStdErr(msg: CString) =
     discard MessageBoxA(0, msg, nil, 0)
+
+proc showErrorMessage(data: cstring) =
+  if errorMessageWriter != nil:
+    errorMessageWriter($data)
+  else:
+    writeToStdErr(data)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc.}
@@ -111,7 +116,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
             add(s, tempDlInfo.dli_sname)
         else:
           add(s, '?')
-        add(s, stackTraceNL)
+        add(s, "\n")
       else:
         if dlresult != 0 and tempDlInfo.dli_sname != nil and
             c_strcmp(tempDlInfo.dli_sname, "signalHandler") == 0'i32:
@@ -172,21 +177,18 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
         add(s, ')')
       for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
       add(s, tempFrames[j].procname)
-    add(s, stackTraceNL)
+    add(s, "\n")
 
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
     when nimrodStackTrace:
       if framePtr == nil:
-        add(s, "No stack traceback available")
-        add(s, stackTraceNL)
+        add(s, "No stack traceback available\n")
       else:
-        add(s, "Traceback (most recent call last)")
-        add(s, stackTraceNL)
+        add(s, "Traceback (most recent call last)\n")
         auxWriteStackTrace(framePtr, s)
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
-      add(s, "Traceback from system (most recent call last)")
-      add(s, stackTraceNL)
+      add(s, "Traceback from system (most recent call last)\n")
       auxWriteStackTraceWithBacktrace(s)
     else:
       add(s, "No stack traceback available\n")
@@ -207,7 +209,7 @@ proc raiseExceptionAux(e: ref E_Base) =
       pushCurrentException(e)
       c_longjmp(excHandler.context, 1)
   elif e[] of EOutOfMemory:
-    writeToStdErr(e.name)
+    showErrorMessage(e.name)
     quitOrDebug()
   else:
     when hasSomeStackTrace:
@@ -219,7 +221,7 @@ proc raiseExceptionAux(e: ref E_Base) =
       add(buf, " [")
       add(buf, $e.name)
       add(buf, "]\n")
-      writeToStdErr(buf)
+      showErrorMessage(buf)
     else:
       # ugly, but avoids heap allocations :-)
       template xadd(buf, s, slen: expr) =
@@ -235,7 +237,7 @@ proc raiseExceptionAux(e: ref E_Base) =
       add(buf, " [")
       xadd(buf, e.name, c_strlen(e.name))
       add(buf, "]\n")
-      writeToStdErr(buf)
+      showErrorMessage(buf)
     quitOrDebug()
 
 proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
@@ -255,9 +257,9 @@ proc WriteStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    writeToStdErr(s)
+    showErrorMessage(s)
   else:
-    writeToStdErr("No stack traceback available\n")
+    showErrorMessage("No stack traceback available\n")
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
@@ -298,13 +300,13 @@ when not defined(noSignalHandler):
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sig, buf.add) # nice hu? currying a la nimrod :-)
-      writeToStdErr(buf)
+      showErrorMessage(buf)
       GC_enable()
     else:
       var msg: cstring
       template asgn(y: expr) = msg = y
       processSignal(sig, asgn)
-      writeToStdErr(msg)
+      showErrorMessage(msg)
     when defined(endb): dbgAborting = True
     quit(1) # always quit when SIGABRT
 
