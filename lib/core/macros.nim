@@ -268,6 +268,8 @@ proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst".}
   ##
   ## Example:
   ##   
+  ## .. code-block:: nimrod
+  ##
   ##   macro check(ex: expr): stmt =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
@@ -289,6 +291,8 @@ template emit*(e: expr[string]): stmt =
   ## accepts a single string argument and treats it as nimrod code
   ## that should be inserted verbatim in the program
   ## Example:
+  ##
+  ## .. code-block:: nimrod
   ##
   ##   emit("echo " & '"' & "hello world".toUpper & '"')
   ##
