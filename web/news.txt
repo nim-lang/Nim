@@ -29,7 +29,6 @@ Changes affecting backwards compatibility
   using the new ``OSLastError`` proc.
 - ``os.parentDir`` now returns "" if there is no parent dir.
 
-
 Compiler Additions
 ------------------
 
@@ -41,7 +40,8 @@ Compiler Additions
   over the generated code.
 - The compiler now supports a ``computedGoto`` pragma to support very fast
   dispatching for interpreters and the like.
-
+- In CGI scripts stacktraces are shown user only if cgi.setStackTraceStdout
+  is used.
 
 Language Additions
 ------------------
