@@ -282,13 +282,16 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       app(result, substr(frmt, start, i - 1))
   assert(RopeInvariant(result))
 
-{.push stack_trace: off, line_trace: off.}
-proc `~`*(r: expr[string]): PRope =
-  # this is the new optimized "to rope" operator
-  # the mnemonic is that `~` looks a bit like a rope :)
-  var r {.global.} = r.ropef
-  return r
-{.pop.}
+when true:
+  template `~`*(r: string): PRope = r.ropef
+else:
+  {.push stack_trace: off, line_trace: off.}
+  proc `~`*(r: static[string]): PRope =
+    # this is the new optimized "to rope" operator
+    # the mnemonic is that `~` looks a bit like a rope :)
+    var r {.global.} = r.ropef
+    return r
+  {.pop.}
 
 proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) = 
   app(c, ropef(frmt, args))

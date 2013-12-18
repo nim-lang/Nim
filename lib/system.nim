@@ -2641,7 +2641,7 @@ when hostOS != "standalone":
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x): bool {.magic: "Compiles", noSideEffect.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:

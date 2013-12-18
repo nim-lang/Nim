@@ -196,7 +196,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       let e = semExprWithType(c, n.sons[1], {efDetermineType})
       if e.kind in {nkIntLit..nkUInt64Lit}:
         indx = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-      elif e.kind == nkSym and e.typ.kind == tyExpr:
+      elif e.kind == nkSym and e.typ.kind == tyStatic:
         if e.sym.ast != nil: return semArray(c, e.sym.ast, nil)
         InternalAssert c.InGenericContext > 0
         if not isOrdinalType(e.typ.lastSon):
@@ -206,7 +206,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
         indx = e.typ.skipTypes({tyTypeDesc})
     addSonSkipIntLit(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind notin {tyGenericParam, tyExpr}:
+    if indx.kind notin {tyGenericParam, tyStatic}:
       if not isOrdinalType(indx):
         LocalError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx): 
@@ -577,9 +577,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     pragma(c, s, n.sons[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
-  
+
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
-  if kind == skMacro and param.typ.kind != tyTypeDesc:
+  if kind == skMacro and param.typ.kind notin {tyTypeDesc, tyStatic}:
     # within a macro, every param has the type PNimrodNode!
     # and param.typ.kind in {tyTypeDesc, tyExpr, tyStmt}:
     let nn = getSysSym"PNimrodNode"
@@ -629,15 +629,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     addImplicitGenericImpl(e, paramTypId)
 
   case paramType.kind:
-  of tyExpr:
-    if paramType.sonsLen == 0:
-      # proc(a, b: expr)
-      # no constraints, treat like generic param
-      result = addImplicitGeneric(newTypeS(tyGenericParam, c))
-    else:
-      # proc(a: expr{string}, b: expr{nkLambda})
-      # overload on compile time values and AST trees
-      result = addImplicitGeneric(c.newTypeWithSons(tyExpr, paramType.sons))
+  of tyAnything:
+    result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+  of tyStatic:
+    # proc(a: expr{string}, b: expr{nkLambda})
+    # overload on compile time values and AST trees
+    result = addImplicitGeneric(c.newTypeWithSons(tyStatic, paramType.sons))
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
       # naked typedescs are not bindOnce types
@@ -743,8 +740,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if not containsGenericType(typ):
           def = fitNode(c, typ, def)
     if not (hasType or hasDefault):
-      typ = newTypeS(tyExpr, c)
-      
+      let tdef = if kind in {skTemplate, skMacro}: tyExpr else: tyAnything
+      typ = newTypeS(tdef, c)
+
     if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
     for j in countup(0, length-3): 
       var arg = newSymG(skParam, a.sons[j], c)
@@ -1000,6 +998,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)
   of nkDistinctTy: result = semDistinct(c, n, prev)
+  of nkStaticTy:
+      result = newOrPrevType(tyStatic, prev, c)
+      var base = semTypeNode(c, n.sons[0], nil)
+      result.rawAddSon(base)
   of nkProcTy, nkIteratorTy:
     if n.sonsLen == 0:
       result = newConstraint(c, tyProc)
@@ -1105,7 +1107,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     
     if constraint.kind != nkEmpty:
       typ = semTypeNode(c, constraint, nil)
-      if typ.kind != tyExpr or typ.len == 0:
+      if typ.kind != tyStatic or typ.len == 0:
         if typ.kind == tyTypeDesc:
           if typ.len == 0:
             typ = newTypeS(tyTypeDesc, c)
@@ -1116,7 +1118,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       def = semConstExpr(c, def)
       if typ == nil:
         if def.typ.kind != tyTypeDesc:
-          typ = newTypeWithSons(c, tyExpr, @[def.typ])
+          typ = newTypeWithSons(c, tyStatic, @[def.typ])
       else:
         if not containsGenericType(def.typ):
           def = fitNode(c, typ, def)
@@ -1132,7 +1134,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
                       # of the parameter will be stored in the
                       # attached symbol.
       var s = case finalType.kind
-        of tyExpr:
+        of tyStatic:
           newSymG(skGenericParam, a.sons[j], c).linkTo(finalType)
         else:
           newSymG(skType, a.sons[j], c).linkTo(finalType)

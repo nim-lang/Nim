@@ -965,14 +965,18 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
   of tkIterator:
-    if mode in {pmTypeDesc, pmTypeDef}:
-      result = parseProcExpr(p, false)
-      result.kind = nkIteratorTy
+    when true:
+      if mode in {pmTypeDesc, pmTypeDef}:
+        result = parseProcExpr(p, false)
+        result.kind = nkIteratorTy
+      else:
+        # no anon iterators for now:
+        parMessage(p, errExprExpected, p.tok)
+        getTok(p)  # we must consume a token here to prevend endless loops!
+        result = ast.emptyNode
     else:
-      # no anon iterators for now:
-      parMessage(p, errExprExpected, p.tok)
-      getTok(p)  # we must consume a token here to prevend endless loops!
-      result = ast.emptyNode
+      result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
+      result.kind = nkIteratorTy
   of tkEnum:
     if mode == pmTypeDef:
       result = parseEnum(p)
@@ -995,9 +999,13 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     getTokNoInd(p)
     addSon(result, primary(p, pmNormal))
   of tkStatic:
-    result = newNodeP(nkStaticExpr, p)
+    let info = parLineInfo(p)
     getTokNoInd(p)
-    addSon(result, primary(p, pmNormal))
+    let next = primary(p, pmNormal)
+    if next.kind == nkBracket and next.sonsLen == 1:
+      result = newNode(nkStaticTy, info, @[next.sons[0]])
+    else:
+      result = newNode(nkStaticExpr, info, @[next])
   of tkBind:
     result = newNodeP(nkBind, p)
     getTok(p)

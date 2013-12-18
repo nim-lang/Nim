@@ -88,7 +88,7 @@ proc GetUniqueType*(key: PType): PType =
       result = key
   of tyTypeDesc, tyTypeClasses:
     InternalError("value expected, but got a type")
-  of tyGenericParam:
+  of tyGenericParam, tyStatic:
     InternalError("GetUniqueType")
   of tyGenericInst, tyDistinct, tyOrdinal, tyMutable, tyConst, tyIter:
     result = GetUniqueType(lastSon(key))

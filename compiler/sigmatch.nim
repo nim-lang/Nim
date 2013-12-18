@@ -124,7 +124,7 @@ proc sumGeneric(t: PType): int =
       result = ord(t.kind == tyGenericInvokation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
-    of tyGenericParam, tyExpr, tyStmt, tyTypeDesc, tyTypeClass: break
+    of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc, tyTypeClass: break
     else: return 0
 
 proc complexDisambiguation(a, b: PType): int =
@@ -894,40 +894,39 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
     arg = argSemantized
 
   let
-    a = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
-        else: argType
-    fMaybeExpr = f.skipTypes({tyDistinct})
+    a0 = if c.InTypeClass > 0: argType.skipTypes({tyTypeDesc})
+         else: argType
+    a = if a0 != nil: a0.skipTypes({tyStatic}) else: a0
+    fMaybeStatic = f.skipTypes({tyDistinct})
 
-  case fMaybeExpr.kind
-  of tyExpr:
-    if fMaybeExpr.sonsLen == 0:
-      r = isGeneric
+  case fMaybeStatic.kind
+  of tyStatic:
+    if a.kind == tyStatic:
+      InternalAssert a.len > 0
+      r = typeRel(m, f.lastSon, a.lastSon)
     else:
-      if a.kind == tyExpr:
-        InternalAssert a.len > 0
-        r = typeRel(m, f.lastSon, a.lastSon)
+      let match = matchTypeClass(m.bindings, fMaybeStatic, a)
+      if not match: r = isNone
       else:
-        let match = matchTypeClass(m.bindings, fMaybeExpr, a)
-        if not match: r = isNone
-        else:
-          # XXX: Ideally, this should happen much earlier somewhere near 
-          # semOpAux, but to do that, we need to be able to query the 
-          # overload set to determine whether compile-time value is expected
-          # for the param before entering the full-blown sigmatch algorithm.
-          # This is related to the immediate pragma since querying the
-          # overload set could help there too.
-          var evaluated = c.semConstExpr(c, arg)
-          if evaluated != nil:
-            r = isGeneric
-            arg.typ = newTypeS(tyExpr, c)
-            arg.typ.sons = @[evaluated.typ]
-            arg.typ.n = evaluated
+        # XXX: Ideally, this should happen much earlier somewhere near 
+        # semOpAux, but to do that, we need to be able to query the 
+        # overload set to determine whether compile-time value is expected
+        # for the param before entering the full-blown sigmatch algorithm.
+        # This is related to the immediate pragma since querying the
+        # overload set could help there too.
+        var evaluated = c.semConstExpr(c, arg)
+        if evaluated != nil:
+          r = isGeneric
+          arg.typ = newTypeS(tyStatic, c)
+          arg.typ.sons = @[evaluated.typ]
+          arg.typ.n = evaluated
         
     if r == isGeneric:
       put(m.bindings, f, arg.typ)
+
   of tyTypeClass, tyParametricTypeClass:
-    if fMaybeExpr.n != nil:
-      let match = matchUserTypeClass(c, m, arg, fMaybeExpr, a)
+    if fMaybeStatic.n != nil:
+      let match = matchUserTypeClass(c, m, arg, fMaybeStatic, a)
       if match != nil:
         r = isGeneric
         arg = match
@@ -935,6 +934,9 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         r = isNone
     else:
       r = typeRel(m, f, a)
+  of tyExpr:
+    r = isGeneric
+    put(m.bindings, f, arg.typ)
   else:
     r = typeRel(m, f, a)
 
@@ -961,6 +963,8 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, argType: PType,
         result = argOrig[bodyPos]
       elif f.kind == tyTypeDesc:
         result = arg
+      elif f.kind == tyStatic:
+        result = arg.typ.n
       else:
         result = argOrig
     else:
