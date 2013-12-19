@@ -970,17 +970,37 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   if crename(source, dest) != 0'i32:
     raise newException(EOS, $strerror(errno))
 
-when not defined(ENOENT):
+when not defined(ENOENT) and not defined(Windows):
   var ENOENT {.importc, header: "<errno.h>".}: cint
+
+when defined(Windows):
+  when useWinUnicode:
+    template DeleteFile(file: expr): expr {.immediate.} = DeleteFileW(file)
+    template SetFileAttributes(file, attrs: expr): expr {.immediate.} = 
+      SetFileAttributesW(file, attrs)
+  else:
+    template DeleteFile(file: expr): expr {.immediate.} = DeleteFileA(file)
+    template SetFileAttributes(file, attrs: expr): expr {.immediate.} = 
+      SetFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [FWriteDir].} =
   ## Removes the `file`. If this fails, `EOS` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
   when defined(Windows):
-    setFilePermissions(file, {fpUserWrite})
-  if cremove(file) != 0'i32 and errno != ENOENT:
-    raise newException(EOS, $strerror(errno))
+    when useWinUnicode:
+      let f = newWideCString(file)
+    else:
+      let f = file
+    if DeleteFile(f) == 0:
+      if GetLastError() == ERROR_ACCESS_DENIED: 
+        if SetFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
+          OSError(OSLastError())
+        if DeleteFile(f) == 0:
+          OSError(OSLastError())
+  else:
+    if cremove(file) != 0'i32 and errno != ENOENT:
+      raise newException(EOS, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [FExecIO].} =

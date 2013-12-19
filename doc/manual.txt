@@ -4708,7 +4708,11 @@ fatal pragma
 ------------
 The `fatal`:idx: pragma is used to make the compiler output an error message
 with the given content. In contrast to the ``error`` pragma, compilation
-is guaranteed to be aborted by this pragma.
+is guaranteed to be aborted by this pragma. Example:
+
+.. code-block:: nimrod
+  when not defined(objc):
+    {.fatal: "Compile this program with the objc command!".}
 
 warning pragma
 --------------
