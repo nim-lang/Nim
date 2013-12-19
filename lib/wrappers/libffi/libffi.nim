@@ -30,31 +30,27 @@ when defined(windows):
   # on Windows we don't use a DLL but instead embed libffi directly:
   {.pragma: mylib, header: r"ffi.h".}
 
-  {.compile: r"common\callproc.c".}
-  {.compile: r"common\malloc_closure.c".}
+  #{.compile: r"common\malloc_closure.c".}
   {.compile: r"common\raw_api.c".}
   when defined(vcc):
-    #{.compile: "libffi_msvc\ffi.h".}
-    #<ClInclude: "..\Modules\_ctypes\libffi_msvc\ffi_common.h".}
-    #<ClInclude: "..\Modules\_ctypes\libffi_msvc\fficonfig.h".}
-    #<ClInclude: "..\Modules\_ctypes\libffi_msvc\ffitarget.h".}
     {.compile: r"msvc\ffi.c".}
     {.compile: r"msvc\prep_cif.c".}
     {.compile: r"msvc\win32.c".}
     {.compile: r"msvc\types.c".}
     when defined(cpu64):
-      {.compile: r"msvc\win64.asm".}
+      {.compile: r"msvc\win64_asm.asm".}
+    else:
+      {.compile: r"msvc\win32_asm.asm".}
   else:
     {.compile: r"gcc\ffi.c".}
     {.compile: r"gcc\prep_cif.c".}
-    {.compile: r"gcc\win32.c".}
     {.compile: r"gcc\types.c".}
     {.compile: r"gcc\closures.c".}
     when defined(cpu64):
       {.compile: r"gcc\ffi64.c".}
-      {.compile: r"gcc\win64.S".}
+      {.compile: r"gcc\win64_asm.S".}
     else:
-      {.compile: r"gcc\win32.S".}
+      {.compile: r"gcc\win32_asm.S".}
 
 elif defined(macosx):
   {.pragma: mylib, dynlib: "libffi.dylib".}
