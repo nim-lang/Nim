@@ -527,21 +527,6 @@ At the moment idetools support is still in development so the test
 suite is not integrated with the main test suite and you have to
 run it manually. First you have to compile the tester::
 
-	$ cd my/nimrod/checkout
-	$ nimrod c tests/tester.nim
-
-Running the tester without parameters will display some options.
-To run the caas test suite (and other special tests) you need to
-use the `special` command. You need to run this command from the
-root of the checkout or it won't be able to open the required files::
-
-	$ ./tests/tester special
-
-However this is a roundabout way of running the test suite. You can
-also compile and run ``tests/caasdriver.nim`` manually. In fact,
-running it manually will allow you to specify special parameters
-too. Example::
-
 	$ cd my/nimrod/checkout/tests
 	$ nimrod c caasdriver.nim
 
