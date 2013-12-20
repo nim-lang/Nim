@@ -1951,15 +1951,13 @@ when not defined(JS): #and not defined(NimrodVM):
         ## The standard output stream.
       stderr* {.importc: "stderr", header: "<stdio.h>".}: TFile
         ## The standard error stream.
-        ##
-        ## Note: In my opinion, this should not be used -- the concept of a
-        ## separate error stream is a design flaw of UNIX. A separate *message
-        ## stream* is a good idea, but since it is named ``stderr`` there are few
-        ## programs out there that distinguish properly between ``stdout`` and
-        ## ``stderr``. So, that's what you get if you don't name your variables
-        ## appropriately. It also annoys people if redirection
-        ## via ``>output.txt`` does not work because the program writes
-        ## to ``stderr``.
+
+    when defined(useStdoutAsStdmsg):
+      template stdmsg*: TFile = stdout
+    else:
+      template stdmsg*: TFile = stderr
+        ## Template which expands to either stdout or stderr depending on
+        ## `useStdoutAsStdmsg` compile-time switch.
 
     proc Open*(f: var TFile, filename: string,
                mode: TFileMode = fmRead, bufSize: int = -1): Bool {.tags: [].}
