@@ -497,11 +497,11 @@ from strutils import cmpIgnoreStyle, format
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [];  
+proc newProc*(name = newEmptyNode(); params: openarray[PNimrodNode] = [newEmptyNode()];  
     body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
-  ## The ``params`` array should start with the return type of the proc, 
+  ## The ``params`` array must start with the return type of the proc, 
   ## followed by a list of IdentDefs which specify the params.
   assert procType in RoutineNodes
   result = newNimNode(procType).add(
