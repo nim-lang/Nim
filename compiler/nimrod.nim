@@ -65,8 +65,14 @@ proc HandleCmdLine() =
             completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram("node " & ex & ' ' & service.arguments)
         else:
-          var ex = quoteShell(
-            changeFileExt(gProjectFull, exeExt).prependCurDir)
+          var binPath: string
+          if options.outFile.len > 0:
+            # If the user specified an outFile path, use that directly.
+            binPath = options.outFile.prependCurDir
+          else:
+            # Figure out ourselves a valid binary name.
+            binPath = changeFileExt(gProjectFull, exeExt).prependCurDir
+          var ex = quoteShell(binPath)
           execExternalProgram(ex & ' ' & service.arguments)
 
 when defined(GC_setMaxPause):
